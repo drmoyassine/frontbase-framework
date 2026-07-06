@@ -14,11 +14,16 @@ export interface ShellOptions {
     environment: string;
     /** Emit the /sw.js registration script (edge path only — the handover). */
     registerServiceWorker: boolean;
+    /** Minified behaviors runtime (M1.4 compiler emits it). Inlined before </body>. */
+    behaviorsBundle?: string;
 }
 
 export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOptions): string {
     const swRegistration = opts.registerServiceWorker
         ? `<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js');}</script>`
+        : '';
+    const behaviors = opts.behaviorsBundle
+        ? `<script>${opts.behaviorsBundle}</script>`
         : '';
     return `<!DOCTYPE html>
 <html lang="en">
@@ -33,6 +38,7 @@ ${page.description ? `<meta name="description" content="${escapeHtml(page.descri
 </head>
 <body>
 <div id="root">${bodyHtml}</div>
+${behaviors}
 ${swRegistration}
 </body>
 </html>`;

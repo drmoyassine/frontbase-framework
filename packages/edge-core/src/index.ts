@@ -16,3 +16,4 @@ export { directProvider, proxyProvider, type DataProvider } from './data.js';
 export type { SiteManifest, PageEntry, RegisteredQuery, QueryContext } from './manifest.js';
 export { renderDocument, type ShellOptions } from './shell.js';
 export { attachServiceWorker } from './sw.js';
+export { startBehaviors, type VarScope } from './behaviors.js';
