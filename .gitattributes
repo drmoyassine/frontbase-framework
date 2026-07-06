@@ -1,0 +1,5 @@
+# Golden-corpus fixtures are byte-exact parity artifacts — NO eol conversion, ever.
+golden-corpus/pages/* -text
+golden-corpus/manifest.json -text
+# Everything else: normalize to LF in the repo
+* text=auto eol=lf
