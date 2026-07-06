@@ -1,0 +1,19 @@
+{
+  "name": "frontbase-framework",
+  "private": true,
+  "description": "The Frontbase framework monorepo — Chimera (Universal eSSR) engine, compiler, components, and edge infrastructure",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=8"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "check": "pnpm -r check"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "@frontbase/compiler",
+  "version": "0.0.0",
+  "description": "Build tooling — Zod schema extraction, manifest/type generation, query registrar, SW bundle emitter, CLI (init/check/lint/simulate/deploy)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit"
+  }
+}

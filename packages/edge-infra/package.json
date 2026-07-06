@@ -1,0 +1,18 @@
+{
+  "name": "@frontbase/edge-infra",
+  "version": "0.0.0",
+  "description": "Direct data providers, Edge Data Proxy, caches, queues, vault, edge auth gates, sync adapters, blob storage",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit"
+  }
+}

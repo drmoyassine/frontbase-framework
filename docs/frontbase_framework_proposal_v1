@@ -1,0 +1,337 @@
+# Frontbase: The Chimera Framework — A Developer-First & Agent-First Modular CMS Framework
+
+## Executive Summary
+
+**Frontbase** evolves from a visual-page-builder application into a **modular, edge-native fullstack framework** built on the **Chimera (Universal eSSR) architecture** ([CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md)).
+
+The framework is governed by **three guiding principles**:
+
+1. **Single-Edge Deployment** — the complete CMS (builder frontend, console API, rendering engine, data proxy, workflows) deploys as **one edge worker**. Zero infrastructure cost, one-command self-hosting.
+2. **Universal eSSR** — **one Hono engine** renders every page in three environments: the cloud edge (SEO/first load), the browser service worker (zero-latency navigation, private pages, offline), and the builder canvas (100% WYSIWYG preview). One set of isomorphic JSX components; no parallel React renderers; no hydration drift.
+3. **Six npm packages** — a deliberately small, consolidated surface:
+
+```
+@frontbase/edge-core      # The Chimera Engine — Hono router, eSSR renderer, DI data providers, workflows, client behaviors (Required Runtime)
+@frontbase/compiler       # Vite plugin, Zod/schema extraction, query registration, SW bundle emitter, CLI (Required Dev)
+@frontbase/ui-components  # Isomorphic engine JSX page components, behaviors, auth UI primitives (Required UI)
+@frontbase/builder        # React builder shell, local SQLite WASM draft DB, canvas↔SW preview bridge, visual editors (Optional)
+@frontbase/edge-infra     # Data providers, Edge Data Proxy, caches, queues, vault, storage, edge auth gates, sync adapters (Optional)
+@frontbase/backend        # Console API — Hono sub-router mounted inside the same worker; Drizzle schemas & migrations
+```
+
+This approach enables Frontbase to:
+- **Differentiate decisively**: the only framework where the visual builder, the AI agent, and production share **one renderer** — what you see is literally what ships.
+- **Deploy anywhere for free**: one `wrangler deploy` (or Deno Deploy) hosts the entire CMS.
+- **Stay honest on scope**: we are not out-positioning Next.js on ecosystem; we win on *builder + agent + edge unity*.
+- **Keep bundles small**: engine core target **< 70 KB min+gzip**; published pages ship zero React.
+
+### The Foundation Reality Check
+
+The codebase provides a genuinely strong seed — a multi-platform Hono edge runtime, a workflow engine with queue abstraction, a component/property-schema registry, and ~1,600 lines of hand-written SSR string renderers (`services/edge/src/ssr/components/`). Critically, **those string renderers are architecturally closer to the Chimera than React SSR**: the Chimera formalizes them into compiler-generated isomorphic engine components, eliminating today's dual implementation (React in the builder SPA + strings on the edge) instead of adding a third renderer.
+
+What does **not** exist yet and must be built: the compiler (AST → engine components, schema extraction, query registration, SW emission), the service-worker execution environment, the data-provider DI seam, the Edge Data Proxy, and the CLI. These are the blockers, and the roadmap sequences them first.
+
+---
+
+## 1. Modular Package Architecture
+
+### Package Structure & Dependency Graph
+
+```mermaid
+graph TD
+    subgraph "Core Framework - Required"
+        A["@frontbase/edge-core<br/>(The Chimera Engine)"]
+        B["@frontbase/compiler"]
+        C["@frontbase/ui-components"]
+    end
+
+    subgraph "Optional"
+        D["@frontbase/builder"]
+        E["@frontbase/edge-infra"]
+        F["@frontbase/backend"]
+    end
+
+    H["Developer / Agent"] --> B
+    B --> A
+    C --> A
+    D --> A
+    D --> C
+    E --> A
+    F --> E
+
+    style A fill:#e1f5ff
+    style B fill:#e1f5ff
+    style C fill:#e1f5ff
+    style D fill:#fff4e1
+    style E fill:#fff4e1
+    style F fill:#fff4e1
+```
+
+### Installation Patterns
+
+```bash
+# Pure framework (code-first, engine + compiler + components)
+npx @frontbase/compiler init my-app --pure
+# Programmatic workflows and eSSR are fully functional!
+
+# Framework + persistence/data-proxy/auth gates
+npx @frontbase/compiler init my-app --with-infra
+
+# Full CMS (all 6 packages → one deployable worker)
+npx @frontbase/compiler init my-app --full
+
+# Add the builder later to an existing project
+npm install @frontbase/builder @frontbase/edge-infra @frontbase/backend
+
+# Ship the entire CMS to the edge
+npx @frontbase/compiler deploy   # wraps wrangler/deno deploy — ONE worker
+```
+
+---
+
+## 2. Core Architectural Pillars (Chimera)
+
+```mermaid
+graph TD
+    A["Isomorphic JSX Component (.tsx)"] -->|"@frontbase/compiler"| B("Engine Component<br/>(renders everywhere)")
+    A -->|"@frontbase/compiler"| D("Component Manifest (Zod)<br/>+ Registered Queries")
+    B --> E["Edge Worker<br/>(SEO / first load)"]
+    B --> F["Service Worker<br/>(zero-latency nav, offline)"]
+    B --> G["Builder Canvas SW<br/>(WYSIWYG preview)"]
+    D --> H["Builder Property Panels<br/>+ Agent Diagnostics"]
+```
+
+### Pillar 1 — One Engine, Three Environments
+The same `@frontbase/edge-core` bundle executes on the cloud edge, inside the browser's service worker, and inside the builder preview. Environment differences are isolated behind a **dependency-injected Data Provider** (`direct` with edge secrets / `proxy` via registered queries / `local draft` SQLite WASM). See [CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md) §4.
+
+### Pillar 2 — Zero Component Duplication
+Page components are isomorphic Hono/JSX functions rendered to HTML strings. Published pages ship **no React**; interactivity comes from a ~10 KB declarative client-behaviors runtime (`data-fb-*` attributes) — a formalization of the existing `interactive.ts` pattern. React survives only as the builder's own UI shell.
+
+### Pillar 3 — Registered-Query Data Security
+The service worker never holds credentials and never sends SQL. The compiler registers every data binding as a named query with a Zod parameter schema; the **Edge Data Proxy** validates auth + params + tenant scope and executes with edge-held secrets.
+
+### Pillar 4 — Single-Worker CMS
+The unified Hono router mounts, in priority order: engine/builder static assets → builder SPA shell (`/app/*`) → console API (`/api/console`, from `@frontbase/backend`) → Edge Data Proxy (`/api/data`) → workflows (`/workflows`) → public eSSR catch-all. One deploy, one URL, zero infrastructure.
+
+### Core Framework Scope (@frontbase/edge-core)
+
+**Includes**: Hono unified router & platform adapters; eSSR renderer (isomorphic JSX → HTML string, LiquidJS filters); data-provider DI contract + built-in proxy provider; programmatic Workflow Execution Engine (in-memory defaults, durable via edge-infra adapters); client behaviors runtime; SW synchronization primitives; core types.
+
+**Excludes** (lives elsewhere): compilation/CLI → `@frontbase/compiler`; visual editors & draft DB → `@frontbase/builder`; concrete persistence/proxy/vault/auth-gates/sync → `@frontbase/edge-infra`; console API → `@frontbase/backend`.
+
+---
+
+## 3. Current State vs. Proposal Gap Analysis
+
+### ✅ Strong Foundation (Already Exists)
+
+| Area | Current State | Chimera Requirement | Gap / Status |
+| :--- | :--- | :--- | :--- |
+| **Hono Edge Runtime** | Multi-platform Hono serving SSR, workflows, APIs (`lite.ts`/`full.ts`). | Unified single-worker router. | ✅ Exists; needs consolidation into one priority router. |
+| **SSR String Renderers** | ~1,600 lines of per-component string builders + LiquidJS (`PageRenderer.ts`). | Isomorphic engine components. | ⚠️ Strong seed — must be generalized to run in SW and be compiler-generated. |
+| **Workflow Engine** | `runtime.ts` with queue abstractions, cron, checkpoints. | Programmatic workflows in engine. | ✅ Exists; needs DI provider seam. |
+| **Component/Property Registry** | `componentRegistry.tsx` + `propertySchemas.ts` (small but proven pattern). | Zod-driven manifests. | ⚠️ Pattern exists; automation and scale are new. |
+| **Monorepo** | 8 `@frontbase/*` data-widget packages. | 6-package framework. | ⚠️ Structure exists; framework packages are new. |
+
+### ❌ Critical Gaps (Must Be Built)
+
+| Area | Missing Capability | Impact |
+| :--- | :--- | :--- |
+| **Compiler** | No AST transformation, schema extraction, query registration, or SW bundle emission. | **BLOCKER** — the build foundation of the Chimera. |
+| **Service-Worker Engine Host** | Engine has never run in a SW; no lifecycle/versioning/cache layer. | **BLOCKER** — the defining Chimera capability; Phase 0 validates it. |
+| **Data Provider DI + Edge Data Proxy** | Data access is hard-wired; no registered-query proxy. | **HIGH** — security model of the Chimera. |
+| **Unified Single-Worker Packaging** | Builder SPA, console API, and engine deploy separately today. | **HIGH** — Principle #1. |
+| **CLI Tools** | No `frontbase init/check/lint/simulate/deploy`. | **HIGH** — agent DX. |
+| **Console API on Edge** | Console backend is Python/FastAPI (container). | **HIGH** — must be re-implemented as Hono sub-router (`@frontbase/backend`). |
+
+---
+
+## 4. Value Engineering Opportunities
+
+1. **String Renderers → Engine Components (save ~3–4 weeks)**: the existing `static.ts`/`interactive.ts`/`data.ts` renderers become the first-generation engine components; the compiler initially wraps them rather than regenerating from TSX.
+2. **Leverage `propertySchemas.ts` (save ~1–2 weeks)**: generate Zod schemas from the existing `PropertyFieldConfig[]` declarations via a small code generator, rather than hand-writing schemas for existing components. (The registry is small — savings are real but modest.)
+3. **CLI as wrappers (save ~1 week)**: `check` wraps `tsc --noEmit` + schema validation; `lint` wraps ESLint; `simulate` wraps the engine in a local Hono server. JSON output is a formatter, not a new engine.
+4. **Fallback-by-design kills the migration cliff**: because path A (edge render) always works, the SW layer can ship progressively behind a flag with zero risk to existing published pages.
+5. **One backend, not two**: dropping the dual FastAPI/Hono backend (Decision A-13) removes a permanent double-maintenance and schema-drift tax. FastAPI remains the legacy product's runtime, outside framework scope.
+
+---
+
+## 5. Unified Single-Worker Router
+
+```typescript
+// @frontbase/edge-core — the ONE deployed worker
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+// Priority 0: Dev file-system routes (development only)
+if (process.env.NODE_ENV === 'development') {
+    app.route('/dev', devFileRouter);
+}
+
+// Priority 1: Engine SW bundle + static assets
+app.get('/sw.js', serveEngineBundle);
+app.get('/assets/*', serveStatic);
+
+// Priority 2: Builder & console SPA shell (design-time, React)
+app.get('/app/*', spaShellRoute);
+
+// Priority 3: Console API (@frontbase/backend — same worker)
+app.route('/api/console', consoleRouter);
+
+// Priority 4: Edge Data Proxy — registered queries only
+app.route('/api/data', dataProxyRouter);
+
+// Priority 5: Webhooks & Queue Workflows
+app.route('/workflows', workflowRouter);
+
+// Priority 6: Published pages — public eSSR catch-all
+app.get('*', essrRenderHandler);
+
+export default app;
+```
+
+---
+
+## 6. Designing a Disciplined, Agent-First DX
+
+AI coding assistants struggle with frameworks featuring implicit dynamic behaviors or dual code paths. The Chimera is inherently agent-friendly — **one renderer means one truth** — and we reinforce it with strict programmatic boundaries:
+
+### 1. Zod Contracts for Zero-Drift Code
+Components validate inputs against explicit schemas. If an agent modifies a prop or data binding, it must update the matching Zod schema or compilation fails immediately. Registered queries give agents an explicit, greppable inventory of every data access in the app.
+
+### 2. Standardized JSON Diagnostics
+```json
+// frontbase check --json
+{
+  "success": false,
+  "errors": [
+    {
+      "file": "components/Hero.tsx",
+      "line": 43,
+      "rule": "type-checking",
+      "message": "Type 'string' is not assignable to type 'enum'. Expected 'emerald', 'indigo', or 'slate'.",
+      "severity": "error",
+      "quickFix": "Change themeColor to one of: 'emerald' | 'indigo' | 'slate'"
+    }
+  ],
+  "warnings": []
+}
+```
+
+### 3. Deterministic Simulation
+`frontbase simulate` boots the actual engine locally in all three provider modes (direct/proxy/local-draft), so an agent can verify that a component renders identically in production, SW, and builder contexts before committing.
+
+---
+
+## 7. Risk Analysis & Mitigation Matrix
+
+| Risk | Severity | Mitigation Strategy |
+| :--- | :--- | :--- |
+| **Engine-in-SW proves impractical** (size, lifecycle, Safari quirks) | **HIGH** | Phase 0 spike validates SW hosting *first*; fallback-by-design means the framework still works as pure edge eSSR if the SW layer is deferred. |
+| **Compiler complexity explosion** | **HIGH** | Phase 1 compiler starts with schema extraction + wrapping existing string renderers; TSX→engine codegen lands incrementally. |
+| **SW staleness after publish** | **MEDIUM** | Versioned `sw.js` + `skipWaiting()` + manifest revalidation (CHIMERA §7). |
+| **Data proxy abuse** | **HIGH** | Registered queries only — no raw SQL from the browser; Zod param validation + tenant scoping at the proxy. |
+| **Worker size limits** (1 MB gzip CF free) | **MEDIUM** | Size budgets per package; builder SPA served as static assets, not worker script; CI bundle-size gates. |
+| **Breaking existing builder pages** | **CRITICAL** | Layout version flags in DB; edge path renders old layouts via legacy renderer until migrated; feature flags allow instant reversion. |
+| **Console API rewrite scope** (FastAPI → Hono) | **MEDIUM** | Scope Phase 2 console to CMS-critical routes (pages, drafts, publish, auth, tenants); long-tail admin routes migrate post-GA. |
+
+---
+
+## 7.5. Phase 0: Chimera Validation Spike (1–2 Weeks)
+
+Before committing to the full roadmap, a focused proof-of-concept validates the riskiest assumptions:
+
+**Spike Objectives:**
+- **Engine-in-SW PoC**: run the Hono engine inside a service worker; render one real published page via the proxy data provider.
+- **Render parity**: render the same page on the edge and in the SW; assert byte-identical HTML.
+- **Schema extraction PoC**: extract a Zod schema + manifest from one component (Hero) via AST.
+- **Single-worker deploy PoC**: one wrangler deploy serving engine + a stub console route + static assets; measure size against budget.
+- **Agent testing**: Claude/Cursor generate a component against the schema contract; validate with a prototype `frontbase check`.
+
+**Decision Gate:**
+- ✅ **Proceed**: SW hosting works within budgets → full Chimera roadmap.
+- ⚠️ **Adjust**: SW layer deferred → ship edge-only eSSR first (still Principles 1 & 3), add SW in a later phase.
+- ❌ **Abort**: fundamental blockers → reconsider architecture.
+
+---
+
+## 8. Implementation Roadmap (Chimera)
+
+> Solo-capacity estimates. Engineering time ≈ 21–27 weeks; calendar target GA **Q1–Q2 2027**. Details in [MILESTONES.md](./MILESTONES.md).
+
+### Phase 0: Chimera Validation Spike (1–2 Weeks, July 2026)
+As above.
+
+### Phase 1: Engine & Compiler (8–10 Weeks, Q3 2026)
+**Objective**: Extract `@frontbase/edge-core` (the engine) and build `@frontbase/compiler` MVP.
+- Engine extraction: unified router, eSSR renderer seeded from existing string renderers, data-provider DI seam, workflows runner with in-memory defaults, client behaviors runtime.
+- Compiler MVP: schema extraction, manifest generation, registered-query compilation, SW bundle emission.
+- CLI: `init`, `check`, `lint` (JSON diagnostics first); `simulate` after engine stabilizes.
+- Target: engine < 70 KB min+gzip; existing published pages render byte-identically through the new engine on the edge path.
+
+### Phase 2: Infra, Console & Builder (6–8 Weeks, Q4 2026)
+**Objective**: Complete the single-worker CMS.
+- `@frontbase/edge-infra`: direct data providers (D1/Turso/Postgres-Hyperdrive/SQLite), Edge Data Proxy, KV/Redis cache, queues, vault, edge auth gates, sync adapters.
+- `@frontbase/backend`: Hono console sub-router (pages, drafts, publish, tenants, tokens) + Drizzle schemas/migrations — mounted in the same worker; zero Python in the deploy.
+- `@frontbase/builder`: React shell extraction, local SQLite WASM draft DB, canvas↔SW preview bridge, visual workflow & sync editors.
+- Single-worker packaging + `frontbase deploy`.
+
+### Phase 3: Agent Experience (3–4 Weeks, Q1 2027)
+- Diagnostic refinement: quick-fixes, contextual errors, enhanced JSON.
+- Tri-environment simulation checks; agent prompt templates; beta program (20+ testers).
+
+### Phase 4: GA Launch (2–3 Weeks, Q1–Q2 2027)
+- Documentation, launch materials, support channels, public release.
+
+---
+
+## 9. Success Metrics
+
+| Metric | Baseline | Target (GA) |
+| :--- | :--- | :--- |
+| **Engine Bundle Size (min+gzip)** | n/a (new) | < 70 KB |
+| **Deploy Surface** | Docker VM + separate frontend + edge | **1 edge worker** |
+| **Component Implementations per Component** | 2 (React + string renderer) | **1** (isomorphic engine JSX) |
+| **Post-SW Navigation Render (p50)** | ~50 ms (edge round-trip) | < 5 ms (local SW render) |
+| **First-Load SSR (p50, edge)** | ~50 ms | ≤ 50 ms (no regression) |
+| **Agent Code Completion Success** | Unknown | 95%+ pass rate on `frontbase check` |
+| **Builder Preview Fidelity** | Approximate (parallel React render) | Exact (same engine) |
+
+---
+
+## 10. Critical Open Questions
+
+Tracked in [OPENQUESTIONS.md](./OPENQUESTIONS.md). Highest priority:
+1. **SW update lifecycle** — publish-to-client propagation guarantees (CHM-1).
+2. **Worker size budget** — engine + console + proxy within platform limits (CHM-3).
+3. **Registered-query authoring** — how developers/agents declare queries the proxy will accept (CHM-4).
+4. **Pricing & open-source split** — core free/MIT vs builder monetization (PRD-1/PRD-2).
+5. **Legacy layout migration** — version-flagged migration of existing JSON layouts (ARC-3).
+
+---
+
+## Appendix A: Supporting Documentation
+
+| Document | Description |
+| :--- | :--- |
+| **[CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md)** | **Canonical** rendering & deployment architecture (Universal eSSR). |
+| **[PACKAGE-STRUCTURE.md](./PACKAGE-STRUCTURE.md)** | The 6-package structure under the Chimera. |
+| **[ARCHITECTURE-SPLIT.md](./ARCHITECTURE-SPLIT.md)** | Modular split boundaries and installation patterns. |
+| **[MILESTONES.md](./MILESTONES.md)** | Phase/milestone tracking with acceptance criteria. |
+| **[DECISIONS.md](./DECISIONS.md)** | Decision log (see A-12 Chimera, A-13 Single-Edge, A-14 Six Packages). |
+| **[OPENQUESTIONS.md](./OPENQUESTIONS.md)** | Open questions tracker. |
+| **[comprehensive-analysis.md](./comprehensive-analysis.md)** | Original v1 analysis (partially superseded — see banner). |
+| **[technical-specification.md](./technical-specification.md)** | Component/compiler/runtime technical specs. |
+| **[STACK.md](./STACK.md)** | Technology stack. |
+
+---
+
+## Document Metadata
+
+- **Version**: 3.0
+- **Status**: Approved — Chimera (Universal eSSR) architecture, Single-Edge Deployment, 6 Packages
+- **Created**: 2026-06-29
+- **Last Updated**: 2026-07-06
+- **Owner**: Architecture Team
+- **Supersedes**: v2.8 (React streaming SSR pillar, dual FastAPI/Hono backend)
