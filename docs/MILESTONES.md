@@ -102,22 +102,22 @@ Guiding principles (all milestones serve these):
 ### Milestone 1.1: Engine Extraction (`@frontbase/edge-core`)
 
 **Target**: Weeks 1–4
-**Status**: 🟡 **IN PROGRESS (started 2026-07-07)** — renderer port DONE: ssr tree + liquid-core vendored into `@frontbase/edge-core`; all host couplings behind `configureEngine()` (env reads, favicon/storage, auth seam); **byte-parity 14/14 GREEN** against the golden corpus. Remaining: router consolidation, workflow engine, behaviors runtime, FS routing, <70KB CI gate, SW boot test.
+**Status**: 🟡 **IN PROGRESS (started 2026-07-07)** — renderer port DONE · unified engine router DONE · behaviors runtime DONE. `@frontbase/edge-core` builds standalone (zero db/backend/builder deps); all host couplings behind `configureEngine()`. **Gates green: parity 14/14 · engine 10/10 · behaviors 10/10 · size 57.2 KB (engine) + 1.4 KB (behaviors) < 70 KB.** Remaining: workflow engine (in-memory queue/checkpoint), dev FS routing, then M1.1 sign-off + SW boot test on a live worker.
 
 **Objectives**:
-- Create the package; consolidate `lite.ts`/`full.ts` into the unified priority router.
-- Port the SSR string renderers into engine components behind the eSSR renderer interface.
-- Introduce the `DataProvider` DI contract; implement the built-in `proxyProvider`; remove hard-wired database/backend calls from the engine.
-- Extract the workflow engine with in-memory queue/checkpoint defaults behind provider interfaces.
-- Formalize the client behaviors runtime from the existing `interactive.ts` patterns.
-- Dev-only file-system routing.
+- ✅ Create the package; consolidate `lite.ts`/`full.ts` into the unified priority router.
+- ✅ Port the SSR string renderers into engine components behind the eSSR renderer interface.
+- ✅ Introduce the `DataProvider` DI contract; implement the built-in `proxyProvider`; remove hard-wired database/backend calls from the engine.
+- ☐ Extract the workflow engine with in-memory queue/checkpoint defaults behind provider interfaces.
+- ✅ Formalize the client behaviors runtime from the existing `interactive.ts` patterns.
+- ☐ Dev-only file-system routing.
 
 **Acceptance Criteria**:
-- [ ] `@frontbase/edge-core` builds standalone with zero database/backend/builder dependencies.
-- [ ] Existing published pages render **byte-identically** through the new engine (edge path) — regression suite in CI.
+- [x] `@frontbase/edge-core` builds standalone with zero database/backend/builder dependencies.
+- [x] Existing published pages render **byte-identically** through the new engine (edge path) — regression suite in CI.
 - [ ] Workflows execute standalone (in-memory mode).
-- [ ] Bundle < 70 KB min+gzip (CI-gated).
-- [ ] Engine boots inside a service worker using SW primitives from Milestone 0.1.
+- [x] Bundle < 70 KB min+gzip (CI-gated).
+- [ ] Engine boots inside a service worker using SW primitives from Milestone 0.1. *(SW engine path + attachServiceWorker proven in-process; live-worker boot test pending)*
 
 **Dependencies**: Phase 0 decision gate
 
