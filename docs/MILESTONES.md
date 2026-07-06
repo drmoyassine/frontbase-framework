@@ -95,14 +95,14 @@ Guiding principles (all milestones serve these):
 
 **Duration**: 8–10 Weeks
 **Target**: Q3 2026 (August – October)
-**Status**: 🔵 Not Started
+**Status**: 🟡 In Progress (M1.1 started 2026-07-07)
 
 **Objective**: Extract `@frontbase/edge-core` (the Chimera engine) and build the `@frontbase/compiler` MVP with CLI. No new persistence, no builder work.
 
 ### Milestone 1.1: Engine Extraction (`@frontbase/edge-core`)
 
 **Target**: Weeks 1–4
-**Status**: 🔵 Not Started
+**Status**: 🟡 **IN PROGRESS (started 2026-07-07)** — renderer port DONE: ssr tree + liquid-core vendored into `@frontbase/edge-core`; all host couplings behind `configureEngine()` (env reads, favicon/storage, auth seam); **byte-parity 14/14 GREEN** against the golden corpus. Remaining: router consolidation, workflow engine, behaviors runtime, FS routing, <70KB CI gate, SW boot test.
 
 **Objectives**:
 - Create the package; consolidate `lite.ts`/`full.ts` into the unified priority router.

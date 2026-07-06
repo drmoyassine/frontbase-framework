@@ -10,9 +10,15 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node test/parity.mjs"
+  },
+  "dependencies": {
+    "liquidjs": "^10.24.0"
   }
 }

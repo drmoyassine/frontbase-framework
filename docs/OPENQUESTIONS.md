@@ -54,7 +54,7 @@ Open questions requiring resolution before or during implementation, categorized
 
 ### CHM-4: Registered-Query Authoring Model
 
-**Priority**: 🔴 CRITICAL | **Status**: 🔵 Open
+**Priority**: 🔴 CRITICAL | **Status**: ✅ **RESOLVED (2026-07-07) → Decision A-16** (one registry contract; code-first defineQueries() as M1.2 MVP; builder path emits the same artifact in M2.2)
 
 **Question**: How are registered queries declared — compiler-extracted from component bindings only, or also hand-authored (SQL files / TS query builders)?
 

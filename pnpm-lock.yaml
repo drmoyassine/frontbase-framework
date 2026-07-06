@@ -14,7 +14,11 @@ importers:
 
   packages/compiler: {}
 
-  packages/edge-core: {}
+  packages/edge-core:
+    dependencies:
+      liquidjs:
+        specifier: ^10.24.0
+        version: 10.27.1
 
   packages/edge-infra: {}
 
@@ -22,11 +26,26 @@ importers:
 
 packages:
 
+  commander@10.0.1:
+    resolution: {integrity: sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==}
+    engines: {node: '>=14'}
+
+  liquidjs@10.27.1:
+    resolution: {integrity: sha512-ylE+1q2kSef1UxAyxqbyuWM3FRWS1v48JK1Y3CoW3bD6TSNXZh0+GsVnihujEpKyR+Jejx2aRAFfC3AHm9rElg==}
+    engines: {node: '>=16'}
+    hasBin: true
+
   typescript@6.0.3:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
 snapshots:
+
+  commander@10.0.1: {}
+
+  liquidjs@10.27.1:
+    dependencies:
+      commander: 10.0.1
 
   typescript@6.0.3: {}

@@ -1,0 +1,1001 @@
+{
+  "title": "Frontbase | No-code Development for the Edge",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "1769829335814-9v34jzbpe",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "1769829335814-93hm4q8f8",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "menu-features",
+                  "label": "Customers",
+                  "navType": "scroll",
+                  "target": "#features"
+                },
+                {
+                  "id": "menu-architecture",
+                  "label": "Enterprise",
+                  "navType": "scroll",
+                  "target": "#architecture"
+                },
+                {
+                  "id": "menu-1776117314330",
+                  "label": "Architecture",
+                  "navType": "scroll",
+                  "target": "#architecture"
+                },
+                {
+                  "id": "menu-1776117319890",
+                  "label": "Features",
+                  "navType": "scroll",
+                  "target": "#features"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Join Waiting List",
+                "navType": "scroll",
+                "target": "#join-alpha"
+              },
+              "secondaryButton": {
+                "enabled": false,
+                "text": "Learn More",
+                "navType": "scroll",
+                "target": "#features"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "1769829335814-6j9n21t2i",
+            "type": "Container",
+            "props": {
+              "actionBindings": []
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "48px 24px",
+              "minHeight": "400px",
+              "gap": "24px"
+            },
+            "children": [
+              {
+                "id": "1769829335814-vaxofpfn7",
+                "type": "Badge",
+                "props": {
+                  "text": "Now in Private Alpha",
+                  "variant": "secondary",
+                  "icon": "Rocket",
+                  "iconPosition": "left",
+                  "backgroundColor": "#80ffc3",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "1769829335814-ybu0wn710",
+                "type": "Heading",
+                "props": {
+                  "text": "No-code Development for the Edge",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "48px",
+                  "fontWeight": "700"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 31
+                    }
+                  }
+                }
+              },
+              {
+                "id": "1769829335814-906rowj6j",
+                "type": "Text",
+                "props": {
+                  "text": "Frontbase is an open-source no-code development platform enabling teams to build and deploy edge-native apps and services without writing code"
+                },
+                "styles": {
+                  "color": "var(--muted-foreground)",
+                  "maxWidth": "600px"
+                },
+                "children": []
+              },
+              {
+                "id": "1769829335814-9e9xvi75e",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "16px"
+                },
+                "children": [
+                  {
+                    "id": "1769829335814-hy8gx1ro1",
+                    "type": "Button",
+                    "props": {
+                      "text": "Join  Private Alpha",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "1769829335814-hy8gx1ro1-1770160816148",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#join-alpha"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "1769829335814-9u5qktgfz",
+            "type": "LogoCloud",
+            "props": {
+              "title": "Powered by the modern stack you already love",
+              "displayMode": "static",
+              "logoSize": "md",
+              "grayscale": true,
+              "logos": [
+                {
+                  "id": "supabase",
+                  "type": "image",
+                  "value": "https://wp.logos-download.com/wp-content/uploads/2023/02/Supabase_Logo.png?dl",
+                  "url": "",
+                  "name": "Supabase",
+                  "scale": 0.9
+                },
+                {
+                  "id": "cloudflare",
+                  "type": "image",
+                  "value": "https://cf-assets.www.cloudflare.com/dzlvafdwdttg/69wNwfiY5mFmgpd9eQFW6j/d5131c08085a977aa70f19e7aada3fa9/1pixel-down__1_.svg",
+                  "url": "",
+                  "name": "Cloudflare",
+                  "scale": 1.1
+                },
+                {
+                  "id": "vercel",
+                  "type": "image",
+                  "value": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Vercel_logo_2025.svg",
+                  "url": "",
+                  "name": "Vercel",
+                  "scale": 0.7
+                },
+                {
+                  "id": "logo-1774890832828",
+                  "type": "image",
+                  "value": "https://uwzosvzynnpbxpnwqgkm.supabase.co/storage/v1/object/public/frontbase_assets/providers_assest/Deno.svg",
+                  "url": "",
+                  "name": "Deno",
+                  "scale": 0.9
+                },
+                {
+                  "id": "logo-1769900775933",
+                  "type": "image",
+                  "value": "https://upstash.com/logo/upstash-white-bg.png",
+                  "url": "",
+                  "name": "Upstash",
+                  "scale": 1.1
+                },
+                {
+                  "id": "logo-1769901723192",
+                  "type": "image",
+                  "value": "https://uwzosvzynnpbxpnwqgkm.supabase.co/storage/v1/object/public/frontbase_assets/brands-logos/neon-logo-light-color.svg",
+                  "url": "",
+                  "name": "Neon",
+                  "scale": 0.9
+                },
+                {
+                  "id": "logo-1769902839519",
+                  "type": "image",
+                  "value": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Netlify_logo.svg/1280px-Netlify_logo.svg.png",
+                  "url": "",
+                  "name": "Netlify",
+                  "scale": 1
+                },
+                {
+                  "id": "logo-1769829582098",
+                  "type": "text",
+                  "value": "& More",
+                  "url": "",
+                  "name": "& More",
+                  "scale": 1.3
+                }
+              ]
+            },
+            "styles": {
+              "backgroundColor": "var(--muted)"
+            },
+            "children": []
+          },
+          {
+            "id": "1769829335814-61s13w850",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Like WordPress. But for 2026",
+              "subtitle": "",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(var(--primary))",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "features": [
+                {
+                  "id": "vp1",
+                  "icon": "Zap",
+                  "title": "Edge-Native SSR & SEO",
+                  "description": "Sub-50ms Server-side Renderring (SSR) global CDN deployment powered Hono architecture. Per-page SEO, Open Graph, JSON-LD, and Sitemaps."
+                },
+                {
+                  "id": "feature-1774891708294",
+                  "icon": "Blocks",
+                  "title": "No-Code Frontend",
+                  "description": "Lego-style drag-and-drop, data-bound  components with real-time preview. Responsive by design."
+                },
+                {
+                  "id": "feature-1769905517937",
+                  "icon": "Network",
+                  "title": "Visual Automations",
+                  "description": "Serverless n8n-style workflow engine\nto design and deploy microservices as serverless edge functions triggerable from App UI, data change, or any HTTP requests. "
+                },
+                {
+                  "id": "vp2",
+                  "icon": "Plug",
+                  "title": "Bring Your Own Everything (BYOE)",
+                  "description": "Bring your favorite compute, database, auth, storage, cache, email, and deploy globally. Frontbase orchestrates everything."
+                }
+              ],
+              "actionBindings": [
+                {
+                  "id": "1769829335814-61s13w850-1770164532615",
+                  "trigger": "onHover",
+                  "actionType": "showTooltip",
+                  "config": {
+                    "tooltipMessage": "Haha"
+                  },
+                  "workflowId": null,
+                  "parameterMappings": {}
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "comp-1776117527956-waijvkp3u",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Edge-Native No-Code Enterprise IoT",
+              "subtitle": "",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(var(--primary))",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "features": [
+                {
+                  "id": "vp1",
+                  "icon": "Zap",
+                  "title": "Edge-Native SSR & SEO",
+                  "description": "Sub-50ms Server-side Renderring (SSR) global CDN deployment powered Hono architecture. Per-page SEO, Open Graph, JSON-LD, and Sitemaps."
+                },
+                {
+                  "id": "feature-1774891708294",
+                  "icon": "Blocks",
+                  "title": "No-Code Frontend",
+                  "description": "Lego-style drag-and-drop, data-bound  components with real-time preview. Responsive by design."
+                },
+                {
+                  "id": "feature-1769905517937",
+                  "icon": "Network",
+                  "title": "Visual Automations",
+                  "description": "Serverless n8n-style workflow engine\nto design and deploy microservices as serverless edge functions triggerable from App UI, data change, or any HTTP requests. "
+                },
+                {
+                  "id": "vp2",
+                  "icon": "Plug",
+                  "title": "Bring Your Own Everything (BYOE)",
+                  "description": "Bring your favorite compute, database, auth, storage, cache, email, and deploy globally. Frontbase orchestrates everything."
+                }
+              ],
+              "actionBindings": [
+                {
+                  "id": "1769829335814-61s13w850-1770164532615",
+                  "trigger": "onHover",
+                  "actionType": "showTooltip",
+                  "config": {
+                    "tooltipMessage": "Haha"
+                  },
+                  "workflowId": null,
+                  "parameterMappings": {}
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "1769829335814-1ak2l72mw",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Full-stack Serverless Architecture",
+              "subtitle": "Don't rip and replace. Connect what you already use.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "md",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(var(--primary))",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": false,
+              "features": [
+                {
+                  "id": "feature-1769910260443",
+                  "icon": "Cpu",
+                  "title": "Serverless Compute",
+                  "description": "Cloudflare Workers, Supabase Edge Functions, AWS Lambda, Google Cloud Functions, Azure Functions"
+                },
+                {
+                  "id": "byoe1",
+                  "icon": "Database",
+                  "title": "Databases",
+                  "description": "Supabase, Firebase, Neon, PlanetScale, Cloudflare D1, MySQL, PostgreSQL, SQLite"
+                },
+                {
+                  "id": "byoe2",
+                  "icon": "Lock",
+                  "title": "Auth",
+                  "description": "Supabase Auth, Clerk, Auth0, JWT Providers"
+                },
+                {
+                  "id": "byoe3",
+                  "icon": "FolderOpen",
+                  "title": "Storage",
+                  "description": "Supabase Storage, Cloudflare R2, Google Cloud Storage, AWS, S3-compatible"
+                },
+                {
+                  "id": "byoe4",
+                  "icon": "Zap",
+                  "title": "Cache",
+                  "description": "Upstash Serverless Redis, Self-hosted Redis"
+                },
+                {
+                  "id": "byoe5",
+                  "icon": "Rocket",
+                  "title": "Deploy",
+                  "description": "Cloudflare Pages, Vercel, Render, Netlify, Docker"
+                }
+              ],
+              "anchor": "features"
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "1769829335814-lddngrpbe",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Everything You Need",
+              "subtitle": "A complete platform for building production apps",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "md",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(var(--primary))",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "features": [
+                {
+                  "id": "fg4",
+                  "icon": "Database",
+                  "title": "Database Management",
+                  "description": "Schema visualization. CRUD operations. Query builder. FK detection."
+                },
+                {
+                  "id": "fg3",
+                  "icon": "Shield",
+                  "title": "Visual RLS Policies",
+                  "description": "Design Supabase row-level security without writing SQL."
+                },
+                {
+                  "id": "feature-1769908995173",
+                  "icon": "Brain",
+                  "title": "AI Ready",
+                  "description": "Python native backend. FastAPI + Pydantic. Ready for your AI agents and data science projects."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "1769829335814-jcor5rjjc",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Modern Tech Stack",
+              "subtitle": "",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "sm",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(var(--primary))",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": false,
+              "features": [
+                {
+                  "id": "ts1",
+                  "icon": "",
+                  "title": "Frontend",
+                  "description": "React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Zustand, TanStack Query"
+                },
+                {
+                  "id": "ts2",
+                  "icon": "",
+                  "title": "Edge Engine",
+                  "description": "Hono 4.6, React 19 SSR, Drizzle ORM, LiquidJS, Tailwind CSS 4, Zod"
+                },
+                {
+                  "id": "ts3",
+                  "icon": "",
+                  "title": "Backend",
+                  "description": "FastAPI, SQLAlchemy, Alembic, Pydantic, Python 3.11+"
+                }
+              ],
+              "anchor": "architecture"
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "1769829335814-hrb0t3ai9",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "padding": "80px 48px",
+              "gap": "48px",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [
+              {
+                "id": "1769829335814-x4vbgiq02",
+                "type": "Container",
+                "props": {},
+                "styles": {
+                  "textAlign": "center",
+                  "display": "flex",
+                  "flexDirection": "column",
+                  "gap": "12px"
+                },
+                "children": [
+                  {
+                    "id": "1769829335814-6njnhzdsn",
+                    "type": "Heading",
+                    "props": {
+                      "text": "WordPress was built for 2006",
+                      "level": "h2"
+                    },
+                    "styles": {
+                      "fontSize": "40px",
+                      "fontWeight": "700"
+                    },
+                    "children": []
+                  },
+                  {
+                    "id": "1769829335814-yr6h0ol4p",
+                    "type": "Text",
+                    "props": {
+                      "text": "Frontbase is built for 2026"
+                    },
+                    "styles": {
+                      "fontSize": "24px",
+                      "fontWeight": "600",
+                      "color": "var(--primary)"
+                    },
+                    "children": []
+                  }
+                ],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual"
+                }
+              }
+            ]
+          },
+          {
+            "id": "1769979469435-j46hxudan",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexWrap": "wrap",
+              "gap": "48px",
+              "justifyContent": "center",
+              "maxWidth": "900px",
+              "margin": "0 auto"
+            },
+            "children": [
+              {
+                "id": "1769979469435-8qbz1vflx",
+                "type": "Card",
+                "props": {},
+                "styles": {
+                  "padding": "32px",
+                  "flex": "1 1 350px",
+                  "maxWidth": "420px"
+                },
+                "children": [
+                  {
+                    "id": "1769979469435-n2uwb14nv",
+                    "type": "Container",
+                    "props": {},
+                    "styles": {
+                      "display": "flex",
+                      "flexDirection": "column",
+                      "gap": "16px"
+                    },
+                    "children": [
+                      {
+                        "id": "1769979469435-uhb8w0j60",
+                        "type": "Heading",
+                        "props": {
+                          "text": "WordPress",
+                          "level": "h3"
+                        },
+                        "styles": {
+                          "fontSize": "24px",
+                          "fontWeight": "700"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-yk7zyrec5",
+                        "type": "Text",
+                        "props": {
+                          "text": "• PHP Monolith"
+                        },
+                        "styles": {
+                          "color": "var(--muted-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-2pxwy3b16",
+                        "type": "Text",
+                        "props": {
+                          "text": "• Slow, requires hosting"
+                        },
+                        "styles": {
+                          "color": "var(--muted-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-r02o4rgv4",
+                        "type": "Text",
+                        "props": {
+                          "text": "• MySQL only"
+                        },
+                        "styles": {
+                          "color": "var(--muted-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-u9neu84no",
+                        "type": "Text",
+                        "props": {
+                          "text": "• Plugin-dependent AI"
+                        },
+                        "styles": {
+                          "color": "var(--muted-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-yw5k8cy2o",
+                        "type": "Text",
+                        "props": {
+                          "text": "• Theme lock-in"
+                        },
+                        "styles": {
+                          "color": "var(--muted-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-yn188urmg",
+                        "type": "Text",
+                        "props": {
+                          "text": "• jQuery, legacy"
+                        },
+                        "styles": {
+                          "color": "var(--muted-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1769979469435-8u5azs74p",
+                "type": "Card",
+                "props": {},
+                "styles": {
+                  "padding": "32px",
+                  "flex": "1 1 350px",
+                  "maxWidth": "420px",
+                  "border": "2px solid var(--primary)",
+                  "backgroundColor": "var(--primary)"
+                },
+                "children": [
+                  {
+                    "id": "1769979469435-skvwujjsd",
+                    "type": "Container",
+                    "props": {},
+                    "styles": {
+                      "display": "flex",
+                      "flexDirection": "column",
+                      "gap": "16px"
+                    },
+                    "children": [
+                      {
+                        "id": "1769979469435-oydctrerd",
+                        "type": "Heading",
+                        "props": {
+                          "text": "Frontbase",
+                          "level": "h3"
+                        },
+                        "styles": {
+                          "fontSize": "24px",
+                          "fontWeight": "700",
+                          "color": "var(--primary-foreground)"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-4f7xih524",
+                        "type": "Text",
+                        "props": {
+                          "text": "• Edge-native serverless"
+                        },
+                        "styles": {
+                          "color": "var(--primary-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-vxmlr1wu5",
+                        "type": "Text",
+                        "props": {
+                          "text": "• Sub-50ms global"
+                        },
+                        "styles": {
+                          "color": "var(--primary-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-4srymdxm1",
+                        "type": "Text",
+                        "props": {
+                          "text": "• Any SQL database"
+                        },
+                        "styles": {
+                          "color": "var(--primary-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-e81a2o6ud",
+                        "type": "Text",
+                        "props": {
+                          "text": "• Native Python AI"
+                        },
+                        "styles": {
+                          "color": "var(--primary-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-93ulfbpdk",
+                        "type": "Text",
+                        "props": {
+                          "text": "• Clean React/TypeScript"
+                        },
+                        "styles": {
+                          "color": "var(--primary-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      },
+                      {
+                        "id": "1769979469435-w9v3iw3wk",
+                        "type": "Text",
+                        "props": {
+                          "text": "• React 19, Hono, Tailwind 4"
+                        },
+                        "styles": {
+                          "color": "var(--primary-foreground)",
+                          "fontSize": "14px"
+                        },
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "1769979469435-t62nvqv31",
+            "type": "Container",
+            "props": {
+              "anchor": "join-alpha"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "var(--primary)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "1769979469435-gglciwctk",
+                "type": "Heading",
+                "props": {
+                  "text": "Ready to build on the edge?",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "var(--primary-foreground)"
+                },
+                "children": []
+              },
+              {
+                "id": "1769979469435-xflfa9s0r",
+                "type": "Text",
+                "props": {
+                  "text": "Join the Private Alpha and start building today."
+                },
+                "styles": {
+                  "color": "var(--primary-foreground)",
+                  "opacity": "0.9",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "1770155851197-myzm19nmi",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Embedded content",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form | Untitled Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "1769979469435-ej54mgb5o",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "The open-source platform for building modern web applications at the edge.",
+              "columns": [
+                {
+                  "id": "col-product",
+                  "title": "Product",
+                  "links": [
+                    {
+                      "id": "link-features",
+                      "text": "Features",
+                      "href": "/"
+                    },
+                    {
+                      "id": "link-changelog",
+                      "text": "Documentation",
+                      "href": "/"
+                    },
+                    {
+                      "id": "item-1769979895633-qixn1ju7q",
+                      "text": "Changelog",
+                      "href": "/"
+                    }
+                  ]
+                },
+                {
+                  "id": "col-legal",
+                  "title": "Legal",
+                  "links": [
+                    {
+                      "id": "link-privacy",
+                      "text": "Open Source",
+                      "href": "/"
+                    },
+                    {
+                      "id": "link-terms",
+                      "text": "Privacy Policy",
+                      "href": "/"
+                    },
+                    {
+                      "id": "item-1769979853625-9ucyfkafm",
+                      "text": "Terms of Service",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "social-github",
+                  "icon": "github",
+                  "href": "/"
+                },
+                {
+                  "id": "item-1769980367671-t6h2y2pb9",
+                  "icon": "linkedin",
+                  "href": "/"
+                },
+                {
+                  "id": "item-1769980382745-3lui07nf3",
+                  "icon": "youtube",
+                  "href": "/"
+                },
+                {
+                  "id": "item-1769980486776-dxj26a4o9",
+                  "icon": "discord",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Built with ❤️ for the edge.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 30,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

@@ -1,0 +1,512 @@
+{
+  "title": "Frontbase for Manufacturing | Edge-Native Industrial Operations",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "mf-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "mf-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "mf-menu-problem",
+                  "label": "The Cost",
+                  "navType": "scroll",
+                  "target": "#the-problem"
+                },
+                {
+                  "id": "mf-menu-solution",
+                  "label": "Edge Operations",
+                  "navType": "scroll",
+                  "target": "#the-solution"
+                },
+                {
+                  "id": "mf-menu-enterprise",
+                  "label": "Enterprise",
+                  "navType": "link",
+                  "target": "/enterprise"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Talk to Engineering",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "mf-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "80px 24px",
+              "minHeight": "520px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(240 20% 8%) 0%, hsl(220 25% 12%) 50%, hsl(200 20% 8%) 100%)"
+            },
+            "children": [
+              {
+                "id": "mf-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Smart Manufacturing",
+                  "variant": "secondary",
+                  "icon": "Factory",
+                  "iconPosition": "left",
+                  "backgroundColor": "#818cf8",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "mf-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Every minute your line is down costs $17,000.",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "56px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF",
+                  "maxWidth": "800px"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 32
+                    }
+                  }
+                }
+              },
+              {
+                "id": "mf-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Norsk Hydro: $75M. Toyota: $356M per day. Clorox: $356M in lost sales. Manufacturing is the #1 target for ransomware — and centralized IT is the attack surface. Build SCADA-like operator panels and OEE dashboards that run independently at every plant, immune to corporate IT failures."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "760px",
+                  "fontSize": "20px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "mf-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "24px"
+                },
+                "children": [
+                  {
+                    "id": "mf-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Protect Your Production",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "mf-hero-cta-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "mf-problem-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "When Centralized IT Shuts Down the Factory Floor",
+              "subtitle": "Manufacturing is the #1 most targeted industry for ransomware. 47% of all manufacturing breaches in 2024 were ransomware.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "lg",
+              "iconAlignment": "left",
+              "textAlignment": "left",
+              "iconColor": "hsl(0 84% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-problem",
+              "features": [
+                {
+                  "id": "mf-prob-1",
+                  "icon": "Lock",
+                  "title": "Norsk Hydro — $75M (March 2019)",
+                  "description": "LockerGoga ransomware forced the aluminum giant to shut down its global IT network and switch 35,000 employees to manual operations. Smelting plants reverted to pen-and-paper control. Total cost: $63–75 million in lost margins, production volume, and remediation."
+                },
+                {
+                  "id": "mf-prob-2",
+                  "icon": "AlertOctagon",
+                  "title": "Toyota — $356M/day (2022–2023)",
+                  "description": "In 2022, a cyberattack on a single supplier (Kojima Industries) forced Toyota to halt all 28 production lines across 14 plants — cutting global output by one-third. In 2023, a system 'glitch' in centralized parts ordering shut down 14 factories again. One day of lost production: ~$356M."
+                },
+                {
+                  "id": "mf-prob-3",
+                  "icon": "TrendingDown",
+                  "title": "MKS Instruments — $200M+ (Feb 2023)",
+                  "description": "Ransomware severely disrupted production systems at MKS Instruments, contributing to a 20% decline in quarterly revenue and losses exceeding $200 million. Earlier that year, Brunswick Corporation lost at least $85 million. Clorox lost $356 million in sales."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "mf-stats-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The Manufacturing Downtime Crisis",
+              "subtitle": "The numbers don't lie — centralized IT is the factory floor's weakest link.",
+              "headerAlignment": "center",
+              "columns": 4,
+              "iconSize": "md",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(220 80% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": true,
+              "features": [
+                {
+                  "id": "mf-stat-1",
+                  "icon": "DollarSign",
+                  "title": "$17,000/minute",
+                  "description": "Average cost of unplanned manufacturing downtime. A 4-hour outage costs over $4 million before reputation damage."
+                },
+                {
+                  "id": "mf-stat-2",
+                  "icon": "Target",
+                  "title": "#1 Target",
+                  "description": "Manufacturing has been the most targeted industry for ransomware attacks for multiple consecutive years."
+                },
+                {
+                  "id": "mf-stat-3",
+                  "icon": "PieChart",
+                  "title": "47% Ransomware",
+                  "description": "Nearly half of all manufacturing data breaches in 2024 were ransomware — the highest proportion of any sector."
+                },
+                {
+                  "id": "mf-stat-4",
+                  "icon": "AlertTriangle",
+                  "title": "$4.88M Avg Breach",
+                  "description": "Global average cost of a data breach in 2024. Industrial and infrastructure breaches frequently exceed $5 million."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "mf-solution-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Plant-Level Edge Independence",
+              "subtitle": "Each factory runs its own autonomous edge node. A ransomware attack on corporate HQ doesn't touch the production floor.",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(142 71% 45%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-solution",
+              "features": [
+                {
+                  "id": "mf-sol-1",
+                  "icon": "Factory",
+                  "title": "SCADA-Like Operator Panels",
+                  "description": "Build real-time OEE dashboards, quality control interfaces, and operator panels visually — no code. Each panel runs on local edge hardware with its own SQLite database. Zero dependency on corporate IT or cloud."
+                },
+                {
+                  "id": "mf-sol-2",
+                  "icon": "Shield",
+                  "title": "Supply Chain Blast Isolation",
+                  "description": "A breach at one supplier or one plant stays contained. Isolated edge databases per facility ensure that ransomware in Plant A has zero impact on Plants B, C, and D."
+                },
+                {
+                  "id": "mf-sol-3",
+                  "icon": "Undo2",
+                  "title": "Immutable Production Deploys",
+                  "description": "No forced OTA updates to factory floor systems. Pre-compiled, tested bundles deployed during planned maintenance windows. If an update causes issues, one-click rollback restores the prior version instantly."
+                },
+                {
+                  "id": "mf-sol-4",
+                  "icon": "Activity",
+                  "title": "Predictive Maintenance Pipelines",
+                  "description": "Edge Redis queues buffer sensor telemetry locally. Run anomaly detection and predictive maintenance workflows at the plant edge — not in a distant cloud datacenter with 200ms of latency."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "mf-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "hsl(240 20% 8%)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "mf-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Don't let ransomware shut down your production line.",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "mf-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Contact our solutions engineering team to deploy edge-native factory operations that keep running no matter what."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "opacity": "1",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "mf-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "mf-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "Edge-native infrastructure for mission-critical manufacturing.",
+              "columns": [
+                {
+                  "id": "mf-col-solutions",
+                  "title": "Solutions",
+                  "links": [
+                    {
+                      "id": "mf-link-oee",
+                      "text": "OEE Dashboards",
+                      "href": "#"
+                    },
+                    {
+                      "id": "mf-link-scada",
+                      "text": "Operator Panels",
+                      "href": "#"
+                    },
+                    {
+                      "id": "mf-link-pm",
+                      "text": "Predictive Maintenance",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "mf-col-industries",
+                  "title": "Industries",
+                  "links": [
+                    {
+                      "id": "mf-link-aviation",
+                      "text": "Aviation",
+                      "href": "/aviation"
+                    },
+                    {
+                      "id": "mf-link-oilgas",
+                      "text": "Oil & Gas",
+                      "href": "/oil-gas"
+                    },
+                    {
+                      "id": "mf-link-defense",
+                      "text": "Defense",
+                      "href": "/defense"
+                    }
+                  ]
+                },
+                {
+                  "id": "mf-col-company",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "mf-link-enterprise",
+                      "text": "Enterprise Platform",
+                      "href": "/enterprise"
+                    },
+                    {
+                      "id": "mf-link-privacy",
+                      "text": "Privacy & Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "mf-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "mf-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Production that never stops.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

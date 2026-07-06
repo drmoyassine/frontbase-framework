@@ -1,0 +1,512 @@
+{
+  "title": "Frontbase for Telecom | Edge-Native Network Resilience",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "tc-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "tc-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "tc-menu-problem",
+                  "label": "The Problem",
+                  "navType": "scroll",
+                  "target": "#the-problem"
+                },
+                {
+                  "id": "tc-menu-solution",
+                  "label": "Edge Resilience",
+                  "navType": "scroll",
+                  "target": "#the-solution"
+                },
+                {
+                  "id": "tc-menu-enterprise",
+                  "label": "Enterprise",
+                  "navType": "link",
+                  "target": "/enterprise"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Talk to Engineering",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "tc-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "80px 24px",
+              "minHeight": "520px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(220 60% 8%) 0%, hsl(200 50% 12%) 50%, hsl(180 40% 8%) 100%)"
+            },
+            "children": [
+              {
+                "id": "tc-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Telecommunications",
+                  "variant": "secondary",
+                  "icon": "Radio",
+                  "iconPosition": "left",
+                  "backgroundColor": "#38bdf8",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "tc-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Keep the signal alive when the central NOC goes dark.",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "56px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF",
+                  "maxWidth": "800px"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 32
+                    }
+                  }
+                }
+              },
+              {
+                "id": "tc-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "A single misconfigured router shouldn't disconnect 125 million devices. AT&T, Rogers, Optus — every catastrophic telecom outage shares the same root cause: centralized infrastructure with zero edge independence. Deploy autonomous, self-healing network management directly at the tower edge."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "760px",
+                  "fontSize": "20px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "tc-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "24px"
+                },
+                "children": [
+                  {
+                    "id": "tc-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Prevent Network Meltdowns",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "tc-hero-cta-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "tc-problem-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The Pattern: One Config Change, Millions Disconnected",
+              "subtitle": "Every major telecom outage follows the same script. A centralized update cascades through the entire network. No isolation. No containment.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "lg",
+              "iconAlignment": "left",
+              "textAlignment": "left",
+              "iconColor": "hsl(0 84% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-problem",
+              "features": [
+                {
+                  "id": "tc-prob-1",
+                  "icon": "AlertOctagon",
+                  "title": "AT&T — 125M Devices Down (Feb 2024)",
+                  "description": "A misconfigured network element bypassed peer review. Automated 'protect mode' disconnected every device. 92 million voice calls blocked. 25,000+ 911 calls prevented. Full restoration took 12 hours — not because the fix was slow, but because registration servers couldn't handle 125M devices reconnecting at once."
+                },
+                {
+                  "id": "tc-prob-2",
+                  "icon": "CloudLightning",
+                  "title": "Rogers Canada — 25% of Canada Offline (Jul 2022)",
+                  "description": "A core router maintenance update triggered a BGP cascade failure. 12 million subscribers lost wireless, internet, and TV. The national Interac payment network went down — businesses couldn't process cards. 911 services disrupted in major cities. 19 hours of chaos."
+                },
+                {
+                  "id": "tc-prob-3",
+                  "icon": "WifiOff",
+                  "title": "Optus Australia — 10M Customers Dark (Nov 2023)",
+                  "description": "A routine software upgrade caused a BGP routing overflow. Core routers auto-disconnected in cascade. 10 million customers and 400,000 businesses offline. 2,100+ emergency calls failed. Hospitals, transit, and payment terminals disrupted nationwide. The CEO resigned."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "tc-stats-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The Industry Reality",
+              "subtitle": "Telecom infrastructure is more fragile than the public realizes.",
+              "headerAlignment": "center",
+              "columns": 4,
+              "iconSize": "md",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(220 80% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": true,
+              "features": [
+                {
+                  "id": "tc-stat-1",
+                  "icon": "DollarSign",
+                  "title": "$9,000/minute",
+                  "description": "Average cost of IT downtime in 2025. A 12-hour outage costs over $6.4M before you count reputation damage."
+                },
+                {
+                  "id": "tc-stat-2",
+                  "icon": "UserX",
+                  "title": "58% Human Error",
+                  "description": "Of all human-error outages in 2025, 58% were caused by staff failing to follow established procedures. (Uptime Institute)"
+                },
+                {
+                  "id": "tc-stat-3",
+                  "icon": "Phone",
+                  "title": "90% of 911 Centers",
+                  "description": "Nearly 90% of US emergency communication centers experienced at least one system outage in the past 12 months."
+                },
+                {
+                  "id": "tc-stat-4",
+                  "icon": "Zap",
+                  "title": "54% Power/Config",
+                  "description": "Over half of all impactful outages in 2024 were caused by power failures or network configuration errors — preventable with decentralization."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "tc-solution-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The Edge-Native Antidote",
+              "subtitle": "Decentralize risk. Give every tower cluster, regional NOC, and subscriber management system its own autonomous edge.",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(142 71% 45%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-solution",
+              "features": [
+                {
+                  "id": "tc-sol-1",
+                  "icon": "Radio",
+                  "title": "Autonomous Tower NOC",
+                  "description": "Edge dashboards run independently on SQLite at each cell tower cluster. If central routing breaks, local network monitoring, diagnostics, and technician interfaces stay fully operational."
+                },
+                {
+                  "id": "tc-sol-2",
+                  "icon": "RefreshCw",
+                  "title": "Graceful Reconnection",
+                  "description": "Decoupled architecture prevents the 125M-device-stampede problem. Edge nodes buffer subscriber events and sync incrementally when connectivity restores — not all at once."
+                },
+                {
+                  "id": "tc-sol-3",
+                  "icon": "Undo2",
+                  "title": "Immutable Deploys & Instant Rollback",
+                  "description": "No more failed BGP updates crippling the entire network. Code is pushed as pre-compiled, immutable bundles. If a deployment fails, one-click rollback instantly reverts to the prior known-good version."
+                },
+                {
+                  "id": "tc-sol-4",
+                  "icon": "Database",
+                  "title": "Crisis Queue Buffering",
+                  "description": "During backhaul degradation, bill payments, subscriber activations, and provisioning events don't fail — they buffer. Edge Redis queues absorb the shock and sync data sequentially once connectivity is restored."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "tc-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "hsl(220 60% 8%)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "tc-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Don't let a config update disconnect your subscribers.",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "tc-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Contact our solutions engineering team to see how edge architecture prevents the next nationwide blackout."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "opacity": "1",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "tc-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form | Untitled Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "tc-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "Edge-native infrastructure for mission-critical telecommunications.",
+              "columns": [
+                {
+                  "id": "tc-col-solutions",
+                  "title": "Solutions",
+                  "links": [
+                    {
+                      "id": "tc-link-noc",
+                      "text": "Tower Management",
+                      "href": "#"
+                    },
+                    {
+                      "id": "tc-link-sub",
+                      "text": "Subscriber Systems",
+                      "href": "#"
+                    },
+                    {
+                      "id": "tc-link-mon",
+                      "text": "Network Monitoring",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "tc-col-industries",
+                  "title": "Industries",
+                  "links": [
+                    {
+                      "id": "tc-link-aviation",
+                      "text": "Aviation",
+                      "href": "/aviation"
+                    },
+                    {
+                      "id": "tc-link-oilgas",
+                      "text": "Oil & Gas",
+                      "href": "/oil-gas"
+                    },
+                    {
+                      "id": "tc-link-gov",
+                      "text": "Government",
+                      "href": "/government"
+                    }
+                  ]
+                },
+                {
+                  "id": "tc-col-company",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "tc-link-enterprise",
+                      "text": "Enterprise Platform",
+                      "href": "/enterprise"
+                    },
+                    {
+                      "id": "tc-link-privacy",
+                      "text": "Privacy & Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "tc-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "tc-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Keeping signals alive at the edge.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

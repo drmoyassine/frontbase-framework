@@ -714,6 +714,41 @@ New capabilities extend existing packages; adding a seventh package requires a n
 
 ---
 
+## Decision A-16: Registered-Query Authoring Model (settles CHM-4)
+
+**Date**: 2026-07-07
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL (was blocking M1.2)
+**Question**: How are the named queries served by the Edge Data Proxy authored, typed, and registered?
+
+### Decision
+
+**One registry contract, two authoring paths; code-first is the M1.2 MVP.**
+
+The registry contract (owned by `@frontbase/edge-core`, executed by `@frontbase/edge-infra`):
+
+```ts
+interface RegisteredQuery<P = unknown> {
+    queryId: string;                 // namespaced, e.g. 'products.list'
+    params: z.ZodType<P>;            // validated by the proxy before execution
+    scope: 'public' | 'tenant' | 'user';
+    ttlSeconds?: number;
+    execute: (params: P, ctx: QueryContext) => Promise<Record<string, unknown>[]>;
+}
+```
+
+- **Code-first (M1.2 MVP)**: projects export `defineQueries({...})`; the compiler extracts `{queryId, params, scope, ttl}` into the site manifest at build time. `execute` never leaves the server side.
+- **Builder-first (Phase 2, M2.2)**: the builder's query UI emits the *same* manifest artifact at publish time — no second registry.
+- The SW/browser only ever sees `{queryId, param schema}`; the proxy rejects unregistered IDs and invalid params (proven in M0.3: `evil.dropTables` → 404).
+
+### Rationale
+
+- The spike already validated this shape (baked registered queries + proxy rejection).
+- One contract prevents the code/builder split from becoming two security surfaces.
+- Zod params reuse the M1.2 extractor machinery — same round-trip safety net as component schemas.
+
+---
+
 ## Decision History
 
 | Date | Decision | Status |
@@ -732,6 +767,7 @@ New capabilities extend existing packages; adding a seventh package requires a n
 | 2026-07-06 | A-13: Single-Edge-Worker Deployment | ✅ Approved |
 | 2026-07-06 | A-14: Six-Package Structure Reaffirmed Under the Chimera | ✅ Approved |
 | 2026-07-07 | A-15: Framework Repository & Licensing (fresh private repo, Apache-2.0) | ✅ Approved |
+| 2026-07-07 | A-16: Registered-Query Authoring Model (one contract, code-first MVP) | ✅ Approved |
 
 ---
 

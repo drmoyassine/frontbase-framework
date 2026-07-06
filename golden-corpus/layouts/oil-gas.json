@@ -1,0 +1,466 @@
+{
+  "title": "Frontbase for Oil & Gas | Offline-First Edge Operations",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "og-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "og-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "og-menu-problem",
+                  "label": "The Problem",
+                  "navType": "scroll",
+                  "target": "#the-problem"
+                },
+                {
+                  "id": "og-menu-solution",
+                  "label": "Edge Operations",
+                  "navType": "scroll",
+                  "target": "#the-solution"
+                },
+                {
+                  "id": "og-menu-enterprise",
+                  "label": "Enterprise",
+                  "navType": "link",
+                  "target": "/enterprise"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Talk to Engineering",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "og-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "80px 24px",
+              "minHeight": "520px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(30 40% 8%) 0%, hsl(20 30% 12%) 50%, hsl(15 50% 6%) 100%)"
+            },
+            "children": [
+              {
+                "id": "og-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Oil & Gas / Energy",
+                  "variant": "secondary",
+                  "icon": "Flame",
+                  "iconPosition": "left",
+                  "backgroundColor": "#f97316",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "og-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Total operational control. Zero internet required.",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "56px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF",
+                  "maxWidth": "800px"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 32
+                    }
+                  }
+                }
+              },
+              {
+                "id": "og-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Deep-sea rigs and remote pipelines can't wait for satellites. When Colonial Pipeline shut down 45% of East Coast fuel because IT and OT weren't isolated, it proved one thing: centralized architecture is the real vulnerability. Build SCADA-like monitoring UIs that run 100% offline on local industrial PCs."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "760px",
+                  "fontSize": "20px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "og-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "24px"
+                },
+                "children": [
+                  {
+                    "id": "og-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Deploy to the Field",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "og-hero-cta-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "og-problem-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "When Centralized IT Becomes the Vulnerability",
+              "subtitle": "The biggest threat to oil & gas operations isn't the wellhead — it's the cloud dependency chain behind it.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "lg",
+              "iconAlignment": "left",
+              "textAlignment": "left",
+              "iconColor": "hsl(0 84% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-problem",
+              "features": [
+                {
+                  "id": "og-prob-1",
+                  "icon": "Lock",
+                  "title": "Colonial Pipeline (May 2021)",
+                  "description": "DarkSide ransomware accessed IT systems via a single VPN account without MFA. The pipeline's OT was never breached — but Colonial shut down the entire operation preemptively because IT and OT weren't isolated. 45% of East Coast fuel supply halted. 87% of DC gas stations ran dry. $4.4M ransom paid."
+                },
+                {
+                  "id": "og-prob-2",
+                  "icon": "AlertOctagon",
+                  "title": "Halliburton Cyberattack (Aug 2024)",
+                  "description": "A cybersecurity incident forced the oil services giant to take entire systems offline. Centralized enterprise IT became a single blast radius — disrupting operations across the company while the extent of the data breach was investigated."
+                },
+                {
+                  "id": "og-prob-3",
+                  "icon": "Satellite",
+                  "title": "The VSAT Connectivity Paradox",
+                  "description": "Offshore rigs depend on VSAT/LEO satellite links with ~700ms latency and routine dropouts. Every connectivity interruption blinds central command to rig telemetry. CISA repeatedly warns about internet-exposed SCADA/PLC devices — but operators need connectivity for remote monitoring."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "og-solution-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "True Air-Gap Operations",
+              "subtitle": "Frontbase runs entirely on local hardware. No cloud backhaul. No satellite dependency. No attack surface.",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(142 71% 45%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-solution",
+              "features": [
+                {
+                  "id": "og-sol-1",
+                  "icon": "WifiOff",
+                  "title": "Zero-Internet Field Operations",
+                  "description": "Frontbase edge bundles run on local industrial PCs with zero internet dependency. Drilling dashboards, pressure monitoring, and safety inspection UIs operate with no cloud connection at all. If Starlink drops, operations continue seamlessly."
+                },
+                {
+                  "id": "og-sol-2",
+                  "icon": "Shield",
+                  "title": "IT/OT Blast Isolation",
+                  "description": "Deploy separate edge instances for corporate IT dashboards vs. operational field monitoring. A ransomware event on headquarters' email server has zero blast radius on rig-side pressure gauges and safety systems."
+                },
+                {
+                  "id": "og-sol-3",
+                  "icon": "Satellite",
+                  "title": "Satellite-Tolerant Sync",
+                  "description": "Edge Redis queues buffer telemetry, inspection reports, and maintenance logs locally. Data syncs opportunistically during SATCOM windows — zero data loss during satellite dropout. Works with VSAT, Starlink, or field mesh networks."
+                },
+                {
+                  "id": "og-sol-4",
+                  "icon": "Undo2",
+                  "title": "Immutable Field Deploys",
+                  "description": "No forced remote updates to rig-side systems. Pre-compiled, tested bundles deployed manually during maintenance windows or via sneakernet. If an update breaks something, one-click rollback restores the prior version instantly."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "og-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "hsl(30 40% 8%)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "og-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Don't let a ransomware email shut down your pipeline.",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "og-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Contact our solutions engineering team to deploy edge-native field operations that survive anything."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "opacity": "1",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "og-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form | Untitled Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "og-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "Edge-native infrastructure for mission-critical energy operations.",
+              "columns": [
+                {
+                  "id": "og-col-solutions",
+                  "title": "Solutions",
+                  "links": [
+                    {
+                      "id": "og-link-drilling",
+                      "text": "Drilling Operations",
+                      "href": "#"
+                    },
+                    {
+                      "id": "og-link-pipeline",
+                      "text": "Pipeline Monitoring",
+                      "href": "#"
+                    },
+                    {
+                      "id": "og-link-safety",
+                      "text": "Safety Inspection",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "og-col-industries",
+                  "title": "Industries",
+                  "links": [
+                    {
+                      "id": "og-link-aviation",
+                      "text": "Aviation",
+                      "href": "/aviation"
+                    },
+                    {
+                      "id": "og-link-telecom",
+                      "text": "Telecom",
+                      "href": "/telecom"
+                    },
+                    {
+                      "id": "og-link-gov",
+                      "text": "Government",
+                      "href": "/government"
+                    }
+                  ]
+                },
+                {
+                  "id": "og-col-company",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "og-link-enterprise",
+                      "text": "Enterprise Platform",
+                      "href": "/enterprise"
+                    },
+                    {
+                      "id": "og-link-privacy",
+                      "text": "Privacy & Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "og-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "og-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Field-proven edge operations.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

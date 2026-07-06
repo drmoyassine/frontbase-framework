@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-06T22:30:19.784Z",
+  "generated": "2026-07-06T22:47:20.847Z",
   "generator": "docs/frontbase-framework/spike/src/golden-corpus.ts (product repo)",
   "renderer": "services/edge/src/ssr/PageRenderer.ts#renderPage",
   "sourceCommit": "c1454938a37be9b98a8cce54870faf94c24a8487",

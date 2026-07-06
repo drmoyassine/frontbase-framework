@@ -1,0 +1,530 @@
+{
+  "title": "Frontbase for Fleet & Logistics | Edge-Native Supply Chain Visibility",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "fl-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "fl-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "fl-menu-problem",
+                  "label": "The Cost",
+                  "navType": "scroll",
+                  "target": "#the-problem"
+                },
+                {
+                  "id": "fl-menu-solution",
+                  "label": "Edge Visibility",
+                  "navType": "scroll",
+                  "target": "#the-solution"
+                },
+                {
+                  "id": "fl-menu-enterprise",
+                  "label": "Enterprise",
+                  "navType": "link",
+                  "target": "/enterprise"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Talk to Engineering",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "fl-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "80px 24px",
+              "minHeight": "520px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(210 35% 8%) 0%, hsl(220 30% 14%) 50%, hsl(230 35% 8%) 100%)"
+            },
+            "children": [
+              {
+                "id": "fl-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Fleet & Logistics",
+                  "variant": "secondary",
+                  "icon": "Truck",
+                  "iconPosition": "left",
+                  "backgroundColor": "#fbbf24",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "fl-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "When your tracking goes dark, $680,000 shipments go blind.",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "56px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF",
+                  "maxWidth": "850px"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 30
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fl-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "The CrowdStrike outage grounded logistics operations worldwide. A single cloud tracking platform failure costs an average of $680,000. Cold chain shipments spoil. Routes can't be optimized. Drivers go untracked. Deploy GPS, cold chain monitoring, and dispatch dashboards that run independently at every distribution hub."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "760px",
+                  "fontSize": "20px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "fl-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "24px"
+                },
+                "children": [
+                  {
+                    "id": "fl-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Never Lose Visibility",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "fl-hero-cta-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "fl-problem-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "When Cloud Tracking Fails, Shipments Vanish",
+              "subtitle": "Logistics disruptions cost the tech sector $16 billion annually. Real-time visibility is no longer optional — it's survival.",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "left",
+              "textAlignment": "left",
+              "iconColor": "hsl(0 84% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-problem",
+              "features": [
+                {
+                  "id": "fl-prob-1",
+                  "icon": "CloudOff",
+                  "title": "CrowdStrike Logistics Blackout (Jul 2024)",
+                  "description": "The global IT outage didn't just ground flights — it paralyzed logistics tracking platforms, freight dispatch systems, and warehouse management worldwide. Companies managed shipments with zero real-time visibility. Delivery ETAs became guesses."
+                },
+                {
+                  "id": "fl-prob-2",
+                  "icon": "Thermometer",
+                  "title": "Cold Chain Blind Spots",
+                  "description": "When GPS/IoT tracking platforms go down, temperature monitoring for pharmaceutical and food shipments goes blind. Operators can't detect reefer unit failures, can't reroute perishables, and can't prove compliance. The spoilage cost is measured in millions — and lawsuits."
+                },
+                {
+                  "id": "fl-prob-3",
+                  "icon": "DollarSign",
+                  "title": "$680K Per Failure — $16B Annually",
+                  "description": "The average logistics failure costs a company $680,000. Across the tech sector alone, disruptions drain $16 billion per year. IT downtime in 2024 costs $14,056 per minute — large enterprises hit $23,750 per minute. One cloud outage wipes out months of margin."
+                },
+                {
+                  "id": "fl-prob-4",
+                  "icon": "Ship",
+                  "title": "Maritime Satellite Blackouts",
+                  "description": "Cargo ships face notoriously unreliable satellite connections. When VSAT links drop mid-ocean, central tracking goes blind, and the crew loses access to critical engine telemetry and container refrigeration dashboards."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "fl-stats-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The Visibility Imperative",
+              "subtitle": "GPS and telematics aren't luxuries — they're the difference between profit and catastrophe.",
+              "headerAlignment": "center",
+              "columns": 4,
+              "iconSize": "md",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(220 80% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": true,
+              "features": [
+                {
+                  "id": "fl-stat-1",
+                  "icon": "Fuel",
+                  "title": "9–10% Fuel Savings",
+                  "description": "Fleets using GPS tracking report 9–10% reductions in fuel costs through route optimization and idle-time reduction."
+                },
+                {
+                  "id": "fl-stat-2",
+                  "icon": "ShieldCheck",
+                  "title": "15–17% Fewer Accidents",
+                  "description": "Real-time driver monitoring and behavior analytics reduce accident costs by 15–17% across tracked fleets."
+                },
+                {
+                  "id": "fl-stat-3",
+                  "icon": "Eye",
+                  "title": "92% Adoption",
+                  "description": "92% of leading fleets now utilize GPS tracking for real-time visibility — and most report positive ROI within 12 months."
+                },
+                {
+                  "id": "fl-stat-4",
+                  "icon": "Timer",
+                  "title": "$14K/min Downtime",
+                  "description": "Average cost of IT downtime in logistics reached $14,056 per minute in 2024. Large enterprises: $23,750/min."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "fl-solution-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Hub-Level Edge Visibility",
+              "subtitle": "Every distribution center, warehouse, and regional hub runs its own autonomous tracking and dispatch system.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(142 71% 45%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-solution",
+              "features": [
+                {
+                  "id": "fl-sol-1",
+                  "icon": "MapPin",
+                  "title": "Independent Hub Tracking",
+                  "description": "GPS tracking dashboards and dispatch systems run on independent edge hardware at each distribution center. If the central cloud platform goes down, regional hubs maintain full visibility over their fleet — routes, ETAs, and driver status all stay live."
+                },
+                {
+                  "id": "fl-sol-2",
+                  "icon": "Thermometer",
+                  "title": "Edge Cold Chain Monitoring",
+                  "description": "Temperature, humidity, and GPS data for cold chain shipments are processed and monitored at the local hub edge. Reefer alerts fire locally — no cloud round-trip needed. Compliance data buffers in Redis and syncs when connectivity returns."
+                },
+                {
+                  "id": "fl-sol-3",
+                  "icon": "Route",
+                  "title": "Offline Route Optimization",
+                  "description": "Route optimization interfaces continue to function with cached map data and local processing when the central platform is unreachable. Drivers receive optimized routes from the nearest hub, not a distant cloud server."
+                },
+                {
+                  "id": "fl-sol-4",
+                  "icon": "BarChart3",
+                  "title": "Real-Time Driver Performance",
+                  "description": "Driver behavior scoring, fuel consumption analytics, and performance dashboards run at the edge with sub-second latency. No waiting for cloud batch processing. Managers at each hub see their fleet's performance in real-time, always."
+                },
+                {
+                  "id": "fl-sol-5",
+                  "icon": "Ship",
+                  "title": "Floating Edge Nodes",
+                  "description": "The ship itself becomes an autonomous edge node. Engine telemetry and onboard manifest dashboards are served locally to the crew with zero satellite latency. Data buffers and syncs automatically when the ship reaches port."
+                },
+                {
+                  "id": "fl-sol-6",
+                  "icon": "Anchor",
+                  "title": "Isolated Port Operations",
+                  "description": "Terminal operating systems run offline. Container cranes, gate access, and yard management stay fully operational even if the central shipping line's cloud infrastructure is compromised by an outage."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "fl-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "hsl(210 35% 8%)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "fl-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Don't let a cloud outage blind your supply chain.",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fl-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Contact our solutions engineering team to deploy edge-native fleet visibility that never goes dark."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "opacity": "1",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "fl-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "fl-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "Edge-native infrastructure for resilient logistics operations.",
+              "columns": [
+                {
+                  "id": "fl-col-solutions",
+                  "title": "Solutions",
+                  "links": [
+                    {
+                      "id": "fl-link-gps",
+                      "text": "GPS Tracking",
+                      "href": "#"
+                    },
+                    {
+                      "id": "fl-link-cold",
+                      "text": "Cold Chain Monitoring",
+                      "href": "#"
+                    },
+                    {
+                      "id": "fl-link-dispatch",
+                      "text": "Fleet Dispatch",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "fl-col-industries",
+                  "title": "Industries",
+                  "links": [
+                    {
+                      "id": "fl-link-manufacturing",
+                      "text": "Manufacturing",
+                      "href": "/manufacturing"
+                    },
+                    {
+                      "id": "fl-link-aviation",
+                      "text": "Aviation",
+                      "href": "/aviation"
+                    },
+                    {
+                      "id": "fl-link-oilgas",
+                      "text": "Oil & Gas",
+                      "href": "/oil-gas"
+                    }
+                  ]
+                },
+                {
+                  "id": "fl-col-company",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "fl-link-enterprise",
+                      "text": "Enterprise Platform",
+                      "href": "/enterprise"
+                    },
+                    {
+                      "id": "fl-link-privacy",
+                      "text": "Privacy & Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "fl-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "fl-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Visibility that never goes dark.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}
