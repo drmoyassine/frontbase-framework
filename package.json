@@ -14,6 +14,7 @@
     "check": "pnpm -r check"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "typescript": "^6.0.3"
   }
 }
