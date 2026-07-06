@@ -1,0 +1,130 @@
+{
+  "generated": "2026-07-06T22:30:19.784Z",
+  "generator": "docs/frontbase-framework/spike/src/golden-corpus.ts (product repo)",
+  "renderer": "services/edge/src/ssr/PageRenderer.ts#renderPage",
+  "sourceCommit": "c1454938a37be9b98a8cce54870faf94c24a8487",
+  "snapshotSurface": "renderPage body HTML only (no document shell)",
+  "context": {
+    "note": "The parity suite must rebuild this context exactly.",
+    "pinnedTimestamp": "2026-07-07T00:00:00.000Z",
+    "page": {
+      "description": "",
+      "published": true,
+      "image": "",
+      "type": "page",
+      "custom": {}
+    },
+    "user": null,
+    "visitor": {},
+    "url": {},
+    "system": {},
+    "cookies": {},
+    "local": {},
+    "session": {},
+    "app": {
+      "environment": "edge",
+      "manifestVersion": "golden-corpus-1"
+    }
+  },
+  "entries": [
+    {
+      "name": "agriculture",
+      "source": "docs/case-studies/agriculture.frontbase.json",
+      "bytes": 24653,
+      "sha256": "5a6a81ce7a3cbbbae24cd375b380d809c977e68c36ddaaa3af18cb09a911ebb9",
+      "records": "none"
+    },
+    {
+      "name": "aviation",
+      "source": "docs/case-studies/aviation.frontbase.json",
+      "bytes": 28431,
+      "sha256": "74f15a80f7bb64ed70eaeeb22ba30f58228bab444b66c8ab5506cf66a2a55b07",
+      "records": "none"
+    },
+    {
+      "name": "buildings",
+      "source": "docs/case-studies/buildings.frontbase.json",
+      "bytes": 27802,
+      "sha256": "1229db16f9a4575bd3a50ade05cfc3e9c820248f60c91c72897e9dc34a0386dc",
+      "records": "none"
+    },
+    {
+      "name": "defense",
+      "source": "docs/case-studies/defense.frontbase.json",
+      "bytes": 34618,
+      "sha256": "222c1ea827a07e0ac4273631b4aac3bf5e11d1b6585c53529dbbf12d328a54e4",
+      "records": "none"
+    },
+    {
+      "name": "enterprise",
+      "source": "docs/case-studies/enterprise.frontbase.json",
+      "bytes": 73997,
+      "sha256": "a709a30c5a8127e2f6426d292018e983a2248827d44d7538e915ef7a57550449",
+      "records": "none"
+    },
+    {
+      "name": "environment",
+      "source": "docs/case-studies/environment.frontbase.json",
+      "bytes": 24852,
+      "sha256": "7ddb10bd4dae90874c33381a6c3784e839646e7b3c40e9f394b6767d6f6b6896",
+      "records": "none"
+    },
+    {
+      "name": "government",
+      "source": "docs/case-studies/government.frontbase.json",
+      "bytes": 29550,
+      "sha256": "9429b791423bc7f52b92872702bdf937e8107ccaa740985651e930b8db5636f3",
+      "records": "none"
+    },
+    {
+      "name": "homee",
+      "source": "docs/case-studies/homee.frontbase.json",
+      "bytes": 57666,
+      "sha256": "4d9083e638815376fe744398d8cf69b5764ac508cf6ee6d4192f6ba971dd8d24",
+      "records": "none"
+    },
+    {
+      "name": "logistics",
+      "source": "docs/case-studies/logistics.frontbase.json",
+      "bytes": 40066,
+      "sha256": "e5cf3edbe158bc863203601c5c7c5751a9a1340e9cd0760d02049d20cdbc4a41",
+      "records": "none"
+    },
+    {
+      "name": "manufacturing",
+      "source": "docs/case-studies/manufacturing.frontbase.json",
+      "bytes": 34352,
+      "sha256": "146591c03a7a56bcae5acb0797cc527f2420b90cc70760c37e9645cee1a563e8",
+      "records": "none"
+    },
+    {
+      "name": "oil-gas",
+      "source": "docs/case-studies/oil-gas.frontbase.json",
+      "bytes": 27692,
+      "sha256": "27a513c7ba45ab0dc0ba0076390ad447e84553592f19c62678eec93e8a20a789",
+      "records": "none"
+    },
+    {
+      "name": "telecom",
+      "source": "docs/case-studies/telecom.frontbase.json",
+      "bytes": 34623,
+      "sha256": "b59043e71ecd18532edd7b075da375ead8981af183b4c18d801ed24dfb41090c",
+      "records": "none"
+    },
+    {
+      "name": "spike-home",
+      "source": "spike fixtures/manifest.ts /",
+      "bytes": 2954,
+      "sha256": "48e958febb1e9679ee11179c5da37406e77ad7f0f8f87128b10fd1e2ad665c71",
+      "records": "none"
+    },
+    {
+      "name": "spike-products",
+      "source": "spike fixtures/manifest.ts /products",
+      "bytes": 2161,
+      "sha256": "8b641816a4df2bd00dea437f1962882982544f0b772b5e8bf3e7d82bad197784",
+      "records": "products.list"
+    }
+  ],
+  "failures": []
+}
