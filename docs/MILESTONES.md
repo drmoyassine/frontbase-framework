@@ -203,6 +203,8 @@ Guiding principles (all milestones serve these):
 
 **Objective**: Complete the CMS layer — concrete infrastructure, the in-worker console API, and the builder — composed into one deployable worker.
 
+> **📋 Detailed junior-agent sprint plan for M2.1–M2.5**: [`docs/plans/phase2-cms-sprint.md`](./plans/phase2-cms-sprint.md) — per-milestone file maps, step-by-step gates, and **7 GOLDEN RULES codified from the Phase 1 security audit** (SW leak, tenant isolation, ref-sharing, opaque errors, end-to-end scaffold builds, single-owner types, extraction discipline).
+
 ### Milestone 2.1: Edge Infrastructure (`@frontbase/edge-infra`)
 
 **Target**: Weeks 1–2
