@@ -123,6 +123,8 @@ Guiding principles (all milestones serve these):
 
 ---
 
+> **📋 Detailed junior-agent sprint plan for M1.2–M1.5**: [`docs/plans/phase1-compiler-cli-sprint.md`](./plans/phase1-compiler-cli-sprint.md) — step-by-step deliverables, file maps, per-step gates, sequencing, and guardrails.
+
 ### Milestone 1.2: Compiler Core (`@frontbase/compiler`)
 
 **Target**: Weeks 4–6
