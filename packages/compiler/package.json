@@ -1,18 +1,39 @@
 {
   "name": "@frontbase/compiler",
   "version": "0.0.0",
-  "description": "Build tooling — Zod schema extraction, manifest/type generation, query registrar, SW bundle emitter, CLI (init/check/lint/simulate/deploy)",
+  "description": "Frontbase build tooling — Zod schema extraction, manifest/type generation, query registrar, Vite plugin, CLI",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/vite/index.d.ts",
+      "import": "./dist/vite/index.js"
     }
   },
-  "files": ["dist"],
+  "bin": {
+    "frontbase": "./bin/frontbase.mjs"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node test/extractor.mjs && node test/queries.mjs && node test/manifest.mjs && node test/vite.mjs"
+  },
+  "dependencies": {
+    "typescript": "^5.6.0",
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "@frontbase/edge-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1"
   }
 }

@@ -14,6 +14,7 @@
     "check": "pnpm -r check"
   },
   "devDependencies": {
+    "c8": "^11.0.0",
     "esbuild": "^0.28.1",
     "jsdom": "^29.1.1",
     "typescript": "^6.0.3"

@@ -1,1 +1,26 @@
-export const PACKAGE = '@frontbase/compiler' as const; // M1.x extraction target — see docs/MILESTONES.md
+/**
+ * @frontbase/compiler — Frontbase build tooling.
+ *
+ * Public surface (M1.2): Zod schema extraction → component manifests + types,
+ * the A-16 query registrar (defineQueries → manifest.queries), deterministic
+ * SiteManifest assembly, and the Vite plugin with HMR.
+ */
+// schema extraction
+export { extractFromFile, extractFromSource } from './extractor/schema.js';
+export type { ExtractionResult } from './extractor/schema.js';
+export type { ComponentManifest, PropertyField, ZodKind, ExtractionDiagnostic } from './extractor/types.js';
+export { generateTypes, tsType, tsField } from './extractor/typegen.js';
+
+// query registrar (Decision A-16)
+export { defineQueries } from './queries/defineQueries.js';
+export type { QueryDef, QueryContext, QueryRegistry } from './queries/defineQueries.js';
+export { toEdgeQueries, toBrowserQueries } from './queries/registrar.js';
+export type { EdgeRegisteredQuery, BrowserRegisteredQuery } from './queries/registrar.js';
+
+// manifest assembly
+export { buildSiteManifest, serializeManifest, stableStringify } from './manifest/build.js';
+export type { ManifestInput, ManifestPageInput, SiteManifest } from './manifest/build.js';
+
+// vite plugin (also available via the /vite subpath)
+export { frontbasePlugin, collectedManifests } from './vite/index.js';
+export type { VitePlugin, FrontbasePluginOptions } from './vite/index.js';
