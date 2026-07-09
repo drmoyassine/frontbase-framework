@@ -749,6 +749,50 @@ interface RegisteredQuery<P = unknown> {
 
 ---
 
+## Decision A-17: DB Provider Verification Surface & Tenant-Isolation Layer
+
+**Date**: 2026-07-10
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL (defines "done" for M2.1)
+**Question**: CI has no live cloud DB credentials. How do we verify D1/Turso/Postgres/SQLite providers, and where does the tenant-isolation guarantee live so a credential-gated provider is still trustworthy?
+
+### Decision
+
+**1. SQLite (`LocalSqliteProvider`) is the CI-verified reference provider.** Every commit runs real
+queries, real cross-tenant isolation tests, no-leak, and opaque-error gates against it. All RULE 1–4
+security gates are fully CI-verifiable without credentials.
+
+**2. D1 / Turso / Postgres are implemented behind the shared `DataProvider` interface and verified
+against the *contract*.** Their live-DB gates are **credential-gated**: green against the interface on
+every commit; exercised against real endpoints only where a test DB / connection string is provided
+(local or a later CI matrix). Mirrors the product repo's own test approach.
+
+**3. Tenant isolation lives in the provider-agnostic query layer, NOT in provider-specific mechanisms.**
+The `execute` SQL MUST carry an application-level `WHERE tenant = ctx.tenant` (from `resolvePrincipal`
+only). Provider-native isolation (Postgres/Supabase RLS, D1 bindings) is **defense-in-depth only**, never
+the primary control. This is what makes the SQLite isolation test *authoritative for every provider*: the
+guarantee under test is the same code path on all of them.
+
+**4. Isolation + contract tests are written ONCE against the `DataProvider` interface, parameterized by
+provider.** Enabling a cloud provider (creds present) runs the *identical* gates — never a
+re-implementation. A credential-gated provider is therefore a deferred *run*, not a coverage gap.
+
+### Rationale
+
+- Unblocks M2.1 without cloud credentials while keeping the security gates genuinely authoritative.
+- Prevents a silent coverage hole: if isolation were delegated to RLS, the SQLite test would prove
+  nothing about the RLS-backed providers — exactly where CI can't see.
+- One parameterized test suite = flip a provider live with zero new test code.
+
+### Impact on M2.1 acceptance
+
+"Done" for M2.1 = SQLite passes the full gate set (queries, cross-tenant isolation, no-leak, opaque
+errors) AND D1/Turso/Postgres pass the shared contract test AND every provider's `execute` uses an
+app-level tenant predicate (RLS/bindings additive only). Credential-gated live runs are documented, not
+required for green. Updates the M2.1 plan gates accordingly.
+
+---
+
 ## Decision History
 
 | Date | Decision | Status |
@@ -768,6 +812,7 @@ interface RegisteredQuery<P = unknown> {
 | 2026-07-06 | A-14: Six-Package Structure Reaffirmed Under the Chimera | ✅ Approved |
 | 2026-07-07 | A-15: Framework Repository & Licensing (fresh private repo, Apache-2.0) | ✅ Approved |
 | 2026-07-07 | A-16: Registered-Query Authoring Model (one contract, code-first MVP) | ✅ Approved |
+| 2026-07-10 | A-17: DB Provider Verification Surface & Tenant-Isolation Layer | ✅ Approved |
 
 ---
 

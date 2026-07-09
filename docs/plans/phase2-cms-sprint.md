@@ -186,12 +186,22 @@ redeclarations. Gate: `pnpm --filter @frontbase/edge-infra build` clean.
 class/factory implementing edge-core's `DataProvider`. Each `query(queryId, params, ctx)`:
 1. Looks up the registered query (from the manifest passed at construction).
 2. Runs its `execute(params, ctx)` — the executor holds the SQL/statement.
-3. **RULE 2:** the executor MUST include `ctx.tenant` in its WHERE clause. Provide a helper
-   `requireTenant(ctx)` that throws (→ opaque 500) if a `tenant`/`user`-scoped query somehow reached
-   execution without a tenant (defense in depth behind `enforceScope`).
+3. **RULE 2 + Decision A-17:** the executor MUST include an **application-level** `WHERE tenant =
+   ctx.tenant` (tenant from `resolvePrincipal` only). Provider-native isolation (Postgres/Supabase RLS,
+   D1 bindings) is **defense-in-depth only, never the primary control** — otherwise the SQLite isolation
+   test proves nothing about the RLS-backed providers. Provide `requireTenant(ctx)` that throws (→ opaque
+   500) if a `tenant`/`user`-scoped query reached execution without a tenant (defense in depth behind
+   `enforceScope`).
 4. **RULE 3:** return fresh row objects, never a driver's internal buffer reused across calls.
-Gate (`providers.mjs`): each provider executes a query against a test DB (LocalSqlite for CI) and
-returns rows.
+
+**Verification surface (Decision A-17):** SQLite (`LocalSqliteProvider`) is the **CI-verified reference**
+— every commit runs real queries + isolation + no-leak + opaque-error gates against it. D1/Turso/Postgres
+are verified against the **shared contract**; their live-DB runs are **credential-gated** (green against
+the interface always; run against real endpoints only where a test DB is provided). Write the provider
+tests **ONCE against the `DataProvider` interface, parameterized by provider**, so enabling a cloud
+provider runs the identical gates — never a re-implementation.
+Gate (`providers.mjs`): the parameterized suite runs green on SQLite (required) and on any provider whose
+credentials are present (skipped-with-notice otherwise).
 
 **2.1.3 — `resolvePrincipal` (the auth wiring — RULE 2).** Port the product's session/JWT validation
 (`middleware/auth.ts`, `ssr/lib/auth.ts`) into `proxy/auth.ts` as `resolvePrincipal(request) →
@@ -229,10 +239,12 @@ of the package either fails or contains no driver/secret, proving it's not brows
 that edge-infra is server-only and must never appear in `sw.ts`/builder bundles.
 
 ### M2.1 acceptance gates
-- [ ] `pnpm --filter @frontbase/edge-infra test` green.
+- [ ] `pnpm --filter @frontbase/edge-infra test` green (SQLite reference provider, per A-17).
 - [ ] Engine renders with a direct provider on the edge and the proxy provider in the SW against the same data.
 - [ ] Proxy rejects unregistered queries (404) and invalid params (400) — security tests.
-- [ ] **Cross-tenant isolation test passes (RULE 2).**
+- [ ] **Cross-tenant isolation test passes on SQLite (RULE 2), and the guarantee is app-level `WHERE tenant` — RLS/bindings additive only (A-17).**
+- [ ] D1/Turso/Postgres pass the shared `DataProvider` contract test; live-DB runs credential-gated (documented, not required for green — A-17).
+- [ ] Every provider's `execute` uses an app-level tenant predicate (grep/review gate).
 - [ ] Vault decrypt/rotate runs on the edge (Web Crypto, no node:crypto).
 - [ ] Durable workflow providers pass the workflow contract.
 - [ ] **No-leak test passes; edge-infra is documented server-only (RULE 1).**
