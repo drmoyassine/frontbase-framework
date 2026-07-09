@@ -1,0 +1,7 @@
+name = "frontbase-edge-core-example"
+main = "dist/worker.mjs"
+compatibility_date = "2026-01-01"
+no_bundle = true
+
+# Single pre-bundled artifact (SW inlined). No nodejs_compat: the render path
+# is pure Web-standard APIs once storage/env are behind configureEngine().
