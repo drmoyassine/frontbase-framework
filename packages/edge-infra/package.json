@@ -1,7 +1,7 @@
 {
   "name": "@frontbase/edge-infra",
   "version": "0.0.0",
-  "description": "Direct data providers, Edge Data Proxy, caches, queues, vault, edge auth gates, sync adapters, blob storage",
+  "description": "Frontbase edge infrastructure — concrete DataProviders, Edge Data Proxy auth, cache, queue, vault (Web Crypto), AI/MCP executors. SERVER-ONLY (never browser-imported).",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -10,9 +10,18 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node test/providers.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/workflow-durable.mjs && node test/no-leak.mjs"
+  },
+  "peerDependencies": {
+    "@frontbase/edge-core": "workspace:*"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.4"
   }
 }

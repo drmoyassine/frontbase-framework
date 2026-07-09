@@ -1,1 +1,42 @@
-export const PACKAGE = '@frontbase/edge-infra' as const; // M1.x extraction target — see docs/MILESTONES.md
+/**
+ * @frontbase/edge-infra — concrete edge infrastructure. SERVER-ONLY.
+ *
+ *   DataProviders (SQLite reference + D1/Turso/Postgres), resolvePrincipal auth,
+ *   cache, durable workflow providers, the Web-Crypto vault, and AI/MCP executors.
+ *
+ * ⚠️ RULE 1 (Phase 2): this package is NEVER imported by a browser or service-
+ * worker bundle. It holds DB drivers, secrets, and server-only SDKs. The no-leak
+ * gate (test/no-leak.mjs) asserts a browser-targeted build of this package
+ * contains no driver/secret — proving it's not browser-importable.
+ *
+ * All type contracts are ALIASED from @frontbase/edge-core (RULE 6) — never
+ * redeclared. Tenant isolation is application-level (Decision A-17).
+ */
+
+// providers
+export { createSqlDataProvider, asDataProvider } from './providers/base.js';
+export { sqliteDataProvider } from './providers/sqlite.js';
+export { d1DataProvider, tursoDataProvider, postgresDataProvider } from './providers/cloud.js';
+export { buildDataProvider } from './providers/registry.js';
+export { requireTenant, copyRows } from './providers/helpers.js';
+export type { DbRunner, DataProviderWithClient, EnrichedQueryContext } from './providers/types.js';
+export type { ProviderEnv } from './providers/registry.js';
+
+// auth
+export { createResolvePrincipal } from './proxy/auth.js';
+export type { AuthConfig, ApiKeyHashEntry } from './proxy/auth.js';
+
+// cache
+export { memoryCache, nullCache, kvCache } from './cache/providers.js';
+export type { CacheProvider } from './cache/types.js';
+
+// queue / durable workflow
+export { inProcessWorkflowProvider, qstashWorkflowProvider } from './queue/providers.js';
+
+// vault
+export { Vault } from './vault/vault.js';
+export { deriveKey, importRawKey, encrypt, decrypt } from './vault/crypto.js';
+export type { SecretVersion, VaultOptions } from './vault/vault.js';
+
+// executors
+export { aiChatExecutor, mcpCallExecutor, emailExecutor, queueTriggerExecutor, fullExecutorRegistry } from './executors/ai.js';
