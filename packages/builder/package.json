@@ -1,0 +1,33 @@
+{
+  "name": "@frontbase/builder",
+  "version": "0.0.0",
+  "description": "Frontbase builder — React shell + local SQLite-WASM draft DB + canvas↔preview parity. Browser SPA; NEVER imports edge-infra.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node test/draft.mjs && node test/parity.mjs && node test/panel.mjs && node test/no-leak.mjs"
+  },
+  "peerDependencies": {
+    "@frontbase/compiler": "workspace:*",
+    "@frontbase/edge-core": "workspace:*",
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
