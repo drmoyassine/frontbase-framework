@@ -29,9 +29,19 @@ const behaviors = await bundle({
     stdin: { contents: `import { startBehaviors } from './behaviors.ts'; startBehaviors();`, resolveDir: join(root, 'src'), loader: 'ts' },
     bundle: true, format: 'iife',
 });
+const workflow = await bundle({ entryPoints: [join(root, 'src', 'workflow', 'index.ts')], bundle: true, format: 'esm' });
 
-const engineOk = GATE('engine (index.ts)', engine, 70);
+const engineOk = GATE('engine (index.ts, SW bundle)', engine, 70);
 const behaviorsOk = GATE('behaviors runtime (autostart iife)', behaviors, 12);
+GATE('workflow (edge-only subpath)', workflow, 40); // informational — not in the SW bundle
 
-console.log(`\nverdict: ${engineOk && behaviorsOk ? 'ALL GATES GREEN ✅' : 'GATE(S) FAILING ❌'}`);
-process.exit(engineOk && behaviorsOk ? 0 : 1);
+// The workflow engine must NOT leak into the SW/engine bundle (edge-only).
+// esbuild tree-shakes it because index.ts never imports ./workflow.
+const engineText = Buffer.from(engine).toString('utf8');
+const leaked = engineText.includes('executeWorkflow') || engineText.includes('defaultExecutorRegistry');
+const isolationOk = !leaked;
+console.log(`workflow isolation from SW bundle          ${isolationOk ? 'PASS ✅ (not bundled)' : 'FAIL ❌ (leaked into engine bundle)'}`);
+
+const allOk = engineOk && behaviorsOk && isolationOk;
+console.log(`\nverdict: ${allOk ? 'ALL GATES GREEN ✅' : 'GATE(S) FAILING ❌'}`);
+process.exit(allOk ? 0 : 1);
