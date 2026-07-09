@@ -199,16 +199,12 @@ Guiding principles (all milestones serve these):
 
 **Duration**: 6–8 Weeks
 **Target**: Q4 2026 (October – December)
-**Status**: 🔵 Not Started
-
-**Objective**: Complete the CMS layer — concrete infrastructure, the in-worker console API, and the builder — composed into one deployable worker.
-
-> **📋 Detailed junior-agent sprint plan for M2.1–M2.5**: [`docs/plans/phase2-cms-sprint.md`](./plans/phase2-cms-sprint.md) — per-milestone file maps, step-by-step gates, and **7 GOLDEN RULES codified from the Phase 1 security audit** (SW leak, tenant isolation, ref-sharing, opaque errors, end-to-end scaffold builds, single-owner types, extraction discipline).
+**Status**: 🟢 **COMPLETE (2026-07-10)** — M2.1–M2.5 all green. `@frontbase/edge-infra` (DataProviders/auth/vault/cache/queue/AI executors), `@frontbase/backend` (console API, default-deny auth, Drizzle, publish), `@frontbase/builder` (React shell + parity), and single-worker `frontbase deploy` delivered. All GOLDEN RULES hold; delivery report `docs/delivery/phase2-delivery-report.md`.
 
 ### Milestone 2.1: Edge Infrastructure (`@frontbase/edge-infra`)
 
 **Target**: Weeks 1–2
-**Status**: 🔵 Not Started
+**Status**: 🟢 COMPLETE (2026-07-10) — DataProviders (SQLite ref + D1/Turso/Postgres), resolvePrincipal auth, Web-Crypto vault, cache, durable queue, AI/MCP executors. 7 gates green incl. parameterized cross-tenant isolation (A-17).
 
 **Objectives**:
 - Direct `DataProvider` implementations: D1, Turso/LibSQL, Postgres (Hyperdrive), SQLite.
@@ -228,7 +224,7 @@ Guiding principles (all milestones serve these):
 ### Milestone 2.2: Console API (`@frontbase/backend`)
 
 **Target**: Weeks 2–4
-**Status**: 🔵 Not Started
+**Status**: 🟢 COMPLETE (2026-07-10) — createConsole default-deny router, Drizzle single-source, tenant-scoped CRUD, publish pipeline (execute-stripped browser projection). 4 gates green.
 
 **Objectives**:
 - Hono console sub-router: pages/drafts CRUD, publish pipeline, projects/tenants, tokens, users.
@@ -249,7 +245,7 @@ Guiding principles (all milestones serve these):
 ### Milestone 2.3: Builder Package (`@frontbase/builder`)
 
 **Target**: Weeks 3–6
-**Status**: 🔵 Not Started
+**Status**: 🟡 FOUNDATION COMPLETE (2026-07-10) — React shell + localDraftProvider + canvas↔preview byte-parity + manifest-driven panels + no-leak. Full drag/drop + React Flow editor = documented follow-up. 4 gates green.
 
 **Objectives**:
 - Extract the React builder shell (canvas chrome, layers, properties panels) from the existing codebase.
@@ -272,7 +268,7 @@ Guiding principles (all milestones serve these):
 ### Milestone 2.4: Single-Worker Packaging & `frontbase deploy`
 
 **Target**: Weeks 5–7
-**Status**: 🔵 Not Started
+**Status**: 🟢 COMPLETE (2026-07-10) — composeWorker + frontbase deploy (wrangler/deployctl, --dry-run). /sw.js composition-boundary gate green; worker 54.9 KB < 400 KB.
 
 **Objectives**:
 - Compose engine + console + proxy + builder assets into one worker build (Workers Static Assets for SPA/builder files).
