@@ -12,6 +12,10 @@
     "./vite": {
       "types": "./dist/vite/index.d.ts",
       "import": "./dist/vite/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
     }
   },
   "bin": {
@@ -24,16 +28,21 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node test/extractor.mjs && node test/queries.mjs && node test/manifest.mjs && node test/vite.mjs"
+    "test": "tsc -p tsconfig.json && node test/extractor.mjs && node test/queries.mjs && node test/manifest.mjs && node test/vite.mjs && node test/cli.mjs && node test/simulate.mjs && node test/sw-emit.mjs && node test/e2e-parity.mjs && node test/agent-success-rate.mjs && node test/perf.mjs"
   },
   "dependencies": {
+    "commander": "^12.0.0",
     "typescript": "^5.6.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "esbuild": "^0.28.0"
   },
   "peerDependencies": {
     "@frontbase/edge-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.1"
+  },
+  "optionalDependencies": {
+    "@hono/node-server": "^1.13.0"
   }
 }
