@@ -25,6 +25,11 @@ export type { ManifestInput, ManifestPageInput, SiteManifest } from './manifest/
 export { frontbasePlugin, collectedManifests } from './vite/index.js';
 export type { VitePlugin, FrontbasePluginOptions } from './vite/index.js';
 
+// deploy (single-worker composition)
+export { composeWorker, assertWorkerBudget } from './deploy/compose.js';
+export type { ComposeInput, ComposeResult } from './deploy/compose.js';
+export { deployCommand } from './cli/deploy.js';
+
 // SW bundle emitter + browser-manifest emission (A-16 / SEC-1)
 export { emitSwBundle, assertSwBudget, emitBrowserManifest } from './emit/swBundle.js';
 export type { SwEmitInput, SwEmitResult } from './emit/swBundle.js';

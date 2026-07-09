@@ -10,6 +10,7 @@ import { runLint } from './linter.js';
 import { scaffoldProject, type InitVariant } from './scaffold.js';
 import { simulateRender, serve, type ProviderMode } from './simulate.js';
 import { emitSwBundle } from '../emit/swBundle.js';
+import { deployCommand } from './deploy.js';
 import { formatHuman, formatAgentJson } from './agent.js';
 import type { CommandResult } from './types.js';
 
@@ -99,6 +100,19 @@ export function createProgram(): Command {
             } else {
                 console.log(`emitted ${res.filename} (${(res.bytesMinGzip / 1024).toFixed(1)} KB gzip, budget ${budget.ok ? 'OK ✅' : 'OVER ❌'})`);
             }
+        });
+
+    program.command('deploy [path]')
+        .description('Compose + deploy the single-worker CMS (wrangler primary, deployctl secondary)')
+        .option('--dry-run', 'compose + routing smoke + size budget; no deploy')
+        .option('--target <target>', 'cloudflare | deno', 'cloudflare')
+        .option('--out <dir>', 'output directory', 'dist')
+        .option('--json', 'JSON output')
+        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'deno'; out: string; json?: boolean }) => {
+            const result = await deployCommand(path || '.', { dryRun: opts.dryRun, target: opts.target, outDir: opts.out });
+            if (opts.json) console.log(JSON.stringify(result, null, 2));
+            else console.log(`deploy: ${result.summary}${result.details ? ' ' + JSON.stringify(result.details) : ''}`);
+            if (!result.ok) process.exitCode = 1;
         });
 
     return program;
