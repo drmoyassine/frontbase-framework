@@ -2,9 +2,16 @@
 
 **To:** QA & Testing team
 **From:** Architecture / Implementation
-**Date:** 2026-07-09
+**Date:** 2026-07-09 (security audit + fixes: 2026-07-10)
 **Scope:** M1.2 (Compiler Core), M1.3 (CLI & Diagnostics), M1.4 (SW Bundle Emitter + `simulate`), M1.5 (Integration & Testing) — completing Phase 1.
 **Status:** ✅ **PHASE 1 COMPLETE.** All acceptance criteria met; all gates green.
+
+> **⚠️ 2026-07-10 security audit — read §10 first.** A post-delivery review found and **fixed**
+> two security issues (SW `execute`/secret leak; unenforced query `scope` / tenant isolation)
+> and three lesser bugs. An earlier revision of this report overstated the security posture
+> (§3.2/§7.5 claimed `execute` was stripped from the browser and implied auth on the proxy —
+> neither was true as delivered). Those sections are corrected inline and the full audit is in §10.
+> The fixes ship with regression tests (`edge-core/test/scope.mjs`, `compiler/test/sw-no-leak.mjs`).
 
 > This report is written for QA. It enumerates what shipped, every test/gate and how to
 > run it, the measured numbers, known limitations and follow-ups, and the verification
@@ -93,8 +100,11 @@ accepts/rejects identically to the original).
 
 ### 3.2 Query registrar (Decision A-16)
 `defineQueries({...})` authoring API. Two projections: `toEdgeQueries` (retains `execute`) and
-`toBrowserQueries` (strips `execute` — the SW only ever sees `{queryId, params, scope, ttl}`).
-Keys deterministically sorted.
+`toBrowserQueries` (**strips `execute` AND the Zod `params` schema** — the SW sees only
+`{queryId, hasParams, scope, ttlSeconds, rows?}`, pure serializable data). Keys deterministically
+sorted. **The browser projection must be emitted as static data via `emitBrowserManifest()` and
+imported by `sw.ts`** — never computed inside the SW (see §10 SEC-1). `scope` is enforced at the
+Edge Data Proxy (§10 SEC-2), not merely carried.
 
 ### 3.3 Deterministic manifest assembly
 `buildSiteManifest` composes pages + queries → a `SiteManifest` that `createEngine()` consumes.
@@ -152,19 +162,24 @@ All suites live in `packages/compiler/test/` and run via `pnpm --filter @frontba
 | Suite | What it covers | Result |
 |---|---|---|
 | `extractor.mjs` | All Zod kinds, formats, nullable, deep nesting, unsupported diagnostics, round-trip vs real zod, type generation | PASS |
-| `queries.mjs` | `defineQueries` → edge/browser projections; execute stripped from browser; determinism | PASS |
+| `queries.mjs` | `defineQueries` → edge/browser projections; execute AND params-schema stripped from browser; browser projection fully JSON-serializable; determinism | PASS |
 | `manifest.mjs` | SiteManifest assembly, content-hash version, sort order, content-sensitivity; feeds real `createEngine`, A-16 Zod rejection (400) | PASS |
 | `vite.mjs` | transform extraction (component vs non-component vs excluded), HMR invalidation, buildEnd | PASS |
-| `cli.mjs` | `check`/`lint`/`init` in-process; AgentFormatter `--json` shape; precise file:line; exit semantics | PASS |
+| `cli.mjs` | `check`/`lint`/`init` in-process; AgentFormatter `--json` shape; precise file:line; exit semantics; **`init` sw.ts imports browser manifest, worker.ts imports edge manifest (SEC-1)** | PASS |
 | `simulate.mjs` | direct/proxy/draft render; byte-identical across all three; 404 on unknown page | PASS |
 | `sw-emit.mjs` | content-hash filename; deterministic; content-sensitive (side-effecting change); <150KB | PASS |
+| **`sw-no-leak.mjs`** | **SEC-1 regression: emitted SW bundle contains NO `execute` source, NO secret, no `execute` identifier; emitted browser manifest is executor-free** | PASS |
 | `e2e-parity.mjs` | edge path (HTTP) vs SW path (jsdom-hosted SW global + `attachServiceWorker`); byte-parity, host label normalized | PASS |
 | `agent-success-rate.mjs` | deterministic batch (5 components) + live cold-agent cohort (8 components); ≥90% | PASS |
 | `perf.mjs` | edge/edge+data/SW render p50 < 5ms; extractor throughput | PASS |
 
-### Frozen-engine regression gates (must stay green — you do not modify edge-core)
-`packages/edge-core`: parity **14/14**, engine-smoke 10/10, behaviors 10/10, workflow 12/12,
-cf-worker smoke 6/6, size 57.2 KB engine + 1.4 KB behaviors + 3.2 KB workflow (tree-shaken out of SW).
+### Frozen-engine regression gates (must stay green)
+`packages/edge-core` (`pnpm --filter @frontbase/edge-core test`): parity **14/14**, engine-smoke 10/10,
+**scope 13/13 (SEC-2 tenant isolation)**, behaviors 10/10, workflow 12/12, cf-worker smoke 6/6,
+size 57.x KB engine + 1.4 KB behaviors + 3.2 KB workflow (tree-shaken out of SW).
+
+> Note: edge-core received security fixes this audit (proxy scope gate, opaque error responses,
+> rows-copy). Parity 14/14 confirms no rendering regression.
 
 ---
 
@@ -199,10 +214,9 @@ cf-worker smoke 6/6, size 57.2 KB engine + 1.4 KB behaviors + 3.2 KB workflow (t
 4. **`simulate` `draft` provider is an in-memory stub.** Real SQLite-WASM draft persistence is the
    Phase 2 builder (`localDraftProvider`). The tri-provider byte-parity gate holds because the test
    manifest uses baked rows.
-5. **Browser projection of queries includes `params` (the Zod schema) by shape only.** Zod schemas
-   don't serialize to JSON; the browser projection carries a reference for the SW to know the param
-   shape. A JSON-Schema projection is a future enhancement (M2.x) if the SW needs to validate
-   client-side.
+5. **Browser projection carries NO Zod `params` schema** (corrected 2026-07-10, §10 SEC-1). It ships
+   `hasParams: boolean` only; the SW forwards params to the proxy, which is the sole validator. A
+   JSON-Schema projection for optional client-side pre-validation is a future enhancement (M2.x).
 6. **tsc emits with `skipLibCheck`** — type errors in dependencies are not surfaced. Acceptable for
    a build tool; flagged for awareness.
 
@@ -239,6 +253,83 @@ Phase 1 delivers the engine + toolchain. Phase 2 (`@frontbase/edge-infra`, `@fro
 the production Edge Data Proxy with auth/tenant scoping, the in-worker console API (zero Python in
 the deploy, A-13), the builder shell with local SQLite-WASM drafts, and single-worker `frontbase
 deploy`. The compiler's `init --with-infra`/`--full` scaffolds already point at where those wire in.
+
+---
+
+## 10. Security audit & fixes (2026-07-10)
+
+A post-delivery review of the security-critical path (A-16 query model, Edge Data Proxy, tenant
+isolation, SW bundle) found five issues. **All are fixed, each with a regression test.**
+
+### SEC-1 — SW bundle leaked server-side `execute` (and any secrets) — CRITICAL
+
+**Was:** the `init` scaffold generated a single `manifest.ts` via `buildSiteManifest` (which uses
+`toEdgeQueries`, retaining `execute`), and **both** `worker.ts` and `sw.ts` imported it. So the
+service-worker bundle baked in the server-side `execute` closures — and anything they close over
+(API keys, DB creds, internal URLs). `toBrowserQueries` existed but nothing in the delivered
+pipeline used it; runtime stripping would have been too late anyway (the source is in the bundle).
+The prior report claimed "`execute` never reaches the browser" — **false as delivered.**
+
+**Fix:**
+- `toBrowserQueries` now emits **pure serializable data** — strips `execute` *and* the Zod `params`
+  schema (kept edge-side), leaving `{queryId, hasParams, scope, ttlSeconds, rows?}`.
+- New `emitBrowserManifest()` precomputes the browser manifest at **build time (Node)** and writes it
+  as a **static data module** (`JSON.stringify` — functions cannot survive). The SW imports that file;
+  it never imports `queries.ts` and never calls a builder.
+- The scaffold now emits split modules: `pages.ts` (shared), `queries.ts` (**server-only**),
+  `manifest.edge.ts` (worker), `manifest.browser.js` (generated static, SW), and `scripts/gen-manifest.mjs`
+  (build step). `sw.ts` imports `manifest.browser.js` only.
+- **Regression:** `compiler/test/sw-no-leak.mjs` plants a secret inside an `execute` and asserts the
+  emitted `sw.js` contains neither the secret, the identifier, nor the string `execute`. Also verified
+  end-to-end: a real scaffolded `--pure` project builds, smoke-passes, and its generated browser
+  manifest is executor-free.
+
+### SEC-2 — query `scope` was never enforced; no tenant isolation — CRITICAL
+
+**Was:** `scope` (`public`/`tenant`/`user`) flowed through the registrar → manifest → proxy but
+**nothing enforced it**. The Edge Data Proxy served *any* registered query to *any* caller with no
+session/tenant check, and passed no user/tenant into the executor context. A `tenant`- or `user`-
+scoped query was served to anonymous callers, and executors had no tenant to scope their SQL by —
+i.e. **no multi-tenant isolation**. The spec implied "Session/JWT validation" but the engine proxy
+had none.
+
+**Fix:**
+- New `EngineConfig.resolvePrincipal(request) → {user, tenant}` seam (default: anonymous, no tenant).
+  Hosts wire this to edge-infra auth gates.
+- The proxy now resolves the principal **before** serving, and enforces scope **deny-by-default**
+  (`enforceScope`): `public` → allowed; `tenant` → 401 without a tenant; `user` → 401 without a user;
+  unknown scope → 403 (fail closed).
+- The resolved `user` + `tenant` are threaded into `QueryContext`, so executors can tenant-scope
+  their own data access.
+- **Regression:** `edge-core/test/scope.mjs` (13 checks) — anon denied on tenant/user queries, unknown
+  scope → 403, and a cross-tenant isolation case proving tenant A and tenant B get different rows and
+  each executor receives only its own tenant.
+
+### BUG-1 — `directProvider` returned baked `rows` by reference — MEDIUM
+The manifest is shared across requests; handing out the live `rows` array let a consumer mutating a
+result corrupt every later render. **Fix:** return a shallow copy (`rows.map(r => ({...r}))`).
+Covered by the scope/engine suites.
+
+### BUG-2 — proxy leaked internal error detail; dead emitter param — LOW
+`app.onError` returned `err.message` + the engine environment label to the client (information
+disclosure). **Fix:** log server-side, return opaque `{error:'internal_error'}` (500). Also removed the
+misleading unused `SwEmitInput.queries` field.
+
+### DEV-1 — compiler `SiteManifest` was structurally incompatible with the engine's — MEDIUM (build break)
+Surfaced by an end-to-end scaffold build: the compiler declared its own loose `SiteManifest`, so a
+compiler-built manifest wasn't assignable to `createEngine()` in a real consuming project (the
+in-repo tests missed it because they used the engine types directly). **Fix:** the compiler now
+aliases `@frontbase/edge-core`'s `SiteManifest` as the single source of truth. Also fixed scaffold
+`package.json` (missing `zod`, `@types/node`) and `tsconfig`/`sw.ts` SW typings — a scaffolded
+project now builds clean.
+
+### Residual / for Phase 2
+- `resolvePrincipal` default is anonymous; **hosts MUST wire real auth** (edge-infra M2.1) before
+  serving `tenant`/`user`-scoped queries — otherwise those queries correctly return 401. Documented in
+  the scaffold's `worker.ts`.
+- Scope enforcement is coarse (public/tenant/user). Per-row / per-record authorization is executor
+  responsibility (the executor gets `ctx.tenant`/`ctx.user`); a finer policy layer is Phase 2.
+- Rate limiting / abuse protection on the proxy is out of Phase 1 scope (edge-infra).
 
 ---
 

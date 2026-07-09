@@ -20,10 +20,16 @@ export interface EdgeRegisteredQuery {
     rows?: Record<string, unknown>[];
 }
 
-/** A registered query as the browser/SW sees it — no `execute`. */
+/**
+ * A registered query as the browser/SW sees it. NO `execute` (server-side only)
+ * and NO `params` Zod schema — param validation happens exclusively at the Edge
+ * Data Proxy (the SW just forwards params over HTTP). `hasParams` is a plain
+ * boolean marker so the SW can know a query takes params without shipping the
+ * (non-serializable, potentially logic-bearing) Zod schema.
+ */
 export interface BrowserRegisteredQuery {
     queryId: string;
-    params?: unknown;
+    hasParams?: boolean;
     scope?: 'public' | 'tenant' | 'user';
     ttlSeconds?: number;
     rows?: Record<string, unknown>[];
@@ -51,7 +57,11 @@ export function toEdgeQueries(registry: QueryRegistry): Record<string, EdgeRegis
     return out;
 }
 
-/** Browser/SW projection — `execute` stripped (A-16: the SW sees queryId+params only). */
+/**
+ * Browser/SW projection — pure serializable data only. Strips `execute`
+ * (server-side) AND the `params` Zod schema (kept edge-side; the SW forwards
+ * params to the proxy, which validates). Emits `hasParams: true` as a marker.
+ */
 export function toBrowserQueries(registry: QueryRegistry): Record<string, BrowserRegisteredQuery> {
     const out: Record<string, BrowserRegisteredQuery> = {};
     for (const queryId of sortedKeys(registry)) {
@@ -59,7 +69,7 @@ export function toBrowserQueries(registry: QueryRegistry): Record<string, Browse
         if (!def) continue;
         out[queryId] = {
             queryId,
-            ...(def.params ? { params: def.params } : {}),
+            ...(def.params ? { hasParams: true } : {}),
             ...(def.scope ? { scope: def.scope } : {}),
             ...(def.ttlSeconds ? { ttlSeconds: def.ttlSeconds } : {}),
             ...(def.rows ? { rows: def.rows } : {}),

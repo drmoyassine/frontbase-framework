@@ -12,7 +12,7 @@ import { gzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import type { QueryRegistry } from '../queries/defineQueries.js';
+import { buildBrowserManifest, type ManifestInput, type SiteManifest } from '../manifest/build.js';
 
 export interface SwEmitInput {
     /** Absolute path to the user's sw.ts entry (imports createEngine + manifest). */
@@ -21,8 +21,23 @@ export interface SwEmitInput {
     projectRoot: string;
     /** Output directory for sw.<hash>.js. */
     outDir: string;
-    /** Browser-query projection of the site queries (execute stripped). Optional bake. */
-    queries?: QueryRegistry;
+}
+
+/**
+ * Precompute the BROWSER manifest (execute stripped, Decision A-16 / SEC-1) and
+ * write it as a STATIC data module the SW entry can import. This runs at build
+ * time (Node), so `execute` closures and any secrets they close over never enter
+ * the bundler's input for the SW — the browser bundle is provably executor-free.
+ *
+ * Returns the path of the emitted module; point your sw.ts at it.
+ */
+export function emitBrowserManifest(input: ManifestInput, outFile: string): { path: string; manifest: SiteManifest } {
+    const manifest = buildBrowserManifest(input);
+    mkdirSync(dirname(outFile), { recursive: true });
+    // Serialize as data only — no functions survive JSON.stringify, so this file
+    // cannot contain an executor even by accident.
+    writeFileSync(outFile, `export const manifest = ${JSON.stringify(manifest, null, 2)};\n`);
+    return { path: outFile, manifest };
 }
 
 export interface SwEmitResult {

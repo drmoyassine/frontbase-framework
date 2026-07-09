@@ -30,8 +30,15 @@ check('edge static query carries rows (no execute)', !!edge['static.rows'].rows 
 const browser = toBrowserQueries(registry);
 check('browser query STRIPS execute', browser['alpha.first'].execute === undefined);
 check('browser query keeps queryId + scope', browser['zebra.last'].queryId === 'zebra.last' && browser['zebra.last'].scope === 'public');
-check('browser keeps params (for the SW to know the shape)', !!browser['zebra.last'].params);
+// SEC-1: browser projection is pure serializable data — NO Zod params schema
+// (kept edge-side; the proxy validates), only a boolean marker.
+check('browser does NOT ship the Zod params schema', browser['zebra.last'].params === undefined);
+check('browser marks param-taking queries with hasParams', browser['zebra.last'].hasParams === true);
 check('browser has NO execute on any query', Object.values(browser).every((q) => q.execute === undefined));
+check('browser projection is fully JSON-serializable (no functions)', (() => {
+    const round = JSON.parse(JSON.stringify(browser));
+    return JSON.stringify(round) === JSON.stringify(browser);
+})());
 
 // Determinism: re-projecting yields identical structure
 check('edge projection is deterministic', JSON.stringify(toEdgeQueries(registry)) === JSON.stringify(edge));

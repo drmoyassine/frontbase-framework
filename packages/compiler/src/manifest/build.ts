@@ -10,8 +10,9 @@
  * gets baked into the SW bundle.
  */
 import { createHash } from 'node:crypto';
+import type { SiteManifest as EngineSiteManifest } from '@frontbase/edge-core';
 import type { QueryRegistry } from '../queries/defineQueries.js';
-import { toEdgeQueries } from '../queries/registrar.js';
+import { toEdgeQueries, toBrowserQueries } from '../queries/registrar.js';
 
 /** Page layout in builder tree format (the shape renderPage takes). */
 export type LayoutNode = Record<string, unknown>;
@@ -32,11 +33,13 @@ export interface ManifestInput {
     versionPrefix?: string;
 }
 
-export interface SiteManifest {
-    version: string;
-    pages: Record<string, unknown>;
-    queries: Record<string, unknown>;
-}
+/**
+ * The compiler emits the structural shape `@frontbase/edge-core`'s
+ * `createEngine()` consumes. We alias the engine's type so a compiler-built
+ * manifest is assignable to the engine API with no cast at the call site
+ * (the engine is the source of truth for this contract).
+ */
+export type SiteManifest = EngineSiteManifest;
 
 /** Stable JSON stringification: object keys sorted ascending at every depth. */
 export function stableStringify(value: unknown): string {
@@ -61,11 +64,7 @@ function contentVersion(body: { pages: unknown; queries: unknown }, prefix?: str
     return prefix ? `${prefix}.${hash}` : `v${hash}`;
 }
 
-/**
- * Assemble a deterministic SiteManifest (edge projection). `execute` functions on
- * queries are preserved (server-side only); strip them with toBrowserQueries for SW.
- */
-export function buildSiteManifest(input: ManifestInput): SiteManifest {
+function buildPages(input: ManifestInput): Record<string, unknown> {
     const pages: Record<string, unknown> = {};
     for (const path of Object.keys(input.pages).sort()) {
         const p = input.pages[path];
@@ -79,9 +78,37 @@ export function buildSiteManifest(input: ManifestInput): SiteManifest {
             layout: p.layout,
         };
     }
+    return pages;
+}
+
+/**
+ * Assemble a deterministic SiteManifest for the EDGE (`execute` retained).
+ * This runs server-side ONLY. Never import the result into an SW/browser bundle
+ * — use {@link buildBrowserManifest} there (Decision A-16; SEC-1).
+ */
+export function buildSiteManifest(input: ManifestInput): SiteManifest {
+    const pages = buildPages(input);
     const queries = toEdgeQueries(input.queries);
     const body = { pages, queries };
-    return { version: contentVersion(body, input.versionPrefix), pages, queries };
+    // The pages/queries are assembled as loose records; the engine's SiteManifest
+    // types them strictly. The shapes match by construction — cast at the boundary.
+    return { version: contentVersion(body, input.versionPrefix), pages, queries } as unknown as SiteManifest;
+}
+
+/**
+ * Assemble the BROWSER/SW projection: identical pages + queries with `execute`
+ * (and any server-only executor state) STRIPPED. This is the ONLY manifest that
+ * may be baked into the service-worker bundle. Its `version` matches the edge
+ * manifest's (same page/query IDs) so the SW and edge stay in lockstep.
+ */
+export function buildBrowserManifest(input: ManifestInput): SiteManifest {
+    const pages = buildPages(input);
+    const browserQueries = toBrowserQueries(input.queries);
+    // Version is derived from the EDGE body so both projections share one version
+    // (a manifest change bumps both; content is otherwise browser-safe).
+    const edgeQueries = toEdgeQueries(input.queries);
+    const version = contentVersion({ pages, queries: edgeQueries }, input.versionPrefix);
+    return { version, pages, queries: browserQueries } as unknown as SiteManifest;
 }
 
 /** Serialize a manifest deterministically (sorted keys, 2-space indent). */

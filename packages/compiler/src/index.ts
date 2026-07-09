@@ -18,9 +18,13 @@ export { toEdgeQueries, toBrowserQueries } from './queries/registrar.js';
 export type { EdgeRegisteredQuery, BrowserRegisteredQuery } from './queries/registrar.js';
 
 // manifest assembly
-export { buildSiteManifest, serializeManifest, stableStringify } from './manifest/build.js';
+export { buildSiteManifest, buildBrowserManifest, serializeManifest, stableStringify } from './manifest/build.js';
 export type { ManifestInput, ManifestPageInput, SiteManifest } from './manifest/build.js';
 
 // vite plugin (also available via the /vite subpath)
 export { frontbasePlugin, collectedManifests } from './vite/index.js';
 export type { VitePlugin, FrontbasePluginOptions } from './vite/index.js';
+
+// SW bundle emitter + browser-manifest emission (A-16 / SEC-1)
+export { emitSwBundle, assertSwBudget, emitBrowserManifest } from './emit/swBundle.js';
+export type { SwEmitInput, SwEmitResult } from './emit/swBundle.js';

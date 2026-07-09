@@ -28,7 +28,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node test/extractor.mjs && node test/queries.mjs && node test/manifest.mjs && node test/vite.mjs && node test/cli.mjs && node test/simulate.mjs && node test/sw-emit.mjs && node test/e2e-parity.mjs && node test/agent-success-rate.mjs && node test/perf.mjs"
+    "test": "tsc -p tsconfig.json && node test/extractor.mjs && node test/queries.mjs && node test/manifest.mjs && node test/vite.mjs && node test/cli.mjs && node test/simulate.mjs && node test/sw-emit.mjs && node test/sw-no-leak.mjs && node test/e2e-parity.mjs && node test/agent-success-rate.mjs && node test/perf.mjs"
   },
   "dependencies": {
     "commander": "^12.0.0",

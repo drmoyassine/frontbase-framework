@@ -11,6 +11,16 @@
  */
 import type { UserContext } from './ssr/lib/IAuthProvider.js';
 
+/**
+ * The authenticated caller of a request, resolved by the host. `null` user =
+ * anonymous. `tenant` scopes data access (multi-tenant isolation). Hosts wire
+ * this to @frontbase/edge-infra auth gates; the default is anonymous/no-tenant.
+ */
+export interface Principal {
+    user: UserContext | null;
+    tenant?: string;
+}
+
 export interface EngineConfig {
     /** Edition gate for the community badge. Default: 'community'. */
     edition: string;
@@ -22,6 +32,13 @@ export interface EngineConfig {
     resolveFaviconUrl: () => Promise<string>;
     /** Session→user resolution (was the auth-provider coupling). Hosts wire edge-infra here. */
     resolveUser: (request: Request, tenantSlug?: string) => Promise<UserContext | null>;
+    /**
+     * Resolve the calling principal (user + tenant) for a request. Used by the
+     * Edge Data Proxy to enforce query `scope` and to tenant-scope executors.
+     * Default: anonymous, no tenant. Hosts MUST override this to serve
+     * `tenant`/`user`-scoped queries — otherwise those queries are denied.
+     */
+    resolvePrincipal: (request: Request) => Promise<Principal>;
 }
 
 const defaults: EngineConfig = {
@@ -29,6 +46,7 @@ const defaults: EngineConfig = {
     nodeEnv: 'development',
     resolveFaviconUrl: async () => '',
     resolveUser: async () => null,
+    resolvePrincipal: async () => ({ user: null, tenant: undefined }),
 };
 
 let current: EngineConfig = { ...defaults };

@@ -21,7 +21,10 @@ export function directProvider(manifest: SiteManifest): DataProvider {
             const q = manifest.queries[queryId];
             if (!q) throw new Error(`unknown_query: ${queryId}`);
             if (q.execute) return q.execute(params, ctx);
-            if (q.rows) return q.rows;
+            // Return a shallow copy of baked rows: the manifest is shared across
+            // requests, so handing out the live array lets a consumer mutating
+            // the result corrupt every subsequent render.
+            if (q.rows) return q.rows.map((r) => ({ ...r }));
             throw new Error(`query_has_no_executor: ${queryId}`);
         },
     };

@@ -11,9 +11,10 @@
 import { Hono } from 'hono';
 import { renderPage } from './ssr/PageRenderer.js';
 import type { TemplateContext } from './ssr/lib/context.js';
-import type { SiteManifest, PageEntry } from './manifest.js';
+import type { SiteManifest, PageEntry, RegisteredQuery } from './manifest.js';
 import type { DataProvider } from './data.js';
 import { renderDocument } from './shell.js';
+import { engineConfig, type Principal } from './config.js';
 
 export type Environment = 'edge' | 'service-worker' | 'builder';
 
@@ -25,6 +26,29 @@ export interface EngineOptions {
     swBundle?: string;
     /** Console API sub-router, mounted at /api/console (Phase 2). */
     console?: Hono;
+}
+
+/**
+ * Enforce a registered query's `scope` against the calling principal.
+ * Deny-by-default: unknown scopes are treated as the most restrictive.
+ *   - 'public' (or unset): allowed for anyone.
+ *   - 'tenant': requires a resolved tenant (else 401).
+ *   - 'user':   requires an authenticated user (else 401).
+ * Returns a denial `{status, error}` or `null` when access is permitted.
+ */
+export function enforceScope(q: RegisteredQuery, principal: Principal): { status: 401 | 403; error: string } | null {
+    const scope = q.scope ?? 'public';
+    switch (scope) {
+        case 'public':
+            return null;
+        case 'tenant':
+            return principal.tenant ? null : { status: 401, error: 'tenant_required' };
+        case 'user':
+            return principal.user ? null : { status: 401, error: 'authentication_required' };
+        default:
+            // Unknown scope → deny (fail closed).
+            return { status: 403, error: 'forbidden' };
+    }
 }
 
 /** Deterministic template context — timestamps come from the manifest, never Date.now(). */
@@ -50,8 +74,10 @@ export function createEngine(opts: EngineOptions): Hono {
     const app = new Hono();
 
     app.onError((err, c) => {
+        // Log the detail server-side; return an opaque error to the client
+        // (no err.message / stack / env label — avoid information disclosure).
         console.error(`[chimera-engine:${environment}]`, err);
-        return c.text(`engine_error(${environment}): ${err.message}`, 500);
+        return c.json({ error: 'internal_error' }, 500);
     });
 
     // 1. The browser engine bundle (the handover). Edge only — inside the SW,
@@ -73,6 +99,13 @@ export function createEngine(opts: EngineOptions): Hono {
             const q = manifest.queries[queryId];
             if (!q) return c.json({ error: 'unknown_query' }, 404);
 
+            // Resolve the calling principal (user + tenant) BEFORE anything else,
+            // then enforce the query's scope. Deny-by-default: a 'tenant'/'user'
+            // scoped query with no authenticated principal is rejected 401/403.
+            const principal = await engineConfig().resolvePrincipal(c.req.raw);
+            const denial = enforceScope(q, principal);
+            if (denial) return c.json({ error: denial.error }, denial.status);
+
             let params: Record<string, unknown> = {};
             try {
                 params = await c.req.json();
@@ -85,7 +118,13 @@ export function createEngine(opts: EngineOptions): Hono {
                 }
                 params = parsed.data as Record<string, unknown>;
             }
-            const rows = await data.query(queryId, params, { request: c.req.raw });
+            // Thread user + tenant into the executor context so registered
+            // queries can tenant-scope their own data access (isolation).
+            const rows = await data.query(queryId, params, {
+                request: c.req.raw,
+                user: principal.user,
+                tenant: principal.tenant,
+            });
             return c.json(rows, 200, { 'x-proxy': 'edge-data-proxy' });
         });
     }

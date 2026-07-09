@@ -3,7 +3,7 @@
  * (no subprocess). Asserts --json agent shape, precise file:line diagnostics,
  * exit-code semantics, and that init --pure scaffolds a buildable project.
  */
-import { mkdtempSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runCheck } from '../dist/cli/checker.js';
@@ -72,9 +72,15 @@ check('lint: --rules filter restricts rules', fbOnly.issues.every(i => i.code ==
 const initDir = mkdtempSync(join(tmpdir(), 'fb-init-'));
 const projDir = join(initDir, 'demo');
 const initResult = scaffoldProject(projDir, 'pure');
-check('init: writes expected files', ['package.json', 'tsconfig.json', 'src/manifest.ts', 'src/worker.ts', 'src/sw.ts'].every(f => initResult.files.includes(f)));
+check('init: writes expected files', ['package.json', 'tsconfig.json', 'src/manifest.edge.ts', 'src/manifest.browser.js', 'src/worker.ts', 'src/sw.ts', 'scripts/gen-manifest.mjs'].every(f => initResult.files.includes(f)));
 check('init: all files exist on disk', ['package.json', 'src/components/Hello.tsx'].every(f => existsSync(join(projDir, f))));
 check('init: pure has NO infra placeholder', !initResult.files.includes('src/infra.ts'));
+// SEC-1: sw.ts must import the browser manifest, NOT the edge manifest or queries
+const swSrc = readFileSync(join(projDir, 'src', 'sw.ts'), 'utf8');
+check('init: sw.ts imports the browser manifest (not edge, not queries)',
+    swSrc.includes('manifest.browser') && !swSrc.includes('manifest.edge') && !swSrc.includes('./queries'));
+const workerSrc = readFileSync(join(projDir, 'src', 'worker.ts'), 'utf8');
+check('init: worker.ts imports the edge manifest', workerSrc.includes('manifest.edge'));
 
 // init --full adds infra + console placeholders
 const fullDir = join(initDir, 'fullapp');
