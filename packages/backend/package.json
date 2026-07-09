@@ -1,0 +1,32 @@
+{
+  "name": "@frontbase/backend",
+  "version": "0.0.0",
+  "description": "Frontbase in-worker console API — Hono sub-router (pages/drafts/publish/projects), Drizzle persistence (single source of truth), default-DENY auth. SERVER-ONLY.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node test/console.mjs && node test/authz.mjs && node test/publish.mjs && node test/errors.mjs"
+  },
+  "peerDependencies": {
+    "@frontbase/compiler": "workspace:*",
+    "@frontbase/edge-core": "workspace:*",
+    "@frontbase/edge-infra": "workspace:*"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "drizzle-orm": "^0.36.0",
+    "hono": "^4.12.28",
+    "zod": "^3.25.76"
+  }
+}
