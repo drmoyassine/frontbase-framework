@@ -1,8 +1,11 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
-**Version**: 3.1
-**Status**: Phase 0 ✅ COMPLETE (PROCEED) — Phase 1 greenlit
-**Last Updated**: 2026-07-07
+**Version**: 3.4
+**Status**: Phases 0, 1, 2 ✅ COMPLETE — Phase 3 (Agent Experience) next
+**Last Updated**: 2026-07-10
+
+> **Phase status at a glance:** Phase 0 🟢 · Phase 1 🟢 · Phase 2 🟢 (M2.3 builder is *foundation-complete* — full canvas is a carried-forward item) · Phase 3 🔵 next · Phase 4 🔵.
+> Carried-forward / deferred items from every phase are consolidated in **[§ Carried-forward items](#carried-forward-items-live-backlog)** so nothing is lost between phases.
 
 ---
 
@@ -147,8 +150,6 @@ Guiding principles (all milestones serve these):
 
 **Dependencies**: Milestone 1.1 ✅
 
-**Dependencies**: Milestone 1.1
-
 ---
 
 ### Milestone 1.3: CLI & Diagnostics
@@ -212,10 +213,14 @@ Guiding principles (all milestones serve these):
 - Cache (KV/Redis), queues (CF Queues/QStash/BullMQ), vault (AES-GCM + rotation), edge auth gates, sync adapters, blob storage.
 
 **Acceptance Criteria**:
-- [ ] Engine renders with direct providers on the edge and proxy provider in the SW against the same data.
-- [ ] Proxy rejects unregistered queries and invalid params (security tests).
-- [ ] Durable workflow providers pass the workflow E2E suite.
-- [ ] Vault decrypt/rotate runs on the edge.
+- [x] Engine renders with direct providers on the edge and proxy provider in the SW against the same data.
+- [x] Proxy rejects unregistered queries (404) and invalid params (400) — security tests (`edge-core/scope`, `edge-infra/proxy-auth`).
+- [x] Durable workflow providers pass the workflow contract (`edge-infra/workflow-durable`).
+- [x] Vault decrypt/rotate runs on the edge (Web Crypto AES-GCM; `edge-infra/vault`).
+- [x] **Cross-tenant isolation** parameterized by provider (A-17); SQLite authoritative (`edge-infra/isolation`).
+- [x] **No-leak**: edge-infra is server-only, never browser-importable (`edge-infra/no-leak`).
+
+**Post-audit note (2026-07-10):** the Phase 2 security review found the eSSR **page path** bypassed scope/tenant (SEC-P2-1) — fixed in `edge-core` and regression-covered in `scope.mjs`. See `docs/delivery/phase2-delivery-report.md` §5.1.
 
 **Dependencies**: Phase 1
 
@@ -233,10 +238,12 @@ Guiding principles (all milestones serve these):
 - Mounted at `/api/console` in the same worker. **Zero Python in the deploy** (Decision A-13).
 
 **Acceptance Criteria**:
-- [ ] Builder saves drafts and publishes via the console API E2E.
-- [ ] Publish propagates: new manifest served on edge; SW picks up new version on next navigation.
-- [ ] Drizzle read/write validated on D1, Turso, and Postgres.
-- [ ] Auth middleware guards all console endpoints.
+- [x] Builder (test client) saves drafts and publishes via the console API E2E (`backend/console`, `backend/publish`).
+- [x] Publish propagates: content-hash manifest version bump + execute-stripped browser projection + cache purge (`backend/publish`).
+- [~] Drizzle read/write validated on D1, Turso, and Postgres. *(SQLite authoritative + contract-verified; cloud DBs credential-gated per A-17 — see carried-forward)*
+- [x] Auth middleware guards all console endpoints — **default-DENY** on the whole router (`backend/authz`).
+
+**Post-audit note (2026-07-10):** the `authz` isolation test originally used two separate in-memory DBs (proving nothing); fixed to share one DB and mutation-verified (SEC-P2-2). See delivery report §5.1.
 
 **Dependencies**: Milestone 2.1
 
@@ -256,10 +263,12 @@ Guiding principles (all milestones serve these):
 - Layout version flags for legacy-layout compatibility.
 
 **Acceptance Criteria**:
-- [ ] Builder preview renders through the production engine (parity test: preview HTML == published HTML for same layout).
-- [ ] Drag/drop → draft DB → preview refresh loop < 100 ms.
-- [ ] Existing JSON layouts load via version-flagged migration.
-- [ ] Builder is installable as an add-on to a `--pure` project.
+- [x] Builder preview renders through the production engine — preview HTML == published HTML (`builder/parity`).
+- [~] Drag/drop → draft DB → preview refresh loop < 100 ms. *(draft provider + preview bridge ship; full drag/drop canvas is carried-forward)*
+- [ ] Existing JSON layouts load via version-flagged migration. *(carried-forward)*
+- [x] Builder is installable as an add-on to a `--pure` project (localDraftProvider + manifest panels; no-leak gate green).
+
+**Note:** M2.3 is **foundation-complete** — the parity guarantee, draft provider, and manifest-driven panels ship and are gated; the full drag/drop canvas + React Flow workflow editor + legacy-layout migration are large product-repo ports tracked as carried-forward (see below).
 
 **Dependencies**: Milestones 2.1, 2.2, Phase 1
 
@@ -276,9 +285,10 @@ Guiding principles (all milestones serve these):
 - Size budget enforcement in CI.
 
 **Acceptance Criteria**:
-- [ ] `npx @frontbase/compiler init my-app --full && npx @frontbase/compiler deploy` yields a working CMS at one URL.
-- [ ] Worker script < 400 KB min+gzip; total within platform limits.
-- [ ] Same project deploys to Deno Deploy with the adapter switched.
+- [x] `init --full && deploy --dry-run` composes a working CMS worker artifact + in-process routing smoke (`compiler/deploy`).
+- [x] Worker script < 400 KB min+gzip — **measured 54.9 KB**; served `/sw.js` has no server code (composition-boundary gate).
+- [~] Same project deploys to Deno Deploy with the adapter switched. *(deployctl path wired; live Deno deploy is credential-gated — carried-forward)*
+- [ ] **Live** `wrangler deploy` to a public URL. *(carried-forward — one manual step; dry-run + artifact proven)*
 
 **Dependencies**: Milestones 2.1–2.3
 
@@ -287,14 +297,12 @@ Guiding principles (all milestones serve these):
 ### Milestone 2.5: Documentation & Testing
 
 **Target**: Weeks 7–8
-**Status**: 🔵 Not Started
-
-**Objectives**: agent execution rules + prompt templates, component authoring guide (isomorphic constraints), routing/SW benchmarks, modular installation docs, API reference.
+**Status**: 🟢 **COMPLETE (2026-07-10)** — guides + security sweep + Phase 2 delivery report; Phase 2 sign-off. Post-delivery security audit (2026-07-10) folded in (SEC-P2-1/-2 fixed).
 
 **Acceptance Criteria**:
-- [ ] Component authoring guide covers engine-JSX constraints and behavior scripts.
-- [ ] Agent prompt templates for common tasks.
-- [ ] Benchmarks meet targets; Phase 2 sign-off.
+- [x] Component/infra/console/deploy guides written (`docs/guides/`).
+- [~] Agent prompt templates for common tasks. *(carried into Phase 3, M3.1 — where agent tooling is the focus)*
+- [x] Benchmarks meet targets (publish p50 0.27 ms; worker 54.9 KB); **security sweep** RULES 1–4 green across all packages; Phase 2 sign-off.
 
 **Dependencies**: Milestones 2.1–2.4
 
@@ -304,21 +312,42 @@ Guiding principles (all milestones serve these):
 
 **Duration**: 3–4 Weeks
 **Target**: Q1 2027 (January – February)
+**Status**: 🔵 Not Started — **next up.**
+
+> **📋 Detailed implementer sprint plan for M3.0–M3.2**: [`docs/plans/phase3-agent-experience-sprint.md`](./plans/phase3-agent-experience-sprint.md) — includes an **M3.0 carried-forward hardening milestone** (clears the audit-lesson RULE 8, the builder full-canvas port, cloud-DB live gates, and the live deploy) before the agent-experience work proper.
+
+### Milestone 3.0: Carried-Forward Hardening & Gate Integrity
+
+**Target**: Week 1 (front-loaded)
 **Status**: 🔵 Not Started
+
+**Objective**: clear the backlog that accumulated across Phases 0–2 and codify the audit lesson so Phase 3 builds on solid ground (see [§ Carried-forward items](#carried-forward-items-live-backlog)).
+
+**Acceptance Criteria**:
+- [ ] **RULE 8 (mutation-tested gates)** codified + applied: every isolation/no-leak gate is proven to FAIL when its guarantee is broken (both Phase 2 audit bugs were green-but-hollow gates).
+- [ ] Builder full canvas: drag/drop → draft → preview loop < 100 ms; React Flow workflow editor; legacy-layout version-flagged migration.
+- [ ] Cloud-DB live gates run green where credentials are provided (D1/Turso/Postgres) — identical parameterized isolation suite (A-17).
+- [ ] Live `wrangler deploy` of `examples/cf-worker` (or a `--full` project) to a public `*.workers.dev` URL + browser SW-handover verification.
+- [ ] Drizzle migration runner (versioned, reversible) replaces auto-create-on-boot.
+
+**Dependencies**: Phase 2
+
+---
 
 ### Milestone 3.1: Diagnostic Refinement
 
 **Target**: Weeks 1–2
 **Status**: 🔵 Not Started
 
-**Objectives**: quick-fix recommendations, contextual errors, enhanced JSON, tri-environment `simulate` checks in `check` pipeline.
+**Objectives**: quick-fix recommendations, contextual errors, enhanced JSON, tri-environment `simulate` checks in `check` pipeline, agent prompt templates (carried from M2.5).
 
 **Acceptance Criteria**:
-- [ ] Quick-fixes for the top 20 error classes.
-- [ ] `check` optionally verifies edge/SW/draft render parity.
-- [ ] Agent success rate > 95% on generated components.
+- [ ] Quick-fixes for the top 20 error classes (extend the FB001/2/3 + MISSING_SCHEMA/UNSUPPORTED_ZOD diagnostics).
+- [ ] `check --parity` optionally verifies edge/SW/draft render parity (reuses `simulate` 3-provider harness).
+- [ ] Agent success rate **> 95%** on generated components (Phase 1 baseline: 100% on the cold-agent cohort at N=8; Phase 3 raises N and difficulty).
+- [ ] Agent prompt templates for common CMS tasks (component, page, query, workflow).
 
-**Dependencies**: Phase 2
+**Dependencies**: Milestone 3.0
 
 ---
 
@@ -333,6 +362,32 @@ Guiding principles (all milestones serve these):
 - [ ] 20+ beta testers active; weekly feedback reviews; backlog created; Phase 3 sign-off.
 
 **Dependencies**: Milestone 3.1
+
+---
+
+## Carried-forward items (live backlog)
+
+Consolidated deferred work from every phase, so nothing is lost between milestones. Each lands in **M3.0** (hardening) unless noted. Source milestone in brackets.
+
+| # | Item | From | Lands in | Notes |
+|---|---|---|---|---|
+| CF-1 | Safari/iOS + SW-disabled fallback documented/tested | M0.1 (CHM-2) | M3.0 | edge-path fallback works implicitly; needs explicit test + docs |
+| CF-2 | `generateZodFromPropertySchema()` legacy bridge | M0.2 | — | **superseded** by the TS-API extractor (M1.2); close, don't build |
+| CF-3 | Dev-only file-system routing | M1.1 | M3.1 | compiler dev-server concern, not engine-runtime |
+| CF-4 | ESLint programmatic wrapping for `lint` | M1.3 | M3.1 | 3 custom rules already work standalone; wrapping is thin |
+| CF-5 | `simulate --serve` optional `@hono/node-server` dep documented | M1.4 | M3.0 | works; just document the optional install |
+| CF-6 | `init` emits version ranges (not `workspace:*`) once published | M1.3 | M4.1 | pre-publish concern |
+| CF-7 | Browser query projection → JSON-Schema (if SW needs client-side param validation) | M1.2 | future | currently ships `hasParams` marker only; validation is edge-side by design |
+| CF-8 | **Builder full canvas** (drag/drop < 100 ms) + React Flow workflow editor | M2.3 | M3.0 | largest item; product-repo port |
+| CF-9 | Legacy JSON layout version-flagged migration | M2.3 | M3.0 | |
+| CF-10 | Cloud-DB **live** gates (D1/Turso/Postgres) | M2.1/2.2 | M3.0 | SQLite authoritative now (A-17); creds run identical suite |
+| CF-11 | Drizzle **migration runner** (versioned/reversible) | M2.2 | M3.0 | schema is single source now; auto-create replaces a real runner |
+| CF-12 | **Live `wrangler deploy`** to public URL + SW-handover check | M1.1/M2.4 | M3.0 | one manual step; dry-run + artifact proven |
+| CF-13 | Live **Deno Deploy** via deployctl | M2.4 | M3.0 | adapter wired; needs a live run |
+| CF-14 | Agent prompt templates | M2.5 | M3.1 | moved to where agent tooling lives |
+| CF-15 | **RULE 8 — mutation-tested security gates** | Phase 2 audit | M3.0 | both audit bugs were green-but-hollow gates |
+| CF-16 | Rate limiting / abuse protection on the proxy | Phase 2 audit | M3.0 | out of Phase 2 scope; hardening item |
+| CF-17 | Per-row / finer-grained authorization policy layer | Phase 2 audit | future | scope is coarse (public/tenant/user) by design today |
 
 ---
 
@@ -376,13 +431,13 @@ Guiding principles (all milestones serve these):
 
 ## Summary
 
-| Phase | Duration | Target | Milestones | Focus |
-|-------|----------|--------|------------|-------|
-| Phase 0 | 1–2 wks | Jul 2026 | 3 | Chimera validation spike & decision gate |
-| Phase 1 | 8–10 wks | Aug–Oct 2026 | 5 | Engine (`edge-core`) + Compiler + CLI |
-| Phase 2 | 6–8 wks | Oct–Dec 2026 | 5 | Infra + Console + Builder → single-worker CMS |
-| Phase 3 | 3–4 wks | Jan–Feb 2027 | 2 | Agent experience & beta |
-| Phase 4 | 2–3 wks | Mar–Apr 2027 | 2 | GA launch |
+| Phase | Duration | Target | Milestones | Status | Focus |
+|-------|----------|--------|------------|--------|-------|
+| Phase 0 | 1–2 wks | Jul 2026 | 3 | 🟢 | Chimera validation spike & decision gate |
+| Phase 1 | 8–10 wks | Aug–Oct 2026 | 5 | 🟢 | Engine (`edge-core`) + Compiler + CLI |
+| Phase 2 | 6–8 wks | Oct–Dec 2026 | 5 | 🟢 | Infra + Console + Builder → single-worker CMS |
+| Phase 3 | 3–4 wks | Jan–Feb 2027 | 3 | 🔵 | Hardening (M3.0) + agent experience + beta |
+| Phase 4 | 2–3 wks | Mar–Apr 2027 | 2 | 🔵 | GA launch |
 
 **Engineering time**: ~21–27 weeks. **Calendar**: July 2026 → GA Q1–Q2 2027.
 
@@ -412,12 +467,14 @@ npx @frontbase/compiler deploy                    # ship it
 
 ## Document Metadata
 
-**Version**: 3.0
-**Status**: Draft — Chimera roadmap
+**Version**: 3.4
+**Status**: Active — Phases 0–2 complete, Phase 3 next
 **Owner**: Architecture Team
-**Next Review**: After Phase 0 completion
+**Next Review**: After Phase 3 M3.0 (hardening) completion
 **Related Documents**:
 - [CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md)
 - [PACKAGE-STRUCTURE.md](./PACKAGE-STRUCTURE.md)
 - [OPENQUESTIONS.md](./OPENQUESTIONS.md)
 - [DECISIONS.md](./DECISIONS.md)
+- Sprint plans: [Phase 1](./plans/phase1-compiler-cli-sprint.md) · [Phase 2](./plans/phase2-cms-sprint.md) · [Phase 3](./plans/phase3-agent-experience-sprint.md)
+- Delivery reports: [Phase 1](./delivery/phase1-delivery-report.md) · [Phase 2](./delivery/phase2-delivery-report.md)
