@@ -15,6 +15,7 @@ import ts from 'typescript';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { relative, extname, join } from 'node:path';
 import { extractFromSource } from '../extractor/schema.js';
+import { buildDescribeFix } from './quickfix.js';
 import type { CommandResult, Issue, Severity } from './types.js';
 
 interface RuleDef {
@@ -83,12 +84,16 @@ function ruleDescribeEveryProp(source: string, sf: ts.SourceFile, rel: string): 
             for (const f of fields) {
                 const path = pathPrefix ? `${pathPrefix}.${f.name}` : f.name;
                 if (!f.description) {
+                    // M3.1.1: attach a machine-applicable edit (append .describe(''))
+                    // for top-level props where the zod chain matches uniquely.
+                    const edit = pathPrefix ? null : buildDescribeFix(source, f.name);
                     issues.push({
                         file: rel, line: lineOfSchema(source),
                         code: 'FB003', message: `Schema property \`${path}\` is missing .describe()`,
                         severity: 'warning', fixable: true,
                         fix: `Add .describe('...') to \`${f.name}\`.`,
                         path,
+                        ...(edit ? { edit } : {}),
                     });
                 }
                 if (f.properties) walk(f.properties, path);

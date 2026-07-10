@@ -52,6 +52,36 @@ export const Schema = z.object({
     submitLabel: z.string().default('Subscribe').describe('Submit'),
     successMessage: z.string().default('Subscribed!').describe('Success'),
 });`,
+    // --- M3.1.4: raised-difficulty shapes (nested arrays-of-objects, formats, nullable, deep nesting) ---
+    TeamGrid: `import { z } from 'zod';
+export const Schema = z.object({
+    members: z.array(z.object({ name: z.string().describe('Name'), role: z.string().describe('Role'), socials: z.object({ twitter: z.string().url().optional().describe('Twitter'), linkedin: z.string().url().optional().describe('LinkedIn') }).describe('Socials'), skills: z.array(z.string()).default([]).describe('Skills') })).describe('Members'),
+    layout: z.enum(['grid', 'list', 'cards']).default('grid').describe('Layout'),
+});`,
+    NullableFields: `import { z } from 'zod';
+export const Schema = z.object({
+    displayName: z.string().nullable().describe('Display name (nullable)'),
+    deletedAt: z.string().datetime().nullable().describe('Deletion timestamp'),
+    tags: z.array(z.string()).nullable().default(null).describe('Tags (nullable)'),
+    verified: z.boolean().default(false).describe('Verified'),
+});`,
+    DeepNesting: `import { z } from 'zod';
+export const Schema = z.object({
+    org: z.object({ name: z.string().describe('Org'), owner: z.object({ profile: z.object({ email: z.string().email().describe('Email'), prefs: z.object({ theme: z.enum(['light', 'dark', 'system']).default('system').describe('Theme') }).describe('Prefs') }).describe('Profile') }).describe('Owner') }).describe('Org'),
+});`,
+    FormatHeavy: `import { z } from 'zod';
+export const Schema = z.object({
+    website: z.string().url().describe('Website'),
+    contactEmail: z.string().email().describe('Contact email'),
+    apiToken: z.string().uuid().describe('API token'),
+    feedUrl: z.string().url().optional().describe('Feed URL'),
+});`,
+    MatrixConfig: `import { z } from 'zod';
+export const Schema = z.object({
+    rows: z.array(z.array(z.number())).default([]).describe('Matrix rows (array of arrays)'),
+    columns: z.array(z.array(z.boolean())).default([]).describe('Column flags'),
+    axis: z.enum(['x', 'y', 'z']).default('x').describe('Axis'),
+});`,
 };
 const dir = mkdtempSync(join(tmpdir(), 'fb-agent-batch-'));
 for (const [name, src] of Object.entries(batch)) writeFileSync(join(dir, name + '.tsx'), src);

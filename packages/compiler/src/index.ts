@@ -34,6 +34,11 @@ export { composeWorker, assertWorkerBudget } from './deploy/compose.js';
 export type { ComposeInput, ComposeResult } from './deploy/compose.js';
 export { deployCommand } from './cli/deploy.js';
 
+// diagnostics (M3.1)
+export { quickFixFor, buildDescribeFix, applyEdit, fixDescription, MISSING_SCHEMA_STUB } from './cli/quickfix.js';
+export type { TextEdit, QuickFixContext } from './cli/quickfix.js';
+export { runParityCheck } from './cli/parity.js';
+
 // SW bundle emitter + browser-manifest emission (A-16 / SEC-1)
 export { emitSwBundle, assertSwBudget, emitBrowserManifest } from './emit/swBundle.js';
 export type { SwEmitInput, SwEmitResult } from './emit/swBundle.js';

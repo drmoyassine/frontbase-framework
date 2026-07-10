@@ -8,6 +8,7 @@ import { join, extname, relative } from 'node:path';
 import ts from 'typescript';
 import { extractFromFile } from '../extractor/schema.js';
 import type { CommandResult, Issue } from './types.js';
+import { quickFixFor, fixDescription } from './quickfix.js';
 
 function walkTsx(root: string, acc: string[] = []): string[] {
     for (const entry of readdirSync(root)) {
@@ -46,10 +47,15 @@ export async function runCheck(projectPath: string, opts: CheckOptions = {}): Pr
             source = fs.readFileSync(file, 'utf8');
             if (diagnostics.length) {
                 for (const d of diagnostics) {
+                    const edit = quickFixFor({ code: d.code, snippet: d.path });
                     issues.push({
                         file: rel, line: lineOfSchema(source), code: d.code,
                         message: `${d.message}${d.path ? ` (at ${d.path})` : ''}`,
-                        severity: 'error', fixable: false, fix: d.suggestion, path: d.path,
+                        severity: 'error',
+                        fixable: !!edit,
+                        fix: d.suggestion ?? fixDescription(d.code),
+                        path: d.path,
+                        ...(edit ? { edit } : {}),
                     });
                 }
             } else {
@@ -59,12 +65,15 @@ export async function runCheck(projectPath: string, opts: CheckOptions = {}): Pr
             const fs = await import('node:fs');
             source = fs.readFileSync(file, 'utf8');
             const isMissing = /No `export const Schema = z\.object/.test((e as Error).message);
+            const code = isMissing ? 'MISSING_SCHEMA' : 'EXTRACTION_ERROR';
+            const edit = isMissing ? quickFixFor({ code }) : null;
             issues.push({
                 file: rel, line: isMissing ? lineOfSchema(source) : 1,
-                code: isMissing ? 'MISSING_SCHEMA' : 'EXTRACTION_ERROR',
+                code,
                 message: isMissing ? 'Component missing a `Schema` (Zod) export' : (e as Error).message,
-                severity: 'error', fixable: isMissing,
-                fix: isMissing ? 'Add `export const Schema = z.object({...})`' : undefined,
+                severity: 'error', fixable: !!edit,
+                fix: fixDescription(code) || (isMissing ? 'Add `export const Schema = z.object({...})`' : undefined),
+                ...(edit ? { edit } : {}),
             });
         }
     }

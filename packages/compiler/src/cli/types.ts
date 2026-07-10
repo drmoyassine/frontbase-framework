@@ -16,6 +16,8 @@ export interface Issue {
     fix?: string;
     /** Property/node path within the file, when applicable (e.g. "items.config"). */
     path?: string;
+    /** Machine-applicable quick-fix (M3.1.1). Present only when `fixable`. */
+    edit?: { type: 'insert' | 'replace' | 'delete'; oldString?: string; newString?: string; atEnd?: boolean };
 }
 
 export interface CommandResult {

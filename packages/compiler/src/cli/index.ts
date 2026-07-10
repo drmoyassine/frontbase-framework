@@ -7,6 +7,7 @@
 import { Command } from 'commander';
 import { runCheck } from './checker.js';
 import { runLint } from './linter.js';
+import { runParityCheck } from './parity.js';
 import { scaffoldProject, type InitVariant } from './scaffold.js';
 import { simulateRender, serve, type ProviderMode } from './simulate.js';
 import { emitSwBundle } from '../emit/swBundle.js';
@@ -49,9 +50,16 @@ export function createProgram(): Command {
     program.command('check [path]')
         .description('Validate component schemas + TypeScript')
         .option('--typecheck', 'also run tsc --noEmit')
+        .option('--parity <manifestPath>', 'render every page through direct/proxy/draft and report byte-diffs')
         .option('--json', 'agent JSON output')
-        .action(async (path: string, opts: { typecheck?: boolean; json?: boolean }) => {
-            const result = await runCheck(path || '.', { typecheck: opts.typecheck });
+        .action(async (path: string, opts: { typecheck?: boolean; parity?: string; json?: boolean }) => {
+            let result: CommandResult;
+            if (opts.parity) {
+                const { manifest } = await import(resolveAbs(opts.parity));
+                result = await runParityCheck(manifest);
+            } else {
+                result = await runCheck(path || '.', { typecheck: opts.typecheck });
+            }
             emit(!!opts.json, result);
             if (!result.success) process.exitCode = 1;
         });
