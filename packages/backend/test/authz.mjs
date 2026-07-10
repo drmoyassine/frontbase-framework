@@ -53,5 +53,12 @@ const anon = makeConsole({ tenant: undefined });
 check('anonymous → GET /pages denied (401)', (await req(anon.app, 'GET', '/pages')).status === 401);
 check('anonymous → PUT draft denied (401)', (await req(anon.app, 'PUT', '/drafts/x', { body: { layoutData: layout } })).status === 401);
 
+// RULE 8: isolate the USER guard. A principal with a tenant but NO user must be
+// denied — and ONLY the !principal.user guard catches this (the tenant guard
+// passes). Without this case, removing the user guard leaves the suite green
+// (hollow) — the mutation harness proves it goes red only with this isolation.
+const noUser = makeConsole({ principal: { user: null, tenant: 'tenant-X' } });
+check('user guard: tenant-but-no-user → 401 (isolates the user guard)', (await req(noUser.app, 'GET', '/pages')).status === 401);
+
 console.log(failures === 0 ? '\nauthz: PASS ✅' : `\nauthz: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

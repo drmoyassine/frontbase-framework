@@ -5,16 +5,20 @@ export function principalFor(tenant) {
     return async () => ({ user: { id: tenant === undefined ? 'anon' : `user-${tenant}` }, tenant });
 }
 
-export function makeConsole({ tenant, dbUrl = ':memory:', queries = {} } = {}) {
+/**
+ * Build a console. `principal` overrides resolvePrincipal entirely (use it to
+ * isolate a specific auth guard — e.g. { user: null, tenant: 'X' } exercises the
+ * user guard ALONE, since the tenant guard would otherwise be the one rejecting).
+ */
+export function makeConsole({ tenant, dbUrl = ':memory:', queries = {}, principal } = {}) {
     let clock = 0;
     return {
         app: createConsole({
-            resolvePrincipal: principalFor(tenant),
+            resolvePrincipal: principal ? async () => principal : principalFor(tenant),
             dbUrl,
             queries,
             now: () => `2026-07-10T00:00:${String(clock++).padStart(2, '0')}Z`,
         }),
-        setTenant(t) { this.__tenant = t; },
     };
 }
 

@@ -16,7 +16,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node test/providers.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/workflow-durable.mjs && node test/no-leak.mjs"
+    "test": "tsc -p tsconfig.json && node test/providers.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/workflow-durable.mjs && node test/no-leak.mjs",
+    "test:mutation": "node test/mutation.mjs"
   },
   "peerDependencies": {
     "@frontbase/edge-core": "workspace:*"

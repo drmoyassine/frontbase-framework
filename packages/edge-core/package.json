@@ -20,7 +20,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "node test/parity.mjs && node test/engine.mjs && node test/scope.mjs && node test/behaviors.mjs && node test/workflow.mjs"
+    "test": "node test/parity.mjs && node test/engine.mjs && node test/scope.mjs && node test/behaviors.mjs && node test/workflow.mjs",
+    "test:mutation": "node test/mutation.mjs"
   },
   "dependencies": {
     "hono": "^4.6.0",
