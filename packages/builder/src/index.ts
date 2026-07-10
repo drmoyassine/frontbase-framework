@@ -12,3 +12,10 @@ export { BuilderWorkspace } from './components/BuilderWorkspace.js';
 export type { BuilderWorkspaceProps } from './components/BuilderWorkspace.js';
 export { panelFieldsFromManifest } from './components/PropertyPanel.js';
 export type { PanelField } from './components/PropertyPanel.js';
+// canvas (M3.0.2) — the pure editing model + React view
+export { Canvas } from './canvas/Canvas.js';
+export type { CanvasProps } from './canvas/Canvas.js';
+export {
+    emptyCanvas, addNode, moveNode, removeNode, updateProps, selectNode, toLayout, layers, nodeId,
+} from './canvas/model.js';
+export type { CanvasNode, CanvasLayout, CanvasState } from './canvas/model.js';

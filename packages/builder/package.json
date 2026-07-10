@@ -16,7 +16,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node test/draft.mjs && node test/parity.mjs && node test/panel.mjs && node test/no-leak.mjs",
+    "test": "tsc -p tsconfig.json && node test/draft.mjs && node test/parity.mjs && node test/canvas-perf.mjs && node test/canvas-parity.mjs && node test/panel.mjs && node test/no-leak.mjs",
     "test:mutation": "node test/mutation.mjs"
   },
   "peerDependencies": {

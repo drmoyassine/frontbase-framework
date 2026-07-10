@@ -17,8 +17,12 @@ const CANARY = 'EDGE_INFRA_DRIVER_SECRET_hunter2';
 const importRe = /(?:import|from)\s+['"]@frontbase\/edge-infra(?:\/[^'"]*)?['"]/;
 const barrel = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
 const draftSrc = readFileSync(new URL('../src/draft/localDraftProvider.ts', import.meta.url), 'utf8');
+const canvasSrc = readFileSync(new URL('../src/canvas/Canvas.tsx', import.meta.url), 'utf8');
+const canvasModelSrc = readFileSync(new URL('../src/canvas/model.ts', import.meta.url), 'utf8');
 check('builder barrel does not IMPORT edge-infra', !importRe.test(barrel));
 check('localDraftProvider does not IMPORT edge-infra', !importRe.test(draftSrc));
+check('canvas (Canvas.tsx) does not IMPORT edge-infra (CF-8)', !importRe.test(canvasSrc));
+check('canvas model does not IMPORT edge-infra (CF-8)', !importRe.test(canvasModelSrc));
 
 // 2. Bundle the builder's draft entry for the browser; assert it contains no
 //    canary even when a fake edge-infra module (with the canary) exists in the
