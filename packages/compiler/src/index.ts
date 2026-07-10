@@ -21,6 +21,10 @@ export type { EdgeRegisteredQuery, BrowserRegisteredQuery } from './queries/regi
 export { buildSiteManifest, buildBrowserManifest, serializeManifest, stableStringify } from './manifest/build.js';
 export type { ManifestInput, ManifestPageInput, SiteManifest } from './manifest/build.js';
 
+// layout migration (version-flagged, CF-9)
+export { migrateLayout, migrateAndStamp, detectLayoutVersion, CURRENT_LAYOUT_VERSION } from './manifest/migrate.js';
+export type { LayoutData, VersionedLayout } from './manifest/migrate.js';
+
 // vite plugin (also available via the /vite subpath)
 export { frontbasePlugin, collectedManifests } from './vite/index.js';
 export type { VitePlugin, FrontbasePluginOptions } from './vite/index.js';

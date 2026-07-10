@@ -26,6 +26,10 @@ export type { ProviderEnv } from './providers/registry.js';
 export { createResolvePrincipal } from './proxy/auth.js';
 export type { AuthConfig, ApiKeyHashEntry } from './proxy/auth.js';
 
+// rate limiting (per-principal token bucket; opaque 429)
+export { consumeToken, rateLimitGuard, RATE_LIMITED_BODY } from './proxy/ratelimit.js';
+export type { RateLimitConfig, RateLimitResult } from './proxy/ratelimit.js';
+
 // cache
 export { memoryCache, nullCache, kvCache } from './cache/providers.js';
 export type { CacheProvider } from './cache/types.js';

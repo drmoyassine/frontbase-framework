@@ -17,12 +17,14 @@ const PKG = '@frontbase/edge-infra';
 const pkgDir = repoRoot + 'packages/edge-infra/';
 const HARNESS = 'packages/edge-infra/test/_harness.mjs';
 const PROVIDERS = 'packages/edge-infra/src/cache/providers.ts';
+const RATELIMIT = 'packages/edge-infra/src/proxy/ratelimit.ts';
 
 console.log('— edge-infra mutation harness —\n');
 if (!buildPackage(PKG)) { console.log('baseline build failed'); process.exit(2); }
 if (runGate(pkgDir, 'test/isolation.mjs') !== 0) { console.log('baseline isolation RED'); process.exit(2); }
 if (runGate(pkgDir, 'test/cache.mjs') !== 0) { console.log('baseline cache RED'); process.exit(2); }
-console.log('baseline: isolation + cache GREEN\n');
+if (runGate(pkgDir, 'test/ratelimit.mjs') !== 0) { console.log('baseline ratelimit RED'); process.exit(2); }
+console.log('baseline: isolation + cache + ratelimit GREEN\n');
 
 // 1. Isolation — drop the WHERE tenant predicate. A and B now see all 4 rows.
 await withSourceMutation(
@@ -47,7 +49,20 @@ await withSourceMutation(
     },
 );
 
-// 3. no-leak artifact mutation — a browser bundle that DOES import a server
+// 3. Rate limit — remove the over-limit denial so consumeToken always allows.
+//    ratelimit.mjs must go red (request 4 should have been denied).
+await withSourceMutation(
+    'ratelimit: over-limit denial (CF-16)',
+    RATELIMIT,
+    'if (current >= cfg.limit) {\n        return { allowed: false, remaining: 0 };\n    }',
+    '/* MUTATION: over-limit denial removed */',
+    async () => {
+        buildPackage(PKG);
+        expectRed('ratelimit: goes red when the over-limit denial is removed', runGate(pkgDir, 'test/ratelimit.mjs'));
+    },
+);
+
+// 4. no-leak artifact mutation — a browser bundle that DOES import a server
 //    module with a canary. The exclusion check must fire (find the canary).
 const CANARY = 'EDGE_INFRA_CANARY_vault_key_hunter2';
 const leaky = await esbuild.build({

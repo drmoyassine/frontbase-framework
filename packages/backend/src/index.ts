@@ -55,4 +55,6 @@ export function createConsole(deps: CreateConsoleDeps): Hono<{ Variables: Consol
 
 export { ConsoleStore, defaultDenyAuth, opaqueErrors };
 export { publishPage } from './publish/pipeline.js';
+export { migrateUp, migrateDown, appliedVersions, schemaFingerprint, MIGRATIONS } from './db/migrations.js';
+export type { Migration } from './db/migrations.js';
 export * from './db/schema.js';

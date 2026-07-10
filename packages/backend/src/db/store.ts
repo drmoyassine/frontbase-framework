@@ -9,6 +9,7 @@
 import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql';
 import { createClient, type Client } from '@libsql/client';
 import { publishedPages, drafts, workflows } from './schema.js';
+import { migrateUp } from './migrations.js';
 
 export interface PageInput { slug: string; title: string; description?: string; layoutData: string; cssBundle?: string; }
 
@@ -23,15 +24,12 @@ export class ConsoleStore {
         this.tenant = tenant;
     }
 
-    /** Create a store for a tenant, over a libsql URL (`:memory:` for tests). */
+    /** Create a store for a tenant, over a libsql URL (`:memory:` for tests).
+     *  Schema is brought up to date via the versioned migration runner (M3.0.5)
+     *  — the Drizzle schema (schema.ts) stays the single source of truth (A-13). */
     static async create(url: string, tenant: string): Promise<ConsoleStore> {
         const client = createClient({ url });
-        const ddls = [
-            `CREATE TABLE IF NOT EXISTS published_pages (slug TEXT NOT NULL, tenant_slug TEXT NOT NULL, title TEXT, description TEXT, layout_data TEXT, css_bundle TEXT, version INTEGER DEFAULT 1, updated_at TEXT, PRIMARY KEY (slug, tenant_slug))`,
-            `CREATE TABLE IF NOT EXISTS drafts (slug TEXT NOT NULL, tenant_slug TEXT NOT NULL, layout_data TEXT, updated_at TEXT, PRIMARY KEY (slug, tenant_slug))`,
-            `CREATE TABLE IF NOT EXISTS workflows (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT, nodes TEXT, edges TEXT, is_active INTEGER DEFAULT 1, version INTEGER DEFAULT 1, updated_at TEXT, PRIMARY KEY (id, tenant_slug))`,
-        ];
-        for (const sql of ddls) await client.execute(sql);
+        await migrateUp(client);
         const db = drizzle(client);
         return new ConsoleStore(db, client, tenant);
     }
