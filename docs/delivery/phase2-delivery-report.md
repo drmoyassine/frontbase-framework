@@ -114,17 +114,47 @@ pnpm --filter @frontbase/edge-core test    # parity 14/14 + scope 13/13
 
 ## 5. Security sweep — the GOLDEN RULES held (mandatory before sign-off)
 
+> **⚠️ 2026-07-10 post-delivery audit — read §5.1 first.** A skeptical review (same method that
+> caught the Phase 1 bugs) found **two RULE 2 issues** the "30 suites green" masked, and **fixed**
+> them: (SEC-P2-1) the eSSR page-render path bypassed scope enforcement and tenant threading;
+> (SEC-P2-2) the backend `authz` test used two separate in-memory DBs, so its cross-tenant assertions
+> proved nothing (they passed even with the tenant predicate deleted — mutation-verified). Both are
+> fixed with real regression gates. The table below reflects the corrected, post-fix state.
+
 Each rule maps to a Phase 1 audit bug. The sweep re-runs the mandated test pattern across every new package.
 
 | Rule | Phase 1 bug | Gates run this phase | Result |
 |---|---|---|---|
 | **1** — no server code in browser bundles | SEC-1 (SW leaked `execute`+secrets) | `edge-infra/no-leak`, `builder/no-leak`, `compiler/sw-no-leak`, `compiler/deploy` (/sw.js boundary) | ✅ all PASS |
-| **2** — deny-by-default + tenant isolation | SEC-2 (scope never enforced) | `edge-core/scope`, `edge-infra/isolation` (parameterized), `edge-infra/proxy-auth`, `backend/authz` | ✅ all PASS |
+| **2** — deny-by-default + tenant isolation | SEC-2 (scope never enforced) | `edge-core/scope` (**now covers the page path**), `edge-infra/isolation` (parameterized), `edge-infra/proxy-auth`, `backend/authz` (**now shares one DB**) | ✅ all PASS (post-fix) |
 | **3** — no shared refs (copy on read) | BUG-1 (rows by reference) | `edge-infra/cache`, `edge-infra/isolation`, `builder/draft`, `backend` store | ✅ all PASS |
 | **4** — opaque client errors | BUG-2 (leaked err.message) | `backend/errors`, `edge-infra/providers` (opaque `query_execution_failed`) | ✅ all PASS |
 | **5** — end-to-end scaffold build | DEV-1 (in-repo green, real project broke) | `compiler/deploy` builds a REAL composed worker; `builder/parity` renders a real draft | ✅ PASS |
 | **6** — single-owner types | DEV-1 root cause | edge-infra/backend/builder **alias** edge-core types (no redeclaration) | ✅ (build clean) |
 | **7** — extraction discipline | Phase 1 gotchas | Web Crypto (not node:crypto); no cross-repo imports; zod 3.25; ESM `.js` | ✅ (build clean) |
+
+### 5.1 Post-delivery audit findings (both FIXED 2026-07-10)
+
+**SEC-P2-1 — eSSR page path bypassed scope + tenant (HIGH).** `engine.ts` enforced `enforceScope`
+and threaded `{ user, tenant }` on the `POST /api/data/:queryId` proxy path, but the page-render
+catch-all called `data.query(page.queryId)` with **no principal and no context**. A published page
+whose `queryId` was `tenant`/`user`-scoped would either (a) reach the executor with `ctx.tenant ===
+undefined` → `requireTenant` throws → 500 (page unrenderable), or (b) if an executor omitted
+`requireTenant`, render **cross-tenant data** to an anonymous visitor. **Fix:** the page path now
+resolves the principal, calls `enforceScope` (a scoped page requested without the principal is denied
+401/403, not rendered with silently-empty data), and threads `{ user, tenant }` into the executor —
+identical to the proxy. **Regression:** `edge-core/test/scope.mjs` now renders a tenant-scoped page as
+tenant A and tenant B and asserts B never sees A's data; an anonymous request to a tenant page → 401.
+Byte-parity for public pages unchanged (14/14).
+
+**SEC-P2-2 — backend isolation test proved nothing (test-validity, HIGH).** `backend/test/authz.mjs`
+created two consoles, each with its own `dbUrl: ':memory:'`. Each `@libsql/client` `:memory:` handle is
+a **separate database** (verified), so "tenant B can't read tenant A's draft" was true because B's DB
+was simply empty — the assertion passed **even with `WHERE tenant_slug = ?` removed** (mutation-tested:
+removing the predicate did NOT fail the old test). This is the Phase 1 false-confidence pattern
+(green gate, no real guarantee). **Fix:** both tenants now share ONE temp-file libsql DB, so the tenant
+predicate is the *only* thing separating them. **Mutation-verified:** with the predicate deleted, the
+fixed test now FAILS (tenant B reads A's row); with it present, it passes.
 
 **Decision A-17 (this phase)**: tenant isolation is application-level (`WHERE tenant = ctx.tenant`), RLS/bindings defense-in-depth. This is what makes the SQLite isolation test authoritative for D1/Turso/Postgres — the guarantee under test is the same code path on every provider. Enabling a cloud provider (creds present) runs the **identical** gate, not a reimplementation.
 

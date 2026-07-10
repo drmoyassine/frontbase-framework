@@ -140,7 +140,28 @@ export function createEngine(opts: EngineOptions): Hono {
         const page = manifest.pages[path];
         if (!page) return c.notFound();
 
-        const records = page.queryId ? await data.query(page.queryId) : [];
+        // Page data goes through the SAME scope enforcement + tenant threading as
+        // the Edge Data Proxy — otherwise a tenant/user-scoped page query would
+        // either leak cross-tenant data or reach an executor with no tenant.
+        let records: Record<string, unknown>[] = [];
+        if (page.queryId) {
+            const q = manifest.queries[page.queryId];
+            if (!q) {
+                console.error(`[chimera-engine:${environment}] page "${path}" references unknown query "${page.queryId}"`);
+                return c.json({ error: 'internal_error' }, 500);
+            }
+            const principal = await engineConfig().resolvePrincipal(c.req.raw);
+            const denial = enforceScope(q, principal);
+            // A scoped page requested without the required principal is not
+            // rendered with empty data (which would silently hide content) — it
+            // is denied, same as the proxy. Public pages are unaffected.
+            if (denial) return c.json({ error: denial.error }, denial.status);
+            records = await data.query(page.queryId, {}, {
+                request: c.req.raw,
+                user: principal.user,
+                tenant: principal.tenant,
+            });
+        }
         const body = await renderPage(page.layout, buildContext(page, path, records, opts));
         const html = renderDocument(page, body, {
             environment,
