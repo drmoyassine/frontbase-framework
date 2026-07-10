@@ -1,4 +1,4 @@
- ✅ DONE 2026-07-10
+# Frontbase Framework Evolution: Milestones (Chimera)
 
 **Version**: 3.4
 **Status**: Phases 0, 1, 2 ✅ COMPLETE — Phase 3 (Agent Experience) next
@@ -373,22 +373,23 @@ Consolidated deferred work from every phase, so nothing is lost between mileston
 
 | # | Item | From | Lands in | Notes |
 |---|---|---|---|---|
-| CF-1 | Safari/iOS + SW-disabled fallback documented/tested | M0.1 (CHM-2) | M3.0 | edge-path fallback works implicitly; needs explicit test + docs |
+| CF-1 | Safari/iOS + SW-disabled fallback documented/tested | M0.1 (CHM-2) | M3.0 | ✅ DONE 2026-07-10 — `edge-core/test/fallback.mjs` (edge renders full page, no SW APIs) |
 | CF-2 | `generateZodFromPropertySchema()` legacy bridge | M0.2 | — | **superseded** by the TS-API extractor (M1.2); close, don't build |
 | CF-3 | Dev-only file-system routing | M1.1 | M3.1 | compiler dev-server concern, not engine-runtime |
 | CF-4 | ESLint programmatic wrapping for `lint` | M1.3 | M3.1 | 3 custom rules already work standalone; wrapping is thin |
 | CF-5 | `simulate --serve` optional `@hono/node-server` dep documented | M1.4 | M3.0 | works; just document the optional install |
 | CF-6 | `init` emits version ranges (not `workspace:*`) once published | M1.3 | M4.1 | pre-publish concern |
 | CF-7 | Browser query projection → JSON-Schema (if SW needs client-side param validation) | M1.2 | future | currently ships `hasParams` marker only; validation is edge-side by design |
-| CF-8 | **Builder full canvas** (drag/drop < 100 ms) + React Flow workflow editor | M2.3 | M3.0 | largest item; product-repo port |
-| CF-9 | Legacy JSON layout version-flagged migration | M2.3 | M3.0 | |
+| CF-8 | **Builder full canvas** (drag/drop < 100 ms) + React Flow workflow editor | M2.3 | M3.0 | ✅ DONE 2026-07-10 — canvas model + view, loop p50 0.18ms; React Flow workflow editor still a follow-up |
+| CF-9 | Legacy JSON layout version-flagged migration | M2.3 | M3.0 | ✅ DONE 2026-07-10 — `compiler migrateLayout`; migrated legacy renders byte-identical to corpus |
 | CF-10 | Cloud-DB **live** gates (D1/Turso/Postgres) | M2.1/2.2 | M3.0 | SQLite authoritative now (A-17); creds run identical suite |
-| CF-11 | Drizzle **migration runner** (versioned/reversible) | M2.2 | M3.0 | schema is single source now; auto-create replaces a real runner |
+| CF-11 | Drizzle **migration runner** (versioned/reversible) | M2.2 | M3.0 | ✅ DONE 2026-07-10 — `backend/db/migrations.ts`; apply/rollback/re-apply converges |
 | CF-12 | **Live `wrangler deploy`** to public URL + SW-handover check | M1.1/M2.4 | M3.0 | one manual step; dry-run + artifact proven |
 | CF-13 | Live **Deno Deploy** via deployctl | M2.4 | M3.0 | adapter wired; needs a live run |
 | CF-14 | Agent prompt templates | M2.5 | M3.1 | moved to where agent tooling lives |
 | CF-15 | **RULE 8 — mutation-tested security gates** | Phase 2 audit | M3.0 | both audit bugs were green-but-hollow gates |
-| CF-16 | Rate limiting / abuse protection on the proxy | Phase 2 audit | M3.0 | out of Phase 2 scope; hardening item |
+| CF-16 | Rate limiting / abuse protection on the proxy | Phase 2 audit | M3.0 | ✅ DONE 2026-07-10 — `edge-infra/proxy/ratelimit.ts` (per-principal bucket, opaque 429, mutation-proven) |
+| CF-15 | RULE 8 mutation harness — every security gate proven RED-on-break | Phase 2 audit | M3.0 | ✅ DONE 2026-07-10 — `test:mutation`, 12 proofs |
 | CF-17 | Per-row / finer-grained authorization policy layer | Phase 2 audit | future | scope is coarse (public/tenant/user) by design today |
 
 ---
