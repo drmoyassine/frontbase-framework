@@ -35,11 +35,14 @@ await check('GET /sw.js serves the browser engine bundle', async () => {
     const r = await req('/sw.js');
     return r.status === 200 && r.headers.get('content-type') === 'text/javascript' && (await r.text()).length > 1000;
 });
-await check('GET /console serves the admin shell (HTML, not eSSR)', async () => {
+await check('GET /console serves the SPA shell (inlined React app, not eSSR)', async () => {
     const r = await req('/console');
     const ct = r.headers.get('content-type') ?? '';
     const body = await r.text();
-    return r.status === 200 && ct.includes('text/html') && body.includes('Frontbase Console') && !body.includes('chimera-rendered-by');
+    // The SPA bundle (~hundreds of KB) is inlined into the HTML — a large body
+    // with the #root mount proves it's the React shell, not the eSSR catch-all.
+    return r.status === 200 && ct.includes('text/html') && body.includes('id="root"')
+        && body.length > 50000 && !body.includes('chimera-rendered-by');
 });
 
 // ---- console: public vs login-gated ----

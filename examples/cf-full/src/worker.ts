@@ -21,8 +21,13 @@ import { createEngine, directProvider, configureEngine } from '@frontbase/edge-c
 import { createConsole, migrateUp, seedOwner, UserStore } from '@frontbase/backend';
 import { d1RunnerFromBinding, type DbRunner } from '@frontbase/edge-infra';
 import { manifest } from './manifest.js';
-import { adminShell } from './admin.js';
 import SW_BUNDLE from 'virtual:sw-bundle';
+import SPA_BUNDLE from 'virtual:spa-bundle';
+
+// The admin console SPA shell. The IIFE (built by @frontbase/admin-console, CSS
+// runtime-inlined) mounts React into #root. HashRouter is used, so the worker
+// only ever serves /console — client routes live in the #hash.
+const SPA_HTML = `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Frontbase Console</title></head><body><div id="root"></div><script>${SPA_BUNDLE}</script></body></html>`;
 
 // Host config: there is no process.env on Workers — supply edition/env explicitly.
 configureEngine({ edition: 'community', nodeEnv: 'production' });
@@ -76,11 +81,11 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         swBundle: SW_BUNDLE,
         console: consoleApp,
     });
-    // Mount the admin shell at /console AHEAD of the engine, so the eSSR
+    // Serve the admin console SPA at /console AHEAD of the engine, so the eSSR
     // catch-all doesn't swallow it. Everything else (public pages, /sw.js,
     // /api/console/*) falls through to the engine.
     const app = new Hono();
-    app.route('/console', adminShell());
+    app.get('/console', (c) => c.html(SPA_HTML));
     app.route('/', engine);
     return app;
 }

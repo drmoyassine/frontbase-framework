@@ -33,12 +33,18 @@ const REPO_ROOT = (function findRoot(dir) {
     }
     return dir;
 })(here);
-const DEP_PKGS = ['@frontbase/edge-core', '@frontbase/edge-infra', '@frontbase/compiler', '@frontbase/backend'];
+const DEP_PKGS = [
+    { name: '@frontbase/edge-core', artifact: 'dist/index.js' },
+    { name: '@frontbase/edge-infra', artifact: 'dist/index.js' },
+    { name: '@frontbase/compiler', artifact: 'dist/index.js' },
+    { name: '@frontbase/backend', artifact: 'dist/index.js' },
+    { name: '@frontbase/admin-console', artifact: 'dist/spa.js' },
+];
 function pkgDir(name) { return join(REPO_ROOT, 'packages', name.replace(/^@frontbase\//, '')); }
-const missing = DEP_PKGS.filter((n) => !existsSync(join(pkgDir(n), 'dist', 'index.js')));
+const missing = DEP_PKGS.filter((p) => !existsSync(join(pkgDir(p.name), p.artifact)));
 if (missing.length > 0) {
-    console.log(`→ building ${missing.length} unbuilt workspace package(s): ${missing.join(', ')}`);
-    const filters = missing.map((n) => ['--filter', n]).flat();
+    console.log(`→ building ${missing.length} unbuilt workspace package(s): ${missing.map((p) => p.name).join(', ')}`);
+    const filters = missing.map((p) => ['--filter', p.name]).flat();
     const r = spawnSync('pnpm', [...filters, 'build'], { cwd: REPO_ROOT, stdio: 'inherit', shell: process.platform === 'win32' });
     if (r.status !== 0) {
         console.error('\n✗ workspace dependency build failed. Run `pnpm -r build` manually, then retry.');
@@ -89,12 +95,23 @@ const inlineSwPlugin = {
     },
 };
 
+// 2b. Inline the admin-console SPA bundle (built by @frontbase/admin-console)
+//     the same way → one artifact, no static assets.
+const SPA_SOURCE = readFileSync(join(pkgDir('@frontbase/admin-console'), 'dist', 'spa.js'), 'utf8');
+const inlineSpaPlugin = {
+    name: 'inline-spa',
+    setup(build) {
+        build.onResolve({ filter: /^virtual:spa-bundle$/ }, () => ({ path: 'virtual:spa-bundle', namespace: 'vspa' }));
+        build.onLoad({ filter: /.*/, namespace: 'vspa' }, () => ({ contents: `export default ${JSON.stringify(SPA_SOURCE)};`, loader: 'js' }));
+    },
+};
+
 await esbuild.build({
     ...shared,
     entryPoints: [join(here, 'src', 'worker.ts')],
     outfile: join(here, 'dist', 'worker.mjs'),
     minify: true,
-    plugins: [inlineSwPlugin, optionalStub],
+    plugins: [inlineSwPlugin, inlineSpaPlugin, optionalStub],
 });
 
 // 3. Node smoke build (unminified, importable) — the SAME worker + a memory
@@ -109,7 +126,7 @@ await esbuild.build({
     entryPoints: [join(here, 'src', 'smoke.ts')],
     outfile: join(here, 'dist', 'smoke.mjs'),
     minify: false,
-    plugins: [inlineSwPlugin],
+    plugins: [inlineSwPlugin, inlineSpaPlugin],
 });
 
 const raw = statSync(join(here, 'dist', 'worker.mjs')).size;
@@ -118,3 +135,4 @@ console.log('=== full-CMS CF worker artifact ===');
 console.log(`worker.mjs min:      ${(raw / 1024).toFixed(1)} KB`);
 console.log(`worker.mjs min+gzip: ${(gz / 1024).toFixed(1)} KB  (CF free limit 1024 KB — ${gz <= 1024 * 1024 ? 'PASS ✅' : 'FAIL ❌'})`);
 console.log(`  includes inlined /sw.js: ${(SW_SOURCE.length / 1024).toFixed(1)} KB`);
+console.log(`  includes inlined /console SPA: ${(SPA_SOURCE.length / 1024).toFixed(1)} KB`);
