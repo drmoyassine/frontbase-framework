@@ -32,12 +32,34 @@
 | B7 | Milestone-3 picker options | **D1 (default), Turso, Postgres, SQLite** — the four that exist. **Supabase shown as "coming soon" (disabled).** Selecting a type + entering credentials writes them as deploy secrets and rebuilds the console's `DbRunner`. |
 | B8 | Credentials never leak | DB credentials (Turso token, Postgres URL) stored as CF secrets / Docker env — never in `wrangler.toml`, git, or a response/log. A no-leak gate. |
 | B9 | edge-infra is the adapter home | Any DB adapter the console uses is edge-infra's (`buildDataProvider`/`DbRunner`). The console NEVER hand-rolls a driver (RULE 6 — one source of truth). |
+| B10 | Worker entry shape | The scaffold `worker.ts` is a **fetch-handler object** with a lazy, env-bound, cached `getEngine(env)` — NOT `export default engine`. This is mandatory for CF D1 (binding lives in `env`). See BLOCKER-1. |
 
 ---
 
 ## GOLDEN RULES 1–8 all apply (see the Phase 2 + Phase 3 plans). This touches DB access + secrets — RULE 1 (no-leak), RULE 2 (tenant predicate unchanged), RULE 3 (copies), RULE 4 (opaque errors), RULE 8 (mutation-prove).
 
 **Record Decision A-19 (Console DB Unification & CF D1 Default)** in `docs/DECISIONS.md` summarizing B1–B9 before M-DB.0 closes.
+
+---
+
+## ⚠️ VERIFIED BLOCKERS (read before touching code — these were confirmed in the codebase 2026-07-10)
+
+These are the exact reasons the console does not yet run on CF. The steps below fix each. Do NOT deviate.
+
+**BLOCKER-1 — CF D1 bindings live in per-request `env`, but the console is built at MODULE-INIT.**
+The scaffold `worker.ts` is `export default engine` — `createEngine`/`createConsole` run once at module load. A Cloudflare **D1 binding only exists inside `env`, which the runtime passes per request** (`export default { fetch(req, env, ctx) }`). So you **cannot** build a D1-backed console at init — there is no `env` yet.
+- **FIX (decision B10):** the scaffold `worker.ts` becomes a **fetch-handler object**, not a bare engine: `export default { async fetch(req, env, ctx) { const engine = getEngine(env); return engine.fetch(req, env, ctx); } }` where `getEngine(env)` **lazily builds + caches** the engine on first request (module-scoped `let cached`). The D1 `DbRunner` is built from `env.DB` inside `getEngine`. Non-CF hosts (Node/Docker) pass a synthetic `env` with a `dbUrl`. **edge-core is NOT changed** — `engine.fetch` already accepts `(req, env, ctx)` (Hono signature); the wrapper just defers construction.
+- **Console env access:** `createConsole` currently builds its store from `deps.dbUrl` at init. Change it to accept a **`makeRunner: (tenant) => Promise<DbRunner>`** (or a ready `DbRunner`), called lazily inside `storeFor` — so the runner can come from the per-request `env.DB`. The lazy `storeFor` cache already exists; just make its factory env-aware.
+
+**BLOCKER-2 — `createConsole` takes `dbUrl` (libsql-only) and `resolvePrincipal` is REQUIRED with no `sessionSecret`.**
+`CreateConsoleDeps = { resolvePrincipal, dbUrl, ... }` — `dbUrl` hardwires libsql (no D1), and there is no `sessionSecret` for the identity sprint to issue sessions against.
+- **FIX (B1 + identity D2):** `CreateConsoleDeps` becomes `{ makeRunner, resolvePrincipal?, sessionSecret?, ... }`. `dbUrl` stays as a **convenience** that builds `sqliteRunner(dbUrl)` (Docker/tests unchanged). If `resolvePrincipal` is omitted but `sessionSecret` is given, build it from `createResolvePrincipal({ jwtSecret: sessionSecret, jwtCookie: 'fb_session' })` (this is the identity-sprint seam — land the field now, wire login in M-ID.1).
+
+**BLOCKER-3 — `deploy.ts` only runs `wrangler deploy`; it provisions nothing.**
+Confirmed: the live-deploy branch is `execFile('wrangler', ['deploy'])` — no `d1 create`, no binding write.
+- **FIX (B2/B6):** before `wrangler deploy` (CF target, not `--dry-run`), run the new `provisionD1(cwd)` step: if `wrangler.toml` has no `[[d1_databases]]`, `execFile('wrangler', ['d1','create', '<name>-db'])`, parse the `database_id` from stdout, append the `[[d1_databases]] binding="DB", database_id="..."` block to `wrangler.toml`, then `wrangler d1 migrations` is NOT used (we run migrations in-worker on first boot via `migrateUp` on the D1 runner). Idempotent (B6).
+
+**BLOCKER-4 (identity sprint dependency) — first-boot migration + seed must run inside the lazy `getEngine(env)`**, because that's the only place `env.DB` exists. `migrateUp(runner)` + `seedOwner` run there, guarded by a module-scoped `initialized` flag so they run once per isolate. Note this in the identity plan's ID.1.6.
 
 ---
 
@@ -68,15 +90,35 @@ packages/backend/src/index.ts  # EDIT — createConsole gains `runner: DbRunner`
 
 **DB.0.4 — CF D1 provisioning (`deploy.ts` + `provision-d1.ts`, B2/B6).** On `frontbase deploy` (CF, not dry-run): if `wrangler.toml` has no `[[d1_databases]]`, run `wrangler d1 create <app>-db`, capture the `database_id`, append the binding (`binding = "DB"`), and set the scaffold worker to build `d1RunnerFromBinding(env.DB)`. Idempotent (B6). Gate `compiler/test/provision-d1.mjs`: with a mocked wrangler, a fresh project gets a `d1 create` + a written binding; a second run reuses it (no second create); the binding name is `DB`.
 
-**DB.0.5 — Scaffold wiring.** Scaffold `worker.ts`: on CF, `createConsole({ runner: d1RunnerFromBinding(env.DB), ... })`; the Docker/dev scaffold uses `ConsoleStore.fromUrl('file:./data/frontbase.db')`. Update `wrangler.toml` template to include the `[[d1_databases]]` placeholder comment. **RULE 5:** an end-to-end test scaffolds a `--full` project and builds it with the D1 binding shape.
+**DB.0.5 — Scaffold wiring (the lazy env-bound worker — BLOCKER-1/B10).** Scaffold `worker.ts` becomes:
+```ts
+import { createEngine, directProvider } from '@frontbase/edge-core';
+import { createConsole } from '@frontbase/backend';
+import { d1RunnerFromBinding, sqliteRunner } from '@frontbase/edge-infra';
+import { manifest } from './manifest.edge.js';
+
+let cached: ReturnType<typeof createEngine> | null = null;
+function getEngine(env: any) {
+  if (cached) return cached;
+  // CF: env.DB is the D1 binding. Docker/dev: env.DB_URL is a file: URL.
+  const makeRunner = async () => env.DB ? d1RunnerFromBinding(env.DB) : sqliteRunner(env.DB_URL ?? 'file:./data/frontbase.db');
+  const console = createConsole({ makeRunner, sessionSecret: env.SESSION_SECRET, queries });
+  cached = createEngine({ manifest, data: directProvider(manifest), environment: 'edge', console });
+  return cached;
+}
+export default { async fetch(req: Request, env: any, ctx: any) { return getEngine(env).fetch(req, env, ctx); } };
+```
+The Docker/dev scaffold passes `env.DB_URL='file:./data/frontbase.db'`. Update the `wrangler.toml` template to include the `[[d1_databases]]` block (written by `provisionD1`, or a commented placeholder pre-provision). **RULE 5:** an end-to-end test scaffolds a `--full` project and builds it with this worker shape (a `deploy --dry-run` composes it). **Verify `engine.fetch(req, env, ctx)` accepts the 3-arg Hono signature (it does — no edge-core change).**
 
 ### M-DB.0 acceptance gates
-- [ ] `ConsoleStore` runs on a `DbRunner`; all backend suites green on SQLite; D1 runner round-trips (credential-gated).
-- [ ] Migrations run via DbRunner; apply/rollback/re-apply converges on SQLite + (gated) D1.
-- [ ] `frontbase deploy` (CF) provisions D1 idempotently, writes the `DB` binding, wires the console to it.
+- [ ] `ConsoleStore` runs on a `DbRunner` (via `makeRunner`); all backend suites green on SQLite; D1 runner round-trips (credential-gated).
+- [ ] `createConsole` accepts `{ makeRunner, sessionSecret?, resolvePrincipal? }`; the lazy env-bound worker builds the D1 runner from `env.DB` on first request (BLOCKER-1 fixed).
+- [ ] Migrations run via DbRunner; apply/rollback/re-apply converges on SQLite + (gated) D1; first-boot `migrateUp` runs inside `getEngine(env)` once per isolate.
+- [ ] `frontbase deploy` (CF) provisions D1 idempotently (`d1 create` + `[[d1_databases]]` binding write), reuses on re-run.
 - [ ] Docker/dev path uses a SQLite file with no external service.
 - [ ] **Tenant-predicate mutation still RED after the refactor (RULE 8); no-leak on DB credentials (RULE 1).**
 - [ ] All prior suites + `pnpm -r test:mutation` green. **A-19 recorded.**
+- [ ] **DEPLOYABILITY PROOF (the point of this milestone):** a `deploy --dry-run` composes the lazy-worker artifact; the routing smoke boots `getEngine({DB_URL:':memory:'})` and serves `/api/console/health` 200 + an unauth `/api/console/pages` 401. (The real `wrangler deploy` to a live URL is the user's manual step — but the artifact + local boot must pass.)
 
 ---
 
