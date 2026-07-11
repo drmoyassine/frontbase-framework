@@ -7,6 +7,14 @@ no_bundle = true
 # nodejs_compat: the whole request path is Web-standard (Web Crypto for PBKDF2 +
 # HS256, D1 binding for storage).
 
+# Observability ON by default — persists console.log/error + invocation logs to
+# the CF dashboard so a runtime error is inspectable without a live `wrangler tail`.
+[observability]
+enabled = true
+
+[observability.logs]
+invocation_logs = true
+
 # Storage: a Cloudflare D1 database bound as env.DB. `frontbase deploy` provisions
 # and writes the database_id; or create it manually (see README) and paste it here.
 [[d1_databases]]

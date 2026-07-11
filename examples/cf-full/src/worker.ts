@@ -81,19 +81,33 @@ let enginePromise: Promise<Hono> | null = null;
 
 export default {
     async fetch(req: Request, env: CmsEnv, ctx: ExecutionContext): Promise<Response> {
-        if (!env.SESSION_SECRET) {
-            // Fail loud, not silently insecure: the JWT seam has no key.
-            return new Response('SESSION_SECRET is not configured', { status: 500 });
+        try {
+            if (!env.SESSION_SECRET) {
+                // Fail loud, not silently insecure: the JWT seam has no key.
+                return new Response('SESSION_SECRET is not configured — run: wrangler secret put SESSION_SECRET', { status: 500 });
+            }
+            if (!env.DB) {
+                // The commonest cause of a CF 1101 here: the D1 binding never attached
+                // (placeholder database_id, or the [[d1_databases]] block is missing).
+                // Surface it plainly instead of throwing an opaque exception.
+                return new Response('D1 binding "DB" is not configured — check wrangler.toml [[d1_databases]] binding="DB" and a REAL database_id (not the placeholder)', { status: 500 });
+            }
+            if (!enginePromise) {
+                enginePromise = createCmsEngine({
+                    runner: d1RunnerFromBinding(env.DB),
+                    sessionSecret: env.SESSION_SECRET,
+                    setupToken: env.SETUP_TOKEN,
+                    admin: { email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD, role: env.ADMIN_ROLE },
+                }).catch((e) => { enginePromise = null; throw e; }); // don't cache a failed boot
+            }
+            const engine = await enginePromise;
+            return engine.fetch(req, env, ctx);
+        } catch (e) {
+            // Turn a CF 1101 (unhandled throw — e.g. a D1 migration/DDL failure on
+            // first boot) into a LOGGED, opaque 500 (RULE 4). The detail goes to
+            // `wrangler tail` / observability; the client only sees 'internal_error'.
+            console.error('[cf-full] worker fetch failed:', (e as Error)?.stack ?? e);
+            return new Response('internal_error', { status: 500 });
         }
-        if (!enginePromise) {
-            enginePromise = createCmsEngine({
-                runner: d1RunnerFromBinding(env.DB),
-                sessionSecret: env.SESSION_SECRET,
-                setupToken: env.SETUP_TOKEN,
-                admin: { email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD, role: env.ADMIN_ROLE },
-            }).catch((e) => { enginePromise = null; throw e; }); // don't cache a failed boot
-        }
-        const engine = await enginePromise;
-        return engine.fetch(req, env, ctx);
     },
 };
