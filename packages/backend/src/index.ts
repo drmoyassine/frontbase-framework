@@ -27,6 +27,7 @@ import { ConsoleStore } from './db/store.js';
 import { UserStore } from './db/users.js';
 import { authRoutes, meRoute } from './auth/routes.js';
 import { tenantsRoutes } from './routes/tenants.js';
+import { setupRoutes } from './routes/setup.js';
 import { requireRole, canActOnTenant } from './auth/roles.js';
 
 export interface CreateConsoleDeps {
@@ -47,6 +48,8 @@ export interface CreateConsoleDeps {
     purgeCache?: (keys: string[]) => Promise<void>;
     /** Clock (deterministic in tests). Default: () => new Date().toISOString(). */
     now?: () => string;
+    /** Setup wizard token (SETUP_TOKEN env secret). Required for POST /setup. */
+    setupToken?: string;
 }
 
 export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Variables: ConsoleAuthVars }>> {
@@ -57,7 +60,7 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     // createConsole is built once per isolate inside getEngine(env), so resolving the
     // runner here is fine — it's the env-bound D1 binding (or a file/:memory: URL).
     const makeRunner = deps.makeRunner ?? (async () => sqliteRunner(deps.dbUrl ?? ':memory:'));
-    const sharedRunner = await makeRunner();
+    let sharedRunner = await makeRunner();
 
     // Resolve the principal resolver: explicit wins; sessionSecret builds one for
     // the fb_session JWT cookie (M-ID.1, D2); else anonymous.
@@ -82,8 +85,10 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
     app.onError(opaqueErrors);
 
-    // /health + login/logout are UNAUTHENTICATED (you can't require a session to log in).
+    // /health + login/logout + setup are UNAUTHENTICATED (pre-init / you can't require a session to log in).
     app.route('/health', healthRoutes());
+    // Setup wizard (M-ID.3 + DB picker) — outside default-deny (no session exists pre-init).
+    app.route('/', setupRoutes({ userStoreFor, setupToken: deps.setupToken, setRunner: (r) => { sharedRunner = r; }, now }));
     if (deps.sessionSecret) {
         app.route('/', authRoutes({ userStoreFor, sessionSecret: deps.sessionSecret }));
     }
