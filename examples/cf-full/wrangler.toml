@@ -20,7 +20,7 @@ invocation_logs = true
 [[d1_databases]]
 binding = "DB"
 database_name = "frontbase-full-cms"
-database_id = "5bbf7e4f-0ba0-46dc-a1dd-0af71265b8e0"
+database_id = "PLACEHOLDER_RUN_WRANGLER_D1_CREATE"
 
 # Secrets are NOT stored here (they'd land in git). Set them with:
 #   wrangler secret put SESSION_SECRET     (required)
