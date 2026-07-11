@@ -324,7 +324,7 @@ Guiding principles (all milestones serve these):
 **Objective**: clear the backlog that accumulated across Phases 0–2 and codify the audit lesson so Phase 3 builds on solid ground (see [§ Carried-forward items](#carried-forward-items-live-backlog)).
 
 **Acceptance Criteria**:
-- [x] **RULE 8 (mutation-tested gates)** codified + applied: `scripts/mutation-lib.mjs` + per-package `test/mutation.mjs` + `pnpm -r test:mutation`; **12 security gates proven to go RED when their guarantee is broken** (the harness caught 2 more hollow gates on its first run: backend user-guard, compiler serialization boundary). *(CF-15)*
+- [x] **RULE 8 (mutation-tested gates)** codified + applied: `scripts/mutation-lib.mjs` + per-package `test/mutation.mjs` + `pnpm -r test:mutation`; **18 security gates proven to go RED when their guarantee is broken** (12 at M3.0, +6 auth/DB gates added 2026-07-11 for the identity sprint; the harness caught 2 hollow gates on its first run — backend user-guard, compiler serialization boundary). *(CF-15)*
 - [x] Builder full canvas: drag/drop → draft → preview loop **p50 0.18 ms / p95 1.05 ms** (< 100 ms); pure model + React view; canvas-parity (preview == published) + no-leak green. *(CF-8; React Flow workflow editor deferred to M3.1/follow-up)*
 - [x] Legacy-layout version-flagged migration: `migrateLayout` (v1 builder export/bare tree → current); migrated legacy renders **byte-identically** to the golden corpus. *(CF-9)*
 - [x] Drizzle migration runner (versioned, reversible) replaces auto-create-on-boot; apply→rollback→re-apply converges; fresh DB == upgraded DB. *(CF-11)*
@@ -382,15 +382,20 @@ Consolidated deferred work from every phase, so nothing is lost between mileston
 | CF-7 | Browser query projection → JSON-Schema (if SW needs client-side param validation) | M1.2 | future | currently ships `hasParams` marker only; validation is edge-side by design |
 | CF-8 | **Builder full canvas** (drag/drop < 100 ms) + React Flow workflow editor | M2.3 | M3.0 | ✅ DONE 2026-07-10 — canvas model + view, loop p50 0.18ms; React Flow workflow editor still a follow-up |
 | CF-9 | Legacy JSON layout version-flagged migration | M2.3 | M3.0 | ✅ DONE 2026-07-10 — `compiler migrateLayout`; migrated legacy renders byte-identical to corpus |
-| CF-10 | Cloud-DB **live** gates (D1/Turso/Postgres) | M2.1/2.2 | M3.0 | SQLite authoritative now (A-17); creds run identical suite |
-| CF-11 | Drizzle **migration runner** (versioned/reversible) | M2.2 | M3.0 | ✅ DONE 2026-07-10 — `backend/db/migrations.ts`; apply/rollback/re-apply converges |
-| CF-12 | **Live `wrangler deploy`** to public URL + SW-handover check | M1.1/M2.4 | M3.0 | one manual step; dry-run + artifact proven |
-| CF-13 | Live **Deno Deploy** via deployctl | M2.4 | M3.0 | adapter wired; needs a live run |
-| CF-14 | Agent prompt templates | M2.5 | M3.1 | moved to where agent tooling lives |
-| CF-15 | **RULE 8 — mutation-tested security gates** | Phase 2 audit | M3.0 | both audit bugs were green-but-hollow gates |
+| CF-10 | Cloud-DB **live** gates (D1/Turso/Postgres) | M2.1/2.2 | M-DB.0 | SQLite authoritative (A-17); creds run identical suite. Now also covers the **console/identity DB** (D1 is the CF default via A-19). **user-side: needs test-DB creds** |
+| CF-11 | Drizzle **migration runner** (versioned/reversible) | M2.2 | M3.0 | ✅ DONE 2026-07-10 — `backend/db/migrations.ts`; apply/rollback/re-apply converges. **Refactored onto `DbRunner` in M-DB.0** (migrations run on any adapter); migrations v1–v3 (schema, users, tenants) |
+| CF-12 | **Live `wrangler deploy`** to public URL + SW-handover check | M1.1/M2.4 | M3.0 | one manual step; dry-run + artifact proven. **user-side: needs CF account** |
+| CF-13 | Live **Deno Deploy** via deployctl | M2.4 | M3.0 | adapter wired; needs a live run. **user-side** |
+| CF-14 | Agent prompt templates | M2.5 | M3.1 | ✅ DONE 2026-07-10 — `docs/guides/agent-authoring.md` (component/page/query/workflow templates) |
+| CF-15 | **RULE 8 — mutation harness** (every security gate proven RED-on-break) | Phase 2 audit | M3.0 | ✅ DONE 2026-07-10; **extended 2026-07-11**: 12 → **18 proofs** after adding the auth/DB gates (password-verify, session-forgery, seed-idempotency, hash-no-leak, canActOnTenant, setup post-init lock). `pnpm -r test:mutation` |
 | CF-16 | Rate limiting / abuse protection on the proxy | Phase 2 audit | M3.0 | ✅ DONE 2026-07-10 — `edge-infra/proxy/ratelimit.ts` (per-principal bucket, opaque 429, mutation-proven) |
-| CF-15 | RULE 8 mutation harness — every security gate proven RED-on-break | Phase 2 audit | M3.0 | ✅ DONE 2026-07-10 — `test:mutation`, 12 proofs |
 | CF-17 | Per-row / finer-grained authorization policy layer | Phase 2 audit | future | scope is coarse (public/tenant/user) by design today |
+| CF-18 | **Identity/setup React UIs** — SetupWizard, LoginScreen, TenantsPanel, DbStep | M-ID.3 / M3.DB | M-ID.3-UI | **APIs are proven & mutation-gated** (`setup`/`login-e2e`/`provision`/`setup/db`); only the browser components remain. `builder/no-leak` extends to them when added |
+| CF-19 | **Deploy-seed gate** (`compiler/test/deploy-seed.mjs`) | M-ID.1.7 | next | prove `wrangler secret put ADMIN_EMAIL/ADMIN_PASSWORD/SESSION_SECRET` + secrets never on argv (process-list leak). deploy.ts wires the flags; the gate is the follow-up |
+| CF-20 | **Supabase adapter** → `DbRunner` behind the M-DB.0 seam | M-DB.0 / M3.DB | future | **Reclassified: a PROVEN PORT, not greenfield** — `../Frontbase-/services/edge/src/storage/SupabaseRestProvider.ts` exists. Port it, then flip the DB-picker from "coming soon" → enabled. Exact file list awaits CF-21 |
+| CF-21 | **Port-parity audit + admin-console feature-parity scan** | ongoing | next | the two background explorers (infra port-parity; product→framework console gap) **died to the session limit before producing file lists**. Re-run (or do inline) — they're the authoritative "what's missing" inputs for CF-20 and the broader port backlog |
+
+*(Note: CF-15 appeared twice in an earlier revision; consolidated into the single row above. The console-DB + identity sprint (**A-19** Console DB Unification / CF D1 default; **A-18** Identity & Provisioning) delivered M-DB.0 + M-ID.1–M-ID.3 and is covered by `docs/delivery/console-db-identity-delivery-report.md` — including a post-delivery security review that found & fixed 5 defects, 2 critical.)*
 
 ---
 
