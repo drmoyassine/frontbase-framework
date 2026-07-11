@@ -4,8 +4,9 @@
  *   - sqliteRunner: live (:memory:)
  *   - d1RunnerFromBinding: live against a mock D1 binding (no CF needed)
  *   - d1RunnerFromRest: credential-gated (D1_* env — A-17)
+ *   - supabaseRunner: credential-gated (SUPABASE_URL/SUPABASE_SERVICE_KEY — CF-20)
  */
-import { sqliteRunner, d1RunnerFromBinding, d1RunnerFromRest } from '../dist/providers/runners.js';
+import { sqliteRunner, d1RunnerFromBinding, d1RunnerFromRest, supabaseRunner } from '../dist/providers/runners.js';
 
 let failures = 0;
 const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; console.log(`  ❌ ${l}`); } };
@@ -44,6 +45,36 @@ if (process.env.D1_ACCOUNT_ID && process.env.D1_DATABASE_ID && process.env.D1_AP
     check('d1Rest (live): round-trip', rows.length === 1 && Number(rows[0].id) === 1);
 } else {
     console.log('  (d1RunnerFromRest: credential-gated — set D1_ACCOUNT_ID/D1_DATABASE_ID/D1_API_TOKEN to run live)');
+}
+
+// ---- supabaseRunner (credential-gated, CF-20) ----
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+    const r = supabaseRunner({
+        url: process.env.SUPABASE_URL,
+        serviceKey: process.env.SUPABASE_SERVICE_KEY,
+        jwt: process.env.SUPABASE_JWT,
+        schema: process.env.SUPABASE_SCHEMA,
+    });
+    try {
+        // Create test table via raw SQL (requires execute_sql function in Supabase)
+        await r.exec('CREATE TABLE IF NOT EXISTS fb_probe (id INTEGER PRIMARY KEY, name TEXT)');
+        await r.exec('DELETE FROM fb_probe');
+        const n = await r.exec('INSERT INTO fb_probe (id, name) VALUES (?, ?)', [1, 'test']);
+        check('supabase (live): exec returns affected rows (1)', n === 1);
+        const rows = await r.query('SELECT name FROM fb_probe WHERE id = ?', [1]);
+        check('supabase (live): query returns the row', rows.length === 1 && rows[0].name === 'test');
+        // Cleanup
+        await r.exec('DROP TABLE IF EXISTS fb_probe');
+    } catch (e) {
+        if ((e.message || '').includes('execute_sql')) {
+            console.log('  (supabase: requires execute_sql function — see CF-20 edge-parity audit for setup)');
+        } else {
+            failures++;
+            console.log(`  ❌ supabase (live): ${e.message}`);
+        }
+    }
+} else {
+    console.log('  (supabaseRunner: credential-gated — set SUPABASE_URL/SUPABASE_SERVICE_KEY to run live)');
 }
 
 console.log(failures === 0 ? '\nrunners: PASS ✅' : `\nrunners: FAIL ❌ (${failures})`);

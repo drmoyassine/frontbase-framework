@@ -23,6 +23,7 @@
     "@frontbase/edge-core": "workspace:*"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.4"
+    "@libsql/client": "^0.17.4",
+    "@supabase/postgrest-js": "^2.110.2"
   }
 }
