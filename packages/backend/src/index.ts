@@ -26,6 +26,8 @@ import { publishRoutes } from './routes/publish.js';
 import { ConsoleStore } from './db/store.js';
 import { UserStore } from './db/users.js';
 import { authRoutes, meRoute } from './auth/routes.js';
+import { tenantsRoutes } from './routes/tenants.js';
+import { requireRole, canActOnTenant } from './auth/roles.js';
 
 export interface CreateConsoleDeps {
     /** Build the DbRunner for the console DB (env-aware; e.g. from env.DB on CF).
@@ -91,6 +93,7 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     app.route('/', publishRoutes(storeFor, deps.queries ?? {}, purge, now));
     if (deps.sessionSecret) {
         app.route('/', meRoute()); // /me — principal already resolved
+        app.route('/', tenantsRoutes(() => sharedRunner, userStoreFor, now)); // /tenants — master_admin only (M-ID.2)
     }
 
     return app;
@@ -101,6 +104,10 @@ export { UserStore, toPublic } from './db/users.js';
 export type { UserRecord, PublicUser } from './db/users.js';
 export { seedOwner } from './auth/seed.js';
 export { authRoutes, meRoute } from './auth/routes.js';
+export { requireRole, canActOnTenant } from './auth/roles.js';
+export { TenantStore } from './db/tenants.js';
+export type { TenantRecord } from './db/tenants.js';
+export { tenantsRoutes } from './routes/tenants.js';
 export { publishPage } from './publish/pipeline.js';
 export { migrateUp, migrateDown, appliedVersions, schemaFingerprint, MIGRATIONS } from './db/migrations.js';
 export type { Migration } from './db/migrations.js';

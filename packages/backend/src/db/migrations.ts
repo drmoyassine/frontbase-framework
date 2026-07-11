@@ -46,6 +46,13 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [`DROP TABLE IF EXISTS users`],
     },
+    {
+        // M-ID.2: the tenants table (multi-tenant provisioning).
+        version: 3,
+        name: 'tenants',
+        up: [`CREATE TABLE IF NOT EXISTS tenants (slug TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL)`],
+        down: [`DROP TABLE IF EXISTS tenants`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;
