@@ -2,11 +2,17 @@
  * Password hashing (M-ID.1, Decision D1) — PBKDF2-SHA256 via Web Crypto
  * (`crypto.subtle`). No bcrypt/argon (native deps, not edge-safe — RULE 7).
  *
- * Stored format: `pbkdf2$<iters>$<saltB64>$<hashB64>` (600,000 iterations,
+ * Stored format: `pbkdf2$<iters>$<saltB64>$<hashB64>` (100,000 iterations,
  * 16-byte random salt, 32-byte hash). Verify is constant-time via timingSafeEqual.
+ *
+ * Iterations: Cloudflare Workers' Web Crypto HARD-CAPS PBKDF2 at 100,000
+ * (`deriveBits` throws NotSupportedError above it), and PBKDF2 is the only KDF
+ * `crypto.subtle` exposes — so 100k is the ceiling on the primary deploy target.
+ * The `<iters>` is stored in every hash, so this is safe to raise later on
+ * Node-only deployments; on Workers it must stay ≤ 100k.
  */
 const enc = new TextEncoder();
-const PBKDF2_ITERATIONS = 600_000;
+const PBKDF2_ITERATIONS = 100_000;
 const SALT_BYTES = 16;
 const HASH_BITS = 256;
 
@@ -25,8 +31,15 @@ export async function verifyPassword(plain: string, stored: string): Promise<boo
     if (!Number.isInteger(iters) || iters < 1) return false;
     const salt = fromB64(parts[2] ?? '');
     const expected = fromB64(parts[3] ?? '');
-    const actual = await derive(plain, salt, iters);
-    return timingSafeEqual(actual, expected);
+    try {
+        const actual = await derive(plain, salt, iters);
+        return timingSafeEqual(actual, expected);
+    } catch {
+        // Fail closed (RULE 4): e.g. a stored hash claiming iters > the platform's
+        // PBKDF2 cap (Workers = 100k) would throw NotSupportedError — treat as a
+        // non-match rather than surfacing a 500 on the login path.
+        return false;
+    }
 }
 
 async function derive(plain: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {

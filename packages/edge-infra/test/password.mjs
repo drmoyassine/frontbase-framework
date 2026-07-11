@@ -10,7 +10,8 @@ const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; c
 
 const pw = 'correct horse battery staple';
 const stored = await hashPassword(pw);
-check('stored format is pbkdf2$<iters>$<salt>$<hash>', /^pbkdf2\$600000\$[^$]+\$[^$]+$/.test(stored));
+// 100k iterations: Cloudflare Workers hard-caps PBKDF2 at 100,000 (the deploy target).
+check('stored format is pbkdf2$<iters>$<salt>$<hash>', /^pbkdf2\$100000\$[^$]+\$[^$]+$/.test(stored));
 check('verify: correct password → true', await verifyPassword(pw, stored) === true);
 check('verify: wrong password → false', await verifyPassword('wrong', stored) === false);
 

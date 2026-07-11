@@ -12,7 +12,9 @@ const COOKIE = 'fb_session';
 const MAX_AGE = 604800; // 7 days
 // A well-formed PBKDF2 hash of a random value — verified against on unknown-email
 // logins so the response time doesn't reveal whether the email exists (MED-5).
-const DUMMY_HASH = 'pbkdf2$600000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+// Iters MUST match the live PBKDF2_ITERATIONS (100k) — a higher count here would
+// throw NotSupportedError on Workers for every unknown-email login (the cap is 100k).
+const DUMMY_HASH = 'pbkdf2$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
 export interface AuthRouteDeps {
     /** Build a UserStore for a tenant. Login uses the '_default' store's runner but

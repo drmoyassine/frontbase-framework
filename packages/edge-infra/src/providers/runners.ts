@@ -45,7 +45,12 @@ export function d1RunnerFromBinding(binding: D1Database): DbRunner {
             const ps = binding.prepare(sql);
             const stmt = params.length ? ps.bind(...params) : ps;
             const res = await stmt.run();
-            return (res.meta?.changes?.count) ?? 0;
+            // The CF runtime returns meta.changes as a NUMBER; some @cloudflare
+            // /workers-types versions type it as { count }. Handle both so the
+            // affected-row count is correct at runtime (the old `.changes.count`
+            // silently returned 0 against the real number-shaped runtime).
+            const changes = res.meta?.changes as number | { count?: number } | undefined;
+            return (typeof changes === 'number' ? changes : changes?.count) ?? 0;
         },
     };
 }
