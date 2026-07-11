@@ -1,0 +1,15 @@
+{
+  "name": "@frontbase/example-cf-full",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "smoke": "node build.mjs && node dist/smoke.mjs"
+  },
+  "dependencies": {
+    "@frontbase/edge-core": "workspace:*",
+    "@frontbase/backend": "workspace:*",
+    "@frontbase/edge-infra": "workspace:*"
+  }
+}

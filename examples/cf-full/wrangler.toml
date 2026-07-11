@@ -1,0 +1,23 @@
+name = "frontbase-full-cms-example"
+main = "dist/worker.mjs"
+compatibility_date = "2026-01-01"
+no_bundle = true
+
+# Single pre-bundled artifact (SW inlined, console + D1 runner bundled). No
+# nodejs_compat: the whole request path is Web-standard (Web Crypto for PBKDF2 +
+# HS256, D1 binding for storage).
+
+# Storage: a Cloudflare D1 database bound as env.DB. `frontbase deploy` provisions
+# and writes the database_id; or create it manually (see README) and paste it here.
+[[d1_databases]]
+binding = "DB"
+database_name = "frontbase-full-cms"
+database_id = "PLACEHOLDER_RUN_WRANGLER_D1_CREATE"
+
+# Secrets are NOT stored here (they'd land in git). Set them with:
+#   wrangler secret put SESSION_SECRET     (required)
+#   wrangler secret put SETUP_TOKEN        (optional — enables /setup)
+#   wrangler secret put ADMIN_EMAIL        (optional — seed first owner)
+#   wrangler secret put ADMIN_PASSWORD     (optional)
+#   wrangler secret put ADMIN_ROLE         (optional — default 'owner')
+# …or let `frontbase deploy --admin-email … --admin-password …` do it for you.

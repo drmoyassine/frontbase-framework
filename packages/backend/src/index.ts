@@ -17,7 +17,7 @@ import { Hono } from 'hono';
 import type { Principal } from '@frontbase/edge-core';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { sqliteRunner, createResolvePrincipal } from '@frontbase/edge-infra';
-import type { QueryRegistry } from '@frontbase/compiler';
+import type { QueryRegistry } from '@frontbase/compiler/manifest';
 import { defaultDenyAuth, type ConsoleAuthVars } from './mw/auth.js';
 import { opaqueErrors } from './mw/errors.js';
 import { pagesRoutes } from './routes/pages.js';

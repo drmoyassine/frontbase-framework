@@ -115,9 +115,18 @@ export function createProgram(): Command {
         .option('--dry-run', 'compose + routing smoke + size budget; no deploy')
         .option('--target <target>', 'cloudflare | deno', 'cloudflare')
         .option('--out <dir>', 'output directory', 'dist')
+        .option('--admin-email <email>', 'seed the first admin (with --admin-password) via wrangler secrets')
+        .option('--admin-password <password>', 'first admin password (fed to wrangler over stdin, never argv)')
+        .option('--admin-role <role>', "seeded admin role (default 'owner')")
+        .option('--setup-token <token>', 'enable the first-run /setup wizard (SETUP_TOKEN secret)')
+        .option('--session-secret <secret>', 'HS256 session key (auto-generated if omitted)')
         .option('--json', 'JSON output')
-        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'deno'; out: string; json?: boolean }) => {
-            const result = await deployCommand(path || '.', { dryRun: opts.dryRun, target: opts.target, outDir: opts.out });
+        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'deno'; out: string; adminEmail?: string; adminPassword?: string; adminRole?: string; setupToken?: string; sessionSecret?: string; json?: boolean }) => {
+            const result = await deployCommand(path || '.', {
+                dryRun: opts.dryRun, target: opts.target, outDir: opts.out,
+                adminEmail: opts.adminEmail, adminPassword: opts.adminPassword, adminRole: opts.adminRole,
+                setupToken: opts.setupToken, sessionSecret: opts.sessionSecret,
+            });
             if (opts.json) console.log(JSON.stringify(result, null, 2));
             else console.log(`deploy: ${result.summary}${result.details ? ' ' + JSON.stringify(result.details) : ''}`);
             if (!result.ok) process.exitCode = 1;

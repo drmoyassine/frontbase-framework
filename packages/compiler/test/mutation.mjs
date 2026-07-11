@@ -17,11 +17,13 @@ const PKG = '@frontbase/compiler';
 const pkgDir = repoRoot + 'packages/compiler/';
 const EC = join(repoRoot, 'packages/edge-core/src/index.ts').replace(/\\/g, '/');
 const SWBUNDLE = 'packages/compiler/src/emit/swBundle.ts';
+const DEPLOY = 'packages/compiler/src/cli/deploy.ts';
 
 console.log('— compiler mutation harness —\n');
 if (!buildPackage(PKG)) { console.log('baseline build failed'); process.exit(2); }
 if (runGate(pkgDir, 'test/sw-no-leak.mjs') !== 0) { console.log('baseline sw-no-leak RED'); process.exit(2); }
-console.log('baseline: sw-no-leak GREEN\n');
+if (runGate(pkgDir, 'test/deploy-seed.mjs') !== 0) { console.log('baseline deploy-seed RED'); process.exit(2); }
+console.log('baseline: sw-no-leak + deploy-seed GREEN\n');
 
 // 1. ARTIFACT — leaky SW entry imports the server queries (SEC-1 regression).
 const SECRET = 'sk-LEAK-MUTATION-DB-PASSWORD-4242';
@@ -52,6 +54,21 @@ await withSourceMutation(
         buildPackage(PKG);
         const exit = runGate(pkgDir, 'test/sw-no-leak.mjs');
         expectRed('sw-no-leak: goes red when the emitted manifest carries a function', exit);
+    },
+);
+
+// 3. SOURCE — CF-19 no-argv-leak. Secret values must travel on stdin only. If the
+//    value is added to the wrangler argv (process-list leak), deploy-seed's
+//    "NO secret value leaked to argv" check fires → the gate goes red.
+await withSourceMutation(
+    'deploy-seed: secret value on argv (process-list leak)',
+    DEPLOY,
+    "const res = await runWrangler(['secret', 'put', name], { cwd, stdin: value });",
+    "const res = await runWrangler(['secret', 'put', name, value], { cwd, stdin: value });",
+    async () => {
+        buildPackage(PKG);
+        const exit = runGate(pkgDir, 'test/deploy-seed.mjs');
+        expectRed('deploy-seed: goes red when a secret value is passed on argv', exit);
     },
 );
 

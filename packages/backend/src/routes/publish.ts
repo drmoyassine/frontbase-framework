@@ -6,7 +6,7 @@
 import { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../mw/auth.js';
 import type { ConsoleStore } from '../db/store.js';
-import type { QueryRegistry } from '@frontbase/compiler';
+import type { QueryRegistry } from '@frontbase/compiler/manifest';
 import { publishPage } from '../publish/pipeline.js';
 
 export function publishRoutes(

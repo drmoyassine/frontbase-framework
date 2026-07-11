@@ -9,6 +9,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./manifest": {
+      "types": "./dist/manifest/index.d.ts",
+      "import": "./dist/manifest/index.js"
+    },
     "./vite": {
       "types": "./dist/vite/index.d.ts",
       "import": "./dist/vite/index.js"
@@ -28,7 +32,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node test/extractor.mjs && node test/queries.mjs && node test/manifest.mjs && node test/vite.mjs && node test/cli.mjs && node test/quickfix.mjs && node test/parity-check.mjs && node test/m3.1.5.mjs && node test/simulate.mjs && node test/sw-emit.mjs && node test/provision-d1.mjs && node test/deploy.mjs && node test/e2e-parity.mjs && node test/agent-success-rate.mjs && node test/perf.mjs",
+    "test": "tsc -p tsconfig.json && node test/extractor.mjs && node test/queries.mjs && node test/manifest.mjs && node test/vite.mjs && node test/cli.mjs && node test/quickfix.mjs && node test/parity-check.mjs && node test/m3.1.5.mjs && node test/simulate.mjs && node test/sw-emit.mjs && node test/provision-d1.mjs && node test/deploy.mjs && node test/deploy-seed.mjs && node test/e2e-parity.mjs && node test/agent-success-rate.mjs && node test/perf.mjs",
     "test:mutation": "node test/mutation.mjs"
   },
   "dependencies": {

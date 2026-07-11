@@ -21,6 +21,18 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  examples/cf-full:
+    dependencies:
+      '@frontbase/backend':
+        specifier: workspace:*
+        version: link:../../packages/backend
+      '@frontbase/edge-core':
+        specifier: workspace:*
+        version: link:../../packages/edge-core
+      '@frontbase/edge-infra':
+        specifier: workspace:*
+        version: link:../../packages/edge-infra
+
   examples/cf-worker:
     dependencies:
       '@frontbase/edge-core':

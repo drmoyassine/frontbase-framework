@@ -9,7 +9,7 @@
  * projection is produced separately by `toBrowserQueries()` (A-16) and is what
  * gets baked into the SW bundle.
  */
-import { createHash } from 'node:crypto';
+import { sha256Hex } from './sha256.js';
 import type { SiteManifest as EngineSiteManifest } from '@frontbase/edge-core';
 import type { QueryRegistry } from '../queries/defineQueries.js';
 import { toEdgeQueries, toBrowserQueries } from '../queries/registrar.js';
@@ -60,7 +60,7 @@ function sortKeys(value: unknown): unknown {
 
 /** Build a content-hash version from the manifest body (excluding the version field). */
 function contentVersion(body: { pages: unknown; queries: unknown }, prefix?: string): string {
-    const hash = createHash('sha256').update(stableStringify(body)).digest('hex').slice(0, 12);
+    const hash = sha256Hex(stableStringify(body)).slice(0, 12);
     return prefix ? `${prefix}.${hash}` : `v${hash}`;
 }
 

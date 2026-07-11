@@ -6,8 +6,8 @@
  * The published SW manifest is the BROWSER projection: it contains queryIds and
  * `hasParams` only, never `execute` or secrets.
  */
-import { buildSiteManifest, toBrowserQueries, serializeManifest } from '@frontbase/compiler';
-import type { QueryRegistry } from '@frontbase/compiler';
+import { buildSiteManifest, toBrowserQueries, serializeManifest } from '@frontbase/compiler/manifest';
+import type { QueryRegistry } from '@frontbase/compiler/manifest';
 import type { ConsoleStore, PageInput } from '../db/store.js';
 
 export interface PublishInput {
