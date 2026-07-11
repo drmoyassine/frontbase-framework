@@ -13,12 +13,39 @@
  */
 import * as esbuild from 'esbuild';
 import { gzipSync } from 'node:zlib';
-import { readFileSync, statSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
 mkdirSync(join(here, 'dist'), { recursive: true });
+
+/**
+ * The example bundles the workspace packages from their compiled `dist/`. In a
+ * fresh checkout those aren't built yet (esbuild then fails with a cryptic "Could
+ * not resolve @frontbase/edge-core"). Detect any missing dist up front and build
+ * just those packages via pnpm, so `smoke` is one command.
+ */
+const REPO_ROOT = (function findRoot(dir) {
+    for (let d = dir; d !== dirname(d); d = dirname(d)) {
+        if (existsSync(join(d, 'pnpm-workspace.yaml'))) return d;
+    }
+    return dir;
+})(here);
+const DEP_PKGS = ['@frontbase/edge-core', '@frontbase/edge-infra', '@frontbase/compiler', '@frontbase/backend'];
+function pkgDir(name) { return join(REPO_ROOT, 'packages', name.replace(/^@frontbase\//, '')); }
+const missing = DEP_PKGS.filter((n) => !existsSync(join(pkgDir(n), 'dist', 'index.js')));
+if (missing.length > 0) {
+    console.log(`→ building ${missing.length} unbuilt workspace package(s): ${missing.join(', ')}`);
+    const filters = missing.map((n) => ['--filter', n]).flat();
+    const r = spawnSync('pnpm', [...filters, 'build'], { cwd: REPO_ROOT, stdio: 'inherit', shell: process.platform === 'win32' });
+    if (r.status !== 0) {
+        console.error('\n✗ workspace dependency build failed. Run `pnpm -r build` manually, then retry.');
+        process.exit(1);
+    }
+    console.log('→ workspace packages built\n');
+}
 
 // Optional deps that are dynamic-imported behind feature flags — not part of a
 // basic D1 CMS. Stubbed so the single-file artifact carries no dangling imports.
