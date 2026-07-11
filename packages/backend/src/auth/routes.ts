@@ -10,9 +10,13 @@ import type { ConsoleAuthVars } from '../mw/auth.js';
 
 const COOKIE = 'fb_session';
 const MAX_AGE = 604800; // 7 days
+// A well-formed PBKDF2 hash of a random value — verified against on unknown-email
+// logins so the response time doesn't reveal whether the email exists (MED-5).
+const DUMMY_HASH = 'pbkdf2$600000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
 export interface AuthRouteDeps {
-    /** Build a UserStore for a tenant (login uses '_default'). */
+    /** Build a UserStore for a tenant. Login uses the '_default' store's runner but
+     *  looks up the email across ALL tenants (owner/_default, master_admin/_root, tenant_admins). */
     userStoreFor: (tenant: string) => UserStore;
     sessionSecret: string;
 }
@@ -23,19 +27,29 @@ export function authRoutes(deps: AuthRouteDeps): Hono {
 
     app.post('/login', async (c) => {
         const body = await c.req.json().catch(() => ({})) as { email?: string; password?: string };
+        // Login is cross-tenant by nature: a master_admin lives in _root, a
+        // tenant_admin in its own tenant, an owner in _default. Look the email up
+        // across all tenants (CRIT-1 fix), then verify the password.
+        const candidates = body.email ? await deps.userStoreFor('_default').findByEmailAnyTenant(body.email) : [];
+        let matched: (typeof candidates)[number] | null = null;
+        if (body.password) {
+            for (const u of candidates) {
+                if (await verifyPassword(body.password, u.passwordHash)) { matched = u; break; }
+            }
+        }
+        // MED-5: always run at least one verify (constant work) so unknown-email and
+        // wrong-password take a comparable time — no user enumeration by timing.
+        if (candidates.length === 0) { await verifyPassword(body.password ?? '', DUMMY_HASH); }
         // RULE 4: identical response for unknown email vs wrong password.
-        const store = deps.userStoreFor('_default');
-        const user = body.email ? await store.findByEmailForVerify(body.email) : null;
-        const ok = user && body.password ? await verifyPassword(body.password, user.passwordHash) : false;
-        if (!user || !ok) return c.json({ error: 'invalid_credentials' }, 401);
+        if (!matched) return c.json({ error: 'invalid_credentials' }, 401);
 
         const token = await issueSession(
-            { sub: user.id, email: user.email, role: user.role, tenant_slug: user.tenantSlug },
+            { sub: matched.id, email: matched.email, role: matched.role, tenant_slug: matched.tenantSlug },
             deps.sessionSecret,
             Math.floor(Date.now() / 1000),
         );
         c.header('Set-Cookie', `${COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${MAX_AGE}`);
-        return c.json({ user: { id: user.id, email: user.email, role: user.role } }); // D8: no hash
+        return c.json({ user: { id: matched.id, email: matched.email, role: matched.role } }); // D8: no hash
     });
 
     app.post('/logout', (c) => {

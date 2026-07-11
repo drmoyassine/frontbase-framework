@@ -48,8 +48,12 @@ export interface CreateConsoleDeps {
     purgeCache?: (keys: string[]) => Promise<void>;
     /** Clock (deterministic in tests). Default: () => new Date().toISOString(). */
     now?: () => string;
-    /** Setup wizard token (SETUP_TOKEN env secret). Required for POST /setup. */
+    /** Setup wizard token (SETUP_TOKEN env secret). Required for POST /setup; if
+     *  unset, /setup and /setup/db are disabled (fail closed). */
     setupToken?: string;
+    /** Role the first admin is seeded as via /setup (ADMIN_ROLE at deploy).
+     *  Fixed server-side — the request body can NOT choose it (SEC CRIT-2). Default 'owner'. */
+    seedRole?: string;
 }
 
 export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Variables: ConsoleAuthVars }>> {
@@ -88,7 +92,8 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     // /health + login/logout + setup are UNAUTHENTICATED (pre-init / you can't require a session to log in).
     app.route('/health', healthRoutes());
     // Setup wizard (M-ID.3 + DB picker) — outside default-deny (no session exists pre-init).
-    app.route('/', setupRoutes({ userStoreFor, setupToken: deps.setupToken, setRunner: (r) => { sharedRunner = r; }, now }));
+    // seedRole comes from deploy config (ADMIN_ROLE), NOT the request body (SEC CRIT-2).
+    app.route('/', setupRoutes({ userStoreFor, setupToken: deps.setupToken, seedRole: deps.seedRole, setRunner: (r) => { sharedRunner = r; }, now }));
     if (deps.sessionSecret) {
         app.route('/', authRoutes({ userStoreFor, sessionSecret: deps.sessionSecret }));
     }

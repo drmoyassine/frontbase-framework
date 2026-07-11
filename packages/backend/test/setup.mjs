@@ -1,54 +1,79 @@
 /**
- * M-ID.3 setup wizard gate — first-run bootstrap + DB picker (M3.DB).
- *   GET /setup/status → needsSetup true; POST /setup → owner seeded; status → false;
- *   re-POST → 410 already_initialized (RULE 8 mutation target);
- *   POST /setup/db {driver:'sqlite'} → probes + migrates → 200.
+ * M-ID.3 setup wizard gate — first-run bootstrap + DB picker (M3.DB), hardened
+ * per the security audit:
+ *   - /setup and /setup/db are FIRST-RUN ONLY (410 once a user exists).
+ *   - SETUP_TOKEN is REQUIRED; without it setup is disabled (fail closed).
+ *   - the seeded role is fixed by deploy (seedRole), NOT the request body
+ *     (a caller cannot mint themselves master_admin — CRIT-2).
+ *   - /setup/db is token-gated + first-run only (a live instance can't be
+ *     re-pointed at an attacker DB — CRIT-3).
  */
 import { sqliteRunner } from '@frontbase/edge-infra';
-import { createConsole } from '../dist/index.js';
+import { createConsole, UserStore } from '../dist/index.js';
 import { migrateUp } from '../dist/db/migrations.js';
 
 let failures = 0;
 const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; console.log(`  ❌ ${l}`); } };
 
-const runner = sqliteRunner(':memory:');
-await migrateUp(runner);
-const app = await createConsole({
-    makeRunner: async () => runner,
-    sessionSecret: 'test-secret',
-    setupToken: 'test-setup-token',
-});
-const req = (path, init) => app.fetch(new Request('http://c.local' + path, init));
+const TOKEN = 'test-setup-token';
+const req = (app, path, init) => app.fetch(new Request('http://c.local' + path, init));
+const post = (app, path, body) => req(app, path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
-// 1. Fresh → needs setup
-const status1 = await req('/setup/status');
-check('fresh: needsSetup = true', (await status1.json()).needsSetup === true);
+// --- fresh instance (no users) ---
+{
+    const runner = sqliteRunner(':memory:');
+    await migrateUp(runner);
+    const app = await createConsole({ makeRunner: async () => runner, sessionSecret: 'test-secret', setupToken: TOKEN });
 
-// 2. POST /setup → owner seeded
-const setup = await req('/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'admin@x.com', password: 'pw123', setupToken: 'test-setup-token' }) });
-check('POST /setup → 200', setup.status === 200);
+    check('fresh: needsSetup = true', (await (await req(app, '/setup/status')).json()).needsSetup === true);
 
-// 3. needsSetup now false
-const status2 = await req('/setup/status');
-check('after setup: needsSetup = false', (await status2.json()).needsSetup === false);
+    // CRIT-3: /setup/db pre-init requires the token
+    check('/setup/db without token → 403', (await post(app, '/setup/db', { driver: 'sqlite', url: ':memory:' })).status === 403);
+    const dbOk = await post(app, '/setup/db', { driver: 'sqlite', url: ':memory:', setupToken: TOKEN });
+    check('/setup/db with token (pre-init) → 200', dbOk.status === 200);
 
-// 4. Re-POST → 410 (RULE 8: mutation removing the "no users" guard makes this go 200 → RED)
-const reSetup = await req('/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'other@x.com', password: 'pw', setupToken: 'test-setup-token' }) });
-check('re-POST /setup → 410 already_initialized', reSetup.status === 410);
+    // CRIT-2: the request body cannot choose the role — deploy fixes it (default owner)
+    const escalate = await post(app, '/setup', { email: 'evil@x.com', password: 'pw', setupToken: TOKEN, role: 'master_admin' });
+    check('POST /setup → 200', escalate.status === 200);
+    check('CRIT-2: body role IGNORED — seeded as owner, not master_admin', (await escalate.json()).user.role === 'owner');
 
-// 5. Wrong setupToken → 403
-const badToken = await req('/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'x@y.com', password: 'pw', setupToken: 'wrong' }) });
-// (410 wins if no-users check comes first; with users it's 410, so this case only fires pre-init)
-check('wrong setupToken: rejected (410 since users exist)', badToken.status === 410 || badToken.status === 403);
+    // now initialized
+    check('after setup: needsSetup = false', (await (await req(app, '/setup/status')).json()).needsSetup === false);
+    check('CRIT-3: /setup/db LOCKED post-init → 410', (await post(app, '/setup/db', { driver: 'sqlite', url: ':memory:', setupToken: TOKEN })).status === 410);
+    check('re-POST /setup → 410 already_initialized', (await post(app, '/setup', { email: 'x@y.com', password: 'pw', setupToken: TOKEN })).status === 410);
+    check('login after setup → 200', (await post(app, '/login', { email: 'evil@x.com', password: 'pw' })).status === 200);
+}
 
-// 6. Login works with the seeded creds
-const login = await req('/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'admin@x.com', password: 'pw123' }) });
-check('login after setup → 200', login.status === 200);
+// --- fail closed: no SETUP_TOKEN configured → setup disabled ---
+{
+    const runner = sqliteRunner(':memory:');
+    await migrateUp(runner);
+    const app = await createConsole({ makeRunner: async () => runner, sessionSecret: 'test-secret' }); // no setupToken
+    check('no SETUP_TOKEN: POST /setup → 403 setup_disabled', (await post(app, '/setup', { email: 'a@b.com', password: 'pw' })).status === 403);
+    check('no SETUP_TOKEN: /setup/db → 403', (await post(app, '/setup/db', { driver: 'sqlite', url: ':memory:' })).status === 403);
+    check('no SETUP_TOKEN: still no users seeded', await new UserStore(runner, '_default').countUsers() === 0);
+}
 
-// 7. DB picker — POST /setup/db probes + migrates a SQLite runner
-const dbPick = await req('/setup/db', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ driver: 'sqlite', url: ':memory:' }) });
-check('POST /setup/db (sqlite) → 200', dbPick.status === 200);
-check('DB picker returns the driver', (await dbPick.json()).driver === 'sqlite');
+// --- wrong token → 403 (pre-init) ---
+{
+    const runner = sqliteRunner(':memory:');
+    await migrateUp(runner);
+    const app = await createConsole({ makeRunner: async () => runner, sessionSecret: 'test-secret', setupToken: TOKEN });
+    check('wrong token (pre-init) → 403', (await post(app, '/setup', { email: 'a@b.com', password: 'pw', setupToken: 'nope' })).status === 403);
+    check('wrong token: no user seeded', await new UserStore(runner, '_default').countUsers() === 0);
+}
+
+// --- master_admin deploy: seedRole = master_admin seeds into _root and can log in (CRIT-1) ---
+{
+    const runner = sqliteRunner(':memory:');
+    await migrateUp(runner);
+    const app = await createConsole({ makeRunner: async () => runner, sessionSecret: 'test-secret', setupToken: TOKEN, seedRole: 'master_admin' });
+    const r = await post(app, '/setup', { email: 'master@x.com', password: 'pw', setupToken: TOKEN });
+    check('master_admin deploy: setup → 200', r.status === 200);
+    check('master_admin deploy: seeded as master_admin', (await r.json()).user.role === 'master_admin');
+    check('master_admin seeded into _root', await new UserStore(runner, '_root').countUsers() === 1);
+    check('CRIT-1: master_admin can LOG IN (cross-tenant email lookup)', (await post(app, '/login', { email: 'master@x.com', password: 'pw' })).status === 200);
+}
 
 console.log(failures === 0 ? '\nsetup: PASS ✅' : `\nsetup: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

@@ -8,9 +8,9 @@ import { hashPassword } from '@frontbase/edge-infra';
 
 export interface SeedResult { seeded: boolean; reason?: string }
 
-export async function seedOwner(userStore: UserStore, input: { email: string; password: string; now: string; role?: string }): Promise<SeedResult> {
+export async function seedOwner(userStore: UserStore, input: { email: string; password: string; now: string; role?: string; tenantSlug?: string }): Promise<SeedResult> {
     if (await userStore.countUsers() > 0) return { seeded: false, reason: 'users_exist' };
     const passwordHash = await hashPassword(input.password);
-    await userStore.createUser({ email: input.email, passwordHash, role: input.role ?? 'owner', now: input.now });
+    await userStore.createUser({ email: input.email, passwordHash, role: input.role ?? 'owner', now: input.now, tenantSlug: input.tenantSlug });
     return { seeded: true };
 }

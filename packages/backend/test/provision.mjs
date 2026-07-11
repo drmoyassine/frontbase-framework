@@ -74,5 +74,22 @@ check('GET /tenants → 200 (master_admin)', listRes.status === 200);
 const listBody = await listRes.json();
 check('list includes both tenants', listBody.tenants.length >= 2);
 
+// --- CRIT-1: the provisioned tenant_admin can actually LOG IN with the temp password ---
+// (login is cross-tenant by email; the globex admin lives in tenant 'globex').
+const loginApp = await createConsole({ makeRunner: async () => runner, sessionSecret: 'test-secret' });
+const tempPw = provBody.admin.tempPassword;
+const taLogin = await loginApp.fetch(new Request('http://c.local/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'admin@globex.com', password: tempPw }) }));
+check('CRIT-1: provisioned tenant_admin can log in with the temp password', taLogin.status === 200);
+const taBody = await taLogin.json();
+check('tenant_admin login carries role tenant_admin', taBody.user?.role === 'tenant_admin');
+// and the session cookie scopes them to 'globex' (via the JWT tenant_slug claim)
+const taCookie = (taLogin.headers.get('set-cookie') ?? '').split(';')[0];
+const meRes = await loginApp.fetch(new Request('http://c.local/me', { headers: { cookie: taCookie } }));
+check('tenant_admin /me → 200 (session valid)', meRes.status === 200);
+
+// wrong temp password → 401 (opaque)
+const badLogin = await loginApp.fetch(new Request('http://c.local/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'admin@globex.com', password: 'not-the-temp-password' }) }));
+check('wrong temp password → 401', badLogin.status === 401);
+
 console.log(failures === 0 ? '\nprovision: PASS ✅' : `\nprovision: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

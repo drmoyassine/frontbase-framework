@@ -27,6 +27,9 @@ export function tenantsRoutes(
         const r = runner();
         const tenants = new TS(r);
         const slug = body.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        // MED-4: a name with no alphanumerics yields an empty/degenerate slug —
+        // reject it (an empty slug would collide and break tenant scoping).
+        if (!slug || slug === '_default' || slug === '_root') return c.json({ error: 'invalid_tenant_name' }, 400);
         if (await tenants.tenantExists(slug)) return c.json({ error: 'tenant_exists' }, 409);
 
         await tenants.createTenant(slug, body.name, now());
