@@ -119,10 +119,26 @@ Decisions **A-18** (Identity) and **A-19** (Console DB Unification) recorded in 
 
 - **React UIs**: SetupWizard, LoginScreen, TenantsPanel, DbStep (the APIs they call are proven).
 - **Deploy seed gate** (`deploy-seed.mjs`): proves `wrangler secret put` calls + no-argv leak.
-- **Auth mutation harness entries**: add password-verify + seed-idempotency + hash-no-leak + canActOnTenant to the per-package `test/mutation.mjs` (currently proven via the gates themselves; the formal mutation harness entries are a follow-up).
-- **Supabase adapter**: port from the product repo behind the M-DB.0 seam (one adapter, flip "coming soon" → enabled).
+- ~~**Auth mutation harness entries**~~ — **DONE (2026-07-11).** The `test:mutation` harness now formally proves every new auth/DB security gate goes RED on break: password-verify, session-forgery (edge-infra, 6/6), seed-idempotency, hash-no-leak, canActOnTenant, and the setup post-init lock (backend, 7/7). 18 mutation proofs total across 5 packages.
+- **Supabase adapter**: port from the product repo behind the M-DB.0 seam (one adapter, flip "coming soon" → enabled). *Reclassification noted: Supabase is a proven port (`SupabaseRestProvider` exists in the product repo), not greenfield — the exact file list awaits the port-parity audit.*
 - **Live `wrangler deploy`** to a `*.workers.dev` URL + SW-handover click-test (the user's manual step).
 
 ---
 
-**47 suites green across 5 packages. Frozen edge-core regression intact (parity 14/14, scope). Every golden rule holds.**
+## Post-delivery security review (2026-07-11)
+
+A source-level review (not the test claims) found **5 real defects — 2 critical**, and fixed each with a regression test. Green suites had masked them: the tests asserted the *vulnerable* behavior worked.
+
+| # | Severity | Defect | Fix |
+|---|---|---|---|
+| CRIT-1 | 🔴 | Login hardwired to `_default` store → master_admin (`_root`) + every tenant_admin could **never log in** (multi-tenant half non-functional) | `findByEmailAnyTenant` — cross-tenant email lookup, verify, issue session with matched tenant_slug |
+| CRIT-2 | 🔴 | `/setup` took the seeded `role` from the request body → anon first-run caller could mint themselves `master_admin` | role fixed server-side from deploy config (`seedRole`/`ADMIN_ROLE`); body ignored |
+| CRIT-3 | 🔴 | `POST /setup/db` had no auth + no post-init lock → anon could swap a **live** console's database | `/setup` + `/setup/db` first-run-only (410) + `SETUP_TOKEN` required; fail closed if token unset |
+| MED-4 | 🟡 | Empty/degenerate tenant slug from a name with no alphanumerics | reject empty/reserved slugs → 400 |
+| MED-5 | 🟡 | Login returned before any hash on unknown email → user-enumeration by timing | always verify against a dummy hash |
+
+All fixed (commit `91f7ab3`); `setup.mjs` rewritten to assert the secure semantics + each CRIT vector; `provision.mjs` adds the cross-tenant login proof. **The meta-lesson (RULE 8): a green test is not evidence when it asserts the wrong behavior.**
+
+---
+
+**All backend/edge-infra suites green across 5 packages. Frozen edge-core regression intact (parity 14/14, scope). Mutation harness 18/18 RED-on-break. Every golden rule holds.**

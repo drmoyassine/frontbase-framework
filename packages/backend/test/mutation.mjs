@@ -1,10 +1,13 @@
 /**
- * backend mutation harness (RULE 8). Proves three guarantees real:
- *   - authz tenant predicate: drop `AND tenant_slug = ?` from getDraft → tenant B
- *     reads tenant A's draft from the SHARED db (SEC-P2-2 class).
- *   - default-deny middleware: remove the !principal.user guard → anon accesses.
- *   - opaque errors: return raw err.message → SQL/connection detail leaks.
- * Mutations target store.ts:52, auth.ts:23, errors.ts:14.
+ * backend mutation harness (RULE 8). Proves each security guarantee real by
+ * breaking it and watching its gate go RED:
+ *   - authz tenant predicate (drop WHERE tenant → cross-tenant read)
+ *   - default-deny middleware (remove !principal.user guard → anon access)
+ *   - opaque errors (return raw err.message → detail leak)
+ *   - seed idempotency (remove the count-check → a second owner is created)
+ *   - hash no-leak (login returns password_hash → the D8 assertion fires)
+ *   - canActOnTenant (always-true → a tenant_admin reaches another tenant)
+ *   - setup post-init lock (remove the initialized guard → /setup re-runnable)
  */
 import { withSourceMutation, buildPackage, runGate, expectRed, summarize, repoRoot } from '../../../scripts/mutation-lib.mjs';
 
@@ -13,12 +16,17 @@ const pkgDir = repoRoot + 'packages/backend/';
 const STORE = 'packages/backend/src/db/store.ts';
 const AUTH = 'packages/backend/src/mw/auth.ts';
 const ERRORS = 'packages/backend/src/mw/errors.ts';
+const SEED = 'packages/backend/src/auth/seed.ts';
+const LOGIN = 'packages/backend/src/auth/routes.ts';
+const ROLES = 'packages/backend/src/auth/roles.ts';
+const SETUP = 'packages/backend/src/routes/setup.ts';
 
 console.log('— backend mutation harness —\n');
 if (!buildPackage(PKG)) { console.log('baseline build failed'); process.exit(2); }
-if (runGate(pkgDir, 'test/authz.mjs') !== 0) { console.log('baseline authz RED — fix first'); process.exit(2); }
-if (runGate(pkgDir, 'test/errors.mjs') !== 0) { console.log('baseline errors RED — fix first'); process.exit(2); }
-console.log('baseline: authz + errors GREEN\n');
+for (const g of ['authz', 'errors', 'seed', 'login-e2e', 'provision', 'setup']) {
+    if (runGate(pkgDir, `test/${g}.mjs`) !== 0) { console.log(`baseline ${g} RED — fix first`); process.exit(2); }
+}
+console.log('baseline: authz + errors + seed + login-e2e + provision + setup GREEN\n');
 
 // 1. Drop the tenant predicate from getDraft → cross-tenant read (SHARED db).
 await withSourceMutation(
@@ -53,6 +61,59 @@ await withSourceMutation(
     async () => {
         buildPackage(PKG);
         expectRed('errors: goes red when raw err.message is returned', runGate(pkgDir, 'test/errors.mjs'));
+    },
+);
+
+// 4. Seed idempotency — remove the "users exist?" count-check → a second call
+//    creates a duplicate owner. seed.mjs's "exactly one owner" assertion → RED.
+await withSourceMutation(
+    'seed: idempotency count-check (D5)',
+    SEED,
+    "if (await userStore.countUsers() > 0) return { seeded: false, reason: 'users_exist' };",
+    "/* MUTATION: idempotency check removed */",
+    async () => {
+        buildPackage(PKG);
+        expectRed('seed: goes red when the idempotency count-check is removed', runGate(pkgDir, 'test/seed.mjs'));
+    },
+);
+
+// 5. Hash no-leak (D8) — login returns the password_hash. login-e2e's
+//    "NO password_hash" assertion → RED.
+await withSourceMutation(
+    'login: hash never leaves the endpoint (D8)',
+    LOGIN,
+    'return c.json({ user: { id: matched.id, email: matched.email, role: matched.role } }); // D8: no hash',
+    'return c.json({ user: { id: matched.id, email: matched.email, role: matched.role, password_hash: matched.passwordHash } });',
+    async () => {
+        buildPackage(PKG);
+        expectRed('login: goes red when the response includes password_hash', runGate(pkgDir, 'test/login-e2e.mjs'));
+    },
+);
+
+// 6. Cross-tenant authorization (CRIT/RULE 8) — canActOnTenant always true.
+//    provision.mjs's "tenant_admin A CANNOT act on B" assertion → RED.
+await withSourceMutation(
+    'roles: canActOnTenant confines tenant_admin',
+    ROLES,
+    'return principal.tenant === targetTenant;',
+    'return true; // MUTATION: cross-tenant confinement dropped',
+    async () => {
+        buildPackage(PKG);
+        expectRed('roles: goes red when canActOnTenant always allows (cross-tenant)', runGate(pkgDir, 'test/provision.mjs'));
+    },
+);
+
+// 7. Setup post-init lock (CRIT-3) — remove the initialized guard on /setup so a
+//    live instance can be re-bootstrapped. setup.mjs's "re-POST → 410" → RED.
+//    (replace_all: BOTH /setup and /setup/db share the identical guard line.)
+await withSourceMutation(
+    'setup: first-run-only lock (CRIT-3)',
+    SETUP,
+    "if (await isInitialized()) return c.json({ error: 'already_initialized' }, 410);",
+    "if (false) return c.json({ error: 'already_initialized' }, 410);",
+    async () => {
+        buildPackage(PKG);
+        expectRed('setup: goes red when the post-init lock is removed', runGate(pkgDir, 'test/setup.mjs'));
     },
 );
 

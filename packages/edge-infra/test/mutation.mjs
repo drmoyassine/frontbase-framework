@@ -18,13 +18,17 @@ const pkgDir = repoRoot + 'packages/edge-infra/';
 const HARNESS = 'packages/edge-infra/test/_harness.mjs';
 const PROVIDERS = 'packages/edge-infra/src/cache/providers.ts';
 const RATELIMIT = 'packages/edge-infra/src/proxy/ratelimit.ts';
+const PASSWORD = 'packages/edge-infra/src/vault/password.ts';
+const AUTH = 'packages/edge-infra/src/proxy/auth.ts';
 
 console.log('— edge-infra mutation harness —\n');
 if (!buildPackage(PKG)) { console.log('baseline build failed'); process.exit(2); }
 if (runGate(pkgDir, 'test/isolation.mjs') !== 0) { console.log('baseline isolation RED'); process.exit(2); }
 if (runGate(pkgDir, 'test/cache.mjs') !== 0) { console.log('baseline cache RED'); process.exit(2); }
 if (runGate(pkgDir, 'test/ratelimit.mjs') !== 0) { console.log('baseline ratelimit RED'); process.exit(2); }
-console.log('baseline: isolation + cache + ratelimit GREEN\n');
+if (runGate(pkgDir, 'test/password.mjs') !== 0) { console.log('baseline password RED'); process.exit(2); }
+if (runGate(pkgDir, 'test/session.mjs') !== 0) { console.log('baseline session RED'); process.exit(2); }
+console.log('baseline: isolation + cache + ratelimit + password + session GREEN\n');
 
 // 1. Isolation — drop the WHERE tenant predicate. A and B now see all 4 rows.
 await withSourceMutation(
@@ -83,6 +87,32 @@ if (leaky) {
     // (node:crypto/driver won't resolve) — the package isn't browser-importable.
     expectFired('no-leak: server module fails to bundle for the browser (not browser-importable)', true);
 }
+
+// 5. Password verify — `verifyPassword` always returns true. The password gate's
+//    "wrong password → false" assertion must go RED (D1 / auth RULE 8).
+await withSourceMutation(
+    'password: verifyPassword actually checks the hash',
+    PASSWORD,
+    'return timingSafeEqual(actual, expected);',
+    'return true; void timingSafeEqual(actual, expected);',
+    async () => {
+        buildPackage(PKG);
+        expectRed('password: goes red when verifyPassword always returns true', runGate(pkgDir, 'test/password.mjs'));
+    },
+);
+
+// 6. Session forgery — skip the JWT signature verification. The session gate's
+//    "wrong-secret token → rejected" assertion must go RED (D2 / auth RULE 8).
+await withSourceMutation(
+    'session: JWT signature is verified',
+    AUTH,
+    'if (!valid) return null;',
+    'if (!valid) { /* MUTATION: signature check skipped */ }',
+    async () => {
+        buildPackage(PKG);
+        expectRed('session: goes red when the JWT signature verify is skipped (forgery accepted)', runGate(pkgDir, 'test/session.mjs'));
+    },
+);
 
 buildPackage(PKG);
 summarize(PKG);
