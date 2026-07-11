@@ -26,6 +26,8 @@ export type { ProviderEnv } from './providers/registry.js';
 
 // auth
 export { createResolvePrincipal } from './proxy/auth.js';
+export { issueSession } from './proxy/session.js';
+export type { SessionClaims } from './proxy/session.js';
 export type { AuthConfig, ApiKeyHashEntry } from './proxy/auth.js';
 
 // rate limiting (per-principal token bucket; opaque 429)
@@ -42,6 +44,7 @@ export { inProcessWorkflowProvider, qstashWorkflowProvider } from './queue/provi
 // vault
 export { Vault } from './vault/vault.js';
 export { deriveKey, importRawKey, encrypt, decrypt } from './vault/crypto.js';
+export { hashPassword, verifyPassword, timingSafeEqual } from './vault/password.js';
 export type { SecretVersion, VaultOptions } from './vault/vault.js';
 
 // executors

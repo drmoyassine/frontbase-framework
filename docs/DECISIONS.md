@@ -793,6 +793,13 @@ required for green. Updates the M2.1 plan gates accordingly.
 
 ---
 
+## Decision A-18: Identity & Provisioning Layer (M-ID.1)
+
+**Date**: 2026-07-11  **Status**: ✅ APPROVED
+PBKDF2-SHA256 password hashing (D1, 600k iters, Web Crypto); HS256 fb_session JWT (D2, 7-day, HttpOnly); single-site _default tenant (D3); owner/master_admin/tenant_admin roles in JWT claims (D4/D9); idempotent boot seeding from ADMIN_EMAIL/ADMIN_PASSWORD (D5); wrangler secret put deploy flags (D6); login/logout/me routes (D7); hash never returned (D8); edge-core frozen (D9); tenant provisioning returns temp password once (D10).
+
+---
+
 ## Decision A-19: Console DB Unification & CF D1 Default (M-DB.0)
 
 **Date**: 2026-07-11

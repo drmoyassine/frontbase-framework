@@ -37,6 +37,15 @@ export const MIGRATIONS: Migration[] = [
             `DROP TABLE IF EXISTS published_pages`,
         ],
     },
+    {
+        // M-ID.1 (D4): the users table. NEVER edit migration v1.
+        version: 2,
+        name: 'users',
+        up: [
+            `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'owner', tenant_slug TEXT NOT NULL DEFAULT '_default', created_at TEXT NOT NULL, UNIQUE (email, tenant_slug))`,
+        ],
+        down: [`DROP TABLE IF EXISTS users`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

@@ -9,7 +9,7 @@ let failures = 0;
 const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; console.log(`  ❌ ${l}`); } };
 
 // A console whose store is unreachable — every store op throws a "connection refused" style error.
-const app = createConsole({
+const app = await createConsole({
     resolvePrincipal: async () => ({ user: { id: 'u' }, tenant: 't' }),
     dbUrl: 'http://127.0.0.1:9/does-not-exist', // unreachable
     now: () => '2026-07-10T00:00:00Z',

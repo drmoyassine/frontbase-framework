@@ -20,7 +20,7 @@ export async function makeConsole({ tenant, dbUrl = ':memory:', queries = {}, pr
     await migrateUp(runner);
     let clock = 0;
     return {
-        app: createConsole({
+        app: await createConsole({
             makeRunner: async () => runner,
             resolvePrincipal: principal ? async () => principal : principalFor(tenant),
             queries,

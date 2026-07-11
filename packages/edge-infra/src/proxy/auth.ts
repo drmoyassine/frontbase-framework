@@ -104,7 +104,13 @@ export function createResolvePrincipal(cfg: AuthConfig) {
             for (const token of candidates) {
                 const claims = await decodeJwt(token, cfg.jwtSecret);
                 if (claims && !isExpired(claims)) {
-                    const user = { id: String(claims.sub ?? claims.user_id ?? 'user') } as never;
+                    // D9: role + email ride in the JWT claims into the user object
+                    // (structural excess on Principal.user — allowed; edge-core is frozen).
+                    const user = {
+                        id: String(claims.sub ?? claims.user_id ?? 'user'),
+                        ...(claims.email != null ? { email: String(claims.email) } : {}),
+                        ...(claims.role != null ? { role: String(claims.role) } : {}),
+                    } as never;
                     const tenant = claims.tenant_slug ? String(claims.tenant_slug) : undefined;
                     return { user, tenant };
                 }

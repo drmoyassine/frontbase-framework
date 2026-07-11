@@ -16,7 +16,7 @@
 import { Hono } from 'hono';
 import type { Principal } from '@frontbase/edge-core';
 import type { DbRunner } from '@frontbase/edge-infra';
-import { sqliteRunner } from '@frontbase/edge-infra';
+import { sqliteRunner, createResolvePrincipal } from '@frontbase/edge-infra';
 import type { QueryRegistry } from '@frontbase/compiler';
 import { defaultDenyAuth, type ConsoleAuthVars } from './mw/auth.js';
 import { opaqueErrors } from './mw/errors.js';
@@ -24,6 +24,8 @@ import { pagesRoutes } from './routes/pages.js';
 import { healthRoutes } from './routes/health.js';
 import { publishRoutes } from './routes/publish.js';
 import { ConsoleStore } from './db/store.js';
+import { UserStore } from './db/users.js';
+import { authRoutes, meRoute } from './auth/routes.js';
 
 export interface CreateConsoleDeps {
     /** Build the DbRunner for the console DB (env-aware; e.g. from env.DB on CF).
@@ -45,38 +47,60 @@ export interface CreateConsoleDeps {
     now?: () => string;
 }
 
-export function createConsole(deps: CreateConsoleDeps): Hono<{ Variables: ConsoleAuthVars }> {
+export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Variables: ConsoleAuthVars }>> {
     const now = deps.now ?? (() => new Date().toISOString());
     const purge = deps.purgeCache ?? (async () => {});
 
     // Resolve the runner factory: explicit makeRunner wins; dbUrl builds sqliteRunner.
+    // createConsole is built once per isolate inside getEngine(env), so resolving the
+    // runner here is fine — it's the env-bound D1 binding (or a file/:memory: URL).
     const makeRunner = deps.makeRunner ?? (async () => sqliteRunner(deps.dbUrl ?? ':memory:'));
+    const sharedRunner = await makeRunner();
 
-    // Resolve the principal resolver: explicit wins; sessionSecret builds one (M-ID.1);
-    // else anonymous (tenant/user-scoped queries 401 by design).
-    const resolvePrincipal = deps.resolvePrincipal ?? (async () => ({ user: null, tenant: undefined }));
+    // Resolve the principal resolver: explicit wins; sessionSecret builds one for
+    // the fb_session JWT cookie (M-ID.1, D2); else anonymous.
+    const resolvePrincipal = deps.resolvePrincipal
+        ?? (deps.sessionSecret ? createResolvePrincipal({ jwtSecret: deps.sessionSecret, jwtCookie: 'fb_session' })
+            : (async () => ({ user: null, tenant: undefined })));
 
-    // One store per tenant (promise-cached); each is tenant-scoped at construction.
-    const stores = new Map<string, Promise<ConsoleStore>>();
+    // Stores per tenant — built synchronously from the shared runner. RULE 6: one runner.
+    const stores = new Map<string, ConsoleStore>();
     const storeFor = (tenant: string): Promise<ConsoleStore> => {
-        let p = stores.get(tenant);
-        if (!p) { p = (async () => new ConsoleStore(await makeRunner(), tenant))(); stores.set(tenant, p); }
-        return p;
+        let s = stores.get(tenant);
+        if (!s) { s = new ConsoleStore(sharedRunner, tenant); stores.set(tenant, s); }
+        return Promise.resolve(s);
+    };
+    const userStores = new Map<string, UserStore>();
+    const userStoreFor = (tenant: string): UserStore => {
+        let s = userStores.get(tenant);
+        if (!s) { s = new UserStore(sharedRunner, tenant); userStores.set(tenant, s); }
+        return s;
     };
 
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
     app.onError(opaqueErrors);
 
-    // /health is unauthenticated (liveness); everything else is default-deny.
+    // /health + login/logout are UNAUTHENTICATED (you can't require a session to log in).
     app.route('/health', healthRoutes());
+    if (deps.sessionSecret) {
+        app.route('/', authRoutes({ userStoreFor, sessionSecret: deps.sessionSecret }));
+    }
+    // Everything below requires an authenticated principal (default-deny).
     app.use('*', defaultDenyAuth(resolvePrincipal));
     app.route('/', pagesRoutes(storeFor, now));
     app.route('/', publishRoutes(storeFor, deps.queries ?? {}, purge, now));
+    if (deps.sessionSecret) {
+        app.route('/', meRoute()); // /me — principal already resolved
+    }
 
     return app;
 }
 
 export { ConsoleStore, defaultDenyAuth, opaqueErrors };
+export { UserStore, toPublic } from './db/users.js';
+export type { UserRecord, PublicUser } from './db/users.js';
+export { seedOwner } from './auth/seed.js';
+export { authRoutes, meRoute } from './auth/routes.js';
 export { publishPage } from './publish/pipeline.js';
 export { migrateUp, migrateDown, appliedVersions, schemaFingerprint, MIGRATIONS } from './db/migrations.js';
 export type { Migration } from './db/migrations.js';

@@ -22,7 +22,7 @@ async function getEngine(env) {
     if (cached) return cached;
     const runner = sqliteRunner(env.DB_URL ?? ':memory:');
     const makeRunner = async () => runner;
-    const console = createConsole({ makeRunner, sessionSecret: env.SESSION_SECRET });
+    const console = await createConsole({ makeRunner, sessionSecret: env.SESSION_SECRET });
     cached = createEngine({ manifest, data: directProvider(manifest), environment: 'edge', console });
     return cached;
 }
