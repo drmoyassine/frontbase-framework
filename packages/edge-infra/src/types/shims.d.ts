@@ -8,6 +8,14 @@
 
 // Cloudflare D1/KV runtime types (available in the Workers runtime; shimming for
 // standalone Node type-checking of server code that targets Workers).
+interface D1Database {
+    prepare(sql: string): D1PreparedStatement;
+}
+interface D1PreparedStatement {
+    bind(...values: unknown[]): D1PreparedStatement;
+    all(): Promise<{ results?: Record<string, unknown>[]; meta?: { changes?: { count?: number } } }>;
+    run(): Promise<{ meta?: { changes?: { count?: number } } }>;
+}
 interface KVNamespace {
     get(key: string, options?: { type?: 'text' | 'json' }): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;

@@ -1,18 +1,18 @@
 /**
- * Versioned, reversible migration runner (M3.0.5, CF-11). Replaces
- * auto-create-on-boot with an explicit, ordered set of migrations tracked in a
- * `_migrations` table. Ported in spirit from the product's edge-migrations.ts.
+ * Versioned, reversible migration runner (M3.0.5, CF-11; M-DB.0: runs via a
+ * `DbRunner`, so it works on SQLite / D1 / Turso / Postgres identically — B5).
+ * Tracked in a `_migrations` table. The Drizzle schema (schema.ts) stays the
+ * single source of truth (A-13, no Python/Alembic).
  *
- * The Drizzle schema (schema.ts) remains the single source of truth (A-13, no
- * Python/Alembic); these migrations bring a database to match it, and can roll
- * back. Contract (proven by test/migrations.mjs):
- *   - apply → rollback → re-apply leaves the schema identical;
- *   - a fresh DB and an upgraded DB converge to the same schema.
+ * Contract (proven by test/migrations.mjs): apply → rollback → re-apply leaves
+ * the schema identical; a fresh DB and an upgraded DB converge. Each migration is
+ * idempotent-safe (IF NOT EXISTS / IF EXISTS).
  *
- * Each migration is idempotent-safe (IF NOT EXISTS / IF EXISTS) so a partially
- * applied DB re-converges.
+ * NOTE: `schemaFingerprint` reads `sqlite_master` (SQLite/D1/Turso). Postgres uses
+ * `information_schema` — the convergence gate runs on SQLite per A-17; a Postgres
+ * fingerprint is adapter-specific (credential-gated).
  */
-import type { Client } from '@libsql/client';
+import type { DbRunner } from '@frontbase/edge-infra';
 
 export interface Migration {
     version: number;
@@ -41,51 +41,51 @@ export const MIGRATIONS: Migration[] = [
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;
 
-async function ensureTable(client: Client): Promise<void> {
-    await client.execute(MIGRATIONS_TABLE);
+async function ensureTable(runner: DbRunner): Promise<void> {
+    await runner.exec(MIGRATIONS_TABLE);
 }
 
 /** Versions currently recorded as applied, ascending. */
-export async function appliedVersions(client: Client): Promise<number[]> {
-    await ensureTable(client);
-    const r = await client.execute('SELECT version FROM _migrations ORDER BY version ASC');
-    return r.rows.map((row) => Number(row.version));
+export async function appliedVersions(runner: DbRunner): Promise<number[]> {
+    await ensureTable(runner);
+    const rows = await runner.query('SELECT version FROM _migrations ORDER BY version ASC');
+    return rows.map((row) => Number(row.version));
 }
 
 /** Apply all pending migrations (up), in order, recording each. Returns applied versions. */
-export async function migrateUp(client: Client, now: () => string = () => new Date().toISOString(), migrations: Migration[] = MIGRATIONS): Promise<number[]> {
-    await ensureTable(client);
-    const done = new Set(await appliedVersions(client));
+export async function migrateUp(runner: DbRunner, now: () => string = () => new Date().toISOString(), migrations: Migration[] = MIGRATIONS): Promise<number[]> {
+    await ensureTable(runner);
+    const done = new Set(await appliedVersions(runner));
     const applied: number[] = [];
     for (const m of [...migrations].sort((a, b) => a.version - b.version)) {
         if (done.has(m.version)) continue;
-        for (const sql of m.up) await client.execute(sql);
-        await client.execute({ sql: 'INSERT INTO _migrations (version, name, applied_at) VALUES (?,?,?)', args: [m.version, m.name, now()] });
+        for (const sql of m.up) await runner.exec(sql);
+        await runner.exec('INSERT INTO _migrations (version, name, applied_at) VALUES (?,?,?)', [m.version, m.name, now()]);
         applied.push(m.version);
     }
     return applied;
 }
 
-/** Roll back the latest N applied migrations (down), most-recent first. Returns rolled-back versions. */
-export async function migrateDown(client: Client, steps = 1, migrations: Migration[] = MIGRATIONS): Promise<number[]> {
-    await ensureTable(client);
-    const applied = (await appliedVersions(client)).sort((a, b) => b - a); // desc
+/** Roll back the latest N applied migrations (down), most-recent first. */
+export async function migrateDown(runner: DbRunner, steps = 1, migrations: Migration[] = MIGRATIONS): Promise<number[]> {
+    await ensureTable(runner);
+    const applied = (await appliedVersions(runner)).sort((a, b) => b - a); // desc
     const byVersion = new Map(migrations.map((m) => [m.version, m]));
     const rolledBack: number[] = [];
     for (const version of applied.slice(0, steps)) {
         const m = byVersion.get(version);
         if (!m) throw new Error(`migration_not_found:${version}`);
-        for (const sql of m.down) await client.execute(sql);
-        await client.execute({ sql: 'DELETE FROM _migrations WHERE version = ?', args: [version] });
+        for (const sql of m.down) await runner.exec(sql);
+        await runner.exec('DELETE FROM _migrations WHERE version = ?', [version]);
         rolledBack.push(version);
     }
     return rolledBack;
 }
 
-/** A stable fingerprint of the user schema (excludes _migrations + internal tables). */
-export async function schemaFingerprint(client: Client): Promise<string> {
-    const r = await client.execute(
+/** A stable fingerprint of the user schema (SQLite/D1/Turso; excludes internal tables). */
+export async function schemaFingerprint(runner: DbRunner): Promise<string> {
+    const rows = await runner.query(
         `SELECT type, name, sql FROM sqlite_master WHERE type IN ('table','index') AND name NOT LIKE 'sqlite_%' AND name != '_migrations' ORDER BY name`,
     );
-    return r.rows.map((row) => `${row.type}:${row.name}:${(row.sql ?? '').toString().replace(/\s+/g, ' ').trim()}`).join('\n');
+    return rows.map((row) => `${row.type}:${row.name}:${(row.sql ?? '').toString().replace(/\s+/g, ' ').trim()}`).join('\n');
 }

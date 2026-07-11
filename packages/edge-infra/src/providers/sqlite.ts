@@ -3,10 +3,11 @@
  * Uses @libsql/client (the product's own client) with `:memory:` for tests, or a
  * file/libsql URL in production. Real SQL, real `WHERE tenant` predicates.
  */
-import { createClient, type Client } from '@libsql/client';
+import { createClient } from '@libsql/client';
 import type { SiteManifest } from '@frontbase/edge-core';
 import { createSqlDataProvider } from './base.js';
-import type { DbRunner, DataProviderWithClient } from './types.js';
+import type { DataProviderWithClient } from './types.js';
+import { libsqlRunner } from './runners.js';
 
 export interface SqliteProviderOptions {
     manifest: SiteManifest;
@@ -16,19 +17,7 @@ export interface SqliteProviderOptions {
     authToken?: string;
 }
 
-function clientToRunner(client: Client): DbRunner {
-    return {
-        async query(sql, params = []) {
-            const res = await client.execute({ sql, args: params as never[] });
-            return res.rows as Record<string, unknown>[];
-        },
-        async exec(sql, params = []) {
-            await client.execute({ sql, args: params as never[] });
-        },
-    };
-}
-
 export function sqliteDataProvider(opts: SqliteProviderOptions): DataProviderWithClient {
     const client = createClient({ url: opts.url ?? ':memory:', authToken: opts.authToken });
-    return createSqlDataProvider({ kind: 'sqlite', manifest: opts.manifest, db: clientToRunner(client) });
+    return createSqlDataProvider({ kind: 'sqlite', manifest: opts.manifest, db: libsqlRunner(client) });
 }

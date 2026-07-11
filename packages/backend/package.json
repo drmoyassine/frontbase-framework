@@ -16,7 +16,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node test/console.mjs && node test/authz.mjs && node test/publish.mjs && node test/errors.mjs && node test/migrations.mjs",
+    "test": "tsc -p tsconfig.json && node test/console.mjs && node test/authz.mjs && node test/publish.mjs && node test/errors.mjs && node test/deployability.mjs && node test/migrations.mjs",
     "test:mutation": "node test/mutation.mjs"
   },
   "peerDependencies": {

@@ -24,8 +24,8 @@ console.log('baseline: authz + errors GREEN\n');
 await withSourceMutation(
     'authz: tenant predicate in getDraft',
     STORE,
-    "sql: 'SELECT layout_data FROM drafts WHERE slug = ? AND tenant_slug = ?', args: [slug, this.tenant]",
-    "sql: 'SELECT layout_data FROM drafts WHERE slug = ?', args: [slug]",
+    "'SELECT layout_data FROM drafts WHERE slug = ? AND tenant_slug = ?', [slug, this.tenant]",
+    "'SELECT layout_data FROM drafts WHERE slug = ?', [slug]",
     async () => {
         buildPackage(PKG);
         expectRed('authz: goes red when the tenant predicate is dropped', runGate(pkgDir, 'test/authz.mjs'));

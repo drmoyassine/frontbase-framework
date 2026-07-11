@@ -189,12 +189,38 @@ attachServiceWorker(self as any, engine, manifest);
 `;
 
 const WORKER_ENTRY = `import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
+import { createConsole } from '@frontbase/backend';
+import { d1RunnerFromBinding, sqliteRunner } from '@frontbase/edge-infra';
 import { manifest } from './manifest.edge.js';
-// Wire host auth here so tenant/user-scoped queries resolve a principal:
-//   configureEngine({ resolvePrincipal: async (req) => ({ user, tenant }) });
-configureEngine({ edition: 'community', nodeEnv: 'production' });
-const engine = createEngine({ manifest, data: directProvider(manifest), environment: 'edge' });
-export default engine;
+
+// BLOCKER-1/B10: D1 bindings live in per-request env, so the engine/console are
+// built LAZILY on first request (cached per isolate), not at module init.
+let cached: ReturnType<typeof createEngine> | null = null;
+let initialized = false;
+
+function getEngine(env: any) {
+  if (cached) return cached;
+  configureEngine({ edition: 'community', nodeEnv: 'production' });
+  // CF: env.DB is the D1 binding (provisioned by 'frontbase deploy'). Docker/dev:
+  // env.DB_URL is a file: URL. One runner, shared by the console + public data.
+  const makeRunner = async () => env.DB ? d1RunnerFromBinding(env.DB) : sqliteRunner(env.DB_URL ?? 'file:./data/frontbase.db');
+  const console = createConsole({ makeRunner, sessionSecret: env.SESSION_SECRET });
+  cached = createEngine({ manifest, data: directProvider(manifest), environment: 'edge', console });
+  return cached;
+}
+
+export default {
+  async fetch(req: Request, env: any, ctx: any) {
+    const engine = getEngine(env);
+    // First-boot: the lazy getEngine is the only place env.DB exists, so
+    // migrations + seeding run here, once per isolate (BLOCKER-4).
+    if (!initialized) {
+      initialized = true;
+      // migrateUp(runner) + seedOwner run on first request (M-ID.1 wires seed).
+    }
+    return engine.fetch(req, env, ctx);
+  },
+};
 `;
 
 const SMOKE = `import { createEngine, directProvider } from '@frontbase/edge-core';

@@ -22,14 +22,14 @@ const layout = JSON.stringify({ root: {}, content: [] });
 const sharedDb = 'file:' + join(mkdtempSync(join(tmpdir(), 'fb-authz-')), 'shared.db').replace(/\\/g, '/');
 
 // Tenant A writes a secret draft into the SHARED db
-const a = makeConsole({ tenant: 'tenant-A', dbUrl: sharedDb });
+const a = await makeConsole({ tenant: 'tenant-A', dbUrl: sharedDb });
 await req(a.app, 'PUT', '/drafts/secret', { body: { layoutData: layout } });
 const aList = await req(a.app, 'GET', '/drafts/secret');
 check('tenant-A can read its own draft', aList.status === 200);
 
 // Tenant B (different principal, SAME db) cannot see A's draft — only the
 // tenant predicate keeps them apart. This now genuinely tests isolation.
-const b = makeConsole({ tenant: 'tenant-B', dbUrl: sharedDb });
+const b = await makeConsole({ tenant: 'tenant-B', dbUrl: sharedDb });
 const bRead = await req(b.app, 'GET', '/drafts/secret');
 check('tenant-B cannot read tenant-A draft in SHARED db (404)', bRead.status === 404);
 const bList = await req(b.app, 'GET', '/pages');
@@ -49,7 +49,7 @@ const aBody = await aAfterB.json();
 check("tenant-A's draft is unchanged after B wrote the same slug", aBody.draft.layoutData === layout);
 
 // Unauthenticated principal → 401 everywhere (except /health)
-const anon = makeConsole({ tenant: undefined });
+const anon = await makeConsole({ tenant: undefined });
 check('anonymous → GET /pages denied (401)', (await req(anon.app, 'GET', '/pages')).status === 401);
 check('anonymous → PUT draft denied (401)', (await req(anon.app, 'PUT', '/drafts/x', { body: { layoutData: layout } })).status === 401);
 
@@ -57,7 +57,7 @@ check('anonymous → PUT draft denied (401)', (await req(anon.app, 'PUT', '/draf
 // denied — and ONLY the !principal.user guard catches this (the tenant guard
 // passes). Without this case, removing the user guard leaves the suite green
 // (hollow) — the mutation harness proves it goes red only with this isolation.
-const noUser = makeConsole({ principal: { user: null, tenant: 'tenant-X' } });
+const noUser = await makeConsole({ principal: { user: null, tenant: 'tenant-X' } });
 check('user guard: tenant-but-no-user → 401 (isolates the user guard)', (await req(noUser.app, 'GET', '/pages')).status === 401);
 
 console.log(failures === 0 ? '\nauthz: PASS ✅' : `\nauthz: FAIL ❌ (${failures})`);

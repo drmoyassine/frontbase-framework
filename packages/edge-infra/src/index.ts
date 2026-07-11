@@ -19,6 +19,8 @@ export { sqliteDataProvider } from './providers/sqlite.js';
 export { d1DataProvider, tursoDataProvider, postgresDataProvider } from './providers/cloud.js';
 export { buildDataProvider } from './providers/registry.js';
 export { requireTenant, copyRows } from './providers/helpers.js';
+export { sqliteRunner, libsqlRunner, d1RunnerFromBinding, d1RunnerFromRest } from './providers/runners.js';
+export type { D1RestOpts } from './providers/runners.js';
 export type { DbRunner, DataProviderWithClient, EnrichedQueryContext } from './providers/types.js';
 export type { ProviderEnv } from './providers/registry.js';
 

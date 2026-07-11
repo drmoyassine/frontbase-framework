@@ -8,7 +8,7 @@ import { makeConsole, req } from './_helpers.mjs';
 let failures = 0;
 const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; console.log(`  ❌ ${l}`); } };
 
-const { app } = makeConsole({ tenant: 'tenant-A' });
+const { app } = await makeConsole({ tenant: 'tenant-A' });
 
 // /health is the one open endpoint (liveness); auth is exercised in authz.mjs
 check('/health open (liveness)', (await req(app, 'GET', '/health')).status === 200);

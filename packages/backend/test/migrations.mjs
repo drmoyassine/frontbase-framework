@@ -7,15 +7,15 @@
  *
  * Uses real libsql :memory: clients (schema fingerprint from sqlite_master).
  */
-import { createClient } from '@libsql/client';
+import { sqliteRunner } from '@frontbase/edge-infra';
 import { migrateUp, migrateDown, appliedVersions, schemaFingerprint } from '../dist/db/migrations.js';
 
 let failures = 0;
 const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; console.log(`  ❌ ${l}`); } };
 const clock = () => '2026-07-10T00:00:00Z';
 
-// 1. Fresh apply
-const a = createClient({ url: ':memory:' });
+// 1. Fresh apply (M-DB.0: migrations run via a DbRunner)
+const a = sqliteRunner(':memory:');
 const appliedA = await migrateUp(a, clock);
 check('apply runs the pending migrations', appliedA.length >= 1);
 const fpApplied = await schemaFingerprint(a);
@@ -36,7 +36,7 @@ const fpReapplied = await schemaFingerprint(a);
 check('apply→rollback→re-apply converges (schema identical)', fpReapplied === fpApplied);
 
 // 4. A fresh DB and an upgraded DB converge to the same schema
-const b = createClient({ url: ':memory:' });
+const b = sqliteRunner(':memory:');
 await migrateUp(b, clock);
 check('fresh DB schema == upgraded DB schema', (await schemaFingerprint(b)) === fpApplied);
 

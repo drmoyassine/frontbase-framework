@@ -22,8 +22,9 @@ export type {
 export interface DbRunner {
     /** Run parameterized SQL; returns rows as plain objects. */
     query(sql: string, params?: unknown[]): Promise<Record<string, unknown>[]>;
-    /** Run a statement that returns no rows (DDL/DML). */
-    exec(sql: string, params?: unknown[]): Promise<void>;
+    /** Run a statement (DDL/DML); returns the number of affected rows where the
+     *  driver reports it (0 otherwise). */
+    exec(sql: string, params?: unknown[]): Promise<number>;
 }
 
 /** A DataProvider that also exposes its raw client for tests/seeding. */

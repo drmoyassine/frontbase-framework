@@ -20,7 +20,7 @@ const queries = defineQueries({
 });
 
 const purged = [];
-const { app } = makeConsole({ tenant: 'tenant-A', queries, dbUrl: ':memory:' });
+const { app } = await makeConsole({ tenant: 'tenant-A', queries, dbUrl: ':memory:' });
 // intercept cache purge by rebuilding with a purge callback — simpler: drive publishPage directly
 // Here we go through the route; to observe purge, wrap the store. For now assert the response.
 const layout = JSON.stringify({ root: {}, content: [{ id: 'h', type: 'Heading', props: { content: 'P', level: 'h1' } }] });

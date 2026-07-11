@@ -793,6 +793,27 @@ required for green. Updates the M2.1 plan gates accordingly.
 
 ---
 
+## Decision A-19: Console DB Unification & CF D1 Default (M-DB.0)
+
+**Date**: 2026-07-11
+**Status**: ✅ APPROVED
+**Question**: How does the admin console DB connect across adapters, and how is it provisioned on Cloudflare?
+
+### Decision
+
+1. **`ConsoleStore` consumes a `DbRunner`** (B1), not a libsql URL. A thin `sqliteRunner(url)` preserves `:memory:`/`file:`/`libsql://` for tests + Docker; `d1RunnerFromBinding(env.DB)` is the CF default. One seam, all four adapters.
+2. **CF default DB = D1** (B2). `frontbase deploy` (CF) provisions a D1 database via `wrangler d1 create`, writes the `[[d1_databases]] binding="DB"` block (idempotent — B6), and the console + public data share ONE binding.
+3. **Docker default = SQLite file** (`file:./data/frontbase.db`) via `sqliteRunner` — no external service.
+4. **Migrations run via `DbRunner.exec`** (B5) — portable SQL, identical on all four.
+5. **Lazy env-bound worker** (B10/BLOCKER-1): the scaffold `worker.ts` is `export default { fetch(req, env, ctx) }` with a cached `getEngine(env)` — D1 bindings only exist in per-request `env`, so the engine/console build is deferred to first request. `createConsole` takes `{ makeRunner, sessionSecret?, resolvePrincipal? }` (BLOCKER-2); `dbUrl` stays as a convenience.
+6. **edge-infra is the adapter home** (B9): `buildDataProvider`/`DbRunner`/runners.ts are the single driver source. Credentials never leak (B8).
+
+### Rationale
+
+Unblocks the identity sprint (which seeds users into the console DB) and makes a fresh CF deploy actually have a console DB. The four blockers (env-init vs D1 binding, dbUrl hardwire, deploy-only-deploy, first-boot migration in getEngine) are each fixed by the lazy env-bound pattern.
+
+---
+
 ## Decision History
 
 | Date | Decision | Status |

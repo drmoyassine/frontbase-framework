@@ -9,12 +9,16 @@ import { resolve, join, dirname } from 'node:path';
 import { execFile } from 'node:child_process';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import { composeWorker, assertWorkerBudget, type ComposeInput } from '../deploy/compose.js';
+import { provisionD1 } from './provision-d1.js';
+import { basename } from 'node:path';
 
 export interface DeployOptions {
     dryRun?: boolean;
     target?: 'cloudflare' | 'deno';
     outDir?: string;
     cwd?: string;
+    /** App name for the D1 database (CF). Default: the project dir name. */
+    appName?: string;
 }
 
 export async function deployCommand(projectPath: string, opts: DeployOptions = {}): Promise<{ ok: boolean; summary: string; details?: Record<string, unknown> }> {
@@ -47,7 +51,19 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
         };
     }
 
-    // Live deploy — shell out to wrangler (primary) or deployctl (Deno).
+    // Live deploy — CF: provision D1 first (idempotent, B2/B6), then wrangler deploy.
+    // Deno: deployctl (D1 not applicable).
+    if (opts.target !== 'deno') {
+        try {
+            const appName = opts.appName ?? basename(cwd);
+            const r = await provisionD1(cwd, { appName });
+            // provisionD1 writes the [[d1_databases]] binding; the worker builds its
+            // DbRunner from env.DB at boot (the lazy getEngine — BLOCKER-1).
+            void r; // result reported in deploy output below
+        } catch (e) {
+            return { ok: false, summary: `D1 provisioning failed: ${(e as Error).message}` };
+        }
+    }
     const bin = opts.target === 'deno' ? 'deployctl' : 'wrangler';
     return new Promise((resolve) => {
         execFile(bin, ['deploy'], { cwd }, (err, stdout, stderr) => {
