@@ -10,6 +10,7 @@
   "dependencies": {
     "@frontbase/edge-core": "workspace:*",
     "@frontbase/backend": "workspace:*",
-    "@frontbase/edge-infra": "workspace:*"
+    "@frontbase/edge-infra": "workspace:*",
+    "hono": "^4.12.28"
   }
 }

@@ -32,6 +32,9 @@ importers:
       '@frontbase/edge-infra':
         specifier: workspace:*
         version: link:../../packages/edge-infra
+      hono:
+        specifier: ^4.12.28
+        version: 4.12.28
 
   examples/cf-worker:
     dependencies:

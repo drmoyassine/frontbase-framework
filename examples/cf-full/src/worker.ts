@@ -16,11 +16,12 @@
  *   ADMIN_PASSWORD  (optional) … idempotent — never reseeds, never resets
  *   ADMIN_ROLE      (optional) role for the seeded admin (default 'owner')
  */
-import type { Hono } from 'hono';
+import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import { createConsole, migrateUp, seedOwner, UserStore } from '@frontbase/backend';
 import { d1RunnerFromBinding, type DbRunner } from '@frontbase/edge-infra';
 import { manifest } from './manifest.js';
+import { adminShell } from './admin.js';
 import SW_BUNDLE from 'virtual:sw-bundle';
 
 // Host config: there is no process.env on Workers — supply edition/env explicitly.
@@ -68,13 +69,20 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         seedRole: opts.admin?.role ?? 'owner',
         now,
     });
-    return createEngine({
+    const engine = createEngine({
         manifest,
         data: directProvider(manifest),
         environment: 'edge',
         swBundle: SW_BUNDLE,
         console: consoleApp,
     });
+    // Mount the admin shell at /console AHEAD of the engine, so the eSSR
+    // catch-all doesn't swallow it. Everything else (public pages, /sw.js,
+    // /api/console/*) falls through to the engine.
+    const app = new Hono();
+    app.route('/console', adminShell());
+    app.route('/', engine);
+    return app;
 }
 
 let enginePromise: Promise<Hono> | null = null;

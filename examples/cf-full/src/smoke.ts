@@ -35,6 +35,12 @@ await check('GET /sw.js serves the browser engine bundle', async () => {
     const r = await req('/sw.js');
     return r.status === 200 && r.headers.get('content-type') === 'text/javascript' && (await r.text()).length > 1000;
 });
+await check('GET /console serves the admin shell (HTML, not eSSR)', async () => {
+    const r = await req('/console');
+    const ct = r.headers.get('content-type') ?? '';
+    const body = await r.text();
+    return r.status === 200 && ct.includes('text/html') && body.includes('Frontbase Console') && !body.includes('chimera-rendered-by');
+});
 
 // ---- console: public vs login-gated ----
 await check('GET /api/console/health is public → 200', async () =>
