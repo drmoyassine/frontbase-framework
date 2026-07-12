@@ -29,6 +29,7 @@ import { authRoutes, meRoute } from './auth/routes.js';
 import { tenantsRoutes } from './routes/tenants.js';
 import { setupRoutes } from './routes/setup.js';
 import { phase2Routes } from './routes/phase2.js';
+import { recoverStuckExecutions } from './routes/phase2.js';
 import { usersRoutes } from './routes/users.js';
 import { dataStudioRoutes } from './routes/data-studio.js';
 import { plansRoutes } from './routes/plans.js';
@@ -167,6 +168,18 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     // Phase 3b: Data Studio (datasources + introspection) + Plans
     app.route('/', dataStudioRoutes(phase2StoreFor, now));
     app.route('/', plansRoutes(phase2StoreFor, now));
+
+    // F3b-durable: one-shot recovery on boot. If async dispatch is configured, a
+    // previous isolate may have died mid-run, leaving 'running' rows behind. Replay
+    // them (best-effort, opaque on error) using the dispatcher so on CF it rides
+    // ctx.waitUntil of the first request. Default cutoff: runs older than 5 min.
+    if (deps.dispatcher) {
+        const cutoffIso = new Date(Date.now() - 5 * 60_000).toISOString();
+        deps.dispatcher(async () => {
+            try { await recoverStuckExecutions(phase2StoreFor, now, cutoffIso); }
+            catch { /* best-effort: a failed sweep retries on the next boot */ }
+        });
+    }
 
     return app;
 }

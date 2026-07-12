@@ -10,6 +10,7 @@ import { executeWorkflow } from '@frontbase/edge-core/workflow';
 import type { StorageProvider, Provisioner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../mw/auth.js';
 import type { Phase2Store } from '../db/phase2-store.js';
+import { requireRole } from '../auth/roles.js';
 
 export function phase2Routes(
     storeFor: (tenant: string) => Phase2Store,
@@ -28,18 +29,10 @@ export function phase2Routes(
 ): Hono<{ Variables: ConsoleAuthVars }> {
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
 
-    /** Run a workflow and record the result/error. Shared by sync + async paths. */
-    async function runAndRecord(store: Phase2Store, execId: string, workflowId: string, tenant: string, wf: { name: string; nodes: string; edges: string }, input: Record<string, unknown>): Promise<{ status: string; result?: unknown }> {
-        try {
-            const result = await executeWorkflow(execId, { id: workflowId, name: wf.name, nodes: wf.nodes, edges: wf.edges, tenantSlug: tenant }, input, { tenantSlug: tenant });
-            const status = result.status === 'completed' ? 'completed' : 'error';
-            await store.completeExecution(execId, status, JSON.stringify(result.result ?? {}), result.error ?? null, now());
-            return { status, result: result.result };
-        } catch (e) {
-            await store.completeExecution(execId, 'error', null, (e as Error)?.message ?? 'execution_failed', now());
-            return { status: 'error' };
-        }
-    }
+    /** Run a workflow and record the result/error. Thin closure over `now` for the
+     *  sync/async execute paths. (The recovery sweep uses the module-scope version.) */
+    const runAndRecord = (store: Phase2Store, execId: string, workflowId: string, tenant: string, wf: { name: string; nodes: string; edges: string }, input: Record<string, unknown>) =>
+        runAndRecordAt(store, execId, workflowId, tenant, wf, input, now);
 
     // ============ AUTOMATIONS (workflows + executions) ============
 
@@ -98,15 +91,16 @@ export function phase2Routes(
         if (!wf) return c.json({ error: 'not_found' }, 404);
         if (!wf.is_active) return c.json({ error: 'workflow_inactive' }, 409);
 
-        // Record the run as started.
+        // Record the run as started (F3b-durable: persist the input so a crashed
+        // run can be replayed by the recovery sweep).
         const execId = `exec-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-        await store.createExecution(execId, workflowId, trigger, now());
+        const tenant = c.get('tenant');
+        const input = body.input ?? {};
+        await store.createExecution(execId, workflowId, trigger, now(), input);
 
         // F3b: when a background dispatcher is configured, fire-and-track — return
         // immediately with 'running' and let the dispatcher complete the work.
         // Otherwise run synchronously (F3) and return the final status.
-        const tenant = c.get('tenant');
-        const input = body.input ?? {};
         const wfShape = { name: String(wf.name), nodes: String(wf.nodes), edges: String(wf.edges) };
 
         if (dispatcher) {
@@ -119,6 +113,16 @@ export function phase2Routes(
         const outcome = await runAndRecord(store, execId, workflowId, tenant, wfShape, input);
         if (outcome.status === 'error') return c.json({ executionId: execId, status: 'error', error: 'execution_failed' }, 500);
         return c.json({ executionId: execId, status: outcome.status, result: outcome.result });
+    });
+
+    // F3b-durable: on-demand recovery sweep — master_admin only. Replays stuck
+    // 'running' executions (older than the cutoff, presumed dead) from their
+    // persisted input. Also kicked automatically on boot (createConsole).
+    app.post('/automations/_recover', requireRole('master_admin'), async (c) => {
+        const ageMinutes = Math.max(1, Number(c.req.query('ageMinutes') ?? 5));
+        const cutoffIso = new Date(Date.now() - ageMinutes * 60_000).toISOString();
+        const result = await recoverStuckExecutions(storeFor, now, cutoffIso);
+        return c.json({ recovered: result.recovered, failed: result.failed, cutoff: cutoffIso });
     });
 
     // ============ EDGE RESOURCES ============
@@ -378,3 +382,59 @@ function base64ToBytes(b64: string): Uint8Array {
     for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
     return out;
 }
+
+// ============ F3b-durable: recovery sweep (module scope) ============
+
+/** Run a workflow and record the result/error at a given clock. Shared by the
+ *  execute route (sync + async) and the recovery sweep. Completion is idempotent
+ *  (guarded on status='running' in the store), so a late original + a recovery
+ *  re-run can't double-complete. */
+export async function runAndRecordAt(
+    store: Phase2Store, execId: string, workflowId: string, tenant: string,
+    wf: { name: string; nodes: string; edges: string }, input: Record<string, unknown>, now: () => string,
+): Promise<{ status: string; result?: unknown }> {
+    try {
+        const result = await executeWorkflow(execId, { id: workflowId, name: wf.name, nodes: wf.nodes, edges: wf.edges, tenantSlug: tenant }, input, { tenantSlug: tenant });
+        const status = result.status === 'completed' ? 'completed' : 'error';
+        await store.completeExecution(execId, status, JSON.stringify(result.result ?? {}), result.error ?? null, now());
+        return { status, result: result.result };
+    } catch (e) {
+        await store.completeExecution(execId, 'error', null, (e as Error)?.message ?? 'execution_failed', now());
+        return { status: 'error' };
+    }
+}
+
+/**
+ * Recovery sweep (F3b-durable). For each 'running' execution older than `cutoffIso`
+ * (presumed dead — e.g. an isolate evicted mid-run), replay it from its persisted
+ * input. If the workflow no longer exists, mark the execution `error: workflow_deleted`
+ * (don't leave it stuck forever). Returns the count of rows acted on.
+ *
+ * `storeFor` must yield the right tenant's store per row (the stuck list is
+ * cross-tenant; replay is tenant-scoped). Safe against races with a late original:
+ * completion is idempotent.
+ */
+export async function recoverStuckExecutions(
+    storeFor: (tenant: string) => Phase2Store,
+    now: () => string,
+    cutoffIso: string,
+): Promise<{ recovered: number; failed: number }> {
+    // Any store instance can list stuck rows (it's a cross-tenant system read).
+    const stuck = await storeFor('_default').listStuckExecutions(cutoffIso);
+    let recovered = 0;
+    let failed = 0;
+    for (const row of stuck) {
+        const store = storeFor(row.tenantSlug);
+        const wf = await store.getWorkflow(row.workflowId);
+        if (!wf) {
+            // Workflow deleted while a run was in flight — fail it, don't loop forever.
+            await store.completeExecution(row.id, 'error', null, 'workflow_deleted', now());
+            failed++;
+            continue;
+        }
+        await runAndRecordAt(store, row.id, row.workflowId, row.tenantSlug, { name: String(wf.name), nodes: String(wf.nodes), edges: String(wf.edges) }, row.input, now);
+        recovered++;
+    }
+    return { recovered, failed };
+}
+

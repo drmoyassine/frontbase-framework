@@ -97,28 +97,59 @@ export class Phase2Store {
     async listExecutions(workflowId?: string, limit = 50): Promise<Record<string, unknown>[]> {
         if (workflowId) {
             return this.runner.query(
-                'SELECT id, workflow_id, status, trigger, result, error, started_at, ended_at FROM workflow_executions WHERE workflow_id = ? AND tenant_slug = ? ORDER BY started_at DESC LIMIT ?',
+                'SELECT id, workflow_id, status, trigger, result, error, input, started_at, ended_at FROM workflow_executions WHERE workflow_id = ? AND tenant_slug = ? ORDER BY started_at DESC LIMIT ?',
                 [workflowId, this.tenant, limit],
             );
         }
         return this.runner.query(
-            'SELECT id, workflow_id, status, trigger, result, error, started_at, ended_at FROM workflow_executions WHERE tenant_slug = ? ORDER BY started_at DESC LIMIT ?',
+            'SELECT id, workflow_id, status, trigger, result, error, input, started_at, ended_at FROM workflow_executions WHERE tenant_slug = ? ORDER BY started_at DESC LIMIT ?',
             [this.tenant, limit],
         );
     }
 
-    async createExecution(id: string, workflowId: string, trigger: string, now: string): Promise<void> {
+    async createExecution(id: string, workflowId: string, trigger: string, now: string, input?: Record<string, unknown>): Promise<void> {
         await this.runner.exec(
-            `INSERT INTO workflow_executions (id, tenant_slug, workflow_id, status, trigger, started_at) VALUES (?,?,?,?,?,?)`,
-            [id, this.tenant, workflowId, 'running', trigger, now],
+            `INSERT INTO workflow_executions (id, tenant_slug, workflow_id, status, trigger, input, started_at) VALUES (?,?,?,?,?,?,?)`,
+            [id, this.tenant, workflowId, 'running', trigger, JSON.stringify(input ?? {}), now],
         );
     }
 
+    /** Idempotent / guarded completion (F3b-durable): only updates a row that is
+     *  STILL 'running'. A recovery re-run that finishes after the original (or
+     *  vice-versa) cannot clobber a terminal row — no double-complete. */
     async completeExecution(id: string, status: string, result: string | null, error: string | null, endedAt: string): Promise<void> {
         await this.runner.exec(
-            `UPDATE workflow_executions SET status = ?, result = ?, error = ?, ended_at = ? WHERE id = ? AND tenant_slug = ?`,
+            `UPDATE workflow_executions SET status = ?, result = ?, error = ?, ended_at = ? WHERE id = ? AND tenant_slug = ? AND status = 'running'`,
             [status, result, error, endedAt, id, this.tenant],
         );
+    }
+
+    async getExecution(id: string): Promise<Record<string, unknown> | null> {
+        const rows = await this.runner.query(
+            'SELECT id, tenant_slug, workflow_id, status, trigger, result, error, input, started_at, ended_at FROM workflow_executions WHERE id = ? AND tenant_slug = ?',
+            [id, this.tenant],
+        );
+        return rows[0] ?? null;
+    }
+
+    /**
+     * Recovery sweep input (F3b-durable): 'running' rows whose started_at is older
+     * than the cutoff — presumed dead (e.g. an isolate evicted mid-run). This is a
+     * CROSS-TENANT system read (recovery is a system op, like login's email lookup),
+     * so it does NOT filter by `this.tenant`. The caller re-runs each via the engine.
+     * Returns {id, tenantSlug, workflowId, input} so the caller can replay.
+     */
+    async listStuckExecutions(cutoffIso: string, limit = 50): Promise<Array<{ id: string; tenantSlug: string; workflowId: string; input: Record<string, unknown> }>> {
+        const rows = await this.runner.query(
+            `SELECT id, tenant_slug, workflow_id, input FROM workflow_executions WHERE status = 'running' AND started_at < ? LIMIT ?`,
+            [cutoffIso, limit],
+        );
+        return rows.map((row) => ({
+            id: String(row.id),
+            tenantSlug: String(row.tenant_slug),
+            workflowId: String(row.workflow_id),
+            input: (() => { try { return JSON.parse(String(row.input ?? '{}')); } catch { return {}; } })(),
+        }));
     }
 
     // ============ EDGE RESOURCES ============

@@ -20,13 +20,14 @@ const SEED = 'packages/backend/src/auth/seed.ts';
 const LOGIN = 'packages/backend/src/auth/routes.ts';
 const ROLES = 'packages/backend/src/auth/roles.ts';
 const SETUP = 'packages/backend/src/routes/setup.ts';
+const PHASE2STORE = 'packages/backend/src/db/phase2-store.ts';
 
 console.log('— backend mutation harness —\n');
 if (!buildPackage(PKG)) { console.log('baseline build failed'); process.exit(2); }
-for (const g of ['authz', 'errors', 'seed', 'login-e2e', 'provision', 'setup']) {
+for (const g of ['authz', 'errors', 'seed', 'login-e2e', 'provision', 'setup', 'durable-execution']) {
     if (runGate(pkgDir, `test/${g}.mjs`) !== 0) { console.log(`baseline ${g} RED — fix first`); process.exit(2); }
 }
-console.log('baseline: authz + errors + seed + login-e2e + provision + setup GREEN\n');
+console.log('baseline: authz + errors + seed + login-e2e + provision + setup + durable-execution GREEN\n');
 
 // 1. Drop the tenant predicate from getDraft → cross-tenant read (SHARED db).
 await withSourceMutation(
@@ -114,6 +115,20 @@ await withSourceMutation(
     async () => {
         buildPackage(PKG);
         expectRed('setup: goes red when the post-init lock is removed', runGate(pkgDir, 'test/setup.mjs'));
+    },
+);
+
+// 8. Idempotent completion (F3b-durable) — drop the `AND status = 'running'` guard
+//    so a late original / second recovery can clobber a terminal row. durable-execution's
+//    "terminal row not clobbered" assertion → RED.
+await withSourceMutation(
+    'durable: completeExecution status=running guard',
+    PHASE2STORE,
+    "`UPDATE workflow_executions SET status = ?, result = ?, error = ?, ended_at = ? WHERE id = ? AND tenant_slug = ? AND status = 'running'`",
+    "`UPDATE workflow_executions SET status = ?, result = ?, error = ?, ended_at = ? WHERE id = ? AND tenant_slug = ?`",
+    async () => {
+        buildPackage(PKG);
+        expectRed('durable: goes red when the completeExecution guard is removed', runGate(pkgDir, 'test/durable-execution.mjs'));
     },
 );
 
