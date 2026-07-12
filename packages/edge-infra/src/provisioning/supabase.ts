@@ -41,13 +41,11 @@ export function supabaseProvisioner(opts: SupabaseProvisionerOpts): Provisioner 
     const headers = { authorization: `Bearer ${opts.accessToken}`, 'content-type': 'application/json' };
 
     return {
-        // No cheap reversible provision op exists today (see file header). Stub.
+        // No cheap reversible provision op exists today (see file header). Stub —
+        // create/remove are pure no-ops; token validation is EXPLICIT (validateToken),
+        // not implicit on every create, so a stub doesn't fire a network call per use.
         handles: () => false,
-        async create(): Promise<ProvisionResult> {
-            // Still verify the token so a misconfigured console fails loudly on first use.
-            await this.validateToken();
-            return { provisioned: false };
-        },
+        async create(): Promise<ProvisionResult> { return { provisioned: false }; },
         async remove(): Promise<void> { /* no-op: nothing was provisioned */ },
 
         async validateToken(): Promise<boolean> {
