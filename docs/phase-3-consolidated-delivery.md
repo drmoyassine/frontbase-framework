@@ -77,7 +77,7 @@ These are integration-depth items: **they extend working features, they do not b
 | **F5d** | 3a | Live CF provisioning not exercised in CI | Tested via mock (same interface); real provisioning is credential-gated | 0.5 day |
 | **F7b** | 3b (F7 scope) | Introspection is SQLite-dialect only | sqlite_master + PRAGMA cover sqlite/turso/d1; Postgres `information_schema` + Supabase PostgREST additive | 1-2 days |
 | **F7c** | 3b (F7 scope) | Postgres datasource kind not runnable | Throws `postgres_runner_not_implemented`; CF-21 audit flagged a Postgres runner as pending | 1-2 days |
-| **F8b** | 3b (F8 scope) | No Stripe/billing integration | Plans are definitions only; Stripe needs SDK + webhooks + subscription lifecycle; credential-gated | 3-5 days |
+| **F8b** | 3b (F8 scope) | No Stripe/billing integration | Plans are definitions only; Stripe needs SDK + webhooks + subscription lifecycle. **🛑 DEFERRED as its own task — not stable yet.** See [`plans/f8b-stripe-billing-DEFERRED.md`](./plans/f8b-stripe-billing-DEFERRED.md) | 3-5 days |
 | **F3b-durable** | 3c (F3b polish) | Async dispatch is request-scoped, not durable | Uses `ctx.waitUntil` (dies if the isolate evicts); true durability needs QStash/Durable Objects | 2-3 days |
 
 ### 🔴 CORRECTNESS — known bug (open, not yet fixed)
@@ -104,7 +104,6 @@ If the goal is "deepen toward production GA," this is the recommended order:
 |----------|------|------------------|--------|
 | **P0** | BUG-1 storage delete (correctness) | Stops orphaned R2/S3 objects leaking on every delete; schema already supports the fix | 0.5 day |
 | **P1** | F4b multipart + presigned upload | Large-file uploads (removes 33% base64 inflation + size caps) | 1 day |
-| **P1** | F8b Stripe billing | Monetization — plans become real subscriptions | 3-5 days |
 | **P2** | F3b-durable async dispatch | Long workflows survive isolate eviction | 2-3 days |
 | **P2** | F7c Postgres runner | Postgres/Hyperdrive datasources runnable | 1-2 days |
 | **P2** | F5b Vectorize + Workers-deploy provisioning | Full edge-resource coverage (engine/vector) | 2 days |
@@ -112,7 +111,11 @@ If the goal is "deepen toward production GA," this is the recommended order:
 | **P3** | F5c Supabase provisioning | Supabase resource creation (not just CF) | 2 days |
 | **P3** | F4c / F5d credential-gated live CI gates | Proves the real R2/S3/CF paths in CI (needs test creds) | 0.5 day each |
 
-**Total to close every open item:** ~13.5-19.5 days of solo-developer effort (incl. BUG-1).
+**F8b Stripe billing (3-5 days) is deferred as a separate task** — not stable yet; excluded from this ordering. See [`plans/f8b-stripe-billing-DEFERRED.md`](./plans/f8b-stripe-billing-DEFERRED.md).
+
+**Total to close every open item excluding Stripe:** ~10.5-14.5 days of solo-developer effort (incl. BUG-1).
+
+> **Implementation build sheet for P0–P3 (junior-agent-ready, step-by-step, with test code):** [`plans/phase-3-followups-sprint.md`](./plans/phase-3-followups-sprint.md). It also captures a **P0-PRE** seam (inject a pre-built `StorageProvider` into `createConsole`) that unblocks the P0/P1 tests, and a **second orphan bug** found during this review (`DELETE /edge-resources/:id` never calls `provisioner.remove` — folded into P2-c).
 
 ---
 
