@@ -42,6 +42,9 @@ export type { CacheProvider } from './cache/types.js';
 
 // queue / durable workflow
 export { inProcessWorkflowProvider, qstashWorkflowProvider } from './queue/providers.js';
+// dispatchers (F3b-durable async dispatch — in-process + QStash redelivery)
+export { qstashDispatcher } from './queue/dispatchers.js';
+export type { Dispatcher, QstashDispatcherOpts } from './queue/dispatchers.js';
 
 // storage (S3-compatible — R2/S3/B2/MinIO; Phase 3a / F4)
 export { s3StorageProvider, memoryStorageProvider } from './storage/providers.js';
