@@ -50,6 +50,8 @@ export type { StorageProvider, PutOpts, S3StorageOpts } from './storage/provider
 // provisioning (CF Management API — D1/KV/Queues; Phase 3a / F5)
 export { cloudflareProvisioner, noopProvisioner } from './provisioning/cloudflare.js';
 export type { Provisioner, ProvisionResult, CloudflareProvisionerOpts } from './provisioning/cloudflare.js';
+// provisioning (Supabase — token-validating stub; Phase 3 follow-ups / F5c)
+export { supabaseProvisioner } from './provisioning/supabase.js';
 
 // vault
 export { Vault } from './vault/vault.js';
