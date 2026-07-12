@@ -7,7 +7,7 @@
  * runners come from @frontbase/edge-infra (the DbRunner seam).
  */
 import {
-    sqliteRunner, d1RunnerFromRest, supabaseRunner,
+    sqliteRunner, d1RunnerFromRest, supabaseRunner, postgresRunner,
     type DbRunner,
 } from '@frontbase/edge-infra';
 
@@ -35,10 +35,8 @@ export function datasourceRunner(kind: string, config: Record<string, unknown>):
                 schema: config.schema ? String(config.schema) : undefined,
             });
         case 'postgres':
-            // Postgres/Hyperdrive: not yet wired to a runner factory (CF-21 edge audit).
-            // Datasources of this kind can be stored but not introspected until a
-            // postgresRunner ships.
-            throw new Error('postgres_runner_not_implemented');
+            // F7c: Neon HTTP client (works for Neon + Supabase Postgres pooler URLs).
+            return postgresRunner({ connectionString: String(config.connectionString ?? config.url ?? '') });
         default:
             throw new Error('unknown_datasource_kind');
     }
@@ -46,5 +44,6 @@ export function datasourceRunner(kind: string, config: Record<string, unknown>):
 
 /** Whether this kind can be introspected (has a working runner). */
 export function isIntrospectable(kind: string): boolean {
-    return kind === 'sqlite' || kind === 'turso' || kind === 'd1' || kind === 'supabase';
+    return kind === 'sqlite' || kind === 'turso' || kind === 'd1' || kind === 'supabase' || kind === 'postgres';
 }
+

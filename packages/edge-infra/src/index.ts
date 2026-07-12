@@ -21,6 +21,8 @@ export { buildDataProvider } from './providers/registry.js';
 export { requireTenant, copyRows } from './providers/helpers.js';
 export { sqliteRunner, libsqlRunner, d1RunnerFromBinding, d1RunnerFromRest, supabaseRunner } from './providers/runners.js';
 export type { D1RestOpts, SupabaseOpts } from './providers/runners.js';
+export { postgresRunner } from './providers/postgres.js';
+export type { PostgresOpts } from './providers/postgres.js';
 export type { DbRunner, DataProviderWithClient, EnrichedQueryContext } from './providers/types.js';
 export type { ProviderEnv } from './providers/registry.js';
 
