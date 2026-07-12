@@ -63,6 +63,9 @@ export interface CreateConsoleDeps {
     /** Object-storage config (F4). When provided, file upload/download round-trips
      *  real bytes via the S3-compatible provider (R2/S3/B2/MinIO). */
     storage?: { accessKeyId: string; secretAccessKey: string; endpoint?: string; region?: string };
+    /** A pre-built StorageProvider (tests / advanced hosts). Takes precedence over
+     *  `storage` credentials — lets a test inject a memory provider end-to-end. */
+    storageProvider?: StorageProvider;
     /** Cloudflare provisioning config (F5). When provided, edge-resource create
      *  provisions a REAL D1/KV/Queue via the Management API. */
     provisioning?: { accountId: string; apiToken: string };
@@ -134,11 +137,11 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
         app.route('/', tenantsRoutes(() => sharedRunner, userStoreFor, now)); // /tenants — master_admin only (M-ID.2)
     }
     // CF-18 Phase 2: automations, edge resources, storage, settings, variables, users.
-    // F4: a real object-storage provider when credentials are configured.
+    // F4: a real object-storage provider when credentials are configured (or a
+    // pre-built one injected for tests — the injection seam takes precedence).
     // F5: a real CF provisioner when accountId + apiToken are configured.
-    const storageProvider: StorageProvider | undefined = deps.storage
-        ? s3StorageProvider(deps.storage)
-        : undefined;
+    const storageProvider: StorageProvider | undefined =
+        deps.storageProvider ?? (deps.storage ? s3StorageProvider(deps.storage) : undefined);
     const provisioner: Provisioner = deps.provisioning
         ? cloudflareProvisioner(deps.provisioning)
         : noopProvisioner;
