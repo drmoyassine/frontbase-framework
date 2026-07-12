@@ -7,6 +7,8 @@ This document supersedes the per-phase reports (`phase-3a-delivery.md`, `phase-3
 
 > **Update 2026-07-13 — follow-ups sprint executed.** The open items below were worked in [`plans/phase-3-followups-sprint.md`](./plans/phase-3-followups-sprint.md); delivery recorded in [`phase-3-followups-delivery.md`](./phase-3-followups-delivery.md). Net effect on the ledger: **BUG-1, F4b, F7c, F7b, F5b, F4c, F5d CLOSED**; **F5c partial** (token-validating stub; provision op is 🚩 design-gated); **F8b DEFERRED** (Stripe, own task); **F3b-durable** still open. Two correctness bugs were found + fixed (BUG-1 + a sibling edge-resource-delete orphan). "Total to close" drops from ~13–19 days to **~5–8 days** (just F5c-ops + F3b-durable + F8b).
 
+> **Update 2026-07-13 (2) — F5c-A + F3b-durable sprint executed.** [`plans/f5c-a-and-f3b-durable-sprint.md`](./plans/f5c-a-and-f3b-durable-sprint.md); delivery in [`f5c-f3b-durable-delivery.md`](./f5c-f3b-durable-delivery.md). **F5c → CLOSED** (Option A: real Supabase schema provisioning, no longer a stub); **F3b-durable → CLOSED** (persisted input + recovery sweep + idempotent completion + QStash redelivery). **Open engineering follow-ups: 0.** Only **F8b Stripe** remains, deliberately deferred.
+
 ---
 
 ## 1. Executive summary
