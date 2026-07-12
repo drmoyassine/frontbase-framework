@@ -59,7 +59,7 @@ export function cloudflareProvisioner(opts: CloudflareProvisionerOpts): Provisio
 
     return {
         handles(kind: string) {
-            return kind === 'database' || kind === 'cache' || kind === 'queue';
+            return kind === 'database' || kind === 'cache' || kind === 'queue' || kind === 'vector';
         },
 
         async create(kind: string, name: string): Promise<ProvisionResult> {
@@ -75,6 +75,15 @@ export function cloudflareProvisioner(opts: CloudflareProvisionerOpts): Provisio
                 const r = await cf(`/accounts/${account}/workers/queues`, 'POST', { name });
                 return { provisioned: true, remoteId: String(r?.name ?? name), info: { provider: 'queues' } };
             }
+            if (kind === 'vector') {
+                // F5b: Cloudflare Vectorize index. Sane defaults (768-dim cosine — matches
+                // common embedding models); make dimensions/metric overridable later.
+                const r = await cf(`/accounts/${account}/vectorize/v2/indexes`, 'POST', {
+                    name, config: { dimensions: 768, metric: 'cosine' },
+                });
+                return { provisioned: true, remoteId: String(r?.name ?? name), info: { provider: 'vectorize', dimensions: 768, metric: 'cosine' } };
+            }
+            // 'engine' has no single clean CF API (a Worker deploy) — config-only.
             return { provisioned: false };
         },
 
@@ -85,6 +94,8 @@ export function cloudflareProvisioner(opts: CloudflareProvisionerOpts): Provisio
                 await cf(`/accounts/${account}/storage/kv/namespaces/${remoteId}`, 'DELETE');
             } else if (kind === 'queue') {
                 await cf(`/accounts/${account}/workers/queues/${remoteId}`, 'DELETE');
+            } else if (kind === 'vector') {
+                await cf(`/accounts/${account}/vectorize/v2/indexes/${remoteId}`, 'DELETE');
             }
         },
     };

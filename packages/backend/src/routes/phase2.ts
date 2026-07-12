@@ -166,6 +166,20 @@ export function phase2Routes(
 
     app.delete('/edge-resources/:id', async (c) => {
         const store = storeFor(c.get('tenant'));
+        // De-provision the real resource BEFORE dropping the row (mirror of BUG-1 fix —
+        // previously provisioned D1/KV/Queues/Vectors leaked on delete). Best-effort.
+        if (provisioner) {
+            const list = await store.listEdgeResources();
+            const res = list.find((r) => String(r.id) === c.req.param('id'));
+            if (res?.config) {
+                try {
+                    const cfg = JSON.parse(String(res.config));
+                    if (cfg.remoteId && provisioner.handles(String(res.kind))) {
+                        await provisioner.remove(String(res.kind), String(cfg.remoteId));
+                    }
+                } catch { /* best-effort: row delete proceeds regardless */ }
+            }
+        }
         await store.deleteEdgeResource(c.req.param('id'));
         return c.json({ ok: true });
     });

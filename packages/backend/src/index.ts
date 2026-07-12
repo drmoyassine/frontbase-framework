@@ -69,6 +69,9 @@ export interface CreateConsoleDeps {
     /** Cloudflare provisioning config (F5). When provided, edge-resource create
      *  provisions a REAL D1/KV/Queue via the Management API. */
     provisioning?: { accountId: string; apiToken: string };
+    /** A pre-built Provisioner (tests / advanced hosts). Takes precedence over
+     *  `provisioning` creds — lets a test inject a mock end-to-end. */
+    provisioner?: Provisioner;
     /** Background work dispatcher (F3b). When provided, workflow execution is
      *  async (fire-and-track). On CF, wire to ctx.waitUntil; in-process tests can
      *  use queueMicrotask. Default: synchronous. */
@@ -142,9 +145,8 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     // F5: a real CF provisioner when accountId + apiToken are configured.
     const storageProvider: StorageProvider | undefined =
         deps.storageProvider ?? (deps.storage ? s3StorageProvider(deps.storage) : undefined);
-    const provisioner: Provisioner = deps.provisioning
-        ? cloudflareProvisioner(deps.provisioning)
-        : noopProvisioner;
+    const provisioner: Provisioner = deps.provisioner
+        ?? (deps.provisioning ? cloudflareProvisioner(deps.provisioning) : noopProvisioner);
     app.route('/', phase2Routes(phase2StoreFor, now, storageProvider, provisioner, deps.dispatcher));
     app.route('/', usersRoutes(userStoreFor, now, phase2StoreFor));
     // Phase 3b: Data Studio (datasources + introspection) + Plans
