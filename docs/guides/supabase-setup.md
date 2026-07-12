@@ -221,6 +221,52 @@ const runner = supabaseRunner({
 
 ---
 
+## Provisioning from the console (F5c Option A)
+
+The admin console can **provision Supabase resources directly** — no Management API
+or PAT required. The model is **schema-per-resource** on a single host project:
+
+- The operator configures ONE host Supabase project (`url` + `serviceKey`) via the
+  console's `supabaseProvisioning` setting.
+- Each edge resource of kind **database** → a dedicated Postgres schema
+  `frontbase_<slug>`.
+- Kind **vector** → a schema + the `pgvector` extension + a 768-dim `vectors` table
+  (matching the CF Vectorize default — consistent embedding dimensions cross-provider).
+- **De-provision** (delete the resource) → `DROP SCHEMA CASCADE` (removes everything
+  in the schema).
+
+### Prerequisite: the `execute_sql` function
+
+Provisioning runs DDL (`CREATE SCHEMA` / `DROP SCHEMA`) over the **service key**
+through the `execute_sql` RPC — the same seam the `supabaseRunner` uses. So the host
+project must have the `execute_sql` function installed (see §3 above). If a console
+can query Supabase, it can provision.
+
+### Configuration
+
+```ts
+createConsole({
+    supabaseProvisioning: {
+        url: 'https://<ref>.supabase.co',
+        serviceKey: '<service-role-key>',
+        schemaPrefix: 'frontbase_',  // optional, default 'frontbase_'
+    },
+    // ...
+});
+```
+
+If both Cloudflare (`provisioning`) and Supabase (`supabaseProvisioning`) are
+configured, **CF wins** (the platform-native path) and Supabase is ignored with a
+one-time warning.
+
+### Caveat: shared quota (noisy neighbor)
+
+All provisioned schemas share the host project's quota (database size, connection
+pool). This is fine for multi-tenant SaaS running on one project. For hard isolation
+between tenants, use separate Supabase projects (out of scope for this seam).
+
+---
+
 **Related docs:**
 - [CF-21 Edge Parity Audit](../cf-21-edge-parity-audit.md) — Full infrastructure mapping
 - [Database Runners Guide](./infra.md) — All DbRunner factories

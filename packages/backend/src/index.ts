@@ -16,7 +16,7 @@
 import { Hono } from 'hono';
 import type { Principal } from '@frontbase/edge-core';
 import type { DbRunner } from '@frontbase/edge-infra';
-import { sqliteRunner, createResolvePrincipal, s3StorageProvider, cloudflareProvisioner, noopProvisioner, type StorageProvider, type Provisioner } from '@frontbase/edge-infra';
+import { sqliteRunner, createResolvePrincipal, s3StorageProvider, cloudflareProvisioner, supabaseProvisioner, noopProvisioner, type StorageProvider, type Provisioner } from '@frontbase/edge-infra';
 import type { QueryRegistry } from '@frontbase/compiler/manifest';
 import { defaultDenyAuth, type ConsoleAuthVars } from './mw/auth.js';
 import { opaqueErrors } from './mw/errors.js';
@@ -69,6 +69,10 @@ export interface CreateConsoleDeps {
     /** Cloudflare provisioning config (F5). When provided, edge-resource create
      *  provisions a REAL D1/KV/Queue via the Management API. */
     provisioning?: { accountId: string; apiToken: string };
+    /** Supabase host-project config (F5c Option A). When provided, edge-resource
+     *  create provisions a Postgres schema (database) / pgvector schema (vector).
+     *  Mutually exclusive with `provisioning` for v1 — CF wins if both are set. */
+    supabaseProvisioning?: { url: string; serviceKey: string; schemaPrefix?: string };
     /** A pre-built Provisioner (tests / advanced hosts). Takes precedence over
      *  `provisioning` creds — lets a test inject a mock end-to-end. */
     provisioner?: Provisioner;
@@ -145,8 +149,19 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     // F5: a real CF provisioner when accountId + apiToken are configured.
     const storageProvider: StorageProvider | undefined =
         deps.storageProvider ?? (deps.storage ? s3StorageProvider(deps.storage) : undefined);
-    const provisioner: Provisioner = deps.provisioner
-        ?? (deps.provisioning ? cloudflareProvisioner(deps.provisioning) : noopProvisioner);
+    // F5/F5c provisioner. Precedence: injected > CF > Supabase > noop. CF wins if
+    // both CF and Supabase creds are configured (platform-native path); warn once.
+    let provisioner: Provisioner;
+    if (deps.provisioner) {
+        provisioner = deps.provisioner;
+    } else if (deps.provisioning) {
+        if (deps.supabaseProvisioning) console.warn('[frontbase] both CF and Supabase provisioning configured — CF wins; Supabase ignored');
+        provisioner = cloudflareProvisioner(deps.provisioning);
+    } else if (deps.supabaseProvisioning) {
+        provisioner = supabaseProvisioner(deps.supabaseProvisioning);
+    } else {
+        provisioner = noopProvisioner;
+    }
     app.route('/', phase2Routes(phase2StoreFor, now, storageProvider, provisioner, deps.dispatcher));
     app.route('/', usersRoutes(userStoreFor, now, phase2StoreFor));
     // Phase 3b: Data Studio (datasources + introspection) + Plans

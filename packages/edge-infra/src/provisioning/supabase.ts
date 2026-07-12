@@ -1,56 +1,91 @@
 /**
- * SupabaseProvisioner (Phase 3 follow-ups / P3-a, F5c).
+ * SupabaseProvisioner (F5c Option A — schema-per-resource).
  *
- * ⚠️ PROVISIONING IS A TOKEN-VALIDATING STUB BY DESIGN. Supabase's Management API
- * has no cheap, fast, reversible operation that cleanly maps to "provision an edge
- * resource" the way CF's D1/KV/Queues do:
- *   - Creating a project is heavy (minutes) and not cheaply reversible.
- *   - Creating a database branch needs an existing project + is GA-gated.
- *   - There is no Supabase equivalent of a "throwaway KV namespace."
+ * Model: the operator configures ONE host Supabase project (url + serviceKey).
+ * Each edge resource maps to a dedicated Postgres schema in that project:
+ *   - kind 'database' → CREATE SCHEMA frontbase_<slug>
+ *   - kind 'vector'   → CREATE SCHEMA frontbase_<slug> + pgvector extension +
+ *                       a 768-dim vectors table (matches the CF Vectorize default
+ *                       from P2-c — consistent embedding dimensions cross-provider)
+ * "De-provision" = DROP SCHEMA CASCADE.
  *
- * So this provisioner implements the `Provisioner` contract but `create()` always
- * returns `{ provisioned: false }` after VALIDATING the access token (a read-only
- * GET /v1/projects). That gives the console a real "are these credentials good?"
- * check today, and a clean extension point when the senior picks the operation to
- * map to each kind. `validateToken()` is exposed for that future wiring + for the
- * credential-gated test.
+ * No Management API / PAT — pure SQL over the service key, reusing `supabaseRunner`
+ * (its exec() runs arbitrary SQL through the `execute_sql` RPC). RULE 1: the service
+ * key is server-only; RULE 4: DDL errors surface opaquely (the route maps to
+ * `provisioning_failed`).
  *
- * RULE 1: server-only — the access token never enters a browser bundle.
- * RULE 4: errors surface opaquely.
+ * ⚠️ Prerequisite: the host project must have the `execute_sql` Postgres function
+ * installed (see docs/guides/supabase-setup.md). Provisioning inherits it. A direct
+ * PostgREST DDL path would be a follow-up; `execute_sql` is the consistent seam.
  *
- * 🚩 OPEN QUESTION (escalate before implementing create()): for each kind, what
- * Supabase Management operation should "provision" map to? e.g. database → create
- * a branch under an existing project? vector → create a pgvector-backed schema?
- * This file is the seam; the operation choice is a product decision.
+ * ⚠️ Noisy-neighbor caveat: all provisioned schemas share the host project's quota
+ * (DB size, connections). Fine for multi-tenant SaaS on one project; for hard
+ * isolation, use separate Supabase projects (out of scope here).
  */
+import { supabaseRunner } from '../providers/runners.js';
+import type { DbRunner } from '../providers/types.js';
 import type { Provisioner, ProvisionResult } from './cloudflare.js';
 
 export interface SupabaseProvisionerOpts {
-    /** Supabase Personal Access Token (Management API Bearer). */
-    accessToken: string;
-    /** Optional project ref to scope operations against. */
-    projectRef?: string;
+    /** Host Supabase project URL: https://<ref>.supabase.co */
+    url: string;
+    /** Service role key for the host project (runs schema DDL). */
+    serviceKey: string;
+    /** Schema-name prefix (default 'frontbase_'). */
+    schemaPrefix?: string;
 }
 
-const SUPABASE_API = 'https://api.supabase.com/v1';
+/** Lowercase + replace non-alphanumerics with `_`, trim leading/trailing `_`.
+ *  Returns '' for a degenerate name (no alphanumerics) — the caller rejects it. */
+function slugify(name: string): string {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
 
 export function supabaseProvisioner(opts: SupabaseProvisionerOpts): Provisioner & {
-    /** Validate the access token (read-only GET /v1/projects). Returns true on 200. */
-    validateToken(): Promise<boolean>;
+    /** Runs `SELECT 1` over the runner — a "are these creds good?" check. */
+    validateConnection(): Promise<boolean>;
 } {
-    const headers = { authorization: `Bearer ${opts.accessToken}`, 'content-type': 'application/json' };
+    const prefix = opts.schemaPrefix ?? 'frontbase_';
+    // Lazy runner — built once at factory scope, reused across create/remove.
+    let runner: DbRunner | null = null;
+    const getRunner = (): DbRunner => {
+        if (!runner) runner = supabaseRunner({ url: opts.url, serviceKey: opts.serviceKey });
+        return runner;
+    };
+    const schemaName = (name: string): string => {
+        const slug = slugify(name);
+        if (!slug) throw new Error('invalid_resource_name'); // empty/degenerate — footgun guard
+        return `${prefix}${slug}`;
+    };
 
     return {
-        // No cheap reversible provision op exists today (see file header). Stub —
-        // create/remove are pure no-ops; token validation is EXPLICIT (validateToken),
-        // not implicit on every create, so a stub doesn't fire a network call per use.
-        handles: () => false,
-        async create(): Promise<ProvisionResult> { return { provisioned: false }; },
-        async remove(): Promise<void> { /* no-op: nothing was provisioned */ },
+        handles(kind: string) {
+            return kind === 'database' || kind === 'vector';
+        },
 
-        async validateToken(): Promise<boolean> {
-            const resp = await fetch(`${SUPABASE_API}/projects`, { method: 'GET', headers });
-            return resp.ok;
+        async create(kind: string, name: string): Promise<ProvisionResult> {
+            const schema = schemaName(name); // throws on degenerate name
+            const r = getRunner();
+            // CREATE SCHEMA (both kinds). Identifier quoted to be safe.
+            await r.exec(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
+            if (kind === 'vector') {
+                // pgvector extension + a 768-dim vectors table inside the schema.
+                await r.exec(`CREATE EXTENSION IF NOT EXISTS vector`);
+                await r.exec(
+                    `CREATE TABLE IF NOT EXISTS "${schema}".vectors (id TEXT PRIMARY KEY, embedding vector(768), metadata JSONB)`,
+                );
+            }
+            return { provisioned: true, remoteId: schema, info: { provider: 'supabase', kind } };
+        },
+
+        async remove(_kind: string, remoteId: string): Promise<void> {
+            // remoteId IS the schema name (from create). CASCADE drops everything in it.
+            await getRunner().exec(`DROP SCHEMA IF EXISTS "${remoteId}" CASCADE`);
+        },
+
+        async validateConnection(): Promise<boolean> {
+            try { await getRunner().query('SELECT 1 AS one'); return true; }
+            catch { return false; }
         },
     };
 }
