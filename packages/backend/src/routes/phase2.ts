@@ -265,12 +265,15 @@ export function phase2Routes(
 
     app.delete('/storage/files/:id', async (c) => {
         const store = storeFor(c.get('tenant'));
-        // Best-effort object deletion from the provider (the metadata row goes regardless).
+        // BUG-1 fix: resolve bucket_id + path BEFORE deleting the row, so the real
+        // provider object is removed (not just the metadata). storage_files already
+        // stores both columns — the old code passed an empty bucket + the file ID.
         if (storage) {
-            // We need bucket + path; list the bucket to find the file. The file id is
-            // unique; scan is acceptable for the small per-tenant file count.
-            // (A production version would store bucket_id on the file row for direct lookup.)
-            try { await storage.delete('', c.req.param('id')); } catch { /* metadata-only fallback */ }
+            const file = await store.getFile(c.req.param('id'));
+            if (file) {
+                try { await storage.delete(file.bucketId, file.path); }
+                catch { /* best-effort: metadata row still goes; object may already be gone */ }
+            }
         }
         await store.deleteFile(c.req.param('id'));
         return c.json({ ok: true });

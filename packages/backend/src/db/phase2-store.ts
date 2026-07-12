@@ -191,6 +191,17 @@ export class Phase2Store {
         await this.runner.exec('DELETE FROM storage_files WHERE id = ? AND tenant_slug = ?', [id, this.tenant]);
     }
 
+    /** A single file row by id — resolves bucket_id + path so the route can remove
+     *  the real provider object BEFORE deleting the metadata row (BUG-1 fix). */
+    async getFile(id: string): Promise<{ bucketId: string; path: string; name: string } | null> {
+        const rows = await this.runner.query(
+            'SELECT bucket_id, path, name FROM storage_files WHERE id = ? AND tenant_slug = ?',
+            [id, this.tenant],
+        );
+        const row = rows[0];
+        return row ? { bucketId: String(row.bucket_id), path: String(row.path), name: String(row.name) } : null;
+    }
+
     // ============ SETTINGS ============
 
     async listSettings(): Promise<Record<string, unknown>[]> {
