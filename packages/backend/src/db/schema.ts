@@ -48,6 +48,8 @@ export const workflowExecutions = sqliteTable('workflow_executions', {
     trigger: text('trigger'),
     result: text('result'),
     error: text('error'),
+    /** Persisted input (F3b-durable) — lets a crashed run be replayed on recovery. */
+    input: text('input'),
     startedAt: text('started_at').notNull(),
     endedAt: text('ended_at'),
 });

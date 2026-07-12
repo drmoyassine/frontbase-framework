@@ -88,6 +88,20 @@ export const MIGRATIONS: Migration[] = [
             `DROP TABLE IF EXISTS datasources`,
         ],
     },
+    {
+        // F3b-durable: persist the workflow execution INPUT so a crashed run can be
+        // replayed on recovery. SQLite can't DROP COLUMN portably pre-3.35 across
+        // D1/Turso, so the down path recreates the table without the column.
+        version: 6,
+        name: 'execution_input',
+        up: [`ALTER TABLE workflow_executions ADD COLUMN input TEXT`],
+        down: [
+            `CREATE TABLE workflow_executions_v5 (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, workflow_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', trigger TEXT, result TEXT, error TEXT, started_at TEXT NOT NULL, ended_at TEXT, PRIMARY KEY (id, tenant_slug))`,
+            `INSERT INTO workflow_executions_v5 (id, tenant_slug, workflow_id, status, trigger, result, error, started_at, ended_at) SELECT id, tenant_slug, workflow_id, status, trigger, result, error, started_at, ended_at FROM workflow_executions`,
+            `DROP TABLE workflow_executions`,
+            `ALTER TABLE workflow_executions_v5 RENAME TO workflow_executions`,
+        ],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;
