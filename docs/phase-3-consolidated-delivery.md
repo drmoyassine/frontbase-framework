@@ -5,6 +5,8 @@
 
 This document supersedes the per-phase reports (`phase-3a-delivery.md`, `phase-3b-delivery.md`, `phase-3c-delivery.md`) as the single source of truth for what shipped and what remains.
 
+> **Update 2026-07-13 — follow-ups sprint executed.** The open items below were worked in [`plans/phase-3-followups-sprint.md`](./plans/phase-3-followups-sprint.md); delivery recorded in [`phase-3-followups-delivery.md`](./phase-3-followups-delivery.md). Net effect on the ledger: **BUG-1, F4b, F7c, F7b, F5b, F4c, F5d CLOSED**; **F5c partial** (token-validating stub; provision op is 🚩 design-gated); **F8b DEFERRED** (Stripe, own task); **F3b-durable** still open. Two correctness bugs were found + fixed (BUG-1 + a sibling edge-resource-delete orphan). "Total to close" drops from ~13–19 days to **~5–8 days** (just F5c-ops + F3b-durable + F8b).
+
 ---
 
 ## 1. Executive summary
