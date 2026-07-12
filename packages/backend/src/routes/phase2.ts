@@ -204,8 +204,25 @@ export function phase2Routes(
     app.post('/storage/buckets/:id/files', async (c) => {
         const store = storeFor(c.get('tenant'));
         const bucketId = c.req.param('id');
-        // Accept base64-encoded bytes (content) for JSON-API simplicity, OR
-        // metadata-only when no provider is configured.
+
+        // F4b: multipart/form-data upload (server-proxied). The browser POSTs a real
+        // file + a `path` field; we stream the bytes to the provider. Don't set
+        // content-type manually — FormData sets its own boundary.
+        const ct = c.req.header('content-type') ?? '';
+        if (storage && ct.includes('multipart/form-data')) {
+            const form = await c.req.formData();
+            const file = form.get('file');
+            const path = String(form.get('path') ?? '');
+            if (!(file instanceof File) || !path) return c.json({ error: 'validation_failed' }, 400);
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            try { await storage.put({ bucket: bucketId, key: path, bytes, contentType: file.type }); }
+            catch { return c.json({ error: 'storage_upload_failed' }, 500); }
+            const fileId = `file-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+            await store.createFile({ id: fileId, bucketId, path, name: file.name, size: bytes.length, mimeType: file.type }, now());
+            return c.json({ id: fileId, ok: true, stored: true });
+        }
+
+        // JSON path: base64-encoded bytes (content) for API simplicity, OR metadata-only.
         const body = await c.req.json().catch(() => null) as { path?: string; name?: string; size?: number; mimeType?: string; content?: string } | null;
         if (!body?.path || !body.name) return c.json({ error: 'validation_failed' }, 400);
 
@@ -235,6 +252,16 @@ export function phase2Routes(
             mimeType: body.mimeType,
         }, now());
         return c.json({ id: fileId, ok: true, stored: !!(storage && body.content) });
+    });
+
+    // Issue a presigned URL for direct-to-provider upload (F4b). Client PUTs bytes
+    // to the returned URL, then POSTs .../files with { path, name } to record metadata.
+    app.post('/storage/buckets/:id/upload-url', async (c) => {
+        if (!storage) return c.json({ error: 'storage_not_configured' }, 501);
+        const body = await c.req.json().catch(() => null) as { path?: string; contentType?: string } | null;
+        if (!body?.path) return c.json({ error: 'validation_failed' }, 400);
+        const url = await storage.signedUploadUrl(c.req.param('id'), body.path, body.contentType);
+        return c.json({ url, method: 'PUT' });
     });
 
     // Download a file's bytes (only when a storage provider is configured — F4).

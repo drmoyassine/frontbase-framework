@@ -16,8 +16,10 @@ export interface StorageProvider {
     get(bucket: string, key: string): Promise<{ bytes: Uint8Array; contentType?: string }>;
     /** Delete an object. */
     delete(bucket: string, key: string): Promise<void>;
-    /** A presigned URL for temporary access (default 15 min). */
+    /** A presigned URL for temporary GET access (default 15 min). */
     signedUrl(bucket: string, key: string, expiresInSeconds?: number): Promise<string>;
+    /** A presigned URL the client can PUT bytes to directly (F4b, default 15 min). */
+    signedUploadUrl(bucket: string, key: string, contentType?: string, expiresInSeconds?: number): Promise<string>;
 }
 
 export interface PutOpts {
@@ -90,6 +92,13 @@ export function s3StorageProvider(opts: S3StorageOpts): StorageProvider {
             // The lazy client is typed as unknown (dynamic import); cast for the signer.
             return getSignedUrl(client as never, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: expiresInSeconds });
         },
+
+        async signedUploadUrl(bucket: string, key: string, contentType?: string, expiresInSeconds = 900): Promise<string> {
+            const client = await getClient();
+            const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+            const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+            return getSignedUrl(client as never, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType }), { expiresIn: expiresInSeconds });
+        },
     };
 }
 
@@ -103,5 +112,6 @@ export function memoryStorageProvider(): StorageProvider & { _store: Map<string,
         async get(bucket, key) { const v = store.get(k(bucket, key)); if (!v) throw new Error('not_found'); return { bytes: v.bytes, contentType: v.contentType }; },
         async delete(bucket, key) { store.delete(k(bucket, key)); },
         async signedUrl(bucket, key) { return `memory://${k(bucket, key)}`; },
+        async signedUploadUrl(bucket, key) { return `memory://upload/${k(bucket, key)}`; },
     };
 }
