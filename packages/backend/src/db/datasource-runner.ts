@@ -47,3 +47,10 @@ export function isIntrospectable(kind: string): boolean {
     return kind === 'sqlite' || kind === 'turso' || kind === 'd1' || kind === 'supabase' || kind === 'postgres';
 }
 
+/** The SQL dialect a kind speaks — drives which introspection SQL the Data Studio
+ *  runs (F7b: sqlite_master vs information_schema). */
+export type Dialect = 'sqlite' | 'postgres';
+export function dialectOf(kind: string): Dialect {
+    return (kind === 'supabase' || kind === 'postgres') ? 'postgres' : 'sqlite';
+}
+

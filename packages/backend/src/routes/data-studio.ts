@@ -12,7 +12,7 @@
 import { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../mw/auth.js';
 import type { Phase2Store } from '../db/phase2-store.js';
-import { datasourceRunner, isIntrospectable } from '../db/datasource-runner.js';
+import { datasourceRunner, isIntrospectable, dialectOf, type Dialect } from '../db/datasource-runner.js';
 
 export function dataStudioRoutes(
     storeFor: (tenant: string) => Phase2Store,
@@ -43,34 +43,51 @@ export function dataStudioRoutes(
 
     // ---- Introspection (list tables / columns / rows / query) ----
 
-    /** Build a runner for a datasource, or return an opaque error response. */
-    async function runnerFor(tenant: string, id: string): Promise<{ runner: import('@frontbase/edge-infra').DbRunner } | { error: { code: string; status: 404 | 501 | 502 } }> {
+    /** Build a runner + resolve its dialect, or return an opaque error response. */
+    async function runnerFor(tenant: string, id: string): Promise<{ runner: import('@frontbase/edge-infra').DbRunner; dialect: Dialect } | { error: { code: string; status: 404 | 501 | 502 } }> {
         const store = storeFor(tenant);
         const ds = await store.getDatasourceConfig(id);
         if (!ds) return { error: { code: 'not_found', status: 404 } };
         if (!isIntrospectable(ds.kind)) return { error: { code: 'not_introspectable', status: 501 } };
         try {
-            return { runner: datasourceRunner(ds.kind, ds.config) };
+            return { runner: datasourceRunner(ds.kind, ds.config), dialect: dialectOf(ds.kind) };
         } catch {
             return { error: { code: 'datasource_connect_failed', status: 502 } };
         }
     }
 
-    // List tables (SQLite dialect: sqlite_master).
+    // List tables — F7b: per-dialect (sqlite_master vs information_schema).
     app.get('/datasources/:id/tables', async (c) => {
         const r = await runnerFor(c.get('tenant'), c.req.param('id'));
         if ('error' in r) return c.json({ error: r.error.code }, r.error.status);
-        const rows = await r.runner.query(
-            `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`,
-        );
+        const sql = r.dialect === 'postgres'
+            ? `SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`
+            : `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`;
+        const rows = await r.runner.query(sql);
         return c.json({ tables: rows.map((row) => String(row.name)) });
     });
 
-    // Describe a table (PRAGMA table_info — SQLite dialect).
+    // Describe a table — F7b: PRAGMA (sqlite) vs information_schema.columns (postgres).
     app.get('/datasources/:id/tables/:table/columns', async (c) => {
         const r = await runnerFor(c.get('tenant'), c.req.param('id'));
         if ('error' in r) return c.json({ error: r.error.code }, r.error.status);
         const table = c.req.param('table');
+        if (r.dialect === 'postgres') {
+            // pk detection from information_schema is non-trivial (needs pg_catalog join);
+            // return pk:false here, note it — follow-up if needed.
+            const cols = await r.runner.query(
+                `SELECT column_name AS name, data_type AS type, (is_nullable = 'NO') AS "notNull" FROM information_schema.columns WHERE table_name = $1 ORDER BY ordinal_position`,
+                [table],
+            );
+            return c.json({
+                columns: cols.map((col) => ({
+                    name: String(col.name),
+                    type: String(col.type ?? ''),
+                    notNull: !!col.notNull,
+                    pk: false,
+                })),
+            });
+        }
         const cols = await r.runner.query(`PRAGMA table_info(${table})`);
         return c.json({
             columns: cols.map((col) => ({
@@ -82,7 +99,7 @@ export function dataStudioRoutes(
         });
     });
 
-    // Browse rows (SELECT * LIMIT n).
+    // Browse rows — F7b: placeholder style differs ($1 vs ?).
     app.get('/datasources/:id/tables/:table/rows', async (c) => {
         const r = await runnerFor(c.get('tenant'), c.req.param('id'));
         if ('error' in r) return c.json({ error: r.error.code }, r.error.status);
@@ -90,7 +107,10 @@ export function dataStudioRoutes(
         const limit = Math.min(Number(c.req.query('limit') ?? 100), 1000);
         const offset = Math.max(Number(c.req.query('offset') ?? 0), 0);
         // Table name is path-scoped (not user SQL) — safe to interpolate; limit/offset are bounded numbers.
-        const rows = await r.runner.query(`SELECT * FROM "${table}" LIMIT ? OFFSET ?`, [limit, offset]);
+        const sql = r.dialect === 'postgres'
+            ? `SELECT * FROM "${table}" LIMIT $1 OFFSET $2`
+            : `SELECT * FROM "${table}" LIMIT ? OFFSET ?`;
+        const rows = await r.runner.query(sql, [limit, offset]);
         return c.json({ rows, limit, offset });
     });
 
