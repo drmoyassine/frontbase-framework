@@ -28,7 +28,7 @@ Phase 3 was the answer to: *"how many passes to close the CF-18 deviations for f
 |----|---------|-------------|
 | F6 | Encrypted secrets | Secret variables AES-256-GCM at rest (Web-Crypto vault); decrypt-on-read; idempotent |
 | F3 | Real workflow execution | `POST /execute` runs the actual edge-core workflow engine; real result/error recorded |
-| F4 | R2/S3 storage | S3-compatible provider (R2/S3/B2/MinIO); real byte upload/download/presigned URLs |
+| F4 | R2/S3 storage | S3-compatible provider (R2/S3/B2/MinIO); real byte upload/download + presigned **download** URLs (`GET .../url`) |
 | F5 | Edge provisioning | CF Management API creates real D1/KV/Queues; `remoteId` merged into config |
 
 ### Phase 3b — "Fill the gaps"
@@ -80,6 +80,14 @@ These are integration-depth items: **they extend working features, they do not b
 | **F8b** | 3b (F8 scope) | No Stripe/billing integration | Plans are definitions only; Stripe needs SDK + webhooks + subscription lifecycle; credential-gated | 3-5 days |
 | **F3b-durable** | 3c (F3b polish) | Async dispatch is request-scoped, not durable | Uses `ctx.waitUntil` (dies if the isolate evicts); true durability needs QStash/Durable Objects | 2-3 days |
 
+### 🔴 CORRECTNESS — known bug (open, not yet fixed)
+
+Distinct from the depth-of-integration follow-ups above: this is a behavioral defect, not a missing capability.
+
+| ID | Area | Bug | Impact | Fix |
+|----|------|-----|--------|-----|
+| **BUG-1** | F4 storage delete | `DELETE /storage/files/:id` calls `storage.delete('', fileId)` — empty bucket + the file **id** where the object **key/path** belongs ([`routes/phase2.ts:273`](../packages/backend/src/routes/phase2.ts)). The real R2/S3 object is never removed; only the metadata row goes. Its inline comment wrongly claims the schema lacks `bucket_id` — but `storage_files` **already stores `bucket_id` + `path`** ([`db/migrations.ts:63`](../packages/backend/src/db/migrations.ts)). | Orphaned objects accumulate in the bucket on every delete (storage cost + data-retention leak). Only affects tenants with a live storage provider configured. | Add `Phase2Store.getFile(id)`; pass real `(bucket_id, path)` to `storage.delete`; test that the object is gone from the provider, not just the row. Est. ~0.5 day. **Discovered 2026-07-13 during report review; logged per decision to defer the fix.** |
+
 ### ⚙️ BY DESIGN (not gaps)
 
 | Item | Note |
@@ -94,6 +102,7 @@ If the goal is "deepen toward production GA," this is the recommended order:
 
 | Priority | Item | Unblocks / value | Effort |
 |----------|------|------------------|--------|
+| **P0** | BUG-1 storage delete (correctness) | Stops orphaned R2/S3 objects leaking on every delete; schema already supports the fix | 0.5 day |
 | **P1** | F4b multipart + presigned upload | Large-file uploads (removes 33% base64 inflation + size caps) | 1 day |
 | **P1** | F8b Stripe billing | Monetization — plans become real subscriptions | 3-5 days |
 | **P2** | F3b-durable async dispatch | Long workflows survive isolate eviction | 2-3 days |
@@ -103,7 +112,7 @@ If the goal is "deepen toward production GA," this is the recommended order:
 | **P3** | F5c Supabase provisioning | Supabase resource creation (not just CF) | 2 days |
 | **P3** | F4c / F5d credential-gated live CI gates | Proves the real R2/S3/CF paths in CI (needs test creds) | 0.5 day each |
 
-**Total to close every open item:** ~13-19 days of solo-developer effort.
+**Total to close every open item:** ~13.5-19.5 days of solo-developer effort (incl. BUG-1).
 
 ---
 
@@ -133,7 +142,7 @@ If the goal is "deepen toward production GA," this is the recommended order:
 - No durable long-workflow execution (F3b-durable) — request-scoped today.
 - No Supabase provisioning (F5c) — CF-only.
 
-These are depth-of-integration, not missing features.
+These are depth-of-integration, not missing features. **One correctness bug is open** (BUG-1, storage delete leaves orphaned objects) — see the CORRECTNESS subsection in §3; it is deferred, not fixed.
 
 ---
 

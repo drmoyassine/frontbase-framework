@@ -1,11 +1,13 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
-**Version**: 3.4
+**Version**: 3.5
 **Status**: Phases 0, 1, 2 ✅ COMPLETE — Phase 3 (Agent Experience) next
-**Last Updated**: 2026-07-10
+**Last Updated**: 2026-07-13
 
 > **Phase status at a glance:** Phase 0 🟢 · Phase 1 🟢 · Phase 2 🟢 (M2.3 builder is *foundation-complete* — full canvas is a carried-forward item) · Phase 3 🔵 next · Phase 4 🔵.
 > Carried-forward / deferred items from every phase are consolidated in **[§ Carried-forward items](#carried-forward-items-live-backlog)** so nothing is lost between phases.
+>
+> **Parallel track — CF-18 admin-console parity (not the "Phase 3: Agent Experience" milestone below):** a separate 3-phase effort (3a→3b→3c, 2026-07-12/13) took the admin console from MVP (3.5/11 nav areas) to full product parity (11/11, WYSIWYG + React Flow, real execution/storage/provisioning). **Single source of truth: [`docs/phase-3-consolidated-delivery.md`](./phase-3-consolidated-delivery.md)** — includes the full deviations ledger (8 closed, 9 open follow-ups, 1 open correctness bug **BUG-1**). This track's "Phase 3" numbering is independent of the milestone Phase 3 in this file.
 
 ---
 
@@ -476,7 +478,7 @@ npx @frontbase/compiler deploy                    # ship it
 
 ## Document Metadata
 
-**Version**: 3.4
+**Version**: 3.5
 **Status**: Active — Phases 0–2 complete, Phase 3 next
 **Owner**: Architecture Team
 **Next Review**: After Phase 3 M3.0 (hardening) completion
@@ -487,3 +489,4 @@ npx @frontbase/compiler deploy                    # ship it
 - [DECISIONS.md](./DECISIONS.md)
 - Sprint plans: [Phase 1](./plans/phase1-compiler-cli-sprint.md) · [Phase 2](./plans/phase2-cms-sprint.md) · [Phase 3](./plans/phase3-agent-experience-sprint.md)
 - Delivery reports: [Phase 1](./delivery/phase1-delivery-report.md) · [Phase 2](./delivery/phase2-delivery-report.md)
+- **CF-18 admin-console parity (separate track):** [Phase 3 consolidated](./phase-3-consolidated-delivery.md) (3a/[3b](./phase-3b-delivery.md)/[3c](./phase-3c-delivery.md) detail; deviations ledger + BUG-1)
