@@ -3,6 +3,8 @@ import { api, ApiError, type PageSummary } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BuilderCanvas } from '@/components/BuilderCanvas';
+import { Layers } from 'lucide-react';
 
 const EMPTY_LAYOUT = JSON.stringify(
     { root: {}, content: [{ id: 'h', type: 'Heading', props: { content: 'New page', level: 'h1' } }] },
@@ -16,6 +18,7 @@ export function Pages() {
     const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
     const [busy, setBusy] = useState(false);
     const [previewKey, setPreviewKey] = useState(0);
+    const [editMode, setEditMode] = useState<'visual' | 'json'>('visual');
 
     const loadPages = () => api<{ pages: PageSummary[] }>('/pages')
         .then((r) => setPages(r.pages ?? []))
@@ -81,20 +84,41 @@ export function Pages() {
                     <CardHeader className="flex-row items-center justify-between">
                         <CardTitle className="text-sm">{selected ? `Draft: ${selected}` : 'Select a page'}</CardTitle>
                         <div className="flex gap-2">
+                            <div className="flex rounded-md border border-input overflow-hidden">
+                                <button
+                                    onClick={() => setEditMode('visual')}
+                                    className={`px-3 py-1 text-xs ${editMode === 'visual' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                                >
+                                    <Layers className="inline h-3 w-3 mr-1" />Visual
+                                </button>
+                                <button
+                                    onClick={() => setEditMode('json')}
+                                    className={`px-3 py-1 text-xs ${editMode === 'json' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                                >
+                                    JSON
+                                </button>
+                            </div>
                             <Button size="sm" variant="secondary" disabled={!selected || busy} onClick={() => save(false)}>Save draft</Button>
                             <Button size="sm" disabled={!selected || busy} onClick={() => save(true)}>Publish</Button>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {msg && <div className={msg.kind === 'ok' ? 'text-sm text-primary' : 'text-sm text-destructive'}>{msg.text}</div>}
-                        <textarea
-                            disabled={!selected}
-                            value={layout}
-                            onChange={(e) => setLayout(e.target.value)}
-                            spellCheck={false}
-                            className="h-64 w-full rounded-md border border-input bg-background p-3 font-mono text-xs disabled:opacity-50"
-                            placeholder="Layout JSON…"
-                        />
+                        {editMode === 'visual' ? (
+                            <BuilderCanvas
+                                initialLayout={layout}
+                                onLayoutChange={(json) => setLayout(json)}
+                            />
+                        ) : (
+                            <textarea
+                                disabled={!selected}
+                                value={layout}
+                                onChange={(e) => setLayout(e.target.value)}
+                                spellCheck={false}
+                                className="h-64 w-full rounded-md border border-input bg-background p-3 font-mono text-xs disabled:opacity-50"
+                                placeholder="Layout JSON…"
+                            />
+                        )}
                         {selected && (
                             <div>
                                 <div className="mb-1 text-xs text-muted-foreground">Published preview</div>

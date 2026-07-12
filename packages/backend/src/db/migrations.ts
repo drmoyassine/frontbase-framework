@@ -53,6 +53,27 @@ export const MIGRATIONS: Migration[] = [
         up: [`CREATE TABLE IF NOT EXISTS tenants (slug TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL)`],
         down: [`DROP TABLE IF EXISTS tenants`],
     },
+    {
+        // CF-18 Phase 2: edge resources, storage, settings, variables, executions.
+        version: 4,
+        name: 'phase2_resources',
+        up: [
+            `CREATE TABLE IF NOT EXISTS edge_resources (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, kind TEXT NOT NULL, name TEXT NOT NULL, provider TEXT, config TEXT, status TEXT DEFAULT 'active', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS storage_buckets (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT NOT NULL, provider TEXT DEFAULT 'local', config TEXT, created_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS storage_files (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, bucket_id TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL, size INTEGER DEFAULT 0, mime_type TEXT, created_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS settings (tenant_slug TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (tenant_slug, key))`,
+            `CREATE TABLE IF NOT EXISTS variables (tenant_slug TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, is_secret INTEGER DEFAULT 0, updated_at TEXT NOT NULL, PRIMARY KEY (tenant_slug, key))`,
+            `CREATE TABLE IF NOT EXISTS workflow_executions (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, workflow_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', trigger TEXT, result TEXT, error TEXT, started_at TEXT NOT NULL, ended_at TEXT, PRIMARY KEY (id, tenant_slug))`,
+        ],
+        down: [
+            `DROP TABLE IF EXISTS workflow_executions`,
+            `DROP TABLE IF EXISTS variables`,
+            `DROP TABLE IF EXISTS settings`,
+            `DROP TABLE IF EXISTS storage_files`,
+            `DROP TABLE IF EXISTS storage_buckets`,
+            `DROP TABLE IF EXISTS edge_resources`,
+        ],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

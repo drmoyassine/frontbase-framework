@@ -28,6 +28,9 @@ import { UserStore } from './db/users.js';
 import { authRoutes, meRoute } from './auth/routes.js';
 import { tenantsRoutes } from './routes/tenants.js';
 import { setupRoutes } from './routes/setup.js';
+import { phase2Routes } from './routes/phase2.js';
+import { usersRoutes } from './routes/users.js';
+import { Phase2Store } from './db/phase2-store.js';
 import { requireRole, canActOnTenant } from './auth/roles.js';
 
 export interface CreateConsoleDeps {
@@ -85,6 +88,13 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
         if (!s) { s = new UserStore(sharedRunner, tenant); userStores.set(tenant, s); }
         return s;
     };
+    // Phase 2 stores per tenant (automations, edge resources, storage, settings, variables)
+    const phase2Stores = new Map<string, Phase2Store>();
+    const phase2StoreFor = (tenant: string): Phase2Store => {
+        let s = phase2Stores.get(tenant);
+        if (!s) { s = new Phase2Store(sharedRunner, tenant); phase2Stores.set(tenant, s); }
+        return s;
+    };
 
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
     app.onError(opaqueErrors);
@@ -105,6 +115,9 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
         app.route('/', meRoute()); // /me — principal already resolved
         app.route('/', tenantsRoutes(() => sharedRunner, userStoreFor, now)); // /tenants — master_admin only (M-ID.2)
     }
+    // CF-18 Phase 2: automations, edge resources, storage, settings, variables, users
+    app.route('/', phase2Routes(phase2StoreFor, now));
+    app.route('/', usersRoutes(userStoreFor, now));
 
     return app;
 }

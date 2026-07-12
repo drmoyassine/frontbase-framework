@@ -6,6 +6,11 @@ import { Login } from '@/pages/Login';
 import { Dashboard } from '@/pages/Dashboard';
 import { Pages } from '@/pages/Pages';
 import { Tenants } from '@/pages/Tenants';
+import { Automations } from '@/pages/Automations';
+import { EdgeResources } from '@/pages/EdgeResources';
+import { Storage } from '@/pages/Storage';
+import { Settings } from '@/pages/Settings';
+import { Users } from '@/pages/Users';
 import { ComingSoon } from '@/pages/ComingSoon';
 
 function Splash() {
@@ -33,13 +38,13 @@ export function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/pages" element={<Pages />} />
                 <Route path="/tenants" element={<Tenants />} />
+                <Route path="/automations" element={<Automations />} />
+                <Route path="/edge" element={<EdgeResources />} />
+                <Route path="/storage" element={<Storage />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/users" element={<Users />} />
                 <Route path="/plans" element={<ComingSoon title="Plans" />} />
                 <Route path="/data-studio" element={<ComingSoon title="Data Studio" />} />
-                <Route path="/users" element={<ComingSoon title="App Users" />} />
-                <Route path="/storage" element={<ComingSoon title="File Storage" />} />
-                <Route path="/automations" element={<ComingSoon title="Automations" />} />
-                <Route path="/edge" element={<ComingSoon title="Edge Resources" />} />
-                <Route path="/settings" element={<ComingSoon title="Settings" />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

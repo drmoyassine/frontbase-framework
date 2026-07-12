@@ -68,6 +68,36 @@ export class UserStore {
         const r = rows[0];
         return r ? { id: String(r.id), email: String(r.email), role: String(r.role), tenantSlug: String(r.tenant_slug) } : null;
     }
+
+    /** List all users in this tenant (CF-18 Phase 2 — App Users). */
+    async listUsers(): Promise<PublicUser[]> {
+        const rows = await this.runner.query(
+            'SELECT id, email, role, tenant_slug, created_at FROM users WHERE tenant_slug = ? ORDER BY created_at DESC',
+            [this.tenant],
+        );
+        return rows.map((r) => ({
+            id: String(r.id),
+            email: String(r.email),
+            role: String(r.role),
+            tenantSlug: String(r.tenant_slug),
+        }));
+    }
+
+    /** Update a user's role (CF-18 Phase 2 — App Users). */
+    async updateRole(id: string, role: string): Promise<void> {
+        await this.runner.exec(
+            'UPDATE users SET role = ? WHERE id = ? AND tenant_slug = ?',
+            [role, id, this.tenant],
+        );
+    }
+
+    /** Delete a user (CF-18 Phase 2 — App Users). */
+    async deleteUser(id: string): Promise<void> {
+        await this.runner.exec(
+            'DELETE FROM users WHERE id = ? AND tenant_slug = ?',
+            [id, this.tenant],
+        );
+    }
 }
 
 export function toPublic(u: { id: string; email: string; role: string; tenantSlug: string }): PublicUser {

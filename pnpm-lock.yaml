@@ -47,6 +47,9 @@ importers:
 
   packages/admin-console:
     dependencies:
+      '@frontbase/builder':
+        specifier: workspace:*
+        version: link:../builder
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1

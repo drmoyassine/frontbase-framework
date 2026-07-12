@@ -39,6 +39,77 @@ export const workflows = sqliteTable('workflows', {
     updatedAt: text('updated_at').notNull(),
 });
 
+/** Workflow executions — tenant-scoped (CF-18 Phase 2). */
+export const workflowExecutions = sqliteTable('workflow_executions', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    workflowId: text('workflow_id').notNull(),
+    status: text('status').notNull().default('pending'),
+    trigger: text('trigger'),
+    result: text('result'),
+    error: text('error'),
+    startedAt: text('started_at').notNull(),
+    endedAt: text('ended_at'),
+});
+
+/** Edge resources — engines/databases/caches/queues/vectors (CF-18 Phase 2). */
+export const edgeResources = sqliteTable('edge_resources', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    kind: text('kind').notNull(),     // engine|database|cache|queue|vector
+    name: text('name').notNull(),
+    provider: text('provider'),
+    config: text('config'),           // JSON
+    status: text('status').notNull().default('active'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
+/** Storage buckets — tenant-scoped (CF-18 Phase 2). */
+export const storageBuckets = sqliteTable('storage_buckets', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    name: text('name').notNull(),
+    provider: text('provider').notNull().default('local'),
+    config: text('config'),
+    createdAt: text('created_at').notNull(),
+});
+
+/** Storage files — tenant-scoped (CF-18 Phase 2). */
+export const storageFiles = sqliteTable('storage_files', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    bucketId: text('bucket_id').notNull(),
+    path: text('path').notNull(),
+    name: text('name').notNull(),
+    size: integer('size').notNull().default(0),
+    mimeType: text('mime_type'),
+    createdAt: text('created_at').notNull(),
+});
+
+/** Settings — tenant-scoped key/value (CF-18 Phase 2). */
+export const settings = sqliteTable('settings', {
+    tenantSlug: text('tenant_slug').notNull(),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
+/** Variables — tenant-scoped env vars (CF-18 Phase 2). */
+export const variables = sqliteTable('variables', {
+    tenantSlug: text('tenant_slug').notNull(),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    isSecret: integer('is_secret', { mode: 'boolean' }).notNull().default(false),
+    updatedAt: text('updated_at').notNull(),
+});
+
 export type PublishedPage = typeof publishedPages.$inferSelect;
 export type Draft = typeof drafts.$inferSelect;
 export type WorkflowRow = typeof workflows.$inferSelect;
+export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
+export type EdgeResource = typeof edgeResources.$inferSelect;
+export type StorageBucket = typeof storageBuckets.$inferSelect;
+export type StorageFile = typeof storageFiles.$inferSelect;
+export type Setting = typeof settings.$inferSelect;
+export type Variable = typeof variables.$inferSelect;
