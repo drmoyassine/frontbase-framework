@@ -41,6 +41,14 @@ export type { CacheProvider } from './cache/types.js';
 // queue / durable workflow
 export { inProcessWorkflowProvider, qstashWorkflowProvider } from './queue/providers.js';
 
+// storage (S3-compatible — R2/S3/B2/MinIO; Phase 3a / F4)
+export { s3StorageProvider, memoryStorageProvider } from './storage/providers.js';
+export type { StorageProvider, PutOpts, S3StorageOpts } from './storage/providers.js';
+
+// provisioning (CF Management API — D1/KV/Queues; Phase 3a / F5)
+export { cloudflareProvisioner, noopProvisioner } from './provisioning/cloudflare.js';
+export type { Provisioner, ProvisionResult, CloudflareProvisionerOpts } from './provisioning/cloudflare.js';
+
 // vault
 export { Vault } from './vault/vault.js';
 export { deriveKey, importRawKey, encrypt, decrypt } from './vault/crypto.js';

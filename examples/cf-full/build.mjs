@@ -55,7 +55,7 @@ if (missing.length > 0) {
 
 // Optional deps that are dynamic-imported behind feature flags — not part of a
 // basic D1 CMS. Stubbed so the single-file artifact carries no dangling imports.
-const OPTIONAL = ['ai', '@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@neondatabase/serverless', '@upstash/qstash', '@modelcontextprotocol/sdk'];
+const OPTIONAL = ['ai', '@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@neondatabase/serverless', '@upstash/qstash', '@modelcontextprotocol/sdk', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'];
 const optionalStub = {
     name: 'stub-optional-deps',
     setup(build) {

@@ -23,6 +23,8 @@
     "@frontbase/edge-core": "workspace:*"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1085.0",
+    "@aws-sdk/s3-request-presigner": "^3.1085.0",
     "@libsql/client": "^0.17.4",
     "@supabase/postgrest-js": "^2.110.2"
   }

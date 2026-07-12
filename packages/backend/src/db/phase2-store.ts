@@ -6,6 +6,7 @@
  * read/write filtered by tenantSlug. RULE 3: rows returned are copies.
  */
 import type { DbRunner } from '@frontbase/edge-infra';
+import { noopCipher, type SecretCipher } from './secret-cipher.js';
 
 // ---- Types ----
 export interface WorkflowInput {
@@ -42,7 +43,10 @@ export interface FileInput {
 }
 
 export class Phase2Store {
-    constructor(protected runner: DbRunner, protected tenant: string) {}
+    protected cipher: SecretCipher;
+    constructor(protected runner: DbRunner, protected tenant: string, cipher?: SecretCipher) {
+        this.cipher = cipher ?? noopCipher;
+    }
 
     // ============ AUTOMATIONS (workflows + executions) ============
 
@@ -210,17 +214,29 @@ export class Phase2Store {
         await this.runner.exec('DELETE FROM settings WHERE tenant_slug = ? AND key = ?', [this.tenant, key]);
     }
 
-    // ============ VARIABLES ============
+    // ============ VARIABLES (secret values encrypted at rest — F6) ============
 
     async listVariables(): Promise<Record<string, unknown>[]> {
         return this.runner.query('SELECT key, value, is_secret, updated_at FROM variables WHERE tenant_slug = ? ORDER BY key', [this.tenant]);
     }
 
+    /** The decrypted value of a variable (server-side consumption, e.g. by a workflow). */
+    async getVariable(key: string): Promise<string | null> {
+        const rows = await this.runner.query('SELECT value, is_secret FROM variables WHERE tenant_slug = ? AND key = ?', [this.tenant, key]);
+        const row = rows[0];
+        if (!row) return null;
+        const value = String(row.value);
+        // Decrypt only if it's a secret (or already-encrypted legacy). Idempotent.
+        return this.cipher.decrypt(value);
+    }
+
     async upsertVariable(key: string, value: string, isSecret: boolean, now: string): Promise<void> {
+        // Encrypt secret values at rest (F6). Non-secret values stay plaintext.
+        const stored = isSecret ? await this.cipher.encrypt(value) : value;
         await this.runner.exec(
             `INSERT INTO variables (tenant_slug, key, value, is_secret, updated_at) VALUES (?,?,?,?,?)
              ON CONFLICT(tenant_slug, key) DO UPDATE SET value=excluded.value, is_secret=excluded.is_secret, updated_at=excluded.updated_at`,
-            [this.tenant, key, value, isSecret ? 1 : 0, now],
+            [this.tenant, key, stored, isSecret ? 1 : 0, now],
         );
     }
 

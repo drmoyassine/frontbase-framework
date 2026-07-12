@@ -16,7 +16,7 @@
 import { Hono } from 'hono';
 import type { Principal } from '@frontbase/edge-core';
 import type { DbRunner } from '@frontbase/edge-infra';
-import { sqliteRunner, createResolvePrincipal } from '@frontbase/edge-infra';
+import { sqliteRunner, createResolvePrincipal, s3StorageProvider, cloudflareProvisioner, noopProvisioner, type StorageProvider, type Provisioner } from '@frontbase/edge-infra';
 import type { QueryRegistry } from '@frontbase/compiler/manifest';
 import { defaultDenyAuth, type ConsoleAuthVars } from './mw/auth.js';
 import { opaqueErrors } from './mw/errors.js';
@@ -31,6 +31,7 @@ import { setupRoutes } from './routes/setup.js';
 import { phase2Routes } from './routes/phase2.js';
 import { usersRoutes } from './routes/users.js';
 import { Phase2Store } from './db/phase2-store.js';
+import { createSecretCipher, noopCipher, type SecretCipher } from './db/secret-cipher.js';
 import { requireRole, canActOnTenant } from './auth/roles.js';
 
 export interface CreateConsoleDeps {
@@ -57,6 +58,12 @@ export interface CreateConsoleDeps {
     /** Role the first admin is seeded as via /setup (ADMIN_ROLE at deploy).
      *  Fixed server-side — the request body can NOT choose it (SEC CRIT-2). Default 'owner'. */
     seedRole?: string;
+    /** Object-storage config (F4). When provided, file upload/download round-trips
+     *  real bytes via the S3-compatible provider (R2/S3/B2/MinIO). */
+    storage?: { accessKeyId: string; secretAccessKey: string; endpoint?: string; region?: string };
+    /** Cloudflare provisioning config (F5). When provided, edge-resource create
+     *  provisions a REAL D1/KV/Queue via the Management API. */
+    provisioning?: { accountId: string; apiToken: string };
 }
 
 export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Variables: ConsoleAuthVars }>> {
@@ -88,11 +95,16 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
         if (!s) { s = new UserStore(sharedRunner, tenant); userStores.set(tenant, s); }
         return s;
     };
-    // Phase 2 stores per tenant (automations, edge resources, storage, settings, variables)
+    // Phase 2 stores per tenant (automations, edge resources, storage, settings, variables).
+    // Secret variables are encrypted at rest (F6) — the cipher is built once from the
+    // session secret (or a dedicated SECRETS_KEY if provided).
+    const secretCipher: SecretCipher = deps.sessionSecret
+        ? await createSecretCipher(deps.sessionSecret).catch(() => noopCipher)
+        : noopCipher;
     const phase2Stores = new Map<string, Phase2Store>();
     const phase2StoreFor = (tenant: string): Phase2Store => {
         let s = phase2Stores.get(tenant);
-        if (!s) { s = new Phase2Store(sharedRunner, tenant); phase2Stores.set(tenant, s); }
+        if (!s) { s = new Phase2Store(sharedRunner, tenant, secretCipher); phase2Stores.set(tenant, s); }
         return s;
     };
 
@@ -115,8 +127,16 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
         app.route('/', meRoute()); // /me — principal already resolved
         app.route('/', tenantsRoutes(() => sharedRunner, userStoreFor, now)); // /tenants — master_admin only (M-ID.2)
     }
-    // CF-18 Phase 2: automations, edge resources, storage, settings, variables, users
-    app.route('/', phase2Routes(phase2StoreFor, now));
+    // CF-18 Phase 2: automations, edge resources, storage, settings, variables, users.
+    // F4: a real object-storage provider when credentials are configured.
+    // F5: a real CF provisioner when accountId + apiToken are configured.
+    const storageProvider: StorageProvider | undefined = deps.storage
+        ? s3StorageProvider(deps.storage)
+        : undefined;
+    const provisioner: Provisioner = deps.provisioning
+        ? cloudflareProvisioner(deps.provisioning)
+        : noopProvisioner;
+    app.route('/', phase2Routes(phase2StoreFor, now, storageProvider, provisioner));
     app.route('/', usersRoutes(userStoreFor, now));
 
     return app;
@@ -130,6 +150,9 @@ export { authRoutes, meRoute } from './auth/routes.js';
 export { requireRole, canActOnTenant } from './auth/roles.js';
 export { TenantStore } from './db/tenants.js';
 export type { TenantRecord } from './db/tenants.js';
+export { Phase2Store } from './db/phase2-store.js';
+export { createSecretCipher, noopCipher } from './db/secret-cipher.js';
+export type { SecretCipher } from './db/secret-cipher.js';
 export { tenantsRoutes } from './routes/tenants.js';
 export { publishPage } from './publish/pipeline.js';
 export { migrateUp, migrateDown, appliedVersions, schemaFingerprint, MIGRATIONS } from './db/migrations.js';
