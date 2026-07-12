@@ -104,6 +104,31 @@ export const variables = sqliteTable('variables', {
     updatedAt: text('updated_at').notNull(),
 });
 
+/** Datasources — tenant-scoped external DB connections (Phase 3b / Data Studio).
+ *  `config` holds connection details, stored ENCRYPTED (SecretCipher, F6). */
+export const datasources = sqliteTable('datasources', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    name: text('name').notNull(),
+    kind: text('kind').notNull(),   // sqlite|d1|turso|supabase|postgres
+    config: text('config').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
+/** Plans — tenant-scoped billing tiers (Phase 3b). */
+export const plans = sqliteTable('plans', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    name: text('name').notNull(),
+    priceCents: integer('price_cents').notNull().default(0),
+    interval: text('interval').notNull().default('month'),
+    limits: text('limits'),     // JSON
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
 export type PublishedPage = typeof publishedPages.$inferSelect;
 export type Draft = typeof drafts.$inferSelect;
 export type WorkflowRow = typeof workflows.$inferSelect;
@@ -113,3 +138,5 @@ export type StorageBucket = typeof storageBuckets.$inferSelect;
 export type StorageFile = typeof storageFiles.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
 export type Variable = typeof variables.$inferSelect;
+export type Datasource = typeof datasources.$inferSelect;
+export type Plan = typeof plans.$inferSelect;

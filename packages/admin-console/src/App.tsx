@@ -11,7 +11,8 @@ import { EdgeResources } from '@/pages/EdgeResources';
 import { Storage } from '@/pages/Storage';
 import { Settings } from '@/pages/Settings';
 import { Users } from '@/pages/Users';
-import { ComingSoon } from '@/pages/ComingSoon';
+import { DataStudio } from '@/pages/DataStudio';
+import { Plans } from '@/pages/Plans';
 
 function Splash() {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
@@ -43,8 +44,8 @@ export function App() {
                 <Route path="/storage" element={<Storage />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/users" element={<Users />} />
-                <Route path="/plans" element={<ComingSoon title="Plans" />} />
-                <Route path="/data-studio" element={<ComingSoon title="Data Studio" />} />
+                <Route path="/data-studio" element={<DataStudio />} />
+                <Route path="/plans" element={<Plans />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

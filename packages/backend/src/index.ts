@@ -30,6 +30,8 @@ import { tenantsRoutes } from './routes/tenants.js';
 import { setupRoutes } from './routes/setup.js';
 import { phase2Routes } from './routes/phase2.js';
 import { usersRoutes } from './routes/users.js';
+import { dataStudioRoutes } from './routes/data-studio.js';
+import { plansRoutes } from './routes/plans.js';
 import { Phase2Store } from './db/phase2-store.js';
 import { createSecretCipher, noopCipher, type SecretCipher } from './db/secret-cipher.js';
 import { requireRole, canActOnTenant } from './auth/roles.js';
@@ -138,6 +140,9 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
         : noopProvisioner;
     app.route('/', phase2Routes(phase2StoreFor, now, storageProvider, provisioner));
     app.route('/', usersRoutes(userStoreFor, now));
+    // Phase 3b: Data Studio (datasources + introspection) + Plans
+    app.route('/', dataStudioRoutes(phase2StoreFor, now));
+    app.route('/', plansRoutes(phase2StoreFor, now));
 
     return app;
 }

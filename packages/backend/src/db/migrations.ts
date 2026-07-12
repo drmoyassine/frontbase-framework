@@ -74,6 +74,20 @@ export const MIGRATIONS: Migration[] = [
             `DROP TABLE IF EXISTS edge_resources`,
         ],
     },
+    {
+        // Phase 3b: datasources (Data Studio) + plans.
+        version: 5,
+        name: 'phase3b_datasources_plans',
+        up: [
+            // Datasource connection config is stored ENCRYPTED (SecretCipher, F6).
+            `CREATE TABLE IF NOT EXISTS datasources (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL, config TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS plans (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT NOT NULL, price_cents INTEGER NOT NULL DEFAULT 0, interval TEXT NOT NULL DEFAULT 'month', limits TEXT, is_active INTEGER DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+        ],
+        down: [
+            `DROP TABLE IF EXISTS plans`,
+            `DROP TABLE IF EXISTS datasources`,
+        ],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

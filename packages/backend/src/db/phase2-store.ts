@@ -243,4 +243,51 @@ export class Phase2Store {
     async deleteVariable(key: string): Promise<void> {
         await this.runner.exec('DELETE FROM variables WHERE tenant_slug = ? AND key = ?', [this.tenant, key]);
     }
+
+    // ============ DATASOURCES (Phase 3b / Data Studio — config encrypted F6) ============
+
+    async listDatasources(): Promise<Record<string, unknown>[]> {
+        return this.runner.query('SELECT id, name, kind, created_at, updated_at FROM datasources WHERE tenant_slug = ? ORDER BY name', [this.tenant]);
+    }
+
+    /** The decrypted config (server-side only — for building a runner). */
+    async getDatasourceConfig(id: string): Promise<{ kind: string; name: string; config: Record<string, unknown> } | null> {
+        const rows = await this.runner.query('SELECT name, kind, config FROM datasources WHERE id = ? AND tenant_slug = ?', [id, this.tenant]);
+        const row = rows[0];
+        if (!row) return null;
+        const decrypted = await this.cipher.decrypt(String(row.config));
+        return { kind: String(row.kind), name: String(row.name), config: JSON.parse(decrypted) };
+    }
+
+    async upsertDatasource(id: string, name: string, kind: string, config: Record<string, unknown>, now: string): Promise<void> {
+        // Encrypt the connection config (holds credentials — F6).
+        const stored = await this.cipher.encrypt(JSON.stringify(config));
+        await this.runner.exec(
+            `INSERT INTO datasources (id, tenant_slug, name, kind, config, created_at, updated_at) VALUES (?,?,?,?,?,?,?)
+             ON CONFLICT(id, tenant_slug) DO UPDATE SET name=excluded.name, kind=excluded.kind, config=excluded.config, updated_at=excluded.updated_at`,
+            [id, this.tenant, name, kind, stored, now, now],
+        );
+    }
+
+    async deleteDatasource(id: string): Promise<void> {
+        await this.runner.exec('DELETE FROM datasources WHERE id = ? AND tenant_slug = ?', [id, this.tenant]);
+    }
+
+    // ============ PLANS (Phase 3b) ============
+
+    async listPlans(): Promise<Record<string, unknown>[]> {
+        return this.runner.query('SELECT id, name, price_cents, interval, limits, is_active, created_at, updated_at FROM plans WHERE tenant_slug = ? ORDER BY price_cents', [this.tenant]);
+    }
+
+    async upsertPlan(input: { id: string; name: string; priceCents: number; interval: string; limits?: Record<string, unknown>; isActive?: boolean }, now: string): Promise<void> {
+        await this.runner.exec(
+            `INSERT INTO plans (id, tenant_slug, name, price_cents, interval, limits, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)
+             ON CONFLICT(id, tenant_slug) DO UPDATE SET name=excluded.name, price_cents=excluded.price_cents, interval=excluded.interval, limits=excluded.limits, is_active=excluded.is_active, updated_at=excluded.updated_at`,
+            [input.id, this.tenant, input.name, input.priceCents, input.interval, input.limits ? JSON.stringify(input.limits) : null, input.isActive === false ? 0 : 1, now, now],
+        );
+    }
+
+    async deletePlan(id: string): Promise<void> {
+        await this.runner.exec('DELETE FROM plans WHERE id = ? AND tenant_slug = ?', [id, this.tenant]);
+    }
 }
