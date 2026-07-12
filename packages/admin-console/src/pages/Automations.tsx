@@ -1,16 +1,18 @@
 /**
- * Automations — visual workflow editor + execution history.
- * CF-18 Phase 2. Nodes/edges stored as JSON; a node-list editor (add/remove/reorder)
- * stands in for a full React Flow canvas (deviation — see follow-ups).
+ * Automations — visual workflow editor (React Flow) + execution history.
+ * Phase 3c / F2. Nodes positioned on a canvas, draggable + connectable.
+ * Nodes/edges persisted as JSON; the graph is the React Flow shape.
  */
 import { useEffect, useState } from 'react';
+import type { Edge } from 'reactflow';
 import { api, ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Play, Power } from 'lucide-react';
+import { WorkflowEditor, defaultPosition, nodeStyle, type RfNode, type WorkflowGraph } from '@/components/WorkflowEditor';
+import { Plus, Play, Power } from 'lucide-react';
 
 interface Workflow {
     id: string;
@@ -34,12 +36,28 @@ interface Execution {
 }
 
 const NODE_TYPES = ['trigger', 'condition', 'action', 'delay', 'webhook', 'email', 'transform'];
+const EMPTY_GRAPH: WorkflowGraph = { nodes: [], edges: [] };
+
+/** Parse stored nodes/edges JSON into a React Flow graph. Tolerates the legacy
+ *  `{id,type,label}` shape (assigns default positions) and the native RF shape. */
+function parseGraph(nodesJson: string, edgesJson: string): WorkflowGraph {
+    const rawNodes = JSON.parse(nodesJson || '[]') as Array<Record<string, unknown>>;
+    const nodes: RfNode[] = rawNodes.map((n, i) => ({
+        id: String(n.id ?? `n${i}`),
+        type: n.type === 'input' || n.type === 'output' || n.type === 'default' ? undefined : (n.type as string),
+        position: (n.position as { x: number; y: number }) ?? defaultPosition(i),
+        data: { label: String((n.data as { label?: string })?.label ?? n.label ?? `${n.type ?? 'node'} ${i + 1}`), type: String((n.data as { type?: string })?.type ?? n.type ?? 'action') },
+        style: nodeStyle(String((n.data as { type?: string })?.type ?? n.type ?? 'action')),
+    }));
+    const edges = JSON.parse(edgesJson || '[]') as Edge[];
+    return { nodes, edges };
+}
 
 export function Automations() {
     const [workflows, setWorkflows] = useState<Workflow[]>([]);
     const [selected, setSelected] = useState<string | null>(null);
     const [name, setName] = useState('');
-    const [nodes, setNodes] = useState<{ id: string; type: string; label: string }[]>([]);
+    const [graph, setGraph] = useState<WorkflowGraph>(EMPTY_GRAPH);
     const [executions, setExecutions] = useState<Execution[]>([]);
     const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
     const [busy, setBusy] = useState(false);
@@ -51,12 +69,11 @@ export function Automations() {
     useEffect(() => { load(); }, []);
 
     const open = async (id: string) => {
-        setSelected(id);
-        setMsg(null);
+        setSelected(id); setMsg(null);
         try {
             const { workflow } = await api<{ workflow: Workflow }>(`/automations/${id}`);
             setName(workflow.name);
-            setNodes(JSON.parse(workflow.nodes || '[]'));
+            setGraph(parseGraph(workflow.nodes, workflow.edges));
             const { executions: execs } = await api<{ executions: Execution[] }>(`/automations/${id}/executions`);
             setExecutions(execs ?? []);
         } catch {
@@ -68,16 +85,18 @@ export function Automations() {
         const id = `wf-${Date.now().toString(36)}`;
         setSelected(id);
         setName('New automation');
-        setNodes([{ id: 'n1', type: 'trigger', label: 'When page published' }]);
+        setGraph({ nodes: [{ id: 'n1', type: undefined, position: defaultPosition(0), data: { label: 'When page published', type: 'trigger' }, style: nodeStyle('trigger') }], edges: [] });
         setExecutions([]);
         setMsg(null);
     };
 
     const addNode = (type: string) => {
-        setNodes([...nodes, { id: `n${nodes.length + 1}-${Date.now().toString(36)}`, type, label: `${type} step` }]);
+        const id = `n${graph.nodes.length + 1}-${Date.now().toString(36)}`;
+        setGraph({
+            ...graph,
+            nodes: [...graph.nodes, { id, type: undefined, position: defaultPosition(graph.nodes.length), data: { label: `${type} step`, type }, style: nodeStyle(type) }],
+        });
     };
-
-    const removeNode = (id: string) => setNodes(nodes.filter((n) => n.id !== id));
 
     const save = async () => {
         if (!selected) return;
@@ -85,7 +104,7 @@ export function Automations() {
         try {
             await api(`/automations/${selected}`, {
                 method: 'PUT',
-                body: JSON.stringify({ name, nodes: JSON.stringify(nodes), edges: '[]' }),
+                body: JSON.stringify({ name, nodes: JSON.stringify(graph.nodes), edges: JSON.stringify(graph.edges) }),
             });
             setMsg({ kind: 'ok', text: 'Saved' });
             await load();
@@ -117,7 +136,7 @@ export function Automations() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold">Automations</h1>
-                    <p className="text-muted-foreground">Build workflows that run on triggers.</p>
+                    <p className="text-muted-foreground">Build workflows visually — drag nodes, connect them, run.</p>
                 </div>
                 <Button onClick={newWorkflow}><Plus className="mr-2 h-4 w-4" />New</Button>
             </div>
@@ -157,26 +176,20 @@ export function Automations() {
                                     <Label className="text-xs">Name</Label>
                                     <Input value={name} onChange={(e) => setName(e.target.value)} />
                                 </div>
+                                <div className="flex flex-wrap gap-1">
+                                    {NODE_TYPES.map((t) => (
+                                        <Button key={t} variant="outline" size="sm" onClick={() => addNode(t)}><Plus className="mr-1 h-3 w-3" />{t}</Button>
+                                    ))}
+                                </div>
                                 <div>
-                                    <Label className="text-xs">Nodes</Label>
-                                    <div className="mt-2 space-y-2">
-                                        {nodes.map((n) => (
-                                            <div key={n.id} className="flex items-center gap-2 rounded-md border p-2">
-                                                <Badge variant="outline" className="text-[10px]">{n.type}</Badge>
-                                                <Input value={n.label} onChange={(e) => setNodes(nodes.map((x) => x.id === n.id ? { ...x, label: e.target.value } : x))} className="flex-1" />
-                                                <Button variant="ghost" size="sm" onClick={() => removeNode(n.id)}><Trash2 className="h-3 w-3" /></Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="mt-2 flex flex-wrap gap-1">
-                                        {NODE_TYPES.map((t) => (
-                                            <Button key={t} variant="outline" size="sm" onClick={() => addNode(t)}><Plus className="mr-1 h-3 w-3" />{t}</Button>
-                                        ))}
+                                    <Label className="text-xs">Canvas (drag to position, drag between handles to connect)</Label>
+                                    <div className="mt-2">
+                                        <WorkflowEditor graph={graph} onChange={setGraph} />
                                     </div>
                                 </div>
                                 <div>
                                     <Label className="text-xs">Recent executions</Label>
-                                    <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
+                                    <div className="mt-2 max-h-32 space-y-1 overflow-y-auto">
                                         {executions.length === 0 && <p className="text-sm text-muted-foreground">No runs yet.</p>}
                                         {executions.map((ex) => (
                                             <div key={ex.id} className="flex items-center justify-between rounded border px-2 py-1 text-xs">

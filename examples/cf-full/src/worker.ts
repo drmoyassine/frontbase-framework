@@ -47,6 +47,9 @@ export interface CmsEngineOptions {
     setupToken?: string;
     admin?: { email?: string; password?: string; role?: string };
     now?: () => string;
+    /** F3b: background dispatcher — on CF, wire to ctx.waitUntil so async workflow
+     *  execution doesn't block the request. */
+    dispatcher?: (work: () => Promise<void>) => void;
 }
 
 /**
@@ -73,6 +76,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         setupToken: opts.setupToken,
         seedRole: opts.admin?.role ?? 'owner',
         now,
+        dispatcher: opts.dispatcher,
     });
     const engine = createEngine({
         manifest,
@@ -92,6 +96,11 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
 
 let enginePromise: Promise<Hono> | null = null;
 
+// F3b: the per-request ExecutionContext is captured here so the console's async
+// dispatcher can call ctx.waitUntil (workflow execution runs after the response
+// is sent). Updated on every fetch; the engine is built once per isolate.
+let currentCtx: ExecutionContext | null = null;
+
 export default {
     async fetch(req: Request, env: CmsEnv, ctx: ExecutionContext): Promise<Response> {
         try {
@@ -105,12 +114,16 @@ export default {
                 // Surface it plainly instead of throwing an opaque exception.
                 return new Response('D1 binding "DB" is not configured — check wrangler.toml [[d1_databases]] binding="DB" and a REAL database_id (not the placeholder)', { status: 500 });
             }
+            currentCtx = ctx;
             if (!enginePromise) {
                 enginePromise = createCmsEngine({
                     runner: d1RunnerFromBinding(env.DB),
                     sessionSecret: env.SESSION_SECRET,
                     setupToken: env.SETUP_TOKEN,
                     admin: { email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD, role: env.ADMIN_ROLE },
+                    // F3b: dispatch background workflow execution onto the request's
+                    // ctx.waitUntil so it survives after the response is returned.
+                    dispatcher: (work) => { if (currentCtx) currentCtx.waitUntil(work()); else void work(); },
                 }).catch((e) => { enginePromise = null; throw e; }); // don't cache a failed boot
             }
             const engine = await enginePromise;

@@ -9,12 +9,13 @@ import { useState, useCallback } from 'react';
 import { Canvas, type CanvasProps } from '@frontbase/builder';
 import { emptyCanvas, addNode, moveNode, removeNode, updateProps, selectNode, toLayout, layers, type CanvasState } from '@frontbase/builder';
 import { getComponentManifest, getPaletteGroups, type ComponentManifest, type ComponentProperty } from '@/lib/components';
+import { renderLayout } from '@/components/ComponentRenderer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, ChevronUp, ChevronDown, Eye, Layers } from 'lucide-react';
 
 export interface BuilderCanvasProps {
     /** Initial layout (parsed JSON from draft). */
@@ -41,6 +42,7 @@ export function BuilderCanvas({ initialLayout, onLayoutChange }: BuilderCanvasPr
     };
 
     const [state, setState] = useState<CanvasState>(getInitialState());
+    const [viewMode, setViewMode] = useState<'visual' | 'layers'>('visual');
 
     // Notify parent of changes (serialize to JSON)
     const notifyChange = useCallback((newState: CanvasState) => {
@@ -177,13 +179,30 @@ export function BuilderCanvas({ initialLayout, onLayoutChange }: BuilderCanvasPr
                 </CardContent>
             </Card>
 
-            {/* Middle: Canvas (layers view) */}
-            <Card className="flex-1 overflow-y-auto">
-                <CardHeader><CardTitle className="text-sm">Canvas</CardTitle></CardHeader>
-                <CardContent>
+            {/* Middle: Canvas — WYSIWYG (visual) or layers list */}
+            <Card className="flex-1 overflow-hidden">
+                <CardHeader className="flex-row items-center justify-between">
+                    <CardTitle className="text-sm">Canvas</CardTitle>
+                    <div className="flex rounded-md border border-input overflow-hidden">
+                        <button
+                            onClick={() => setViewMode('visual')}
+                            className={`px-2 py-1 text-xs ${viewMode === 'visual' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                        ><Eye className="inline h-3 w-3 mr-1" />Visual</button>
+                        <button
+                            onClick={() => setViewMode('layers')}
+                            className={`px-2 py-1 text-xs ${viewMode === 'layers' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                        ><Layers className="inline h-3 w-3 mr-1" />Layers</button>
+                    </div>
+                </CardHeader>
+                <CardContent className="overflow-y-auto">
                     {layerList.length === 0 ? (
                         <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
                             No components yet. Add from the palette →
+                        </div>
+                    ) : viewMode === 'visual' ? (
+                        /* WYSIWYG: render the layout live (F1). Click-to-select. */
+                        <div className="space-y-3 rounded-md border bg-background p-4" onClick={() => onSelect('')}>
+                            {renderLayout(state.layout, state.selectedId, onSelect)}
                         </div>
                     ) : (
                         <div className="space-y-1">

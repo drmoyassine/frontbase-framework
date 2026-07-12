@@ -66,6 +66,10 @@ export interface CreateConsoleDeps {
     /** Cloudflare provisioning config (F5). When provided, edge-resource create
      *  provisions a REAL D1/KV/Queue via the Management API. */
     provisioning?: { accountId: string; apiToken: string };
+    /** Background work dispatcher (F3b). When provided, workflow execution is
+     *  async (fire-and-track). On CF, wire to ctx.waitUntil; in-process tests can
+     *  use queueMicrotask. Default: synchronous. */
+    dispatcher?: (work: () => Promise<void>) => void;
 }
 
 export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Variables: ConsoleAuthVars }>> {
@@ -124,7 +128,7 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     // Everything below requires an authenticated principal (default-deny).
     app.use('*', defaultDenyAuth(resolvePrincipal));
     app.route('/', pagesRoutes(storeFor, now));
-    app.route('/', publishRoutes(storeFor, deps.queries ?? {}, purge, now));
+    app.route('/', publishRoutes(storeFor, deps.queries ?? {}, purge, now, phase2StoreFor));
     if (deps.sessionSecret) {
         app.route('/', meRoute()); // /me — principal already resolved
         app.route('/', tenantsRoutes(() => sharedRunner, userStoreFor, now)); // /tenants — master_admin only (M-ID.2)
@@ -138,8 +142,8 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     const provisioner: Provisioner = deps.provisioning
         ? cloudflareProvisioner(deps.provisioning)
         : noopProvisioner;
-    app.route('/', phase2Routes(phase2StoreFor, now, storageProvider, provisioner));
-    app.route('/', usersRoutes(userStoreFor, now));
+    app.route('/', phase2Routes(phase2StoreFor, now, storageProvider, provisioner, deps.dispatcher));
+    app.route('/', usersRoutes(userStoreFor, now, phase2StoreFor));
     // Phase 3b: Data Studio (datasources + introspection) + Plans
     app.route('/', dataStudioRoutes(phase2StoreFor, now));
     app.route('/', plansRoutes(phase2StoreFor, now));

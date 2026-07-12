@@ -290,4 +290,44 @@ export class Phase2Store {
     async deletePlan(id: string): Promise<void> {
         await this.runner.exec('DELETE FROM plans WHERE id = ? AND tenant_slug = ?', [id, this.tenant]);
     }
+
+    // ============ PLAN-LIMIT ENFORCEMENT (Phase 3c / F8c) ============
+
+    /**
+     * The effective limits for this tenant. Resolution order:
+     *   1. A `_limits` setting (JSON) — set when a plan is assigned to the tenant.
+     *   2. The first active plan's `limits`.
+     *   3. null → unlimited (no plan assigned).
+     * `-1` on any limit key means unlimited for that resource.
+     */
+    async getEffectiveLimits(): Promise<Record<string, number> | null> {
+        // 1. Explicit assignment via settings.
+        const assigned = await this.getSetting('_limits');
+        if (assigned) {
+            try { return JSON.parse(assigned); } catch { /* fall through */ }
+        }
+        // 2. First active plan's limits.
+        const rows = await this.runner.query(
+            "SELECT limits FROM plans WHERE tenant_slug = ? AND is_active = 1 AND limits IS NOT NULL ORDER BY updated_at DESC LIMIT 1",
+            [this.tenant],
+        );
+        if (rows[0]?.limits) {
+            try { return JSON.parse(String(rows[0].limits)); } catch { /* fall through */ }
+        }
+        return null;
+    }
+
+    /**
+     * Check a named limit against a current count. Throws 'limit_exceeded' if the
+     * count is at/over a positive limit. No-op when limits are null or the key is
+     * absent / unlimited (-1). Returns the limits for chaining.
+     */
+    async enforceLimit(key: string, currentCount: number): Promise<Record<string, number> | null> {
+        const limits = await this.getEffectiveLimits();
+        if (!limits) return null;
+        const cap = limits[key];
+        if (cap === undefined || cap === -1) return limits; // unlimited
+        if (currentCount >= cap) throw new Error('limit_exceeded');
+        return limits;
+    }
 }

@@ -20,8 +20,26 @@ export function phase2Routes(
     /** Optional resource provisioner (F5). When it handles the kind, edge-resource
      *  create provisions a REAL provider resource; otherwise config-only. */
     provisioner?: Provisioner,
+    /** Optional background dispatcher (F3b). When present, workflow execution is
+     *  async (fire-and-track): the route returns immediately with status 'running'
+     *  and the dispatcher runs the workflow in the background, updating the record
+     *  on completion. On CF, wire this to ctx.waitUntil. */
+    dispatcher?: (work: () => Promise<void>) => void,
 ): Hono<{ Variables: ConsoleAuthVars }> {
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
+
+    /** Run a workflow and record the result/error. Shared by sync + async paths. */
+    async function runAndRecord(store: Phase2Store, execId: string, workflowId: string, tenant: string, wf: { name: string; nodes: string; edges: string }, input: Record<string, unknown>): Promise<{ status: string; result?: unknown }> {
+        try {
+            const result = await executeWorkflow(execId, { id: workflowId, name: wf.name, nodes: wf.nodes, edges: wf.edges, tenantSlug: tenant }, input, { tenantSlug: tenant });
+            const status = result.status === 'completed' ? 'completed' : 'error';
+            await store.completeExecution(execId, status, JSON.stringify(result.result ?? {}), result.error ?? null, now());
+            return { status, result: result.result };
+        } catch (e) {
+            await store.completeExecution(execId, 'error', null, (e as Error)?.message ?? 'execution_failed', now());
+            return { status: 'error' };
+        }
+    }
 
     // ============ AUTOMATIONS (workflows + executions) ============
 
@@ -84,38 +102,23 @@ export function phase2Routes(
         const execId = `exec-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
         await store.createExecution(execId, workflowId, trigger, now());
 
-        // Run the workflow through the real edge-core engine (F3). The engine
-        // validates the graph, executes nodes in topological order, and returns
-        // { status, result, error }. Runs synchronously with the engine's built-in
-        // timeout (execution_timeout_ms); true async-via-queue is a follow-up.
-        try {
-            const result = await executeWorkflow(
-                execId,
-                {
-                    id: workflowId,
-                    name: String(wf.name),
-                    nodes: String(wf.nodes),
-                    edges: String(wf.edges),
-                    tenantSlug: c.get('tenant'),
-                },
-                body.input ?? {},
-                { tenantSlug: c.get('tenant') },
-            );
-            const status = result.status === 'completed' ? 'completed' : 'error';
-            await store.completeExecution(
-                execId,
-                status,
-                JSON.stringify(result.result ?? {}),
-                result.error ?? null,
-                now(),
-            );
-            return c.json({ executionId: execId, status, result: result.result });
-        } catch (e) {
-            // The engine threw (validation failure, executor error, timeout).
-            const msg = (e as Error)?.message ?? 'execution_failed';
-            await store.completeExecution(execId, 'error', null, msg, now());
-            return c.json({ executionId: execId, status: 'error', error: 'execution_failed' }, 500);
+        // F3b: when a background dispatcher is configured, fire-and-track — return
+        // immediately with 'running' and let the dispatcher complete the work.
+        // Otherwise run synchronously (F3) and return the final status.
+        const tenant = c.get('tenant');
+        const input = body.input ?? {};
+        const wfShape = { name: String(wf.name), nodes: String(wf.nodes), edges: String(wf.edges) };
+
+        if (dispatcher) {
+            // Don't await — the dispatcher schedules the work (ctx.waitUntil on CF,
+            // queueMicrotask in-process). Errors are recorded inside runAndRecord.
+            dispatcher(async () => { await runAndRecord(store, execId, workflowId, tenant, wfShape, input); });
+            return c.json({ executionId: execId, status: 'running' });
         }
+
+        const outcome = await runAndRecord(store, execId, workflowId, tenant, wfShape, input);
+        if (outcome.status === 'error') return c.json({ executionId: execId, status: 'error', error: 'execution_failed' }, 500);
+        return c.json({ executionId: execId, status: outcome.status, result: outcome.result });
     });
 
     // ============ EDGE RESOURCES ============

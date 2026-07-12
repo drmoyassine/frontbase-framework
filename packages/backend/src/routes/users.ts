@@ -8,11 +8,14 @@
 import { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../mw/auth.js';
 import type { UserStore } from '../db/users.js';
+import type { Phase2Store } from '../db/phase2-store.js';
 import { hashPassword } from '@frontbase/edge-infra';
 
 export function usersRoutes(
     userStoreFor: (tenant: string) => UserStore,
     now: () => string,
+    /** Optional Phase2 store for plan-limit enforcement (F8c). */
+    phase2StoreFor?: (tenant: string) => Phase2Store,
 ): Hono<{ Variables: ConsoleAuthVars }> {
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
 
@@ -30,6 +33,13 @@ export function usersRoutes(
         if (!['owner', 'tenant_admin'].includes(role)) return c.json({ error: 'invalid_role' }, 400);
 
         const store = userStoreFor(c.get('tenant'));
+
+        // F8c: enforce the tenant's `users` limit. Throws limit_exceeded → 402.
+        if (phase2StoreFor) {
+            try { await phase2StoreFor(c.get('tenant')).enforceLimit('users', await store.countUsers()); }
+            catch { return c.json({ error: 'limit_exceeded', limit: 'users' }, 402); }
+        }
+
         // Generate a temp password (16 random bytes, base64) — returned ONCE.
         const tempPassword = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
         const user = await store.createUser({
