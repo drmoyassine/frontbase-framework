@@ -87,5 +87,49 @@ check('parseDatabaseId: null when absent', parseDatabaseId('no id here') === nul
     check('existing binding: original database_id untouched', toml.includes('already-bound-id') && !toml.includes('a-different-id-should-be-ignored'));
 }
 
+// 6. PLACEHOLDER database_id (the exact bug that shipped in examples/cf-full):
+//    a `[[d1_databases]]` block exists but database_id is the shipped
+//    "PLACEHOLDER_RUN_WRANGLER_D1_CREATE" string — must be treated as NOT yet
+//    provisioned, and the fix must REWRITE the id IN PLACE (not append a
+//    second [[d1_databases]] block, which would break wrangler.toml).
+{
+    const dir = mkdtempSync(join(tmpdir(), 'fb-d1-'));
+    writeFileSync(join(dir, 'wrangler.toml'),
+        `name = "demo"\nmain = "dist/worker.mjs"\n\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "demo-cms"\ndatabase_id = "PLACEHOLDER_RUN_WRANGLER_D1_CREATE"\nmigrations_dir = "migrations"\n`);
+    const wr = mockWrangler();
+    check('placeholder id: hasD1Binding() = false (not yet provisioned)', hasD1Binding(readFileSync(join(dir, 'wrangler.toml'), 'utf8')) === false);
+    const res = await provisionD1(dir, { appName: 'demo', run: wr.run });
+    check('placeholder id: created = true (provisioning proceeds)', res.created === true);
+    check('placeholder id: ran `wrangler d1 create` with the ORIGINAL database_name (demo-cms, not demo-db)', wr.calls.length === 1 && wr.calls[0].args.join(' ') === 'd1 create demo-cms');
+    const toml = readFileSync(join(dir, 'wrangler.toml'), 'utf8');
+    check('placeholder id: the real database_id replaced the placeholder', toml.includes(FAKE_ID) && !toml.includes('PLACEHOLDER_RUN_WRANGLER_D1_CREATE'));
+    check('placeholder id: exactly ONE [[d1_databases]] block (id rewritten in place, not appended)', (toml.match(/\[\[d1_databases\]\]/g) || []).length === 1);
+    check('placeholder id: binding/database_name untouched', /binding = "DB"/.test(toml) && /database_name = "demo-cms"/.test(toml));
+    check('placeholder id: migrations_dir preserved', /migrations_dir = "migrations"/.test(toml));
+    check('placeholder id: post-fix hasD1Binding() = true (now really provisioned)', hasD1Binding(toml) === true);
+}
+
+// 7. Placeholder + explicit --d1-database-id: bind-to-existing also rewrites
+//    the placeholder in place (no `wrangler d1 create` call either).
+{
+    const dir = mkdtempSync(join(tmpdir(), 'fb-d1-'));
+    writeFileSync(join(dir, 'wrangler.toml'),
+        `name = "demo"\nmain = "dist/worker.mjs"\n\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "demo-cms"\ndatabase_id = "PLACEHOLDER_RUN_WRANGLER_D1_CREATE"\n`);
+    const wr = mockWrangler();
+    const EXISTING_ID = 'real-existing-uuid-0000';
+    const res = await provisionD1(dir, { appName: 'demo', run: wr.run, databaseId: EXISTING_ID });
+    check('placeholder + explicit id: created = false (bound, not created)', res.created === false);
+    check('placeholder + explicit id: NO `wrangler d1 create` call', wr.calls.length === 0);
+    const toml = readFileSync(join(dir, 'wrangler.toml'), 'utf8');
+    check('placeholder + explicit id: the supplied id replaced the placeholder', toml.includes(EXISTING_ID) && !toml.includes('PLACEHOLDER_RUN_WRANGLER_D1_CREATE'));
+    check('placeholder + explicit id: exactly ONE [[d1_databases]] block', (toml.match(/\[\[d1_databases\]\]/g) || []).length === 1);
+}
+
+// 8. Other placeholder-shaped ids are also caught (not just the exact CF-full string)
+check('placeholder pattern: REPLACE_ME_xxx caught', hasD1Binding('[[d1_databases]]\ndatabase_id = "REPLACE_ME_WITH_REAL_ID"') === false);
+check('placeholder pattern: YOUR_DB_ID caught', hasD1Binding('[[d1_databases]]\ndatabase_id = "YOUR_DATABASE_ID_HERE"') === false);
+check('placeholder pattern: <fill-in> caught', hasD1Binding('[[d1_databases]]\ndatabase_id = "<your-database-id>"') === false);
+check('placeholder pattern: a REAL uuid is NOT flagged as a placeholder', hasD1Binding(`[[d1_databases]]\ndatabase_id = "${FAKE_ID}"`) === true);
+
 console.log(failures === 0 ? '\nprovision-d1: PASS ✅' : `\nprovision-d1: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

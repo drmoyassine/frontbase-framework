@@ -32,9 +32,19 @@ export const realWrangler: WranglerRunner = (args, opts) => new Promise((resolve
     });
 });
 
-/** Regex check: does the wrangler.toml already declare a d1_databases binding? */
+/** Placeholder database_id values that ship in example/scaffolded wrangler.toml
+ *  files (never a real Cloudflare D1 UUID) — a binding pinned to one of these
+ *  is NOT actually provisioned yet. Matched case-insensitively so any all-caps
+ *  "fill this in" style placeholder is caught, not just this exact string. */
+const PLACEHOLDER_DATABASE_ID_RE = /^(PLACEHOLDER|REPLACE_ME|YOUR_|TODO|<)/i;
+
+/** Regex check: does the wrangler.toml already declare a REAL d1_databases
+ *  binding (i.e. one with an actual database_id, not a shipped placeholder)? */
 export function hasD1Binding(toml: string): boolean {
-    return /\[\[d1_databases\]\]/.test(toml);
+    if (!/\[\[d1_databases\]\]/.test(toml)) return false;
+    const idMatch = toml.match(/database_id\s*=\s*"([^"]*)"/);
+    if (!idMatch) return false; // block present but no id at all — not provisioned
+    return !PLACEHOLDER_DATABASE_ID_RE.test(idMatch[1] ?? '');
 }
 
 /** Parse the database_id from `wrangler d1 create` stdout (JSON or `database_id = "..."`). */
@@ -45,14 +55,36 @@ export function parseDatabaseId(stdout: string): string | null {
     return toml ? toml[1] ?? null : null;
 }
 
+/** True iff wrangler.toml has a `[[d1_databases]]` block whose database_id is a
+ *  shipped placeholder (present, but not yet provisioned). */
+function hasPlaceholderD1Binding(toml: string): boolean {
+    if (!/\[\[d1_databases\]\]/.test(toml)) return false;
+    const idMatch = toml.match(/database_id\s*=\s*"([^"]*)"/);
+    return !!idMatch && PLACEHOLDER_DATABASE_ID_RE.test(idMatch[1] ?? '');
+}
+
+/** Replace the database_id inside an EXISTING `[[d1_databases]]` block in-place
+ *  (does not touch binding/database_name/migrations_dir — only the id line). */
+function writeDatabaseIdInPlace(toml: string, databaseId: string): string {
+    return toml.replace(/(database_id\s*=\s*")[^"]*(")/, `$1${databaseId}$2`);
+}
+
 /**
  * Provision a D1 database for the project (idempotent). Writes the
  * `[[d1_databases]] binding="DB"` block into wrangler.toml on first run.
  *
+ * Three states, in order of precedence:
+ *   1. A REAL binding already exists (a genuine database_id, not a placeholder)
+ *      → reuse it, no wrangler call.
+ *   2. A PLACEHOLDER binding exists (e.g. examples ship
+ *      `database_id = "PLACEHOLDER_RUN_WRANGLER_D1_CREATE"` deliberately, so the
+ *      real id is never committed to git) → provision for real and rewrite the
+ *      id IN PLACE (same block, same binding/name) — never append a duplicate
+ *      `[[d1_databases]]` block.
+ *   3. No block at all → provision and append a fresh block.
+ *
  * `opts.databaseId`: skip `wrangler d1 create` entirely and bind to an EXISTING
  * D1 database (e.g. one already created via the CF dashboard or a prior deploy).
- * Still idempotent — if wrangler.toml already has a binding, that wins (never
- * silently rebinds an existing project to a different database).
  */
 export async function provisionD1(cwd: string, opts: { appName?: string; run?: WranglerRunner; binding?: string; databaseId?: string } = {}): Promise<ProvisionD1Result> {
     const run = opts.run ?? realWrangler;
@@ -67,12 +99,16 @@ export async function provisionD1(cwd: string, opts: { appName?: string; run?: W
         return { created: false, databaseName: nameMatch?.[1] ?? `${opts.appName}-db`, databaseId: null, binding: binding as 'DB' };
     }
 
-    const databaseName = `${opts.appName}-db`;
+    const placeholder = hasPlaceholderD1Binding(toml);
+    const nameMatch = toml.match(/database_name\s*=\s*"([^"]+)"/);
+    const databaseName = placeholder ? (nameMatch?.[1] ?? `${opts.appName}-db`) : `${opts.appName}-db`;
 
     if (opts.databaseId) {
         // Bind to an existing database — no `wrangler d1 create` call.
-        const block = `\n[[d1_databases]]\nbinding = "${binding}"\ndatabase_name = "${databaseName}"\ndatabase_id = "${opts.databaseId}"\nmigrations_dir = "migrations"\n`;
-        writeFileSync(tomlPath, toml + (toml.endsWith('\n') ? '' : '\n') + block);
+        const next = placeholder
+            ? writeDatabaseIdInPlace(toml, opts.databaseId)
+            : toml + (toml.endsWith('\n') ? '' : '\n') + `\n[[d1_databases]]\nbinding = "${binding}"\ndatabase_name = "${databaseName}"\ndatabase_id = "${opts.databaseId}"\nmigrations_dir = "migrations"\n`;
+        writeFileSync(tomlPath, next);
         return { created: false, databaseName, databaseId: opts.databaseId, binding: binding as 'DB' };
     }
 
@@ -80,8 +116,10 @@ export async function provisionD1(cwd: string, opts: { appName?: string; run?: W
     const databaseId = parseDatabaseId(out.stdout);
     if (!databaseId) throw new Error('d1_create_no_database_id');
 
-    const block = `\n[[d1_databases]]\nbinding = "${binding}"\ndatabase_name = "${databaseName}"\ndatabase_id = "${databaseId}"\nmigrations_dir = "migrations"\n`;
-    writeFileSync(tomlPath, toml + (toml.endsWith('\n') ? '' : '\n') + block);
+    const next = placeholder
+        ? writeDatabaseIdInPlace(toml, databaseId)
+        : toml + (toml.endsWith('\n') ? '' : '\n') + `\n[[d1_databases]]\nbinding = "${binding}"\ndatabase_name = "${databaseName}"\ndatabase_id = "${databaseId}"\nmigrations_dir = "migrations"\n`;
+    writeFileSync(tomlPath, next);
 
     return { created: true, databaseName, databaseId, binding: binding as 'DB' };
 }

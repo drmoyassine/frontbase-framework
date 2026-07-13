@@ -8,10 +8,11 @@
  *   - ensureWranglerLogin: no-ops when already logged in; runs `wrangler login`
  *     when not; throws if login fails/is cancelled.
  *   - promptCredentials: validates email (must contain @) and password
- *     (min 8 chars), re-prompting on invalid input; never echoes the password
- *     back through anything the test can observe (the mock IO simulates a
- *     masked reader — the real one is exercised structurally, not e2e, since a
- *     raw-mode TTY can't be driven from a test harness).
+ *     (min 8 chars, typed TWICE and must match), re-prompting on invalid input
+ *     or a mismatch; never echoes the password back through anything the test
+ *     can observe (the mock IO simulates a masked reader — the real one is
+ *     exercised structurally, not e2e, since a raw-mode TTY can't be driven
+ *     from a test harness).
  */
 import { isLoggedIn, ensureWranglerLogin, promptCredentials } from '../dist/cli/interactive.js';
 
@@ -76,9 +77,9 @@ check('isLoggedIn: false on empty/garbage output', isLoggedIn('') === false && i
     check('failed/cancelled login throws (does not silently continue)', threw === true);
 }
 
-// ── promptCredentials: happy path ───────────────────────────────────────────────
+// ── promptCredentials: happy path (password typed twice, matching) ─────────────
 {
-    const answers = { question: ['owner@example.com'], questionMasked: ['a-real-password-123'] };
+    const answers = { question: ['owner@example.com'], questionMasked: ['a-real-password-123', 'a-real-password-123'] };
     const io = {
         question: async () => answers.question.shift(),
         questionMasked: async () => answers.questionMasked.shift(),
@@ -90,7 +91,7 @@ check('isLoggedIn: false on empty/garbage output', isLoggedIn('') === false && i
 
 // ── promptCredentials: re-prompts on invalid email (no @) ──────────────────────
 {
-    const answers = { question: ['not-an-email', 'owner@example.com'], questionMasked: ['a-real-password-123'] };
+    const answers = { question: ['not-an-email', 'owner@example.com'], questionMasked: ['a-real-password-123', 'a-real-password-123'] };
     const io = {
         question: async () => answers.question.shift(),
         questionMasked: async () => answers.questionMasked.shift(),
@@ -99,15 +100,27 @@ check('isLoggedIn: false on empty/garbage output', isLoggedIn('') === false && i
     check('invalid email is rejected and re-prompted', creds.email === 'owner@example.com');
 }
 
-// ── promptCredentials: re-prompts on short password ─────────────────────────────
+// ── promptCredentials: re-prompts on short password (never asks for confirm) ───
 {
-    const answers = { question: ['owner@example.com'], questionMasked: ['short', 'a-real-password-123'] };
+    const answers = { question: ['owner@example.com'], questionMasked: ['short', 'a-real-password-123', 'a-real-password-123'] };
     const io = {
         question: async () => answers.question.shift(),
         questionMasked: async () => answers.questionMasked.shift(),
     };
     const creds = await promptCredentials(io);
     check('short password (<8 chars) is rejected and re-prompted', creds.password === 'a-real-password-123');
+    check('short password never triggers a confirm ask (only 3 questionMasked calls, not 4)', answers.questionMasked.length === 0);
+}
+
+// ── promptCredentials: mismatched confirmation → re-prompts both entries ───────
+{
+    const answers = { question: ['owner@example.com'], questionMasked: ['first-password-1', 'a-different-password-2', 'final-password-3', 'final-password-3'] };
+    const io = {
+        question: async () => answers.question.shift(),
+        questionMasked: async () => answers.questionMasked.shift(),
+    };
+    const creds = await promptCredentials(io);
+    check('mismatched confirm is rejected and re-prompted', creds.password === 'final-password-3');
 }
 
 console.log(failures === 0 ? '\ninteractive: PASS ✅' : `\ninteractive: FAIL ❌ (${failures})`);

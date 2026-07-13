@@ -67,8 +67,9 @@ const BYTE_ETX = 3;         // Ctrl+C
 const BYTE_BACKSPACE = 8;   // \b
 const BYTE_DEL = 127;       // DEL (what most terminals send for Backspace)
 
-/** Read one line of input with the terminal echo suppressed (a plain password
- *  mask — no asterisks are drawn, matching "never appears on screen"). */
+/** Read one line of input with the real characters suppressed and an `*` echoed
+ *  per keystroke instead (the plaintext itself never appears on screen or in
+ *  the terminal scrollback — only the mask does). Backspace erases one `*`. */
 function readMaskedLine(prompt: string): Promise<string> {
     return new Promise((res) => {
         process.stdout.write(prompt);
@@ -85,8 +86,15 @@ function readMaskedLine(prompt: string): Promise<string> {
                     return;
                 }
                 if (byte === BYTE_ETX) { stdin.setRawMode?.(false); process.exit(130); }
-                if (byte === BYTE_BACKSPACE || byte === BYTE_DEL) { buf = buf.slice(0, -1); continue; }
+                if (byte === BYTE_BACKSPACE || byte === BYTE_DEL) {
+                    if (buf.length > 0) {
+                        buf = buf.slice(0, -1);
+                        process.stdout.write('\b \b'); // erase the last '*' visually
+                    }
+                    continue;
+                }
                 buf += String.fromCharCode(byte);
+                process.stdout.write('*');
             }
         };
         stdin.setRawMode?.(true);
@@ -107,9 +115,10 @@ function defaultPromptIO(): PromptIO {
 
 export interface AdminCredentials { email: string; password: string; }
 
-/** Prompt for admin email + masked password. Values stay in-memory — the caller
- *  passes them straight to `deployCommand`, which pushes them to wrangler over
- *  stdin (never argv). Nothing here writes to argv, env, or shell history. */
+/** Prompt for admin email + masked password (typed twice, must match). Values
+ *  stay in-memory — the caller passes them straight to `deployCommand`, which
+ *  pushes them to wrangler over stdin (never argv). Nothing here writes to
+ *  argv, env, or shell history — the terminal only ever shows `*` per keystroke. */
 export async function promptCredentials(io: PromptIO = defaultPromptIO()): Promise<AdminCredentials> {
     let email = '';
     while (!email) {
@@ -117,9 +126,12 @@ export async function promptCredentials(io: PromptIO = defaultPromptIO()): Promi
         if (!email.includes('@')) { console.log('  enter a valid email'); email = ''; }
     }
     let password = '';
-    while (!password || password.length < 8) {
-        password = await io.questionMasked('Admin password (min 8 chars): ');
-        if (password.length < 8) console.log('  password must be at least 8 characters');
+    while (!password) {
+        const first = await io.questionMasked('Admin password (min 8 chars): ');
+        if (first.length < 8) { console.log('  password must be at least 8 characters'); continue; }
+        const confirm = await io.questionMasked('Confirm admin password: ');
+        if (confirm !== first) { console.log('  passwords did not match — try again'); continue; }
+        password = first;
     }
     return { email, password };
 }
