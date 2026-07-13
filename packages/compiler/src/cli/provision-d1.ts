@@ -43,8 +43,13 @@ export function parseDatabaseId(stdout: string): string | null {
 /**
  * Provision a D1 database for the project (idempotent). Writes the
  * `[[d1_databases]] binding="DB"` block into wrangler.toml on first run.
+ *
+ * `opts.databaseId`: skip `wrangler d1 create` entirely and bind to an EXISTING
+ * D1 database (e.g. one already created via the CF dashboard or a prior deploy).
+ * Still idempotent — if wrangler.toml already has a binding, that wins (never
+ * silently rebinds an existing project to a different database).
  */
-export async function provisionD1(cwd: string, opts: { appName?: string; run?: WranglerRunner; binding?: string } = {}): Promise<ProvisionD1Result> {
+export async function provisionD1(cwd: string, opts: { appName?: string; run?: WranglerRunner; binding?: string; databaseId?: string } = {}): Promise<ProvisionD1Result> {
     const run = opts.run ?? realWrangler;
     const binding = opts.binding ?? 'DB';
     const appName = opts.appName ?? 'frontbase';
@@ -58,6 +63,14 @@ export async function provisionD1(cwd: string, opts: { appName?: string; run?: W
     }
 
     const databaseName = `${opts.appName}-db`;
+
+    if (opts.databaseId) {
+        // Bind to an existing database — no `wrangler d1 create` call.
+        const block = `\n[[d1_databases]]\nbinding = "${binding}"\ndatabase_name = "${databaseName}"\ndatabase_id = "${opts.databaseId}"\nmigrations_dir = "migrations"\n`;
+        writeFileSync(tomlPath, toml + (toml.endsWith('\n') ? '' : '\n') + block);
+        return { created: false, databaseName, databaseId: opts.databaseId, binding: binding as 'DB' };
+    }
+
     const out = await run(['d1', 'create', databaseName], { cwd });
     const databaseId = parseDatabaseId(out.stdout);
     if (!databaseId) throw new Error('d1_create_no_database_id');

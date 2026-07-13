@@ -24,6 +24,9 @@ export interface DeployOptions {
     cwd?: string;
     /** App name for the D1 database (CF). Default: the project dir name. */
     appName?: string;
+    /** Bind to an EXISTING D1 database instead of creating one — skips
+     *  `wrangler d1 create` entirely. Ignored if wrangler.toml already has a binding. */
+    d1DatabaseId?: string;
     /** Seed the first admin on the deployed CMS (CF-19). Both are required together;
      *  pushed as the ADMIN_EMAIL/ADMIN_PASSWORD wrangler secrets (stdin, never argv). */
     adminEmail?: string;
@@ -99,7 +102,7 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
     if (isCf) {
         try {
             const appName = opts.appName ?? basename(cwd);
-            const r = await provisionD1(cwd, { appName });
+            const r = await provisionD1(cwd, { appName, databaseId: opts.d1DatabaseId });
             // provisionD1 writes the [[d1_databases]] binding; the worker builds its
             // DbRunner from env.DB at boot (the lazy getEngine — BLOCKER-1).
             void r; // result reported in deploy output below

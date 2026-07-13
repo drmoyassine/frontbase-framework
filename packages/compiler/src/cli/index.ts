@@ -5,6 +5,7 @@
  * The bin shim (bin/frontbase.mjs) imports this and runs parseAsync().
  */
 import { Command } from 'commander';
+import { resolve } from 'node:path';
 import { runCheck } from './checker.js';
 import { runLint } from './linter.js';
 import { runParityCheck } from './parity.js';
@@ -120,12 +121,27 @@ export function createProgram(): Command {
         .option('--admin-role <role>', "seeded admin role (default 'owner')")
         .option('--setup-token <token>', 'enable the first-run /setup wizard (SETUP_TOKEN secret)')
         .option('--session-secret <secret>', 'HS256 session key (auto-generated if omitted)')
+        .option('--d1-database-id <id>', 'bind to an EXISTING D1 database instead of creating one')
+        .option('--interactive', 'check login, prompt for admin email/password, then deploy')
         .option('--json', 'JSON output')
-        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'deno'; out: string; adminEmail?: string; adminPassword?: string; adminRole?: string; setupToken?: string; sessionSecret?: string; json?: boolean }) => {
+        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'deno'; out: string; adminEmail?: string; adminPassword?: string; adminRole?: string; setupToken?: string; sessionSecret?: string; d1DatabaseId?: string; interactive?: boolean; json?: boolean }) => {
+            let adminEmail = opts.adminEmail;
+            let adminPassword = opts.adminPassword;
+            const cwd = resolve(path || '.');
+
+            if (opts.interactive) {
+                const { ensureWranglerLogin, promptCredentials } = await import('./interactive.js');
+                if (!opts.dryRun) await ensureWranglerLogin(cwd);
+                const creds = await promptCredentials();
+                adminEmail = creds.email;
+                adminPassword = creds.password;
+            }
+
             const result = await deployCommand(path || '.', {
                 dryRun: opts.dryRun, target: opts.target, outDir: opts.out,
-                adminEmail: opts.adminEmail, adminPassword: opts.adminPassword, adminRole: opts.adminRole,
+                adminEmail, adminPassword, adminRole: opts.adminRole,
                 setupToken: opts.setupToken, sessionSecret: opts.sessionSecret,
+                d1DatabaseId: opts.d1DatabaseId,
             });
             if (opts.json) console.log(JSON.stringify(result, null, 2));
             else console.log(`deploy: ${result.summary}${result.details ? ' ' + JSON.stringify(result.details) : ''}`);

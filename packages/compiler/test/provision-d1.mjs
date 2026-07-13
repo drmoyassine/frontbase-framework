@@ -58,5 +58,34 @@ check('parseDatabaseId: JSON uuid', parseDatabaseId('{"uuid":"abc-123"}') === 'a
 check('parseDatabaseId: toml database_id', parseDatabaseId('database_id = "def-456"') === 'def-456');
 check('parseDatabaseId: null when absent', parseDatabaseId('no id here') === null);
 
+// 4. Explicit --d1-database-id: binds to an EXISTING database, no `d1 create` call
+{
+    const dir = mkdtempSync(join(tmpdir(), 'fb-d1-'));
+    writeFileSync(join(dir, 'wrangler.toml'), `name = "demo"\nmain = "dist/worker.mjs"\n`);
+    const wr = mockWrangler();
+    const EXISTING_ID = 'existing-1234-5678-9abc';
+    const res = await provisionD1(dir, { appName: 'demo', run: wr.run, databaseId: EXISTING_ID });
+    check('explicit id: created = false (bound, not created)', res.created === false);
+    check('explicit id: databaseId = the one supplied', res.databaseId === EXISTING_ID);
+    check('explicit id: NO `wrangler d1 create` call', wr.calls.length === 0);
+    const toml = readFileSync(join(dir, 'wrangler.toml'), 'utf8');
+    check('explicit id: wrangler.toml has the [[d1_databases]] block', hasD1Binding(toml));
+    check('explicit id: the supplied database_id is written', toml.includes(EXISTING_ID));
+}
+
+// 5. Explicit --d1-database-id is IGNORED if a binding already exists (never
+//    silently rebinds an existing project to a different database)
+{
+    const dir = mkdtempSync(join(tmpdir(), 'fb-d1-'));
+    writeFileSync(join(dir, 'wrangler.toml'),
+        `name = "demo"\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "demo-db"\ndatabase_id = "already-bound-id"\n`);
+    const wr = mockWrangler();
+    const res = await provisionD1(dir, { appName: 'demo', run: wr.run, databaseId: 'a-different-id-should-be-ignored' });
+    check('existing binding wins over --d1-database-id (created=false)', res.created === false);
+    check('existing binding: NO wrangler call', wr.calls.length === 0);
+    const toml = readFileSync(join(dir, 'wrangler.toml'), 'utf8');
+    check('existing binding: original database_id untouched', toml.includes('already-bound-id') && !toml.includes('a-different-id-should-be-ignored'));
+}
+
 console.log(failures === 0 ? '\nprovision-d1: PASS ✅' : `\nprovision-d1: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);
