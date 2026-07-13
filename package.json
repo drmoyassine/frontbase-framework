@@ -12,7 +12,8 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "check": "pnpm -r check",
-    "test:mutation": "pnpm -r test:mutation"
+    "test:mutation": "pnpm -r test:mutation",
+    "deploy:cf-full": "node scripts/deploy.mjs"
   },
   "devDependencies": {
     "c8": "^11.0.0",

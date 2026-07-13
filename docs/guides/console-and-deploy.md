@@ -82,3 +82,33 @@ project to a different database.
 `--interactive` and `--admin-email`/`--admin-password` are mutually exclusive
 in intent — if you pass both, the interactively-prompted values win (the flags
 are overwritten after the prompt).
+
+### Deploying `examples/cf-full` specifically
+
+`frontbase deploy`'s `--dry-run` path (and thus `--dry-run` in general) calls
+`composeWorker()`, which builds a project from `src/sw.ts` + `src/worker.ts`
+directly with esbuild. `examples/cf-full` doesn't fit that shape — its own
+`build.mjs` inlines two virtual modules (`virtual:sw-bundle`, `virtual:spa-bundle`,
+carrying the service worker and the admin console SPA respectively) that
+`composeWorker()` doesn't know about, so running `frontbase deploy --dry-run`
+directly inside `examples/cf-full` will fail.
+
+The **live** deploy path (no `--dry-run`) never calls `composeWorker()` — it only
+requires `src/sw.ts` + `src/worker.ts` to exist and `wrangler.toml`'s `main` to
+point at an already-built `dist/worker.mjs`. That means cf-full's own build step
+is fully compatible with live deploy — it just needs to run first. A root-level
+script does exactly that, reusing the same `deployCommand()`/`interactive.ts`
+logic documented above without duplicating it:
+
+```bash
+# From the repo root:
+pnpm run deploy:cf-full -- --interactive
+pnpm run deploy:cf-full -- --admin-email owner@example.com --admin-password 'a real password'
+pnpm run deploy:cf-full -- --dry-run   # build + size-budget check only, no wrangler calls
+```
+
+(`pnpm run`, not bare `pnpm deploy:cf-full` — pnpm reserves the top-level
+`deploy` verb for its own workspace-package publishing feature, so the script
+is named `deploy:cf-full` and invoked via `pnpm run` to avoid any ambiguity.)
+
+Source: [`scripts/deploy.mjs`](../../scripts/deploy.mjs).
