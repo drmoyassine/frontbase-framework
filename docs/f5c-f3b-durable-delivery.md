@@ -14,8 +14,8 @@ Two tracks, one sprint. **S1 (F5c Option A)** closed the last design-gated follo
 |-------|-----------|--------|--------|
 | S1 | F5c — Supabase schema-per-resource provisioning | ✅ CLOSED | `60f8b16` |
 | S2.1 | Migration v6 — persist execution input | ✅ | `d6211e7` |
-| S2.2–S2.4 + S2.6 | F3b-durable recovery sweep + idempotent complete + boot hook + route + test | ✅ CLOSED | _S2 commit_ |
-| S2.5 | F3b-durable QStash redelivery dispatcher (gated) | ✅ | _S2.5 commit_ |
+| S2.2–S2.4 + S2.6 | F3b-durable recovery sweep + idempotent complete + boot hook + route + test | ✅ CLOSED | `5a80aef` |
+| S2.5 | F3b-durable QStash redelivery dispatcher (gated) | ✅ | `39f0012` |
 
 **Ledger delta:** F5c CLOSED (was a stub), F3b-durable CLOSED. **Open engineering follow-ups: 0.** Only F8b Stripe stays (deferred — its own task, not stable).
 

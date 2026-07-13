@@ -1,6 +1,6 @@
 # Phase 3 — Consolidated Delivery Report (3a + 3b + 3c)
 
-**Date:** 2026-07-13 · **Status:** ✅ FULL PRODUCT PARITY ACHIEVED
+**Date:** 2026-07-13 · **Status:** ✅ FULL PRODUCT PARITY ACHIEVED · **Ledger: all deviations + follow-ups CLOSED (0 open engineering items; only F8b Stripe deferred)**
 **Scope:** The three-phase "make it real → fill the gaps → visual polish + integration" arc that took the CF-18 admin console from MVP (3.5/11 nav areas, mostly stubs) to a complete, visually-parity CMS (11/11 nav areas, real execution/storage/provisioning, WYSIWYG + React Flow).
 
 This document supersedes the per-phase reports (`phase-3a-delivery.md`, `phase-3b-delivery.md`, `phase-3c-delivery.md`) as the single source of truth for what shipped and what remains.
@@ -67,30 +67,25 @@ Every deviation raised across the three phases, with **current status**. IDs are
 | **D6** | Phase 2 | 3a (F6) | Secret variables plaintext at rest | AES-256-GCM via Web-Crypto vault; idempotent |
 | **F8c-origin** | 3b | 3c (F8c) | Plan limits stored but not enforced | `enforceLimit` in publish + users routes → 402 |
 | **F3b-origin** | 3a | 3c (F3b) | Execution synchronous, blocks the request | Fire-and-track via `ctx.waitUntil` |
+| **F4b** | 3a (D4 polish) | follow-ups (P1) | Upload base64-in-JSON only | `signedUploadUrl` + `POST .../upload-url` + multipart on `.../files` (base64 kept) |
+| **F4c** | 3a | follow-ups (P3-b) | Live R2/S3 not exercised in CI | `storage-live.mjs` (real `s3StorageProvider` round-trip; credential-gated) |
+| **F5b** | 3a (D5 scope) | follow-ups (P2-c) | `vector` kind config-only; delete didn't de-provision | Vectorize provisioning + edge-resource delete calls `provisioner.remove` (sibling orphan fix) |
+| **F5c** | 3a (D5 scope) | follow-ups sprint-2 (S1) | Supabase provisioning not implemented | **Option A** — real schema-per-resource (`database`→`CREATE SCHEMA`, `vector`→schema+pgvector+768-dim table; de-provision=`DROP SCHEMA CASCADE`), pure SQL over the service key, no Management API |
+| **F5d** | 3a | follow-ups (P3-b) | Live CF provisioning not in CI | `provisioning-live.mjs` (real `cloudflareProvisioner` KV create+remove; credential-gated) |
+| **F7b** | 3b (F7 scope) | follow-ups (P2-b) | Introspection SQLite-dialect only | `dialectOf()` → `information_schema` for postgres/supabase; `sqlite_master` for sqlite |
+| **F7c** | 3b (F7 scope) | follow-ups (P2-a) | Postgres datasource not runnable | `postgresRunner` (Neon HTTP, dynamic-import); `kind:postgres` runnable |
+| **F3b-durable** | 3c (F3b polish) | follow-ups sprint-2 (S2) | Async dispatch request-scoped, not durable | Migration v6 persists execution `input`; idempotent `completeExecution` (guarded `status='running'`, mutation-proven); `listStuckExecutions` + `recoverStuckExecutions` replay sweep; boot hook + `POST /automations/_recover`; thin QStash redelivery dispatcher |
+| **BUG-1** 🔴 | 3-followups review | follow-ups (P0) | `DELETE /storage/files/:id` passed empty bucket + file id → real R2/S3 object never removed, only the metadata row | `Phase2Store.getFile(id)` resolves `bucket_id + path`; route passes the real key to `storage.delete`. Test `storage-delete.mjs` proves the object is gone from the provider. A sibling orphan (edge-resource delete not de-provisioning) was fixed the same sprint (P2-c). |
 
 ### 🟡 OPEN — carry-forward follow-ups
 
-These are integration-depth items: **they extend working features, they do not block parity.** Each has a scoped estimate.
+**One item remains, and it is deliberately deferred.** Everything else has been closed with tests (see the CLOSED table above).
 
 | ID | Raised | Deviation / gap | Why open | Effort |
 |----|--------|-----------------|----------|--------|
-| **F4b** | 3a (D4 polish) | Upload is base64-in-JSON, not multipart/presigned | base64 works (33% inflation); presigned is the production pattern for large files | 1 day |
-| **F4c** | 3a | Live R2/S3 path not exercised in CI | Unit-tested via memory provider (same interface); real R2/S3 is credential-gated | 0.5 day |
-| **F5b** | 3a (D5 scope) | Only CF-native kinds provisioned (`engine`/`vector` config-only) | database/cache/queue cover the common case; engine=Worker deploy, vector=Vectorize have no single clean API | 2 days |
-| **F5c** | 3a (D5 scope) | Supabase provisioning not implemented | Different auth flow than CF; deferred behind the same `Provisioner` interface | 2 days |
-| **F5d** | 3a | Live CF provisioning not exercised in CI | Tested via mock (same interface); real provisioning is credential-gated | 0.5 day |
-| **F7b** | 3b (F7 scope) | Introspection is SQLite-dialect only | sqlite_master + PRAGMA cover sqlite/turso/d1; Postgres `information_schema` + Supabase PostgREST additive | 1-2 days |
-| **F7c** | 3b (F7 scope) | Postgres datasource kind not runnable | Throws `postgres_runner_not_implemented`; CF-21 audit flagged a Postgres runner as pending | 1-2 days |
 | **F8b** | 3b (F8 scope) | No Stripe/billing integration | Plans are definitions only; Stripe needs SDK + webhooks + subscription lifecycle. **🛑 DEFERRED as its own task — not stable yet.** See [`plans/f8b-stripe-billing-DEFERRED.md`](./plans/f8b-stripe-billing-DEFERRED.md) | 3-5 days |
-| **F3b-durable** | 3c (F3b polish) | Async dispatch is request-scoped, not durable | Uses `ctx.waitUntil` (dies if the isolate evicts); true durability needs QStash/Durable Objects | 2-3 days |
 
-### 🔴 CORRECTNESS — known bug (open, not yet fixed)
-
-Distinct from the depth-of-integration follow-ups above: this is a behavioral defect, not a missing capability.
-
-| ID | Area | Bug | Impact | Fix |
-|----|------|-----|--------|-----|
-| **BUG-1** | F4 storage delete | `DELETE /storage/files/:id` calls `storage.delete('', fileId)` — empty bucket + the file **id** where the object **key/path** belongs ([`routes/phase2.ts:273`](../packages/backend/src/routes/phase2.ts)). The real R2/S3 object is never removed; only the metadata row goes. Its inline comment wrongly claims the schema lacks `bucket_id` — but `storage_files` **already stores `bucket_id` + `path`** ([`db/migrations.ts:63`](../packages/backend/src/db/migrations.ts)). | Orphaned objects accumulate in the bucket on every delete (storage cost + data-retention leak). Only affects tenants with a live storage provider configured. | Add `Phase2Store.getFile(id)`; pass real `(bucket_id, path)` to `storage.delete`; test that the object is gone from the provider, not just the row. Est. ~0.5 day. **Discovered 2026-07-13 during report review; logged per decision to defer the fix.** |
+**Open engineering follow-ups: 0.** F8b is a product/billing decision on its own track, not an engineering gap in the CMS.
 
 ### ⚙️ BY DESIGN (not gaps)
 
@@ -102,22 +97,22 @@ Distinct from the depth-of-integration follow-ups above: this is a behavioral de
 
 ## 4. Open follow-ups — priority-ordered
 
-If the goal is "deepen toward production GA," this is the recommended order:
+**All engineering follow-ups are closed.** The two follow-up sprints (2026-07-13) worked the entire backlog below to done; the priority list is retained here as a record of what was tackled and in what order.
 
-| Priority | Item | Unblocks / value | Effort |
-|----------|------|------------------|--------|
-| **P0** | BUG-1 storage delete (correctness) | Stops orphaned R2/S3 objects leaking on every delete; schema already supports the fix | 0.5 day |
-| **P1** | F4b multipart + presigned upload | Large-file uploads (removes 33% base64 inflation + size caps) | 1 day |
-| **P2** | F3b-durable async dispatch | Long workflows survive isolate eviction | 2-3 days |
-| **P2** | F7c Postgres runner | Postgres/Hyperdrive datasources runnable | 1-2 days |
-| **P2** | F5b Vectorize + Workers-deploy provisioning | Full edge-resource coverage (engine/vector) | 2 days |
-| **P3** | F7b per-dialect introspection | Postgres/Supabase table browsing (not just SQLite) | 1-2 days |
-| **P3** | F5c Supabase provisioning | Supabase resource creation (not just CF) | 2 days |
-| **P3** | F4c / F5d credential-gated live CI gates | Proves the real R2/S3/CF paths in CI (needs test creds) | 0.5 day each |
+| Priority | Item | Status | Closed in |
+|----------|------|--------|-----------|
+| **P0** | BUG-1 storage delete (correctness) | ✅ CLOSED | follow-ups P0 |
+| **P1** | F4b multipart + presigned upload | ✅ CLOSED | follow-ups P1 |
+| **P2** | F7c Postgres runner | ✅ CLOSED | follow-ups P2-a |
+| **P2** | F5b Vectorize + de-provision on delete | ✅ CLOSED | follow-ups P2-c |
+| **P2** | F3b-durable async dispatch | ✅ CLOSED | sprint-2 (S2) |
+| **P3** | F7b per-dialect introspection | ✅ CLOSED | follow-ups P2-b |
+| **P3** | F5c Supabase provisioning (Option A) | ✅ CLOSED | sprint-2 (S1) |
+| **P3** | F4c / F5d credential-gated live CI gates | ✅ CLOSED | follow-ups P3-b |
 
-**F8b Stripe billing (3-5 days) is deferred as a separate task** — not stable yet; excluded from this ordering. See [`plans/f8b-stripe-billing-DEFERRED.md`](./plans/f8b-stripe-billing-DEFERRED.md).
+**Only remaining item — deferred, not open:** **F8b Stripe billing** (3-5 days) — its own product/billing track, not stable yet. See [`plans/f8b-stripe-billing-DEFERRED.md`](./plans/f8b-stripe-billing-DEFERRED.md).
 
-**Total to close every open item excluding Stripe:** ~10.5-14.5 days of solo-developer effort (incl. BUG-1).
+**Total remaining engineering effort to reach zero follow-ups: 0 days.** (Everything above shipped with tests; F8b is out of scope by decision.)
 
 > **Implementation build sheet for P0–P3 (junior-agent-ready, step-by-step, with test code):** [`plans/phase-3-followups-sprint.md`](./plans/phase-3-followups-sprint.md). It also captures a **P0-PRE** seam (inject a pre-built `StorageProvider` into `createConsole`) that unblocks the P0/P1 tests, and a **second orphan bug** found during this review (`DELETE /edge-resources/:id` never calls `provisioner.remove` — folded into P2-c).
 
@@ -142,14 +137,17 @@ If the goal is "deepen toward production GA," this is the recommended order:
 - **Real execution:** workflows actually run (F3), async (F3b); storage actually stores bytes (F4); resources actually provision (F5); secrets actually encrypted (F6).
 - **Enforcement:** plan limits gate pages + users (F8c).
 
-**What "full parity" does NOT yet mean** (the open follow-ups):
-- No payment collection (F8b Stripe) — plans are tier definitions, not billable.
-- No large-file upload path (F4b) — base64-in-JSON works but inflates.
-- No Postgres introspection/runner (F7b/F7c) — SQLite-family only.
-- No durable long-workflow execution (F3b-durable) — request-scoped today.
-- No Supabase provisioning (F5c) — CF-only.
+**Closed since the original 3a/3b/3c arc** (the two follow-up sprints, 2026-07-13):
+- ✅ Large-file upload — `F4b` presigned-upload URL + multipart (base64 path kept).
+- ✅ Postgres introspection + runner — `F7b`/`F7c` (`information_schema` dialect + Neon HTTP runner).
+- ✅ Durable long-workflow execution — `F3b-durable` (persisted input + recovery sweep + idempotent completion + QStash redelivery).
+- ✅ Supabase provisioning — `F5c` Option A (real schema-per-resource, not just CF).
+- ✅ Vectorize provisioning + de-provision-on-delete — `F5b` (plus the sibling orphan fix).
+- ✅ Live-CI credential-gated gates for R2/S3 + CF — `F4c`/`F5d`.
+- ✅ **BUG-1** storage-delete orphan — real object now removed, not just the metadata row.
 
-These are depth-of-integration, not missing features. **One correctness bug is open** (BUG-1, storage delete leaves orphaned objects) — see the CORRECTNESS subsection in §3; it is deferred, not fixed.
+**What "full parity" does NOT yet mean** (the one deferred item):
+- No payment collection (`F8b` Stripe) — plans are tier definitions, not billable. Deferred as its own product/billing track.
 
 ---
 

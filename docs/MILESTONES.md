@@ -7,7 +7,7 @@
 > **Phase status at a glance:** Phase 0 🟢 · Phase 1 🟢 · Phase 2 🟢 (M2.3 builder is *foundation-complete* — full canvas is a carried-forward item) · Phase 3 🔵 next · Phase 4 🔵.
 > Carried-forward / deferred items from every phase are consolidated in **[§ Carried-forward items](#carried-forward-items-live-backlog)** so nothing is lost between phases.
 >
-> **Parallel track — CF-18 admin-console parity (not the "Phase 3: Agent Experience" milestone below):** a separate 3-phase effort (3a→3b→3c, 2026-07-12/13) took the admin console from MVP (3.5/11 nav areas) to full product parity (11/11, WYSIWYG + React Flow, real execution/storage/provisioning). **Single source of truth: [`docs/phase-3-consolidated-delivery.md`](./phase-3-consolidated-delivery.md)** — includes the full deviations ledger (8 closed, 9 open follow-ups, 1 open correctness bug **BUG-1**). This track's "Phase 3" numbering is independent of the milestone Phase 3 in this file.
+> **Parallel track — CF-18 admin-console parity (not the "Phase 3: Agent Experience" milestone below):** a separate effort (3a→3b→3c + two follow-up sprints, 2026-07-12/13) took the admin console from MVP (3.5/11 nav areas) to full product parity (11/11, WYSIWYG + React Flow, real execution/storage/provisioning). **Single source of truth: [`docs/phase-3-consolidated-delivery.md`](./phase-3-consolidated-delivery.md)** — the deviations ledger is now **fully closed: all deviations + follow-ups resolved with tests (incl. BUG-1 + a sibling orphan fix); zero open engineering follow-ups.** Only **F8b Stripe** remains, deliberately deferred as its own product/billing track. This track's "Phase 3" numbering is independent of the milestone Phase 3 in this file.
 
 ---
 
