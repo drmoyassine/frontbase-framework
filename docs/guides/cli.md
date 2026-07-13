@@ -62,6 +62,18 @@ npx @frontbase/compiler simulate src/manifest.ts --serve --port 3000
 Provider modes: `direct` (edge), `proxy` (SW's HTTP data path), `draft` (in-memory).
 The same page renders byte-identically across all three.
 
+> **`--serve` optional dependency (CF-5).** One-shot `simulate` (render + exit) needs
+> nothing extra. The long-running `--serve` mode starts an HTTP server via
+> [`@hono/node-server`](https://www.npmjs.com/package/@hono/node-server), which is a
+> **peer/optional dep** — it is *not* installed with the compiler. Install it only if
+> you use `--serve`:
+> ```bash
+> npm i -D @hono/node-server        # or: pnpm add -D @hono/node-server
+> ```
+> It's lazy-imported (`simulate.ts` `serve()`), so the compiler builds and every
+> other command runs without it; `--serve` prints a clear "install @hono/node-server"
+> message if it's missing.
+
 ## `emit-sw <entry>`
 
 Emit a content-hash-versioned `sw.js` from a SW entry module.

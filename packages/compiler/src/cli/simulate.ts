@@ -85,8 +85,18 @@ async function toResult(mode: ProviderMode, res: Response): Promise<SimulateResu
  * of programmatic simulate usage / tests.
  */
 export async function serve(manifest: SiteManifest, mode: ProviderMode, port: number): Promise<{ close: () => void }> {
-    const mod = await import('@hono/node-server');
-    const honoServe = (mod.serve ?? mod.default) as typeof import('@hono/node-server').serve;
+    // @hono/node-server is an OPTIONAL peer dep (CF-5) — only --serve needs it.
+    // Surface a clear install hint instead of a raw ERR_MODULE_NOT_FOUND.
+    let mod: typeof import('@hono/node-server');
+    try {
+        mod = await import('@hono/node-server');
+    } catch {
+        throw new Error(
+            "'simulate --serve' needs the optional dependency @hono/node-server. " +
+            'Install it with:  npm i -D @hono/node-server   (or: pnpm add -D @hono/node-server)',
+        );
+    }
+    const honoServe = (mod.serve ?? (mod as { default?: unknown }).default) as typeof import('@hono/node-server').serve;
     const data: DataProvider = mode === 'direct' ? directProvider(manifest)
         : mode === 'draft' ? draftProvider(manifest) : proxyProvider('/api/data');
     const engine = createEngine({ manifest, data, environment: 'edge' });
