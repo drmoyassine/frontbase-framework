@@ -9,12 +9,22 @@
  *     when not; throws if login fails/is cancelled.
  *   - promptCredentials: validates email (must contain @) and password
  *     (min 8 chars, typed TWICE and must match), re-prompting on invalid input
- *     or a mismatch; never echoes the password back through anything the test
- *     can observe (the mock IO simulates a masked reader — the real one is
- *     exercised structurally, not e2e, since a raw-mode TTY can't be driven
- *     from a test harness).
+ *     or a mismatch (via a mocked PromptIO — the decision logic, not the
+ *     terminal rendering).
+ *   - readLine(): the REAL raw-mode reader, driven with a fake stdin stream
+ *     (not mocked away) — asserts the exact bytes written to stdout for a
+ *     masked read. This is the regression test for a real bug that shipped:
+ *     the visible-email prompt used `node:readline` (which keeps its own
+ *     'data' listener attached to process.stdin indefinitely) and the masked-
+ *     password prompt used a SEPARATE raw-mode listener on top of it — both
+ *     fired on every keystroke, producing interleaved garbage like
+ *     "S*u*n*F*l*o*w*e*r*@*7" on screen. The mocked PromptIO tests above never
+ *     caught this because they bypass readLine() entirely. Fixed by removing
+ *     readline and routing every prompt through one reader; this test drives
+ *     that reader directly so the bug class can't regress silently again.
  */
-import { isLoggedIn, ensureWranglerLogin, promptCredentials } from '../dist/cli/interactive.js';
+import { isLoggedIn, ensureWranglerLogin, promptCredentials, readLine } from '../dist/cli/interactive.js';
+import { EventEmitter } from 'node:events';
 
 let failures = 0;
 const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; console.log(`  ❌ ${l}`); } };
@@ -121,6 +131,72 @@ check('isLoggedIn: false on empty/garbage output', isLoggedIn('') === false && i
     };
     const creds = await promptCredentials(io);
     check('mismatched confirm is rejected and re-prompted', creds.password === 'final-password-3');
+}
+
+// ── readLine(): THE REGRESSION TEST — drives the real raw-mode reader with a
+//    fake stdin stream and asserts the exact bytes written. No mock IO here. ──
+
+/** A fake stdin: an EventEmitter with the subset of the Node stream API
+ *  readLine() actually uses (setRawMode/resume/pause/on/removeListener). */
+function fakeStdin() {
+    const emitter = new EventEmitter();
+    emitter.setRawMode = () => {};
+    emitter.resume = () => {};
+    emitter.pause = () => {};
+    return emitter;
+}
+/** Feed a string as individual single-byte chunks — the worst case for the
+ *  interleaving bug (readline's own reads are chunked exactly this way from a
+ *  real terminal, one keystroke per event). */
+function typeString(stdin, s) {
+    for (const ch of s) stdin.emit('data', Buffer.from(ch, 'utf8'));
+    stdin.emit('data', Buffer.from('\n', 'utf8'));
+}
+
+{
+    const stdin = fakeStdin();
+    let written = '';
+    const write = (s) => { written += s; };
+    const resultPromise = readLine('Admin password (min 8 chars): ', /* mask */ true, stdin, write);
+    typeString(stdin, 'SunFlower@7');
+    const result = await resultPromise;
+    check('readLine (masked): returns the exact typed value', result === 'SunFlower@7');
+    check('readLine (masked): echoes ONLY the prompt + one \'*\' per char + newline — no real chars, no interleaving',
+        written === 'Admin password (min 8 chars): ' + '*'.repeat('SunFlower@7'.length) + '\n');
+    check('readLine (masked): the plaintext password never appears anywhere in what was written to the terminal',
+        !written.includes('SunFlower@7') && !written.includes('Sun') && !written.includes('Flower'));
+}
+
+{
+    // The visible (email) reader — echoes the real characters, still via the
+    // SAME single reader (proving there's no second listener to race with).
+    const stdin = fakeStdin();
+    let written = '';
+    const write = (s) => { written += s; };
+    const resultPromise = readLine('Admin email: ', /* mask */ false, stdin, write);
+    typeString(stdin, 'owner@example.com');
+    const result = await resultPromise;
+    check('readLine (visible): returns the exact typed value', result === 'owner@example.com');
+    check('readLine (visible): echoes the prompt + the real characters + newline (unmasked, by design)',
+        written === 'Admin email: owner@example.com\n');
+}
+
+{
+    // Backspace correctness under raw mode (both mask and visible paths).
+    const stdin = fakeStdin();
+    let written = '';
+    const write = (s) => { written += s; };
+    const resultPromise = readLine('pw: ', true, stdin, write);
+    // Emitted manually (not via typeString) so a backspace (byte 8) can be
+    // interleaved between the typed characters.
+    stdin.emit('data', Buffer.from('a', 'utf8'));
+    stdin.emit('data', Buffer.from('b', 'utf8'));
+    stdin.emit('data', Buffer.from([8]));           // backspace (BS)
+    stdin.emit('data', Buffer.from('c', 'utf8'));
+    stdin.emit('data', Buffer.from('\n', 'utf8'));
+    const result = await resultPromise;
+    check('readLine: backspace removes the last character from the returned value', result === 'ac');
+    check('readLine: backspace erases the mask visually (\\b \\b sequence written)', written.includes('\b \b'));
 }
 
 console.log(failures === 0 ? '\ninteractive: PASS ✅' : `\ninteractive: FAIL ❌ (${failures})`);

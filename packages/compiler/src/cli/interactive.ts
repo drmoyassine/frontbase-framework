@@ -7,7 +7,6 @@
  * the decision logic without a real terminal or Cloudflare account.
  */
 import { spawn } from 'node:child_process';
-import * as readline from 'node:readline';
 
 export type SpawnRunner = (bin: string, args: string[], opts: { cwd: string; stdio?: 'inherit' | 'pipe' }) => Promise<{ code: number; stdout: string; stderr: string }>;
 
@@ -59,7 +58,7 @@ export interface PromptIO {
     questionMasked(prompt: string): Promise<string>;
 }
 
-// Raw-mode byte codes for the masked-password reader (avoids embedding literal
+// Raw-mode byte codes for the line reader below (avoids embedding literal
 // control characters in source, which are easy to mis-copy/mis-render).
 const BYTE_LF = 10;         // \n
 const BYTE_CR = 13;         // \r
@@ -67,13 +66,37 @@ const BYTE_ETX = 3;         // Ctrl+C
 const BYTE_BACKSPACE = 8;   // \b
 const BYTE_DEL = 127;       // DEL (what most terminals send for Backspace)
 
-/** Read one line of input with the real characters suppressed and an `*` echoed
- *  per keystroke instead (the plaintext itself never appears on screen or in
- *  the terminal scrollback — only the mask does). Backspace erases one `*`. */
-function readMaskedLine(prompt: string): Promise<string> {
+/** The minimal stdin surface `readLine` needs — real `process.stdin` satisfies
+ *  this; a test can pass a fake readable stream instead. */
+export interface RawStdin {
+    setRawMode?: (mode: boolean) => void;
+    resume: () => void;
+    pause: () => void;
+    on: (event: 'data', listener: (chunk: Buffer) => void) => void;
+    removeListener: (event: 'data', listener: (chunk: Buffer) => void) => void;
+}
+
+/**
+ * A single raw-mode stdin reader used for BOTH `question` and `questionMasked`.
+ *
+ * Why not `node:readline` for the visible prompt: readline installs its own
+ * 'data' listener on process.stdin and keeps it attached for the lifetime of
+ * the interface. If a SEPARATE raw-mode reader (for the masked password) is
+ * then attached on top, both listeners receive every keystroke — readline
+ * echoes the real character, the raw reader echoes '*' after it — producing
+ * exactly the interleaved "S*u*n*..." garbage this replaces. Driving every
+ * prompt through one reader removes that dual-listener race entirely.
+ *
+ * `mask`: when true, echo '*' per keystroke instead of the real character (the
+ * plaintext itself never appears on screen or in scrollback — only the mask).
+ * `stdin`/`write`: injectable so a test can drive this with a fake stream and
+ * assert the exact echoed output (this is the seam that catches the class of
+ * bug that shipped before — the mocked PromptIO in the CLI test never
+ * exercised this function at all).
+ */
+export function readLine(prompt: string, mask: boolean, stdin: RawStdin = process.stdin, write: (s: string) => void = (s) => process.stdout.write(s)): Promise<string> {
     return new Promise((res) => {
-        process.stdout.write(prompt);
-        const stdin = process.stdin;
+        write(prompt);
         let buf = '';
         const onData = (chunk: Buffer) => {
             for (const byte of chunk) {
@@ -81,20 +104,20 @@ function readMaskedLine(prompt: string): Promise<string> {
                     stdin.pause();
                     stdin.removeListener('data', onData);
                     stdin.setRawMode?.(false);
-                    process.stdout.write('\n');
+                    write('\n');
                     res(buf);
                     return;
                 }
-                if (byte === BYTE_ETX) { stdin.setRawMode?.(false); process.exit(130); }
+                if (byte === BYTE_ETX) { stdin.setRawMode?.(false); process.exit(130); } // Ctrl+C
                 if (byte === BYTE_BACKSPACE || byte === BYTE_DEL) {
                     if (buf.length > 0) {
                         buf = buf.slice(0, -1);
-                        process.stdout.write('\b \b'); // erase the last '*' visually
+                        write('\b \b'); // erase the last echoed char visually
                     }
                     continue;
                 }
                 buf += String.fromCharCode(byte);
-                process.stdout.write('*');
+                write(mask ? '*' : String.fromCharCode(byte));
             }
         };
         stdin.setRawMode?.(true);
@@ -103,13 +126,13 @@ function readMaskedLine(prompt: string): Promise<string> {
     });
 }
 
-/** The default terminal prompt: readline for the email (visible), a raw-mode
- *  reader for the password (nothing echoes — not even asterisks). */
+/** The default terminal prompt: one raw-mode reader for everything — visible
+ *  echo for the email, `*`-masked echo for the password. No readline instance
+ *  is ever created, so there's no second listener to race with. */
 function defaultPromptIO(): PromptIO {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     return {
-        question: (prompt) => new Promise((res) => rl.question(prompt, (answer) => res(answer.trim()))),
-        questionMasked: (prompt) => readMaskedLine(prompt),
+        question: (prompt) => readLine(prompt, false).then((s) => s.trim()),
+        questionMasked: (prompt) => readLine(prompt, true),
     };
 }
 
