@@ -12,9 +12,16 @@ import * as readline from 'node:readline';
 export type SpawnRunner = (bin: string, args: string[], opts: { cwd: string; stdio?: 'inherit' | 'pipe' }) => Promise<{ code: number; stdout: string; stderr: string }>;
 
 /** Default runner: spawn the real binary. `stdio: 'inherit'` for `wrangler login`
- *  (it opens a browser + waits — the user needs to see/interact with it). */
+ *  (it opens a browser + waits — the user needs to see/interact with it).
+ *
+ *  `shell: true` is required on Windows: globally-installed npm binaries like
+ *  `wrangler` are `.cmd` shims, and plain `spawn()` cannot resolve/execute a
+ *  `.cmd` file without going through a shell (it fails with ENOENT). This is
+ *  safe here — `bin`/`args` are always fixed literals from our own call sites
+ *  ('wrangler', 'whoami' | 'login' | 'deploy' | ...), never user-supplied
+ *  strings; secret VALUES never travel as args (stdin only, see deploy.ts). */
 const defaultSpawn: SpawnRunner = (bin, args, { cwd, stdio }) => new Promise((resolvePromise) => {
-    const child = spawn(bin, args, { cwd, stdio: stdio === 'inherit' ? 'inherit' : ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(bin, args, { cwd, stdio: stdio === 'inherit' ? 'inherit' : ['pipe', 'pipe', 'pipe'], shell: true });
     let stdout = '', stderr = '';
     if (stdio !== 'inherit') {
         child.stdout?.on('data', (d) => { stdout += d; });

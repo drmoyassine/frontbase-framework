@@ -19,9 +19,14 @@ export interface ProvisionD1Result {
 
 export type WranglerRunner = (args: string[], opts: { cwd: string }) => Promise<{ stdout: string; stderr: string }>;
 
-/** Default runner: shells out to the real wrangler. */
+/** Default runner: shells out to the real wrangler.
+ *
+ *  `shell: true` is required on Windows: the globally-installed `wrangler` is a
+ *  `.cmd` shim that plain `execFile()` cannot resolve (fails with ENOENT). Safe
+ *  here — the command is always 'wrangler' and `args` are fixed literals
+ *  ('d1', 'create', <databaseName>) built by our own code. */
 export const realWrangler: WranglerRunner = (args, opts) => new Promise((resolve, reject) => {
-    execFile('wrangler', args, opts, (err: ExecFileException | null, stdout: string, stderr: string) => {
+    execFile('wrangler', args, { ...opts, shell: true }, (err: ExecFileException | null, stdout: string, stderr: string) => {
         if (err) reject(err);
         else resolve({ stdout, stderr });
     });

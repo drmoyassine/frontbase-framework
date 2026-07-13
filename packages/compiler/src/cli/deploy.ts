@@ -44,10 +44,16 @@ export interface DeployOptions {
     genSecret?: () => string;
 }
 
-/** Default runner: spawn the binary, pipe the secret value via stdin (never argv). */
+/** Default runner: spawn the binary, pipe the secret value via stdin (never argv).
+ *
+ *  `shell: true` is required on Windows: globally-installed npm binaries like
+ *  `wrangler`/`deployctl` are `.cmd` shims that plain `spawn()` cannot resolve
+ *  (fails with ENOENT). Safe here — `bin` is always 'wrangler' or 'deployctl'
+ *  and `args` are fixed literals ('deploy', 'secret', 'put', <name>) built by
+ *  our own code; the secret VALUE never appears in args (stdin only). */
 const defaultRunWrangler = (bin: string): WranglerRunner => (args, { cwd, stdin }) =>
     new Promise((resolve) => {
-        const child = spawn(bin, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'] });
+        const child = spawn(bin, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], shell: true });
         let stdout = '', stderr = '';
         child.stdout.on('data', (d) => { stdout += d; });
         child.stderr.on('data', (d) => { stderr += d; });
