@@ -40,6 +40,13 @@ function recorder() {
         if (args[0] === 'deployments' && args[1] === 'list') {
             return { code: 1, stdout: '', stderr: 'This Worker does not exist on your account. [code: 10007]' };
         }
+        if (args[0] === 'd1' && args[1] === 'create') {
+            // The fixture's wrangler.toml declares "t-db", but the resolved
+            // appName (explicit or randomly generated) rarely matches it, so
+            // provisionD1 correctly goes through a real create call here too —
+            // this must return a parseable id, not a bare 'ok'.
+            return { code: 0, stdout: JSON.stringify({ uuid: 'cccccccc-2222-3333-4444-555555555555' }), stderr: '' };
+        }
         return { code: 0, stdout: 'ok', stderr: '' };
     };
     return { calls, runWrangler };
@@ -144,7 +151,7 @@ const SETUP = 'setup-tok-123';
 // ── 5. --app-name given, app does NOT exist → fresh provision under that name ──
 {
     const calls = [];
-    const FRESH_ID = 'brand-new-uuid-111';
+    const FRESH_ID = 'aaaaaaaa-2222-3333-4444-555555555555';
     const runWrangler = async (args, { stdin } = {}) => {
         calls.push({ args, stdin });
         if (args.join(' ') === 'deployments list --name a-fresh-named-app') return { code: 1, stdout: '', stderr: 'code: 10007' };
@@ -152,10 +159,12 @@ const SETUP = 'setup-tok-123';
         return { code: 0, stdout: 'ok', stderr: '' };
     };
     const res = await deployCommand('.', { cwd: fixture(), target: 'cloudflare', appName: 'a-fresh-named-app', runWrangler, genSecret: () => SENTINEL_SESSION });
-    // NOTE: fixture() pre-declares a d1 binding, which provisionD1 always reuses
-    // regardless of app-name — this checks the EXISTENCE-CHECK path chose the
-    // fresh branch (appExisted:false), not that d1-create actually ran (a truly
-    // fresh cwd is covered by test 1 above).
+    // NOTE: fixture()'s wrangler.toml declares "t-db", which does NOT match
+    // this app's resolved name ("a-fresh-named-app-db") — provisionD1 correctly
+    // does NOT reuse it (that binding belongs to a different app) and instead
+    // creates fresh under this app's name (handled by this test's own
+    // runWrangler mock above). This checks the EXISTENCE-CHECK path chose the
+    // fresh branch (appExisted:false).
     check('fresh named app: appExisted = false', res.details?.appExisted === false);
     check('fresh named app: summary says fresh', /fresh/.test(res.summary));
     check('fresh named app: SESSION_SECRET IS auto-generated (fresh deploy)', res.details?.sessionSecretGenerated === true);
@@ -171,7 +180,7 @@ const SETUP = 'setup-tok-123';
             generatedCandidates.push(args[3]);
             return { code: 1, stdout: '', stderr: 'code: 10007' }; // first candidate is always free
         }
-        if (args[0] === 'd1' && args[1] === 'create') return { code: 0, stdout: JSON.stringify({ uuid: 'x' }), stderr: '' };
+        if (args[0] === 'd1' && args[1] === 'create') return { code: 0, stdout: JSON.stringify({ uuid: 'bbbbbbbb-2222-3333-4444-555555555555' }), stderr: '' };
         return { code: 0, stdout: 'ok', stderr: '' };
     };
     const res = await deployCommand('.', { cwd: fixture(), target: 'cloudflare', runWrangler, rand: () => 0.5 });

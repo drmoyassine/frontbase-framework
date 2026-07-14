@@ -166,7 +166,12 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
                 }
                 databaseId = found;
             }
-            const r = await provisionD1(cwd, { appName, databaseId });
+            // `run: runWrangler` wires provisionD1's `wrangler d1 create` through
+            // the SAME runner (real or test-mocked) as every other wrangler call
+            // in this function — without it, provisionD1 falls back to its own
+            // default (the real `wrangler` binary), which is invisible to tests
+            // and to `--target deno`'s `deployctl` substitution.
+            const r = await provisionD1(cwd, { appName, databaseId, run: runWrangler });
             // provisionD1 writes the [[d1_databases]] binding; the worker builds its
             // DbRunner from env.DB at boot (the lazy getEngine — BLOCKER-1).
             void r; // result reported in deploy output below
