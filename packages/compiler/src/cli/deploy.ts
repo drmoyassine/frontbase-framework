@@ -11,6 +11,7 @@ import { randomBytes } from 'node:crypto';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import { composeWorker, assertWorkerBudget, type ComposeInput } from '../deploy/compose.js';
 import { provisionD1 } from './provision-d1.js';
+import { workerExists, lookupExistingD1, generateFreeAppName, type WranglerCheckRunner } from './app-identity.js';
 import { basename } from 'node:path';
 
 /** Run a wrangler/deployctl subcommand. The secret VALUE (if any) is fed on
@@ -22,7 +23,20 @@ export interface DeployOptions {
     target?: 'cloudflare' | 'deno';
     outDir?: string;
     cwd?: string;
-    /** App name for the D1 database (CF). Default: the project dir name. */
+    /**
+     * The app's identity — drives BOTH the Cloudflare Worker name (via
+     * `wrangler deploy --name`) and the D1 database name. Cloudflare is the
+     * SOURCE OF TRUTH for whether this app already exists:
+     *   - given + a worker with this name EXISTS on the account → redeploy in
+     *     place, reusing its existing D1 database (no `wrangler d1 create`).
+     *   - given + no worker with this name exists → fresh provision (D1 +
+     *     worker) under this name.
+     *   - omitted entirely → ALWAYS a fresh deployment: a random, unused
+     *     two-word name is generated (checked against Cloudflare so it can't
+     *     collide with an app you already have), then provisioned fresh.
+     * This replaces the old always-provision-under-a-fixed-name behavior,
+     * which broke redeploys ("A database with that name already exists").
+     */
     appName?: string;
     /** Bind to an EXISTING D1 database instead of creating one — skips
      *  `wrangler d1 create` entirely. Ignored if wrangler.toml already has a binding. */
@@ -42,6 +56,8 @@ export interface DeployOptions {
     runWrangler?: WranglerRunner;
     /** Test seam: generate the session secret. Default: 32 random bytes, base64. */
     genSecret?: () => string;
+    /** Test seam: RNG for random app-name generation (no --app-name given). Default: Math.random. */
+    rand?: () => number;
 }
 
 /** Default runner: spawn the binary, pipe the secret value via stdin (never argv).
@@ -101,14 +117,56 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
     const isCf = opts.target !== 'deno';
     const bin = isCf ? 'wrangler' : 'deployctl';
     const runWrangler = opts.runWrangler ?? defaultRunWrangler(bin);
+    const runWranglerCheck: WranglerCheckRunner = runWrangler; // structurally compatible (no stdin needed for these calls)
     const genSecret = opts.genSecret ?? (() => randomBytes(32).toString('base64'));
+    const rand = opts.rand ?? Math.random;
 
-    // Live deploy — CF: provision D1 first (idempotent, B2/B6), then wrangler deploy,
+    // App identity: resolve --app-name (or generate a fresh, verified-unused one
+    // if omitted), then ask CLOUDFLARE — the source of truth, not the local
+    // wrangler.toml — whether an app under that name already exists. That
+    // decides redeploy-in-place-reusing-its-D1 vs. fresh-provision.
+    let appName: string;
+    let appExisted = false;
+    if (isCf) {
+        try {
+            if (opts.appName) {
+                appName = opts.appName;
+                appExisted = await workerExists(appName, cwd, runWranglerCheck);
+            } else {
+                // No --app-name: ALWAYS a fresh deployment (per spec) — generate a
+                // name already verified not to collide with an existing worker.
+                appName = await generateFreeAppName(cwd, runWranglerCheck, { rand });
+                appExisted = false;
+            }
+        } catch (e) {
+            return { ok: false, summary: `could not determine app identity: ${(e as Error).message}` };
+        }
+    } else {
+        appName = opts.appName ?? basename(cwd); // Deno path: D1/existence-check not wired (unchanged)
+    }
+
+    // Live deploy — CF: provision D1 (idempotent — reuse if the app already
+    // existed, create fresh otherwise), then wrangler deploy --name <appName>,
     // then push secrets (stdin, never argv). Deno: deployctl (D1/secrets not wired).
     if (isCf) {
         try {
-            const appName = opts.appName ?? basename(cwd);
-            const r = await provisionD1(cwd, { appName, databaseId: opts.d1DatabaseId });
+            let databaseId = opts.d1DatabaseId;
+            if (appExisted && !databaseId) {
+                // The app already exists on Cloudflare — look up ITS real D1 id
+                // (by the same naming convention provisionD1 uses: `${appName}-db`)
+                // so this redeploy reuses it instead of trying to create a
+                // database that already exists under that name.
+                const found = await lookupExistingD1(`${appName}-db`, cwd, runWranglerCheck);
+                if (!found) {
+                    return {
+                        ok: false,
+                        summary: `app "${appName}" exists on Cloudflare, but no D1 database named "${appName}-db" was found`,
+                        details: { hint: 'pass --d1-database-id <uuid> explicitly to bind the correct database' },
+                    };
+                }
+                databaseId = found;
+            }
+            const r = await provisionD1(cwd, { appName, databaseId });
             // provisionD1 writes the [[d1_databases]] binding; the worker builds its
             // DbRunner from env.DB at boot (the lazy getEngine — BLOCKER-1).
             void r; // result reported in deploy output below
@@ -117,15 +175,24 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
         }
     }
 
-    // Deploy the script (secrets target an existing script, so this runs first).
-    const dep = await runWrangler(['deploy'], { cwd });
+    // Deploy the script under the resolved app name (overrides wrangler.toml's
+    // `name`, if any — this is what makes a single wrangler.toml reusable across
+    // multiple named/generated app deployments).
+    const dep = await runWrangler(isCf ? ['deploy', '--name', appName] : ['deploy'], { cwd });
     if (dep.code !== 0) return { ok: false, summary: `${bin} deploy failed`, details: { stderr: dep.stderr } };
 
     // Push secrets over stdin — the VALUES never appear in argv (process list) or
     // in the returned summary/details. Only the NAMES set are reported.
+    //
+    // SESSION_SECRET: on a FRESH deploy it's always set (auto-generated if not
+    // given — a deployment must never be left without one). On a REDEPLOY of an
+    // app that already existed, it is only pushed if the caller EXPLICITLY gave
+    // one — auto-rotating it on every redeploy would silently invalidate every
+    // logged-in admin's session each time you redeploy, which is not what
+    // "redeploy" should mean.
     const secretsSet: string[] = [];
     if (isCf) {
-        const sessionSecret = opts.sessionSecret ?? genSecret();
+        const sessionSecret = opts.sessionSecret ?? (appExisted ? undefined : genSecret());
         const toSet: Array<[string, string | undefined]> = [
             ['SESSION_SECRET', sessionSecret],
             ['ADMIN_EMAIL', opts.adminEmail],
@@ -143,11 +210,13 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
 
     return {
         ok: true,
-        summary: `deployed via ${bin}`,
+        summary: appExisted ? `redeployed "${appName}" via ${bin}` : `deployed "${appName}" via ${bin} (fresh)`,
         details: {
             stdout: dep.stdout,
+            appName,
+            appExisted,
             secretsSet, // NAMES only — never values
-            sessionSecretGenerated: isCf && !opts.sessionSecret,
+            sessionSecretGenerated: isCf && !appExisted && !opts.sessionSecret,
         },
     };
 }

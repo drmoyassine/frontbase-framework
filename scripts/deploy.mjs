@@ -20,11 +20,20 @@
  * `frontbase deploy`. No deploy logic is duplicated.
  *
  * Usage (from the repo root):
- *   pnpm run deploy:cf-full                                                # non-interactive, no admin seed
+ *   pnpm run deploy:cf-full                                                # NEW deploy every time — a random app name is generated
+ *   pnpm run deploy:cf-full -- --app-name my-app                           # redeploys "my-app" if it exists on Cloudflare, else creates it fresh
  *   pnpm run deploy:cf-full -- --interactive                                # prompts for login + admin creds
+ *   pnpm run deploy:cf-full -- --app-name my-app --interactive
  *   pnpm run deploy:cf-full -- --admin-email you@x.com --admin-password 'pw'
  *   pnpm run deploy:cf-full -- --admin-email you@x.com --admin-password 'pw' --d1-database-id <uuid>
  *   pnpm run deploy:cf-full -- --dry-run                                    # build only, no wrangler calls
+ *
+ * --app-name is the app's identity: it drives BOTH the Cloudflare Worker name
+ * and the D1 database name. Cloudflare (not the local wrangler.toml) is asked
+ * whether an app under that name already exists — if so this REDEPLOYS it in
+ * place, reusing its existing D1 database; if not, it provisions fresh. Omit
+ * --app-name entirely to ALWAYS get a brand-new deployment under a randomly
+ * generated, verified-unused name (e.g. "swift-heron").
  */
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -48,6 +57,7 @@ const opts = {
     adminRole: value('admin-role'),
     setupToken: value('setup-token'),
     sessionSecret: value('session-secret'),
+    appName: value('app-name'),
     d1DatabaseId: value('d1-database-id'),
 };
 
@@ -91,6 +101,7 @@ const result = await deployCommand('.', {
     adminRole: opts.adminRole,
     setupToken: opts.setupToken,
     sessionSecret: opts.sessionSecret,
+    appName: opts.appName,
     d1DatabaseId: opts.d1DatabaseId,
 });
 

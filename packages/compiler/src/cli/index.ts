@@ -121,10 +121,11 @@ export function createProgram(): Command {
         .option('--admin-role <role>', "seeded admin role (default 'owner')")
         .option('--setup-token <token>', 'enable the first-run /setup wizard (SETUP_TOKEN secret)')
         .option('--session-secret <secret>', 'HS256 session key (auto-generated if omitted)')
+        .option('--app-name <name>', 'app identity — drives the Worker + D1 names. If it already exists on Cloudflare, redeploys in place (reusing its D1). Omit for a brand-new app with a generated name.')
         .option('--d1-database-id <id>', 'bind to an EXISTING D1 database instead of creating one')
         .option('--interactive', 'check login, prompt for admin email/password, then deploy')
         .option('--json', 'JSON output')
-        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'deno'; out: string; adminEmail?: string; adminPassword?: string; adminRole?: string; setupToken?: string; sessionSecret?: string; d1DatabaseId?: string; interactive?: boolean; json?: boolean }) => {
+        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'deno'; out: string; adminEmail?: string; adminPassword?: string; adminRole?: string; setupToken?: string; sessionSecret?: string; appName?: string; d1DatabaseId?: string; interactive?: boolean; json?: boolean }) => {
             let adminEmail = opts.adminEmail;
             let adminPassword = opts.adminPassword;
             const cwd = resolve(path || '.');
@@ -141,7 +142,7 @@ export function createProgram(): Command {
                 dryRun: opts.dryRun, target: opts.target, outDir: opts.out,
                 adminEmail, adminPassword, adminRole: opts.adminRole,
                 setupToken: opts.setupToken, sessionSecret: opts.sessionSecret,
-                d1DatabaseId: opts.d1DatabaseId,
+                appName: opts.appName, d1DatabaseId: opts.d1DatabaseId,
             });
             if (opts.json) console.log(JSON.stringify(result, null, 2));
             else console.log(`deploy: ${result.summary}${result.details ? ' ' + JSON.stringify(result.details) : ''}`);
