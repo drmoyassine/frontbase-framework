@@ -19,7 +19,12 @@ import { opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
 import { IMPLEMENTED } from './registry.js';
 import { registerVariablesRoutes } from './routes/variables.js';
-import { TemplateVariableStore } from './store.js';
+import { registerMetaRoutes } from './routes/meta.js';
+import { registerSettingsRoutes } from './routes/settings.js';
+import { registerThemesRoutes } from './routes/themes.js';
+import { registerProjectRoutes } from './routes/project.js';
+import { registerSecurityEventsRoutes } from './routes/security-events.js';
+import { TemplateVariableStore, KeyValueStore, ThemesStore, SecurityEventsStore } from './store.js';
 
 export interface CreateCompatAppDeps {
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */
@@ -30,33 +35,43 @@ export interface CreateCompatAppDeps {
     now?: () => string;
 }
 
+/** Build a per-tenant store cache. */
+function storeCache<T>(build: (tenant: string) => T): (tenant: string) => T {
+    const cache = new Map<string, T>();
+    return (tenant: string) => {
+        let s = cache.get(tenant);
+        if (!s) { s = build(tenant); cache.set(tenant, s); }
+        return s;
+    };
+}
+
 export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{ Variables: ConsoleAuthVars }>> {
     const now = deps.now ?? (() => new Date().toISOString());
     const runner = await deps.makeRunner();
 
-    // Per-tenant template-variable store (migration v7). Single-tenant in
-    // practice (community edition); the tenant comes from the auth context.
-    const varStores = new Map<string, TemplateVariableStore>();
-    const varStoreFor = (tenant: string): TemplateVariableStore => {
-        let s = varStores.get(tenant);
-        if (!s) { s = new TemplateVariableStore(runner, tenant); varStores.set(tenant, s); }
-        return s;
-    };
+    // Per-tenant stores. Single-tenant in practice (community edition); the
+    // tenant comes from the auth context (defaultDenyAuth).
+    const varStoreFor = storeCache((t: string) => new TemplateVariableStore(runner, t));
+    const kvFor = storeCache((t: string) => new KeyValueStore(runner, t));
+    const themesFor = storeCache((t: string) => new ThemesStore(runner, t));
+    const secEventsFor = storeCache((t: string) => new SecurityEventsStore(runner, t));
 
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
     app.onError(opaqueErrors);
 
-    // Everything requires an authenticated, tenant-scoped principal. Registered
-    // BEFORE the routes: in Hono, app.use('*') guards only routes registered
-    // after it. (P1 scope: every compat op is authed. Unauthenticated product
-    // ops like /api/auth/login land in P2; their stubs currently 401, which is
-    // safe — they're not implemented yet.)
+    // UNAUTHENTICATED routes (health/liveness) — registered BEFORE default-deny.
+    registerMetaRoutes(app);
+
+    // Everything below requires an authenticated, tenant-scoped principal.
     app.use('*', defaultDenyAuth(deps.resolvePrincipal as (req: Request) => Promise<any>));
 
-    // Real handlers for implemented ops (P1: variables). Registered with the
-    // exact product paths on the main app (no sub-app mount — that mismatches
-    // trailing slashes, which the product client calls verbatim).
+    // Real handlers for implemented ops, registered with the exact product paths
+    // on the main app (no sub-app mount — that mismatches trailing slashes).
     registerVariablesRoutes(app, varStoreFor, now);
+    registerSettingsRoutes(app, kvFor, now);
+    registerThemesRoutes(app, themesFor, now);
+    registerProjectRoutes(app, kvFor, now);
+    registerSecurityEventsRoutes(app, secEventsFor);
 
     // 501 stubs for every other vendored community op.
     registerStubs(app, IMPLEMENTED);

@@ -114,6 +114,17 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [`DROP TABLE IF EXISTS template_variables`],
     },
+    {
+        // CF-22 P2 Wave 1: component themes + security events for the product-
+        // compat /api/themes and /api/security-events surfaces.
+        version: 8,
+        name: 'themes_and_security_events',
+        up: [
+            `CREATE TABLE IF NOT EXISTS themes (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT NOT NULL, component_type TEXT NOT NULL, styles_data TEXT NOT NULL, is_system INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS security_events (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, kind TEXT NOT NULL, severity TEXT NOT NULL DEFAULT 'info', detail TEXT, created_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+        ],
+        down: [`DROP TABLE IF EXISTS themes`, `DROP TABLE IF EXISTS security_events`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

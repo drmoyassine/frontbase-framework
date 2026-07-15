@@ -155,5 +155,27 @@ export type StorageFile = typeof storageFiles.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
 export type Variable = typeof variables.$inferSelect;
 export type TemplateVariableRow = typeof templateVariables.$inferSelect;
+
+/** Component themes — CF-22 P2 Wave 1 product-compat /api/themes. */
+export const themes = sqliteTable('themes', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    name: text('name').notNull(),
+    componentType: text('component_type').notNull(),
+    stylesData: text('styles_data').notNull(),   // JSON
+    isSystem: integer('is_system', { mode: 'boolean' }).notNull().default(false),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
+/** Security events — CF-22 P2 Wave 1 product-compat /api/security-events. */
+export const securityEvents = sqliteTable('security_events', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    kind: text('kind').notNull(),
+    severity: text('severity').notNull().default('info'),
+    detail: text('detail'),
+    createdAt: text('created_at').notNull(),
+});
 export type Datasource = typeof datasources.$inferSelect;
 export type Plan = typeof plans.$inferSelect;

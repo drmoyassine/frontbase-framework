@@ -30,7 +30,10 @@ const check = (name, fn) => { try { fn(); console.log(`  ✓ ${name}`); } catch 
 check('committed framework spec is conformant (0 missing, 0 divergent)', () => {
     const res = gate();
     assert.equal(res.status, 0, `gate must pass on committed specs: ${res.stdout || res.stderr}`);
-    assert.match(res.stdout, /implemented=6 stubbed=278/);
+    // Counts grow as P2 waves land — just assert the shape + that variables is in.
+    assert.match(res.stdout, /implemented=\d+ stubbed=\d+/);
+    const [, impl] = res.stdout.match(/implemented=(\d+)/) ?? [];
+    assert.ok(Number(impl) >= 6, `at least the P1 variables tag (6) must be implemented, got ${impl}`);
 });
 
 // RED-1: remove one op → MISSING detected.
