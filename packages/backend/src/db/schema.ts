@@ -222,5 +222,53 @@ export const compatPageVersions = sqliteTable('compat_page_versions', {
     label: text('label'),
     createdAt: text('created_at').notNull(),
 });
+
+/** Edge API keys — CF-22 P2 Wave 4 product-compat /api/edge-api-keys (migration v11). */
+export const edgeApiKeys = sqliteTable('edge_api_keys', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    name: text('name').notNull(),
+    scope: text('scope').default('user'),
+    keyHash: text('key_hash'),
+    isActive: integer('is_active').default(1),
+    expiresAt: text('expires_at'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
+/** Edge agent profiles (compat) — CF-22 P2 Wave 4 (migration v11). */
+export const edgeAgentProfilesCompat = sqliteTable('edge_agent_profiles_compat', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    engineId: text('engine_id'),
+    name: text('name').notNull(),
+    config: text('config'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
+/** MCP servers — CF-22 P2 Wave 5 product-compat /api/mcp-servers (migration v11). */
+export const mcpServers = sqliteTable('mcp_servers', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    name: text('name').notNull(),
+    url: text('url'),
+    transport: text('transport').default('http'),
+    config: text('config'),
+    isActive: integer('is_active').default(1),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
+/** Agent skills — CF-22 P2 Wave 5 product-compat /api/agent-skills (migration v11). */
+export const agentSkills = sqliteTable('agent_skills', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    config: text('config'),
+    createdAt: text('created_at').notNull(),
+});
+
 export type Datasource = typeof datasources.$inferSelect;
 export type Plan = typeof plans.$inferSelect;

@@ -32,7 +32,7 @@ import { registerEdgeDatabasesRoutes } from './routes/edge-databases.js';
 import { registerAuthFormsRoutes } from './routes/auth-forms.js';
 import { registerWorkflowsRoutes } from './routes/workflows.js';
 import { registerActionsRoutes } from './routes/actions.js';
-import { registerAuthCompatRoutes } from './routes/auth-compat.js';
+import { registerAuthCompatUnauthRoutes, registerAuthCompatAuthedRoutes } from './routes/auth-compat.js';
 import { registerEdgeEnginesRoutes } from './routes/edge-engines.js';
 import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
 import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
@@ -87,17 +87,21 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // UNAUTHENTICATED routes — registered BEFORE default-deny:
     // 1. Meta (health/liveness)
     registerMetaRoutes(app);
-    // 2. Auth compat surface (login/logout/signup/etc. + me + security). Mounted
-    //    before the guard so the unauth ops bypass it; the authed ops (me/security)
-    //    degrade gracefully — `me` reads the principal if the host additionally
-    //    mounts default-deny below, else returns the product's logged-out shape,
-    //    and the security endpoints return community defaults regardless.
+    // 2. UNAUTHENTICATED auth ops only (login/logout/signup/forgot/reset/invite/
+    //    accept/check-slug) — a user can't present a session to log in. The
+    //    AUTHENTICATED auth ops (me + security console) are registered AFTER the
+    //    guard below (they read/modify admin security state — RULE 2).
     if (deps.sessionSecret && deps.userStoreFor) {
-        registerAuthCompatRoutes(app, deps.userStoreFor, deps.sessionSecret);
+        registerAuthCompatUnauthRoutes(app, deps.userStoreFor, deps.sessionSecret);
     }
 
     // Everything below requires an authenticated, tenant-scoped principal.
     app.use('*', defaultDenyAuth(deps.resolvePrincipal as (req: Request) => Promise<any>));
+
+    // AUTHENTICATED auth ops (me + security) — behind the guard (RULE 2).
+    if (deps.sessionSecret && deps.userStoreFor) {
+        registerAuthCompatAuthedRoutes(app);
+    }
 
     // Real handlers for implemented ops, registered with the exact product paths
     // on the main app (no sub-app mount — that mismatches trailing slashes).

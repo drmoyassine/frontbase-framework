@@ -40,8 +40,12 @@ export interface AuthCompatDeps {
     sessionSecret: string;
 }
 
-export function registerAuthCompatRoutes(app: App, userStoreFor: (t: string) => UserStore, sessionSecret: string): void {
-    // ---- unauthenticated ----
+/**
+ * UNAUTHENTICATED auth ops (login/logout/signup/forgot/reset/invite/accept/
+ * check-slug). MUST be registered BEFORE defaultDenyAuth so they bypass the guard
+ * — a user cannot present a session to log in.
+ */
+export function registerAuthCompatUnauthRoutes(app: App, userStoreFor: (t: string) => UserStore, sessionSecret: string): void {
     // POST /api/auth/login
     app.post('/api/auth/login', async (c) => {
         const body = await c.req.json().catch(() => ({})) as { email?: string; password?: string };
@@ -96,8 +100,16 @@ export function registerAuthCompatRoutes(app: App, userStoreFor: (t: string) => 
     app.get('/api/auth/invite/:token', (c) => c.json({ email: '', role: 'editor', tenant_name: null, tenant_slug: null }));
     // POST /api/auth/accept-invite  (community: no invites)
     app.post('/api/auth/accept-invite', (c) => c.json({ detail: 'Invites are not available in the community edition' }, 400));
+}
 
-    // ---- authenticated (degrade gracefully when mounted before defaultDenyAuth) ----
+/**
+ * AUTHENTICATED auth ops (me + the security console: blocklist / bot-protection /
+ * WAF / audit-logs). MUST be registered AFTER defaultDenyAuth — these read/modify
+ * security state and are admin-only in the product (RULE 2). Registering them
+ * before the guard would expose the IP blocklist, WAF toggle, and audit logs to
+ * anonymous callers.
+ */
+export function registerAuthCompatAuthedRoutes(app: App): void {
     // GET /api/auth/me
     app.get('/api/auth/me', (c) => {
         const principal = c.get('principal');
