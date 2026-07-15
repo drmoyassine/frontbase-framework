@@ -55,8 +55,9 @@ export interface CreateConsoleDeps {
     purgeCache?: (keys: string[]) => Promise<void>;
     /** Clock (deterministic in tests). Default: () => new Date().toISOString(). */
     now?: () => string;
-    /** Setup wizard token (SETUP_TOKEN env secret). Required for POST /setup; if
-     *  unset, /setup and /setup/db are disabled (fail closed). */
+    /** Setup wizard token (SETUP_TOKEN env secret). If configured, /setup and
+     *  /setup/db require it; if unset, first-run bootstrap is open and no
+     *  setupToken is required. */
     setupToken?: string;
     /** Role the first admin is seeded as via /setup (ADMIN_ROLE at deploy).
      *  Fixed server-side — the request body can NOT choose it (SEC CRIT-2). Default 'owner'. */
@@ -199,4 +200,8 @@ export { tenantsRoutes } from './routes/tenants.js';
 export { publishPage } from './publish/pipeline.js';
 export { migrateUp, migrateDown, appliedVersions, schemaFingerprint, MIGRATIONS } from './db/migrations.js';
 export type { Migration } from './db/migrations.js';
+// CF-22 P1: product-compatible /api surface + drift-gate machinery.
+export { createCompatApp } from './compat/app.js';
+export type { CreateCompatAppDeps } from './compat/app.js';
+export { buildFrameworkSpec, productOps, productSpec, opKey, IMPLEMENTED } from './compat/app.js';
 export * from './db/schema.js';

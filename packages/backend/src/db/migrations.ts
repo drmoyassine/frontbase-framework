@@ -102,6 +102,18 @@ export const MIGRATIONS: Migration[] = [
             `ALTER TABLE workflow_executions_v5 RENAME TO workflow_executions`,
         ],
     },
+    {
+        // CF-22 P1 / D4: template (formula) variables for the product-compat
+        // /api/variables surface. Distinct from the key-value `variables` table
+        // (settings/secret store) — these are the builder's @-mention formula
+        // variables: {name, type (variable|calculated), formula, value, description}.
+        version: 7,
+        name: 'template_variables',
+        up: [
+            `CREATE TABLE IF NOT EXISTS template_variables (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'variable', formula TEXT, value TEXT, description TEXT, created_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+        ],
+        down: [`DROP TABLE IF EXISTS template_variables`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

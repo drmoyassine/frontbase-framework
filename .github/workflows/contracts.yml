@@ -1,0 +1,42 @@
+name: contracts
+
+# CF-22 P1 — the product-compat surface is a committed, generated artifact.
+# These gates fail the build when the vendored product contract drifts, the
+# framework's emitted spec goes stale, or an implemented op diverges from the
+# product shape. The drift gate's burn-down table IS P2's worklist.
+#
+# - spec-staleness: framework.openapi.json must match a fresh emission.
+# - drift-gate:     0 missing ops, 0 divergent implemented ops (stubs are the
+#                   burn-down, not a failure).
+# - test:           the full backend suite incl. compat-variables (proof tag) and
+#                   contract-diff (the gate + its mutation proof).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm -r build
+      - name: Spec staleness gate
+        run: pnpm --filter @frontbase/backend run contracts:check
+      - name: Contract drift gate (missing / divergent)
+        run: pnpm run contracts:diff
+      - name: Backend suite (incl. compat-variables + contract-diff)
+        run: pnpm --filter @frontbase/backend test
+      - name: Mutation gates
+        run: pnpm -r test:mutation

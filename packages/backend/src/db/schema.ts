@@ -131,6 +131,20 @@ export const plans = sqliteTable('plans', {
     updatedAt: text('updated_at').notNull(),
 });
 
+/** Template (formula) variables — CF-22 P1 product-compat /api/variables surface.
+ *  Distinct from the key-value `variables` table: these are builder @-mention
+ *  formula variables {name, type, formula, value, description}. */
+export const templateVariables = sqliteTable('template_variables', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    name: text('name').notNull(),
+    type: text('type').notNull().default('variable'),  // variable | calculated
+    formula: text('formula'),
+    value: text('value'),
+    description: text('description'),
+    createdAt: text('created_at').notNull(),
+});
+
 export type PublishedPage = typeof publishedPages.$inferSelect;
 export type Draft = typeof drafts.$inferSelect;
 export type WorkflowRow = typeof workflows.$inferSelect;
@@ -140,5 +154,6 @@ export type StorageBucket = typeof storageBuckets.$inferSelect;
 export type StorageFile = typeof storageFiles.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
 export type Variable = typeof variables.$inferSelect;
+export type TemplateVariableRow = typeof templateVariables.$inferSelect;
 export type Datasource = typeof datasources.$inferSelect;
 export type Plan = typeof plans.$inferSelect;
