@@ -12899,7 +12899,7 @@
         "tags": [
           "database"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/connect-supabase/": {
@@ -12942,7 +12942,7 @@
         "tags": [
           "database"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/connections/": {
@@ -12965,7 +12965,7 @@
         "tags": [
           "database"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/disconnect-supabase/": {
@@ -12988,7 +12988,7 @@
         "tags": [
           "database"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/distinct-values/": {
@@ -13033,7 +13033,7 @@
         "tags": [
           "database"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/rls/batch/": {
@@ -13076,7 +13076,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/rls/bulk-delete/": {
@@ -13119,7 +13119,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/rls/metadata/": {
@@ -13142,7 +13142,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Save metadata when creating a policy",
@@ -13183,7 +13183,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/rls/metadata/{table_name}/{policy_name}": {
@@ -13236,7 +13236,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Get stored metadata for a policy",
@@ -13287,7 +13287,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/rls/metadata/verify/": {
@@ -13330,7 +13330,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/rls/policies/": {
@@ -13375,7 +13375,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new RLS policy",
@@ -13416,7 +13416,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/rls/policies/{table_name}": {
@@ -13470,7 +13470,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/rls/policies/{table_name}/{policy_name}": {
@@ -13523,7 +13523,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update an existing RLS policy",
@@ -13584,7 +13584,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/rls/tables/": {
@@ -13629,7 +13629,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/rls/tables/{table_name}/toggle/": {
@@ -13683,7 +13683,7 @@
         "tags": [
           "rls"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/supabase-tables/": {
@@ -13706,7 +13706,7 @@
         "tags": [
           "database"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/table-data/{table_name}/": {
@@ -13823,7 +13823,7 @@
         "tags": [
           "database"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/table-schema/{table_name}/": {
@@ -13867,7 +13867,7 @@
         "tags": [
           "database"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/tables/": {
@@ -13890,7 +13890,7 @@
         "tags": [
           "database"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/test-supabase/": {
@@ -13933,7 +13933,7 @@
         "tags": [
           "database"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/deno/connect": {
@@ -19347,7 +19347,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new page - matches Express: { success, data: page }",
@@ -19388,7 +19388,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/{page_id}/": {
@@ -19432,7 +19432,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Get a page by ID - matches Express: { success, data: page }",
@@ -19474,7 +19474,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update a page - matches Express: { success, data: page }",
@@ -19526,7 +19526,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/{page_id}/layout/": {
@@ -19582,7 +19582,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/{page_id}/permanent/": {
@@ -19626,7 +19626,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/{page_id}/publish-batch/": {
@@ -19680,7 +19680,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/{page_id}/publish/{engine_id}/": {
@@ -19733,7 +19733,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/{page_id}/restore/": {
@@ -19777,7 +19777,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/{page_id}/rollback/": {
@@ -19831,7 +19831,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/{page_id}/unpublish/{engine_id}/": {
@@ -19884,7 +19884,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/{page_id}/versions/": {
@@ -19928,7 +19928,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Manually create a named version snapshot (e.g., \"Pre-launch backup\").",
@@ -19980,7 +19980,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/{page_id}/versions/{version_id}/": {
@@ -20033,7 +20033,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/homepage/": {
@@ -20056,7 +20056,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/public/{slug}/": {
@@ -20100,7 +20100,7 @@
         "tags": [
           "pages"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/project/": {

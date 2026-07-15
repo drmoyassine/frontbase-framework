@@ -125,6 +125,19 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [`DROP TABLE IF EXISTS themes`, `DROP TABLE IF EXISTS security_events`],
     },
+    {
+        // CF-22 P2 Wave 1b: product-shaped pages for the compat /api/pages/*
+        // surface. Distinct from the framework's slug-keyed published_pages
+        // (used by the eSSR engine) — these are id-keyed, with soft-delete
+        // (deleted_at) + immutable version snapshots + content hashing.
+        version: 9,
+        name: 'compat_pages',
+        up: [
+            `CREATE TABLE IF NOT EXISTS compat_pages (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT NOT NULL, slug TEXT NOT NULL, title TEXT, description TEXT, keywords TEXT, is_public INTEGER DEFAULT 1, is_homepage INTEGER DEFAULT 0, layout_data TEXT NOT NULL, seo_data TEXT, deleted_at TEXT, content_hash TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS compat_page_versions (id TEXT NOT NULL, page_id TEXT NOT NULL, tenant_slug TEXT NOT NULL, version_number INTEGER NOT NULL, layout_data TEXT NOT NULL, content_hash TEXT, label TEXT, created_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+        ],
+        down: [`DROP TABLE IF EXISTS compat_pages`, `DROP TABLE IF EXISTS compat_page_versions`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

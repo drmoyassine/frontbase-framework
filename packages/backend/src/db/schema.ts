@@ -177,5 +177,38 @@ export const securityEvents = sqliteTable('security_events', {
     detail: text('detail'),
     createdAt: text('created_at').notNull(),
 });
+
+/** Compat pages — CF-22 P2 Wave 1b product-compat /api/pages/* surface.
+ *  Id-keyed (unlike slug-keyed published_pages used by eSSR), with soft-delete
+ *  (deleted_at) + content hashing. Migration v9. */
+export const compatPages = sqliteTable('compat_pages', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    name: text('name').notNull(),
+    slug: text('slug').notNull(),
+    title: text('title'),
+    description: text('description'),
+    keywords: text('keywords'),
+    isPublic: integer('is_public').notNull().default(1),
+    isHomepage: integer('is_homepage').notNull().default(0),
+    layoutData: text('layout_data').notNull(),
+    seoData: text('seo_data'),
+    deletedAt: text('deleted_at'),
+    contentHash: text('content_hash'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
+/** Compat page versions — CF-22 P2 Wave 1b. Immutable layout snapshots + rollback. */
+export const compatPageVersions = sqliteTable('compat_page_versions', {
+    id: text('id').notNull(),
+    pageId: text('page_id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    versionNumber: integer('version_number').notNull(),
+    layoutData: text('layout_data').notNull(),
+    contentHash: text('content_hash'),
+    label: text('label'),
+    createdAt: text('created_at').notNull(),
+});
 export type Datasource = typeof datasources.$inferSelect;
 export type Plan = typeof plans.$inferSelect;

@@ -243,12 +243,10 @@ migrations (product task #111).
 ## 5b. P2 detailed spec (task #108) — implement the 286-op community contract
 
 > **Wave 1a delivered 2026-07-15** — report: [`cf-22-p2-wave1-delivery.md`](./cf-22-p2-wave1-delivery.md).
-> The small primitive-backed tags are implemented + conformant: **Meta (3), settings
-> (12), Themes (3), project (3), security-events (2)** = +23 ops. Drift gate:
-> **29 implemented / 255 stubbed / 0 missing / 0 divergent**. Conformance suite
-> (`compat-wave1.mjs`, 7/7) validates every response against the vendored Zod.
-> Remaining Wave 1: pages (17) / database (10) / rls (14) — the larger primitive-
-> backed sets — then Waves 2–5.
+> **Wave 1b delivered 2026-07-15** — pages (17) + database (10) + rls (14) = +41 ops.
+> Drift gate: **70 implemented / 214 stubbed / 0 missing / 0 divergent**. Conformance
+> suites: compat-wave1 7/7, compat-wave1b 6/6. Full 26-marker backend suite green.
+> **Wave 1 complete.** Remaining: Waves 2–5 (storage/auth, edge, agent — 214 ops).
 
 **Goal:** drive the P1 oasdiff burn-down table from 280-stubbed to 0, wave by
 wave. Every wave is independently shippable and independently verifiable (the

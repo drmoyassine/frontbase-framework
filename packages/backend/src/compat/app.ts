@@ -24,7 +24,11 @@ import { registerSettingsRoutes } from './routes/settings.js';
 import { registerThemesRoutes } from './routes/themes.js';
 import { registerProjectRoutes } from './routes/project.js';
 import { registerSecurityEventsRoutes } from './routes/security-events.js';
+import { registerPagesRoutes } from './routes/pages.js';
+import { registerDatabaseRoutes } from './routes/database.js';
+import { registerRlsRoutes } from './routes/rls.js';
 import { TemplateVariableStore, KeyValueStore, ThemesStore, SecurityEventsStore } from './store.js';
+import { PagesStore } from './pages-store.js';
 
 export interface CreateCompatAppDeps {
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */
@@ -55,6 +59,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     const kvFor = storeCache((t: string) => new KeyValueStore(runner, t));
     const themesFor = storeCache((t: string) => new ThemesStore(runner, t));
     const secEventsFor = storeCache((t: string) => new SecurityEventsStore(runner, t));
+    const pagesFor = storeCache((t: string) => new PagesStore(runner, t));
 
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
     app.onError(opaqueErrors);
@@ -72,6 +77,9 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
     registerSecurityEventsRoutes(app, secEventsFor);
+    registerPagesRoutes(app, pagesFor, now);
+    registerDatabaseRoutes(app, kvFor, now);
+    registerRlsRoutes(app, kvFor);
 
     // 501 stubs for every other vendored community op.
     registerStubs(app, IMPLEMENTED);
