@@ -18,8 +18,9 @@ export const IMPLEMENTED: Set<string> = new Set([
     opKey('PUT', '/api/variables/{variable_id}/'),
     opKey('DELETE', '/api/variables/{variable_id}/'),
 
-    // P2 Wave 1 — Meta (3) [unauthenticated health]
-    opKey('GET', '/'),
+    // P2 Wave 1 — Meta (2 implemented; bare GET / owned by the eSSR engine, not compat)
+    // The vendored spec has GET / as a Meta op, but the framework's engine owns the
+    // bare / path (published pages). The compat surface serves /health + /api/queue/health.
     opKey('GET', '/health'),
     opKey('GET', '/api/queue/health'),
 

@@ -15,7 +15,8 @@
     "test:mutation": "pnpm -r test:mutation",
     "deploy:cf-full": "node scripts/deploy.mjs",
     "contracts:sync": "node scripts/sync-contract.mjs",
-    "contracts:diff": "node scripts/contract-diff.mjs"
+    "contracts:diff": "node scripts/contract-diff.mjs",
+    "fetch:console": "node scripts/fetch-console.mjs"
   },
   "devDependencies": {
     "c8": "^11.0.0",

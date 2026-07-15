@@ -238,7 +238,7 @@ migrations (product task #111).
 
 ### P2 — Implement the community contract · ~3–4 wk, wave-parallelizable · **spec in §5b**
 
-### P3 — Integration: serve the real console · ~1–1.5 wk · **spec in §5c**
+### P3 — Integration: serve the real console · ✅ DELIVERED 2026-07-15 · **spec in §5c**
 
 ## 5b. P2 detailed spec (task #108) — implement the 286-op community contract
 

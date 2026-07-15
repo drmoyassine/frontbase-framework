@@ -25,6 +25,8 @@ export function registerStubs(
     for (const op of productOps()) {
         const key = opKey(op.method, op.path);
         if (implemented.has(key)) continue; // real handler owns this op
+        // The bare GET / is the engine's eSSR root — never stub it (the engine owns it).
+        if (op.method === 'get' && op.path === '/') continue;
         stubbed.add(key);
         const route = toHonoPath(op.path); // {id} → :id, drop trailing slash
         // app.on(method, path, handler) — uniform across verbs.

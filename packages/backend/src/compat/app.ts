@@ -96,7 +96,17 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     }
 
     // Everything below requires an authenticated, tenant-scoped principal.
-    app.use('*', defaultDenyAuth(deps.resolvePrincipal as (req: Request) => Promise<any>));
+    // SCOPED to /api/* (but NOT /api/console/* which is the engine's existing
+    // console surface). This prevents the compat guard from shadowing the
+    // engine's public routes (/, /sw.js, /frontbase-admin/*) and its own
+    // /api/console/* sub-router.
+    app.use('*', async (c, next) => {
+        const path = new URL(c.req.url).pathname;
+        if (!path.startsWith('/api/') || path.startsWith('/api/console/')) {
+            return next(); // Not a compat path — let the next mounted app handle it
+        }
+        return defaultDenyAuth(deps.resolvePrincipal as (req: Request) => Promise<any>)(c, next);
+    });
 
     // AUTHENTICATED auth ops (me + security) — behind the guard (RULE 2).
     if (deps.sessionSecret && deps.userStoreFor) {

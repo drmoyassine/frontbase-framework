@@ -96,7 +96,9 @@ const inlineSwPlugin = {
 };
 
 // 2b. Inline the admin-console SPA bundle (built by @frontbase/admin-console)
-//     the same way → one artifact, no static assets.
+//     the same way → one artifact, no static assets. CF-22 P3: this is the OLD
+//     parallel-run SPA at /console. The REAL product console lives in
+//     console-dist/ (served via Workers Static Assets in prod, inlined for smoke).
 const SPA_SOURCE = readFileSync(join(pkgDir('@frontbase/admin-console'), 'dist', 'spa.js'), 'utf8');
 const inlineSpaPlugin = {
     name: 'inline-spa',
@@ -106,12 +108,30 @@ const inlineSpaPlugin = {
     },
 };
 
+// 2c. CF-22 P3: Inline the product console index.html (from console-dist/).
+//     For the smoke build (platform:node), this reads the file at build time and
+//     embeds it. In production, Workers Static Assets serves console-dist/
+//     directly — this module is only used for the smoke/in-process path.
+const consoleShellPlugin = {
+    name: 'console-shell',
+    setup(build) {
+        build.onResolve({ filter: /^\.\/console-shell\.js$/ }, () => ({ path: 'console-shell', namespace: 'cshell' }));
+        build.onLoad({ filter: /.*/, namespace: 'cshell' }, () => {
+            const indexPath = join(here, 'console-dist', 'index.html');
+            const html = existsSync(indexPath)
+                ? readFileSync(indexPath, 'utf-8')
+                : '<!doctype html><html><head><title>Frontbase</title></head><body><div id="root"></div><p>Console bundle not found. Run: pnpm run fetch:console</p></body></html>';
+            return { contents: `export default ${JSON.stringify(html)};`, loader: 'js' };
+        });
+    },
+};
+
 await esbuild.build({
     ...shared,
     entryPoints: [join(here, 'src', 'worker.ts')],
     outfile: join(here, 'dist', 'worker.mjs'),
     minify: true,
-    plugins: [inlineSwPlugin, inlineSpaPlugin, optionalStub],
+    plugins: [inlineSwPlugin, inlineSpaPlugin, consoleShellPlugin, optionalStub],
 });
 
 // 3. Node smoke build (unminified, importable) — the SAME worker + a memory
@@ -126,7 +146,7 @@ await esbuild.build({
     entryPoints: [join(here, 'src', 'smoke.ts')],
     outfile: join(here, 'dist', 'smoke.mjs'),
     minify: false,
-    plugins: [inlineSwPlugin, inlineSpaPlugin],
+    plugins: [inlineSwPlugin, inlineSpaPlugin, consoleShellPlugin],
 });
 
 const raw = statSync(join(here, 'dist', 'worker.mjs')).size;

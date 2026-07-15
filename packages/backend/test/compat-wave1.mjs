@@ -35,10 +35,9 @@ const req = (app, method, path, body, form) =>
     }));
 
 // ---- Meta (unauthenticated health) ----
-test('Meta: GET / /health / queue-health conform (and need no auth)', async () => {
+test('Meta: GET /health / queue-health conform (and need no auth)', async () => {
     const runner = sqliteRunner(':memory:'); await migrateUp(runner);
     const anon = await createCompatApp({ makeRunner: async () => runner, resolvePrincipal: async () => ({ user: null, tenant: undefined }) });
-    zRootStatus.parse(await (await req(anon, 'GET', '/')).json());
     zHealthStatus.parse(await (await req(anon, 'GET', '/health')).json());
     zQueueHealth.parse(await (await req(anon, 'GET', '/api/queue/health')).json());
 });
