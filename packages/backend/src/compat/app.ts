@@ -27,8 +27,17 @@ import { registerSecurityEventsRoutes } from './routes/security-events.js';
 import { registerPagesRoutes } from './routes/pages.js';
 import { registerDatabaseRoutes } from './routes/database.js';
 import { registerRlsRoutes } from './routes/rls.js';
+import { registerStorageRoutes } from './routes/storage.js';
+import { registerEdgeDatabasesRoutes } from './routes/edge-databases.js';
+import { registerAuthFormsRoutes } from './routes/auth-forms.js';
+import { registerWorkflowsRoutes } from './routes/workflows.js';
+import { registerActionsRoutes } from './routes/actions.js';
+import { registerAuthCompatRoutes } from './routes/auth-compat.js';
 import { TemplateVariableStore, KeyValueStore, ThemesStore, SecurityEventsStore } from './store.js';
 import { PagesStore } from './pages-store.js';
+import { Phase2Store } from '../db/phase2-store.js';
+import { noopCipher } from '../db/secret-cipher.js';
+import type { UserStore } from '../db/users.js';
 
 export interface CreateCompatAppDeps {
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */
@@ -37,6 +46,11 @@ export interface CreateCompatAppDeps {
     resolvePrincipal: (req: Request) => Promise<{ user: unknown; tenant: string }>;
     /** Clock (deterministic in tests). Default: () => new Date().toISOString(). */
     now?: () => string;
+    /** Optional: session secret for the auth compat surface (login/logout). When
+     *  absent, auth routes stay as 501 stubs. */
+    sessionSecret?: string;
+    /** Optional: user store factory for login credential lookup. */
+    userStoreFor?: (tenant: string) => UserStore;
 }
 
 /** Build a per-tenant store cache. */
@@ -60,12 +74,22 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     const themesFor = storeCache((t: string) => new ThemesStore(runner, t));
     const secEventsFor = storeCache((t: string) => new SecurityEventsStore(runner, t));
     const pagesFor = storeCache((t: string) => new PagesStore(runner, t));
+    const phase2For = storeCache((t: string) => new Phase2Store(runner, t, noopCipher));
 
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
     app.onError(opaqueErrors);
 
-    // UNAUTHENTICATED routes (health/liveness) — registered BEFORE default-deny.
+    // UNAUTHENTICATED routes — registered BEFORE default-deny:
+    // 1. Meta (health/liveness)
     registerMetaRoutes(app);
+    // 2. Auth compat surface (login/logout/signup/etc. + me + security). Mounted
+    //    before the guard so the unauth ops bypass it; the authed ops (me/security)
+    //    degrade gracefully — `me` reads the principal if the host additionally
+    //    mounts default-deny below, else returns the product's logged-out shape,
+    //    and the security endpoints return community defaults regardless.
+    if (deps.sessionSecret && deps.userStoreFor) {
+        registerAuthCompatRoutes(app, deps.userStoreFor, deps.sessionSecret);
+    }
 
     // Everything below requires an authenticated, tenant-scoped principal.
     app.use('*', defaultDenyAuth(deps.resolvePrincipal as (req: Request) => Promise<any>));
@@ -80,6 +104,13 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerPagesRoutes(app, pagesFor, now);
     registerDatabaseRoutes(app, kvFor, now);
     registerRlsRoutes(app, kvFor);
+    // Wave 2
+    registerStorageRoutes(app, phase2For, now);
+    registerEdgeDatabasesRoutes(app, phase2For, now);
+    registerAuthFormsRoutes(app, runner, now);
+    registerWorkflowsRoutes(app);
+    // Wave 3
+    registerActionsRoutes(app, phase2For, now);
 
     // 501 stubs for every other vendored community op.
     registerStubs(app, IMPLEMENTED);

@@ -9443,7 +9443,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new workflow draft",
@@ -9484,7 +9484,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}": {
@@ -9521,7 +9521,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Get a specific workflow draft",
@@ -9563,7 +9563,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "patch": {
         "description": "Update a workflow draft",
@@ -9615,7 +9615,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}/active": {
@@ -9671,7 +9671,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}/publish": {
@@ -9715,7 +9715,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}/publish-batch/": {
@@ -9771,7 +9771,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}/publish/{engine_id}/": {
@@ -9824,7 +9824,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}/publish/{engine_id}/toggle": {
@@ -9889,7 +9889,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}/rollback/": {
@@ -9945,7 +9945,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}/test": {
@@ -9999,7 +9999,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}/test-node/{node_id}": {
@@ -10062,7 +10062,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}/versions/": {
@@ -10108,7 +10108,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Manually create a named version snapshot of a workflow draft.",
@@ -10162,7 +10162,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/{draft_id}/versions/{version_id}/": {
@@ -10217,7 +10217,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/drafts/bulk-delete": {
@@ -10262,7 +10262,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/execution-stats": {
@@ -10287,7 +10287,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/execution/{execution_id}": {
@@ -10333,7 +10333,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/executions": {
@@ -10438,7 +10438,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/executions/{draft_id}": {
@@ -10505,7 +10505,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/executions/{draft_id}/production/{engine_id}": {
@@ -10570,7 +10570,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/executions/detail/{execution_id}": {
@@ -10632,7 +10632,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/actions/executions/export": {
@@ -10748,7 +10748,7 @@
         "tags": [
           "Actions"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent-catalogue": {
@@ -11629,7 +11629,7 @@
         "tags": [
           "Auth Forms"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new auth form",
@@ -11672,7 +11672,7 @@
         "tags": [
           "Auth Forms"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth-forms/{form_id}/": {
@@ -11718,7 +11718,7 @@
         "tags": [
           "Auth Forms"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Get a single auth form by ID",
@@ -11762,7 +11762,7 @@
         "tags": [
           "Auth Forms"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update an existing auth form",
@@ -11816,7 +11816,7 @@
         "tags": [
           "Auth Forms"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth-forms/{form_id}/set-primary/": {
@@ -11862,7 +11862,7 @@
         "tags": [
           "Auth Forms"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth-forms/primary/": {
@@ -11887,7 +11887,7 @@
         "tags": [
           "Auth Forms"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/accept-invite": {
@@ -11930,7 +11930,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/check-slug/{slug}": {
@@ -11974,7 +11974,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/forgot-password": {
@@ -12017,7 +12017,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/invite/{token}": {
@@ -12061,7 +12061,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/login": {
@@ -12104,7 +12104,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/logout": {
@@ -12127,7 +12127,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/me": {
@@ -12150,7 +12150,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/reset-password": {
@@ -12193,7 +12193,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/security/audit-logs": {
@@ -12241,7 +12241,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/security/blocklist": {
@@ -12267,7 +12267,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "operationId": "authentication_add_ip_ban",
@@ -12307,7 +12307,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/security/blocklist/{ban_id}": {
@@ -12350,7 +12350,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/security/bot-protection": {
@@ -12372,7 +12372,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "operationId": "authentication_update_bot_protection_settings",
@@ -12412,7 +12412,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/security/bot-protection/metrics": {
@@ -12434,7 +12434,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/security/waf": {
@@ -12456,7 +12456,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "operationId": "authentication_update_waf_settings",
@@ -12496,7 +12496,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth/signup": {
@@ -12539,7 +12539,7 @@
         "tags": [
           "Authentication"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/cloudflare/connect": {
@@ -14544,7 +14544,7 @@
         "tags": [
           "edge-databases"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new edge database connection.\n\nIf provider_account_id is provided, db_token is optional — it will be\nresolved from the Connected Account at deploy time.",
@@ -14585,7 +14585,7 @@
         "tags": [
           "edge-databases"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-databases/{db_id}": {
@@ -14641,7 +14641,7 @@
         "tags": [
           "edge-databases"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update an existing edge database connection.",
@@ -14693,7 +14693,7 @@
         "tags": [
           "edge-databases"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-databases/{db_id}/test": {
@@ -14737,7 +14737,7 @@
         "tags": [
           "edge-databases"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-databases/batch/delete": {
@@ -14780,7 +14780,7 @@
         "tags": [
           "edge-databases"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-databases/create-schema": {
@@ -14825,7 +14825,7 @@
         "tags": [
           "edge-databases"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-databases/discover-schemas": {
@@ -14870,7 +14870,7 @@
         "tags": [
           "edge-databases"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-databases/reset-role-password": {
@@ -14915,7 +14915,7 @@
         "tags": [
           "edge-databases"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-databases/test-connection": {
@@ -14958,7 +14958,7 @@
         "tags": [
           "edge-databases"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/": {
@@ -20864,7 +20864,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new bucket.",
@@ -20920,7 +20920,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/buckets/{bucket_id}": {
@@ -20975,7 +20975,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Get a specific bucket.",
@@ -21028,7 +21028,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update bucket settings.",
@@ -21093,7 +21093,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/buckets/{bucket_id}/empty": {
@@ -21148,7 +21148,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/compute-size": {
@@ -21217,7 +21217,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/create-folder": {
@@ -21262,7 +21262,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/delete": {
@@ -21307,7 +21307,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/list": {
@@ -21432,7 +21432,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/move": {
@@ -21477,7 +21477,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/move-cross": {
@@ -21522,7 +21522,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/move-status/{job_id}": {
@@ -21566,7 +21566,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/netlify-sites": {
@@ -21617,7 +21617,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new Netlify site for storage (reuses netlify_deploy_api.create_site).\n\nAfter creation, triggers a minimal empty deploy to activate Netlify Blobs.\nWithout at least one deploy, Blobs write API returns 401 \"Access Denied\".",
@@ -21662,7 +21662,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/providers/": {
@@ -21690,7 +21690,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new storage provider linking to a connected account.",
@@ -21735,7 +21735,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/providers/{provider_id}": {
@@ -21779,7 +21779,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/public-url": {
@@ -21843,7 +21843,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/signed-url": {
@@ -21917,7 +21917,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/upload": {
@@ -21960,7 +21960,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/storage/vercel-projects": {
@@ -22011,7 +22011,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new Vercel project for blob storage connection.",
@@ -22056,7 +22056,7 @@
         "tags": [
           "storage"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/themes/": {
@@ -22525,7 +22525,7 @@
         "tags": [
           "Workflows"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/health": {

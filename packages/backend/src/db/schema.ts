@@ -154,6 +154,18 @@ export type StorageBucket = typeof storageBuckets.$inferSelect;
 export type StorageFile = typeof storageFiles.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
 export type Variable = typeof variables.$inferSelect;
+/** Auth forms — CF-22 P2 Wave 2 product-compat /api/auth-forms. */
+export const authForms = sqliteTable('auth_forms', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    name: text('name').notNull(),
+    type: text('type').notNull().default('login'),
+    config: text('config'),
+    isPrimary: integer('is_primary', { mode: 'boolean' }).notNull().default(false),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+});
+
 export type TemplateVariableRow = typeof templateVariables.$inferSelect;
 
 /** Component themes — CF-22 P2 Wave 1 product-compat /api/themes. */

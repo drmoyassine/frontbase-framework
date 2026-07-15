@@ -138,6 +138,15 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [`DROP TABLE IF EXISTS compat_pages`, `DROP TABLE IF EXISTS compat_page_versions`],
     },
+    {
+        // CF-22 P2 Wave 2: auth forms for the compat /api/auth-forms/* surface.
+        version: 10,
+        name: 'auth_forms',
+        up: [
+            `CREATE TABLE IF NOT EXISTS auth_forms (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'login', config TEXT, is_primary INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+        ],
+        down: [`DROP TABLE IF EXISTS auth_forms`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

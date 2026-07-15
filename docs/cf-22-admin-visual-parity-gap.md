@@ -244,9 +244,11 @@ migrations (product task #111).
 
 > **Wave 1a delivered 2026-07-15** — report: [`cf-22-p2-wave1-delivery.md`](./cf-22-p2-wave1-delivery.md).
 > **Wave 1b delivered 2026-07-15** — pages (17) + database (10) + rls (14) = +41 ops.
-> Drift gate: **70 implemented / 214 stubbed / 0 missing / 0 divergent**. Conformance
-> suites: compat-wave1 7/7, compat-wave1b 6/6. Full 26-marker backend suite green.
-> **Wave 1 complete.** Remaining: Waves 2–5 (storage/auth, edge, agent — 214 ops).
+> **Waves 2+3 delivered 2026-07-15** — storage (23) + edge-databases (10) + Auth Forms (7) +
+> Workflows (1) + Actions (24) + Authentication (18) = +83 ops.
+> Drift gate: **153 implemented / 131 stubbed / 0 missing / 0 divergent** (54%).
+> Full 26-marker suite green; emit deterministic; staleness green. 15 tags fully green.
+> Remaining: **Wave 4** (edge domain ~104 ops) + **Wave 5** (agent ~27 ops).
 
 **Goal:** drive the P1 oasdiff burn-down table from 280-stubbed to 0, wave by
 wave. Every wave is independently shippable and independently verifiable (the

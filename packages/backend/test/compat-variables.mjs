@@ -111,7 +111,8 @@ test('GET /api/variables/registry/ returns the vendored template registry shape'
 
 test('a non-implemented op responds 501 (stubbed), not 401 — auth satisfied', async () => {
     const app = await makeApp();
-    const r = await req(app, 'GET', '/api/storage/providers/');
+    // Hit a Wave-4/5 op that's still stubbed (not a Wave 1-3 implemented one).
+    const r = await req(app, 'GET', '/api/edge-caches/');
     assert.equal(r.status, 501);
     assert.equal((await r.json()).detail, 'not_implemented');
 });
