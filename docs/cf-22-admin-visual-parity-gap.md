@@ -1,538 +1,395 @@
-# CF-22 — Admin Console 100% Visual + Functional Parity (gap analysis & plan)
+# CF-22 — Admin Console 100% Visual + Functional Parity
 
-**Date:** 2026-07-14 (v2) · **Updated:** 2026-07-15 (v4 — P0–P3 end-to-end audit)
-**Status:** **RECOVERY IN PROGRESS — CF-22 is not complete.** P0 is historically delivered but its current source-artifact check is red; P1 is an inventory/spec-snapshot gate rather than handler-derived conformance; P2 has broad route/shape coverage but substantial behavioral and security gaps; P3 is locally integrated but acceptance remains open.
-**Scope constraint (owner decision):** parity targets the **self-host / single-tenant /
-community edition** of the product for the foreseeable future. Cloud-only surfaces
-(tenants directory, plans manager, billing, SuperTokens/signup/invite, agent quota)
-are out of scope.
-**Trigger:** first real-world deploy via `pnpm run deploy:cf-full -- --app-name <name>`
-(CF-19). Verdict from the field: the deployed `/console` "looks super poor" compared
-to a regular product deployment (repo `Frontbase-` / frontbase-dbsync).
+**Single source of truth for CF-22.** This document supersedes and replaces all
+prior CF-22 status/delivery/audit/incident docs (see [§11 Document history](#11-document-history)).
+Where any older note conflicts with this file, this file controls.
 
-> **v2 note:** v1 of this doc proposed a "faithful port" — copying product components
-> into `packages/admin-console` behind an API adapter (phases V1–V4). That plan was
-> **rejected on scrutiny** (see §4) and replaced with the contract-first,
-> artifact-reuse plan in §5. The gap analysis (§1–§3) is unchanged and still valid.
-
-> **v4 audit:** The authoritative current assessment and recovery plan is
-> [`cf-22-p0-p3-audit.md`](./cf-22-p0-p3-audit.md). Historical phase sections below
-> are retained for design context. Where a delivery claim conflicts with the
-> audit, the audit controls.
-
-> **v5 field correction (2026-07-16):** the first deployed setup flow exposed two
-> SPAs: the retired framework dashboard at `/setup#/dashboard` and the CF-22 product
-> console at `/frontbase-admin/dashboard`. This was not a product cloud-edition
-> deployment. The setup artifact accidentally retained the old dashboard router.
-> It is now setup-only, signs in through `/api/auth/login`, and hands off to
-> `/frontbase-admin/dashboard`. Historical comparisons to
-> `@frontbase/admin-console` below describe the pre-CF-22 UI and no longer describe
-> a reachable deployed dashboard. The full root-cause analysis, corrective actions,
-> verification evidence, and follow-up plan are in the
-> [`CF-22 setup-console cutover incident report`](./cf-22-setup-console-cutover-incident.md).
-> See the P3 report section 4.1 for the retain/retire boundary between `/api/*` and
-> the parallel `/api/console/*` namespace.
+- **Date:** 2026-07-14 (created) · **Updated:** 2026-07-16 (v6 — consolidated single source of truth)
+- **Status:** 🟡 **IN PROGRESS — NOT COMPLETE.** The contract pipeline and the
+  route/shape coverage exist and the console is locally integrated, but **behavior,
+  security, cross-repo pin sync, and real-deploy/owner acceptance are open.** Do not
+  represent CF-22 as delivered.
+- **Owner scope constraint:** parity targets the **self-host / single-tenant /
+  community edition** only. Cloud-only surfaces (tenants directory, plans manager,
+  billing, SuperTokens/signup/invite, agent quota) are out of scope.
+- **Console-artifact posture (decided):** **(B) deploy-time fetch from the product
+  repo** — the framework repo stays clean of the commercial console bundle
+  (Apache-2.0-safe). Reversible to (A) fully-open later by un-ignoring the artifact
+  directory (one commit).
 
 ---
 
-## 1. Was this known? Yes and no — CF-18's "FULL PARITY" measured the wrong axis
+## 0. TL;DR — where CF-22 actually stands
 
-CF-18 is marked **✅ DONE — FUNCTIONAL-AREA PARITY 2026-07-13** in MILESTONES
-(originally overstated as "FULL PARITY"). That claim is true for what it measured:
-**functional-area coverage** — all 11 sidebar nav areas have real framework backend
-routes and *a* working UI, with real execution/storage/provisioning and a closed
-deviations ledger.
-
-What it never measured is **visual/UX depth**. The CF-18 Phase-1 plan said it
-explicitly — *"MVP pages are simpler than the product's (rewritten, not the
-744/1215-line originals) — by design"* — but once CF-18 got stamped done, no tracked
-item carried that admission forward. The gap was known at design time, then **lost
-in the bookkeeping**. This document re-opens it as CF-22.
-
-## 2. The numbers (why it looks poor)
-
-Both consoles share the **same shell**: the framework's `Layout.tsx` is a faithful
-port of the product's `src/modules/dbsync/components/Layout.tsx` (the shell the
-product actually routes through as `UnifiedShell`), and the theme tokens in
-`packages/admin-console/src/index.css` are byte-for-byte the product's
-`src/index.css` HSL variables. **The sidebar matches. Everything behind it doesn't.**
-
-| Dimension | Framework `@frontbase/admin-console` | Product `Frontbase-` console |
+| Phase | What it is | Honest status |
 |---|---|---|
-| Total SPA source | **~2,200 lines** (30 files) | **413 tsx files**; dashboard panels + admin pages alone ≈ **11,500 lines** |
-| UI primitives | **6** hand-rolled (alert, badge, button, card, input, label) — **zero Radix** | **52** shadcn/ui primitives (dialog, table, tabs, select, dropdown-menu, tooltip, toast/sonner, skeleton, switch, popover, sheet, command, …) |
-| Data layer | raw `useEffect` + `useState` fetches | TanStack Query v5 (+ persist) — caching, refetch, loading states |
-| Feedback | inline text errors, no toasts | sonner toasts + confirmation dialogs |
-| Dark mode | `.dark` CSS vars exist, **nothing ever sets the class** | `next-themes` with toggle |
-| Loading states | literal `…` strings; Splash renders mojibake (`Loading�` — encoding bug in `App.tsx:20`) | skeletons, spinners, staged loading |
-| Builder | `BuilderCanvas.tsx` (295 lines) embedded in `/pages` | dedicated **`/builder/:pageId`** full-screen studio — **110 tsx files** |
-| Built bundle | 184.78 KB gzip SPA | **1.18 MB gzip** main JS chunk (4.6 MB raw assets) |
+| **P0** | Product repo emits a committed, typed OpenAPI contract + generated client | ⚠️ **Pipeline works; committed artifact currently lags source.** The product `contracts/openapi.{full,community}.json` are regenerated-but-uncommitted (`git status` dirty). Re-run + commit to green. |
+| **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ⚠️ **Inventory gate, not conformance gate.** The emitted spec is *cloned* from the product doc and stamped by a manual registry — it proves an endpoint is *registered*, not that its handler accepts/returns the right shapes. Only the `variables` tag is Zod-validated. |
+| **P2** | 285 compat handlers implementing the community contract | ⚠️ **Route/shape coverage complete; behavior + security incomplete.** Many Wave 2–5 handlers are empty-state/success-shaped placeholders. **One 🔴 CRITICAL security defect (plaintext API keys) and one 🔴 HIGH defect (no-op password reset).** No Wave 2–5 behavior tests, no tenant-isolation matrix, no auth mutation proofs beyond the guard split. |
+| **P3** | Serve the product console from the cf-full worker | ⚠️ **Locally integrated; acceptance open.** Routing/auth/static-assets/setup-hardening are real and smoke-green (21/21). No Playwright, no real-CF deploy proof, console/contract pins mismatch, no owner sign-off. A field incident (two dashboards) was found and remediated. |
 
-Per nav area the framework page is 5×–22× thinner than the product panel it mirrors
-(e.g. Pages 133 vs 744+578 lines; Data Studio 206 vs ~2,000; Storage 167 vs 649 +
-FileBrowser). Entirely absent: forgot/reset-password, `/variables`, RLS-policies UI,
-auth-form builder, page-version history, sidebar collapse, `/automations/:id`
-deep-links. (Cloud-only absences — TenantsDirectory 1,215 lines, PlansManager 600 —
-are now out of scope by the community-edition constraint.)
+**Current machine-verified facts (2026-07-16):**
+- Framework drift gate: **285 implemented / 1 stubbed (`GET /`, engine-owned) / 0 missing / 0 divergent** vs the *vendored* contract (`PASS`).
+- Vendored community contract: **286 ops / 202 schemas / 31 tags** (the 286 includes 2 `OPTIONS` ops the early P1/P2 counts omitted; hence the historical 284).
+- Framework backend suite + cf-full smoke (21/21): green. Worker 233.8 KB gzip (< 1 MB).
+- **Pin mismatch:** `PRODUCT_COMMIT = afe9e03…` (contract) ≠ `CONSOLE_PIN.commit = bf1ac54…` (console bundle). Different product revisions.
+
+The path to done is [§8 Recovery plan (Gates 0–4)](#8-recovery-plan--the-authoritative-worklist).
+
+---
+
+## 1. Why this exists — CF-18's "FULL PARITY" measured the wrong axis
+
+CF-18 was marked "FULL PARITY" but measured **functional-area coverage** — all 11
+sidebar nav areas had *a* working UI over real framework routes. It never measured
+**visual/UX depth**. The CF-18 Phase-1 plan said so explicitly (*"MVP pages are
+simpler than the product's — by design"*), but once CF-18 was stamped done, no
+tracked item carried the admission forward. The gap was known at design time, then
+lost in the bookkeeping. CF-22 re-opens it. The first real-world deploy
+(`pnpm run deploy:cf-full`) confirmed the field verdict: the deployed console
+"looks super poor" next to a product deployment.
+
+## 2. The numbers (why it looked poor)
+
+Both consoles share the **same shell** (the framework `Layout.tsx` ports the
+product's `UnifiedShell`; theme tokens are byte-for-byte the product's HSL vars).
+**The sidebar matched; everything behind it didn't.**
+
+| Dimension | Framework `@frontbase/admin-console` (pre-CF-22) | Product `Frontbase-` console |
+|---|---|---|
+| Total SPA source | ~2,200 lines (30 files) | 413 tsx files; dashboard+admin ≈ 11,500 lines |
+| UI primitives | 6 hand-rolled, zero Radix | 52 shadcn/ui primitives |
+| Data layer | raw `useEffect`/`useState` | TanStack Query v5 (+ persist) |
+| Feedback | inline text errors | sonner toasts + confirm dialogs |
+| Dark mode | `.dark` vars exist, never set | `next-themes` toggle |
+| Builder | 295-line embedded canvas | dedicated 110-tsx-file studio |
+| Bundle | 184.78 KB gz | 1.18 MB gz main chunk |
+
+Per nav area the old framework page was 5×–22× thinner than the product panel.
+(Cloud-only absences — TenantsDirectory, PlansManager — are out of scope.)
+
+> **Note (v5/v6):** the "framework `@frontbase/admin-console`" column describes the
+> **pre-CF-22 UI, now retired.** CF-22's whole point is to stop shipping that thin
+> rewrite and serve the *product's own* console instead. See [§7 The field incident](#7-the-field-incident-two-dashboards).
 
 ## 3. Root cause
 
-CF-18 chose (correctly, for MVP speed) **"port the shell, rewrite the pages"**
-because product pages were coupled to ~80 FastAPI endpoints the framework lacked.
-Phases 2–3 then grew the framework *backend* to functional parity, but kept the thin
-rewritten *frontends*. Result: parity of capability, not of experience.
+CF-18 chose (correctly, for MVP speed) "port the shell, rewrite the pages" because
+product pages were coupled to ~80 FastAPI endpoints the framework lacked. Phases 2–3
+grew the framework *backend* to functional parity but kept the thin rewritten
+*frontends*. Result: parity of capability, not of experience.
 
-## 4. Strategy scrutiny — why every copy-based plan was rejected
+## 4. Strategy — why we serve the product's real console, not a copy
 
-The real choice is not "port vs rewrite"; it is **fork vs share**. Any strategy that
-copies UI source into `packages/admin-console` — curated per-page ports (v1's plan)
-or a wholesale copy — creates a fork that is complete on copy day and decays
-silently thereafter:
+The real choice is **fork vs share**, not "port vs rewrite." Any strategy that
+copies product UI source into the framework creates a fork: complete on copy day,
+silently decaying after — no completeness guarantee, no drift story, and (for a
+wholesale copy) two divergent 400-file trees dragging in cloud-only coupling.
 
-- **No completeness guarantee.** "Screenshots match, signed off per area" is eyeball
-  discipline; features behind modals and edge states get dropped with no machine
-  noticing.
-- **No drift story.** Every future product feature/fix must be manually re-ported,
-  forever. During the migration window alone (~5–7 wk), the product keeps moving.
-- **Wholesale copy is the worst long-term:** two divergent 400-file trees, dragging
-  in cloud-only coupling the community scope excludes.
-
-**What unlocks a better strategy (verified in the product repo):**
-1. FastAPI emits OpenAPI for free (`app = FastAPI(...)`, `fastapi-backend/main.py:876`,
-   ~30+ routers).
-2. The frontend already has a centralized API seam: ~19 files in `src/services/` +
-   `src/services/api-contracts.ts` (hand-written Zod "source of truth" for response
-   shapes).
-3. **The community console already exists as a build configuration of the product**:
-   `isCloud()` edition gating (`src/lib/edition.ts`) + the self-host env-var
-   master-admin auth mode. Nothing needs to be "ported" — the product is designed to
-   run self-host/single-tenant against its own FastAPI.
-4. Built product SPA main chunk is 1.18 MB gzip → exceeds the 1 MB inline-worker
-   budget → Workers Static Assets required (already the documented migration path).
+**What unlocks the better strategy (verified in the product repo):**
+1. FastAPI emits OpenAPI for free (~30+ routers).
+2. The frontend already has a centralized API seam (`src/services/*`).
+3. **The community console already exists as a build configuration of the product**
+   (`isCloud()` edition gating + self-host env-var admin mode) — nothing to "port."
+4. Built product SPA is 1.18 MB gz → exceeds the inline-worker budget → Workers
+   Static Assets (already the documented path).
 
 **Decision: contract-first, artifact-reuse.** The framework backend becomes a
-drop-in replacement for the community-edition FastAPI contract, and the framework
-worker serves the product's **built** console bundle. Visual parity is 100% by
-construction and permanent (same compiled frontend); completeness is machine-checked
-(spec diff); drift is an automated alarm, not human memory. The "extract console
-into a shared package" end-state (option C) needs the same backend contract work
-anyway — artifact-reuse is its first milestone with the invasive product refactor
-deferred until source-level sharing earns its cost.
+drop-in for the community-edition FastAPI contract, and the worker serves the
+product's **built** console bundle. Visual parity is 100% by construction (same
+compiled frontend); completeness is machine-checked (spec diff); drift is an
+automated alarm, not human memory. Source-level shared-package extraction (option C)
+needs the same contract work anyway — deferred until it earns its cost.
 
-## 5. The plan (P0–P3)
+**The load-bearing risk this strategy trades for:** "the same compiled frontend"
+only yields real parity if the compat backend returns the **shapes and behaviors**
+the console actually consumes. That is exactly where CF-22 is currently incomplete
+(§5 P1/P2). Contract-shape conformance ≠ behavioral conformance.
 
-### P0 — Product-repo pre-pass · ⚠️ HISTORICALLY DELIVERED; CURRENT STALENESS GATE RED
-**Report: [`cf-22-p0-delivery.md`](./cf-22-p0-delivery.md).** Shipped to product-repo
-main (`32b689b` + `70df2d6`), contracts CI green. Actuals vs the plan:
+---
 
-| Workstream | Outcome |
-|---|---|
-| **W1 — OpenAPI hygiene** | ✅ **341/341 ops typed** (was ~70), unique operationIds, derived `x-edition` tags; committed deterministic artifacts `contracts/openapi.{full,community}.json` (**286 community + 55 cloud-only ops, 202 community schemas, 31 tags**); untyped-response ratchet (`openapi_gaps.json`, empty). Two real bugs fixed: non-deterministic export (9 duplicate pydantic class names) and a would-500 `AuditLog.id` int-vs-UUID typing. |
-| **W2 — Client consolidation** | ✅ `@hey-api/openapi-ts` generates `src/client/` (18 files: SDK + **Zod** + TanStack Query); runtime wiring in `lib/api-client.ts`; exemplar service migrated; eslint warns on raw axios. *Deferred:* remaining 18 service migrations (product task #111) — not a P1 blocker. |
-| **W3 — Edition boundary** | ✅ `build:community` verified: cloud UI (signup/tenants/plans/billing/invite) **content-proven absent** from the community bundle. Bundle 1.17 MB gz → confirms P3's Static-Assets path. |
-| **W4 — Loose ends** | ✅ Dead route + stray file removed; **bonus: killed a custom TrailingSlashMiddleware** causing infinite-307 loops on 256 no-slash routes. *Deferred:* full envelope standardization (typed as-is instead — changing shapes would break the existing frontend; the contract documents reality). |
-| **CI** | ✅ `.github/workflows/contracts.yml`: spec staleness + hygiene + client staleness + tsc. First run caught real drift (fastapi version → spec content), forcing the pin `fastapi==0.139.0`. **Lesson: the fastapi version pin is part of contract determinism.** |
+## 5. Phase design + current status
 
-### P1 — Framework contract + drift gate · ⚠️ PARTIAL (inventory works; handler conformance does not)
-- Scaffold the product-compatible console surface with **`@hono/zod-openapi`**,
-  reusing the **Zod schemas generated from the product spec** (pydantic → OpenAPI →
-  Zod → Hono route definitions) so framework validation is *derived from* the
-  product contract, never hand-mirrored.
-- **CI gate: `oasdiff`** — product community spec vs framework emitted spec; fails
-  on any unmapped endpoint. From this day forward, "feature left behind" is
-  machine-detected, permanently (a new product endpoint = an automatic named gap).
-- Envelope: the compat surface adopts the product's `{success,data}` shape — a
-  deliberate, documented exception to RULE 4's opaque-error shape (authed admin
-  namespace, not the public proxy; messages stay non-leaky).
+The plan is P0 (product contract) → P1 (framework gate) → P2 (implement 286 ops) →
+P3 (serve console + acceptance). The design intent per phase is below; each carries
+its **honest current status** and links to the [§8 recovery gate](#8-recovery-plan--the-authoritative-worklist)
+that closes it.
 
-## 5a. P1 detailed spec (task #107) — compat surface + drift gate · ⚠️ PARTIAL AFTER AUDIT
+### P0 — Product-repo pre-pass · ⚠️ pipeline works; artifact uncommitted
+**Intent:** the product's FastAPI backend emits a committed, deterministic, fully
+typed OpenAPI contract + a generated typed client — the source of truth everything
+downstream consumes.
 
-> **Historical delivery claim; superseded by the P0–P3 audit.** Report: [`cf-22-p1-delivery.md`](./cf-22-p1-delivery.md).
-> Vendored contract pinned to product `afe9e03`; the historical gate emitted 284
-> operations because it silently omitted two contract-declared `OPTIONS` operations
-> (corrected by the audit to 286); the counted drift gate was GREEN (6 implemented
-> `variables` / 278 stubbed / 0 missing / 0 divergent); full 22-suite backend suite
-> + mutation proof green; CI workflow added. **One spec deviation** (documented in
-> the report): `@hono/zod-openapi`
-> requires zod v4 (framework is zod 3), so the §5a fallback was taken — plain Hono
-> + the vendored zod for runtime validation.
+**Delivered (product repo `32b689b` + `70df2d6`):** 341/341 ops typed (was ~70);
+unique operationIds; derived `x-edition` tags; committed
+`contracts/openapi.{full,community}.json` (286 community + 55 cloud-only, 202
+community schemas, 31 tags); untyped-response ratchet; `@hey-api/openapi-ts`
+generated client (`src/client/`); `.github/workflows/contracts.yml` (staleness +
+hygiene + client-staleness + tsc). Two real bugs fixed en route: non-deterministic
+export (9 duplicate pydantic class names → `PYTHONHASHSEED`) and a would-500
+`AuditLog.id` int-vs-UUID typing. Pinned `fastapi==0.139.0` (the fastapi version is
+part of contract determinism).
 
-**Original goal:** the framework emits its own OpenAPI spec for a
-product-compatible surface, and CI diffs it against the product's committed
-`openapi.community.json`. The diff *starts* almost entirely red — that is the
-point: it becomes P2's machine-generated burn-down list. P1 ships the machinery
-plus one fully-conformant tag as proof.
+**Current gap (→ Gate 0):** `contracts/openapi.{full,community}.json` in the product
+repo are **regenerated-but-uncommitted** — the pipeline is green (`export --check`
+prints no "stale" error) but the working tree is dirty, so a fresh clone would build
+a spec that differs from HEAD. Commit the regenerated artifacts, and pin the same
+product commit for both the contract and the console bundle.
 
-**Inputs (from P0, product repo `fastapi-backend/contracts/`):**
-`openapi.community.json` (286 ops / 202 schemas / 31 tags, deterministic,
-CI-guarded) and the generated Zod schemas (`src/client/zod.gen.ts`).
+*Deferred (not blocking):* the 18 remaining product-side `src/services/*` → generated-client migrations (product task #111).
 
-### Deliverables
+### P1 — Framework contract + drift gate · ⚠️ inventory gate, not conformance gate
+**Intent:** the framework emits its OWN OpenAPI spec for the compat surface and CI
+diffs it against the vendored product contract, so a missing/divergent endpoint is
+machine-detected forever. Ship the machinery + one fully-conformant proof tag.
 
-**D1 — Contract vendoring (`packages/backend/contracts/`)**
-- Vendor `openapi.community.json` + `zod.gen.ts` into the framework repo,
-  pinned to the product commit hash (`contracts/PRODUCT_COMMIT`).
-- `scripts/sync-contract.mjs`: one command to re-vendor from a product checkout
-  (path via env/flag), updating the pin. No network dependency; both repos are
-  local. Refresh is deliberate (run the script), never implicit.
-- Rationale: the framework repo must build/test hermetically, and contract
-  bumps must be explicit, reviewable commits — the same artifact-pinning
-  posture as the P3 console bundle.
+**Delivered (`d1213ed`):** contract vendoring (`packages/backend/contracts/`, pinned
+via `PRODUCT_COMMIT` + `scripts/sync-contract.mjs`); the compat sub-app
+(`packages/backend/src/compat/`) with table-driven stubs; deterministic
+`framework.openapi.json` emitter; the `contract-diff.mjs` gate (native Node — the npm
+`oasdiff` package is a placeholder); the `variables` proof tag (6 ops, Zod-validated);
+a RULE-8 mutation proof. **Deviation:** `@hono/zod-openapi` needs zod v4; the
+framework is zod 3, so the documented fallback was taken (plain Hono + vendored zod
+for validation + vendored JSON-Schema for emission).
 
-**D2 — Compat router skeleton (`packages/backend/src/compat/`)**
-- New Hono sub-app mounted at `/api` (product paths are `/api/<domain>/...`,
-  NOT `/api/console/...`), coexisting with the existing `/api/console` routes
-  (which keep serving the current admin-console SPA until P3 cuts over).
-- **`@hono/zod-openapi`** `OpenAPIHono` root; per-tag route modules
-  (`compat/routes/<tag>.ts`) mirroring the product's 31 community tags.
-- Route definitions import request/response schemas **from the vendored
-  `zod.gen.ts`** — never hand-written shapes. Where the product schema is
-  `dict[str, Any]` (the honest-dynamic residue), use `z.record(z.unknown())` —
-  matching looseness is correct, not lazy.
-- Envelope: `{success, data?, message?, error?}` per the product contract
-  (documented RULE-4 exception, §5 P1 bullet 3).
-- Every route handler starts as `501 Not Implemented` **except** the P1
-  proof-tag (below). A 501 stub still emits the correct spec entry — spec
-  coverage and implementation are decoupled by design.
-- Auth: stubs sit behind the existing `defaultDenyAuth` (RULE 2 holds from day
-  one); the compat login route is part of the proof tag.
-- RULE 1 unchanged: compat code lives in `backend`, is server-only, and the
-  admin-console no-leak gate keeps proving no server code reaches the SPA.
+**Current gap (→ Gate 1):** `buildFrameworkSpec()` **clones** the paths/operations/
+schemas from the vendored product document and stamps a manual `x-implemented`
+boolean from the registry (`packages/backend/src/compat/spec.ts`). Consequently a
+handler can accept the wrong body, skip validation, or return the wrong runtime
+shape while the emitted spec stays green — the gate proves an endpoint is
+*registered*, not *conformant*. The mutation proof catches edits to emitted JSON,
+not divergence in handler code. Only `variables` visibly parses responses with
+vendored Zod. Also: the binary `x-implemented` flag conflates "real handler" with
+"graceful placeholder."
 
-**D3 — Spec emission + oasdiff gate**
-- `packages/backend/scripts/emit-openapi.mjs` → `contracts/framework.openapi.json`
-  (committed, deterministic — same discipline as P0; two runs diff clean).
-- **Gate script `scripts/contract-diff.mjs`** running `oasdiff` (breaking +
-  endpoint-coverage modes) product-community vs framework spec:
-  - **Missing endpoint** (in product, absent from framework spec): FAIL.
-  - **Implemented-but-divergent** (params/body/response schema mismatch): FAIL.
-  - **`x-implemented: false`** (the 501 stubs carry this extension): reported
-    as the burn-down count, not a failure — P2 drives this to zero.
-  - Output: a per-tag conformance table (implemented / stubbed / divergent) —
-    the single progress artifact for P2.
-- Wire into the framework CI (`pnpm -r test` includes the gate; CI runs it on
-  every push). Staleness gate for `framework.openapi.json` mirrors P0's
-  (`git diff --exit-code` after regeneration).
+### P2 — Implement the 286-op community contract · ⚠️ shape coverage complete; behavior + security incomplete
+**Intent:** drive the drift-gate burn-down to zero, wave by wave, where **done per op
+= shape-conformant + behavior test against the product client's exact call +
+persisted/provider round-trip + failure-path + (credential-gated) live gate**.
 
-**D4 — Proof tag: `variables` implemented end-to-end**
-- Smallest real tag (6 ops: list/create/get/update/delete + template registry)
-  with an existing framework primitive (settings/variables store from CF-18
-  Phase 2, encrypted at rest).
-- Implement all 6 ops fully conformant: oasdiff shows the tag green;
-  **schemathesis** (or a Node equivalent conformance fuzz) runs against the
-  worker for that tag; a backend test suite (`test/compat-variables.mjs`)
-  exercises the product client's exact call shapes.
-- Proves the whole chain: vendored Zod → OpenAPIHono route → framework service
-  → emitted spec → oasdiff green — before P2 scales it to 30 more tags.
+**Delivered (`fb1b625` → `d5e21cd` → `36b47ff` → `948b109`, + review `adb6e0d`):**
+285 compat handlers across all 31 tags on the `/api/*` surface (the 286th op,
+`GET /`, is engine-owned). Migrations v7–v11 add 9 tables. Reusable pattern: most
+edge/agent tags map onto `Phase2Store.edgeResources(kind)` CRUD or return the
+product's "not configured" ack shapes. A P1/P2 review (`adb6e0d`) already fixed a
+**RULE-2 auth regression** (10 authed ops — `/api/auth/me` + 9 `/api/auth/security/*` —
+were reachable by anonymous callers; split into unauth-before-guard +
+authed-after-guard, locked by `test/compat-auth-guard.mjs`) and a schema.ts drift
+(4 Wave-4/5 tables missing from the Drizzle source-of-truth).
 
-**D5 — RULE 8 mutation proof**
-- Break the gate deliberately (delete one compat route) → `contract-diff` must
-  go RED; restore → GREEN. Committed as `test/mutation/contract-diff.mjs`,
-  joining the existing mutation harness.
+**Current gaps (→ Gates 2 & 3):**
 
-### Exit criteria (all machine-checkable)
-1. `contracts/` vendored + pinned; `sync-contract.mjs` round-trips clean.
-2. Framework emits a deterministic `framework.openapi.json` covering **all 286
-   community ops** (stubs included).
-3. oasdiff gate green in CI: 0 missing, 0 divergent; burn-down table shows
-   280 stubbed / 6 implemented (`variables`).
-4. Proof-tag conformance suite green; mutation proof RED-on-break.
-5. Existing 30 suites + mutation gates unaffected (`pnpm -r test`).
+- 🔴 **CRITICAL — plaintext API keys.** `compat/routes/edge-misc.ts` generates a raw
+  `fbk_*` key, stores it verbatim in `edge_api_keys.key_hash`, and
+  `GET /api/edge-api-keys/{key_id}/reveal` returns it on **every** call. DB
+  disclosure yields usable keys; any authed caller can re-reveal indefinitely. The
+  P2 report's "reveal-once semantics" claim was **false**. Fix: store only a
+  verifier hash (or separately-encrypted ciphertext with an atomic, audited,
+  one-time reveal), add a migration, never reinterpret existing plaintext as a hash.
+- 🔴 **HIGH — no-op password reset.** `POST /api/auth/reset-password` returns
+  `success: true` unconditionally; it validates no token and changes no password.
+  `forgot-password` issues no token. Fix: real reset tokens (expiry, single-use,
+  password change, session invalidation, non-enumerating responses) — or mark the
+  ops explicitly unsupported and remove them from any "functional" count.
+- 🟠 **HIGH — "implemented" = registered, not functional.** Representative
+  placeholders: `database/connect` persists only `{connected:true}` and introspection
+  returns empty; storage upload/provider flows return empty/"not configured"; action
+  `rollback` always reports no previous version and `test-node` returns
+  `{success:true, result:null}`; blocklist/WAF/bot-protection settings aren't
+  persisted; edge health always "healthy"; GPU/agent-chat/MCP are catalogs/empty
+  responses. Graceful degradation is valid *only* for a genuinely unconfigured
+  external provider, with an explicit capability state and a test against the
+  product's real unconfigured behavior — it is not the same as implementing the op.
+- 🟠 **HIGH — no behavior/tenant/mutation test coverage for Waves 2–5.** Present
+  compat suites: `variables`, `auth-guard`, `wave1`, `wave1b`. Missing: exact-client
+  behavior matrices for Waves 2–5, per-tag fuzz, an adversarial two-tenant matrix
+  (tenant-A must not read/mutate tenant-B across every identifier-bearing route,
+  bulk op, nested resource, and secret reveal), and auth-adjacent mutation proofs.
+  Tenant isolation is **not proven** (not proven broken either — stores do pass
+  `tenant_slug`).
 
-### Non-goals for P1 (→ P2)
-Implementing the other 30 tags; auth-session compatibility beyond the proof
-scope; Static Assets / console serving (P3); the product-side service
-migrations (product task #111).
+### P3 — Serve the real console + acceptance · ⚠️ locally integrated; acceptance open
+**Intent:** a fresh `deploy:cf-full` serves the product's actual community console
+from the worker, authenticated against the framework backend, with Playwright E2E
+per nav area and owner field-test sign-off.
 
-### Risks
-- **Zod version skew:** hey-api emits Zod v4-flavored schemas; `@hono/zod-openapi`
-  pins its own Zod peer. Verify at D1; if incompatible, the fallback is
-  generating framework-side schemas from `openapi.community.json` directly
-  (`openapi-zod-client`) — same derivation guarantee, different generator.
-- **Path param syntax:** product uses `{param}` (OpenAPI) vs Hono's `:param` —
-  the emitter must normalize before diffing (oasdiff compares OpenAPI, so
-  emission-side normalization suffices).
-- **31 tags × stub ceremony:** keep stubs table-driven (one `registerStub(tag,
-  op)` helper reading the vendored spec) so D2 is hours, not days — hand-writing
-  286 stub routes would be its own drift source.
+**Delivered (`e8e8652` + `6816275`):**
+- **Routing (the hard part):** compat sub-app mounted before the engine so its
+  specific `/api/*` paths match first and fall through to the engine catch-all;
+  the compat guard scoped to `/api/*` (excluding `/api/console/*`) so it no longer
+  401s `/`, `/sw.js`, `/frontbase-admin/*`; `GET /` excluded from stubs (engine owns
+  the root). Final order: `/frontbase-admin[/*]` (SPA) → `/console`→301 → compat
+  `/api/*` + `/health` → engine (pages, `/sw.js`, `/api/console/*`).
+- **Static Assets (D2):** `scripts/fetch-console.mjs` builds the product
+  `vite build --mode community` from a local checkout → `console-dist/`, writing
+  `CONSOLE_PIN` (commit + sha256). `console-dist/` gitignored except the pin;
+  `[assets]` with `run_worker_first = true`; hashed assets immutable-cached,
+  `index.html` no-cache.
+- **Auth (D3):** compat login issues `fb_session`; SPA reads `/api/auth/me`
+  (`is_master:true` for master_admin). Cookie name is server-internal — kept as
+  `fb_session`, shapes are what matter.
+- **Verification:** cf-full smoke **21/21**, backend suite green, worker 233.8 KB gz.
 
-### P2 — Implement the community contract · ❌ REOPENED (behavior/security/tenant proof incomplete)
+**Current gaps (→ Gate 4):**
+- ❌ **No Playwright** (11-area nav suite with real create/list/update/delete +
+  screenshots) — the parent D4 exit criterion. The in-process smoke proves routing +
+  auth + one CRUD chain; it does not prove every rendered area works with the compat
+  response shapes.
+- ❌ **No real-Cloudflare deploy proof** (a fresh `wrangler` deploy with browser
+  login/render + secure-cookie/asset-cache verification).
+- ⚠️ **Pin mismatch:** console (`bf1ac54…`) and contract (`afe9e03…`) are built from
+  different product commits (→ Gate 0).
+- ❌ **No scheduled cross-repo drift** (re-vendor from the product repo on a
+  schedule; current CI only compares against the already-vendored snapshot).
+- ⚠️ **Legacy `/api/console/*` retirement** gated on an endpoint-consumer map + the
+  E2E suite (do not remove by name/association).
+- ❌ **No owner field-test sign-off.**
 
-### P3 — Integration: serve the real console · ⚠️ LOCALLY INTEGRATED, ACCEPTANCE INCOMPLETE · **spec in §5c**
+---
 
-## 5b. P2 detailed spec (task #108) — implement the 286-op community contract
+## 6. Console-artifact posture (decided: B)
 
-> **Historical claim, reopened by the 2026-07-15 audit.** The registry now covers
-> **285 compat operations plus engine-owned `GET /`**, but the binary “implemented”
-> count proves neither functional behavior nor runtime conformance. Wave 2–5 tests,
-> auth mutation proofs, tenant-isolation coverage, and multiple promised provider/
-> persistence behaviors are missing; API-key storage has a critical plaintext/reveal flaw.
-> Reports: [`cf-22-p2-wave1-delivery.md`](./cf-22-p2-wave1-delivery.md),
-> [`cf-22-p2-complete-delivery.md`](./cf-22-p2-complete-delivery.md).
-> **Next: P3 (#109)** — serve the product's community console bundle from the framework worker.
+Serving the product's built console from the Apache-2.0 framework worker means
+distributing the (compiled) commercial console.
+- **(A) Open** — the community console is deliberately open; it *is* the community edition. **Forever.**
+- **(B) Deploy-time fetch / private artifact (CHOSEN, DEFAULT)** — the framework repo
+  stays clean; `console-dist/` is gitignored except `CONSOLE_PIN`; the deploy fetches
+  the bundle. **Reversible to (A) by un-ignoring the directory — one commit.**
 
-**Goal:** drive the P1 oasdiff burn-down table from 280-stubbed to 0, wave by
-wave. Every wave is independently shippable and independently verifiable (the
-conformance table is per-tag). **Definition of done per op:** oasdiff green
-(shape-conformant), schemathesis (or Node-equivalent) fuzz passes, and a
-behavior test exercises the *product client's exact call* (import the vendored
-`zod.gen.ts` request shape in the test).
+P0–P2 are identical under either. (B) is the current implementation.
 
-### Ground rules (apply to every wave)
-- **Single-tenant pinning:** the compat surface serves ONE tenant. A
-  `compatTenant()` helper resolves the default tenant slug once; product
-  concepts `project_id`/`tenant_id` map to it. Tenant machinery stays internal
-  (RULE 2 isolation still enforced in the stores — the pin is at the compat
-  layer, not in the queries).
-- **Auth mapping:** product self-host expects `user.is_master: true` for the
-  env-var admin. Map framework `role === 'master_admin'` → `is_master: true` in
-  every user-shaped response. (Full auth routes land in Wave 3; until then the
-  existing `fb_session` guard protects stubs.)
-- **Envelope:** `{success, data?, message?, error?}` exactly as the vendored
-  schema says — where the product returns raw arrays (blocklist, audit-logs),
-  return raw arrays. Conformance to reality, not to taste.
-- **Schema deltas:** new tables go through the framework's migration system
-  (append-only, idempotent DDL per existing contract). Each wave lists its
-  migrations up front.
-- **RULES:** every auth-adjacent route gets a mutation proof (RULE 8); no
-  server code in SPA bundles (RULE 1 — unchanged); opaque errors stay for
-  `/api/console/*` and the public proxy, the compat envelope exception applies
-  only under the compat mount (RULE 4 note).
+---
 
-### Wave 1 — Console core · ~64 ops · est. 4–5 d
-Tags: **pages (17) · settings (12) · database (10) · rls (14) · project (3) ·
-Themes (3) · Meta (3) · security-events (2)** (+ `variables` already green from P1).
-- *Existing primitives:* pages/drafts/publish store, settings/variables store
-  (encrypted), datasource introspection (F7 runners), D1/SQLite DbRunner.
-- *New build:* **page versions** (migration: `page_versions` table — immutable
-  layout_data snapshots, rollback op), page soft-delete/restore/permanent
-  (migration: `deleted_at` on pages if absent), themes CRUD (migration:
-  `themes`), project settings record + branding asset upload (reuse F4b storage
-  for the asset bytes), RLS policy CRUD mapped to the datasource adapter
-  (Supabase adapter exists from CF-20; **non-Supabase datasources return the
-  product's own "not configured" shape**, verified against the real FastAPI
-  response, not invented), security-events list/summary (migration:
-  `security_events` or map onto the existing audit trail), Meta health shapes.
-- *Why first:* Dashboard, Builder Studio, Data Studio, Settings — the four
-  areas a user sees in the first five minutes — light up when this wave lands.
+## 7. The field incident — two dashboards (remediated)
 
-### Wave 2 — Storage + data connections · ~41 ops · est. 3–4 d
-Tags: **storage (23) · edge-databases (10) · Auth Forms (7) · Workflows (1)**.
-- *Existing primitives:* F4b presigned upload + multipart + bucket/file store;
-  edge-databases config records + provisioning (F5); email send needs a
-  provider adapter (Resend/Mailgun HTTP — fetch-based, Workers-compatible).
-- *New build:* auth-forms CRUD + primary-form designation (migration:
-  `auth_forms`), storage provider connect flows for netlify-sites/
-  vercel-projects (HTTP passthroughs to their APIs — credential-gated tests),
-  compute-size/move/move-status mapped onto the F4b store.
+**What happened (2026-07-16):** the first real Cloudflare deploy exposed **two SPAs**.
+P3 had staged the *entire* legacy `@frontbase/admin-console` build merely to reuse its
+first-admin setup screen. After setup, the setup component's `HashRouter` navigated to
+`/setup#/dashboard` — the **retired** framework dashboard, whose master-admin sidebar
+showed Tenants and Plans. This made a *community* deploy look multi-tenant. The correct
+product console was reachable separately at `/frontbase-admin/dashboard`.
 
-### Wave 3 — Automations + authentication · ~42 ops · est. 4–5 d
-Tags: **Actions (24) · Authentication (18)**.
-- *Existing primitives:* F3b durable workflow execution (recovery sweep,
-  QStash redelivery), workflow drafts + executions store.
-- *New build:* automation **versions** (mirror page-versions pattern),
-  publish-to-engine semantics (see Wave 4 note — in cf-full "the engine" is
-  self, so publish = activate), executions export (CSV streaming), test/
-  test-node (run a single node synchronously). Authentication: login/logout/me
-  in the product's exact shapes (this is **the P3-critical subset** — P3's
-  auth shim consumes it), forgot/reset-password (email adapter from Wave 2;
-  the product's no-email `dev_link` fallback behavior included), blocklist +
-  bot-protection + WAF + audit-logs (migrations: `ip_blocklist`, `audit_log`;
-  settings-backed toggles).
-- **Order note:** the Authentication tag should land FIRST within this wave —
-  it unblocks P3 integration testing even before Actions completes.
+**Not a data/isolation breach:** the deployment used its own D1; no product cloud
+backend was present; the setup claim stayed in the URL fragment, was removed from
+history, and was exchanged for a scoped HttpOnly setup cookie as designed.
 
-### Wave 4 — Edge domain · ~104 ops · est. 6–8 d (the semantic-mapping wave)
-Tags: **Edge Engines (33) · edge-providers (18) · edge-caches (7) ·
-edge-queues (7) · edge-vectors (7) · Engine Inspector (8) · edge-api-keys (5) ·
-edge-agent-profiles (4) · edge-gpu (7) · Cloudflare Deploy (4) · Cloudflare
-Inspector (3) · Deno Deploy (1)**.
-- **The mapping problem, decided up front:** in the product, FastAPI manages a
-  fleet of *external* edge engines. In cf-full, the worker **is** an engine.
-  Adopt the **self-engine model**: migration seeds one `is_system` engine row
-  ("This deployment") whose adapter answers locally (health-check, logs via
-  the engine's own log store, settings, source hash) instead of HTTP'ing out.
-  Additional engines are legitimate too — the framework's CF-19 deploy
-  machinery already creates real workers; **runtime** deploy/redeploy/teardown
-  ops call the **Cloudflare REST API with a stored API token** (fetch-based —
-  no wrangler in the worker), reusing the provisioning patterns from F5.
-- *Existing primitives:* edge_resources config store (F5), live provisioning
-  (CF API for D1/KV/Queues, Vectorize from F5b, Supabase Management API from
-  F5c), key-rotation + secrets machinery (Edge Local Vault), engine bundle
-  export (Portable Engine Move step 1).
-- *New build:* edge-api-keys (migration: `edge_api_keys`; reveal-once
-  semantics), edge-agent-profiles CRUD (config records), edge-gpu catalog/CRUD
-  (CF Workers-AI API passthrough; catalog is credential-gated), inspector
-  domain management (CF custom-domains API).
-- *Verification:* credential-gated live gates (the F4c/F5d pattern) for every
-  op that touches a real provider; everything else fuzz + fixture tests.
-- **Descope valve:** if the wave overruns, `Cloudflare Inspector (3)` +
-  `Deno Deploy (1)` + `edge-gpu (7)` are the negotiable tail (console areas
-  degrade to an error card, not a blank page) — flag, don't silently slip.
+**Remediated (`6816275`):** the admin-console now emits a **setup-only** entry (no
+legacy layout/login/dashboard/Tenants/Plans routes, no `HashRouter`); setup
+authenticates via `/api/auth/login` and hard-navigates to `/frontbase-admin/dashboard`;
+the worker 302-redirects initialized `/setup` requests to the product dashboard (old
+hash bookmarks can't resurrect the retired UI); an artifact gate fails if the setup JS
+contains legacy Admin-Tools/Tenants/Plans markers; worker smoke covers the redirect.
+No backend route was removed. The product console at `/frontbase-admin` is now the sole
+reachable dashboard.
 
-### Wave 5 — Workspace Agent · ~27 ops · est. 3–4 d
-Tags: **agent-integrations (15) · Agent MCP (6) · Agent (3) · Agent Settings (3)**.
-- The framework has NO agent runtime today — this is the largest genuinely-new
-  domain. Scope honestly: **CRUD + config first** (mcp-servers, agent-skills,
-  profile installs, agent-settings — all config records, migrations:
-  `mcp_servers`, `agent_skills`, `agent_profile_installs`, `agent_settings`),
-  then **chat** as a thin streaming proxy to the tenant's configured LLM
-  provider (credentials from Connected Accounts / provider records; SSE
-  streaming — the worker supports it natively). MCP endpoints proxy to
-  registered MCP servers over HTTP.
-- `GET /api/agent/credits` returns the self-host shape (no quota pools in
-  community — mirror what the product returns when quota is disabled, verify
-  against FastAPI, don't invent).
-- **This wave is deliberately last:** the console's Agent surface is the least
-  "first-five-minutes" critical, and chat quality depends on provider creds
-  the operator may not have configured.
+**Contributing factors (lessons):** parallel-run `/api/console/*` made the retained
+legacy SPA look operational rather than fail fast; the smoke proved `/setup` *rendered*
+but not the post-setup *destination*; no artifact-content gate asserted the setup JS
+excluded dashboard routes; the master_admin role legitimately needed for product admin
+also lit up cloud-like legacy nav.
 
-### P2 exit criteria
-1. oasdiff conformance table: **0 stubbed, 0 divergent** across all 31 tags
-   (minus any explicitly-negotiated Wave-4 descopes, which must be listed in
-   the delivery report — never silent).
-2. Per-tag conformance/fuzz suites green; credential-gated live gates pass
-   when creds are present, skip-with-notice when not.
-3. Mutation proofs for every new auth-adjacent route (RULE 8 count grows).
-4. `pnpm -r test` + `pnpm -r test:mutation` fully green; cf-full smoke intact.
-5. Worker size check: compat layer adds code — assert gzip < 1 MB still holds
-   (SPA leaves the bundle in P3, creating headroom).
+---
 
-## 5c. P3 detailed spec (task #109) — serve the real console
+## 8. Recovery plan — the authoritative worklist
 
-**Goal:** a fresh `pnpm run deploy:cf-full -- --app-name <x>` serves the
-product's actual community console from the worker, logged in against the
-framework backend, with E2E proof per nav area. **Blocking decision at start:
-console-artifact posture** (§6) — default (b) private-release/local-artifact.
+Sequential gates. **Do not mark a phase complete from route count, response shape, or
+smoke count alone.** Each gate has a machine-checkable exit.
 
-### Verified integration facts (from the product repo — do not rediscover)
-- Self-host SPA mounts at **`basename="/frontbase-admin"`** (`src/lib/edition.ts:28`),
-  NOT `/console`. The worker must serve it there.
-- Product self-host cookie is **`frontbase_session`**; the framework issues
-  **`fb_session`**. The SPA never reads either (HttpOnly) — it only needs
-  login to succeed and the browser to replay the cookie. **Decision: keep
-  `fb_session`**; the cookie name is server-internal. What must match is the
-  login/me/logout request+response *shapes* (Wave 3 delivers them).
-- Community bundle: single hashed JS (~1.17 MB gz) + CSS + favicon assets;
-  BrowserRouter → every `/frontbase-admin/*` path must fall back to the shell.
+### Gate 0 — one source revision (blocks all later acceptance)
+1. In the product repo: regenerate + **commit** community/full OpenAPI + generated
+   client until every P0 staleness/type gate is green on a clean tree.
+2. Pick that exact product commit for **both** `PRODUCT_COMMIT` (contract) and
+   `CONSOLE_PIN` (console bundle).
+3. Re-vendor contract/Zod (`sync-contract.mjs`), rebuild the console
+   (`fetch-console.mjs`), and **fail the deploy when the two pins differ.**
+4. Review the resulting op/schema diff as an intentional migration.
+- **Exit:** product contract committed + current; both pins equal; both repos' contract checks green on clean trees.
 
-### Deliverables
+### Gate 1 — repair P1 conformance semantics
+1. Generate request/param/response validators from the vendored OpenAPI and wrap
+   every compat handler (or move to a route-definition system that emits its own
+   spec). Build `framework.openapi.json` from the *registered route definitions*,
+   not by cloning the product doc.
+2. Add a runtime route sweep for every method/path (incl. `OPTIONS`) with negative/
+   fuzz cases (required fields, wrong types, path/query params, status codes, bodies).
+3. Replace binary `x-implemented` with `stub | shape-only | functional | external-disabled`.
+4. Make **handler** mutations (not just JSON edits) turn CI red.
+- **Exit:** changing a handler's accepted request, response, auth placement, or registration fails a gate.
 
-**D1 — Workers Static Assets migration (`examples/cf-full`)**
-- Add `[assets]` (directory = `examples/cf-full/console-dist/`,
-  `run_worker_first = true` so the worker keeps owning `/api/*` and the engine
-  catch-all; assets serve only what the worker doesn't claim).
-- Worker routing order becomes: `/api/*` (compat + console) → `/frontbase-admin`
-  + `/frontbase-admin/*` → SPA shell from assets (SPA fallback for client
-  routes) → engine catch-all (published pages) unchanged at `/` and slugs.
-- Remove the inline `virtual:spa-bundle` for the console (the builder-canvas
-  SPA); **worker gzip drops ~185 KB**, restoring budget headroom. Keep
-  `virtual:sw-bundle` (engine SW) inlined — unchanged.
-- `deploy.ts` passes through unchanged; `wrangler deploy` picks up `[assets]`
-  automatically. Update the deploy-seed gate fixtures if the wrangler
-  invocation shape changes.
+### Gate 2 — security + tenant isolation (before more P2 feature work)
+1. Fix API-key storage/reveal (verifier hash or encrypted ciphertext; atomic audited
+   one-time reveal; revocation; additive migration; never reinterpret plaintext).
+2. Real password-reset tokens (expiry, single-use, password change, session
+   invalidation, non-enumerating).
+3. Persist + enforce blocklist/WAF/bot settings where support is claimed — else mark
+   `external-disabled` and drop from "functional" counts.
+4. Generated two-tenant matrix over every identifier-bearing compat route, bulk op,
+   nested resource, secret reveal, and provider action.
+- **Exit:** no recoverable plaintext key material; auth mutation gates pass; tenant-B cannot observe/mutate tenant-A resources.
 
-**D2 — Console bundle acquisition (posture-(b) pipeline)**
-- `scripts/fetch-console.mjs`: given a local product checkout path (env
-  `FRONTBASE_PRODUCT_DIR` or `--product-dir`), runs `npm run build:community`
-  there, copies `dist/` → `examples/cf-full/console-dist/`, and writes
-  `console-dist/CONSOLE_PIN` (product commit hash + bundle sha256).
-- `console-dist/` is **gitignored except `CONSOLE_PIN`** (repo stays clean of
-  the commercial artifact — posture (b)); CI validates the pin format; the
-  deploy script fails fast with a clear message if `console-dist/` is missing
-  or its hash ≠ pin ("run `pnpm run fetch:console`").
-- Flipping to posture (a) later = un-ignore the directory. One commit,
-  as designed.
+### Gate 3 — complete P2 by behavior, wave by wave
+Reopen Waves 2–5. Per op: exact product-client call, meaningful state/provider
+effect, persisted round-trip, response validation, failure-path coverage, cleanup.
+Credential-gated provider tests may skip with notice; the op stays `external-disabled`
+(not `functional`) until a live gate passes. Suggested order: **Authentication/security
+→ Storage/data → Actions → Edge lifecycle/inspector → Agent/MCP.**
+- **Exit:** every in-scope op is `functional` or an owner-approved, recorded descope; P2 exit criteria actually green.
 
-**D3 — Auth + first-run integration**
-- The SPA's login page posts the product shape to `/api/auth/login` (Wave 3
-  compat route) → framework verifies against its user store → sets `fb_session`
-  → `/api/auth/me` returns `is_master: true` for master_admin. No SPA changes.
-- First-run: cf-full's existing setup-token flow must reconcile with the
-  product SPA's expectations — the worker redirects `/frontbase-admin` →
-  setup page when no admin exists (reuse the CF-19 ADMIN_EMAIL/PASSWORD
-  seeding). **The WordPress-style setup page (task #101) is already built** —
-  D3 integrates with it as the existing surface; do not rebuild it.
-- `/console` (old URL) → 301 to `/frontbase-admin` for continuity.
+### Gate 4 — finish P3 acceptance + cutover
+1. 11-area Playwright suite against `wrangler dev` with real CRUD + failure screenshots.
+2. Same subset against a fresh Cloudflare deploy; verify secure cookie flags + asset caching.
+3. Scheduled cross-repo drift (explicit product repo/ref + credential): alert on
+   source-contract staleness, pin mismatch, endpoint/schema drift, stale console hash.
+4. Owner visual/functional sign-off, then retire the legacy SPA + `/api/console/*`
+   per the endpoint-consumer map (retain `/api/console/setup/*`; add explicit
+   404/410 retirement assertions).
+- **Exit:** 11/11 browser acceptance; fresh-deploy proof; matching committed pins; scheduled drift green; redirect/retirement complete; **owner sign-off recorded.**
 
-**D4 — E2E: Playwright happy-path per nav area (the permanent smoke)**
-- Against a local `wrangler dev` (or miniflare) instance with seeded admin.
-- 11 specs, one per nav area: login → Dashboard renders (metric cards
-  populated) → Pages list + open builder → Data Studio datasources → Users →
-  Storage buckets → Automations list + open detail → Edge Resources → Settings
-  tabs → Variables → (Agent chat renders; send disabled without provider
-  creds). Each asserts on REAL data round-trips (create → list → delete), not
-  just render.
-- Wire as `pnpm --filter @frontbase/example-cf-full test:e2e`; CI job separate
-  from unit gates (slower); failure screenshots artifacted.
+### Closure rule
+- **P0 complete:** current source artifacts + generated client deterministic and committed.
+- **P1 complete:** handler-derived contract + runtime validation detect real code drift.
+- **P2 complete:** product-client behavior, security, persistence/provider effects, and tenant isolation are tested.
+- **P3 complete:** real browser/deploy parity, permanent drift, cutover, and owner sign-off.
+- **CF-22 complete:** the original complaint ("looks super poor") is falsifiable against the same console the product ships — signed off by the owner on a fresh deploy.
 
-**D5 — Cutover + retirement**
-- While E2E stabilizes, `/api/console/*` + the `@frontbase/admin-console` SPA
-  keep working (parallel run).
-- Cutover checklist: E2E 11/11 green on a real CF deploy → default URL printed
-  by deploy switches to `/frontbase-admin` → `packages/admin-console` retired
-  from the cf-full build (package archived, NOT deleted — `@frontbase/builder`
-  canvas stays a first-class library; the no-leak gate moves with whatever
-  still bundles it).
-- MILESTONES + README updated; CF-22 closes when the field test (a fresh
-  deploy by the owner) matches the product console visually and functionally.
+---
 
-**D6 — Permanent drift protection (closing the loop)**
-- Framework CI gains a scheduled job: re-vendor the product contract
-  (`sync-contract.mjs` against a pinned product ref), run oasdiff — a new
-  product endpoint shows up as a NAMED gap within a day, forever.
-- Console bump = `fetch-console.mjs` + pin commit; contract bump =
-  `sync-contract.mjs` + pin commit. Both one-command, both reviewable.
+## 9. Key implementation facts (do not rediscover)
 
-### P3 exit criteria
-1. Fresh `deploy:cf-full --app-name <new>` → visit `/frontbase-admin` → login
-   with seeded admin → **the product console renders** (same pixels as a
-   product self-host deployment).
-2. Playwright 11/11 green against a real CF deployment.
-3. Worker script gzip < 1 MB with headroom (SPA out of the bundle); assets
-   served with immutable cache headers (hashed filenames).
-4. `CONSOLE_PIN` + contract pin committed; both bump scripts round-trip.
-5. Old `/console` redirects; admin-console package retired per D5 checklist.
-6. **CF-22 exit:** owner field-test sign-off — the original complaint
-   ("looks super poor") is falsifiable against the same console the product
-   ships.
+- **Self-host SPA base path:** `basename="/frontbase-admin"` (`src/lib/edition.ts:28`), NOT `/console`.
+- **Cookies:** product self-host uses `frontbase_session`; the framework issues `fb_session`. The SPA reads neither (HttpOnly) — only login success + browser replay matter. Kept `fb_session`; shapes are the contract.
+- **Compat mount:** `/api/*` (product paths), a sibling of the legacy `/api/console/*` (parallel-run) and the engine catch-all. Compat guard scoped to `/api/*` excl. `/api/console/*`.
+- **`GET /`** is always the engine's (eSSR pages) — excluded from compat stubs (the 1 stub in the gate table, by design).
+- **Op count:** vendored community = **286** (incl. 2 `OPTIONS`); the historical "284" omitted `OPTIONS`. Framework emits 285 compat-routed + engine-owned `GET /`.
+- **Migrations added by CF-22:** v7 `template_variables`, v8 `themes`+`security_events`, v9 `compat_pages`+`compat_page_versions`, v10 `auth_forms`, v11 `edge_api_keys`+`edge_agent_profiles_compat`+`mcp_servers`+`agent_skills`.
+- **`@hono/zod-openapi` blocked** on zod v4 (framework is zod 3) → plain Hono + vendored zod. **`oasdiff` npm package is a placeholder** → native-Node `contract-diff.mjs`.
+- **fastapi pinned `==0.139.0`** in the product repo — its version changes the emitted spec, so it is part of contract determinism.
+- **One-command bumps:** contract = `sync-contract.mjs` + commit pin; console = `fetch-console.mjs` + commit pin.
 
-### P3 risks
-- **Cookie flags:** `fb_session` must be `Secure; HttpOnly; SameSite=Lax` and
-  scoped to `/` (the SPA calls `/api/*` from `/frontbase-admin/*` — same-origin,
-  so Lax suffices; no CORS needed).
-- **Base-path coupling:** if the product ever changes `BASE_PATH`, the worker
-  route breaks — the fetch-console script should extract `BASE_PATH` from the
-  built `index.html` and fail on mismatch rather than assume.
-- **Setup-flow overlap:** task #101 (WordPress-style setup) and D3 first-run
-  must be reconciled explicitly — one owner, not two half-implementations.
-- **Asset caching vs bumps:** hashed filenames make caching safe, but
-  `index.html` must be `no-cache` so console bumps propagate.
+## 10. Non-goals
 
-**Total ≈ 4.5–6 wk solo; P0 consumed ~2 days wall-clock (2026-07-14 → 15) against
-the 1.5–2 wk estimate** (deferring the 18 product-side service migrations, #111,
-which are off the critical path). Pixel parity arrives at the *start* of P3 (not
-the end of the project); every P2 slice is independently shippable; the drift
-alarm outlives the project. **P2's burn-down is no longer hand-tracked — it is
-the oasdiff conformance table from P1/D3.**
+- Cloud edition: tenants directory, plans manager, billing (F8b deferred), SuperTokens/signup/invite, agent chat/quota.
+- A `--multi-tenant` deploy flag — a real multi-tenant deployment needs the full cloud contract + tenant-isolation acceptance, out of scope.
+- Deleting legacy `/api/console/*` routes by name/association — only after the consumer map + browser suite prove them unused.
+- Source-level shared console package (option C) — revisit post-launch only if artifact reuse proves insufficient.
 
-## 6. Open decision — console-artifact posture (needed at start of P3)
+## 11. Document history
 
-Serving the product's built console from the framework worker means distributing the
-commercial console (compiled) with the Apache-2.0 framework. Options:
-- **(a) Open:** the community console is deliberately open — it *is* the community
-  edition.
-- **(b) Private-release artifact (DEFAULT):** the framework repo stays clean; the
-  cf-full build/deploy fetches the console bundle from a private release (the
-  `virtual:spa-bundle` seam / deploy script support this trivially).
+This file is the **sole** CF-22 status/plan document. The following were folded in and
+should be treated as superseded (retained in git history only):
 
-P0–P2 are identical under either. **(b) is reversible (flipping to open is one
-commit); (a) is forever** — so default (b), decide at P3 start, or earlier only if
-the framework repo goes public first.
+| Former doc | What it was | Where it lives now |
+|---|---|---|
+| `cf-22-p0-delivery.md` | P0 delivery report | §5 P0 + §9 |
+| `cf-22-p1-delivery.md` | P1 delivery report | §5 P1 + §9 |
+| `cf-22-p2-wave1-delivery.md` | P2 Wave 1a report | §5 P2 |
+| `cf-22-p2-complete-delivery.md` | "P2 complete" report (premature) | §5 P2 + §8 Gates 2–3 |
+| `cf-22-p3-delivery.md` | P3 report (self-corrected to "acceptance incomplete") | §5 P3 + §8 Gate 4 |
+| `cf-22-setup-console-cutover-incident.md` | field incident report | §7 |
+| `cf-22-p0-p3-audit.md` | independent end-to-end audit | §0, §5 statuses, §8 recovery plan |
 
-## 7. Non-goals
-- Cloud edition: tenants directory, plans manager, billing (F8b stays deferred),
-  SuperTokens/signup/invite, agent chat/quota.
-- Source-level shared console package (option C) — revisit after launch only if
-  artifact reuse proves insufficient.
-- Pixel-parity of marketing/privacy pages — console only.
+**Verdict of the consolidation:** the audit's findings were independently
+re-verified against the code (plaintext API keys, no-op password reset, pin
+mismatch, inventory-not-conformance gate — all confirmed; the P0 "staleness red"
+finding is now more precisely "regenerated-but-uncommitted"). CF-22 is **not
+complete**; §8 is the path to done.

@@ -6,7 +6,7 @@ No hydration mismatches. No server/client render drift. No separate backend to s
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-> **Status**: CF-22 P0–P2 are complete. P3 integration is implemented, but the required 11-area Playwright suite, real-Cloudflare field test, scheduled cross-repo drift check, and owner sign-off remain open. See [the P3 reconciliation](docs/cf-22-p3-delivery.md#6-parent-spec-reconciliation).
+> **Status**: CF-22 (serve the product's community console from the framework worker) is **in progress, not complete.** The contract pipeline and 285-op route/shape coverage exist and the console is locally integrated, but behavior, security (known blockers include plaintext API-key storage and a no-op password reset), cross-repo pin sync, and real-deploy/owner acceptance remain open. See the single source of truth: [docs/cf-22-admin-visual-parity-gap.md](docs/cf-22-admin-visual-parity-gap.md).
 
 ---
 
