@@ -1,6 +1,7 @@
 # CF-22 P1 — Product-Compat Surface + Drift Gate Delivery Report
 
-**Date:** 2026-07-15 · **Status:** ✅ DELIVERED (all gates green)
+**Date:** 2026-07-15 · **Historical status:** ✅ DELIVERED against the then-defined gate<br>
+**Current audited status:** ⚠️ PARTIAL — endpoint inventory works; handler-derived/runtime conformance does not
 **Repo:** framework `frontbase-framework` (`packages/backend`)
 **Parent plan:** [`cf-22-admin-visual-parity-gap.md`](./cf-22-admin-visual-parity-gap.md) §5a · **P0 report:** [`cf-22-p0-delivery.md`](./cf-22-p0-delivery.md)
 
@@ -9,15 +10,21 @@
 > against that contract, and ships **one fully-implemented tag** as proof the
 > pipeline works end-to-end. The drift gate's burn-down table is P2's worklist.
 
+> **2026-07-15 audit correction:** The vendored contract contains **286**, not
+> 284, operations; two `OPTIONS` operations were ignored by the method lists and
+> are now included. The emitter clones product operations/schemas and annotates a
+> manual registry, so a green diff does not prove that handler validation or
+> runtime responses match. See [`cf-22-p0-p3-audit.md`](./cf-22-p0-p3-audit.md).
+
 ---
 
 ## 1. Headline
 
 | Metric | Result |
 |---|---|
-| Vendored contract | product community spec **pinned to `afe9e03`** (284 ops / 202 schemas / 31 tags) + vendored zod |
-| Framework emitted spec | **deterministic** `contracts/framework.openapi.json`, all **284 ops** declared |
-| Drift gate | **PASS** — 0 missing, 0 divergent (6 implemented `variables` / 278 stubbed) |
+| Vendored contract | product community spec **pinned to `afe9e03`** (**286 ops** / 202 schemas / 31 tags) + vendored zod |
+| Framework emitted spec | Historical P1 output counted 284; audit-corrected output declares **all 286**, including `OPTIONS` |
+| Drift gate | Historical counted result: 0 missing, 0 divergent (6 implemented `variables` / 278 stubbed); it did not inspect two `OPTIONS` operations or handler behavior |
 | Proof tag | **`variables`** — 6 ops real, responses validated against vendored Zod |
 | Mutation proof (RULE 8) | deleted op → MISSING detected; corrupted schema → DIVERGENT detected |
 | Backend suite | **22 suites green** (4 credential-gated live suites skip), incl. 2 new (compat-variables 9/9, contract-diff 3/3) |

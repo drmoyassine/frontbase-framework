@@ -1,20 +1,16 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HashRouter } from 'react-router-dom';
 import { App } from './App';
 import './index.css';
 
-// HashRouter (not BrowserRouter): the SPA is mounted at a worker sub-path
-// (/console), so hash routing sidesteps basename + server SPA-fallback concerns
-// entirely — the worker only ever serves /console, and #/dashboard etc. are
-// client-only. Routes in the app are written as /dashboard, /pages, …
+// Setup is intentionally router-free. The URL fragment carries the one-time
+// claim without sending it to the Worker; setup-claim.ts consumes it before the
+// first render. There are no dashboard/login routes in this artifact.
 const root = document.getElementById('root');
 if (root) {
     createRoot(root).render(
         <StrictMode>
-            <HashRouter>
-                <App />
-            </HashRouter>
+            <App />
         </StrictMode>,
     );
 }

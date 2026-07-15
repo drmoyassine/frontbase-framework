@@ -16,7 +16,8 @@
     "deploy:cf-full": "node scripts/deploy.mjs",
     "contracts:sync": "node scripts/sync-contract.mjs",
     "contracts:diff": "node scripts/contract-diff.mjs",
-    "fetch:console": "node scripts/fetch-console.mjs"
+    "fetch:console": "node scripts/fetch-console.mjs",
+    "console:check": "node scripts/validate-console-pin.mjs"
   },
   "devDependencies": {
     "c8": "^11.0.0",

@@ -37,7 +37,7 @@ const productPath = arg('product') ?? resolve(root, 'packages/backend/contracts/
 const fwk = JSON.parse(readFileSync(fwkPath, 'utf-8'));
 const product = JSON.parse(readFileSync(productPath, 'utf-8'));
 
-const METHODS = ['get', 'post', 'put', 'delete', 'patch'];
+const METHODS = ['get', 'post', 'put', 'delete', 'patch', 'options'];
 
 const key = (m, p) => `${m.toUpperCase()} ${p}`;
 

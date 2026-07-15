@@ -159,6 +159,17 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [`DROP TABLE IF EXISTS edge_api_keys`, `DROP TABLE IF EXISTS edge_agent_profiles_compat`, `DROP TABLE IF EXISTS mcp_servers`, `DROP TABLE IF EXISTS agent_skills`],
     },
+    {
+        // Secure first-admin bootstrap: a singleton compare-and-set row makes
+        // concurrent setup submissions single-winner across Worker isolates.
+        version: 12,
+        name: 'setup_state',
+        up: [
+            `CREATE TABLE IF NOT EXISTS setup_state (id INTEGER PRIMARY KEY, initialized_at TEXT)`,
+            `INSERT INTO setup_state (id, initialized_at) SELECT 1, NULL WHERE NOT EXISTS (SELECT 1 FROM setup_state WHERE id = 1)`,
+        ],
+        down: [`DROP TABLE IF EXISTS setup_state`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

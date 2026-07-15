@@ -1,5 +1,6 @@
 dist/
 .wrangler/
 node_modules/
-console-dist/
+console-dist/*
 !console-dist/CONSOLE_PIN
+!console-dist/.assetsignore

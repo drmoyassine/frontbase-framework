@@ -49,8 +49,46 @@ export interface PageSummary {
     updatedAt?: string;
 }
 
+export interface SetupStatus {
+    needsSetup: boolean;
+    setupEnabled: boolean;
+    setupTokenRequired: boolean;
+    setupExpired: boolean;
+}
+
 export interface TenantSummary {
     slug: string;
     name?: string;
     createdAt?: string;
+}
+
+export async function getSetupStatus(): Promise<SetupStatus> {
+    return api('/setup/status');
+}
+
+export async function postSetupClaim(setupToken: string): Promise<{ ok: true }> {
+    return api('/setup/claim', {
+        method: 'POST',
+        body: JSON.stringify({ setupToken }),
+    });
+}
+
+export async function postSetup(email: string, password: string, setupToken?: string): Promise<{ ok: true }> {
+    return api('/setup', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, ...(setupToken ? { setupToken } : {}) }),
+    });
+}
+
+/** Authenticate through the CF-22 product-compatible surface before handing
+ * control to /frontbase-admin. This avoids coupling first-run setup to the
+ * retired framework dashboard's auth store. */
+export async function loginProductAdmin(email: string, password: string): Promise<void> {
+    const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) throw new ApiError(res.status, 'login_failed');
 }

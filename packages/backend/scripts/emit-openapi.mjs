@@ -39,7 +39,7 @@ if (process.argv.includes('--check')) {
     writeFileSync(OUT, serialized);
     let total = 0;
     for (const item of Object.values(spec.paths)) {
-        for (const m of Object.keys(item)) if ('getpostputdeletepatch'.includes(m)) total++;
+        for (const m of Object.keys(item)) if (['get', 'post', 'put', 'delete', 'patch', 'options'].includes(m)) total++;
     }
     console.log(`framework.openapi.json emitted: ${total} ops`);
 }

@@ -12065,6 +12065,29 @@
       }
     },
     "/api/auth/login": {
+      "options": {
+        "description": "Handle CORS preflight for login.",
+        "operationId": "authentication_login_options",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Authentication Login Options",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Login Options",
+        "tags": [
+          "Authentication"
+        ],
+        "x-implemented": true
+      },
       "post": {
         "description": "Login with email and password.\n\nPath 1: Master admin (env-var) — always checked first.\nPath 2: SuperTokens emailpassword (cloud mode) — tenant users.",
         "operationId": "authentication_login",
@@ -12500,6 +12523,29 @@
       }
     },
     "/api/auth/signup": {
+      "options": {
+        "description": "Handle CORS preflight for signup.",
+        "operationId": "authentication_signup_options",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Authentication Signup Options",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Signup Options",
+        "tags": [
+          "Authentication"
+        ],
+        "x-implemented": true
+      },
       "post": {
         "description": "Register a new tenant user with workspace.\n\nCreates: SuperTokens/Supabase user → Tenant → TenantMember → Project → Session.\nCloud mode only.",
         "operationId": "authentication_signup",

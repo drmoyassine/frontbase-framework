@@ -4,14 +4,14 @@
  * the routing smoke, and reports the size + the /sw.js-no-server-code boundary —
  * the RULE 5 end-to-end gate (a real composed worker, not just unit tests).
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import { composeWorker, assertWorkerBudget, type ComposeInput } from '../deploy/compose.js';
 import { provisionD1 } from './provision-d1.js';
-import { workerExists, lookupExistingD1, generateFreeAppName, type WranglerCheckRunner } from './app-identity.js';
+import { workerExists, lookupExistingD1, generateFreeAppName, sanitizeAppName, type WranglerCheckRunner } from './app-identity.js';
 import { basename } from 'node:path';
 
 /** Run a wrangler/deployctl subcommand. The secret VALUE (if any) is fed on
@@ -45,10 +45,15 @@ export interface DeployOptions {
      *  pushed as the ADMIN_EMAIL/ADMIN_PASSWORD wrangler secrets (stdin, never argv). */
     adminEmail?: string;
     adminPassword?: string;
-    /** Role for the seeded admin (ADMIN_ROLE secret). Default 'owner'. */
+    /** Role for the seeded admin (ADMIN_ROLE secret). Default 'master_admin' for the product self-host console. */
     adminRole?: string;
     /** Enable the first-run /setup wizard (SETUP_TOKEN secret). Optional. */
     setupToken?: string;
+    /** Generate/rotate a secure browser setup link. Fresh deployments without
+     *  seeded credentials do this automatically. */
+    setupLink?: boolean;
+    /** Setup-link lifetime. Default 30 minutes. */
+    setupTtlMinutes?: number;
     /** HS256 session key (SESSION_SECRET secret). Auto-generated (32 random bytes,
      *  base64) when omitted so the deployment is never left without a key. */
     sessionSecret?: string;
@@ -56,6 +61,13 @@ export interface DeployOptions {
     runWrangler?: WranglerRunner;
     /** Test seam: generate the session secret. Default: 32 random bytes, base64. */
     genSecret?: () => string;
+    /** Test seam: generate the URL-safe setup capability. */
+    genSetupToken?: () => string;
+    /** Test seam: current time in milliseconds. */
+    nowMs?: () => number;
+    /** Receives the sensitive setup link once after a successful deploy. The
+     *  raw capability is deliberately excluded from the returned result. */
+    onSetupLink?: (link: { url: string; expiresAt: string }) => void;
     /** Test seam: RNG for random app-name generation (no --app-name given). Default: Math.random. */
     rand?: () => number;
 }
@@ -67,6 +79,24 @@ export interface DeployOptions {
  *  (fails with ENOENT). Safe here — `bin` is always 'wrangler' or 'deployctl'
  *  and `args` are fixed literals ('deploy', 'secret', 'put', <name>) built by
  *  our own code; the secret VALUE never appears in args (stdin only). */
+/** Parse the worker URL from wrangler deploy stdout.
+ *  Wrangler outputs: "  https://<worker-name>.<subdomain>.workers.dev"
+ */
+function parseWorkerUrl(stdout: string): string | null {
+    // Match the typical wrangler output format: indented URL line
+    const urlMatch = stdout.match(/^\s+https:\/\/\S+$/m);
+    if (urlMatch) {
+        const url = urlMatch[0].trim();
+        // Verify it looks like a workers.dev URL
+        if (url.includes('.workers.dev')) {
+            return url;
+        }
+    }
+    // Do not invent an account subdomain. Worker subdomains are account-specific
+    // and cannot be derived from the app name alone.
+    return null;
+}
+
 const defaultRunWrangler = (bin: string): WranglerRunner => (args, { cwd, stdin }) =>
     new Promise((resolve) => {
         const child = spawn(bin, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], shell: true });
@@ -113,12 +143,18 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
     if ((opts.adminEmail ? 1 : 0) + (opts.adminPassword ? 1 : 0) === 1) {
         return { ok: false, summary: '--admin-email and --admin-password must be given together' };
     }
+    if (opts.setupTtlMinutes !== undefined
+        && (!Number.isFinite(opts.setupTtlMinutes) || opts.setupTtlMinutes < 5 || opts.setupTtlMinutes > 1440)) {
+        return { ok: false, summary: '--setup-ttl-minutes must be between 5 and 1440' };
+    }
 
     const isCf = opts.target !== 'deno';
     const bin = isCf ? 'wrangler' : 'deployctl';
     const runWrangler = opts.runWrangler ?? defaultRunWrangler(bin);
     const runWranglerCheck: WranglerCheckRunner = runWrangler; // structurally compatible (no stdin needed for these calls)
     const genSecret = opts.genSecret ?? (() => randomBytes(32).toString('base64'));
+    const genSetupToken = opts.genSetupToken ?? (() => randomBytes(32).toString('base64url'));
+    const nowMs = opts.nowMs ?? Date.now;
     const rand = opts.rand ?? Math.random;
 
     // App identity: resolve --app-name (or generate a fresh, verified-unused one
@@ -130,19 +166,19 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
     if (isCf) {
         try {
             if (opts.appName) {
-                appName = opts.appName;
+                appName = sanitizeAppName(opts.appName);
                 appExisted = await workerExists(appName, cwd, runWranglerCheck);
             } else {
                 // No --app-name: ALWAYS a fresh deployment (per spec) — generate a
                 // name already verified not to collide with an existing worker.
-                appName = await generateFreeAppName(cwd, runWranglerCheck, { rand });
+                appName = sanitizeAppName(await generateFreeAppName(cwd, runWranglerCheck, { rand }));
                 appExisted = false;
             }
         } catch (e) {
             return { ok: false, summary: `could not determine app identity: ${(e as Error).message}` };
         }
     } else {
-        appName = opts.appName ?? basename(cwd); // Deno path: D1/existence-check not wired (unchanged)
+        appName = sanitizeAppName(opts.appName ?? basename(cwd)); // Deno path: D1/existence-check not wired (unchanged)
     }
 
     // Live deploy — CF: provision D1 (idempotent — reuse if the app already
@@ -180,14 +216,12 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
         }
     }
 
-    // Deploy the script under the resolved app name (overrides wrangler.toml's
-    // `name`, if any — this is what makes a single wrangler.toml reusable across
-    // multiple named/generated app deployments).
-    const dep = await runWrangler(isCf ? ['deploy', '--name', appName] : ['deploy'], { cwd });
-    if (dep.code !== 0) return { ok: false, summary: `${bin} deploy failed`, details: { stderr: dep.stderr } };
-
-    // Push secrets over stdin — the VALUES never appear in argv (process list) or
-    // in the returned summary/details. Only the NAMES set are reported.
+    // Push secrets over stdin FIRST — the VALUES never appear in argv (process
+    // list) or in the returned summary/details. Only the NAMES set are reported.
+    // NOTE: When using --app-name to override wrangler.toml's name, secrets
+    // are set for the worker in wrangler.toml, not the --app-name worker.
+    // The deploy step below uses --name, so the deployed worker won't have
+    // these secrets unless wrangler.toml's name matches --app-name.
     //
     // SESSION_SECRET: on a FRESH deploy it's always set (auto-generated if not
     // given — a deployment must never be left without one). On a REDEPLOY of an
@@ -196,21 +230,46 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
     // logged-in admin's session each time you redeploy, which is not what
     // "redeploy" should mean.
     const secretsSet: string[] = [];
+    let setupToken: string | undefined;
+    let setupExpiresAt: string | undefined;
     if (isCf) {
         const sessionSecret = opts.sessionSecret ?? (appExisted ? undefined : genSecret());
+        const shouldGenerateSetupLink = !opts.adminEmail && (!appExisted || opts.setupLink === true);
+        setupToken = opts.setupToken ?? (shouldGenerateSetupLink ? genSetupToken() : undefined);
+        if (setupToken && !opts.adminEmail) {
+            const ttlMinutes = opts.setupTtlMinutes ?? 30;
+            setupExpiresAt = new Date(nowMs() + ttlMinutes * 60_000).toISOString();
+        }
         const toSet: Array<[string, string | undefined]> = [
             ['SESSION_SECRET', sessionSecret],
             ['ADMIN_EMAIL', opts.adminEmail],
             ['ADMIN_PASSWORD', opts.adminPassword],
-            ['ADMIN_ROLE', opts.adminEmail ? (opts.adminRole ?? 'owner') : undefined],
-            ['SETUP_TOKEN', opts.setupToken],
+            ['ADMIN_ROLE', opts.adminEmail ? (opts.adminRole ?? 'master_admin') : undefined],
+            ['SETUP_TOKEN', setupToken],
+            ['SETUP_EXPIRES_AT', setupExpiresAt],
         ];
         for (const [name, value] of toSet) {
             if (value === undefined) continue;
-            const res = await runWrangler(['secret', 'put', name], { cwd, stdin: value });
+            const res = await runWrangler(isCf ? ['secret', 'put', name, '--name', appName] : ['secret', 'put', name], { cwd, stdin: value });
             if (res.code !== 0) return { ok: false, summary: `failed to set secret ${name}`, details: { stderr: res.stderr, secretsSet } };
             secretsSet.push(name);
         }
+    }
+
+    // Deploy the script under the resolved app name (overrides wrangler.toml's
+    // `name`, if any — this is what makes a single wrangler.toml reusable across
+    // multiple named/generated app deployments).
+    const dep = await runWrangler(isCf ? ['deploy', '--name', appName] : ['deploy'], { cwd });
+    if (dep.code !== 0) return { ok: false, summary: `${bin} deploy failed`, details: { stderr: dep.stderr } };
+
+    const workerUrl = isCf ? parseWorkerUrl(dep.stdout) : undefined;
+    if (workerUrl && setupToken && setupExpiresAt && !opts.adminEmail) {
+        opts.onSetupLink?.({
+            // Keep the capability inside the fragment so it never reaches Worker
+            // URL logs or referrers. The setup-only SPA consumes and removes it.
+            url: `${workerUrl}/setup#/setup?claim=${encodeURIComponent(setupToken)}`,
+            expiresAt: setupExpiresAt,
+        });
     }
 
     return {
@@ -222,6 +281,9 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
             appExisted,
             secretsSet, // NAMES only — never values
             sessionSecretGenerated: isCf && !appExisted && !opts.sessionSecret,
+            setupLinkGenerated: Boolean(workerUrl && setupToken && setupExpiresAt && !opts.adminEmail),
+            setupExpiresAt,
+            workerUrl,
         },
     };
 }

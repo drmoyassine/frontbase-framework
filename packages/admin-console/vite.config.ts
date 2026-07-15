@@ -1,31 +1,31 @@
 /**
- * Vite config for the admin console SPA.
+ * Vite config for the setup-only SPA.
  *
- * Build target: a SINGLE self-contained IIFE at dist/spa.js with CSS injected at
- * runtime by vite-plugin-css-injected-by-js. This is what cf-full's build.mjs
- * inlines into the worker via `virtual:spa-bundle` (mirroring the SW pattern) —
- * so the deploy stays a single artifact (CF-18 Phase 1 decision: inline, not
- * Workers Static Assets).
+ * The build is a single self-contained IIFE at dist/spa.js with CSS injected at
+ * runtime. cf-full stages it as /frontbase-setup/spa.js in Workers Static Assets.
+ * The sole dashboard is the separately pinned product artifact at
+ * /frontbase-admin.
  */
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js';
 import { fileURLToPath } from 'node:url';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
     plugins: [react(), cssInjectedByJsPlugin()],
+    define: {
+        'process.env.NODE_ENV': JSON.stringify(mode),
+    },
     resolve: {
         alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
     build: {
         lib: {
             entry: fileURLToPath(new URL('./src/main.tsx', import.meta.url)),
-            name: 'FrontbaseConsole',
+            name: 'FrontbaseSetup',
             formats: ['iife'],
             fileName: () => 'spa.js',
         },
-        // One file, no code-splitting (IIFE can't be split). CSS is injected by
-        // the plugin above, so no separate .css asset is emitted.
         cssCodeSplit: false,
         rollupOptions: { output: { inlineDynamicImports: true } },
         target: 'es2022',
@@ -34,11 +34,9 @@ export default defineConfig({
         emptyOutDir: true,
     },
     server: {
-        // Dev: proxy the console API to a running worker (local or deployed) so
-        // the SPA can be developed with HMR against a real backend.
         port: 5180,
         proxy: {
             '/api': { target: process.env.FB_API ?? 'http://localhost:8787', changeOrigin: true },
         },
     },
-});
+}));

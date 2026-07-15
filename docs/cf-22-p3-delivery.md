@@ -1,13 +1,19 @@
 # CF-22 P3 — Serve the Product Console from the Framework Worker
 
-**Date:** 2026-07-15 · **Status:** ✅ DELIVERED (smoke 16/16, backend suite 27/27)
+**Date:** 2026-07-15 · **Status:** ⚠️ LOCALLY INTEGRATED, ACCEPTANCE INCOMPLETE (P0–P2 dependencies and P3 field gates remain open)
 **Repo:** framework `frontbase-framework` (`examples/cf-full`)
 **Parent:** [`cf-22-admin-visual-parity-gap.md`](./cf-22-admin-visual-parity-gap.md) §5c
 
 > P3 integrates the product's REAL community console SPA with the framework's
 > compat API surface in the cf-full worker. The worker now serves the product's
 > built `/frontbase-admin/*` SPA, authenticates against the compat login route,
-> and routes 284 API endpoints — end-to-end in a single `wrangler deploy`.
+> and routes 285 compat operations plus the engine-owned root operation — in a
+> single `wrangler deploy`.
+
+> **End-to-end dependency warning:** P3 cannot close while P0's current contract
+> artifacts are stale, the console (`bf1ac54…`) and contract (`afe9e03…`) pins
+> differ, and P2 remains behaviorally/security incomplete. See
+> [`cf-22-p0-p3-audit.md`](./cf-22-p0-p3-audit.md).
 
 ---
 
@@ -16,13 +22,13 @@
 | Metric | Result |
 |---|---|
 | Console bundle | Product community SPA, fetched at build time (`fetch-console.mjs`) |
-| API surface | 284 compat ops + existing `/api/console/*` (parallel run) |
+| API surface | 285 compat ops + engine-owned `GET /` + existing `/api/console/*` |
 | Auth | `fb_session` JWT cookie via `/api/auth/login` → `/api/auth/me` (product shape) |
 | SPA path | `/frontbase-admin` + `/frontbase-admin/*` (BrowserRouter basename) |
 | Legacy redirect | `/console` → 301 → `/frontbase-admin` |
-| Worker size | 363.7 KB gzip (PASS, < 1 MB limit) |
-| Smoke | **16/16** (eSSR + SW + compat auth + pages CRUD + SPA shell + security guard) |
-| Backend suite | **27/27** |
+| Worker size | 233.8 KB gzip (PASS, < 1 MB limit; SPAs served as assets) |
+| Smoke | **21/21** (eSSR + SW + assets/cache + setup-only handoff + secure first-admin setup + compat auth + pages CRUD + security guard) |
+| Backend suite | **30/30** |
 
 ---
 
@@ -57,7 +63,7 @@ SPA shell — all on the same Hono app — WITHOUT any one shadowing the others.
 **Final routing order (main app):**
 1. `/frontbase-admin` + `/frontbase-admin/*` → SPA shell
 2. `/console` → 301 redirect
-3. Compat app (284 specific `/api/*` routes + `/health` + scoped guard)
+3. Compat app (285 registry-implemented product operations + `/health` + scoped guard)
 4. Engine (published pages, `/sw.js`, `/api/console/*`)
 
 ### D2 — Console bundle acquisition (posture B: deploy-time fetch)
@@ -66,11 +72,15 @@ SPA shell — all on the same Hono app — WITHOUT any one shadowing the others.
   (`vite build --mode community` from a local product checkout) and copies
   `dist/` → `examples/cf-full/console-dist/`, writing a `CONSOLE_PIN`
   (product commit + JS sha256).
-- `console-dist/` is gitignored except `CONSOLE_PIN` — the framework repo stays
+- `console-dist/` is gitignored except deterministic `CONSOLE_PIN` and `.assetsignore` — the framework repo stays
   clean of the commercial artifact. **Posture B confirmed:** switchable to
   fully-open (posture A) by un-ignoring the directory — one commit.
+- The artifact is staged beneath `console-dist/frontbase-admin/` so its physical
+  layout matches the product's `/frontbase-admin/*` Vite base. Wrangler Static
+  Assets serves exact JS/CSS/image matches before the Worker; unmatched API,
+  eSSR, service-worker, and SPA-navigation requests fall through to the Worker.
 - `examples/cf-full/src/console-shell.ts` + `build.mjs` console-shell plugin:
-  reads `console-dist/index.html` at build time and inlines it as the SPA shell
+  reads `console-dist/frontbase-admin/index.html` at build time and inlines it as the SPA shell
   for the smoke/in-process path. In production, Workers Static Assets serves
   the bundle directly.
 
@@ -85,7 +95,7 @@ SPA shell — all on the same Hono app — WITHOUT any one shadowing the others.
 - First-run seeding is unchanged: the cf-full worker's existing boot path
   seeds the admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD` deploy secrets.
 
-### D4 — Smoke (16/16)
+### D4 — Integration smoke (21/21; not the parent D4 Playwright suite)
 
 The smoke now exercises the FULL integrated stack in-process:
 - eSSR root + SW handover
@@ -118,32 +128,92 @@ The smoke now exercises the FULL integrated stack in-process:
 ## 4. Verification
 
 ```
-cf-full smoke (16/16):
+cf-full smoke (21/21):
   ✅ eSSR root / SW / console redirect / SPA shell + fallback
   ✅ compat Meta health (unauth)
   ✅ compat auth login + me + security guard (RULE 2)
   ✅ compat pages CRUD round-trip
   ✅ old console health + me (parallel run)
 
-backend suite: 27/27
-drift gate: 283 implemented / 1 stubbed (GET / owned by engine) / 0 missing / 0 divergent
-worker size: 363.7 KB gzip (< 1 MB limit)
+backend suite: 30/30
+drift gate: 285 implemented / 1 stubbed (GET / owned by engine) / 0 missing / 0 divergent
+worker size: 233.8 KB gzip (< 1 MB limit)
 ```
 
 ---
 
-## 5. Follow-ups (not blocking P3 delivery)
+### 4.1 Field finding: setup accidentally exposed the retired dashboard
 
-1. **E2E (Playwright).** D4 in the spec calls for 11 specs (one per nav area)
-   against a real `wrangler dev`. Deferred — the smoke proves the routing +
-   auth + CRUD chain; Playwright adds the visual/UX layer (rendered components,
-   real data shapes the console expects).
-2. **Workers Static Assets.** In production, `console-dist/` should be served via
-   `[assets]` in `wrangler.toml` (not inlined). Currently inlined for the
-   smoke/Node path; the production wrangler.toml update is a config change.
+The first real deployment revealed that two SPAs were reachable:
+
+- `/frontbase-admin/*` served the pinned product community console (the CF-22 target).
+- `/setup#/dashboard` and `/setup#/login` were routes inside the framework's old
+  admin SPA, because P3 staged that entire SPA merely to reuse its setup screen.
+
+This made a community deployment look multi-tenant immediately after first-admin
+creation: the setup component logged in and navigated to its own legacy dashboard,
+whose master-admin navigation included Tenants and Plans. Manually opening
+`/frontbase-admin` reached the correct product console. The deployment was not
+running the product cloud edition; the wrong post-setup SPA remained reachable.
+
+The cleanup is deliberately limited to the browser artifact:
+
+1. `@frontbase/admin-console` now emits a setup-only entry. It imports no legacy
+   layout, login, dashboard, Tenants, Plans, or CRUD pages.
+2. Setup authenticates through `/api/auth/login` and hard-navigates to
+   `/frontbase-admin/dashboard` on success (or `/frontbase-admin/login` if the
+   automatic login unexpectedly fails after account creation).
+3. Once an admin exists, the Worker redirects `/setup` to
+   `/frontbase-admin/dashboard` before loading the setup asset. Old hash bookmarks
+   therefore cannot resurrect the retired UI.
+4. The artifact gate fails if the staged setup JavaScript contains legacy Admin
+   Tools/Tenants/Plans markers, and the Worker smoke verifies the redirect.
+
+No backend route was removed in this cleanup. `/api/*` remains the product console
+surface. `/api/console/setup/*` remains the first-run control plane. Other
+`/api/console/*` routes remain temporarily for the documented parallel-run/API
+retirement phase; their presence no longer creates a second deployed dashboard.
+
+## 5. Remaining acceptance work
+
+1. **E2E (Playwright) — blocking the original P3 exit criteria.** D4 in the spec
+   calls for 11 specs (one per nav area) against a real `wrangler dev`. The smoke
+   proves routing, artifact presence, auth, and one CRUD chain; it does not prove
+   that every rendered product area works with the compat response shapes.
+2. **Real deployment E2E.** Add an acceptance check against `wrangler dev` that
+   loads a hashed JS/CSS asset and completes browser login/navigation. The smoke
+   now verifies that the HTML references a real staged bundle, but it does not
+   emulate Cloudflare's asset router.
 3. **Re-sync when the product ships new endpoints.** `pnpm contracts:sync` →
    `contracts:emit` → `contracts:diff` surfaces new ops as stubs; implement them
    to close the burn-down.
 4. **Product `op_responses.py` refactor.** The parallel session's schema refactor
    will change the vendored spec; re-vendor + adjust the compat handlers to match
    the new shapes.
+
+---
+
+## 6. Parent-spec reconciliation
+
+This section is authoritative over the original implementer recap. A checked
+implementation item is not the same as a completed P3 exit criterion.
+
+| Parent item | Current state | Evidence / remaining gate |
+|---|---|---|
+| D1 Static Assets | ✅ Implemented after audit | `ASSETS` binding, `run_worker_first = true`, Worker-owned routing, immutable hashed assets, `index.html: no-cache` |
+| D2 artifact pipeline | ✅ Implemented after audit | Product `npm run build:community`; base-path, pin format, file list, and aggregate SHA-256 validation; stale artifact cleanup; CI pin-format gate |
+| D3 auth + first run | ✅ Implemented after audit | `fb_session`; master-admin default for seeded product admin; fresh no-admin deploys generate a 30-minute `/setup#/setup?claim=…` capability link; the setup-only UI removes the claim, exchanges it for a 15-minute HttpOnly setup cookie, creates the admin, signs in through `/api/auth/login`, and leaves for `/frontbase-admin/dashboard`; setup then locks permanently |
+| D4 Playwright 11 areas | ❌ Open / blocking | No `test:e2e`, 11-area suite, screenshots job, or real-data browser proof yet |
+| D5 cutover + retirement | ⚠️ Partial | `/console` redirects and the setup artifact is setup-only, so the product console is the sole reachable dashboard. Legacy `/api/console/*` retirement remains gated on endpoint-consumer proof and D4 + real-CF sign-off. |
+| D6 scheduled drift | ❌ Open / blocking | Current CI detects drift against the vendored contract, but no scheduled job can re-vendor from the product repository without an explicit repository/ref and CI credential |
+| Exit 1 real fresh deploy | ❌ Not evidenced | Wrangler packaging is green; a fresh deployed login/render was not performed in this audit |
+| Exit 2 Playwright 11/11 | ❌ Not met | See D4 |
+| Exit 3 size + caching | ✅ Locally verified | Worker remains below 1 MB gzip; hashed assets receive one-year immutable caching |
+| Exit 4 committed pins | ⚠️ Pending commit | Console and contract pins exist and validate; the audit changes are not a commit by themselves |
+| Exit 5 redirect + retirement | ⚠️ Partial by design | UI redirect/cutover is live and duplicate dashboard routes are gone; legacy API retirement is gated on D4, consumer mapping, and field sign-off |
+| Exit 6 owner sign-off | ❌ Not met | Must be supplied by the owner after the real deployment field test |
+
+Therefore the implementer statement “CF-22 P3 — delivered” and the aggregate
+“CF-22 in full” conclusion were premature. The routing work was real, but smoke
+21/21 and contract conformance do not substitute for the P3 browser, deployment,
+drift-schedule, and owner-acceptance criteria in the parent plan.

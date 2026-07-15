@@ -7,13 +7,24 @@
  * proving the SPA never pulls server code into the browser bundle.
  */
 import * as esbuild from 'esbuild';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const root = join(here, '..');
-const srcDir = join(root, 'src');
+const packageRoot = join(here, '..');
+function findRepoRoot(start) {
+    let dir = start;
+    while (true) {
+        if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir;
+        const parent = dirname(dir);
+        if (parent === dir) return start;
+        dir = parent;
+    }
+}
+const root = findRepoRoot(packageRoot);
+const srcDir = join(packageRoot, 'src');
 
 let failures = 0;
 const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; console.log(`  ❌ ${l}`); } };
@@ -38,7 +49,7 @@ const CANARY = 'EDGE_SERVER_SECRET_hunter2';
 const result = await esbuild.build({
     entryPoints: [join(srcDir, 'main.tsx')],
     bundle: true, write: false, platform: 'browser', format: 'esm', minify: true, logLevel: 'silent',
-    tsconfig: join(root, 'tsconfig.json'),
+    tsconfig: join(packageRoot, 'tsconfig.json'),
     loader: { '.tsx': 'tsx', '.ts': 'ts', '.css': 'text' },
     plugins: [{
         name: 'fake-server',
@@ -55,6 +66,31 @@ const out = result.outputFiles[0].text;
 check('RULE 1: SPA bundle contains NO server secret canary', !out.includes(CANARY));
 check('RULE 1: SPA bundle contains NO d1 driver', !out.includes('d1DataProvider'));
 check('RULE 1: SPA bundle contains NO resolvePrincipal', !out.includes('resolvePrincipal'));
+check('SPA bundle is browser-safe (no direct process references)', !out.includes('process.env.NODE_ENV') && !out.includes('process.'));
+
+const pnpmBin = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+const buildResult = spawnSync(pnpmBin, ['--filter', '@frontbase/admin-console', 'build'], {
+    cwd: root,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+});
+if (buildResult.status !== 0) {
+    failures++;
+    console.log('  ❌ admin-console build failed');
+} else {
+    console.log('  ✅ admin-console build emits browser-safe SPA bundle');
+    const emitted = readFileSync(join(packageRoot, 'dist', 'spa.js'), 'utf8');
+    const retiredUiMarkers = [
+        'Admin Tools',
+        'Tenants Table',
+        'Subscription Plans',
+        '#/dashboard',
+        '#/login',
+    ];
+    check('setup artifact contains no retired dashboard UI', retiredUiMarkers.every((marker) => !emitted.includes(marker)));
+    check('setup artifact hands off to the product dashboard', emitted.includes('/frontbase-admin/dashboard'));
+    check('setup artifact authenticates through the product API', emitted.includes('/api/auth/login'));
+}
 
 console.log(failures === 0 ? '\nno-leak: PASS ✅' : `\nno-leak: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

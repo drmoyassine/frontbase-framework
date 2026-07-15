@@ -270,5 +270,12 @@ export const agentSkills = sqliteTable('agent_skills', {
     createdAt: text('created_at').notNull(),
 });
 
+/** Singleton bootstrap state — migration v12. The conditional UPDATE on this
+ * row is the cross-isolate lock for first-admin creation. */
+export const setupState = sqliteTable('setup_state', {
+    id: integer('id').primaryKey(),
+    initializedAt: text('initialized_at'),
+});
+
 export type Datasource = typeof datasources.$inferSelect;
 export type Plan = typeof plans.$inferSelect;

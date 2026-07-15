@@ -1,6 +1,7 @@
 # CF-22 P0 — Product-Repo Pre-Pass Delivery Report
 
-**Date:** 2026-07-15 · **Status:** ✅ DELIVERED (textbook-grade, all gates green)
+**Date:** 2026-07-15 · **Historical status:** ✅ DELIVERED at the cited commits<br>
+**Current audited status:** ⚠️ MAINTENANCE GATE RED — current product source has outgrown the committed contract artifacts
 **Repo:** product `Frontbase-` (the frontbase-dbsync app whose community console the framework will serve)
 **Parent plan:** [`docs/cf-22-admin-visual-parity-gap.md`](./cf-22-admin-visual-parity-gap.md) (contract-first + artifact-reuse)
 
@@ -8,6 +9,11 @@
 > fully-typed OpenAPI contract** and generate a typed client from it — the source
 > of truth the framework backend (P2) reimplements and the framework worker (P3)
 > ships. Everything downstream is only as good as this contract.
+
+> **2026-07-15 audit:** `export_openapi.py --check` now reports 11 changes in
+> both `openapi.community.json` and `openapi.full.json`. The original delivery is
+> valid historically, but P0 must be refreshed before re-vendoring or accepting
+> P3. See [`cf-22-p0-p3-audit.md`](./cf-22-p0-p3-audit.md).
 
 ---
 

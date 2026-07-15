@@ -12,7 +12,7 @@ import { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../mw/auth.js';
 import { productOps, toHonoPath, opKey } from './spec.js';
 
-type HonoMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+type HonoMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS';
 const STUB_STATUS = 501;
 
 /** Register a 501 stub for every product op NOT in `implemented`. Returns the

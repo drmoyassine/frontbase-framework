@@ -47,6 +47,9 @@ function recorder() {
             // this must return a parseable id, not a bare 'ok'.
             return { code: 0, stdout: JSON.stringify({ uuid: 'cccccccc-2222-3333-4444-555555555555' }), stderr: '' };
         }
+        if (args[0] === 'deploy') {
+            return { code: 0, stdout: '  https://test-app.test-account.workers.dev\n', stderr: '' };
+        }
         return { code: 0, stdout: 'ok', stderr: '' };
     };
     return { calls, runWrangler };
@@ -56,6 +59,8 @@ const SENTINEL_SESSION = 'GENERATED_SESSION_SENTINEL_b64';
 const EMAIL = 'owner@example.com';
 const PASSWORD = 'correct horse battery staple!';
 const SETUP = 'setup-tok-123';
+const GENERATED_SETUP = 'generated-setup-capability';
+const FIXED_NOW = Date.parse('2026-07-16T10:00:00.000Z');
 
 // ── 1. Full seeding run ───────────────────────────────────────────────────────
 {
@@ -68,17 +73,19 @@ const SETUP = 'setup-tok-123';
     check('deploy succeeded', res.ok === true);
 
     const put = (name) => calls.find((c) => c.args[0] === 'secret' && c.args[1] === 'put' && c.args[2] === name);
+    const expectedAppName = res.details?.appName;
     // deploy now runs with --name <appName> (app-identity, see app-identity.mjs
     // for the naming/existence-check behavior itself — this test only cares that
     // the deploy call happened and happened before secrets).
     check('wrangler deploy was invoked', calls.some((c) => c.args[0] === 'deploy' && c.args[1] === '--name'));
-    check('deploy ran BEFORE any secret put', calls.findIndex((c) => c.args[0] === 'deploy') < calls.findIndex((c) => c.args[0] === 'secret'));
+    check('secret puts target the resolved app worker', calls.some((c) => c.args[0] === 'secret' && c.args[1] === 'put' && c.args[3] === '--name' && c.args[4] === expectedAppName));
+    check('deploy ran AFTER secret puts', calls.findIndex((c) => c.args[0] === 'deploy') > calls.findIndex((c) => c.args[0] === 'secret'));
 
     check('SESSION_SECRET set, value auto-generated, on stdin', put('SESSION_SECRET')?.stdin === SENTINEL_SESSION);
     check('details.sessionSecretGenerated = true', res.details?.sessionSecretGenerated === true);
     check('ADMIN_EMAIL set on stdin', put('ADMIN_EMAIL')?.stdin === EMAIL);
     check('ADMIN_PASSWORD set on stdin', put('ADMIN_PASSWORD')?.stdin === PASSWORD);
-    check("ADMIN_ROLE defaults to 'owner' on stdin", put('ADMIN_ROLE')?.stdin === 'owner');
+    check("ADMIN_ROLE defaults to 'master_admin' on stdin for product self-host", put('ADMIN_ROLE')?.stdin === 'master_admin');
     check('SETUP_TOKEN set on stdin', put('SETUP_TOKEN')?.stdin === SETUP);
 
     // THE security guarantee: no secret VALUE ever appears in an argv element.
@@ -101,15 +108,35 @@ const SETUP = 'setup-tok-123';
     check('email without password → no wrangler calls made', calls.length === 0);
 }
 
+// Invalid setup TTL fails before provisioning or secret changes.
+{
+    const { calls, runWrangler } = recorder();
+    const res = await deployCommand('.', { cwd: fixture(), target: 'cloudflare', setupTtlMinutes: 1, runWrangler });
+    check('invalid setup TTL → ok:false', res.ok === false);
+    check('invalid setup TTL → no wrangler calls made', calls.length === 0);
+}
+
 // ── 3. Explicit --session-secret is used verbatim, not generated ───────────────
 {
     const { calls, runWrangler } = recorder();
-    const res = await deployCommand('.', { cwd: fixture(), target: 'cloudflare', sessionSecret: 'my-own-key', runWrangler, genSecret: () => SENTINEL_SESSION });
+    let setupLink;
+    const res = await deployCommand('.', {
+        cwd: fixture(), target: 'cloudflare', sessionSecret: 'my-own-key', runWrangler,
+        genSecret: () => SENTINEL_SESSION,
+        genSetupToken: () => GENERATED_SETUP,
+        nowMs: () => FIXED_NOW,
+        onSetupLink: (link) => { setupLink = link; },
+    });
     const put = calls.find((c) => c.args[2] === 'SESSION_SECRET');
     check('explicit session secret used on stdin', put?.stdin === 'my-own-key');
     check('sessionSecretGenerated = false when provided', res.details?.sessionSecretGenerated === false);
     check('no ADMIN_* secrets when not seeding', !calls.some((c) => String(c.args[2]).startsWith('ADMIN_')));
-    check('no SETUP_TOKEN when not provided', !calls.some((c) => c.args[2] === 'SETUP_TOKEN'));
+    check('fresh no-admin deploy auto-generates SETUP_TOKEN', calls.find((c) => c.args[2] === 'SETUP_TOKEN')?.stdin === GENERATED_SETUP);
+    check('fresh no-admin deploy sets 30-minute expiry', calls.find((c) => c.args[2] === 'SETUP_EXPIRES_AT')?.stdin === '2026-07-16T10:30:00.000Z');
+    check('setup link delivered through the sensitive callback', setupLink?.url.includes(`/setup#/setup?claim=${GENERATED_SETUP}`));
+    check('setup link reports its expiry', setupLink?.expiresAt === '2026-07-16T10:30:00.000Z');
+    check('raw setup capability NOT returned in result', !JSON.stringify(res).includes(GENERATED_SETUP));
+    check('result reports setup link generated without the secret', res.details?.setupLinkGenerated === true);
 }
 
 // ── 4. --app-name given, app ALREADY EXISTS on Cloudflare → redeploy, reusing
@@ -124,6 +151,7 @@ const SETUP = 'setup-tok-123';
         if (args.join(' ') === 'deployments list --name my-existing-app') return { code: 0, stdout: '[history]', stderr: '' };
         if (args.join(' ') === 'd1 info my-existing-app-db --json') return { code: 0, stdout: JSON.stringify({ uuid: EXISTING_DB_ID }), stderr: '' };
         if (args[0] === 'd1' && args[1] === 'create') { calls.push({ FAIL: 'd1 create should NEVER be called on a redeploy' }); return { code: 1, stdout: '', stderr: 'A database with that name already exists' }; }
+        if (args[0] === 'deploy') return { code: 0, stdout: '  https://my-existing-app.test-account.workers.dev\n', stderr: '' };
         return { code: 0, stdout: 'ok', stderr: '' };
     };
     // Fresh cwd with NO local wrangler.toml binding at all — simulates deploying
@@ -145,7 +173,26 @@ const SETUP = 'setup-tok-123';
     // SESSION_SECRET must NOT be auto-rotated on a redeploy (would silently log
     // out every admin) — only pushed if the caller explicitly supplied one.
     check('SESSION_SECRET NOT auto-rotated on redeploy (no value given)', !calls.some((c) => c.args?.[2] === 'SESSION_SECRET'));
+    check('SETUP_TOKEN NOT auto-rotated on ordinary redeploy', !calls.some((c) => c.args?.[2] === 'SETUP_TOKEN'));
     check('details.sessionSecretGenerated = false on redeploy', res.details?.sessionSecretGenerated === false);
+
+    const beforeRecovery = calls.length;
+    let recoveryLink;
+    const recovery = await deployCommand('.', {
+        cwd: dir,
+        target: 'cloudflare',
+        appName: 'my-existing-app',
+        setupLink: true,
+        runWrangler,
+        genSetupToken: () => GENERATED_SETUP,
+        nowMs: () => FIXED_NOW,
+        onSetupLink: (link) => { recoveryLink = link; },
+    });
+    const recoveryCalls = calls.slice(beforeRecovery);
+    check('--setup-link recovery redeploy succeeds', recovery.ok === true);
+    check('--setup-link rotates SETUP_TOKEN', recoveryCalls.find((c) => c.args?.[2] === 'SETUP_TOKEN')?.stdin === GENERATED_SETUP);
+    check('--setup-link sets a new expiry', recoveryCalls.find((c) => c.args?.[2] === 'SETUP_EXPIRES_AT')?.stdin === '2026-07-16T10:30:00.000Z');
+    check('--setup-link returns the new link only through callback', recoveryLink?.url.includes(`/setup#/setup?claim=${GENERATED_SETUP}`));
 }
 
 // ── 5. --app-name given, app does NOT exist → fresh provision under that name ──

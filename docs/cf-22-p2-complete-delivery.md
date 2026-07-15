@@ -1,12 +1,20 @@
-# CF-22 P2 — Community Contract Implementation: COMPLETE
+# CF-22 P2 — Community Contract Implementation (Historical Delivery; Reopened)
 
-**Date:** 2026-07-15 · **Status:** ✅ COMPLETE — **284/284 ops implemented, 0 stubs**
+**Date:** 2026-07-15 · **Historical status:** ✅ registry/shape burn-down complete<br>
+**Current audited status:** ❌ REOPENED — functional behavior, security, and tenant-isolation proof incomplete
 **Repo:** framework `frontbase-framework` (`packages/backend/src/compat`)
 **Parent:** [`cf-22-admin-visual-parity-gap.md`](./cf-22-admin-visual-parity-gap.md) §5b
 
 > P2 drove the P1 drift gate's burn-down from 278 stubbed to **zero** — every
 > community-contract op (284 across 31 tags) now has a real framework handler on
 > the compat surface. The console's entire community API is backed by the framework.
+
+> **2026-07-15 audit correction:** “implemented” was a manual registry state, not
+> a behavioral definition of done. The actual vendored contract has 286 operations
+> (285 compat-routed after adding two omitted `OPTIONS` routes, plus engine-owned
+> `GET /`). Many Wave 2–5 operations are placeholders, their required test suites
+> do not exist, and edge API keys are stored plaintext and repeatedly revealable.
+> See [`cf-22-p0-p3-audit.md`](./cf-22-p0-p3-audit.md).
 
 ---
 
@@ -90,7 +98,8 @@ Report: [`cf-22-p2-wave1-delivery.md`](./cf-22-p2-wave1-delivery.md).
 ```
 contracts:check (staleness) ......... framework.openapi.json up to date
 contracts:emit determinism ......... byte-identical
-contracts:diff (drift gate) ........ 284 implemented, 0 stubbed, 0 missing, 0 divergent — PASS
+historical contracts:diff .......... 284 counted implemented, 0 stubbed, 0 missing, 0 divergent — PASS
+audit-corrected vendored surface ... 285 registry-implemented, 1 engine-owned root, 0 missing/divergent
 backend suite ...................... 26 markers PASS (4 live suites SKIP no creds)
 pnpm -r build ...................... all packages incl. cf-full (435.9 KB SPA)
 ```

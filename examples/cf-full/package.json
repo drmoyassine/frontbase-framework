@@ -13,5 +13,6 @@
     "@frontbase/edge-infra": "workspace:*",
     "@frontbase/admin-console": "workspace:*",
     "hono": "^4.12.28"
-  }
+  },
+  "devDependencies": {}
 }

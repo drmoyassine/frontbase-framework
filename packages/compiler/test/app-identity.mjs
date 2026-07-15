@@ -10,7 +10,7 @@
  *     with an injected RNG; retries on a (simulated) name collision; gives up
  *     cleanly after maxAttempts instead of looping forever.
  */
-import { workerExists, lookupExistingD1, randomAppName, generateFreeAppName } from '../dist/cli/app-identity.js';
+import { workerExists, lookupExistingD1, randomAppName, generateFreeAppName, sanitizeAppName } from '../dist/cli/app-identity.js';
 
 let failures = 0;
 const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; console.log(`  ❌ ${l}`); } };
@@ -56,6 +56,12 @@ const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; c
 {
     const run = async () => ({ code: 0, stdout: 'not valid json', stderr: '' });
     check('malformed JSON on success: returns null (does not throw)', await lookupExistingD1('weird', '/fake', run) === null);
+}
+
+// ── sanitizeAppName(): converts arbitrary input into a CF-safe worker/app name ─
+{
+    check('sanitizeAppName: lowercases and replaces invalid chars with dashes', sanitizeAppName('Frontbase PotatoS') === 'frontbase-potatos');
+    check('sanitizeAppName: trims repeated separators and empty fallback', sanitizeAppName('---') === 'frontbase');
 }
 
 // ── randomAppName(): deterministic with an injected RNG ─────────────────────────

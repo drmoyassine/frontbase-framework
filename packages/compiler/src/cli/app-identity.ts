@@ -55,7 +55,17 @@ export async function lookupExistingD1(name: string, cwd: string, run: WranglerC
     }
 }
 
-// ---- random app-name generation (no --app-name given → fresh, memorable name) ----
+// ---- app-name normalization / generation ----
+
+export function sanitizeAppName(name: string): string {
+    const normalized = name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .replace(/-+/g, '-');
+    return normalized || 'frontbase';
+}
 
 // Small, curated word lists — deliberately short so names stay readable
 // (Heroku/Docker-style "adjective-noun", e.g. "swift-heron", not

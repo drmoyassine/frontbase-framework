@@ -55,7 +55,7 @@ check('mutation: a corrupted schema is detected as DIVERGENT (gate goes RED)', (
     const mutated = JSON.parse(JSON.stringify(spec));
     // Corrupt the first op's response schema (any op — stubs or implemented).
     outer: for (const [path, item] of Object.entries(mutated.paths)) {
-        for (const m of ['get', 'post', 'put', 'delete', 'patch']) {
+        for (const m of ['get', 'post', 'put', 'delete', 'patch', 'options']) {
             if (item[m]) {
                 item[m].responses = { '200': { description: 'tampered' } };
                 break outer;

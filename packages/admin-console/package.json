@@ -1,7 +1,7 @@
 {
   "name": "@frontbase/admin-console",
   "version": "0.0.0",
-  "description": "Frontbase admin console — the React SPA host (shell + login + dashboard + pages + tenants) served at /console. Browser-only; talks to /api/console over fetch. NEVER imports edge-infra/backend server modules (RULE 1).",
+  "description": "Frontbase first-run setup SPA. The product community console is served separately at /frontbase-admin. Browser-only; never imports server modules.",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {

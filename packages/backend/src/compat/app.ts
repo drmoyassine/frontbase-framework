@@ -138,8 +138,8 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Wave 5 — workspace agent
     registerAgentCompatRoutes(app, runner, kvFor);
 
-    // 501 stubs for any vendored op not yet implemented (currently zero — all 284
-    // are implemented. Re-sync may add new ops that need stubs until implemented.)
+    // 501 stubs for vendored ops not yet implemented. GET / is the one intentional
+    // exception because the eSSR engine owns it; re-sync may add further stubs.
     registerStubs(app, IMPLEMENTED);
 
     return app;

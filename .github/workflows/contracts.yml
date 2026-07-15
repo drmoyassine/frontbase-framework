@@ -34,6 +34,8 @@ jobs:
         run: pnpm --filter @frontbase/backend run contracts:check
       - name: Contract drift gate (missing / divergent)
         run: pnpm run contracts:diff
+      - name: Console pin format gate
+        run: node scripts/validate-console-pin.mjs --format-only
       - name: Backend suite (incl. compat-variables + contract-diff)
         run: pnpm --filter @frontbase/backend test
       - name: Mutation gates

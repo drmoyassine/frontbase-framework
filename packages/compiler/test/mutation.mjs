@@ -63,8 +63,8 @@ await withSourceMutation(
 await withSourceMutation(
     'deploy-seed: secret value on argv (process-list leak)',
     DEPLOY,
-    "const res = await runWrangler(['secret', 'put', name], { cwd, stdin: value });",
-    "const res = await runWrangler(['secret', 'put', name, value], { cwd, stdin: value });",
+    "const res = await runWrangler(isCf ? ['secret', 'put', name, '--name', appName] : ['secret', 'put', name], { cwd, stdin: value });",
+    "const res = await runWrangler(isCf ? ['secret', 'put', name, value, '--name', appName] : ['secret', 'put', name, value], { cwd, stdin: value });",
     async () => {
         buildPackage(PKG);
         const exit = runGate(pkgDir, 'test/deploy-seed.mjs');

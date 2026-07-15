@@ -46,6 +46,9 @@ export interface AuthCompatDeps {
  * — a user cannot present a session to log in.
  */
 export function registerAuthCompatUnauthRoutes(app: App, userStoreFor: (t: string) => UserStore, sessionSecret: string): void {
+    // Product contract includes explicit preflight operations for these routes.
+    app.options('/api/auth/login', (c) => c.json({}));
+    app.options('/api/auth/signup', (c) => c.json({}));
     // POST /api/auth/login
     app.post('/api/auth/login', async (c) => {
         const body = await c.req.json().catch(() => ({})) as { email?: string; password?: string };

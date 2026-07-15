@@ -1,7 +1,15 @@
-name = "frontbase-full-cms-example"
+name = "frontbase-selfhost-fullcms"
 main = "dist/worker.mjs"
 compatibility_date = "2026-01-01"
 no_bundle = true
+
+# Product community console. Exact files under /frontbase-admin/* are served
+# before the Worker; API, eSSR, SW, and unmatched SPA navigation routes fall
+# through to the Worker. The staged directory mirrors the URL prefix.
+[assets]
+directory = "./console-dist"
+binding = "ASSETS"
+run_worker_first = true
 
 # Single pre-bundled artifact (SW inlined, console + D1 runner bundled). No
 # nodejs_compat: the whole request path is Web-standard (Web Crypto for PBKDF2 +
@@ -25,7 +33,8 @@ database_id = "PLACEHOLDER_RUN_WRANGLER_D1_CREATE"
 # Secrets are NOT stored here (they'd land in git). Set them with:
 #   wrangler secret put SESSION_SECRET     (required)
 #   wrangler secret put SETUP_TOKEN        (optional — enables /setup)
+#   wrangler secret put SETUP_EXPIRES_AT   (recommended ISO expiry for /setup)
 #   wrangler secret put ADMIN_EMAIL        (optional — seed first owner)
 #   wrangler secret put ADMIN_PASSWORD     (optional)
-#   wrangler secret put ADMIN_ROLE         (optional — default 'owner')
-# …or let `frontbase deploy --admin-email … --admin-password …` do it for you.
+#   wrangler secret put ADMIN_ROLE         (optional — default 'master_admin')
+# …or let `deploy:cf-full` generate a short-lived setup link automatically.

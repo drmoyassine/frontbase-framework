@@ -120,12 +120,14 @@ export function createProgram(): Command {
         .option('--admin-password <password>', 'first admin password (fed to wrangler over stdin, never argv)')
         .option('--admin-role <role>', "seeded admin role (default 'owner')")
         .option('--setup-token <token>', 'enable the first-run /setup wizard (SETUP_TOKEN secret)')
+        .option('--setup-link', 'generate/rotate a short-lived secure browser setup link')
+        .option('--setup-ttl-minutes <minutes>', 'setup-link lifetime, 5–1440 minutes', '30')
         .option('--session-secret <secret>', 'HS256 session key (auto-generated if omitted)')
         .option('--app-name <name>', 'app identity — drives the Worker + D1 names. If it already exists on Cloudflare, redeploys in place (reusing its D1). Omit for a brand-new app with a generated name.')
         .option('--d1-database-id <id>', 'bind to an EXISTING D1 database instead of creating one')
         .option('--interactive', 'check login, prompt for admin email/password, then deploy')
         .option('--json', 'JSON output')
-        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'deno'; out: string; adminEmail?: string; adminPassword?: string; adminRole?: string; setupToken?: string; sessionSecret?: string; appName?: string; d1DatabaseId?: string; interactive?: boolean; json?: boolean }) => {
+        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'deno'; out: string; adminEmail?: string; adminPassword?: string; adminRole?: string; setupToken?: string; setupLink?: boolean; setupTtlMinutes?: string; sessionSecret?: string; appName?: string; d1DatabaseId?: string; interactive?: boolean; json?: boolean }) => {
             let adminEmail = opts.adminEmail;
             let adminPassword = opts.adminPassword;
             const cwd = resolve(path || '.');
@@ -138,14 +140,25 @@ export function createProgram(): Command {
                 adminPassword = creds.password;
             }
 
+            let setupLink: { url: string; expiresAt: string } | undefined;
             const result = await deployCommand(path || '.', {
                 dryRun: opts.dryRun, target: opts.target, outDir: opts.out,
                 adminEmail, adminPassword, adminRole: opts.adminRole,
                 setupToken: opts.setupToken, sessionSecret: opts.sessionSecret,
+                setupLink: opts.setupLink,
+                setupTtlMinutes: opts.setupTtlMinutes ? Number(opts.setupTtlMinutes) : undefined,
                 appName: opts.appName, d1DatabaseId: opts.d1DatabaseId,
+                onSetupLink: (link) => { setupLink = link; },
             });
-            if (opts.json) console.log(JSON.stringify(result, null, 2));
-            else console.log(`deploy: ${result.summary}${result.details ? ' ' + JSON.stringify(result.details) : ''}`);
+            if (opts.json) console.log(JSON.stringify({ ...result, ...(setupLink ? { setupLink } : {}) }, null, 2));
+            else {
+                console.log(`deploy: ${result.summary}${result.details ? ' ' + JSON.stringify(result.details) : ''}`);
+                if (setupLink) {
+                    console.log('\nNo administrator exists yet. Open this secure one-time setup link:');
+                    console.log(setupLink.url);
+                    console.log(`Expires: ${setupLink.expiresAt}`);
+                }
+            }
             if (!result.ok) process.exitCode = 1;
         });
 

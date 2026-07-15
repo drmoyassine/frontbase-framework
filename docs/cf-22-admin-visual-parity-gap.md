@@ -1,7 +1,7 @@
 # CF-22 — Admin Console 100% Visual + Functional Parity (gap analysis & plan)
 
-**Date:** 2026-07-14 (v2) · **Updated:** 2026-07-15 (v3 — P0 delivered, P1 specced)
-**Status:** IN PROGRESS — **P0 ✅ SHIPPED** (product repo `32b689b` + `70df2d6`, CI green) · **P1 next**
+**Date:** 2026-07-14 (v2) · **Updated:** 2026-07-15 (v4 — P0–P3 end-to-end audit)
+**Status:** **RECOVERY IN PROGRESS — CF-22 is not complete.** P0 is historically delivered but its current source-artifact check is red; P1 is an inventory/spec-snapshot gate rather than handler-derived conformance; P2 has broad route/shape coverage but substantial behavioral and security gaps; P3 is locally integrated but acceptance remains open.
 **Scope constraint (owner decision):** parity targets the **self-host / single-tenant /
 community edition** of the product for the foreseeable future. Cloud-only surfaces
 (tenants directory, plans manager, billing, SuperTokens/signup/invite, agent quota)
@@ -14,6 +14,24 @@ to a regular product deployment (repo `Frontbase-` / frontbase-dbsync).
 > into `packages/admin-console` behind an API adapter (phases V1–V4). That plan was
 > **rejected on scrutiny** (see §4) and replaced with the contract-first,
 > artifact-reuse plan in §5. The gap analysis (§1–§3) is unchanged and still valid.
+
+> **v4 audit:** The authoritative current assessment and recovery plan is
+> [`cf-22-p0-p3-audit.md`](./cf-22-p0-p3-audit.md). Historical phase sections below
+> are retained for design context. Where a delivery claim conflicts with the
+> audit, the audit controls.
+
+> **v5 field correction (2026-07-16):** the first deployed setup flow exposed two
+> SPAs: the retired framework dashboard at `/setup#/dashboard` and the CF-22 product
+> console at `/frontbase-admin/dashboard`. This was not a product cloud-edition
+> deployment. The setup artifact accidentally retained the old dashboard router.
+> It is now setup-only, signs in through `/api/auth/login`, and hands off to
+> `/frontbase-admin/dashboard`. Historical comparisons to
+> `@frontbase/admin-console` below describe the pre-CF-22 UI and no longer describe
+> a reachable deployed dashboard. The full root-cause analysis, corrective actions,
+> verification evidence, and follow-up plan are in the
+> [`CF-22 setup-console cutover incident report`](./cf-22-setup-console-cutover-incident.md).
+> See the P3 report section 4.1 for the retain/retire boundary between `/api/*` and
+> the parallel `/api/console/*` namespace.
 
 ---
 
@@ -103,7 +121,7 @@ deferred until source-level sharing earns its cost.
 
 ## 5. The plan (P0–P3)
 
-### P0 — Product-repo pre-pass · ✅ DELIVERED 2026-07-15
+### P0 — Product-repo pre-pass · ⚠️ HISTORICALLY DELIVERED; CURRENT STALENESS GATE RED
 **Report: [`cf-22-p0-delivery.md`](./cf-22-p0-delivery.md).** Shipped to product-repo
 main (`32b689b` + `70df2d6`), contracts CI green. Actuals vs the plan:
 
@@ -115,7 +133,7 @@ main (`32b689b` + `70df2d6`), contracts CI green. Actuals vs the plan:
 | **W4 — Loose ends** | ✅ Dead route + stray file removed; **bonus: killed a custom TrailingSlashMiddleware** causing infinite-307 loops on 256 no-slash routes. *Deferred:* full envelope standardization (typed as-is instead — changing shapes would break the existing frontend; the contract documents reality). |
 | **CI** | ✅ `.github/workflows/contracts.yml`: spec staleness + hygiene + client staleness + tsc. First run caught real drift (fastapi version → spec content), forcing the pin `fastapi==0.139.0`. **Lesson: the fastapi version pin is part of contract determinism.** |
 
-### P1 — Framework contract + drift gate · ~2–3 d · **NEXT (spec in §5a)**
+### P1 — Framework contract + drift gate · ⚠️ PARTIAL (inventory works; handler conformance does not)
 - Scaffold the product-compatible console surface with **`@hono/zod-openapi`**,
   reusing the **Zod schemas generated from the product spec** (pydantic → OpenAPI →
   Zod → Hono route definitions) so framework validation is *derived from* the
@@ -127,13 +145,15 @@ main (`32b689b` + `70df2d6`), contracts CI green. Actuals vs the plan:
   deliberate, documented exception to RULE 4's opaque-error shape (authed admin
   namespace, not the public proxy; messages stay non-leaky).
 
-## 5a. P1 detailed spec (task #107) — compat surface + drift gate · ✅ DELIVERED 2026-07-15
+## 5a. P1 detailed spec (task #107) — compat surface + drift gate · ⚠️ PARTIAL AFTER AUDIT
 
-> **Delivered.** Report: [`cf-22-p1-delivery.md`](./cf-22-p1-delivery.md).
-> Vendored contract pinned to product `afe9e03`; framework emits a deterministic
-> 284-op spec; drift gate GREEN (6 implemented `variables` / 278 stubbed / 0 missing
-> / 0 divergent); full 22-suite backend suite + mutation proof green; CI workflow
-> added. **One spec deviation** (documented in the report): `@hono/zod-openapi`
+> **Historical delivery claim; superseded by the P0–P3 audit.** Report: [`cf-22-p1-delivery.md`](./cf-22-p1-delivery.md).
+> Vendored contract pinned to product `afe9e03`; the historical gate emitted 284
+> operations because it silently omitted two contract-declared `OPTIONS` operations
+> (corrected by the audit to 286); the counted drift gate was GREEN (6 implemented
+> `variables` / 278 stubbed / 0 missing / 0 divergent); full 22-suite backend suite
+> + mutation proof green; CI workflow added. **One spec deviation** (documented in
+> the report): `@hono/zod-openapi`
 > requires zod v4 (framework is zod 3), so the §5a fallback was taken — plain Hono
 > + the vendored zod for runtime validation.
 
@@ -236,15 +256,17 @@ migrations (product task #111).
   op)` helper reading the vendored spec) so D2 is hours, not days — hand-writing
   286 stub routes would be its own drift source.
 
-### P2 — Implement the community contract · ~3–4 wk, wave-parallelizable · **spec in §5b**
+### P2 — Implement the community contract · ❌ REOPENED (behavior/security/tenant proof incomplete)
 
-### P3 — Integration: serve the real console · ✅ DELIVERED 2026-07-15 · **spec in §5c**
+### P3 — Integration: serve the real console · ⚠️ LOCALLY INTEGRATED, ACCEPTANCE INCOMPLETE · **spec in §5c**
 
 ## 5b. P2 detailed spec (task #108) — implement the 286-op community contract
 
-> **P2 ✅ COMPLETE 2026-07-15** — all 5 waves delivered. **284/284 ops implemented / 0
-> stubbed / 0 missing / 0 divergent.** Every community-contract tag has a real framework
-> handler. Drift gate PASS; 26-marker suite green; emit deterministic; CI green.
+> **Historical claim, reopened by the 2026-07-15 audit.** The registry now covers
+> **285 compat operations plus engine-owned `GET /`**, but the binary “implemented”
+> count proves neither functional behavior nor runtime conformance. Wave 2–5 tests,
+> auth mutation proofs, tenant-isolation coverage, and multiple promised provider/
+> persistence behaviors are missing; API-key storage has a critical plaintext/reveal flaw.
 > Reports: [`cf-22-p2-wave1-delivery.md`](./cf-22-p2-wave1-delivery.md),
 > [`cf-22-p2-complete-delivery.md`](./cf-22-p2-complete-delivery.md).
 > **Next: P3 (#109)** — serve the product's community console bundle from the framework worker.

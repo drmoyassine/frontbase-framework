@@ -10,13 +10,13 @@
  * schemas match the product by construction; the drift gate verifies that).
  *
  * Vendored inputs (packages/backend/contracts/, pinned via PRODUCT_COMMIT):
- *   - openapi.community.json  (284 ops / 202 schemas / 31 tags)
+ *   - openapi.community.json  (286 ops / 202 schemas / 31 tags)
  *   - zod.gen.ts              (zod v3 — runtime validation in the routes)
  */
 import SPEC from './community-spec.js';
 
-export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch';
-export const METHODS: readonly Method[] = ['get', 'post', 'put', 'delete', 'patch'] as const;
+export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options';
+export const METHODS: readonly Method[] = ['get', 'post', 'put', 'delete', 'patch', 'options'] as const;
 
 export interface Op { method: Method; path: string; }
 export type OpKey = string; // `${METHOD} ${path}`

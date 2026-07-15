@@ -1,9 +1,15 @@
 # CF-22 P2 Wave 1a — Console-Core Tags Delivery Report
 
-**Date:** 2026-07-15 · **Status:** ✅ DELIVERED (all gates green)
+**Date:** 2026-07-15 · **Historical status:** ✅ DELIVERED against the route/shape gate<br>
+**Current audited status:** ⚠️ BEHAVIORAL ACCEPTANCE REOPENED with the rest of P2
 **Repo:** framework `frontbase-framework` (`packages/backend/src/compat`)
 **Parent:** [`cf-22-admin-visual-parity-gap.md`](./cf-22-admin-visual-parity-gap.md) §5b ·
 **P1 report:** [`cf-22-p1-delivery.md`](./cf-22-p1-delivery.md)
+
+> The 2026-07-15 end-to-end audit found that the binary registry/spec gate does
+> not validate handler behavior. This wave remains useful implementation work,
+> but its unconfigured/ack paths need exact-client behavior tests before P2 can
+> close. See [`cf-22-p0-p3-audit.md`](./cf-22-p0-p3-audit.md).
 
 > P2 is wave-scaled (5 waves, ~278 ops). This ships **Wave 1a** — the small,
 > primitive-backed console-core tags — proving the wave pattern (implement →

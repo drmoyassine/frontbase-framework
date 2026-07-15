@@ -13,16 +13,13 @@
  * If console-dist/ doesn't exist, a minimal placeholder is used.
  */
 import { readFileSync } from 'node:fs';
-import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Try to read the real index.html from console-dist/.
-const indexPath = join(__dirname, '..', 'console-dist', 'index.html');
-const CONSOLE_INDEX: string = existsSync(indexPath)
-    ? readFileSync(indexPath, 'utf-8')
-    : '<!doctype html><html><head><title>Frontbase Console</title></head><body><div id="root"></div><p>Console bundle not found. Run: pnpm run fetch:console</p></body></html>';
+const indexPath = join(__dirname, '..', 'console-dist', 'frontbase-admin', 'index.html');
+const CONSOLE_INDEX: string = readFileSync(indexPath, 'utf-8');
 
 export default CONSOLE_INDEX;

@@ -13,10 +13,11 @@
  */
 import * as esbuild from 'esbuild';
 import { gzipSync } from 'node:zlib';
-import { existsSync, readFileSync, statSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { validateConsoleArtifact } from '../../scripts/console-pin.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 mkdirSync(join(here, 'dist'), { recursive: true });
@@ -33,6 +34,19 @@ const REPO_ROOT = (function findRoot(dir) {
     }
     return dir;
 })(here);
+try {
+    validateConsoleArtifact(REPO_ROOT);
+} catch (error) {
+    console.error(`✗ ${error.message}`);
+    process.exit(1);
+}
+const CONSOLE_ROOT = join(here, 'console-dist', 'frontbase-admin');
+const CONSOLE_INDEX_PATH = join(CONSOLE_ROOT, 'index.html');
+const CONSOLE_ASSETS_PATH = join(CONSOLE_ROOT, 'assets');
+if (!existsSync(CONSOLE_INDEX_PATH) || !existsSync(CONSOLE_ASSETS_PATH)) {
+    console.error('✗ product console artifact is missing or incomplete. Run `pnpm run fetch:console` before build/deploy.');
+    process.exit(1);
+}
 const DEP_PKGS = [
     { name: '@frontbase/edge-core', artifact: 'dist/index.js' },
     { name: '@frontbase/edge-infra', artifact: 'dist/index.js' },
@@ -95,20 +109,14 @@ const inlineSwPlugin = {
     },
 };
 
-// 2b. Inline the admin-console SPA bundle (built by @frontbase/admin-console)
-//     the same way → one artifact, no static assets. CF-22 P3: this is the OLD
-//     parallel-run SPA at /console. The REAL product console lives in
-//     console-dist/ (served via Workers Static Assets in prod, inlined for smoke).
-const SPA_SOURCE = readFileSync(join(pkgDir('@frontbase/admin-console'), 'dist', 'spa.js'), 'utf8');
-const inlineSpaPlugin = {
-    name: 'inline-spa',
-    setup(build) {
-        build.onResolve({ filter: /^virtual:spa-bundle$/ }, () => ({ path: 'virtual:spa-bundle', namespace: 'vspa' }));
-        build.onLoad({ filter: /.*/, namespace: 'vspa' }, () => ({ contents: `export default ${JSON.stringify(SPA_SOURCE)};`, loader: 'js' }));
-    },
-};
+// 2b. Stage the setup-only SPA without putting it in the Worker bundle. CF-22's
+// product console is the sole dashboard at /frontbase-admin; this artifact owns
+// only first-admin initialization at /setup.
+const setupAssetDir = join(here, 'console-dist', 'frontbase-setup');
+mkdirSync(setupAssetDir, { recursive: true });
+copyFileSync(join(pkgDir('@frontbase/admin-console'), 'dist', 'spa.js'), join(setupAssetDir, 'spa.js'));
 
-// 2c. CF-22 P3: Inline the product console index.html (from console-dist/).
+// 2c. CF-22 P3: Inline the product console index.html for the Node smoke fallback.
 //     For the smoke build (platform:node), this reads the file at build time and
 //     embeds it. In production, Workers Static Assets serves console-dist/
 //     directly — this module is only used for the smoke/in-process path.
@@ -117,10 +125,7 @@ const consoleShellPlugin = {
     setup(build) {
         build.onResolve({ filter: /^\.\/console-shell\.js$/ }, () => ({ path: 'console-shell', namespace: 'cshell' }));
         build.onLoad({ filter: /.*/, namespace: 'cshell' }, () => {
-            const indexPath = join(here, 'console-dist', 'index.html');
-            const html = existsSync(indexPath)
-                ? readFileSync(indexPath, 'utf-8')
-                : '<!doctype html><html><head><title>Frontbase</title></head><body><div id="root"></div><p>Console bundle not found. Run: pnpm run fetch:console</p></body></html>';
+            const html = readFileSync(CONSOLE_INDEX_PATH, 'utf-8');
             return { contents: `export default ${JSON.stringify(html)};`, loader: 'js' };
         });
     },
@@ -131,7 +136,7 @@ await esbuild.build({
     entryPoints: [join(here, 'src', 'worker.ts')],
     outfile: join(here, 'dist', 'worker.mjs'),
     minify: true,
-    plugins: [inlineSwPlugin, inlineSpaPlugin, consoleShellPlugin, optionalStub],
+    plugins: [inlineSwPlugin, consoleShellPlugin, optionalStub],
 });
 
 // 3. Node smoke build (unminified, importable) — the SAME worker + a memory
@@ -146,7 +151,7 @@ await esbuild.build({
     entryPoints: [join(here, 'src', 'smoke.ts')],
     outfile: join(here, 'dist', 'smoke.mjs'),
     minify: false,
-    plugins: [inlineSwPlugin, inlineSpaPlugin, consoleShellPlugin],
+    plugins: [inlineSwPlugin, consoleShellPlugin],
 });
 
 const raw = statSync(join(here, 'dist', 'worker.mjs')).size;
@@ -155,4 +160,3 @@ console.log('=== full-CMS CF worker artifact ===');
 console.log(`worker.mjs min:      ${(raw / 1024).toFixed(1)} KB`);
 console.log(`worker.mjs min+gzip: ${(gz / 1024).toFixed(1)} KB  (CF free limit 1024 KB — ${gz <= 1024 * 1024 ? 'PASS ✅' : 'FAIL ❌'})`);
 console.log(`  includes inlined /sw.js: ${(SW_SOURCE.length / 1024).toFixed(1)} KB`);
-console.log(`  includes inlined /console SPA: ${(SPA_SOURCE.length / 1024).toFixed(1)} KB`);

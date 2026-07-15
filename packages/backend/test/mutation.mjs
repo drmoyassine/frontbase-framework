@@ -7,7 +7,8 @@
  *   - seed idempotency (remove the count-check → a second owner is created)
  *   - hash no-leak (login returns password_hash → the D8 assertion fires)
  *   - canActOnTenant (always-true → a tenant_admin reaches another tenant)
- *   - setup post-init lock (remove the initialized guard → /setup re-runnable)
+ *   - setup single-winner lock (remove the compare-and-set predicate → concurrent takeover)
+ *   - setup capability validation (accept a bad claim → first-visitor takeover)
  */
 import { withSourceMutation, buildPackage, runGate, expectRed, summarize, repoRoot } from '../../../scripts/mutation-lib.mjs';
 
@@ -20,6 +21,7 @@ const SEED = 'packages/backend/src/auth/seed.ts';
 const LOGIN = 'packages/backend/src/auth/routes.ts';
 const ROLES = 'packages/backend/src/auth/roles.ts';
 const SETUP = 'packages/backend/src/routes/setup.ts';
+const BACKEND_INDEX = 'packages/backend/src/index.ts';
 const PHASE2STORE = 'packages/backend/src/db/phase2-store.ts';
 
 console.log('— backend mutation harness —\n');
@@ -104,21 +106,34 @@ await withSourceMutation(
     },
 );
 
-// 7. Setup post-init lock (CRIT-3) — remove the initialized guard on /setup so a
-//    live instance can be re-bootstrapped. setup.mjs's "re-POST → 410" → RED.
-//    (replace_all: BOTH /setup and /setup/db share the identical guard line.)
+// 7. Setup single-winner lock — remove the compare-and-set predicate so two
+// Worker isolates can both claim initialization. The concurrent setup gate must
+// go red even though the ordinary post-init/user-count guards remain intact.
 await withSourceMutation(
-    'setup: first-run-only lock (CRIT-3)',
-    SETUP,
-    "if (await isInitialized()) return c.json({ error: 'already_initialized' }, 410);",
-    "if (false) return c.json({ error: 'already_initialized' }, 410);",
+    'setup: cross-isolate single-winner lock',
+    BACKEND_INDEX,
+    'UPDATE setup_state SET initialized_at = ? WHERE id = 1 AND initialized_at IS NULL',
+    'UPDATE setup_state SET initialized_at = ? WHERE id = 1',
     async () => {
         buildPackage(PKG);
-        expectRed('setup: goes red when the post-init lock is removed', runGate(pkgDir, 'test/setup.mjs'));
+        expectRed('setup: goes red when the initialization CAS predicate is removed', runGate(pkgDir, 'test/setup.mjs'));
     },
 );
 
-// 8. Idempotent completion (F3b-durable) — drop the `AND status = 'running'` guard
+// 8. Setup capability authorization — accepting a bad link would restore the
+// first-public-visitor takeover that the one-click link is designed to prevent.
+await withSourceMutation(
+    'setup: deploy capability validation',
+    SETUP,
+    "if (!(await tokenMatches(body.setupToken))) return c.json({ error: 'invalid_setup_token' }, 403);",
+    "if (false) return c.json({ error: 'invalid_setup_token' }, 403);",
+    async () => {
+        buildPackage(PKG);
+        expectRed('setup: goes red when an invalid setup-link claim is accepted', runGate(pkgDir, 'test/setup.mjs'));
+    },
+);
+
+// 9. Idempotent completion (F3b-durable) — drop the `AND status = 'running'` guard
 //    so a late original / second recovery can clobber a terminal row. durable-execution's
 //    "terminal row not clobbered" assertion → RED.
 await withSourceMutation(

@@ -47,11 +47,23 @@ export function hasD1Binding(toml: string): boolean {
     return !PLACEHOLDER_DATABASE_ID_RE.test(idMatch[1] ?? '');
 }
 
+/** Strip ANSI escape codes from terminal output (wrangler uses colors/symbols). */
+function stripAnsiCodes(str: string): string {
+    // Remove ANSI escape sequences (colors, cursor movements, etc.)
+    return str.replace(/\x1b\[[0-9;]*[mGKH]/g, '').replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+}
+
 /** Parse the database_id from `wrangler d1 create` stdout (JSON or `database_id = "..."`). */
 export function parseDatabaseId(stdout: string): string | null {
-    const json = stdout.match(/"uuid"\s*:\s*"([0-9a-f-]+)"/i) || stdout.match(/"database_id"\s*:\s*"([0-9a-f-]+)"/i);
+    // First, try parsing with ANSI codes stripped (wrangler uses colored output)
+    const clean = stripAnsiCodes(stdout);
+
+    // Try JSON format first ({"uuid": "..."} or {"database_id": "..."})
+    const json = clean.match(/"uuid"\s*:\s*"([0-9a-f-]+)"/i) || clean.match(/"database_id"\s*:\s*"([0-9a-f-]+)"/i);
     if (json) return json[1] ?? null;
-    const toml = stdout.match(/database_id\s*=\s*"([0-9a-f-]+)"/i) || stdout.match(/uuid\s*=\s*"([0-9a-f-]+)"/i);
+
+    // Try TOML format (database_id = "...")
+    const toml = clean.match(/database_id\s*=\s*"([0-9a-f-]+)"/i) || clean.match(/uuid\s*=\s*"([0-9a-f-]+)"/i);
     return toml ? toml[1] ?? null : null;
 }
 
@@ -119,7 +131,20 @@ export async function provisionD1(cwd: string, opts: { appName?: string; run?: W
     }
 
     const out = await run(['d1', 'create', databaseName], { cwd });
-    const databaseId = parseDatabaseId(out.stdout);
+    let databaseId = parseDatabaseId(out.stdout);
+
+    // Fallback: if stdout parsing failed, use `wrangler d1 info --json` which returns stable JSON
+    if (!databaseId) {
+        try {
+            const infoOut = await run(['d1', 'info', databaseName, '--json'], { cwd });
+            const infoJson = JSON.parse(infoOut.stdout);
+            databaseId = infoJson.uuid || null;
+        } catch (e) {
+            // If both methods fail, throw the original parsing error
+            throw new Error('d1_create_no_database_id');
+        }
+    }
+
     if (!databaseId) throw new Error('d1_create_no_database_id');
 
     const next = writeD1Block(toml, { binding, databaseName, databaseId });

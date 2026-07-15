@@ -1,54 +1,51 @@
-import { useEffect, type ReactNode } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { useAuthStore } from '@/stores/auth';
-import { Layout } from '@/components/Layout';
-import { Login } from '@/pages/Login';
-import { Dashboard } from '@/pages/Dashboard';
-import { Pages } from '@/pages/Pages';
-import { Tenants } from '@/pages/Tenants';
-import { Automations } from '@/pages/Automations';
-import { EdgeResources } from '@/pages/EdgeResources';
-import { Storage } from '@/pages/Storage';
-import { Settings } from '@/pages/Settings';
-import { Users } from '@/pages/Users';
-import { DataStudio } from '@/pages/DataStudio';
-import { Plans } from '@/pages/Plans';
+import { useEffect, useState } from 'react';
+import { getSetupStatus, type SetupStatus } from '@/lib/api';
+import { Setup } from '@/pages/Setup';
 
-function Splash() {
-    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
+const PRODUCT_DASHBOARD = '/frontbase-admin/dashboard';
+
+function leaveSetup(): void {
+    window.location.replace(PRODUCT_DASHBOARD);
 }
 
-function Protected({ children }: { children: ReactNode }) {
-    const { user, loading } = useAuthStore();
-    const location = useLocation();
-    if (loading) return <Splash />;
-    if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
-    return <>{children}</>;
+function Splash({ message = 'Loading…' }: { message?: string }) {
+    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">{message}</div>;
 }
 
+/**
+ * First-run setup is deliberately its own tiny application.
+ *
+ * CF-22 replaced the framework's original admin SPA with the product community
+ * console at /frontbase-admin. Keeping the old dashboard router reachable below
+ * /setup created two competing consoles and let setup finish at
+ * /setup#/dashboard. This entry now owns only first-admin setup. Once an admin
+ * exists, every /setup hash (including stale #/login and #/dashboard bookmarks)
+ * exits to the product console.
+ */
 export function App() {
-    const refresh = useAuthStore((s) => s.refresh);
-    useEffect(() => { void refresh(); }, [refresh]);
+    const [status, setStatus] = useState<SetupStatus | null>(null);
+    const [failed, setFailed] = useState(false);
 
-    return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
+    useEffect(() => {
+        let active = true;
+        void getSetupStatus()
+            .then((next) => {
+                if (!active) return;
+                if (!next.needsSetup) {
+                    leaveSetup();
+                    return;
+                }
+                setStatus(next);
+            })
+            .catch(() => {
+                if (active) setFailed(true);
+            });
+        return () => { active = false; };
+    }, []);
 
-            <Route element={<Protected><Layout /></Protected>}>
-                <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/pages" element={<Pages />} />
-                <Route path="/tenants" element={<Tenants />} />
-                <Route path="/automations" element={<Automations />} />
-                <Route path="/edge" element={<EdgeResources />} />
-                <Route path="/storage" element={<Storage />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/users" element={<Users />} />
-                <Route path="/data-studio" element={<DataStudio />} />
-                <Route path="/plans" element={<Plans />} />
-            </Route>
-
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-    );
+    if (failed) {
+        return <Splash message="Unable to load setup. Refresh the page to try again." />;
+    }
+    if (!status) return <Splash />;
+    return <Setup status={status} />;
 }

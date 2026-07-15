@@ -6,7 +6,7 @@
  * never be reachable via `pnpm deploy`. `pnpm run deploy:cf-full` always works.)
  *
  * Builds the full-CMS example (examples/cf-full — engine + console API + admin
- * SPA, all inlined into ONE dist/worker.mjs by its own build.mjs) and deploys it
+ * API in one dist/worker.mjs plus the product SPA via Workers Static Assets) and deploys it
  * to Cloudflare Workers, reusing the SAME login-check / D1-provision / secret-push
  * logic already built and tested in @frontbase/compiler's `deploy` CLI command.
  *
@@ -22,6 +22,7 @@
  * Usage (from the repo root):
  *   pnpm run deploy:cf-full                                                # NEW deploy every time — a random app name is generated
  *   pnpm run deploy:cf-full -- --app-name my-app                           # redeploys "my-app" if it exists on Cloudflare, else creates it fresh
+ *   pnpm run deploy:cf-full -- --app-name my-app --setup-link              # rotate an expired/unused browser setup link
  *   pnpm run deploy:cf-full -- --interactive                                # prompts for login + admin creds
  *   pnpm run deploy:cf-full -- --app-name my-app --interactive
  *   pnpm run deploy:cf-full -- --admin-email you@x.com --admin-password 'pw'
@@ -56,6 +57,8 @@ const opts = {
     adminPassword: value('admin-password'),
     adminRole: value('admin-role'),
     setupToken: value('setup-token'),
+    setupLink: flag('setup-link'),
+    setupTtlMinutes: value('setup-ttl-minutes') ? Number(value('setup-ttl-minutes')) : undefined,
     sessionSecret: value('session-secret'),
     appName: value('app-name'),
     d1DatabaseId: value('d1-database-id'),
@@ -93,6 +96,7 @@ if (opts.interactive) {
 
 // ---- 3. Deploy: D1 provision (idempotent) → wrangler deploy → secrets over stdin ----
 console.log('\n→ deploying to Cloudflare Workers...');
+let setupLink;
 const result = await deployCommand('.', {
     cwd: cfFullDir,
     target: 'cloudflare',
@@ -100,9 +104,12 @@ const result = await deployCommand('.', {
     adminPassword,
     adminRole: opts.adminRole,
     setupToken: opts.setupToken,
+    setupLink: opts.setupLink,
+    setupTtlMinutes: opts.setupTtlMinutes,
     sessionSecret: opts.sessionSecret,
     appName: opts.appName,
     d1DatabaseId: opts.d1DatabaseId,
+    onSetupLink: (link) => { setupLink = link; },
 });
 
 if (!result.ok) {
@@ -115,4 +122,16 @@ console.log(`\n✓ ${result.summary}`);
 if (result.details?.secretsSet?.length) {
     console.log(`  secrets set: ${result.details.secretsSet.join(', ')}`);
 }
-console.log('  visit your worker URL, then /console to log in.');
+if (result.details?.workerUrl) {
+    console.log(`  worker URL: ${result.details.workerUrl}`);
+    if (setupLink) {
+        console.log('\n  No administrator exists yet. Open this secure one-time setup link:');
+        console.log(`  ${setupLink.url}`);
+        console.log(`  expires: ${setupLink.expiresAt}`);
+        console.log('  The claim is removed from browser history when the setup page opens.');
+    } else {
+        console.log(`  next steps: visit ${result.details.workerUrl}/frontbase-admin to log in`);
+    }
+} else {
+    console.log('  visit your worker URL, then /frontbase-admin to log in.');
+}

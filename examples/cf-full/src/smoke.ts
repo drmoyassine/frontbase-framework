@@ -7,14 +7,31 @@
  */
 import { sqliteRunner } from '@frontbase/edge-infra';
 import { createCmsEngine } from './worker.js';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ADMIN = { email: 'owner@example.com', password: 'correct horse battery staple', role: 'owner' };
+const ADMIN = { email: 'owner@example.com', password: 'correct horse battery staple', role: 'master_admin' };
+const here = dirname(fileURLToPath(import.meta.url));
+const consoleRoot = join(here, '..', 'console-dist', 'frontbase-admin');
+const assetBinding = {
+    async fetch(request: Request): Promise<Response> {
+        const path = decodeURIComponent(new URL(request.url).pathname).replace(/^\//, '');
+        const file = join(here, '..', 'console-dist', ...path.split('/'));
+        if (!existsSync(file)) return new Response('not_found', { status: 404 });
+        const type = file.endsWith('.js') ? 'text/javascript'
+            : file.endsWith('.css') ? 'text/css'
+                : file.endsWith('.html') ? 'text/html' : 'application/octet-stream';
+        return new Response(readFileSync(file), { headers: { 'content-type': type } });
+    },
+};
 
 const engine = await createCmsEngine({
     runner: sqliteRunner(':memory:'),
     sessionSecret: 'smoke-session-secret-not-for-prod',
     setupToken: undefined,
     admin: ADMIN,
+    assets: assetBinding,
     now: () => '2026-01-01T00:00:00.000Z',
 });
 
@@ -47,11 +64,77 @@ await check('GET /frontbase-admin serves the SPA shell', async () => {
     const r = await req('/frontbase-admin');
     const ct = r.headers.get('content-type') ?? '';
     const body = await r.text();
-    return r.status === 200 && ct.includes('text/html') && body.includes('id="root"');
+    const asset = body.match(/(?:src|href)="\/frontbase-admin\/(assets\/[^"?]+\.(?:js|css))/)?.[1];
+    return r.status === 200 && ct.includes('text/html') && body.includes('id="root"')
+        && !body.includes('Console bundle not found') && !!asset
+        && existsSync(join(consoleRoot, ...asset.split('/')));
 });
 await check('GET /frontbase-admin/pages serves the SPA shell (SPA fallback)', async () => {
     const r = await req('/frontbase-admin/pages');
     return r.status === 200 && (await r.text()).includes('id="root"');
+});
+await check('hashed console asset is real + immutable', async () => {
+    const html = readFileSync(join(consoleRoot, 'index.html'), 'utf8');
+    const path = html.match(/src="(\/frontbase-admin\/assets\/[^"]+\.js)"/)?.[1];
+    if (!path) return false;
+    const r = await req(path);
+    return r.status === 200 && r.headers.get('content-type')?.includes('javascript') === true
+        && r.headers.get('cache-control') === 'public, max-age=31536000, immutable';
+});
+
+await check('fresh instance redirects console to existing setup surface', async () => {
+    const fresh = await createCmsEngine({
+        runner: sqliteRunner(':memory:'),
+        sessionSecret: 'fresh-smoke-session-secret',
+        assets: assetBinding,
+        now: () => '2026-01-01T00:00:00.000Z',
+    });
+    const redirect = await fresh.fetch(new Request('https://smoke.local/frontbase-admin'));
+    const setup = await fresh.fetch(new Request('https://smoke.local/setup'));
+    return redirect.status === 302 && redirect.headers.get('location') === '/setup'
+        && setup.status === 200 && (await setup.text()).includes('id="root"');
+});
+
+await check('initialized instance redirects /setup to product dashboard', async () => {
+    const r = await req('/setup');
+    return r.status === 302 && r.headers.get('location') === '/frontbase-admin/dashboard';
+});
+
+await check('setup asset is setup-only and hands off to product console', async () => {
+    const r = await req('/frontbase-setup/spa.js');
+    const body = await r.text();
+    return r.status === 200
+        && body.includes('/frontbase-admin/dashboard')
+        && body.includes('/api/auth/login')
+        && !body.includes('Admin Tools')
+        && !body.includes('Tenants Table')
+        && !body.includes('Subscription Plans');
+});
+
+await check('secure setup link → HttpOnly claim → first master admin', async () => {
+    const fresh = await createCmsEngine({
+        runner: sqliteRunner(':memory:'),
+        sessionSecret: 'fresh-setup-smoke-session-secret',
+        setupToken: 'smoke-setup-capability',
+        setupExpiresAt: '2026-01-01T00:30:00.000Z',
+        assets: assetBinding,
+        now: () => '2026-01-01T00:00:00.000Z',
+    });
+    const claim = await fresh.fetch(new Request('https://smoke.local/api/console/setup/claim', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ setupToken: 'smoke-setup-capability' }),
+    }));
+    const setCookie = claim.headers.get('set-cookie') ?? '';
+    const cookie = setCookie.split(';')[0] ?? '';
+    if (claim.status !== 200 || !/HttpOnly/i.test(setCookie) || !/SameSite=Strict/i.test(setCookie)) return false;
+    const setup = await fresh.fetch(new Request('https://smoke.local/api/console/setup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ email: 'first-admin@example.com', password: 'correct horse battery staple' }),
+    }));
+    const body = await setup.json() as { user?: { role?: string } };
+    return setup.status === 200 && body.user?.role === 'master_admin';
 });
 
 // ---- OLD console API (still live during parallel run) ----
@@ -78,8 +161,9 @@ await check('POST /api/auth/login (compat) with seeded admin → 200 + fb_sessio
     });
     const setCookie = r.headers.get('set-cookie') ?? '';
     compatCookie = setCookie.split(';')[0] ?? '';
-    const body = await r.json() as { user?: { email?: string } };
-    return r.status === 200 && compatCookie.startsWith('fb_session=') && body.user?.email === ADMIN.email;
+    const body = await r.json() as { user?: { email?: string; is_master?: boolean } };
+    return r.status === 200 && compatCookie.startsWith('fb_session=')
+        && body.user?.email === ADMIN.email && body.user?.is_master === true;
 });
 
 await check('GET /api/auth/me (compat) WITH session → 200 returns the owner', async () => {

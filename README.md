@@ -1,12 +1,12 @@
 # Frontbase Framework
 
-**Chimera (Universal eSSR)** — one Hono engine, three render environments, byte-identical output, and a complete CMS with an admin console that deploys as **a single Cloudflare Worker**.
+**Chimera (Universal eSSR)** — one Hono engine, three render environments, byte-identical output, and a CMS whose Worker and Static Assets deploy together to Cloudflare.
 
-No hydration mismatches. No server/client render drift. No separate backend to stand up. Public pages render server-side (edge or service worker) from the *same* engine that runs your visual builder canvas — and the entire CMS, including the React admin console, ships in one `~390 KB` gzip artifact.
+No hydration mismatches. No server/client render drift. No separate backend to stand up. Public pages render server-side (edge or service worker) from the *same* engine that runs your visual builder canvas. The Worker is about 233 KB gzip; the product console is deployed through Workers Static Assets.
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-> **Status**: Phases 0–2 complete. The admin console has reached **full product parity** — every tracked deviation and follow-up closed; only Stripe billing is deferred. Authoritative state: [docs/MILESTONES.md](docs/MILESTONES.md) · [docs/phase-3-consolidated-delivery.md](docs/phase-3-consolidated-delivery.md).
+> **Status**: CF-22 P0–P2 are complete. P3 integration is implemented, but the required 11-area Playwright suite, real-Cloudflare field test, scheduled cross-repo drift check, and owner sign-off remain open. See [the P3 reconciliation](docs/cf-22-p3-delivery.md#6-parent-spec-reconciliation).
 
 ---
 
@@ -14,7 +14,7 @@ No hydration mismatches. No server/client render drift. No separate backend to s
 
 Most "edge-first" frameworks still ship two different rendering paths — one for the server, one for hydration — and stitch them together at the seams. Chimera doesn't: **one engine** renders pages identically whether it's running on Cloudflare's edge, inside a browser service worker (offline-capable, near-zero-latency repeat navigation), or inside the visual builder's live preview. The same manifest, the same components, the same output, byte-for-byte.
 
-On top of that engine sits a **complete CMS** — pages, a WYSIWYG drag/drop builder, a visual workflow automation editor (with durable, crash-safe execution), a multi-database Data Studio, file storage, tenant/plan management — all served from `/console` in the same worker as your public site. No separate admin app to host, no separate database to provision by hand.
+On top of that engine sits the CMS API and product community console, served from `/frontbase-admin` in the same Cloudflare deployment as your public site.
 
 ## Quick start
 
@@ -25,28 +25,38 @@ pnpm install
 pnpm build
 ```
 
-Deploy the full example CMS (engine + console API + admin SPA, all inlined into one worker) to your own Cloudflare account:
+Fetch the pinned product console, then deploy the full example CMS to your Cloudflare account:
 
 ```bash
-pnpm run deploy:cf-full -- --interactive
+pnpm run fetch:console -- --product-dir ../Frontbase-
+wrangler login
+pnpm run deploy:cf-full -- --app-name <my_app_name>
 ```
 
-That single command:
-1. checks `wrangler` login and runs `wrangler login` for you if needed,
-2. provisions a D1 database (or binds an existing one with `--d1-database-id <id>`),
-3. prompts for an admin email + a masked password (nothing echoes to the terminal),
-4. runs `wrangler deploy` and pushes the admin secrets over stdin — **never argv, never shell history**.
+That command provisions D1, generates a short-lived first-admin capability,
+deploys the Worker, and prints a secure `/setup#/setup?claim=…` link. Opening the link
+removes the claim from browser history and shows the familiar email/password
+setup form. The link expires after 30 minutes and setup locks permanently after
+the first administrator is created. Successful setup signs in through the product
+auth surface and leaves the setup app for `/frontbase-admin/dashboard`; `/setup`
+cannot expose a second dashboard or login screen.
 
-Visit your worker's URL, then `/console` to log in.
+If the link expires before setup is completed, rotate it on the same deployment:
 
-**Non-interactive** (CI/scripting-friendly):
+```bash
+pnpm run deploy:cf-full -- --app-name <my_app_name> --setup-link
+```
+
+To skip browser setup, seed the administrator during deployment:
 
 ```bash
 pnpm run deploy:cf-full -- \
+  --app-name <my_app_name> \
   --admin-email owner@example.com \
-  --admin-password 'a real password' \
-  --d1-database-id <existing-d1-uuid>
+  --admin-password 'a real password'
 ```
+
+`--interactive` remains available when terminal credential prompts are preferred.
 
 **Dry run** (build + size-budget check, no Cloudflare calls):
 
