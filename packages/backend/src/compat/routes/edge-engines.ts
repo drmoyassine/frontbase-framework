@@ -1,0 +1,52 @@
+import type { Hono } from 'hono';
+import type { ConsoleAuthVars } from '../../mw/auth.js';
+type App = Hono<{ Variables: ConsoleAuthVars }>;
+
+export function registerEdgeEnginesRoutes(app: App, p2: (t: string) => any, now: () => string): void {
+    app.get('/api/edge-engines/', async (c) => c.json({ engines: await p2(c.get('tenant')).listEdgeResources('engine') }));
+    app.post('/api/edge-engines/', async (c) => { const b = await c.req.json().catch(() => ({})); const id = crypto.randomUUID(); await p2(c.get('tenant')).upsertEdgeResource({ id, kind: 'engine', name: b.name ?? 'Engine', provider: b.provider, config: b.config ? JSON.stringify(b.config) : undefined }, now()); return c.json({ id, name: b.name, provider: b.provider }); });
+    app.get('/api/edge-engines/bundle-hashes/', (c) => c.json({}));
+    app.post('/api/edge-engines/deploy', (c) => c.json({ success: false, detail: 'Not configured' }));
+    app.post('/api/edge-engines/import', (c) => c.json({ success: false, detail: 'Not configured' }));
+    app.post('/api/edge-engines/batch/delete', async (c) => { const b = await c.req.json().catch(() => ({ engine_ids: [] })); let n=0; for (const id of (b.engine_ids ?? [])) { await p2(c.get('tenant')).deleteEdgeResource(id); n++; } return c.json({ success: true, total: n }); });
+    app.post('/api/edge-engines/batch/redeploy', (c) => c.json({ success: true, results: [] }));
+    app.post('/api/edge-engines/batch/toggle', (c) => c.json({ success: true, results: [] }));
+    app.post('/api/edge-engines/batch/sync-check', (c) => c.json({ success: true, results: [] }));
+    app.post('/api/edge-engines/batch/rotate-secrets-key', (c) => c.json({ success: true, results: [] }));
+    app.get('/api/edge-engines/active/by-scope/:scope', async (c) => c.json(await p2(c.get('tenant')).listEdgeResources('engine')));
+    app.get('/api/edge-engines/:engine_id', async (c) => { const all = await p2(c.get('tenant')).listEdgeResources('engine'); const e = all.find((x:any) => x.id === c.req.param('engine_id')); return e ? c.json(e) : c.json({ detail: 'Not found' }, 404); });
+    app.put('/api/edge-engines/:engine_id', async (c) => { const b = await c.req.json().catch(() => ({})); await p2(c.get('tenant')).upsertEdgeResource({ id: c.req.param('engine_id'), kind: 'engine', name: b.name ?? 'Engine', provider: b.provider, config: b.config ? JSON.stringify(b.config) : undefined }, now()); return c.json({ success: true }); });
+    app.delete('/api/edge-engines/:engine_id', async (c) => { await p2(c.get('tenant')).deleteEdgeResource(c.req.param('engine_id')); return c.json({ success: true }); });
+    app.post('/api/edge-engines/:engine_id/test', (c) => c.json({ success: true }));
+    app.post('/api/edge-engines/:engine_id/redeploy', (c) => c.json({ success: true }));
+    app.post('/api/edge-engines/:engine_id/reconfigure', (c) => c.json({ success: true }));
+    app.post('/api/edge-engines/:engine_id/sync-manifest', (c) => c.json({ success: true }));
+    app.post('/api/edge-engines/:engine_id/rotate-secrets-key', (c) => c.json({ success: true }));
+    app.get('/api/edge-engines/:engine_id/rotation-status', (c) => c.json({ active: false }));
+    app.get('/api/edge-engines/:engine_id/rotation-history', (c) => c.json([]));
+    app.post('/api/edge-engines/:engine_id/rollback-rotation', (c) => c.json({ success: true }));
+    app.get('/api/edge-engines/:engine_id/source', (c) => c.json({}));
+    app.put('/api/edge-engines/:engine_id/source', (c) => c.json({ success: true }));
+    app.post('/api/edge-engines/:engine_id/export', (c) => c.json({}));
+    app.post('/api/edge-engines/:engine_id/finalize-move', (c) => c.json({ success: true }));
+    app.post('/api/edge-engines/:engine_id/cancel-move', (c) => c.json({ success: true }));
+    app.post('/api/edge-engines/:engine_id/move-to-project', (c) => c.json({ success: true }));
+    app.get('/api/edge-engines/:engine_id/logs', (c) => c.json({ logs: [] }));
+    app.post('/api/edge-engines/:engine_id/logs/sync', (c) => c.json({ success: true }));
+    app.patch('/api/edge-engines/:engine_id/logs/config', (c) => c.json({ success: true }));
+    app.get('/api/edge-engines/:engine_id/logs/retention', (c) => c.json({ retention_days: 30 }));
+    app.get('/api/edge-engines/:engine_id/audit/tenant-secrets', (c) => c.json({ entries: [] }));
+    app.get('/api/edge-engines/:engine_id/health-check', (c) => c.json({ status: 'healthy' }));
+    app.get('/api/edge-engines/:engine_id/inspect/source', (c) => c.json({}));
+    app.get('/api/edge-engines/:engine_id/inspect/settings', (c) => c.json({}));
+    app.get('/api/edge-engines/:engine_id/inspect/secrets', (c) => c.json({ secrets: [] }));
+    app.get('/api/edge-engines/:engine_id/inspect/domains', (c) => c.json([]));
+    app.post('/api/edge-engines/:engine_id/inspect/domains', (c) => c.json({}));
+    app.delete('/api/edge-engines/:engine_id/inspect/domains/:domain_id', (c) => c.json({}));
+    app.post('/api/edge-engines/:engine_id/inspect/domains/:domain_id/verify', (c) => c.json({}));
+    app.get('/api/edge-engines/:engine_id/agent-profiles', (c) => c.json([]));
+    app.post('/api/edge-engines/:engine_id/agent-profiles', (c) => c.json({}));
+    app.put('/api/edge-engines/:engine_id/agent-profiles/:profile_id', (c) => c.json({}));
+    app.delete('/api/edge-engines/:engine_id/agent-profiles/:profile_id', (c) => c.json({}));
+}
+

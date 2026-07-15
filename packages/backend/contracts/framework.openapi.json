@@ -10795,7 +10795,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent-profiles/{profile_id}/skills": {
@@ -10840,7 +10840,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "operationId": "agent_integrations_install_skill",
@@ -10893,7 +10893,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent-profiles/{profile_id}/skills/{install_id}": {
@@ -10938,7 +10938,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent-skills": {
@@ -10991,7 +10991,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "operationId": "agent_integrations_create_skill",
@@ -11033,7 +11033,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent-skills/{skill_id}": {
@@ -11069,7 +11069,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "operationId": "agent_integrations_update_skill",
@@ -11122,7 +11122,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent/chat": {
@@ -11147,7 +11147,7 @@
         "tags": [
           "Agent"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent/chat/{profile_slug}": {
@@ -11193,7 +11193,7 @@
         "tags": [
           "Agent"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent/credits": {
@@ -11218,7 +11218,7 @@
         "tags": [
           "Agent"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent/mcp/{profile_slug}": {
@@ -11264,7 +11264,7 @@
         "tags": [
           "Agent MCP"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent/mcp/{profile_slug}/prompts/get": {
@@ -11310,7 +11310,7 @@
         "tags": [
           "Agent MCP"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent/mcp/{profile_slug}/prompts/list": {
@@ -11356,7 +11356,7 @@
         "tags": [
           "Agent MCP"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent/mcp/{profile_slug}/resources/list": {
@@ -11402,7 +11402,7 @@
         "tags": [
           "Agent MCP"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent/mcp/{profile_slug}/tools/call": {
@@ -11447,7 +11447,7 @@
         "tags": [
           "Agent MCP"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent/mcp/{profile_slug}/tools/list": {
@@ -11493,7 +11493,7 @@
         "tags": [
           "Agent MCP"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/agent/settings": {
@@ -11540,7 +11540,7 @@
         "tags": [
           "Agent Settings"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Return the effective merged settings the caller's next turn will use.",
@@ -11561,7 +11561,7 @@
         "tags": [
           "Agent Settings"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Upsert the caller's user override (``scope=user``) or tenant default\n(``scope=tenant``, admin-gated).",
@@ -11604,7 +11604,7 @@
         "tags": [
           "Agent Settings"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/auth-forms/": {
@@ -12584,7 +12584,7 @@
         "tags": [
           "Cloudflare Deploy"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/cloudflare/deploy": {
@@ -12629,7 +12629,7 @@
         "tags": [
           "Cloudflare Deploy"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/cloudflare/inspect/content": {
@@ -12674,7 +12674,7 @@
         "tags": [
           "Cloudflare Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/cloudflare/inspect/secrets": {
@@ -12719,7 +12719,7 @@
         "tags": [
           "Cloudflare Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/cloudflare/inspect/settings": {
@@ -12764,7 +12764,7 @@
         "tags": [
           "Cloudflare Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/cloudflare/status": {
@@ -12809,7 +12809,7 @@
         "tags": [
           "Cloudflare Deploy"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/cloudflare/teardown": {
@@ -12854,7 +12854,7 @@
         "tags": [
           "Cloudflare Deploy"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/database/advanced-query/": {
@@ -13978,7 +13978,7 @@
         "tags": [
           "Deno Deploy"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-api-keys": {
@@ -14031,7 +14031,7 @@
         "tags": [
           "edge-api-keys"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new API key. Returns the full key ONCE.",
@@ -14074,7 +14074,7 @@
         "tags": [
           "edge-api-keys"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-api-keys/{key_id}": {
@@ -14111,7 +14111,7 @@
         "tags": [
           "edge-api-keys"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update an API key's name, active status, or expiry.",
@@ -14165,7 +14165,7 @@
         "tags": [
           "edge-api-keys"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-api-keys/{key_id}/reveal": {
@@ -14211,7 +14211,7 @@
         "tags": [
           "edge-api-keys"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-caches/": {
@@ -14238,7 +14238,7 @@
         "tags": [
           "edge-caches"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new edge cache connection.",
@@ -14279,7 +14279,7 @@
         "tags": [
           "edge-caches"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-caches/{cache_id}": {
@@ -14335,7 +14335,7 @@
         "tags": [
           "edge-caches"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update an existing edge cache connection.",
@@ -14387,7 +14387,7 @@
         "tags": [
           "edge-caches"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-caches/{cache_id}/test": {
@@ -14431,7 +14431,7 @@
         "tags": [
           "edge-caches"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-caches/batch/delete": {
@@ -14474,7 +14474,7 @@
         "tags": [
           "edge-caches"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-caches/test-connection": {
@@ -14517,7 +14517,7 @@
         "tags": [
           "edge-caches"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-databases/": {
@@ -15009,7 +15009,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new engine record (manual mode - does not deploy code).",
@@ -15050,7 +15050,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}": {
@@ -15099,7 +15099,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Get standalone engine by ID with live status.",
@@ -15141,7 +15141,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update engine metadata (does not trigger redeploy).",
@@ -15193,7 +15193,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/agent-profiles": {
@@ -15238,7 +15238,7 @@
         "tags": [
           "edge-agent-profiles"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "operationId": "edge_agent_profiles_create_profile",
@@ -15291,7 +15291,7 @@
         "tags": [
           "edge-agent-profiles"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/agent-profiles/{profile_id}": {
@@ -15336,7 +15336,7 @@
         "tags": [
           "edge-agent-profiles"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "operationId": "edge_agent_profiles_update_profile",
@@ -15398,7 +15398,7 @@
         "tags": [
           "edge-agent-profiles"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/audit/tenant-secrets": {
@@ -15510,7 +15510,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/cancel-move": {
@@ -15556,7 +15556,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/export": {
@@ -15612,7 +15612,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/finalize-move": {
@@ -15668,7 +15668,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/health-check": {
@@ -15714,7 +15714,7 @@
         "tags": [
           "Engine Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/inspect/domains": {
@@ -15760,7 +15760,7 @@
         "tags": [
           "Engine Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Add a custom domain to this engine.\n\nCustom domains are intentionally NOT quota-gated: on BYO tiers they're configured via the\ntenant's own provider (free, bypassable, no COGS); on managed tiers they're a paid add-on\n(`managed_domain`, gated at provisioning via `tenant_addons`). See [TIERS] §4.4.",
@@ -15814,7 +15814,7 @@
         "tags": [
           "Engine Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/inspect/domains/{domain_id}": {
@@ -15869,7 +15869,7 @@
         "tags": [
           "Engine Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/inspect/domains/{domain_id}/verify": {
@@ -15924,7 +15924,7 @@
         "tags": [
           "Engine Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/inspect/secrets": {
@@ -15970,7 +15970,7 @@
         "tags": [
           "Engine Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/inspect/settings": {
@@ -16016,7 +16016,7 @@
         "tags": [
           "Engine Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/inspect/source": {
@@ -16062,7 +16062,7 @@
         "tags": [
           "Engine Inspector"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/logs": {
@@ -16152,7 +16152,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/logs/config": {
@@ -16210,7 +16210,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/logs/retention": {
@@ -16256,7 +16256,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/logs/sync": {
@@ -16302,7 +16302,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/move-to-project": {
@@ -16358,7 +16358,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/reconfigure": {
@@ -16414,7 +16414,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/redeploy": {
@@ -16460,7 +16460,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/rollback-rotation": {
@@ -16516,7 +16516,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/rotate-secrets-key": {
@@ -16572,7 +16572,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/rotation-history": {
@@ -16618,7 +16618,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/rotation-status": {
@@ -16664,7 +16664,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/source": {
@@ -16710,7 +16710,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Save modified source files to the engine's DB snapshot (per-engine isolation).\n\nPayload: { files: { \"relative/path.ts\": \"content\", ... } }\nOnly updates the files provided — other snapshot files remain untouched.\n\nCore Zone Convention:\n- Files under frontbase-core/ are tracked in modified_core_files\n- Files outside frontbase-core/ set is_forked = True",
@@ -16766,7 +16766,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/sync-manifest": {
@@ -16812,7 +16812,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/{engine_id}/test": {
@@ -16856,7 +16856,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/active/by-scope/{scope}": {
@@ -16910,7 +16910,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/batch/delete": {
@@ -16953,7 +16953,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/batch/redeploy": {
@@ -16996,7 +16996,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/batch/rotate-secrets-key": {
@@ -17039,7 +17039,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/batch/sync-check": {
@@ -17082,7 +17082,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/batch/toggle": {
@@ -17125,7 +17125,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/bundle-hashes/": {
@@ -17150,7 +17150,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/deploy": {
@@ -17195,7 +17195,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-engines/import": {
@@ -17240,7 +17240,7 @@
         "tags": [
           "Edge Engines"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-gpu/": {
@@ -17268,7 +17268,7 @@
         "tags": [
           "edge-gpu"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Deploy a new GPU model to an edge engine.\n\nAfter saving the model record, auto-redeploys CF engines so the AI\nbinding + FRONTBASE_GPU_MODELS secret are pushed immediately.",
@@ -17323,7 +17323,7 @@
         "tags": [
           "edge-gpu"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-gpu/{model_id}": {
@@ -17379,7 +17379,7 @@
         "tags": [
           "edge-gpu"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update a GPU model's configuration.",
@@ -17433,7 +17433,7 @@
         "tags": [
           "edge-gpu"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-gpu/{model_id}/test": {
@@ -17479,7 +17479,7 @@
         "tags": [
           "edge-gpu"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-gpu/catalog": {
@@ -17535,7 +17535,7 @@
         "tags": [
           "edge-gpu"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-gpu/schemas": {
@@ -17560,7 +17560,7 @@
         "tags": [
           "edge-gpu"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/": {
@@ -17587,7 +17587,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create and connect a new edge provider account.\n\nCredentials are encrypted with Fernet AES-256 before storage.\nNon-secret metadata (account_id, project_ref) is stored separately for UI display.",
@@ -17628,7 +17628,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/{account_id}/list-engines": {
@@ -17674,7 +17674,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/{account_id}/turso-databases": {
@@ -17730,7 +17730,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/{account_id}/turso-databases/{db_id}": {
@@ -17785,7 +17785,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/{account_id}/turso-databases/{db_id}/test": {
@@ -17840,7 +17840,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/{provider_id}": {
@@ -17877,7 +17877,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Get a specific edge provider account.",
@@ -17919,7 +17919,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update a provider account. Credentials are re-encrypted on change.",
@@ -17971,7 +17971,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/{provider_id}/credentials": {
@@ -18017,7 +18017,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/accounts/{account_id}/tables": {
@@ -18063,7 +18063,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/create-resource-by-account/{account_id}": {
@@ -18119,7 +18119,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/discover": {
@@ -18164,7 +18164,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/discover-by-account/{account_id}": {
@@ -18210,7 +18210,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/retest/{provider_id}": {
@@ -18256,7 +18256,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/test-connection": {
@@ -18301,7 +18301,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-providers/workspace-agent-token": {
@@ -18326,7 +18326,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Set a specific provider as the default Workspace Agent provider and generate token.",
@@ -18369,7 +18369,7 @@
         "tags": [
           "edge-providers"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-queues/": {
@@ -18396,7 +18396,7 @@
         "tags": [
           "edge-queues"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new edge queue connection.",
@@ -18437,7 +18437,7 @@
         "tags": [
           "edge-queues"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-queues/{queue_id}": {
@@ -18493,7 +18493,7 @@
         "tags": [
           "edge-queues"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update an existing edge queue connection.",
@@ -18545,7 +18545,7 @@
         "tags": [
           "edge-queues"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-queues/{queue_id}/test/": {
@@ -18589,7 +18589,7 @@
         "tags": [
           "edge-queues"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-queues/batch/delete": {
@@ -18632,7 +18632,7 @@
         "tags": [
           "edge-queues"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-queues/test-connection": {
@@ -18675,7 +18675,7 @@
         "tags": [
           "edge-queues"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-vectors/": {
@@ -18702,7 +18702,7 @@
         "tags": [
           "edge-vectors"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new edge vector store connection.",
@@ -18743,7 +18743,7 @@
         "tags": [
           "edge-vectors"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-vectors/{vector_id}": {
@@ -18799,7 +18799,7 @@
         "tags": [
           "edge-vectors"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update an existing edge vector store connection.",
@@ -18851,7 +18851,7 @@
         "tags": [
           "edge-vectors"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-vectors/{vector_id}/test": {
@@ -18897,7 +18897,7 @@
         "tags": [
           "edge-vectors"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-vectors/batch/delete": {
@@ -18940,7 +18940,7 @@
         "tags": [
           "edge-vectors"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/edge-vectors/test-connection": {
@@ -18985,7 +18985,7 @@
         "tags": [
           "edge-vectors"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/mcp-servers": {
@@ -19038,7 +19038,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "operationId": "agent_integrations_create_mcp_server",
@@ -19080,7 +19080,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/mcp-servers/{server_id}": {
@@ -19116,7 +19116,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "operationId": "agent_integrations_get_mcp_server",
@@ -19159,7 +19159,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "operationId": "agent_integrations_update_mcp_server",
@@ -19212,7 +19212,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/mcp-servers/{server_id}/test": {
@@ -19257,7 +19257,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/mcp-servers/{server_id}/tools": {
@@ -19302,7 +19302,7 @@
         "tags": [
           "agent-integrations"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/pages/": {

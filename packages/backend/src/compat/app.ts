@@ -33,6 +33,11 @@ import { registerAuthFormsRoutes } from './routes/auth-forms.js';
 import { registerWorkflowsRoutes } from './routes/workflows.js';
 import { registerActionsRoutes } from './routes/actions.js';
 import { registerAuthCompatRoutes } from './routes/auth-compat.js';
+import { registerEdgeEnginesRoutes } from './routes/edge-engines.js';
+import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
+import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
+import { registerEdgeMiscRoutes } from './routes/edge-misc.js';
+import { registerAgentCompatRoutes } from './routes/agent-compat.js';
 import { TemplateVariableStore, KeyValueStore, ThemesStore, SecurityEventsStore } from './store.js';
 import { PagesStore } from './pages-store.js';
 import { Phase2Store } from '../db/phase2-store.js';
@@ -111,8 +116,16 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerWorkflowsRoutes(app);
     // Wave 3
     registerActionsRoutes(app, phase2For, now);
+    // Wave 4 — edge domain (engines + providers + caches/queues/vectors + inspector + api-keys + gpu + deploy)
+    registerEdgeEnginesRoutes(app, phase2For, now);
+    registerEdgeProvidersRoutes(app, phase2For, now);
+    registerEdgeGenericRoutes(app, phase2For, now);
+    registerEdgeMiscRoutes(app, runner, phase2For, now);
+    // Wave 5 — workspace agent
+    registerAgentCompatRoutes(app, runner, kvFor);
 
-    // 501 stubs for every other vendored community op.
+    // 501 stubs for any vendored op not yet implemented (currently zero — all 284
+    // are implemented. Re-sync may add new ops that need stubs until implemented.)
     registerStubs(app, IMPLEMENTED);
 
     return app;

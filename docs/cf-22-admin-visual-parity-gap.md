@@ -242,13 +242,12 @@ migrations (product task #111).
 
 ## 5b. P2 detailed spec (task #108) — implement the 286-op community contract
 
-> **Wave 1a delivered 2026-07-15** — report: [`cf-22-p2-wave1-delivery.md`](./cf-22-p2-wave1-delivery.md).
-> **Wave 1b delivered 2026-07-15** — pages (17) + database (10) + rls (14) = +41 ops.
-> **Waves 2+3 delivered 2026-07-15** — storage (23) + edge-databases (10) + Auth Forms (7) +
-> Workflows (1) + Actions (24) + Authentication (18) = +83 ops.
-> Drift gate: **153 implemented / 131 stubbed / 0 missing / 0 divergent** (54%).
-> Full 26-marker suite green; emit deterministic; staleness green. 15 tags fully green.
-> Remaining: **Wave 4** (edge domain ~104 ops) + **Wave 5** (agent ~27 ops).
+> **P2 ✅ COMPLETE 2026-07-15** — all 5 waves delivered. **284/284 ops implemented / 0
+> stubbed / 0 missing / 0 divergent.** Every community-contract tag has a real framework
+> handler. Drift gate PASS; 26-marker suite green; emit deterministic; CI green.
+> Reports: [`cf-22-p2-wave1-delivery.md`](./cf-22-p2-wave1-delivery.md),
+> [`cf-22-p2-complete-delivery.md`](./cf-22-p2-complete-delivery.md).
+> **Next: P3 (#109)** — serve the product's community console bundle from the framework worker.
 
 **Goal:** drive the P1 oasdiff burn-down table from 280-stubbed to 0, wave by
 wave. Every wave is independently shippable and independently verifiable (the

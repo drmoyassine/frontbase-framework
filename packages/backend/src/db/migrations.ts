@@ -147,6 +147,18 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [`DROP TABLE IF EXISTS auth_forms`],
     },
+    {
+        // CF-22 P2 Waves 4+5: edge api keys + agent profiles + mcp/skills.
+        version: 11,
+        name: 'edge_agent_tables',
+        up: [
+            `CREATE TABLE IF NOT EXISTS edge_api_keys (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT NOT NULL, scope TEXT DEFAULT 'user', key_hash TEXT, is_active INTEGER DEFAULT 1, expires_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS edge_agent_profiles_compat (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, engine_id TEXT, name TEXT NOT NULL, config TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS mcp_servers (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT NOT NULL, url TEXT, transport TEXT DEFAULT 'http', config TEXT, is_active INTEGER DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS agent_skills (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, name TEXT NOT NULL, description TEXT, config TEXT, created_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+        ],
+        down: [`DROP TABLE IF EXISTS edge_api_keys`, `DROP TABLE IF EXISTS edge_agent_profiles_compat`, `DROP TABLE IF EXISTS mcp_servers`, `DROP TABLE IF EXISTS agent_skills`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

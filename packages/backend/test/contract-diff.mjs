@@ -49,13 +49,14 @@ check('mutation: a deleted op is detected as MISSING (gate goes RED)', () => {
     assert.match(res.stdout || res.stderr || '', /missing=1/);
 });
 
-// RED-2: corrupt a stub op's schema → DIVERGENT detected.
+// RED-2: corrupt an op's schema → DIVERGENT detected.
 check('mutation: a corrupted schema is detected as DIVERGENT (gate goes RED)', () => {
     const spec = JSON.parse(readFileSync(FWK, 'utf-8'));
     const mutated = JSON.parse(JSON.stringify(spec));
+    // Corrupt the first op's response schema (any op — stubs or implemented).
     outer: for (const [path, item] of Object.entries(mutated.paths)) {
         for (const m of ['get', 'post', 'put', 'delete', 'patch']) {
-            if (item[m] && item[m]['x-implemented'] === false) {
+            if (item[m]) {
                 item[m].responses = { '200': { description: 'tampered' } };
                 break outer;
             }

@@ -29,7 +29,7 @@ check('schema unchanged after no-op re-apply', (await schemaFingerprint(a)) === 
 // 3. apply → rollback → re-apply converges to the same schema
 //    (rollback ALL — 8 migrations: v1 schema, v2 users, v3 tenants, v4 phase2, v5 phase3b,
 //     v6 execution_input, v7 template_variables [CF-22 P1], v8 themes+security_events [P2 W1])
-await migrateDown(a, 10);
+await migrateDown(a, 11);
 const fpAfterDown = await schemaFingerprint(a);
 check('rollback removes the tables', !fpAfterDown.includes('published_pages') && !fpAfterDown.includes('drafts'));
 check('rollback clears the applied version', (await appliedVersions(a)).length === 0);
@@ -43,7 +43,7 @@ await migrateUp(b, clock);
 check('fresh DB schema == upgraded DB schema', (await schemaFingerprint(b)) === fpApplied);
 
 // 5. Applied-versions tracking is correct
-check('applied versions recorded ascending', JSON.stringify(await appliedVersions(a)) === JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+check('applied versions recorded ascending', JSON.stringify(await appliedVersions(a)) === JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]));
 
 console.log(failures === 0 ? '\nmigrations: PASS ✅' : `\nmigrations: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);
