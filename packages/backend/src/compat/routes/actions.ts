@@ -19,21 +19,45 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 const asJson = (v: unknown): string => typeof v === 'string' ? v : JSON.stringify(v ?? []);
 
+/**
+ * A stored workflow row -> WorkflowDraftResponse (required: name, id, created_at,
+ * updated_at). Nodes/edges are stored as JSON strings; the contract types them as
+ * arrays, so they are parsed rather than passed through.
+ */
+function asDraft(row: Record<string, unknown>): Record<string, unknown> {
+    const parse = (v: unknown): unknown[] => {
+        try { const p = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(p) ? p : []; }
+        catch { return []; }
+    };
+    return {
+        id: String(row.id),
+        name: String(row.name ?? ''),
+        nodes: parse(row.nodes),
+        edges: parse(row.edges),
+        is_active: Boolean(row.is_active),
+        is_published: Boolean(row.is_active),
+        trigger_type: String(row.trigger_type ?? 'manual'),
+        description: null,
+        created_at: String(row.created_at ?? ''),
+        updated_at: String(row.updated_at ?? row.created_at ?? ''),
+    };
+}
+
 export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2Store, now: () => string): void {
     // ---- drafts CRUD ----
     // GET /api/actions/drafts
     app.get('/api/actions/drafts', async (c) => {
-        // Contract (bf1ac54) requires {drafts, total} — `total` was added when the
-        // product replaced loose dict returns with WorkflowDraftListResponse.
-        const drafts = await phase2For(c.get('tenant')).listWorkflows();
+        // WorkflowDraftListResponse: {drafts: WorkflowDraftResponse[], total}.
+        const drafts = (await phase2For(c.get('tenant')).listWorkflows()).map(asDraft);
         return c.json({ drafts, total: drafts.length });
     });
     // POST /api/actions/drafts
     app.post('/api/actions/drafts', async (c) => {
         const b = await c.req.json().catch(() => ({})) as { name?: string; nodes?: unknown; edges?: unknown; is_active?: boolean };
         const id = crypto.randomUUID();
-        await phase2For(c.get('tenant')).upsertWorkflow({ id, name: b.name ?? 'Workflow', nodes: asJson(b.nodes), edges: asJson(b.edges), isActive: b.is_active ?? true }, now());
-        return c.json({ id, name: b.name ?? 'Workflow', is_active: b.is_active ?? true, nodes: b.nodes ?? [], edges: b.edges ?? [], created_at: now() }, 201);
+        const store = phase2For(c.get('tenant'));
+        await store.upsertWorkflow({ id, name: b.name ?? 'Workflow', nodes: asJson(b.nodes), edges: asJson(b.edges), isActive: b.is_active ?? true }, now());
+        return c.json(asDraft(await store.getWorkflow(id) ?? { id, name: b.name ?? 'Workflow', created_at: now(), updated_at: now() }), 201);
     });
 
     // Static sibling (bulk-delete) MUST come before /drafts/:draft_id.
@@ -49,7 +73,7 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
     // GET /api/actions/drafts/{draft_id}
     app.get('/api/actions/drafts/:draft_id', async (c) => {
         const w = await phase2For(c.get('tenant')).getWorkflow(c.req.param('draft_id'));
-        return w ? c.json(w) : c.json({ detail: 'Draft not found' }, 404);
+        return w ? c.json(asDraft(w)) : c.json({ detail: 'Draft not found' }, 404);
     });
     // DELETE /api/actions/drafts/{draft_id}
     app.delete('/api/actions/drafts/:draft_id', async (c) => {
@@ -87,7 +111,7 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
         const existing = await store.getWorkflow(c.req.param('draft_id'));
         if (!existing) return c.json({ success: false, message: 'Draft not found' }, 404);
         await store.toggleWorkflow(c.req.param('draft_id'), true, now());
-        return c.json({ success: true, message: 'Published', previewUrl: null, version: Number(existing.version ?? 1) + 1 });
+        return c.json({ success: true, message: 'Published', workflow_id: c.req.param('draft_id'), version: Number(existing.version ?? 1) + 1 });
     });
     // POST /api/actions/drafts/{draft_id}/publish/{engine_id}/
     app.post('/api/actions/drafts/:draft_id/publish/:engine_id/', async (c) => {
@@ -95,7 +119,7 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
         const existing = await store.getWorkflow(c.req.param('draft_id'));
         if (!existing) return c.json({ success: false, message: 'Draft not found' }, 404);
         await store.toggleWorkflow(c.req.param('draft_id'), true, now());
-        return c.json({ success: true, message: 'Published', engine_id: c.req.param('engine_id'), previewUrl: null, version: Number(existing.version ?? 1) + 1 });
+        return c.json({ success: true, message: 'Published', workflow_id: c.req.param('draft_id'), version: Number(existing.version ?? 1) + 1 });
     });
     // POST /api/actions/drafts/{draft_id}/publish-batch/
     app.post('/api/actions/drafts/:draft_id/publish-batch/', async (c) => {
@@ -121,16 +145,22 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
     app.post('/api/actions/drafts/:draft_id/test', async (c) => {
         const execId = crypto.randomUUID();
         await phase2For(c.get('tenant')).createExecution(execId, c.req.param('draft_id'), 'manual', now(), { source: 'test' });
-        return c.json({ success: true, execution_id: execId, status: 'running' });
+        return c.json({ execution_id: execId, status: 'started', message: 'Test execution queued' });
     });
     // POST /api/actions/drafts/{draft_id}/test-node/{node_id}  (no live node runtime in the worker)
-    app.post('/api/actions/drafts/:draft_id/test-node/:node_id', (c) => c.json({ success: true, node_id: c.req.param('node_id'), result: null }));
+    app.post('/api/actions/drafts/:draft_id/test-node/:node_id', (c) => c.json({
+        execution_id: crypto.randomUUID(), status: 'completed', message: `Node ${c.req.param('node_id')} has no live runtime in this deployment`,
+    }));
 
     // ---- versions (community: workflow.version field; no separate version table) ----
     // GET /api/actions/drafts/{draft_id}/versions/
     app.get('/api/actions/drafts/:draft_id/versions/', async (c) => {
         const w = await phase2For(c.get('tenant')).getWorkflow(c.req.param('draft_id'));
-        return c.json({ versions: w ? [{ id: c.req.param('draft_id'), version_number: Number(w.version ?? 1), created_at: w.updated_at }] : [] });
+        return c.json({
+            success: true,
+            data: w ? [{ id: c.req.param('draft_id'), version_number: Number(w.version ?? 1), created_at: w.updated_at }] : [],
+            error: null,
+        });
     });
     // POST /api/actions/drafts/{draft_id}/versions/  (upsert increments version)
     app.post('/api/actions/drafts/:draft_id/versions/', async (c) => {

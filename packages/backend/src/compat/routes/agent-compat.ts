@@ -14,14 +14,18 @@ export function registerAgentCompatRoutes(app: App, runner: DbRunner, kvFor: (t:
         can_modify_tenant: true,
         inherited_from: 'default', // community merges one layer only
     }));
-    app.put('/api/agent/settings', async (c) => { const b = await c.req.json().catch(() => ({})); await kvFor(c.get('tenant')).setJson('agent_settings', b, ''); return c.json(b); });
-    app.delete('/api/agent/settings', async (c) => { await kvFor(c.get('tenant')).setJson('agent_settings', {}, ''); return c.json({ success: true }); });
-    app.get('/api/agent/mcp/:profile_slug', (c) => c.json({}));
+    // UpdateAgentSettingsResult requires `message`.
+    app.put('/api/agent/settings', async (c) => { const b = await c.req.json().catch(() => ({})); await kvFor(c.get('tenant')).setJson('agent_settings', b, ''); return c.json({ message: 'Settings updated', scope: 'tenant' }); });
+    // ResetAgentSettingsResult requires `message`.
+    app.delete('/api/agent/settings', async (c) => { await kvFor(c.get('tenant')).setJson('agent_settings', {}, ''); return c.json({ message: 'Settings reset to defaults', scope: 'tenant', deleted: true }); });
+    // McpRootResult requires `protocolVersion` + `version`.
+    app.get('/api/agent/mcp/:profile_slug', (c) => c.json({ protocolVersion: '2024-11-05', version: '1.0.0', name: c.req.param('profile_slug'), capabilities: {}, instructions: null }));
     app.post('/api/agent/mcp/:profile_slug/tools/list', (c) => c.json({ tools: [] }));
     app.post('/api/agent/mcp/:profile_slug/tools/call', (c) => c.body(null, 204));
     app.post('/api/agent/mcp/:profile_slug/resources/list', (c) => c.json({ resources: [] }));
     app.post('/api/agent/mcp/:profile_slug/prompts/list', (c) => c.json({ prompts: [] }));
-    app.post('/api/agent/mcp/:profile_slug/prompts/get', (c) => c.json({}));
+    // GetPromptResult requires `name` + `description`.
+    app.post('/api/agent/mcp/:profile_slug/prompts/get', (c) => c.json({ name: '', description: 'No MCP prompt provider configured', messages: [] }));
     app.get('/api/mcp-servers', async (c) => c.json({ servers: await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ?', [c.get('tenant')]) }));
     app.post('/api/mcp-servers', async (c) => { const b = await c.req.json().catch(() => ({})); const id = crypto.randomUUID(); await runner.exec('INSERT INTO mcp_servers (id, tenant_slug, name, url, transport, config, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)', [id, c.get('tenant'), b.name ?? 'server', b.url ?? '', b.transport ?? 'http', b.config ? JSON.stringify(b.config) : null, 1, new Date().toISOString(), new Date().toISOString()]); return c.json({ id, name: b.name }); });
     app.get('/api/mcp-servers/:server_id', async (c) => { const r = await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), c.req.param('server_id')]); return r[0] ? c.json(r[0]) : c.json({ detail: 'Not found' }, 404); });
@@ -35,7 +39,8 @@ export function registerAgentCompatRoutes(app: App, runner: DbRunner, kvFor: (t:
     app.delete('/api/agent-skills/:skill_id', async (c) => { await runner.exec('DELETE FROM agent_skills WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), c.req.param('skill_id')]); return c.json({ success: true }); });
     app.get('/api/agent-catalogue', (c) => c.json({ skills: [], profiles: [] }));
     app.get('/api/agent-profiles/:profile_id/skills', (c) => c.json({ skills: [] }));
-    app.post('/api/agent-profiles/:profile_id/skills', (c) => c.json({}));
+    // InstallSkillResult requires `installed`.
+    app.post('/api/agent-profiles/:profile_id/skills', (c) => c.json({ installed: false, profileId: c.req.param('profile_id'), skillId: null }));
     app.delete('/api/agent-profiles/:profile_id/skills/:install_id', (c) => c.json({ success: true }));
 }
 

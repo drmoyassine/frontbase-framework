@@ -170,6 +170,22 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [`DROP TABLE IF EXISTS setup_state`],
     },
+    {
+        // CF-22 Gate 1a: `workflows` was created with only `updated_at`, but the
+        // product contract's WorkflowDraftResponse requires `created_at` — so the
+        // Builder's draft list was being served a field that does not exist. Add
+        // the column and backfill from updated_at so existing rows stay conformant.
+        //
+        // `down` is empty: SQLite cannot drop a column without rebuilding the
+        // table, and leaving a nullable extra column behind is harmless.
+        version: 13,
+        name: 'workflows_created_at',
+        up: [
+            `ALTER TABLE workflows ADD COLUMN created_at TEXT`,
+            `UPDATE workflows SET created_at = updated_at WHERE created_at IS NULL`,
+        ],
+        down: [],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

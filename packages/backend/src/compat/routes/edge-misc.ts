@@ -19,8 +19,11 @@ export function registerEdgeMiscRoutes(app: App, runner: DbRunner, p2: (t: strin
     app.put('/api/edge-gpu/:model_id', (c) => c.json({ success: true }));
     app.delete('/api/edge-gpu/:model_id', async (c) => { await p2(c.get('tenant')).deleteEdgeResource(c.req.param('model_id')); return c.json({ success: true }); });
     app.post('/api/edge-gpu/:model_id/test', (c) => c.json({ success: false }));
-    // Cloudflare Deploy (4) + Inspector (3) + Deno (1)
-    for (const p of ['/api/cloudflare/connect', '/api/cloudflare/deploy', '/api/cloudflare/status', '/api/cloudflare/teardown', '/api/cloudflare/inspect/content', '/api/cloudflare/inspect/secrets', '/api/cloudflare/inspect/settings', '/api/deno/connect']) {
+    // Cloudflare Deploy (4) + Inspector (3) + Deno (1).
+    // /status is broken out of the loop: CloudflareStatusResult requires
+    // `deployed`, not the generic {success, detail} ack the others share.
+    app.post('/api/cloudflare/status', (c) => c.json({ deployed: false, account_id: null, url: null, worker_name: null }));
+    for (const p of ['/api/cloudflare/connect', '/api/cloudflare/deploy', '/api/cloudflare/teardown', '/api/cloudflare/inspect/content', '/api/cloudflare/inspect/secrets', '/api/cloudflare/inspect/settings', '/api/deno/connect']) {
         app.post(p, (c) => c.json({ success: false, detail: 'Not configured' }));
     }
 }

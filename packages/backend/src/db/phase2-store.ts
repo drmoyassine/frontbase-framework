@@ -52,14 +52,14 @@ export class Phase2Store {
 
     async listWorkflows(): Promise<Record<string, unknown>[]> {
         return this.runner.query(
-            'SELECT id, name, nodes, edges, is_active, version, updated_at FROM workflows WHERE tenant_slug = ? ORDER BY updated_at DESC',
+            'SELECT id, name, nodes, edges, is_active, version, created_at, updated_at FROM workflows WHERE tenant_slug = ? ORDER BY updated_at DESC',
             [this.tenant],
         );
     }
 
     async getWorkflow(id: string): Promise<Record<string, unknown> | null> {
         const rows = await this.runner.query(
-            'SELECT id, name, nodes, edges, is_active, version, updated_at FROM workflows WHERE id = ? AND tenant_slug = ?',
+            'SELECT id, name, nodes, edges, is_active, version, created_at, updated_at FROM workflows WHERE id = ? AND tenant_slug = ?',
             [id, this.tenant],
         );
         return rows[0] ?? null;
@@ -73,11 +73,12 @@ export class Phase2Store {
         const version = cur[0] ? Number(cur[0].version) + 1 : 1;
         const isActive = input.isActive ?? true ? 1 : 0;
         await this.runner.exec(
-            `INSERT INTO workflows (id, tenant_slug, name, nodes, edges, is_active, version, updated_at)
-             VALUES (?,?,?,?,?,?,?,?)
+            // created_at is set on insert only — an upsert must not reset it.
+            `INSERT INTO workflows (id, tenant_slug, name, nodes, edges, is_active, version, created_at, updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?)
              ON CONFLICT(id, tenant_slug) DO UPDATE SET name=excluded.name, nodes=excluded.nodes,
              edges=excluded.edges, is_active=excluded.is_active, version=excluded.version, updated_at=excluded.updated_at`,
-            [input.id, this.tenant, input.name, input.nodes, input.edges, isActive, version, now],
+            [input.id, this.tenant, input.name, input.nodes, input.edges, isActive, version, now, now],
         );
         return { version };
     }
@@ -165,6 +166,14 @@ export class Phase2Store {
             'SELECT id, kind, name, provider, config, status, created_at, updated_at FROM edge_resources WHERE tenant_slug = ? ORDER BY updated_at DESC',
             [this.tenant],
         );
+    }
+
+    async getEdgeResource(id: string): Promise<Record<string, unknown> | null> {
+        const rows = await this.runner.query(
+            'SELECT id, kind, name, provider, config, status, created_at, updated_at FROM edge_resources WHERE id = ? AND tenant_slug = ?',
+            [id, this.tenant],
+        );
+        return rows[0] ?? null;
     }
 
     async upsertEdgeResource(input: EdgeResourceInput, now: string): Promise<void> {

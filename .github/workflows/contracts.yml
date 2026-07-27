@@ -45,7 +45,10 @@ jobs:
         run: pnpm run contracts:diff
       - name: Console pin format gate
         run: node scripts/validate-console-pin.mjs --format-only
-      - name: Backend suite (incl. compat-variables + contract-diff)
+      # Includes compat-conformance --gate: every documented 2xx response is
+      # validated against the vendored Zod. Unlike the drift gate (which compares
+      # the contract to itself) this fails when a HANDLER diverges.
+      - name: Backend suite (incl. compat-variables, contract-diff, conformance)
         run: pnpm --filter @frontbase/backend test
       - name: Mutation gates
         run: pnpm -r test:mutation

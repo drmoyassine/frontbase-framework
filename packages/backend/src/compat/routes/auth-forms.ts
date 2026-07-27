@@ -15,7 +15,8 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
     app.post('/api/auth-forms/', async (c) => {
         const b = await c.req.json().catch(() => ({})); const id = crypto.randomUUID(); const ts = now();
         await runner.exec('INSERT INTO auth_forms (id, tenant_slug, name, type, config, is_primary, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)', [id, c.get('tenant'), b.name ?? 'form', b.type ?? 'login', b.config ? JSON.stringify(b.config) : null, 0, ts, ts]);
-        return c.json({ id, name: b.name ?? 'form', type: b.type ?? 'login', config: b.config, is_primary: false, created_at: ts, updated_at: ts }, 201);
+        // SuccessDataEnvelope requires `success`.
+        return c.json({ success: true, data: { id, name: b.name ?? 'form', type: b.type ?? 'login', config: b.config, is_primary: false, created_at: ts, updated_at: ts }, error: null }, 201);
     });
     app.get('/api/auth-forms/primary/', async (c) => { const r = await runner.query(`SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? AND is_primary = 1`, [c.get('tenant')]); return r[0] ? c.json(r[0]) : c.json({ detail: 'No primary form' }, 404); });
     app.get('/api/auth-forms/:form_id/', async (c) => { const r = await runner.query(`SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? AND id = ?`, [c.get('tenant'), c.req.param('form_id')]); return r[0] ? c.json(r[0]) : c.json({ detail: 'Not found' }, 404); });

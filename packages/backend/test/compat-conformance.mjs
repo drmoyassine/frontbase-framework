@@ -67,21 +67,24 @@ const app = await createCompatApp({
 
 // Path params: reuse ids minted by real POSTs where we can, so param routes reach
 // their handlers instead of 404ing. Falls back to a well-formed synthetic id.
+// Keyed by COLLECTION (the /api/<collection>/ segment), not by param name: a POST
+// to /api/edge-caches/ mints the id that /api/edge-caches/{cache_id} needs, and
+// the param's spelling varies per tag (cache_id, db_id, engine_id...). Falls back
+// to the most recent id minted anywhere, then to a well-formed synthetic one.
 const SYNTHETIC = '11111111-1111-4111-8111-111111111111';
 const idPool = new Map();
-const poolKey = (path, param) => `${path.split('/')[2] ?? ''}:${param}`;
+let lastId = null;
+const collectionOf = (path) => path.split('/')[2] ?? '';
 function fillPath(path) {
-    return path.replace(/\{([^}]+)\}/g, (_, p) => idPool.get(poolKey(path, p)) ?? idPool.get(`*:${p}`) ?? SYNTHETIC);
+    const id = idPool.get(collectionOf(path)) ?? lastId ?? SYNTHETIC;
+    return path.replace(/\{[^}]+\}/g, id);
 }
 function harvest(path, body) {
-    const id = body && typeof body === 'object' && !Array.isArray(body) ? (body.id ?? body.data?.id) : null;
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return;
+    const id = body.id ?? body.data?.id;
     if (typeof id !== 'string') return;
-    const collection = path.split('/')[2] ?? '';
-    for (const p of ['id']) idPool.set(`${collection}:${p}`, id);
-    idPool.set(`*:id`, id);
-    for (const suffix of ['_id']) {
-        idPool.set(`${collection}:${collection.replace(/s$/, '')}${suffix}`, id);
-    }
+    idPool.set(collectionOf(path), id);
+    lastId = id;
 }
 
 const zodFor = (ref) => Z['z' + ref.split('/').pop()];

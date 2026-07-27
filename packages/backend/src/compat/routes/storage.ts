@@ -88,7 +88,8 @@ export function registerStorageRoutes(app: App, phase2For: (t: string) => Phase2
     // GET /api/storage/providers/
     app.get('/api/storage/providers/', (c) => c.json({ providers: [] }));
     // POST /api/storage/providers/
-    app.post('/api/storage/providers/', (c) => c.json({ success: false, message: 'No storage provider configured' }));
+    // CreateStorageProviderResult requires `is_active`.
+    app.post('/api/storage/providers/', (c) => c.json({ is_active: false, id: null, name: null, provider: null, config: null, created_at: null, account_name: null, provider_account_id: null }));
     // DELETE /api/storage/providers/{provider_id}
     app.delete('/api/storage/providers/:provider_id', (c) => c.json({ success: true, message: 'Provider removed' }));
 
