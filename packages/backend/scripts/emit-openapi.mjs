@@ -2,10 +2,16 @@
 /**
  * CF-22 P1 / D3 — emit the framework's product-compat OpenAPI spec.
  *
- * Reads the vendored product community spec + the IMPLEMENTED registry, and
- * writes `contracts/framework.openapi.json` — every vendored op declared, each
- * stamped `x-implemented` (true = real handler, false = 501 stub). Deterministic:
- * sorted top-level keys + stable op order, so two runs are byte-identical.
+ * Reads the vendored product community spec and BUILDS THE COMPAT APP, deriving
+ * `x-implemented` from the routes that app actually registers (Gate 1) rather than
+ * from a hand-maintained list. Writes `contracts/framework.openapi.json` — every
+ * vendored op declared, each stamped `x-implemented` (true = real handler,
+ * false = 501 stub). Deterministic: sorted top-level keys + stable op order, so
+ * two runs are byte-identical.
+ *
+ * The app is built fully configured (session secret + user store) because ~20
+ * `/api/auth/*` ops register conditionally on those; omitting them would emit a
+ * spec that understates the surface.
  *
  *   pnpm --filter @frontbase/backend run contracts:emit        # write
  *   pnpm --filter @frontbase/backend run contracts:check       # staleness gate
@@ -15,12 +21,24 @@
 import { writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { buildFrameworkSpec, IMPLEMENTED } from '../dist/compat/app.js';
+import { buildFrameworkSpec, createCompatApp, implementedOps } from '../dist/compat/app.js';
+import { migrateUp } from '../dist/db/migrations.js';
+import { UserStore } from '../dist/db/users.js';
+import { sqliteRunner } from '@frontbase/edge-infra';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(__dirname, '../contracts/framework.openapi.json');
 
-const spec = buildFrameworkSpec(IMPLEMENTED);
+const runner = sqliteRunner(':memory:');
+await migrateUp(runner);
+const app = await createCompatApp({
+    makeRunner: async () => runner,
+    resolvePrincipal: async () => ({ user: null, tenant: '_default' }),
+    now: () => '1970-01-01T00:00:00.000Z',
+    sessionSecret: 'emit-only-not-a-real-secret',
+    userStoreFor: (tenant) => new UserStore(runner, tenant),
+});
+const spec = buildFrameworkSpec(implementedOps(app));
 // Deterministic without a replacer: buildFrameworkSpec inserts paths in stable
 // (sorted op) order and clones components verbatim. (An array-replacer would
 // filter keys at every nesting level and empty the doc — do NOT use one.)

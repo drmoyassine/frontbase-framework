@@ -22,6 +22,7 @@
 import { createCompatApp } from '../dist/compat/app.js';
 import { sqliteRunner } from '@frontbase/edge-infra';
 import { migrateUp } from '../dist/db/migrations.js';
+import { UserStore } from '../dist/db/users.js';
 import * as Z from '../dist/compat/zod.gen.js';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -59,10 +60,16 @@ function synth(schema, depth = 0) {
 
 const runner = sqliteRunner(':memory:');
 await migrateUp(runner);
+// sessionSecret + userStoreFor MUST be supplied: the 20 /api/auth/* ops register
+// conditionally on them, so a probe without them silently skips the entire auth
+// surface — including login and the security endpoints — while still reporting a
+// clean run. Configure the app the way it is actually deployed.
 const app = await createCompatApp({
     makeRunner: async () => runner,
     resolvePrincipal: async () => ({ user: { id: 'owner', email: 'owner@example.com', role: 'master_admin' }, tenant: '_default' }),
     now: () => '2026-01-01T00:00:00.000Z',
+    sessionSecret: 'conformance-probe-secret-not-for-prod',
+    userStoreFor: (tenant) => new UserStore(runner, tenant),
 });
 
 // Path params: reuse ids minted by real POSTs where we can, so param routes reach

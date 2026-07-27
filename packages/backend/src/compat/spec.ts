@@ -75,6 +75,57 @@ export function buildFrameworkSpec(implemented: Set<OpKey>): any {
     };
 }
 
+/**
+ * CF-22 Gate 1 — the set of contract ops the app ACTUALLY serves, read off Hono's
+ * route table.
+ *
+ * This replaces a hand-maintained registry of 285 op keys. That registry was a
+ * second source of truth that nothing verified: listing an op there suppressed its
+ * 501 stub AND stamped `x-implemented: true`, so a typo'd path or a handler that
+ * was never wired would emit a spec claiming an endpoint that 404s in production.
+ * Deriving from the routes makes that unrepresentable — if no handler is
+ * registered, the op is not implemented, by construction.
+ *
+ * MUST be called BEFORE registerStubs: a 501 stub is a registered Hono route like
+ * any other, so calling this on a finished app reports the whole contract as
+ * implemented. Use `implementedOps(app)` to read the set captured at build time.
+ *
+ * Note this is config-dependent: the ~20 `/api/auth/*` ops register only when
+ * `sessionSecret` + `userStoreFor` are supplied, so callers wanting the full
+ * surface (spec emission) must build a fully-configured app.
+ */
+export function routedOps(app: { routes?: { method: string; path: string }[] }): Set<OpKey> {
+    const contract = new Set(productOps().map((op) => opKey(op.method, op.path)));
+    const found = new Set<OpKey>();
+    for (const { method, path } of app.routes ?? []) {
+        if (method === 'ALL' || path.includes('*')) continue; // middleware, not an endpoint
+        // Hono `:param` → OpenAPI `{param}`. A param named differently from the
+        // contract yields a key the contract lacks, which is exactly the mistake
+        // we want surfaced (it shows up as MISSING rather than silently passing).
+        const key = opKey(method, path.replace(/:([A-Za-z0-9_]+)/g, '{$1}'));
+        if (contract.has(key)) found.add(key);
+    }
+    return found;
+}
+
+/** Where createCompatApp stashes the pre-stub derived set. */
+const IMPLEMENTED_OPS = Symbol.for('frontbase.compat.implementedOps');
+
+export function attachImplementedOps(app: object, ops: Set<OpKey>): void {
+    (app as Record<symbol, unknown>)[IMPLEMENTED_OPS] = ops;
+}
+
+/**
+ * The ops a built compat app actually implements — the set `routedOps` produced
+ * before the 501 stubs were layered on. Throws rather than guessing, because a
+ * silently-wrong implemented set is exactly the failure this replaced.
+ */
+export function implementedOps(app: object): Set<OpKey> {
+    const ops = (app as Record<symbol, unknown>)[IMPLEMENTED_OPS];
+    if (!(ops instanceof Set)) throw new Error('implementedOps: app was not built by createCompatApp');
+    return ops as Set<OpKey>;
+}
+
 /** Convert OpenAPI path `/x/{id}/` → Hono route `/x/:id/`, preserving the exact
  *  trailing slash. The product client calls the EXACT OpenAPI path (with/without
  *  trailing slash as defined), so the stub must match it verbatim — only the

@@ -2,7 +2,7 @@
  * CF-22 P1 / D2 — the product-compatible console surface.
  *
  * `createCompatApp()` returns a Hono app serving the product's /api/* paths:
- * real handlers for IMPLEMENTED ops (P1: the `variables` tag) and 501 stubs for
+ * real handlers for the ops the framework implements, and 501 stubs for
  * every other vendored community op. The whole surface sits behind defaultDenyAuth
  * (RULE 2 from day one). RULE 4 (opaque errors) via onError.
  *
@@ -17,7 +17,7 @@ import type { DbRunner } from '@frontbase/edge-infra';
 import { defaultDenyAuth, type ConsoleAuthVars } from '../mw/auth.js';
 import { opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
-import { IMPLEMENTED } from './registry.js';
+import { routedOps, attachImplementedOps } from './spec.js';
 import { registerVariablesRoutes } from './routes/variables.js';
 import { registerMetaRoutes } from './routes/meta.js';
 import { registerSettingsRoutes } from './routes/settings.js';
@@ -138,14 +138,18 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Wave 5 — workspace agent
     registerAgentCompatRoutes(app, runner, kvFor);
 
-    // 501 stubs for vendored ops not yet implemented. GET / is the one intentional
-    // exception because the eSSR engine owns it; re-sync may add further stubs.
-    registerStubs(app, IMPLEMENTED);
+    // Derive what is implemented from the routes just registered, rather than
+    // from a parallel hand-maintained list. Everything else in the contract gets a
+    // 501 stub. GET / is the one intentional exception (the eSSR engine owns it).
+    // Captured BEFORE stubs: a 501 stub is a Hono route too, so deriving after
+    // this point would report the entire contract as implemented.
+    const implemented = routedOps(app);
+    attachImplementedOps(app, implemented);
+    registerStubs(app, implemented);
 
     return app;
 }
 
-export { IMPLEMENTED } from './registry.js';
-export { buildFrameworkSpec, productOps, productSpec, productTag, opKey, toHonoPath } from './spec.js';
+export { buildFrameworkSpec, productOps, productSpec, productTag, opKey, toHonoPath, routedOps, implementedOps } from './spec.js';
 export { TemplateVariableStore } from './store.js';
 export type { TemplateVariable } from './store.js';

@@ -216,5 +216,5 @@ export type { Migration } from './db/migrations.js';
 // CF-22 P1: product-compatible /api surface + drift-gate machinery.
 export { createCompatApp } from './compat/app.js';
 export type { CreateCompatAppDeps } from './compat/app.js';
-export { buildFrameworkSpec, productOps, productSpec, opKey, IMPLEMENTED } from './compat/app.js';
+export { buildFrameworkSpec, productOps, productSpec, opKey, routedOps, implementedOps } from './compat/app.js';
 export * from './db/schema.js';
