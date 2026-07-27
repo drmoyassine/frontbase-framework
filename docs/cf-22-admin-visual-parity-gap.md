@@ -4,6 +4,9 @@
 prior CF-22 status/delivery/audit/incident docs (see [§11 Document history](#11-document-history)).
 Where any older note conflicts with this file, this file controls.
 
+> **Picking this up cold?** Read [`cf-22-handover.md`](./cf-22-handover.md) first — a
+> one-page map (commands, traps, next task) that points back here for the detail.
+
 - **Date:** 2026-07-14 (created) · **Updated:** 2026-07-27 (v8 — Gates 0, 1a, 1b closed)
 - **Status:** 🟡 **IN PROGRESS — NOT COMPLETE.** The contract pipeline, the derived
   spec, and response conformance are green and gated; the console is locally integrated.
