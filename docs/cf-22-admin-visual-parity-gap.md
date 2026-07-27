@@ -23,16 +23,17 @@ Where any older note conflicts with this file, this file controls.
 
 | Phase | What it is | Honest status |
 |---|---|---|
-| **P0** | Product repo emits a committed, typed OpenAPI contract + generated client | ⚠️ **Pipeline works; committed artifact currently lags source.** The product `contracts/openapi.{full,community}.json` are regenerated-but-uncommitted (`git status` dirty). Re-run + commit to green. |
+| **P0** | Product repo emits a committed, typed OpenAPI contract + generated client | ✅ **Green (Gate 0).** The "artifact lags source" reading was a CRLF false positive: `core.autocrlf` rewrote the generated JSON on checkout, so byte-comparing gates saw phantom edits (`--numstat` showed 0 changed lines). Fixed by pinning those paths to LF in `.gitattributes` (product `e79abee`). |
 | **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ⚠️ **Inventory gate, not conformance gate.** The emitted spec is *cloned* from the product doc and stamped by a manual registry — it proves an endpoint is *registered*, not that its handler accepts/returns the right shapes. Only the `variables` tag is Zod-validated. |
 | **P2** | 285 compat handlers implementing the community contract | ⚠️ **Route/shape coverage complete; behavior + security incomplete.** Many Wave 2–5 handlers are empty-state/success-shaped placeholders. **One 🔴 CRITICAL security defect (plaintext API keys) and one 🔴 HIGH defect (no-op password reset).** No Wave 2–5 behavior tests, no tenant-isolation matrix, no auth mutation proofs beyond the guard split. |
 | **P3** | Serve the product console from the cf-full worker | ⚠️ **Locally integrated; acceptance open.** Routing/auth/static-assets/setup-hardening are real and smoke-green (21/21). No Playwright, no real-CF deploy proof, console/contract pins mismatch, no owner sign-off. A field incident (two dashboards) was found and remediated. |
 
-**Current machine-verified facts (2026-07-16):**
-- Framework drift gate: **285 implemented / 1 stubbed (`GET /`, engine-owned) / 0 missing / 0 divergent** vs the *vendored* contract (`PASS`).
-- Vendored community contract: **286 ops / 202 schemas / 31 tags** (the 286 includes 2 `OPTIONS` ops the early P1/P2 counts omitted; hence the historical 284).
-- Framework backend suite + cf-full smoke (21/21): green. Worker 233.8 KB gzip (< 1 MB).
-- **Pin mismatch:** `PRODUCT_COMMIT = afe9e03…` (contract) ≠ `CONSOLE_PIN.commit = bf1ac54…` (console bundle). Different product revisions.
+**Current machine-verified facts (2026-07-27):**
+- Framework drift gate: **285 implemented / 1 stubbed (`GET /`, engine-owned) / 0 missing / 0 divergent** vs the *vendored* contract (`PASS`) — but see P1: this gate compares the contract to itself.
+- Vendored community contract: **286 ops / 256 schemas / 31 tags** (the 286 includes 2 `OPTIONS` ops the early P1/P2 counts omitted; hence the historical 284).
+- Framework backend suite + cf-full smoke: green. Worker 236.4 KB gzip (< 1 MB).
+- **Pins agree:** `PRODUCT_COMMIT` = `CONSOLE_PIN.commit` = `bf1ac54…`, and disagreement is now a hard gate error rather than a silent condition.
+- **CI is green** (`30291479742`) — first green contracts run since 2026-07-15, and now covering `pnpm -r build` unfiltered plus the cf-full smoke suite.
 
 The path to done is [§8 Recovery plan (Gates 0–4)](#8-recovery-plan--the-authoritative-worklist).
 
@@ -253,10 +254,48 @@ Serving the product's built console from the Apache-2.0 framework worker means
 distributing the (compiled) commercial console.
 - **(A) Open** — the community console is deliberately open; it *is* the community edition. **Forever.**
 - **(B) Deploy-time fetch / private artifact (CHOSEN, DEFAULT)** — the framework repo
-  stays clean; `console-dist/` is gitignored except `CONSOLE_PIN`; the deploy fetches
-  the bundle. **Reversible to (A) by un-ignoring the directory — one commit.**
+  stays clean; the hashed JS/CSS bundles are gitignored; the deploy fetches them.
+  **Reversible to (A) by un-ignoring the directory — one commit.**
 
 P0–P2 are identical under either. (B) is the current implementation.
+
+### 6a. The artifact is split — shell committed, bundles not (`b39eb97`)
+
+Posture B was first implemented as "gitignore all of `console-dist/` except
+`CONSOLE_PIN`". That withheld more than it needed to and **made the deployable Worker
+unbuildable in CI**: `examples/cf-full/build.mjs` demanded the artifact, `fetch:console`
+can only produce it from a local product checkout, so `pnpm -r build` could not succeed
+in a fresh clone. The contracts workflow was red from 2026-07-15 to 2026-07-27 for this
+reason alone — no code defect. Do not "fix" a recurrence by excluding cf-full from CI.
+
+The Worker bundle embeds exactly one file from the artifact: `index.html` (1.7 KB of
+meta tags plus references to hashed filenames `CONSOLE_PIN` already commits). The
+proprietary JS/CSS is served by Static Assets and never enters the bundle. So:
+
+| Artifact part | Committed? | Why |
+|---|---|---|
+| `frontbase-admin/index.html` (shell) | ✅ yes | no product code; the Worker bundle needs it |
+| `frontbase-admin/assets/*.{js,css}` | ❌ no | the actual console — posture B's subject |
+| `CONSOLE_PIN` | ✅ yes | ties the two together |
+
+**Validation is three cumulative levels** (`scripts/console-pin.mjs`), each requiring
+only inputs it can have:
+
+| Level | Checks | Used by |
+|---|---|---|
+| `pin` | pin shape + agreement with `contracts/PRODUCT_COMMIT` | CI format gate |
+| `shell` | + shell present, base path, asset refs matching the pin **both directions** | build |
+| `deploy` | + real bundle bytes present and hash-matched | `scripts/deploy.mjs` |
+
+Because the shell is committed and its bundles are not, they could drift apart silently
+— hence the exact two-way reference match. A shell that outlives its bundles is a hard
+error. `CONSOLE_PIN` gained `cssBundles`, and `sha256` now covers CSS as well as JS.
+
+Guarantees are proven, not assumed, in `examples/cf-full/test/console-pin.mjs`: a bare
+checkout builds; a bare checkout **cannot deploy**; drift, wrong base path, and tampered
+bytes all go RED. CI additionally runs the cf-full smoke suite (21 checks against the
+real worker in-process) — coverage it never had. The two checks that read bundle bytes
+report `SKIPPED` loudly there and run on the deploy path.
 
 ---
 
@@ -295,15 +334,24 @@ also lit up cloud-like legacy nav.
 Sequential gates. **Do not mark a phase complete from route count, response shape, or
 smoke count alone.** Each gate has a machine-checkable exit.
 
-### Gate 0 — one source revision (blocks all later acceptance)
-1. In the product repo: regenerate + **commit** community/full OpenAPI + generated
-   client until every P0 staleness/type gate is green on a clean tree.
-2. Pick that exact product commit for **both** `PRODUCT_COMMIT` (contract) and
-   `CONSOLE_PIN` (console bundle).
-3. Re-vendor contract/Zod (`sync-contract.mjs`), rebuild the console
-   (`fetch-console.mjs`), and **fail the deploy when the two pins differ.**
-4. Review the resulting op/schema diff as an intentional migration.
-- **Exit:** product contract committed + current; both pins equal; both repos' contract checks green on clean trees.
+### Gate 0 — one source revision · ✅ **CLOSED 2026-07-27** (`bc99055`, `b39eb97`, product `e79abee`)
+1. ✅ Product contract green on a clean tree — the staleness signal was a CRLF artifact, fixed via `.gitattributes` (see §0).
+2. ✅ Both pins now name `bf1ac54`. The contract had been vendored from `afe9e03`, **16 commits behind** the console.
+3. ✅ Pin disagreement is a hard error in `validateConsoleArtifact` (level `pin`), enforced in CI and on deploy; proven RED by mutation.
+4. ✅ Delta reviewed: **0 ops added or removed, 67 retyped 2xx responses, +54 schemas** — the product's `op_responses.py` refactor replacing loose dict returns.
+
+**What the delta review found, and why it matters.** Probing live handler responses
+against the newly vendored Zod caught **4 of 30 param-less GETs violating the contract**
+(`/api/actions/drafts` missing `total`; `/api/agent/settings` missing its `settings`
+wrapper; `/api/auth-forms/` and `/api/database/connections/` missing `success`). All
+four were real breakage the console would hit — and the drift gate reported
+`0 divergent` throughout, because it clones the contract and compares it to itself.
+Fixed; probe now 30/30. This is direct empirical confirmation of the P1 finding.
+
+- **Residual (hand to Gate 1):** the probe covered only param-less GETs. The other ~37
+  retyped operations (POST/PUT, param routes) are **unmeasured**; true divergence is ≥4.
+- **Also closed here:** the console artifact split (§6a) — CI can build the deployable
+  worker again, and cf-full smoke now runs in CI.
 
 ### Gate 1 — repair P1 conformance semantics
 1. Generate request/param/response validators from the vendored OpenAPI and wrap
@@ -390,6 +438,14 @@ should be treated as superseded (retained in git history only):
 
 **Verdict of the consolidation:** the audit's findings were independently
 re-verified against the code (plaintext API keys, no-op password reset, pin
-mismatch, inventory-not-conformance gate — all confirmed; the P0 "staleness red"
-finding is now more precisely "regenerated-but-uncommitted"). CF-22 is **not
+mismatch, inventory-not-conformance gate — all confirmed). CF-22 is **not
 complete**; §8 is the path to done.
+
+**Update 2026-07-27 — Gate 0 closed.** Pins agree and disagreement is now gated; four
+contract-divergent handlers found and fixed; the P0 "staleness" finding was a CRLF false
+positive, not a real lag (§0). The console artifact was split so CI can build the
+deployable worker (§6a), ending a 12-day CI outage that had no code defect behind it.
+Gate 1 is next and inherits a measured blind spot: ~37 retyped operations remain
+unverified. Gate 2's two security defects (plaintext `fbk_*` keys in
+`compat/routes/edge-misc.ts`, no-op password reset in `compat/routes/auth-compat.ts`)
+are **still live in shipped code** — the owner sequenced Gate 2 after Gates 1/3/4.
