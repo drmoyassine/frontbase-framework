@@ -4,11 +4,11 @@
 prior CF-22 status/delivery/audit/incident docs (see [§11 Document history](#11-document-history)).
 Where any older note conflicts with this file, this file controls.
 
-- **Date:** 2026-07-14 (created) · **Updated:** 2026-07-16 (v6 — consolidated single source of truth)
-- **Status:** 🟡 **IN PROGRESS — NOT COMPLETE.** The contract pipeline and the
-  route/shape coverage exist and the console is locally integrated, but **behavior,
-  security, cross-repo pin sync, and real-deploy/owner acceptance are open.** Do not
-  represent CF-22 as delivered.
+- **Date:** 2026-07-14 (created) · **Updated:** 2026-07-27 (v8 — Gates 0, 1a, 1b closed)
+- **Status:** 🟡 **IN PROGRESS — NOT COMPLETE.** The contract pipeline, the derived
+  spec, and response conformance are green and gated; the console is locally integrated.
+  **Behaviour, security, and real-deploy/owner acceptance remain open**, and 117 of 286
+  ops are still unmeasured (§0). Do not represent CF-22 as delivered.
 - **Owner scope constraint:** parity targets the **self-host / single-tenant /
   community edition** only. Cloud-only surfaces (tenants directory, plans manager,
   billing, SuperTokens/signup/invite, agent quota) are out of scope.
@@ -24,16 +24,29 @@ Where any older note conflicts with this file, this file controls.
 | Phase | What it is | Honest status |
 |---|---|---|
 | **P0** | Product repo emits a committed, typed OpenAPI contract + generated client | ✅ **Green (Gate 0).** The "artifact lags source" reading was a CRLF false positive: `core.autocrlf` rewrote the generated JSON on checkout, so byte-comparing gates saw phantom edits (`--numstat` showed 0 changed lines). Fixed by pinning those paths to LF in `.gitattributes` (product `e79abee`). |
-| **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ⚠️ **Inventory gate, not conformance gate.** The emitted spec is *cloned* from the product doc and stamped by a manual registry — it proves an endpoint is *registered*, not that its handler accepts/returns the right shapes. Only the `variables` tag is Zod-validated. |
-| **P2** | 285 compat handlers implementing the community contract | ⚠️ **Shapes now verified (Gate 1a: 47 violations → 0, gated); behavior + security still incomplete.** Many Wave 2–5 handlers are empty-state/success-shaped placeholders. **One 🔴 CRITICAL security defect (plaintext API keys) and one 🔴 HIGH defect (no-op password reset).** No Wave 2–5 behavior tests, no tenant-isolation matrix, no auth mutation proofs beyond the guard split. |
-| **P3** | Serve the product console from the cf-full worker | ⚠️ **Locally integrated; acceptance open.** Routing/auth/static-assets/setup-hardening are real and smoke-green (21/21). No Playwright, no real-CF deploy proof, console/contract pins mismatch, no owner sign-off. A field incident (two dashboards) was found and remediated. |
+| **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ✅ **Now a real conformance gate (Gates 1a+1b).** `x-implemented` is derived from Hono's route table, not a hand-maintained registry — deleting a handler turns CI red. Every documented 2xx response is validated against the vendored Zod (`VIOLATES 0`, gated). **Remaining:** 32 ops unreachable without fixtures, 85 with no `$ref` 2xx body to check, and `x-implemented` is still binary. |
+| **P2** | 285 compat handlers implementing the community contract | ⚠️ **Shapes verified and gated (Gate 1a: 47 → 0); behaviour + security still unproven.** Many Wave 2–5 handlers are empty-state/success-shaped placeholders. **One 🔴 CRITICAL security defect (plaintext API keys) and one 🔴 HIGH defect (no-op password reset).** No Wave 2–5 behavior tests, no tenant-isolation matrix, no auth mutation proofs beyond the guard split. |
+| **P3** | Serve the product console from the cf-full worker | ⚠️ **Locally integrated; acceptance open.** Routing/auth/static-assets/setup-hardening are real and smoke-green (22 checks + 2 skipped when the bundles are absent). Pins now agree and are gated (Gate 0). **Still open:** no Playwright, no real-CF deploy proof, no owner sign-off. A field incident (two dashboards) was found and remediated. |
 
-**Current machine-verified facts (2026-07-27):**
-- Framework drift gate: **285 implemented / 1 stubbed (`GET /`, engine-owned) / 0 missing / 0 divergent** vs the *vendored* contract (`PASS`) — but see P1: this gate compares the contract to itself.
+**Current machine-verified facts (2026-07-27, CI `30299868508` on `229d48b`):**
+- **Response conformance: `CONFORMS 169 / VIOLATES 0 / UNREACHABLE 32 / NO_SCHEMA 85`** — measured **169/286 (59%)**. Gated in CI via `compat-conformance.mjs --gate`.
+- Framework drift gate: **285 implemented / 1 stubbed (`GET /`, engine-owned) / 0 missing / 0 divergent**. `x-implemented` is now *derived from the route table*, so this no longer merely compares the contract to itself.
 - Vendored community contract: **286 ops / 256 schemas / 31 tags** (the 286 includes 2 `OPTIONS` ops the early P1/P2 counts omitted; hence the historical 284).
-- Framework backend suite + cf-full smoke: green. Worker 236.4 KB gzip (< 1 MB).
-- **Pins agree:** `PRODUCT_COMMIT` = `CONSOLE_PIN.commit` = `bf1ac54…`, and disagreement is now a hard gate error rather than a silent condition.
-- **CI is green** (`30291479742`) — first green contracts run since 2026-07-15, and now covering `pnpm -r build` unfiltered plus the cf-full smoke suite.
+- Framework backend suite (34 markers) + cf-full smoke: green. Worker 236.4 KB gzip (< 1 MB). Migrations at **v13**.
+- **Pins agree:** `PRODUCT_COMMIT` = `CONSOLE_PIN.commit` = `bf1ac54…`, and disagreement is a hard gate error rather than a silent condition.
+- **CI green**, covering `pnpm -r build` unfiltered, the cf-full smoke suite, the console-split guarantees, and the conformance gate.
+
+**What is measured vs what is not** — the honest denominator:
+
+| Bucket | Count | Meaning |
+|---|---:|---|
+| `CONFORMS` | 169 | Returned a documented 2xx and it validated. |
+| `VIOLATES` | 0 | Returned a documented 2xx that did **not** validate. Gated at zero. |
+| `UNREACHABLE` | 32 | Answered 4xx/5xx — the probe lacks fixtures to reach the handler. **Not a pass.** 28 are 404s on nested param routes (pages 8, actions 4, variables 3, edge-* 9, others 4). |
+| `NO_SCHEMA` | 85 | The *contract* documents no `$ref` 2xx body, so there is nothing to validate. A P0 contract-tightening gap, not a handler gap. |
+
+Conformance says nothing about **behaviour**: an op that returns a correctly-shaped
+constant and ignores its store counts as `CONFORMS`. That distinction is Gate 1c/3.
 
 The path to done is [§8 Recovery plan (Gates 0–4)](#8-recovery-plan--the-authoritative-worklist).
 
@@ -139,7 +152,7 @@ product commit for both the contract and the console bundle.
 
 *Deferred (not blocking):* the 18 remaining product-side `src/services/*` → generated-client migrations (product task #111).
 
-### P1 — Framework contract + drift gate · ⚠️ inventory gate, not conformance gate
+### P1 — Framework contract + drift gate · ✅ conformance gate (Gates 1a+1b); coverage incomplete
 **Intent:** the framework emits its OWN OpenAPI spec for the compat surface and CI
 diffs it against the vendored product contract, so a missing/divergent endpoint is
 machine-detected forever. Ship the machinery + one fully-conformant proof tag.
@@ -153,16 +166,23 @@ a RULE-8 mutation proof. **Deviation:** `@hono/zod-openapi` needs zod v4; the
 framework is zod 3, so the documented fallback was taken (plain Hono + vendored zod
 for validation + vendored JSON-Schema for emission).
 
-**Current gap (→ Gate 1):** `buildFrameworkSpec()` **clones** the paths/operations/
-schemas from the vendored product document and stamps a manual `x-implemented`
-boolean from the registry (`packages/backend/src/compat/spec.ts`). Consequently a
-handler can accept the wrong body, skip validation, or return the wrong runtime
-shape while the emitted spec stays green — the gate proves an endpoint is
-*registered*, not *conformant*. The mutation proof catches edits to emitted JSON,
-not divergence in handler code. Only `variables` visibly parses responses with
-vendored Zod. Also: the binary `x-implemented` flag conflates "real handler" with
-"graceful placeholder."
+**Repaired (Gates 1a + 1b, `fe63b4b` + `229d48b`).** Two defects were real:
 
+1. *The spec was cloned and the registry was unverified.* `buildFrameworkSpec()` copied
+   the product document and stamped `x-implemented` from a hand-maintained Set of 285
+   op keys that nothing checked against the app — so a typo'd path or an unwired handler
+   would publish a spec advertising an endpoint that 404s, with every gate green.
+   `routedOps(app)` now derives the set from Hono's route table; `registry.ts` is
+   deleted. The emitted document is byte-identical, so the swap is behaviour-preserving,
+   but **deleting one handler from source now turns the staleness gate RED** — under the
+   registry that same deletion was green.
+2. *Nothing validated responses.* `compat-conformance.mjs` drives the real app and parses
+   every documented 2xx against the vendored Zod. It found **47 violations** the drift
+   gate reported as `0 divergent` (§8 Gate 1a). Now gated at zero.
+
+**Remaining gap (→ Gate 1c):** 32 ops are unreachable without fixtures; 85 have no
+documented `$ref` 2xx body; and `x-implemented` is still binary, so it cannot distinguish
+a working handler from a correctly-shaped placeholder.
 ### P2 — Implement the 286-op community contract · ⚠️ shape coverage complete; behavior + security incomplete
 **Intent:** drive the drift-gate burn-down to zero, wave by wave, where **done per op
 = shape-conformant + behavior test against the product client's exact call +
@@ -229,7 +249,7 @@ per nav area and owner field-test sign-off.
 - **Auth (D3):** compat login issues `fb_session`; SPA reads `/api/auth/me`
   (`is_master:true` for master_admin). Cookie name is server-internal — kept as
   `fb_session`, shapes are what matter.
-- **Verification:** cf-full smoke **21/21**, backend suite green, worker 233.8 KB gz.
+- **Verification:** cf-full smoke green (22 checks; 2 bundle-dependent checks report SKIPPED when the console bundles are absent — see §6a), backend suite green, worker 236.4 KB gz.
 
 **Current gaps (→ Gate 4):**
 - ❌ **No Playwright** (11-area nav suite with real create/list/update/delete +
@@ -345,7 +365,7 @@ against the newly vendored Zod caught **4 of 30 param-less GETs violating the co
 (`/api/actions/drafts` missing `total`; `/api/agent/settings` missing its `settings`
 wrapper; `/api/auth-forms/` and `/api/database/connections/` missing `success`). All
 four were real breakage the console would hit — and the drift gate reported
-`0 divergent` throughout, because it clones the contract and compares it to itself.
+`0 divergent` throughout, because at that point it cloned the contract and compared it to itself (repaired in Gate 1b).
 Fixed; probe now 30/30. This is direct empirical confirmation of the P1 finding.
 
 - **Residual (hand to Gate 1):** the probe covered only param-less GETs. The other ~37
@@ -379,16 +399,59 @@ Two defects beyond response shaping:
   documents no `$ref` 2xx body (a P0 contract-tightening gap, not a handler gap).
   Closing both is Gate 1 proper.
 
-### Gate 1 — repair P1 conformance semantics
-1. Generate request/param/response validators from the vendored OpenAPI and wrap
-   every compat handler (or move to a route-definition system that emits its own
-   spec). Build `framework.openapi.json` from the *registered route definitions*,
-   not by cloning the product doc.
-2. Add a runtime route sweep for every method/path (incl. `OPTIONS`) with negative/
-   fuzz cases (required fields, wrong types, path/query params, status codes, bodies).
-3. Replace binary `x-implemented` with `stub | shape-only | functional | external-disabled`.
-4. Make **handler** mutations (not just JSON edits) turn CI red.
-- **Exit:** changing a handler's accepted request, response, auth placement, or registration fails a gate.
+### Gate 1b — handler-derived spec · ✅ **CLOSED 2026-07-27** (`229d48b`)
+
+`framework.openapi.json` is now built from the app's **registered routes**, not by
+cloning the product document with a hand-maintained flag.
+
+`x-implemented` came from a Set of 285 op keys that nothing verified against the app.
+Listing an op there suppressed its 501 stub *and* stamped the spec as implementing it —
+so a typo'd path, a wrong param name, or a handler that was never wired would publish a
+spec advertising an endpoint that 404s in production, with every gate green.
+`routedOps(app)` reads Hono's route table instead; `registry.ts` is deleted.
+
+- **Exit met:** the emitted document is byte-identical (behaviour-preserving), but
+  **deleting one handler from source turns the staleness gate RED**. Under the registry
+  that same deletion was green. Gate: `test/routed-ops.mjs` (7 cases).
+- **Found while building it:** the conformance probe had been under-measuring. The ~20
+  `/api/auth/*` ops register only when `sessionSecret` + `userStoreFor` are supplied, and
+  the probe supplied neither — the entire auth surface, login included, was silently
+  skipped while the run reported clean. Coverage 156→169, `UNREACHABLE` 45→32.
+- **A trap in the change itself:** a 501 stub is a Hono route too, so deriving from a
+  *finished* app counts stubs as implemented. Latent today (the configured app registers
+  zero stubs) but would activate on the next re-vendor. The set is captured pre-stub and
+  `implementedOps()` throws rather than guessing.
+
+### Gate 1c — close the measurement gap · **NEXT**
+
+Gate 1a proved shapes; Gate 1b proved registration. Neither proves the handler *does*
+anything. Three items, in order:
+
+1. **Fixtures for the 32 `UNREACHABLE` ops.** 28 are 404s on nested param routes where
+   the probe's id pool cannot supply the right id (a version id, a nested resource id).
+   Seed each resource chain, then re-measure. Mechanical.
+2. **Round-trip classification, derived not declared.** Replace binary `x-implemented`
+   with `stub | shape-only | functional | external-disabled`. **Do not hand-annotate
+   this** — a hand-maintained status table is exactly the artifact Gate 1b deleted, with
+   the same failure mode. Derive it: an op is `functional` when a write is observable in
+   a subsequent read, `shape-only` when its response is invariant under state,
+   `external-disabled` when it requires an unconfigured provider. This needs the
+   fixtures from (1), which is why they come first.
+3. **Negative/fuzz sweep** — every method/path incl. `OPTIONS`, with wrong types,
+   missing required fields, and bad path/query params, asserting status codes rather
+   than just success bodies.
+
+- **Exit:** `UNREACHABLE 0`; every op carries a *derived* status; changing a handler's
+  accepted request, response, auth placement, or registration fails a gate.
+- **Note:** item 2 produces the same evidence Gate 3 needs, so Gates 1c and 3 should be
+  executed as one pass rather than two (see *Sequencing* below).
+
+### The `NO_SCHEMA 85` — a P0 debt, not a P2 debt
+
+85 ops document no `$ref` 2xx body in the *product's own contract*, so there is nothing
+for any framework gate to validate against. Tightening them is work in the **product
+repo** (`response_model` on those routes), not the framework. Until then those ops are
+unverifiable by construction, and no framework gate should claim otherwise.
 
 ### Gate 2 — security + tenant isolation (before more P2 feature work)
 1. Fix API-key storage/reveal (verifier hash or encrypted ciphertext; atomic audited
@@ -419,9 +482,27 @@ Credential-gated provider tests may skip with notice; the op stays `external-dis
    404/410 retirement assertions).
 - **Exit:** 11/11 browser acceptance; fresh-deploy proof; matching committed pins; scheduled drift green; redirect/retirement complete; **owner sign-off recorded.**
 
+### Sequencing (revised 2026-07-27)
+
+Original order was 0 → 1 → 2 → 3 → 4, with the owner electing to defer Gate 2. Two
+things changed that:
+
+- **Gates 1c and 3 collapse into one pass.** Classifying an op as `functional` requires
+  proving a write is observable in a read — which *is* Gate 3's behavioural test. Running
+  them separately means building the same fixtures and round-trips twice.
+- **Gate 2 is still open and still shipping.** Both defects remain live in released code:
+  plaintext `fbk_*` keys in `compat/routes/edge-misc.ts` (`/reveal` returns them on every
+  call) and a no-op password reset in `compat/routes/auth-compat.ts` (returns
+  `success: true` with zero password mutations). They are small and self-contained, and
+  they do not conflict with Gate 1c/3. Recorded here as an open owner decision, not as
+  an argument to be repeated.
+
+Working order: **Gate 1c(1) fixtures → Gate 1c(2)+Gate 3 as one behavioural pass →
+Gate 1c(3) fuzz → Gate 4**, with Gate 2 insertable at any point.
+
 ### Closure rule
 - **P0 complete:** current source artifacts + generated client deterministic and committed.
-- **P1 complete:** handler-derived contract + runtime validation detect real code drift.
+- **P1 complete:** handler-derived contract + runtime validation detect real code drift. ✅ *(Gates 1a+1b; coverage completed by Gate 1c.)*
 - **P2 complete:** product-client behavior, security, persistence/provider effects, and tenant isolation are tested.
 - **P3 complete:** real browser/deploy parity, permanent drift, cutover, and owner sign-off.
 - **CF-22 complete:** the original complaint ("looks super poor") is falsifiable against the same console the product ships — signed off by the owner on a fresh deploy.
@@ -435,7 +516,11 @@ Credential-gated provider tests may skip with notice; the op stays `external-dis
 - **Compat mount:** `/api/*` (product paths), a sibling of the legacy `/api/console/*` (parallel-run) and the engine catch-all. Compat guard scoped to `/api/*` excl. `/api/console/*`.
 - **`GET /`** is always the engine's (eSSR pages) — excluded from compat stubs (the 1 stub in the gate table, by design).
 - **Op count:** vendored community = **286** (incl. 2 `OPTIONS`); the historical "284" omitted `OPTIONS`. Framework emits 285 compat-routed + engine-owned `GET /`.
-- **Migrations added by CF-22:** v7 `template_variables`, v8 `themes`+`security_events`, v9 `compat_pages`+`compat_page_versions`, v10 `auth_forms`, v11 `edge_api_keys`+`edge_agent_profiles_compat`+`mcp_servers`+`agent_skills`.
+- **Migrations added by CF-22:** v7 `template_variables`, v8 `themes`+`security_events`, v9 `compat_pages`+`compat_page_versions`, v10 `auth_forms`, v11 `edge_api_keys`+`edge_agent_profiles_compat`+`mcp_servers`+`agent_skills`, v13 `workflows.created_at` (the table never had one, yet `WorkflowDraftResponse` requires it).
+- **`x-implemented` is derived, never declared.** `routedOps(app)` reads Hono's route table; `implementedOps(app)` returns the set captured *before* stubs. **A 501 stub is a Hono route too** — deriving from a finished app reports the whole contract as implemented, so the capture order matters and `implementedOps` throws rather than guessing.
+- **The auth surface is config-dependent.** The ~20 `/api/auth/*` ops register only when `sessionSecret` + `userStoreFor` are supplied. Any probe or emitter that omits them silently measures a smaller surface while reporting clean — this actually happened to the conformance probe.
+- **Shared response shapes live in `compat/routes/edge-shapes.ts`** (`batchResult`, `testResult`, `serializeEdgeResource`, `serializeEngine`). Each family had been re-invented per tag, which is how five tags independently drifted from the contract.
+- **Batch ops:** the contract types `success` as the **list of ids processed**, not a boolean.
 - **`@hono/zod-openapi` blocked** on zod v4 (framework is zod 3) → plain Hono + vendored zod. **`oasdiff` npm package is a placeholder** → native-Node `contract-diff.mjs`.
 - **fastapi pinned `==0.139.0`** in the product repo — its version changes the emitted spec, so it is part of contract determinism.
 - **One-command bumps:** contract = `sync-contract.mjs` + commit pin; console = `fetch-console.mjs` + commit pin.
@@ -466,6 +551,16 @@ should be treated as superseded (retained in git history only):
 re-verified against the code (plaintext API keys, no-op password reset, pin
 mismatch, inventory-not-conformance gate — all confirmed). CF-22 is **not
 complete**; §8 is the path to done.
+
+**Update 2026-07-27 (later) — Gates 1a + 1b closed.** The full-surface conformance
+probe put real divergence at **47**, not the 4 Gate 0 had sampled; all 47 are fixed and
+the gate is wired into CI at zero. `x-implemented` is now derived from the route table
+and `registry.ts` is deleted, so deleting a handler turns CI red. Two defects behind the
+numbers: `workflows` had no `created_at` column despite the contract requiring one, and a
+`test` op returned a status outside the contract's enum. Measured coverage is
+**169/286 (59%)** — `UNREACHABLE 32` and `NO_SCHEMA 85` are recorded as unmeasured, not
+as passes. Gate 1c is next and merges with Gate 3 (see §8 *Sequencing*). **Gate 2's two
+security defects are still live in shipped code.**
 
 **Update 2026-07-27 — Gate 0 closed.** Pins agree and disagreement is now gated; four
 contract-divergent handlers found and fixed; the P0 "staleness" finding was a CRLF false
