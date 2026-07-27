@@ -83,7 +83,9 @@ test('pages: publish + public/homepage', async () => {
 test('database: connections + graceful empty introspection', async () => {
     const app = await makeApp();
     const conn = await (await req(app, 'GET', '/api/database/connections/')).json();
-    assert.equal(conn.supabase.connected, false);
+    // DatabaseConnectionResponse envelope (contract bf1ac54): {success, data, message?}
+    assert.equal(conn.success, true);
+    assert.equal(conn.data.supabase.connected, false);
     const tables = await (await req(app, 'GET', '/api/database/tables/')).json();
     assert.deepEqual(tables.data.tables, []);
     const schema = await (await req(app, 'GET', '/api/database/table-schema/users/')).json();

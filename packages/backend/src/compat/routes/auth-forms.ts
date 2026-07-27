@@ -6,7 +6,12 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 const COLS = 'id, tenant_slug, name, type, config, is_primary, created_at, updated_at';
 
 export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => string): void {
-    app.get('/api/auth-forms/', async (c) => c.json({ forms: await runner.query(`SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ?`, [c.get('tenant')]) }));
+    // Contract (bf1ac54) requires SuccessDataEnvelope {success, data?, message?, error?}.
+    app.get('/api/auth-forms/', async (c) => c.json({
+        success: true,
+        data: await runner.query(`SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ?`, [c.get('tenant')]),
+        error: null,
+    }));
     app.post('/api/auth-forms/', async (c) => {
         const b = await c.req.json().catch(() => ({})); const id = crypto.randomUUID(); const ts = now();
         await runner.exec('INSERT INTO auth_forms (id, tenant_slug, name, type, config, is_primary, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)', [id, c.get('tenant'), b.name ?? 'form', b.type ?? 'login', b.config ? JSON.stringify(b.config) : null, 0, ts, ts]);

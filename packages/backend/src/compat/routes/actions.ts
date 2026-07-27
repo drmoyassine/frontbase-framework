@@ -22,7 +22,12 @@ const asJson = (v: unknown): string => typeof v === 'string' ? v : JSON.stringif
 export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2Store, now: () => string): void {
     // ---- drafts CRUD ----
     // GET /api/actions/drafts
-    app.get('/api/actions/drafts', async (c) => c.json({ drafts: await phase2For(c.get('tenant')).listWorkflows() }));
+    app.get('/api/actions/drafts', async (c) => {
+        // Contract (bf1ac54) requires {drafts, total} — `total` was added when the
+        // product replaced loose dict returns with WorkflowDraftListResponse.
+        const drafts = await phase2For(c.get('tenant')).listWorkflows();
+        return c.json({ drafts, total: drafts.length });
+    });
     // POST /api/actions/drafts
     app.post('/api/actions/drafts', async (c) => {
         const b = await c.req.json().catch(() => ({})) as { name?: string; nodes?: unknown; edges?: unknown; is_active?: boolean };

@@ -18,6 +18,22 @@ export function validateConsoleArtifact(rootDir, options = {}) {
     if (!Array.isArray(pin.jsBundles) || pin.jsBundles.length === 0 || pin.jsBundles.some((f) => typeof f !== 'string' || !f.endsWith('.js'))) {
         throw new Error('CONSOLE_PIN.jsBundles must contain at least one JavaScript bundle');
     }
+    // CF-22 Gate 0 — one source revision. The console bundle (CONSOLE_PIN.commit) and
+    // the vendored contract (contracts/PRODUCT_COMMIT) MUST name the same product commit.
+    // When they drift, the console is compiled against endpoint shapes the compat backend
+    // does not serve — the exact failure mode of the setup-console cutover incident. This
+    // runs before the artifact checks so CI's --format-only pass enforces it too.
+    const productCommitPath = resolve(rootDir, 'packages', 'backend', 'contracts', 'PRODUCT_COMMIT');
+    if (!existsSync(productCommitPath)) throw new Error('contracts/PRODUCT_COMMIT missing: run `node scripts/sync-contract.mjs`');
+    const productCommit = readFileSync(productCommitPath, 'utf8').trim();
+    if (productCommit !== pin.commit) {
+        throw new Error(
+            `pin disagreement — console is pinned to ${pin.commit.slice(0, 12)} but the contract is vendored ` +
+            `from ${productCommit.slice(0, 12)}. Re-sync both to one product revision: ` +
+            '`node scripts/sync-contract.mjs --commit <sha>` and `pnpm run fetch:console -- --commit <sha>`.',
+        );
+    }
+
     if (options.formatOnly) return pin;
 
     const indexPath = join(consoleRoot, 'index.html');

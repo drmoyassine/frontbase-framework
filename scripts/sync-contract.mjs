@@ -27,12 +27,12 @@ import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 
-const args = Object.fromEntries(
-    process.argv.slice(2).reduce((acc, a, i, arr) => {
-        if (a.startsWith('--')) acc[a.slice(2)] = arr[i + 1];
-        return acc;
-    }, {}),
-);
+// --key value → { key: value }. (The reduce already builds the object; wrapping it
+// in Object.fromEntries fed it a non-iterable and threw on any explicit flag.)
+const args = process.argv.slice(2).reduce((acc, a, i, arr) => {
+    if (a.startsWith('--')) acc[a.slice(2)] = arr[i + 1];
+    return acc;
+}, {});
 
 const product = resolve(args.product ?? '../Frontbase-');
 const contractsDir = resolve('packages/backend/contracts');

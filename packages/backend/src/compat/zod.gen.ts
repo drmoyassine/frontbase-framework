@@ -38,6 +38,14 @@ export const zActionBulkDeleteRequest = z.object({
 });
 
 /**
+ * AddTursoDatabaseResult
+ */
+export const zAddTursoDatabaseResult = z.object({
+    database: z.unknown().nullish(),
+    success: z.boolean()
+});
+
+/**
  * AddonCheckoutItem
  */
 export const zAddonCheckoutItem = z.object({
@@ -447,12 +455,35 @@ export const zBotProtectionUpdateRequest = z.object({
 });
 
 /**
+ * BulkDeleteDraftsResult
+ */
+export const zBulkDeleteDraftsResult = z.object({
+    deleted: z.unknown().nullish()
+});
+
+/**
  * CacheBatchResult
  */
 export const zCacheBatchResult = z.object({
     failed: z.array(z.record(z.unknown())).optional().default([]),
     success: z.array(z.string()).optional().default([]),
     total: z.number().int().optional().default(0)
+});
+
+/**
+ * CancelMoveResult
+ */
+export const zCancelMoveResult = z.object({
+    cancelled: z.boolean(),
+    engine: z.unknown().nullish()
+});
+
+/**
+ * CheckSlugResult
+ */
+export const zCheckSlugResult = z.object({
+    available: z.unknown().nullish(),
+    error: z.unknown().nullish()
 });
 
 /**
@@ -463,6 +494,16 @@ export const zCheckoutRequestBody = z.object({
     cancel_url: z.string().nullish(),
     plan_slug: z.string(),
     success_url: z.string().nullish()
+});
+
+/**
+ * CloudflareStatusResult
+ */
+export const zCloudflareStatusResult = z.object({
+    account_id: z.unknown().nullish(),
+    deployed: z.boolean(),
+    url: z.unknown().nullish(),
+    worker_name: z.unknown().nullish()
 });
 
 /**
@@ -510,6 +551,19 @@ export const zComponentThemeOut = z.object({
 });
 
 /**
+ * ConnectDenoResult
+ */
+export const zConnectDenoResult = z.object({
+    account_name: z.unknown().nullish(),
+    auto_detected: z.unknown().nullish(),
+    detail: z.unknown().nullish(),
+    org_slug: z.unknown().nullish(),
+    org_uuid: z.unknown().nullish(),
+    success: z.boolean(),
+    user_id: z.unknown().nullish()
+});
+
+/**
  * ConnectRequest
  *
  * List existing workers for a provider account.
@@ -529,6 +583,38 @@ export const zCookieVariables = z.object({
 });
 
 /**
+ * CreateCheckoutResult
+ */
+export const zCreateCheckoutResult = z.object({
+    url: z.unknown().nullish()
+});
+
+/**
+ * CreateInviteResult
+ */
+export const zCreateInviteResult = z.object({
+    invite: z.unknown().nullish(),
+    link: z.unknown().nullish(),
+    success: z.boolean()
+});
+
+/**
+ * CreateNetlifySiteResult
+ */
+export const zCreateNetlifySiteResult = z.object({
+    id: z.unknown().nullish(),
+    name: z.unknown().nullish(),
+    url: z.unknown().nullish()
+});
+
+/**
+ * CreatePlanResult
+ */
+export const zCreatePlanResult = z.object({
+    plan: z.unknown().nullish()
+});
+
+/**
  * CreatePolicyRequest
  */
 export const zCreatePolicyRequest = z.object({
@@ -540,6 +626,20 @@ export const zCreatePolicyRequest = z.object({
     roles: z.array(z.string()).optional().default(['authenticated']),
     tableName: z.string(),
     usingExpression: z.string().nullish()
+});
+
+/**
+ * CreatePortalResult
+ */
+export const zCreatePortalResult = z.object({
+    url: z.unknown().nullish()
+});
+
+/**
+ * CreateProjectResult
+ */
+export const zCreateProjectResult = z.object({
+    project: z.unknown().nullish()
 });
 
 /**
@@ -562,12 +662,33 @@ export const zCreateSchemaRequest = z.object({
 });
 
 /**
+ * CreateStorageProviderResult
+ */
+export const zCreateStorageProviderResult = z.object({
+    account_name: z.unknown().nullish(),
+    config: z.unknown().nullish(),
+    created_at: z.unknown().nullish(),
+    id: z.unknown().nullish(),
+    is_active: z.boolean(),
+    name: z.unknown().nullish(),
+    provider: z.unknown().nullish(),
+    provider_account_id: z.unknown().nullish()
+});
+
+/**
  * CreateTenantRequest
  */
 export const zCreateTenantRequest = z.object({
     name: z.string(),
     plan: z.string().optional().default('free'),
     slug: z.string()
+});
+
+/**
+ * CreateTenantResult
+ */
+export const zCreateTenantResult = z.object({
+    tenant: z.unknown().nullish()
 });
 
 /**
@@ -579,6 +700,21 @@ export const zCreateTenantUserRequest = z.object({
     password: z.string(),
     role: z.string().optional().default('owner'),
     username: z.string().nullish()
+});
+
+/**
+ * CreateTenantUserResult
+ */
+export const zCreateTenantUserResult = z.object({
+    user: z.unknown().nullish()
+});
+
+/**
+ * CreateVercelProjectResult
+ */
+export const zCreateVercelProjectResult = z.object({
+    id: z.unknown().nullish(),
+    name: z.unknown().nullish()
 });
 
 /**
@@ -609,6 +745,16 @@ export const zDatabaseConnectionResponse = z.object({
 });
 
 /**
+ * DeleteEdgeVectorResult
+ */
+export const zDeleteEdgeVectorResult = z.object({
+    id: z.unknown().nullish(),
+    message: z.unknown().nullish(),
+    remote_deleted: z.unknown().nullish(),
+    success: z.boolean()
+});
+
+/**
  * DenoConnectRequest
  */
 export const zDenoConnectRequest = z.object({
@@ -627,6 +773,17 @@ export const zDeployRequest = z.object({
     edge_queue_id: z.string().nullish(),
     provider_id: z.string(),
     worker_name: z.string().optional().default('frontbase-edge')
+});
+
+/**
+ * DeployToCloudflareResult
+ */
+export const zDeployToCloudflareResult = z.object({
+    account_id: z.unknown().nullish(),
+    engine_id: z.unknown().nullish(),
+    success: z.boolean(),
+    url: z.unknown().nullish(),
+    worker_name: z.unknown().nullish()
 });
 
 /**
@@ -1000,6 +1157,15 @@ export const zExecutionStatus = z.enum([
 ]);
 
 /**
+ * ExportEngineResult
+ */
+export const zExportEngineResult = z.object({
+    bundle: z.unknown().nullish(),
+    engine_id: z.unknown().nullish(),
+    move_status: z.unknown().nullish()
+});
+
+/**
  * ExportRequest
  *
  * Request body for ``POST /api/edge-engines/{engine_id}/export``.
@@ -1018,6 +1184,14 @@ export const zExportRequest = z.object({
  */
 export const zFinalizeMoveRequest = z.object({
     confirm_secret: z.string().min(1)
+});
+
+/**
+ * FinalizeMoveResult
+ */
+export const zFinalizeMoveResult = z.object({
+    engine_id: z.unknown().nullish(),
+    finalized: z.boolean()
 });
 
 /**
@@ -1153,10 +1327,160 @@ export const zGenericDeployRequest = z.object({
 });
 
 /**
+ * GetAgentCatalogueResult
+ */
+export const zGetAgentCatalogueResult = z.object({
+    coreTools: z.unknown().nullish(),
+    mcpServers: z.unknown().nullish(),
+    skills: z.unknown().nullish()
+});
+
+/**
+ * GetAgentConfigResult
+ */
+export const zGetAgentConfigResult = z.object({
+    default_provider: z.unknown().nullish(),
+    enabled: z.unknown().nullish(),
+    quota_exceeded_action: z.unknown().nullish()
+});
+
+/**
+ * GetAnalyticsResult
+ */
+export const zGetAnalyticsResult = z.object({
+    active_tenants: z.unknown().nullish(),
+    avg_credits_per_tenant: z.unknown().nullish(),
+    daily_series: z.unknown().nullish(),
+    errors: z.unknown().nullish(),
+    model_usage: z.unknown().nullish(),
+    period: z.unknown().nullish(),
+    provider_usage: z.unknown().nullish(),
+    quota_exhausted: z.unknown().nullish(),
+    top_tenants: z.unknown().nullish(),
+    total_consumed: z.unknown().nullish()
+});
+
+/**
+ * GetCatalogResult
+ */
+export const zGetCatalogResult = z.object({
+    models_by_type: z.unknown().nullish(),
+    provider: z.unknown().nullish(),
+    total: z.unknown().nullish()
+});
+
+/**
+ * GetEngineLogsResult
+ */
+export const zGetEngineLogsResult = z.object({
+    cached: z.unknown().nullish(),
+    logs: z.unknown().nullish(),
+    next_cursor: z.unknown().nullish(),
+    provider: z.unknown().nullish()
+});
+
+/**
+ * GetEngineSourceResult
+ */
+export const zGetEngineSourceResult = z.object({
+    file_count: z.unknown().nullish(),
+    files: z.unknown().nullish(),
+    success: z.boolean(),
+    total_size: z.unknown().nullish()
+});
+
+/**
+ * GetLimitRegistryResult
+ */
+export const zGetLimitRegistryResult = z.object({
+    limits: z.unknown().nullish()
+});
+
+/**
+ * GetLogRetentionResult
+ */
+export const zGetLogRetentionResult = z.object({
+    log_persistence: z.unknown().nullish(),
+    plan_tier: z.unknown().nullish(),
+    prerequisites_met: z.unknown().nullish(),
+    provider: z.unknown().nullish(),
+    retention_hours: z.unknown().nullish()
+});
+
+/**
+ * GetMyAddonsResult
+ */
+export const zGetMyAddonsResult = z.object({
+    addons: z.unknown().nullish()
+});
+
+/**
+ * GetMyPlanResult
+ */
+export const zGetMyPlanResult = z.object({
+    limits: z.unknown().nullish(),
+    plan: z.unknown().nullish(),
+    usage: z.unknown().nullish()
+});
+
+/**
+ * GetMyTenantResult
+ */
+export const zGetMyTenantResult = z.object({
+    message: z.unknown().nullish(),
+    tenant: z.unknown().nullish()
+});
+
+/**
+ * GetProfileConfigsResult
+ */
+export const zGetProfileConfigsResult = z.object({
+    profiles: z.unknown().nullish()
+});
+
+/**
+ * GetPromptResult
+ */
+export const zGetPromptResult = z.object({
+    description: z.string(),
+    messages: z.unknown().nullish(),
+    name: z.string()
+});
+
+/**
+ * GetSchemasResult
+ */
+export const zGetSchemasResult = z.object({
+    providers: z.unknown().nullish(),
+    schemas: z.unknown().nullish()
+});
+
+/**
+ * GetTenantResult
+ */
+export const zGetTenantResult = z.object({
+    tenant: z.unknown().nullish()
+});
+
+/**
+ * GetWorkspaceAgentTokenResult
+ */
+export const zGetWorkspaceAgentTokenResult = z.object({
+    token: z.unknown().nullish()
+});
+
+/**
  * GrantBody
  */
 export const zGrantBody = z.object({
     resource_id: z.string()
+});
+
+/**
+ * GrantCreditsResult
+ */
+export const zGrantCreditsResult = z.object({
+    balance: z.unknown().nullish()
 });
 
 /**
@@ -1165,6 +1489,20 @@ export const zGrantBody = z.object({
 export const zGrantRequest = z.object({
     daily: z.number().int().optional().default(0),
     monthly: z.number().int().optional().default(0)
+});
+
+/**
+ * GrantTenantAddonResult
+ */
+export const zGrantTenantAddonResult = z.object({
+    addon: z.unknown().nullish()
+});
+
+/**
+ * HandleWebhookResult
+ */
+export const zHandleWebhookResult = z.object({
+    status: z.string()
 });
 
 /**
@@ -1182,6 +1520,15 @@ export const zHealthStatus = z.object({
 export const zIpBlockRequest = z.object({
     ip_or_range: z.string(),
     reason: z.string().nullish()
+});
+
+/**
+ * ImportEngineResult
+ */
+export const zImportEngineResult = z.object({
+    confirm_secret: z.unknown().nullish(),
+    engine_id: z.unknown().nullish(),
+    summary: z.unknown().nullish()
 });
 
 /**
@@ -1206,6 +1553,31 @@ export const zImportRequest = z.object({
 export const zInspectRequest = z.object({
     provider_id: z.string(),
     worker_name: z.string()
+});
+
+/**
+ * InspectWorkerSecretsResult
+ */
+export const zInspectWorkerSecretsResult = z.object({
+    secrets: z.unknown().nullish(),
+    success: z.boolean()
+});
+
+/**
+ * InspectWorkerSettingsResult
+ */
+export const zInspectWorkerSettingsResult = z.object({
+    settings: z.unknown().nullish(),
+    success: z.boolean()
+});
+
+/**
+ * InstallSkillResult
+ */
+export const zInstallSkillResult = z.object({
+    installed: z.boolean(),
+    profileId: z.unknown().nullish(),
+    skillId: z.unknown().nullish()
 });
 
 /**
@@ -1250,6 +1622,166 @@ export const zLicenseValidationResponse = z.object({
 });
 
 /**
+ * ListAgentProvidersResult
+ */
+export const zListAgentProvidersResult = z.object({
+    providers: z.unknown().nullish()
+});
+
+/**
+ * ListApiKeysResult
+ */
+export const zListApiKeysResult = z.object({
+    keys: z.unknown().nullish(),
+    total: z.unknown().nullish()
+});
+
+/**
+ * ListBalancesResult
+ */
+export const zListBalancesResult = z.object({
+    balances: z.unknown().nullish()
+});
+
+/**
+ * ListEnginesForProviderResult
+ */
+export const zListEnginesForProviderResult = z.object({
+    detail: z.unknown().nullish(),
+    engines: z.unknown().nullish(),
+    success: z.boolean()
+});
+
+/**
+ * ListInvitesResult
+ */
+export const zListInvitesResult = z.object({
+    invites: z.unknown().nullish()
+});
+
+/**
+ * ListMcpServerToolsResult
+ */
+export const zListMcpServerToolsResult = z.object({
+    tools: z.unknown().nullish(),
+    total: z.unknown().nullish()
+});
+
+/**
+ * ListMcpServersResult
+ */
+export const zListMcpServersResult = z.object({
+    mcpServers: z.unknown().nullish(),
+    total: z.unknown().nullish()
+});
+
+/**
+ * ListPlansResult
+ */
+export const zListPlansResult = z.object({
+    plans: z.unknown().nullish()
+});
+
+/**
+ * ListProfileSkillsResult
+ */
+export const zListProfileSkillsResult = z.object({
+    skills: z.unknown().nullish(),
+    total: z.unknown().nullish()
+});
+
+/**
+ * ListProfilesResult
+ */
+export const zListProfilesResult = z.object({
+    profiles: z.unknown().nullish(),
+    total: z.unknown().nullish()
+});
+
+/**
+ * ListProjectDatasourcesResult
+ */
+export const zListProjectDatasourcesResult = z.object({
+    available: z.unknown().nullish(),
+    granted: z.unknown().nullish()
+});
+
+/**
+ * ListProjectMembersResult
+ */
+export const zListProjectMembersResult = z.object({
+    members: z.unknown().nullish()
+});
+
+/**
+ * ListProjectsResult
+ */
+export const zListProjectsResult = z.object({
+    projects: z.unknown().nullish()
+});
+
+/**
+ * ListPromptsResult
+ */
+export const zListPromptsResult = z.object({
+    prompts: z.unknown().nullish()
+});
+
+/**
+ * ListPublicPlansResult
+ */
+export const zListPublicPlansResult = z.object({
+    detailed: z.unknown().nullish(),
+    plans: z.unknown().nullish()
+});
+
+/**
+ * ListResourcesResult
+ */
+export const zListResourcesResult = z.object({
+    resources: z.unknown().nullish()
+});
+
+/**
+ * ListSecurityEventsResult
+ */
+export const zListSecurityEventsResult = z.object({
+    events: z.unknown().nullish(),
+    limit: z.unknown().nullish(),
+    offset: z.unknown().nullish(),
+    total: z.unknown().nullish()
+});
+
+/**
+ * ListSkillsResult
+ */
+export const zListSkillsResult = z.object({
+    skills: z.unknown().nullish(),
+    total: z.unknown().nullish()
+});
+
+/**
+ * ListTenantAddonsResult
+ */
+export const zListTenantAddonsResult = z.object({
+    addons: z.unknown().nullish()
+});
+
+/**
+ * ListTenantsResult
+ */
+export const zListTenantsResult = z.object({
+    tenants: z.unknown().nullish()
+});
+
+/**
+ * ListToolsResult
+ */
+export const zListToolsResult = z.object({
+    tools: z.unknown().nullish()
+});
+
+/**
  * LoginRequest
  */
 export const zLoginRequest = z.object({
@@ -1257,6 +1789,17 @@ export const zLoginRequest = z.object({
     password: z.string(),
     turnstile_token: z.string().nullish(),
     website: z.string().nullish()
+});
+
+/**
+ * McpRootResult
+ */
+export const zMcpRootResult = z.object({
+    capabilities: z.unknown().nullish(),
+    instructions: z.unknown().nullish(),
+    name: z.unknown().nullish(),
+    protocolVersion: z.string(),
+    version: z.string()
 });
 
 /**
@@ -1299,6 +1842,14 @@ export const zMcpServerUpdate = z.object({
  */
 export const zMessageResponse = z.object({
     message: z.string()
+});
+
+/**
+ * MoveEngineToProjectEndpointResult
+ */
+export const zMoveEngineToProjectEndpointResult = z.object({
+    engine_id: z.unknown().nullish(),
+    summary: z.unknown().nullish()
 });
 
 /**
@@ -1631,6 +2182,19 @@ export const zProvisionBody = z.object({
 });
 
 /**
+ * PublishDraftBatchResult
+ */
+export const zPublishDraftBatchResult = z.object({
+    engineId: z.unknown().nullish(),
+    error: z.unknown().nullish(),
+    message: z.unknown().nullish(),
+    name: z.unknown().nullish(),
+    results: z.unknown().nullish(),
+    success: z.unknown().nullish(),
+    version: z.unknown().nullish()
+});
+
+/**
  * PublishResponse
  *
  * Response from publishing a workflow
@@ -1721,6 +2285,41 @@ export const zRedisTestResult = z.object({
 });
 
 /**
+ * RemoteDeleteAck
+ *
+ * Edge-resource delete: local ack + whether the remote resource was deleted.
+ */
+export const zRemoteDeleteAck = z.object({
+    message: z.string().nullish(),
+    remote_deleted: z.boolean().nullish(),
+    success: z.boolean()
+});
+
+/**
+ * RemoveTursoDatabaseResult
+ */
+export const zRemoveTursoDatabaseResult = z.object({
+    detail: z.string(),
+    success: z.boolean()
+});
+
+/**
+ * ResetAgentSettingsResult
+ */
+export const zResetAgentSettingsResult = z.object({
+    deleted: z.unknown().nullish(),
+    message: z.string(),
+    scope: z.unknown().nullish()
+});
+
+/**
+ * ResetAllDailyResult
+ */
+export const zResetAllDailyResult = z.object({
+    reset_count: z.unknown().nullish()
+});
+
+/**
  * ResetPasswordRequest
  */
 export const zResetPasswordRequest = z.object({
@@ -1738,6 +2337,20 @@ export const zResetRolePasswordRequest = z.object({
     db_url: z.string(),
     provider_account_id: z.string(),
     schema_name: z.string()
+});
+
+/**
+ * ResetTenantDailyResult
+ */
+export const zResetTenantDailyResult = z.object({
+    balance: z.unknown().nullish()
+});
+
+/**
+ * RevealApiKeyResult
+ */
+export const zRevealApiKeyResult = z.object({
+    key: z.unknown().nullish()
 });
 
 /**
@@ -1867,6 +2480,21 @@ export const zRotateSecretsKeyRequest = z.object({
 });
 
 /**
+ * RotationHistoryResult
+ */
+export const zRotationHistoryResult = z.object({
+    history: z.unknown().nullish()
+});
+
+/**
+ * SecurityEventsSummaryResult
+ */
+export const zSecurityEventsSummaryResult = z.object({
+    by_severity: z.unknown().nullish(),
+    total: z.unknown().nullish()
+});
+
+/**
  * SecuritySettings
  *
  * Security-log IP retention (Post-sprint 2.1 — configurable GDPR strict mode).
@@ -1882,6 +2510,13 @@ export const zRotateSecretsKeyRequest = z.object({
  */
 export const zSecuritySettings = z.object({
     full_ip_retention_days: z.number().int().optional().default(30)
+});
+
+/**
+ * SetDefaultAgentProviderResult
+ */
+export const zSetDefaultAgentProviderResult = z.object({
+    provider: z.unknown().nullish()
 });
 
 /**
@@ -2037,6 +2672,37 @@ export const zStorageSignedUrlResult = z.object({
 });
 
 /**
+ * SuccessAck
+ *
+ * Bare `{"success": bool}` acknowledgement.
+ */
+export const zSuccessAck = z.object({
+    success: z.boolean()
+});
+
+/**
+ * SuccessDataEnvelope
+ *
+ * `{"success", "data"?, "message"?, "error"?}` envelope.
+ */
+export const zSuccessDataEnvelope = z.object({
+    data: z.unknown().nullish(),
+    error: z.string().nullish(),
+    message: z.string().nullish(),
+    success: z.boolean()
+});
+
+/**
+ * SuccessMessageAck
+ *
+ * `{"success", "message"?}` acknowledgement.
+ */
+export const zSuccessMessageAck = z.object({
+    message: z.string().nullish(),
+    success: z.boolean()
+});
+
+/**
  * SuccessMessageResponse
  *
  * `{"success": bool, "message"?: str}` — blocklist ops, reset, bot toggle.
@@ -2053,6 +2719,22 @@ export const zSuccessResponse = z.object({
     data: z.unknown().nullish(),
     message: z.string(),
     success: z.boolean()
+});
+
+/**
+ * SyncBillingAddonsResult
+ */
+export const zSyncBillingAddonsResult = z.object({
+    success: z.boolean(),
+    synced_addons: z.unknown().nullish()
+});
+
+/**
+ * SyncEngineLogsResult
+ */
+export const zSyncEngineLogsResult = z.object({
+    detail: z.unknown().nullish(),
+    synced: z.unknown().nullish()
 });
 
 /**
@@ -2202,6 +2884,16 @@ export const zTemplateRegistryResponse = z.object({
 });
 
 /**
+ * TenantSecretsAuditLogsResult
+ */
+export const zTenantSecretsAuditLogsResult = z.object({
+    engine_id: z.unknown().nullish(),
+    filters: z.unknown().nullish(),
+    is_shared: z.unknown().nullish(),
+    logs: z.unknown().nullish()
+});
+
+/**
  * TenantUpdateRequest
  */
 export const zTenantUpdateRequest = z.object({
@@ -2258,6 +2950,14 @@ export const zTestExecuteResponse = z.object({
 });
 
 /**
+ * TestMcpServerResult
+ */
+export const zTestMcpServerResult = z.object({
+    reachable: z.unknown().nullish(),
+    serverId: z.unknown().nullish()
+});
+
+/**
  * TestQueueInline
  */
 export const zTestQueueInline = z.object({
@@ -2277,10 +2977,26 @@ export const zTestQueueResult = z.object({
 });
 
 /**
+ * TestTursoDatabaseResult
+ */
+export const zTestTursoDatabaseResult = z.object({
+    detail: z.unknown().nullish(),
+    success: z.unknown().nullish()
+});
+
+/**
  * ToggleActiveRequest
  */
 export const zToggleActiveRequest = z.object({
     is_active: z.boolean()
+});
+
+/**
+ * ToggleDraftActiveResult
+ */
+export const zToggleDraftActiveResult = z.object({
+    id: z.unknown().nullish(),
+    is_active: z.unknown().nullish()
 });
 
 /**
@@ -2300,6 +3016,54 @@ export const zTursoDatabaseEntry = z.object({
 });
 
 /**
+ * UpdateAgentConfigResult
+ */
+export const zUpdateAgentConfigResult = z.object({
+    config: z.unknown().nullish()
+});
+
+/**
+ * UpdateAgentSettingsResult
+ */
+export const zUpdateAgentSettingsResult = z.object({
+    message: z.string(),
+    scope: z.unknown().nullish()
+});
+
+/**
+ * UpdateEngineSourceResult
+ */
+export const zUpdateEngineSourceResult = z.object({
+    file_count: z.unknown().nullish(),
+    files_saved: z.unknown().nullish(),
+    is_forked: z.unknown().nullish(),
+    modified_core_files: z.unknown().nullish(),
+    success: z.boolean()
+});
+
+/**
+ * UpdateLogConfigResult
+ */
+export const zUpdateLogConfigResult = z.object({
+    log_persistence: z.unknown().nullish()
+});
+
+/**
+ * UpdateMyTenantResult
+ */
+export const zUpdateMyTenantResult = z.object({
+    success: z.boolean(),
+    tenant: z.unknown().nullish()
+});
+
+/**
+ * UpdatePlanResult
+ */
+export const zUpdatePlanResult = z.object({
+    plan: z.unknown().nullish()
+});
+
+/**
  * UpdatePolicyRequest
  */
 export const zUpdatePolicyRequest = z.object({
@@ -2312,12 +3076,35 @@ export const zUpdatePolicyRequest = z.object({
 });
 
 /**
+ * UpdateProfileConfigResult
+ */
+export const zUpdateProfileConfigResult = z.object({
+    profile: z.unknown().nullish(),
+    use_type: z.unknown().nullish()
+});
+
+/**
+ * UpdateProjectMetaResult
+ */
+export const zUpdateProjectMetaResult = z.object({
+    project: z.unknown().nullish()
+});
+
+/**
  * UpdateTenantRequest
  */
 export const zUpdateTenantRequest = z.object({
     name: z.string().nullish(),
     plan: z.string().nullish(),
     status: z.string().nullish()
+});
+
+/**
+ * UpdateTenantResult
+ */
+export const zUpdateTenantResult = z.object({
+    success: z.boolean(),
+    tenant: z.unknown().nullish()
 });
 
 /**
@@ -2430,6 +3217,14 @@ export const zVectorSearchParams = z.object({
 });
 
 /**
+ * VectorSearchResult
+ */
+export const zVectorSearchResult = z.object({
+    results: z.unknown().nullish(),
+    success: z.boolean()
+});
+
+/**
  * VectorTestConnectionRequest
  */
 export const zVectorTestConnectionRequest = z.object({
@@ -2459,6 +3254,14 @@ export const zVectorUpsertParams = z.object({
     items: z.array(zVectorUpsertItem),
     provider: z.string().optional().default('pgvector'),
     table: z.string()
+});
+
+/**
+ * VectorUpsertResult
+ */
+export const zVectorUpsertResult = z.object({
+    success: z.boolean(),
+    upserted: z.unknown().nullish()
 });
 
 /**
@@ -2649,11 +3452,9 @@ export const zActionsCreateDraftResponse = zWorkflowDraftResponse;
 export const zActionsBulkDeleteDraftsBody = zActionBulkDeleteRequest;
 
 /**
- * Response Actions Bulk Delete Drafts
- *
  * Successful Response
  */
-export const zActionsBulkDeleteDraftsResponse = z.record(z.unknown());
+export const zActionsBulkDeleteDraftsResponse = zBulkDeleteDraftsResult;
 
 export const zActionsDeleteDraftPath = z.object({
     draft_id: z.string()
@@ -2691,11 +3492,9 @@ export const zActionsToggleDraftActivePath = z.object({
 });
 
 /**
- * Response Actions Toggle Draft Active
- *
  * Successful Response
  */
-export const zActionsToggleDraftActiveResponse = z.record(z.unknown());
+export const zActionsToggleDraftActiveResponse = zToggleDraftActiveResult;
 
 export const zActionsPublishDraftPath = z.object({
     draft_id: z.string()
@@ -2713,11 +3512,9 @@ export const zActionsPublishDraftBatchPath = z.object({
 });
 
 /**
- * Response Actions Publish Draft Batch
- *
  * Successful Response
  */
-export const zActionsPublishDraftBatchResponse = z.record(z.unknown());
+export const zActionsPublishDraftBatchResponse = zPublishDraftBatchResult;
 
 export const zActionsPublishDraftToEnginePath = z.object({
     draft_id: z.string(),
@@ -2737,11 +3534,9 @@ export const zActionsToggleTargetActivePath = z.object({
 });
 
 /**
- * Response Actions Toggle Target Active
- *
  * Successful Response
  */
-export const zActionsToggleTargetActiveResponse = z.record(z.unknown());
+export const zActionsToggleTargetActiveResponse = zSuccessMessageAck;
 
 export const zActionsRollbackAutomationToVersionBody = zAutomationRollbackRequest;
 
@@ -2750,11 +3545,9 @@ export const zActionsRollbackAutomationToVersionPath = z.object({
 });
 
 /**
- * Response Actions Rollback Automation To Version
- *
  * Successful Response
  */
-export const zActionsRollbackAutomationToVersionResponse = z.record(z.unknown());
+export const zActionsRollbackAutomationToVersionResponse = zSuccessDataEnvelope;
 
 export const zActionsTestDraftBody = zTestExecuteRequest;
 
@@ -2784,11 +3577,9 @@ export const zActionsListAutomationVersionsPath = z.object({
 });
 
 /**
- * Response Actions List Automation Versions
- *
  * Successful Response
  */
-export const zActionsListAutomationVersionsResponse = z.record(z.unknown());
+export const zActionsListAutomationVersionsResponse = zSuccessDataEnvelope;
 
 export const zActionsCreateManualAutomationVersionBody = zAutomationVersionLabelRequest;
 
@@ -2797,11 +3588,9 @@ export const zActionsCreateManualAutomationVersionPath = z.object({
 });
 
 /**
- * Response Actions Create Manual Automation Version
- *
  * Successful Response
  */
-export const zActionsCreateManualAutomationVersionResponse = z.record(z.unknown());
+export const zActionsCreateManualAutomationVersionResponse = zSuccessDataEnvelope;
 
 export const zActionsGetAutomationVersionDetailPath = z.object({
     draft_id: z.string(),
@@ -2809,11 +3598,9 @@ export const zActionsGetAutomationVersionDetailPath = z.object({
 });
 
 /**
- * Response Actions Get Automation Version Detail
- *
  * Successful Response
  */
-export const zActionsGetAutomationVersionDetailResponse = z.record(z.unknown());
+export const zActionsGetAutomationVersionDetailResponse = zSuccessDataEnvelope;
 
 /**
  * Response Actions Get Execution Stats
@@ -2935,34 +3722,26 @@ export const zAdminAgentsGetAnalyticsQuery = z.object({
 });
 
 /**
- * Response Admin Agents Get Analytics
- *
  * Successful Response
  */
-export const zAdminAgentsGetAnalyticsResponse = z.record(z.unknown());
+export const zAdminAgentsGetAnalyticsResponse = zGetAnalyticsResult;
 
 /**
- * Response Admin Agents Get Agent Config
- *
  * Successful Response
  */
-export const zAdminAgentsGetAgentConfigResponse = z.record(z.unknown());
+export const zAdminAgentsGetAgentConfigResponse = zGetAgentConfigResult;
 
 export const zAdminAgentsUpdateAgentConfigBody = zAgentConfigUpdate;
 
 /**
- * Response Admin Agents Update Agent Config
- *
  * Successful Response
  */
-export const zAdminAgentsUpdateAgentConfigResponse = z.record(z.unknown());
+export const zAdminAgentsUpdateAgentConfigResponse = zUpdateAgentConfigResult;
 
 /**
- * Response Admin Agents Get Profile Configs
- *
  * Successful Response
  */
-export const zAdminAgentsGetProfileConfigsResponse = z.record(z.unknown());
+export const zAdminAgentsGetProfileConfigsResponse = zGetProfileConfigsResult;
 
 export const zAdminAgentsUpdateProfileConfigBody = zAgentProfileConfigUpdate;
 
@@ -2971,43 +3750,33 @@ export const zAdminAgentsUpdateProfileConfigPath = z.object({
 });
 
 /**
- * Response Admin Agents Update Profile Config
- *
  * Successful Response
  */
-export const zAdminAgentsUpdateProfileConfigResponse = z.record(z.unknown());
+export const zAdminAgentsUpdateProfileConfigResponse = zUpdateProfileConfigResult;
 
 /**
- * Response Admin Agents List Agent Providers
- *
  * Successful Response
  */
-export const zAdminAgentsListAgentProvidersResponse = z.record(z.unknown());
+export const zAdminAgentsListAgentProvidersResponse = zListAgentProvidersResult;
 
 export const zAdminAgentsSetDefaultAgentProviderPath = z.object({
     provider_id: z.string()
 });
 
 /**
- * Response Admin Agents Set Default Agent Provider
- *
  * Successful Response
  */
-export const zAdminAgentsSetDefaultAgentProviderResponse = z.record(z.unknown());
+export const zAdminAgentsSetDefaultAgentProviderResponse = zSetDefaultAgentProviderResult;
 
 /**
- * Response Admin Agents List Balances
- *
  * Successful Response
  */
-export const zAdminAgentsListBalancesResponse = z.record(z.unknown());
+export const zAdminAgentsListBalancesResponse = zListBalancesResult;
 
 /**
- * Response Admin Agents Reset All Daily
- *
  * Successful Response
  */
-export const zAdminAgentsResetAllDailyResponse = z.record(z.unknown());
+export const zAdminAgentsResetAllDailyResponse = zResetAllDailyResult;
 
 export const zAdminAgentsGrantCreditsBody = zGrantRequest;
 
@@ -3016,29 +3785,23 @@ export const zAdminAgentsGrantCreditsPath = z.object({
 });
 
 /**
- * Response Admin Agents Grant Credits
- *
  * Successful Response
  */
-export const zAdminAgentsGrantCreditsResponse = z.record(z.unknown());
+export const zAdminAgentsGrantCreditsResponse = zGrantCreditsResult;
 
 export const zAdminAgentsResetTenantDailyPath = z.object({
     tenant_id: z.string()
 });
 
 /**
- * Response Admin Agents Reset Tenant Daily
- *
  * Successful Response
  */
-export const zAdminAgentsResetTenantDailyResponse = z.record(z.unknown());
+export const zAdminAgentsResetTenantDailyResponse = zResetTenantDailyResult;
 
 /**
- * Response Admin Plans Sync Billing Addons
- *
  * Successful Response
  */
-export const zAdminPlansSyncBillingAddonsResponse = z.record(z.unknown());
+export const zAdminPlansSyncBillingAddonsResponse = zSyncBillingAddonsResult;
 
 export const zAdminPlansProvisionManagedResourceBody = zProvisionBody;
 
@@ -3050,38 +3813,30 @@ export const zAdminPlansProvisionManagedResourceBody = zProvisionBody;
 export const zAdminPlansProvisionManagedResourceResponse = z.record(z.unknown());
 
 /**
- * Response Admin Plans List Plans
- *
  * Successful Response
  */
-export const zAdminPlansListPlansResponse = z.record(z.unknown());
+export const zAdminPlansListPlansResponse = zListPlansResult;
 
 export const zAdminPlansCreatePlanBody = zPlanWriteRequest;
 
 /**
- * Response Admin Plans Create Plan
- *
  * Successful Response
  */
-export const zAdminPlansCreatePlanResponse = z.record(z.unknown());
+export const zAdminPlansCreatePlanResponse = zCreatePlanResult;
 
 /**
- * Response Admin Plans Get Limit Registry
- *
  * Successful Response
  */
-export const zAdminPlansGetLimitRegistryResponse = z.record(z.unknown());
+export const zAdminPlansGetLimitRegistryResponse = zGetLimitRegistryResult;
 
 export const zAdminPlansDeletePlanPath = z.object({
     plan_id: z.string()
 });
 
 /**
- * Response Admin Plans Delete Plan
- *
  * Successful Response
  */
-export const zAdminPlansDeletePlanResponse = z.record(z.unknown());
+export const zAdminPlansDeletePlanResponse = zSuccessMessageAck;
 
 export const zAdminPlansUpdatePlanBody = zPlanWriteRequest;
 
@@ -3090,80 +3845,64 @@ export const zAdminPlansUpdatePlanPath = z.object({
 });
 
 /**
- * Response Admin Plans Update Plan
- *
  * Successful Response
  */
-export const zAdminPlansUpdatePlanResponse = z.record(z.unknown());
+export const zAdminPlansUpdatePlanResponse = zUpdatePlanResult;
 
 export const zAdminPlansListTenantAddonsQuery = z.object({
     tenant_id: z.string()
 });
 
 /**
- * Response Admin Plans List Tenant Addons
- *
  * Successful Response
  */
-export const zAdminPlansListTenantAddonsResponse = z.record(z.unknown());
+export const zAdminPlansListTenantAddonsResponse = zListTenantAddonsResult;
 
 export const zAdminPlansGrantTenantAddonBody = zAddonWriteBody;
 
 /**
- * Response Admin Plans Grant Tenant Addon
- *
  * Successful Response
  */
-export const zAdminPlansGrantTenantAddonResponse = z.record(z.unknown());
+export const zAdminPlansGrantTenantAddonResponse = zGrantTenantAddonResult;
 
 export const zAdminPlansRevokeTenantAddonPath = z.object({
     addon_id: z.string()
 });
 
 /**
- * Response Admin Plans Revoke Tenant Addon
- *
  * Successful Response
  */
-export const zAdminPlansRevokeTenantAddonResponse = z.record(z.unknown());
+export const zAdminPlansRevokeTenantAddonResponse = zSuccessAck;
 
 /**
- * Response Tenant Admin List Tenants
- *
  * Successful Response
  */
-export const zTenantAdminListTenantsResponse = z.record(z.unknown());
+export const zTenantAdminListTenantsResponse = zListTenantsResult;
 
 export const zTenantAdminCreateTenantBody = zCreateTenantRequest;
 
 /**
- * Response Tenant Admin Create Tenant
- *
  * Successful Response
  */
-export const zTenantAdminCreateTenantResponse = z.record(z.unknown());
+export const zTenantAdminCreateTenantResponse = zCreateTenantResult;
 
 export const zTenantAdminDeleteTenantPath = z.object({
     tenant_id: z.string()
 });
 
 /**
- * Response Tenant Admin Delete Tenant
- *
  * Successful Response
  */
-export const zTenantAdminDeleteTenantResponse = z.record(z.unknown());
+export const zTenantAdminDeleteTenantResponse = zSuccessMessageAck;
 
 export const zTenantAdminGetTenantPath = z.object({
     tenant_id: z.string()
 });
 
 /**
- * Response Tenant Admin Get Tenant
- *
  * Successful Response
  */
-export const zTenantAdminGetTenantResponse = z.record(z.unknown());
+export const zTenantAdminGetTenantResponse = zGetTenantResult;
 
 export const zTenantAdminUpdateTenantBody = zUpdateTenantRequest;
 
@@ -3172,11 +3911,9 @@ export const zTenantAdminUpdateTenantPath = z.object({
 });
 
 /**
- * Response Tenant Admin Update Tenant
- *
  * Successful Response
  */
-export const zTenantAdminUpdateTenantResponse = z.record(z.unknown());
+export const zTenantAdminUpdateTenantResponse = zUpdateTenantResult;
 
 export const zTenantAdminCreateTenantUserBody = zCreateTenantUserRequest;
 
@@ -3185,33 +3922,27 @@ export const zTenantAdminCreateTenantUserPath = z.object({
 });
 
 /**
- * Response Tenant Admin Create Tenant User
- *
  * Successful Response
  */
-export const zTenantAdminCreateTenantUserResponse = z.record(z.unknown());
+export const zTenantAdminCreateTenantUserResponse = zCreateTenantUserResult;
 
 export const zAgentIntegrationsGetAgentCatalogueQuery = z.object({
     profile_slug: z.string().optional().default('workspace')
 });
 
 /**
- * Response Agent Integrations Get Agent Catalogue
- *
  * Successful Response
  */
-export const zAgentIntegrationsGetAgentCatalogueResponse = z.record(z.unknown());
+export const zAgentIntegrationsGetAgentCatalogueResponse = zGetAgentCatalogueResult;
 
 export const zAgentIntegrationsListProfileSkillsPath = z.object({
     profile_id: z.string()
 });
 
 /**
- * Response Agent Integrations List Profile Skills
- *
  * Successful Response
  */
-export const zAgentIntegrationsListProfileSkillsResponse = z.record(z.unknown());
+export const zAgentIntegrationsListProfileSkillsResponse = zListProfileSkillsResult;
 
 export const zAgentIntegrationsInstallSkillBody = zSkillInstall;
 
@@ -3220,11 +3951,9 @@ export const zAgentIntegrationsInstallSkillPath = z.object({
 });
 
 /**
- * Response Agent Integrations Install Skill
- *
  * Successful Response
  */
-export const zAgentIntegrationsInstallSkillResponse = z.record(z.unknown());
+export const zAgentIntegrationsInstallSkillResponse = zInstallSkillResult;
 
 export const zAgentIntegrationsUninstallSkillPath = z.object({
     profile_id: z.string(),
@@ -3241,11 +3970,9 @@ export const zAgentIntegrationsListSkillsQuery = z.object({
 });
 
 /**
- * Response Agent Integrations List Skills
- *
  * Successful Response
  */
-export const zAgentIntegrationsListSkillsResponse = z.record(z.unknown());
+export const zAgentIntegrationsListSkillsResponse = zListSkillsResult;
 
 export const zAgentIntegrationsCreateSkillBody = zSkillCreate;
 
@@ -3308,44 +4035,36 @@ export const zAgentMcpMcpRootPath = z.object({
 });
 
 /**
- * Response Agent Mcp Mcp Root
- *
  * Successful Response
  */
-export const zAgentMcpMcpRootResponse = z.record(z.unknown());
+export const zAgentMcpMcpRootResponse = zMcpRootResult;
 
 export const zAgentMcpGetPromptPath = z.object({
     profile_slug: z.string()
 });
 
 /**
- * Response Agent Mcp Get Prompt
- *
  * Successful Response
  */
-export const zAgentMcpGetPromptResponse = z.record(z.unknown());
+export const zAgentMcpGetPromptResponse = zGetPromptResult;
 
 export const zAgentMcpListPromptsPath = z.object({
     profile_slug: z.string()
 });
 
 /**
- * Response Agent Mcp List Prompts
- *
  * Successful Response
  */
-export const zAgentMcpListPromptsResponse = z.record(z.unknown());
+export const zAgentMcpListPromptsResponse = zListPromptsResult;
 
 export const zAgentMcpListResourcesPath = z.object({
     profile_slug: z.string()
 });
 
 /**
- * Response Agent Mcp List Resources
- *
  * Successful Response
  */
-export const zAgentMcpListResourcesResponse = z.record(z.unknown());
+export const zAgentMcpListResourcesResponse = zListResourcesResult;
 
 export const zAgentMcpCallToolPath = z.object({
     profile_slug: z.string()
@@ -3363,22 +4082,18 @@ export const zAgentMcpListToolsPath = z.object({
 });
 
 /**
- * Response Agent Mcp List Tools
- *
  * Successful Response
  */
-export const zAgentMcpListToolsResponse = z.record(z.unknown());
+export const zAgentMcpListToolsResponse = zListToolsResult;
 
 export const zAgentSettingsResetAgentSettingsQuery = z.object({
     scope: z.string().optional().default('user')
 });
 
 /**
- * Response Agent Settings Reset Agent Settings
- *
  * Successful Response
  */
-export const zAgentSettingsResetAgentSettingsResponse = z.record(z.unknown());
+export const zAgentSettingsResetAgentSettingsResponse = zResetAgentSettingsResult;
 
 /**
  * Successful Response
@@ -3388,56 +4103,44 @@ export const zAgentSettingsGetAgentSettingsResponse = zSettingsResponse;
 export const zAgentSettingsUpdateAgentSettingsBody = zSettingsUpdate;
 
 /**
- * Response Agent Settings Update Agent Settings
- *
  * Successful Response
  */
-export const zAgentSettingsUpdateAgentSettingsResponse = z.record(z.unknown());
+export const zAgentSettingsUpdateAgentSettingsResponse = zUpdateAgentSettingsResult;
 
 /**
- * Response Auth Forms List Auth Forms
- *
  * Successful Response
  */
-export const zAuthFormsListAuthFormsResponse = z.record(z.unknown());
+export const zAuthFormsListAuthFormsResponse = zSuccessDataEnvelope;
 
 export const zAuthFormsCreateAuthFormBody = zAuthFormCreate;
 
 /**
- * Response Auth Forms Create Auth Form
- *
  * Successful Response
  */
-export const zAuthFormsCreateAuthFormResponse = z.record(z.unknown());
+export const zAuthFormsCreateAuthFormResponse = zSuccessDataEnvelope;
 
 /**
- * Response Auth Forms Get Primary Auth Form
- *
  * Successful Response
  */
-export const zAuthFormsGetPrimaryAuthFormResponse = z.record(z.unknown());
+export const zAuthFormsGetPrimaryAuthFormResponse = zSuccessDataEnvelope;
 
 export const zAuthFormsDeleteAuthFormPath = z.object({
     form_id: z.string()
 });
 
 /**
- * Response Auth Forms Delete Auth Form
- *
  * Successful Response
  */
-export const zAuthFormsDeleteAuthFormResponse = z.record(z.unknown());
+export const zAuthFormsDeleteAuthFormResponse = zSuccessDataEnvelope;
 
 export const zAuthFormsGetAuthFormPath = z.object({
     form_id: z.string()
 });
 
 /**
- * Response Auth Forms Get Auth Form
- *
  * Successful Response
  */
-export const zAuthFormsGetAuthFormResponse = z.record(z.unknown());
+export const zAuthFormsGetAuthFormResponse = zSuccessDataEnvelope;
 
 export const zAuthFormsUpdateAuthFormBody = zAuthFormUpdate;
 
@@ -3446,22 +4149,18 @@ export const zAuthFormsUpdateAuthFormPath = z.object({
 });
 
 /**
- * Response Auth Forms Update Auth Form
- *
  * Successful Response
  */
-export const zAuthFormsUpdateAuthFormResponse = z.record(z.unknown());
+export const zAuthFormsUpdateAuthFormResponse = zSuccessDataEnvelope;
 
 export const zAuthFormsSetPrimaryAuthFormPath = z.object({
     form_id: z.string()
 });
 
 /**
- * Response Auth Forms Set Primary Auth Form
- *
  * Successful Response
  */
-export const zAuthFormsSetPrimaryAuthFormResponse = z.record(z.unknown());
+export const zAuthFormsSetPrimaryAuthFormResponse = zSuccessDataEnvelope;
 
 export const zAuthenticationAcceptInviteBody = zAcceptInviteRequest;
 
@@ -3606,31 +4305,25 @@ export const zAuthenticationSignupResponse = zUserPayload;
 export const zBillingCreateCheckoutBody = zCheckoutRequestBody;
 
 /**
- * Response Billing Create Checkout
- *
  * Successful Response
  */
-export const zBillingCreateCheckoutResponse = z.record(z.unknown());
+export const zBillingCreateCheckoutResponse = zCreateCheckoutResult;
 
 export const zBillingCreatePortalBody = zPortalRequestBody;
 
 /**
- * Response Billing Create Portal
- *
  * Successful Response
  */
-export const zBillingCreatePortalResponse = z.record(z.unknown());
+export const zBillingCreatePortalResponse = zCreatePortalResult;
 
 export const zBillingHandleWebhookPath = z.object({
     provider: z.string()
 });
 
 /**
- * Response Billing Handle Webhook
- *
  * Successful Response
  */
-export const zBillingHandleWebhookResponse = z.record(z.unknown());
+export const zBillingHandleWebhookResponse = zHandleWebhookResult;
 
 export const zCloudflareDeployConnectCloudflareBody = zConnectRequest;
 
@@ -3644,11 +4337,9 @@ export const zCloudflareDeployConnectCloudflareResponse = z.record(z.unknown());
 export const zCloudflareDeployDeployToCloudflareBody = zDeployRequest;
 
 /**
- * Response Cloudflare Deploy Deploy To Cloudflare
- *
  * Successful Response
  */
-export const zCloudflareDeployDeployToCloudflareResponse = z.record(z.unknown());
+export const zCloudflareDeployDeployToCloudflareResponse = zDeployToCloudflareResult;
 
 export const zCloudflareInspectorInspectWorkerContentBody = zInspectRequest;
 
@@ -3662,38 +4353,30 @@ export const zCloudflareInspectorInspectWorkerContentResponse = z.record(z.unkno
 export const zCloudflareInspectorInspectWorkerSecretsBody = zInspectRequest;
 
 /**
- * Response Cloudflare Inspector Inspect Worker Secrets
- *
  * Successful Response
  */
-export const zCloudflareInspectorInspectWorkerSecretsResponse = z.record(z.unknown());
+export const zCloudflareInspectorInspectWorkerSecretsResponse = zInspectWorkerSecretsResult;
 
 export const zCloudflareInspectorInspectWorkerSettingsBody = zInspectRequest;
 
 /**
- * Response Cloudflare Inspector Inspect Worker Settings
- *
  * Successful Response
  */
-export const zCloudflareInspectorInspectWorkerSettingsResponse = z.record(z.unknown());
+export const zCloudflareInspectorInspectWorkerSettingsResponse = zInspectWorkerSettingsResult;
 
 export const zCloudflareDeployCloudflareStatusBody = zStatusRequest;
 
 /**
- * Response Cloudflare Deploy Cloudflare Status
- *
  * Successful Response
  */
-export const zCloudflareDeployCloudflareStatusResponse = z.record(z.unknown());
+export const zCloudflareDeployCloudflareStatusResponse = zCloudflareStatusResult;
 
 export const zCloudflareDeployTeardownCloudflareBody = zTeardownRequest;
 
 /**
- * Response Cloudflare Deploy Teardown Cloudflare
- *
  * Successful Response
  */
-export const zCloudflareDeployTeardownCloudflareResponse = z.record(z.unknown());
+export const zCloudflareDeployTeardownCloudflareResponse = zSuccessMessageAck;
 
 /**
  * Request
@@ -3903,22 +4586,18 @@ export const zDatabaseTestSupabaseResponse = zSuccessResponse;
 export const zDenoDeployConnectDenoBody = zDenoConnectRequest;
 
 /**
- * Response Deno Deploy Connect Deno
- *
  * Successful Response
  */
-export const zDenoDeployConnectDenoResponse = z.record(z.unknown());
+export const zDenoDeployConnectDenoResponse = zConnectDenoResult;
 
 export const zEdgeApiKeysListApiKeysQuery = z.object({
     engine_id: z.string().nullish()
 });
 
 /**
- * Response Edge Api Keys List Api Keys
- *
  * Successful Response
  */
-export const zEdgeApiKeysListApiKeysResponse = z.record(z.unknown());
+export const zEdgeApiKeysListApiKeysResponse = zListApiKeysResult;
 
 export const zEdgeApiKeysCreateApiKeyBody = zApiKeyCreate;
 
@@ -3956,11 +4635,9 @@ export const zEdgeApiKeysRevealApiKeyPath = z.object({
 });
 
 /**
- * Response Edge Api Keys Reveal Api Key
- *
  * Successful Response
  */
-export const zEdgeApiKeysRevealApiKeyResponse = z.record(z.unknown());
+export const zEdgeApiKeysRevealApiKeyResponse = zRevealApiKeyResult;
 
 /**
  * Response Edge Caches List Edge Caches
@@ -3999,11 +4676,9 @@ export const zEdgeCachesDeleteEdgeCacheQuery = z.object({
 });
 
 /**
- * Response Edge Caches Delete Edge Cache
- *
  * Successful Response
  */
-export const zEdgeCachesDeleteEdgeCacheResponse = z.record(z.unknown());
+export const zEdgeCachesDeleteEdgeCacheResponse = zRemoteDeleteAck;
 
 export const zEdgeCachesUpdateEdgeCacheBody = zEdgeCacheUpdate;
 
@@ -4089,11 +4764,9 @@ export const zEdgeDatabasesDeleteEdgeDatabaseQuery = z.object({
 });
 
 /**
- * Response Edge Databases Delete Edge Database
- *
  * Successful Response
  */
-export const zEdgeDatabasesDeleteEdgeDatabaseResponse = z.record(z.unknown());
+export const zEdgeDatabasesDeleteEdgeDatabaseResponse = zRemoteDeleteAck;
 
 export const zEdgeDatabasesUpdateEdgeDatabaseBody = zEdgeDatabaseUpdate;
 
@@ -4202,11 +4875,9 @@ export const zEdgeEnginesDeployEngineResponse = z.record(z.unknown());
 export const zEdgeEnginesImportEngineBody = zImportRequest;
 
 /**
- * Response Edge Engines Import Engine
- *
  * Successful Response
  */
-export const zEdgeEnginesImportEngineResponse = z.record(z.unknown());
+export const zEdgeEnginesImportEngineResponse = zImportEngineResult;
 
 export const zEdgeEnginesDeleteEnginePath = z.object({
     engine_id: z.string()
@@ -4246,11 +4917,9 @@ export const zEdgeAgentProfilesListProfilesPath = z.object({
 });
 
 /**
- * Response Edge Agent Profiles List Profiles
- *
  * Successful Response
  */
-export const zEdgeAgentProfilesListProfilesResponse = z.record(z.unknown());
+export const zEdgeAgentProfilesListProfilesResponse = zListProfilesResult;
 
 export const zEdgeAgentProfilesCreateProfileBody = zEdgeAgentProfileCreate;
 
@@ -4301,22 +4970,18 @@ export const zEdgeEnginesTenantSecretsAuditLogsQuery = z.object({
 });
 
 /**
- * Response Edge Engines Tenant Secrets Audit Logs
- *
  * Successful Response
  */
-export const zEdgeEnginesTenantSecretsAuditLogsResponse = z.record(z.unknown());
+export const zEdgeEnginesTenantSecretsAuditLogsResponse = zTenantSecretsAuditLogsResult;
 
 export const zEdgeEnginesCancelMovePath = z.object({
     engine_id: z.string()
 });
 
 /**
- * Response Edge Engines Cancel Move
- *
  * Successful Response
  */
-export const zEdgeEnginesCancelMoveResponse = z.record(z.unknown());
+export const zEdgeEnginesCancelMoveResponse = zCancelMoveResult;
 
 export const zEdgeEnginesExportEngineBody = zExportRequest;
 
@@ -4325,11 +4990,9 @@ export const zEdgeEnginesExportEnginePath = z.object({
 });
 
 /**
- * Response Edge Engines Export Engine
- *
  * Successful Response
  */
-export const zEdgeEnginesExportEngineResponse = z.record(z.unknown());
+export const zEdgeEnginesExportEngineResponse = zExportEngineResult;
 
 export const zEdgeEnginesFinalizeMoveBody = zFinalizeMoveRequest;
 
@@ -4338,11 +5001,9 @@ export const zEdgeEnginesFinalizeMovePath = z.object({
 });
 
 /**
- * Response Edge Engines Finalize Move
- *
  * Successful Response
  */
-export const zEdgeEnginesFinalizeMoveResponse = z.record(z.unknown());
+export const zEdgeEnginesFinalizeMoveResponse = zFinalizeMoveResult;
 
 export const zEngineInspectorHealthCheckPath = z.object({
     engine_id: z.string()
@@ -4447,11 +5108,9 @@ export const zEdgeEnginesGetEngineLogsQuery = z.object({
 });
 
 /**
- * Response Edge Engines Get Engine Logs
- *
  * Successful Response
  */
-export const zEdgeEnginesGetEngineLogsResponse = z.record(z.unknown());
+export const zEdgeEnginesGetEngineLogsResponse = zGetEngineLogsResult;
 
 /**
  * Payload
@@ -4463,33 +5122,27 @@ export const zEdgeEnginesUpdateLogConfigPath = z.object({
 });
 
 /**
- * Response Edge Engines Update Log Config
- *
  * Successful Response
  */
-export const zEdgeEnginesUpdateLogConfigResponse = z.record(z.unknown());
+export const zEdgeEnginesUpdateLogConfigResponse = zUpdateLogConfigResult;
 
 export const zEdgeEnginesGetLogRetentionPath = z.object({
     engine_id: z.string()
 });
 
 /**
- * Response Edge Engines Get Log Retention
- *
  * Successful Response
  */
-export const zEdgeEnginesGetLogRetentionResponse = z.record(z.unknown());
+export const zEdgeEnginesGetLogRetentionResponse = zGetLogRetentionResult;
 
 export const zEdgeEnginesSyncEngineLogsPath = z.object({
     engine_id: z.string()
 });
 
 /**
- * Response Edge Engines Sync Engine Logs
- *
  * Successful Response
  */
-export const zEdgeEnginesSyncEngineLogsResponse = z.record(z.unknown());
+export const zEdgeEnginesSyncEngineLogsResponse = zSyncEngineLogsResult;
 
 export const zEdgeEnginesMoveEngineToProjectEndpointBody = zMoveToProjectRequest;
 
@@ -4498,11 +5151,9 @@ export const zEdgeEnginesMoveEngineToProjectEndpointPath = z.object({
 });
 
 /**
- * Response Edge Engines Move Engine To Project Endpoint
- *
  * Successful Response
  */
-export const zEdgeEnginesMoveEngineToProjectEndpointResponse = z.record(z.unknown());
+export const zEdgeEnginesMoveEngineToProjectEndpointResponse = zMoveEngineToProjectEndpointResult;
 
 export const zEdgeEnginesReconfigureEngineBody = zReconfigureRequest;
 
@@ -4559,11 +5210,9 @@ export const zEdgeEnginesRotationHistoryPath = z.object({
 });
 
 /**
- * Response Edge Engines Rotation History
- *
  * Successful Response
  */
-export const zEdgeEnginesRotationHistoryResponse = z.record(z.unknown());
+export const zEdgeEnginesRotationHistoryResponse = zRotationHistoryResult;
 
 export const zEdgeEnginesRotationStatusPath = z.object({
     engine_id: z.string()
@@ -4581,11 +5230,9 @@ export const zEdgeEnginesGetEngineSourcePath = z.object({
 });
 
 /**
- * Response Edge Engines Get Engine Source
- *
  * Successful Response
  */
-export const zEdgeEnginesGetEngineSourceResponse = z.record(z.unknown());
+export const zEdgeEnginesGetEngineSourceResponse = zGetEngineSourceResult;
 
 /**
  * Payload
@@ -4597,11 +5244,9 @@ export const zEdgeEnginesUpdateEngineSourcePath = z.object({
 });
 
 /**
- * Response Edge Engines Update Engine Source
- *
  * Successful Response
  */
-export const zEdgeEnginesUpdateEngineSourceResponse = z.record(z.unknown());
+export const zEdgeEnginesUpdateEngineSourceResponse = zUpdateEngineSourceResult;
 
 export const zEdgeEnginesSyncManifestPath = z.object({
     engine_id: z.string()
@@ -4649,18 +5294,14 @@ export const zEdgeGpuGetCatalogQuery = z.object({
 });
 
 /**
- * Response Edge Gpu Get Catalog
- *
  * Successful Response
  */
-export const zEdgeGpuGetCatalogResponse = z.record(z.unknown());
+export const zEdgeGpuGetCatalogResponse = zGetCatalogResult;
 
 /**
- * Response Edge Gpu Get Schemas
- *
  * Successful Response
  */
-export const zEdgeGpuGetSchemasResponse = z.record(z.unknown());
+export const zEdgeGpuGetSchemasResponse = zGetSchemasResult;
 
 export const zEdgeGpuDeleteGpuModelPath = z.object({
     model_id: z.string()
@@ -4780,11 +5421,9 @@ export const zEdgeProvidersTestConnectionBody = zTestConnectionRequest;
 export const zEdgeProvidersTestConnectionResponse = z.record(z.unknown());
 
 /**
- * Response Edge Providers Get Workspace Agent Token
- *
  * Successful Response
  */
-export const zEdgeProvidersGetWorkspaceAgentTokenResponse = z.record(z.unknown());
+export const zEdgeProvidersGetWorkspaceAgentTokenResponse = zGetWorkspaceAgentTokenResult;
 
 export const zEdgeProvidersSetWorkspaceAgentTokenBody = zSetWorkspaceDefaultRequest;
 
@@ -4800,11 +5439,9 @@ export const zEdgeProvidersListEnginesForProviderPath = z.object({
 });
 
 /**
- * Response Edge Providers List Engines For Provider
- *
  * Successful Response
  */
-export const zEdgeProvidersListEnginesForProviderResponse = z.record(z.unknown());
+export const zEdgeProvidersListEnginesForProviderResponse = zListEnginesForProviderResult;
 
 export const zEdgeProvidersAddTursoDatabaseBody = zTursoDatabaseEntry;
 
@@ -4813,11 +5450,9 @@ export const zEdgeProvidersAddTursoDatabasePath = z.object({
 });
 
 /**
- * Response Edge Providers Add Turso Database
- *
  * Successful Response
  */
-export const zEdgeProvidersAddTursoDatabaseResponse = z.record(z.unknown());
+export const zEdgeProvidersAddTursoDatabaseResponse = zAddTursoDatabaseResult;
 
 export const zEdgeProvidersRemoveTursoDatabasePath = z.object({
     account_id: z.string(),
@@ -4825,11 +5460,9 @@ export const zEdgeProvidersRemoveTursoDatabasePath = z.object({
 });
 
 /**
- * Response Edge Providers Remove Turso Database
- *
  * Successful Response
  */
-export const zEdgeProvidersRemoveTursoDatabaseResponse = z.record(z.unknown());
+export const zEdgeProvidersRemoveTursoDatabaseResponse = zRemoveTursoDatabaseResult;
 
 export const zEdgeProvidersTestTursoDatabasePath = z.object({
     account_id: z.string(),
@@ -4837,11 +5470,9 @@ export const zEdgeProvidersTestTursoDatabasePath = z.object({
 });
 
 /**
- * Response Edge Providers Test Turso Database
- *
  * Successful Response
  */
-export const zEdgeProvidersTestTursoDatabaseResponse = z.record(z.unknown());
+export const zEdgeProvidersTestTursoDatabaseResponse = zTestTursoDatabaseResult;
 
 export const zEdgeProvidersDeleteProviderPath = z.object({
     provider_id: z.string()
@@ -4920,11 +5551,9 @@ export const zEdgeQueuesDeleteEdgeQueueQuery = z.object({
 });
 
 /**
- * Response Edge Queues Delete Edge Queue
- *
  * Successful Response
  */
-export const zEdgeQueuesDeleteEdgeQueueResponse = z.record(z.unknown());
+export const zEdgeQueuesDeleteEdgeQueueResponse = zRemoteDeleteAck;
 
 export const zEdgeQueuesUpdateEdgeQueueBody = zEdgeQueueUpdate;
 
@@ -4985,11 +5614,9 @@ export const zEdgeVectorsDeleteEdgeVectorQuery = z.object({
 });
 
 /**
- * Response Edge Vectors Delete Edge Vector
- *
  * Successful Response
  */
-export const zEdgeVectorsDeleteEdgeVectorResponse = z.record(z.unknown());
+export const zEdgeVectorsDeleteEdgeVectorResponse = zDeleteEdgeVectorResult;
 
 export const zEdgeVectorsUpdateEdgeVectorBody = zEdgeVectorUpdate;
 
@@ -5018,11 +5645,9 @@ export const zAgentIntegrationsListMcpServersQuery = z.object({
 });
 
 /**
- * Response Agent Integrations List Mcp Servers
- *
  * Successful Response
  */
-export const zAgentIntegrationsListMcpServersResponse = z.record(z.unknown());
+export const zAgentIntegrationsListMcpServersResponse = zListMcpServersResult;
 
 export const zAgentIntegrationsCreateMcpServerBody = zMcpServerCreate;
 
@@ -5071,22 +5696,18 @@ export const zAgentIntegrationsTestMcpServerPath = z.object({
 });
 
 /**
- * Response Agent Integrations Test Mcp Server
- *
  * Successful Response
  */
-export const zAgentIntegrationsTestMcpServerResponse = z.record(z.unknown());
+export const zAgentIntegrationsTestMcpServerResponse = zTestMcpServerResult;
 
 export const zAgentIntegrationsListMcpServerToolsPath = z.object({
     server_id: z.string()
 });
 
 /**
- * Response Agent Integrations List Mcp Server Tools
- *
  * Successful Response
  */
-export const zAgentIntegrationsListMcpServerToolsResponse = z.record(z.unknown());
+export const zAgentIntegrationsListMcpServerToolsResponse = zListMcpServerToolsResult;
 
 export const zPagesGetPagesQuery = z.object({
     includeDeleted: z.boolean().optional().default(false)
@@ -5252,11 +5873,9 @@ export const zPagesGetVersionDetailPath = z.object({
 export const zPagesGetVersionDetailResponse = zPageVersionEnvelope;
 
 /**
- * Response Plans List Public Plans
- *
  * Successful Response
  */
-export const zPlansListPublicPlansResponse = z.record(z.unknown());
+export const zPlansListPublicPlansResponse = zListPublicPlansResult;
 
 /**
  * Successful Response
@@ -5280,31 +5899,25 @@ export const zProjectUploadBrandingAssetBody = zBodyProjectUploadBrandingAsset;
 export const zProjectUploadBrandingAssetResponse = z.record(z.unknown());
 
 /**
- * Response Projects List Projects
- *
  * Successful Response
  */
-export const zProjectsListProjectsResponse = z.record(z.unknown());
+export const zProjectsListProjectsResponse = zListProjectsResult;
 
 export const zProjectsCreateProjectBody = zProjectCreateBody;
 
 /**
- * Response Projects Create Project
- *
  * Successful Response
  */
-export const zProjectsCreateProjectResponse = z.record(z.unknown());
+export const zProjectsCreateProjectResponse = zCreateProjectResult;
 
 export const zProjectsDeleteProjectPath = z.object({
     project_id: z.string()
 });
 
 /**
- * Response Projects Delete Project
- *
  * Successful Response
  */
-export const zProjectsDeleteProjectResponse = z.record(z.unknown());
+export const zProjectsDeleteProjectResponse = zSuccessAck;
 
 export const zProjectsUpdateProjectMetaBody = zProjectUpdateBody;
 
@@ -5313,11 +5926,9 @@ export const zProjectsUpdateProjectMetaPath = z.object({
 });
 
 /**
- * Response Projects Update Project Meta
- *
  * Successful Response
  */
-export const zProjectsUpdateProjectMetaResponse = z.record(z.unknown());
+export const zProjectsUpdateProjectMetaResponse = zUpdateProjectMetaResult;
 
 export const zProjectsGrantConnectedAccountBody = zGrantBody;
 
@@ -5326,11 +5937,9 @@ export const zProjectsGrantConnectedAccountPath = z.object({
 });
 
 /**
- * Response Projects Grant Connected Account
- *
  * Successful Response
  */
-export const zProjectsGrantConnectedAccountResponse = z.record(z.unknown());
+export const zProjectsGrantConnectedAccountResponse = zSuccessAck;
 
 export const zProjectsRevokeConnectedAccountPath = z.object({
     project_id: z.string(),
@@ -5338,22 +5947,18 @@ export const zProjectsRevokeConnectedAccountPath = z.object({
 });
 
 /**
- * Response Projects Revoke Connected Account
- *
  * Successful Response
  */
-export const zProjectsRevokeConnectedAccountResponse = z.record(z.unknown());
+export const zProjectsRevokeConnectedAccountResponse = zSuccessAck;
 
 export const zProjectsListProjectDatasourcesPath = z.object({
     project_id: z.string()
 });
 
 /**
- * Response Projects List Project Datasources
- *
  * Successful Response
  */
-export const zProjectsListProjectDatasourcesResponse = z.record(z.unknown());
+export const zProjectsListProjectDatasourcesResponse = zListProjectDatasourcesResult;
 
 export const zProjectsGrantDatasourceBody = zGrantBody;
 
@@ -5362,11 +5967,9 @@ export const zProjectsGrantDatasourcePath = z.object({
 });
 
 /**
- * Response Projects Grant Datasource
- *
  * Successful Response
  */
-export const zProjectsGrantDatasourceResponse = z.record(z.unknown());
+export const zProjectsGrantDatasourceResponse = zSuccessAck;
 
 export const zProjectsRevokeDatasourcePath = z.object({
     project_id: z.string(),
@@ -5374,22 +5977,18 @@ export const zProjectsRevokeDatasourcePath = z.object({
 });
 
 /**
- * Response Projects Revoke Datasource
- *
  * Successful Response
  */
-export const zProjectsRevokeDatasourceResponse = z.record(z.unknown());
+export const zProjectsRevokeDatasourceResponse = zSuccessAck;
 
 export const zProjectsListProjectMembersPath = z.object({
     project_id: z.string()
 });
 
 /**
- * Response Projects List Project Members
- *
  * Successful Response
  */
-export const zProjectsListProjectMembersResponse = z.record(z.unknown());
+export const zProjectsListProjectMembersResponse = zListProjectMembersResult;
 
 export const zProjectsAddProjectMemberBody = zProjectMemberBody;
 
@@ -5398,11 +5997,9 @@ export const zProjectsAddProjectMemberPath = z.object({
 });
 
 /**
- * Response Projects Add Project Member
- *
  * Successful Response
  */
-export const zProjectsAddProjectMemberResponse = z.record(z.unknown());
+export const zProjectsAddProjectMemberResponse = zSuccessAck;
 
 export const zProjectsRemoveProjectMemberPath = z.object({
     project_id: z.string(),
@@ -5410,11 +6007,9 @@ export const zProjectsRemoveProjectMemberPath = z.object({
 });
 
 /**
- * Response Projects Remove Project Member
- *
  * Successful Response
  */
-export const zProjectsRemoveProjectMemberResponse = z.record(z.unknown());
+export const zProjectsRemoveProjectMemberResponse = zSuccessAck;
 
 /**
  * Successful Response
@@ -5431,18 +6026,14 @@ export const zSecurityEventsListSecurityEventsQuery = z.object({
 });
 
 /**
- * Response Security Events List Security Events
- *
  * Successful Response
  */
-export const zSecurityEventsListSecurityEventsResponse = z.record(z.unknown());
+export const zSecurityEventsListSecurityEventsResponse = zListSecurityEventsResult;
 
 /**
- * Response Security Events Security Events Summary
- *
  * Successful Response
  */
-export const zSecurityEventsSecurityEventsSummaryResponse = z.record(z.unknown());
+export const zSecurityEventsSecurityEventsSummaryResponse = zSecurityEventsSummaryResult;
 
 /**
  * Successful Response
@@ -5695,11 +6286,9 @@ export const zStorageListNetlifySitesResponse = z.array(z.record(z.unknown()));
 export const zStorageCreateNetlifySiteBody = z.record(z.unknown());
 
 /**
- * Response Storage Create Netlify Site
- *
  * Successful Response
  */
-export const zStorageCreateNetlifySiteResponse = z.record(z.unknown());
+export const zStorageCreateNetlifySiteResponse = zCreateNetlifySiteResult;
 
 /**
  * Response Storage List Storage Providers
@@ -5714,11 +6303,9 @@ export const zStorageListStorageProvidersResponse = z.array(z.record(z.unknown()
 export const zStorageCreateStorageProviderBody = z.record(z.unknown());
 
 /**
- * Response Storage Create Storage Provider
- *
  * Successful Response
  */
-export const zStorageCreateStorageProviderResponse = z.record(z.unknown());
+export const zStorageCreateStorageProviderResponse = zCreateStorageProviderResult;
 
 export const zStorageDeleteStorageProviderPath = z.object({
     provider_id: z.string()
@@ -5776,79 +6363,61 @@ export const zStorageListVercelProjectsResponse = z.array(z.record(z.unknown()))
 export const zStorageCreateVercelProjectBody = z.record(z.unknown());
 
 /**
- * Response Storage Create Vercel Project
- *
  * Successful Response
  */
-export const zStorageCreateVercelProjectResponse = z.record(z.unknown());
+export const zStorageCreateVercelProjectResponse = zCreateVercelProjectResult;
 
 export const zTenantsCheckSlugPath = z.object({
     slug: z.string()
 });
 
 /**
- * Response Tenants Check Slug
- *
  * Successful Response
  */
-export const zTenantsCheckSlugResponse = z.record(z.unknown());
+export const zTenantsCheckSlugResponse = zCheckSlugResult;
 
 /**
- * Response Tenants Get My Tenant
- *
  * Successful Response
  */
-export const zTenantsGetMyTenantResponse = z.record(z.unknown());
+export const zTenantsGetMyTenantResponse = zGetMyTenantResult;
 
 export const zTenantsUpdateMyTenantBody = zTenantUpdateRequest;
 
 /**
- * Response Tenants Update My Tenant
- *
  * Successful Response
  */
-export const zTenantsUpdateMyTenantResponse = z.record(z.unknown());
+export const zTenantsUpdateMyTenantResponse = zUpdateMyTenantResult;
 
 /**
- * Response Tenants Get My Addons
- *
  * Successful Response
  */
-export const zTenantsGetMyAddonsResponse = z.record(z.unknown());
+export const zTenantsGetMyAddonsResponse = zGetMyAddonsResult;
 
 /**
- * Response Tenants List Invites
- *
  * Successful Response
  */
-export const zTenantsListInvitesResponse = z.record(z.unknown());
+export const zTenantsListInvitesResponse = zListInvitesResult;
 
 export const zTenantsCreateInviteBody = zInviteCreateBody;
 
 /**
- * Response Tenants Create Invite
- *
  * Successful Response
  */
-export const zTenantsCreateInviteResponse = z.record(z.unknown());
+export const zTenantsCreateInviteResponse = zCreateInviteResult;
 
 export const zTenantsRevokeInvitePath = z.object({
     invite_id: z.string()
 });
 
 /**
- * Response Tenants Revoke Invite
- *
  * Successful Response
  */
-export const zTenantsRevokeInviteResponse = z.record(z.unknown());
+export const zTenantsRevokeInviteResponse = zSuccessAck;
 
 /**
- * Response Tenants Get My Plan
- *
  * Successful Response
  */
-export const zTenantsGetMyPlanResponse = z.record(z.unknown());
+export const zTenantsGetMyPlanResponse = zGetMyPlanResult;
 
 export const zThemesGetThemesQuery = z.object({
     component_type: z.string().nullish()
@@ -5932,20 +6501,16 @@ export const zVariablesUpdateVariableEndpointResponse = zVariableResponse;
 export const zVectorVectorSearchBody = zVectorSearchParams;
 
 /**
- * Response Vector Vector Search
- *
  * Successful Response
  */
-export const zVectorVectorSearchResponse = z.record(z.unknown());
+export const zVectorVectorSearchResponse = zVectorSearchResult;
 
 export const zVectorVectorUpsertBody = zVectorUpsertParams;
 
 /**
- * Response Vector Vector Upsert
- *
  * Successful Response
  */
-export const zVectorVectorUpsertResponse = z.record(z.unknown());
+export const zVectorVectorUpsertResponse = zVectorUpsertResult;
 
 export const zWorkflowsSendWorkflowEmailBody = zWorkflowEmailRequest;
 

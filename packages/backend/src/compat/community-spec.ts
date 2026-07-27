@@ -1,5 +1,23833 @@
 // CF-22 P1 — vendored product community spec, EMBEDDED for Workers-safe runtime
 // use (no node:fs). Regenerated from contracts/openapi.community.json by
 // scripts/sync-contract.mjs. DO NOT EDIT.
-const SPEC: Record<string, unknown> = {"components":{"schemas":{"APIKeyCreate":{"properties":{"edge_engine_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Engine Id"},"expires_at":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Expires At"},"name":{"title":"Name","type":"string"},"scope":{"default":"user","title":"Scope","type":"string"}},"required":["name"],"title":"APIKeyCreate","type":"object"},"APIKeyUpdate":{"properties":{"expires_at":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Expires At"},"is_active":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Active"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"scope":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Scope"}},"title":"APIKeyUpdate","type":"object"},"AcceptInviteRequest":{"properties":{"password":{"title":"Password","type":"string"},"token":{"title":"Token","type":"string"}},"required":["token","password"],"title":"AcceptInviteRequest","type":"object"},"ActionBulkDeleteRequest":{"properties":{"ids":{"items":{"type":"string"},"title":"Ids","type":"array"}},"required":["ids"],"title":"ActionBulkDeleteRequest","type":"object"},"AdminInviteRequest":{"properties":{"email":{"title":"Email","type":"string"},"role":{"default":"admin","enum":["admin","member"],"title":"Role","type":"string"}},"required":["email"],"title":"AdminInviteRequest","type":"object"},"AdminInviteResponse":{"properties":{"message":{"title":"Message","type":"string"},"success":{"title":"Success","type":"boolean"}},"required":["success","message"],"title":"AdminInviteResponse","type":"object"},"AdvancedQueryEnvelope":{"properties":{"data":{"title":"Data"},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"rows":{"title":"Rows"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"AdvancedQueryEnvelope","type":"object"},"AdvancedVariableConfig":{"properties":{"collect":{"default":true,"title":"Collect","type":"boolean"},"expose":{"default":true,"title":"Expose","type":"boolean"}},"title":"AdvancedVariableConfig","type":"object"},"AdvancedVariables":{"properties":{"browser":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}},"connectionType":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":false}},"ip":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":false,"expose":false}},"isBot":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}},"language":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}},"os":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}},"referrer":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}},"themePreference":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}},"viewport":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}}},"title":"AdvancedVariables","type":"object"},"AgentSettings":{"additionalProperties":false,"description":"Complete agent settings envelope persisted to ``tenant_agent_settings``.","properties":{"general":{"$ref":"#/components/schemas/AgentSettingsGeneral"},"system":{"$ref":"#/components/schemas/AgentSettingsSystem"}},"title":"AgentSettings","type":"object"},"AgentSettingsGeneral":{"additionalProperties":false,"description":"Generation parameters a tenant/user may override.\n\n``max_tokens`` is optional: ``None`` means \"use the model / profile default\".\nThe numeric fields use sentinel defaults only so the modal can render — at\napply time only non-None values override the profile config.","properties":{"max_tokens":{"anyOf":[{"maximum":200000,"minimum":1,"type":"integer"},{"type":"null"}],"title":"Max Tokens"},"temperature":{"default":0.7,"maximum":2,"minimum":0,"title":"Temperature","type":"number"},"timeout_seconds":{"default":60,"maximum":600,"minimum":10,"title":"Timeout Seconds","type":"integer"},"top_p":{"default":0.9,"maximum":1,"minimum":0,"title":"Top P","type":"number"}},"title":"AgentSettingsGeneral","type":"object"},"AgentSettingsSystem":{"additionalProperties":false,"description":"Tool and integration exclusion controls for tenants.\n\nSystem prompts are now master-admin-only. Tenants can only disable\nspecific tools, MCP servers, and skills from the global catalogue.\n\nExclusion lists are merged from tenant default and user override\n(user exclusions take precedence).","properties":{"disabled_mcp_servers":{"description":"List of MCP server IDs to disable (global catalogue IDs).","items":{"type":"string"},"title":"Disabled Mcp Servers","type":"array"},"disabled_skills":{"description":"List of skill slugs to disable (global catalogue slugs).","items":{"type":"string"},"title":"Disabled Skills","type":"array"},"disabled_tools":{"description":"List of tool names to disable (e.g., 'pages_update', 'queryDatasource').","items":{"type":"string"},"title":"Disabled Tools","type":"array"}},"title":"AgentSettingsSystem","type":"object"},"AuditLogEntry":{"properties":{"action":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Action"},"created_at":{"anyOf":[{},{"type":"null"}],"title":"Created At"},"details":{"anyOf":[{},{"type":"null"}],"title":"Details"},"id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Id"},"ip_address":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ip Address"},"user_agent":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"User Agent"},"user_id":{"anyOf":[{},{"type":"null"}],"title":"User Id"}},"title":"AuditLogEntry","type":"object"},"AuthFormCreate":{"properties":{"allowed_contact_types":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"default":[],"title":"Allowed Contact Types"},"config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"default":{},"title":"Config"},"is_active":{"default":true,"title":"Is Active","type":"boolean"},"name":{"title":"Name","type":"string"},"redirect_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Redirect Url"},"target_contact_type":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Target Contact Type"},"type":{"title":"Type","type":"string"}},"required":["name","type"],"title":"AuthFormCreate","type":"object"},"AuthFormUpdate":{"properties":{"allowed_contact_types":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Allowed Contact Types"},"config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Config"},"is_active":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Active"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"redirect_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Redirect Url"},"target_contact_type":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Target Contact Type"},"type":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Type"}},"title":"AuthFormUpdate","type":"object"},"AuthResponse":{"properties":{"message":{"title":"Message","type":"string"},"user":{"$ref":"#/components/schemas/UserResponse"}},"required":["user","message"],"title":"AuthResponse","type":"object"},"AutomationRollbackRequest":{"properties":{"version_id":{"title":"Version Id","type":"string"}},"required":["version_id"],"title":"AutomationRollbackRequest","type":"object"},"AutomationVersionLabelRequest":{"properties":{"label":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Label"}},"title":"AutomationVersionLabelRequest","type":"object"},"BatchDeleteCacheRequest":{"properties":{"delete_remote":{"default":false,"title":"Delete Remote","type":"boolean"},"ids":{"items":{"type":"string"},"title":"Ids","type":"array"}},"required":["ids"],"title":"BatchDeleteCacheRequest","type":"object"},"BatchDeleteDatabaseRequest":{"properties":{"delete_remote":{"default":false,"title":"Delete Remote","type":"boolean"},"ids":{"items":{"type":"string"},"title":"Ids","type":"array"}},"required":["ids"],"title":"BatchDeleteDatabaseRequest","type":"object"},"BatchDeleteQueueRequest":{"properties":{"delete_remote":{"default":false,"title":"Delete Remote","type":"boolean"},"ids":{"items":{"type":"string"},"title":"Ids","type":"array"}},"required":["ids"],"title":"BatchDeleteQueueRequest","type":"object"},"BatchDeleteRequest":{"description":"Batch delete with optional remote teardown.","properties":{"delete_remote":{"default":false,"title":"Delete Remote","type":"boolean"},"engine_ids":{"items":{"type":"string"},"minItems":1,"title":"Engine Ids","type":"array"}},"required":["engine_ids"],"title":"BatchDeleteRequest","type":"object"},"BatchDeleteVectorRequest":{"properties":{"delete_remote":{"default":false,"title":"Delete Remote","type":"boolean"},"ids":{"items":{"type":"string"},"title":"Ids","type":"array"}},"required":["ids"],"title":"BatchDeleteVectorRequest","type":"object"},"BatchPublishEngineResult":{"properties":{"engineId":{"title":"Engineid","type":"string"},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"previewUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Previewurl"},"success":{"title":"Success","type":"boolean"}},"required":["engineId","success"],"title":"BatchPublishEngineResult","type":"object"},"BatchPublishRequest":{"properties":{"engine_ids":{"items":{"type":"string"},"title":"Engine Ids","type":"array"}},"required":["engine_ids"],"title":"BatchPublishRequest","type":"object"},"BatchPublishResult":{"properties":{"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"results":{"default":[],"items":{"$ref":"#/components/schemas/BatchPublishEngineResult"},"title":"Results","type":"array"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"BatchPublishResult","type":"object"},"BatchRequest":{"description":"Base batch request with engine IDs.","properties":{"engine_ids":{"items":{"type":"string"},"minItems":1,"title":"Engine Ids","type":"array"}},"required":["engine_ids"],"title":"BatchRequest","type":"object"},"BatchRotateSecretsRequest":{"description":"Request body for POST /api/edge-engines/batch/rotate-secrets-key.","properties":{"dry_run":{"default":false,"title":"Dry Run","type":"boolean"},"engine_ids":{"items":{"type":"string"},"maxItems":50,"minItems":1,"title":"Engine Ids","type":"array"},"strategy":{"default":"hkdf","enum":["random","hkdf"],"title":"Strategy","type":"string"},"window_seconds":{"default":3600,"maximum":86400,"minimum":0,"title":"Window Seconds","type":"integer"}},"required":["engine_ids"],"title":"BatchRotateSecretsRequest","type":"object"},"BatchToggleRequest":{"description":"Batch toggle active status.","properties":{"engine_ids":{"items":{"type":"string"},"minItems":1,"title":"Engine Ids","type":"array"},"is_active":{"title":"Is Active","type":"boolean"}},"required":["engine_ids","is_active"],"title":"BatchToggleRequest","type":"object"},"BlocklistEntry":{"properties":{"created_at":{"anyOf":[{},{"type":"null"}],"title":"Created At"},"id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Id"},"ip_or_range":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ip Or Range"},"reason":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Reason"}},"title":"BlocklistEntry","type":"object"},"Body_project_upload_branding_asset":{"properties":{"asset_type":{"default":"favicon","title":"Asset Type","type":"string"},"file":{"contentMediaType":"application/octet-stream","title":"File","type":"string"}},"required":["file"],"title":"Body_project_upload_branding_asset","type":"object"},"Body_storage_upload_file":{"properties":{"bucket":{"title":"Bucket","type":"string"},"file":{"contentMediaType":"application/octet-stream","title":"File","type":"string"},"path":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Path"},"provider_id":{"title":"Provider Id","type":"string"}},"required":["file","bucket","provider_id"],"title":"Body_storage_upload_file","type":"object"},"BotProtectionMetrics":{"properties":{"banned_ips":{"title":"Banned Ips","type":"integer"},"blocked_solves":{"title":"Blocked Solves","type":"integer"},"solve_rate":{"title":"Solve Rate","type":"number"},"total_challenges":{"title":"Total Challenges","type":"integer"}},"required":["solve_rate","total_challenges","blocked_solves","banned_ips"],"title":"BotProtectionMetrics","type":"object"},"BotProtectionSettings":{"properties":{"auto_ban_lockout_hours":{"default":24,"title":"Auto Ban Lockout Hours","type":"integer"},"enabled":{"default":false,"title":"Enabled","type":"boolean"},"protect_forgot_password":{"default":true,"title":"Protect Forgot Password","type":"boolean"},"protect_login":{"default":true,"title":"Protect Login","type":"boolean"},"provider":{"default":"cloudflare","enum":["cloudflare","recaptcha_v2","recaptcha_v3"],"title":"Provider","type":"string"},"recaptcha_v3_threshold":{"default":0.5,"title":"Recaptcha V3 Threshold","type":"number"},"secret_key":{"default":"","title":"Secret Key","type":"string"},"site_key":{"default":"","title":"Site Key","type":"string"},"widget_size":{"default":"normal","enum":["normal","compact","invisible"],"title":"Widget Size","type":"string"},"widget_theme":{"default":"auto","enum":["light","dark","auto"],"title":"Widget Theme","type":"string"}},"title":"BotProtectionSettings","type":"object"},"BotProtectionUpdateRequest":{"properties":{"auto_ban_lockout_hours":{"title":"Auto Ban Lockout Hours","type":"integer"},"enabled":{"title":"Enabled","type":"boolean"},"protect_forgot_password":{"title":"Protect Forgot Password","type":"boolean"},"protect_login":{"title":"Protect Login","type":"boolean"},"provider":{"enum":["cloudflare","recaptcha_v2","recaptcha_v3"],"title":"Provider","type":"string"},"recaptcha_v3_threshold":{"title":"Recaptcha V3 Threshold","type":"number"},"secret_key":{"title":"Secret Key","type":"string"},"site_key":{"title":"Site Key","type":"string"},"widget_size":{"enum":["normal","compact","invisible"],"title":"Widget Size","type":"string"},"widget_theme":{"enum":["light","dark","auto"],"title":"Widget Theme","type":"string"}},"required":["enabled","provider","site_key","secret_key","protect_login","protect_forgot_password","recaptcha_v3_threshold","widget_theme","widget_size","auto_ban_lockout_hours"],"title":"BotProtectionUpdateRequest","type":"object"},"CacheBatchResult":{"properties":{"failed":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Failed","type":"array"},"success":{"default":[],"items":{"type":"string"},"title":"Success","type":"array"},"total":{"default":0,"title":"Total","type":"integer"}},"title":"CacheBatchResult","type":"object"},"ColumnInfo":{"description":"Column descriptor with both snake_case and frontend-alias keys.","properties":{"column_default":{"anyOf":[{},{"type":"null"}],"title":"Column Default"},"column_name":{"title":"Column Name","type":"string"},"data_type":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Data Type"},"foreignColumn":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Foreigncolumn"},"foreignTable":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Foreigntable"},"foreign_column":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Foreign Column"},"foreign_table":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Foreign Table"},"isForeign":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Isforeign"},"is_foreign":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Foreign"},"is_nullable":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Is Nullable"},"is_primary":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Primary"},"name":{"title":"Name","type":"string"},"type":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Type"}},"required":["column_name","name"],"title":"ColumnInfo","type":"object"},"ComponentThemeCreate":{"properties":{"component_type":{"description":"Component type e.g. InfoList, DataTable","title":"Component Type","type":"string"},"is_system":{"default":false,"description":"Whether this is a pre-seeded system theme","title":"Is System","type":"boolean"},"name":{"description":"Name of the theme","title":"Name","type":"string"},"styles_data":{"additionalProperties":true,"description":"StylesData JSON object","title":"Styles Data","type":"object"}},"required":["name","component_type","styles_data"],"title":"ComponentThemeCreate","type":"object"},"ComponentThemeOut":{"properties":{"component_type":{"description":"Component type e.g. InfoList, DataTable","title":"Component Type","type":"string"},"created_at":{"title":"Created At","type":"string"},"id":{"title":"Id","type":"string"},"is_system":{"default":false,"description":"Whether this is a pre-seeded system theme","title":"Is System","type":"boolean"},"name":{"description":"Name of the theme","title":"Name","type":"string"},"styles_data":{"additionalProperties":true,"description":"StylesData JSON object","title":"Styles Data","type":"object"},"updated_at":{"title":"Updated At","type":"string"}},"required":["name","component_type","styles_data","id","created_at","updated_at"],"title":"ComponentThemeOut","type":"object"},"ConnectRequest":{"description":"List existing workers for a provider account.","properties":{"provider_id":{"description":"ID of the EdgeProviderAccount","title":"Provider Id","type":"string"}},"required":["provider_id"],"title":"ConnectRequest","type":"object"},"CookieVariables":{"properties":{"firstVisitAt":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}},"isFirstVisit":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}},"landingPage":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}},"visitCount":{"$ref":"#/components/schemas/AdvancedVariableConfig","default":{"collect":true,"expose":true}}},"title":"CookieVariables","type":"object"},"CreateBatchPolicyRequest":{"properties":{"permissive":{"default":true,"title":"Permissive","type":"boolean"},"policyBaseName":{"title":"Policybasename","type":"string"},"roles":{"default":["authenticated"],"items":{"type":"string"},"title":"Roles","type":"array"},"tableRules":{"items":{"$ref":"#/components/schemas/TableRulePolicyData"},"title":"Tablerules","type":"array"}},"required":["policyBaseName","tableRules"],"title":"CreateBatchPolicyRequest","type":"object"},"CreatePolicyRequest":{"properties":{"checkExpression":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Checkexpression"},"operation":{"title":"Operation","type":"string"},"permissive":{"default":true,"title":"Permissive","type":"boolean"},"policyName":{"title":"Policyname","type":"string"},"propagateTo":{"anyOf":[{"items":{"additionalProperties":true,"type":"object"},"type":"array"},{"type":"null"}],"default":[],"title":"Propagateto"},"roles":{"default":["authenticated"],"items":{"type":"string"},"title":"Roles","type":"array"},"tableName":{"title":"Tablename","type":"string"},"usingExpression":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Usingexpression"}},"required":["tableName","policyName","operation"],"title":"CreatePolicyRequest","type":"object"},"CreateResourceRequest":{"properties":{"name":{"description":"Name for the new resource","title":"Name","type":"string"},"region":{"default":"us-east-1","description":"Region for the resource","title":"Region","type":"string"},"resource_type":{"description":"Type of resource to create: 'redis'","title":"Resource Type","type":"string"}},"required":["resource_type","name"],"title":"CreateResourceRequest","type":"object"},"CreateSchemaRequest":{"properties":{"db_url":{"title":"Db Url","type":"string"},"provider":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"suffix":{"title":"Suffix","type":"string"}},"required":["db_url","suffix"],"title":"CreateSchemaRequest","type":"object"},"DatabaseBatchResult":{"properties":{"failed":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Failed","type":"array"},"success":{"default":[],"items":{"type":"string"},"title":"Success","type":"array"},"total":{"default":0,"title":"Total","type":"integer"}},"title":"DatabaseBatchResult","type":"object"},"DatabaseConnectionRequest":{"properties":{"anonKey":{"minLength":1,"title":"Anonkey","type":"string"},"serviceKey":{"anyOf":[{"minLength":1,"type":"string"},{"type":"null"}],"title":"Servicekey"},"url":{"minLength":1,"title":"Url","type":"string"}},"required":["url","anonKey"],"title":"DatabaseConnectionRequest","type":"object"},"DatabaseConnectionResponse":{"properties":{"data":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Data"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"DatabaseConnectionResponse","type":"object"},"DenoConnectRequest":{"properties":{"provider_id":{"title":"Provider Id","type":"string"}},"required":["provider_id"],"title":"DenoConnectRequest","type":"object"},"DeployRequest":{"properties":{"adapter_type":{"default":"automations","description":"Engine type: 'automations' (Lite) or 'full'","title":"Adapter Type","type":"string"},"cache_token":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"Cache REST auth token","title":"Cache Token"},"cache_url":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"Cache REST URL (Upstash, SRH, etc.)","title":"Cache Url"},"edge_cache_id":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"EdgeCache ID to attach","title":"Edge Cache Id"},"edge_db_id":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"EdgeDatabase ID to attach (uses default if omitted)","title":"Edge Db Id"},"edge_queue_id":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"EdgeQueue ID to attach","title":"Edge Queue Id"},"provider_id":{"description":"ID of the EdgeProviderAccount","title":"Provider Id","type":"string"},"worker_name":{"default":"frontbase-edge","description":"Worker script name","title":"Worker Name","type":"string"}},"required":["provider_id"],"title":"DeployRequest","type":"object"},"DiscoverRequest":{"properties":{"credentials":{"additionalProperties":true,"description":"Provider credentials","title":"Credentials","type":"object"},"provider":{"description":"Provider type","title":"Provider","type":"string"}},"required":["provider","credentials"],"title":"DiscoverRequest","type":"object"},"DiscoverSchemasRequest":{"properties":{"db_url":{"title":"Db Url","type":"string"},"provider":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"}},"required":["db_url"],"title":"DiscoverSchemasRequest","type":"object"},"DistinctValuesEnvelope":{"properties":{"data":{"title":"Data"},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"DistinctValuesEnvelope","type":"object"},"EdgeAgentProfileCreate":{"properties":{"excluded_tools":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Excluded Tools"},"max_auto_tools":{"anyOf":[{"maximum":500,"minimum":0,"type":"integer"},{"type":"null"}],"title":"Max Auto Tools"},"max_tokens":{"anyOf":[{"maximum":128000,"minimum":1,"type":"integer"},{"type":"null"}],"title":"Max Tokens"},"mcp_enabled":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Mcp Enabled"},"name":{"maxLength":100,"minLength":1,"title":"Name","type":"string"},"permissions":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Permissions"},"skills_enabled":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Skills Enabled"},"slug":{"maxLength":50,"minLength":1,"title":"Slug","type":"string"},"system_prompt":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"System Prompt"},"temperature":{"anyOf":[{"maximum":2,"minimum":0,"type":"number"},{"type":"null"}],"title":"Temperature"},"top_p":{"anyOf":[{"maximum":1,"minimum":0,"type":"number"},{"type":"null"}],"title":"Top P"}},"required":["name","slug"],"title":"EdgeAgentProfileCreate","type":"object"},"EdgeAgentProfileUpdate":{"properties":{"excluded_tools":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Excluded Tools"},"max_auto_tools":{"anyOf":[{"maximum":500,"minimum":0,"type":"integer"},{"type":"null"}],"title":"Max Auto Tools"},"max_tokens":{"anyOf":[{"maximum":128000,"minimum":1,"type":"integer"},{"type":"null"}],"title":"Max Tokens"},"mcp_enabled":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Mcp Enabled"},"name":{"anyOf":[{"maxLength":100,"minLength":1,"type":"string"},{"type":"null"}],"title":"Name"},"permissions":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Permissions"},"skills_enabled":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Skills Enabled"},"slug":{"anyOf":[{"maxLength":50,"minLength":1,"type":"string"},{"type":"null"}],"title":"Slug"},"system_prompt":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"System Prompt"},"temperature":{"anyOf":[{"maximum":2,"minimum":0,"type":"number"},{"type":"null"}],"title":"Temperature"},"top_p":{"anyOf":[{"maximum":1,"minimum":0,"type":"number"},{"type":"null"}],"title":"Top P"}},"title":"EdgeAgentProfileUpdate","type":"object"},"EdgeCacheCreate":{"properties":{"cache_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Cache Token"},"cache_url":{"title":"Cache Url","type":"string"},"is_default":{"default":false,"title":"Is Default","type":"boolean"},"name":{"title":"Name","type":"string"},"provider":{"title":"Provider","type":"string"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"}},"required":["name","provider","cache_url"],"title":"EdgeCacheCreate","type":"object"},"EdgeCacheResponse":{"properties":{"account_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Account Name"},"cache_url":{"title":"Cache Url","type":"string"},"created_at":{"title":"Created At","type":"string"},"engine_count":{"default":0,"title":"Engine Count","type":"integer"},"has_token":{"title":"Has Token","type":"boolean"},"id":{"title":"Id","type":"string"},"is_default":{"title":"Is Default","type":"boolean"},"is_system":{"default":false,"title":"Is System","type":"boolean"},"linked_engines":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Linked Engines","type":"array"},"name":{"title":"Name","type":"string"},"provider":{"title":"Provider","type":"string"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"supports_remote_delete":{"default":false,"title":"Supports Remote Delete","type":"boolean"},"updated_at":{"title":"Updated At","type":"string"},"warning":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Warning"}},"required":["id","name","provider","cache_url","has_token","is_default","created_at","updated_at"],"title":"EdgeCacheResponse","type":"object"},"EdgeCacheUpdate":{"properties":{"cache_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Cache Token"},"cache_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Cache Url"},"is_default":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Default"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"provider":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"}},"title":"EdgeCacheUpdate","type":"object"},"EdgeDatabaseCreate":{"properties":{"db_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Db Token"},"db_url":{"title":"Db Url","type":"string"},"is_default":{"default":false,"title":"Is Default","type":"boolean"},"name":{"title":"Name","type":"string"},"provider":{"title":"Provider","type":"string"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"schema_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Schema Name"}},"required":["name","provider","db_url"],"title":"EdgeDatabaseCreate","type":"object"},"EdgeDatabaseResponse":{"properties":{"account_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Account Name"},"created_at":{"title":"Created At","type":"string"},"db_url":{"title":"Db Url","type":"string"},"has_token":{"title":"Has Token","type":"boolean"},"id":{"title":"Id","type":"string"},"is_default":{"title":"Is Default","type":"boolean"},"is_system":{"default":false,"title":"Is System","type":"boolean"},"linked_engines":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Linked Engines","type":"array"},"name":{"title":"Name","type":"string"},"provider":{"title":"Provider","type":"string"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"schema_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Schema Name"},"supports_remote_delete":{"default":false,"title":"Supports Remote Delete","type":"boolean"},"target_count":{"default":0,"title":"Target Count","type":"integer"},"updated_at":{"title":"Updated At","type":"string"},"warning":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Warning"}},"required":["id","name","provider","db_url","has_token","is_default","created_at","updated_at"],"title":"EdgeDatabaseResponse","type":"object"},"EdgeDatabaseUpdate":{"properties":{"db_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Db Token"},"db_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Db Url"},"is_default":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Default"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"provider":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"schema_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Schema Name"}},"title":"EdgeDatabaseUpdate","type":"object"},"EdgeEngineCreate":{"description":"Create a new edge engine.","properties":{"adapter_type":{"default":"full","enum":["edge","pages","automations","full"],"title":"Adapter Type","type":"string"},"datasource_ids":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Datasource Ids"},"edge_auth_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Auth Id"},"edge_cache_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Cache Id"},"edge_db_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Db Id"},"edge_provider_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Provider Id"},"edge_queue_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Queue Id"},"engine_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Engine Config"},"is_active":{"default":true,"title":"Is Active","type":"boolean"},"is_imported":{"default":false,"title":"Is Imported","type":"boolean"},"name":{"maxLength":100,"minLength":1,"title":"Name","type":"string"},"storage_ids":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Storage Ids"},"url":{"maxLength":500,"minLength":1,"title":"Url","type":"string"}},"required":["name","url"],"title":"EdgeEngineCreate","type":"object"},"EdgeEngineResponse":{"description":"Edge engine response.","properties":{"adapter_type":{"title":"Adapter Type","type":"string"},"bundle_checksum":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Bundle Checksum"},"config_checksum":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Config Checksum"},"created_at":{"title":"Created At","type":"string"},"datasource_ids":{"default":[],"items":{"type":"string"},"title":"Datasource Ids","type":"array"},"datasources":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Datasources","type":"array"},"edge_auth_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Auth Id"},"edge_cache_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Cache Id"},"edge_cache_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Cache Name"},"edge_db_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Db Id"},"edge_db_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Db Name"},"edge_provider_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Provider Id"},"edge_queue_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Queue Id"},"edge_queue_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Queue Name"},"engine_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Engine Config"},"gpu_models":{"default":[],"items":{"$ref":"#/components/schemas/GPUModelSummary"},"title":"Gpu Models","type":"array"},"id":{"title":"Id","type":"string"},"is_active":{"title":"Is Active","type":"boolean"},"is_imported":{"default":false,"title":"Is Imported","type":"boolean"},"is_outdated":{"default":false,"title":"Is Outdated","type":"boolean"},"is_shared":{"default":false,"title":"Is Shared","type":"boolean"},"is_system":{"default":false,"title":"Is System","type":"boolean"},"last_deployed_at":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Last Deployed At"},"last_synced_at":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Last Synced At"},"move_status":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Move Status"},"moved_out_at":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Moved Out At"},"name":{"title":"Name","type":"string"},"provider":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider"},"storage_ids":{"default":[],"items":{"type":"string"},"title":"Storage Ids","type":"array"},"storages":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Storages","type":"array"},"sync_status":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Sync Status"},"updated_at":{"title":"Updated At","type":"string"},"url":{"title":"Url","type":"string"}},"required":["id","name","adapter_type","url","is_active","created_at","updated_at"],"title":"EdgeEngineResponse","type":"object"},"EdgeEngineUpdate":{"description":"Update an existing edge engine.","properties":{"adapter_type":{"anyOf":[{"enum":["edge","pages","automations","full"],"type":"string"},{"type":"null"}],"title":"Adapter Type"},"datasource_ids":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Datasource Ids"},"edge_auth_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Auth Id"},"edge_cache_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Cache Id"},"edge_db_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Db Id"},"edge_provider_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Provider Id"},"edge_queue_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Queue Id"},"engine_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Engine Config"},"is_active":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Active"},"is_imported":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Imported"},"name":{"anyOf":[{"maxLength":100,"minLength":1,"type":"string"},{"type":"null"}],"title":"Name"},"storage_ids":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Storage Ids"},"url":{"anyOf":[{"maxLength":500,"minLength":1,"type":"string"},{"type":"null"}],"title":"Url"}},"title":"EdgeEngineUpdate","type":"object"},"EdgeProviderAccountCreate":{"properties":{"name":{"description":"Name of the provider account (e.g. 'Personal Cloudflare')","title":"Name","type":"string"},"provider":{"description":"Provider type (cloudflare, docker, vercel, etc.)","title":"Provider","type":"string"},"provider_credentials":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"description":"API tokens, account IDs, etc.","title":"Provider Credentials"}},"required":["name","provider"],"title":"EdgeProviderAccountCreate","type":"object"},"EdgeProviderAccountResponse":{"properties":{"created_at":{"title":"Created At","type":"string"},"has_credentials":{"default":false,"title":"Has Credentials","type":"boolean"},"id":{"title":"Id","type":"string"},"is_active":{"title":"Is Active","type":"boolean"},"name":{"title":"Name","type":"string"},"provider":{"title":"Provider","type":"string"},"provider_metadata":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Provider Metadata"},"updated_at":{"title":"Updated At","type":"string"}},"required":["id","name","provider","is_active","created_at","updated_at"],"title":"EdgeProviderAccountResponse","type":"object"},"EdgeProviderAccountUpdate":{"properties":{"is_active":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Active"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"provider_credentials":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Provider Credentials"}},"title":"EdgeProviderAccountUpdate","type":"object"},"EdgeQueueCreate":{"properties":{"is_default":{"default":false,"title":"Is Default","type":"boolean"},"name":{"title":"Name","type":"string"},"next_signing_key":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Next Signing Key"},"provider":{"title":"Provider","type":"string"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"provider_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Provider Config"},"queue_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Queue Token"},"queue_url":{"title":"Queue Url","type":"string"},"signing_key":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Signing Key"}},"required":["name","provider","queue_url"],"title":"EdgeQueueCreate","type":"object"},"EdgeQueueResponse":{"properties":{"account_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Account Name"},"created_at":{"title":"Created At","type":"string"},"engine_count":{"default":0,"title":"Engine Count","type":"integer"},"has_signing_key":{"title":"Has Signing Key","type":"boolean"},"has_token":{"title":"Has Token","type":"boolean"},"id":{"title":"Id","type":"string"},"is_default":{"title":"Is Default","type":"boolean"},"is_system":{"default":false,"title":"Is System","type":"boolean"},"linked_engines":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Linked Engines","type":"array"},"name":{"title":"Name","type":"string"},"provider":{"title":"Provider","type":"string"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"queue_url":{"title":"Queue Url","type":"string"},"supports_remote_delete":{"default":false,"title":"Supports Remote Delete","type":"boolean"},"updated_at":{"title":"Updated At","type":"string"},"warning":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Warning"}},"required":["id","name","provider","queue_url","has_token","has_signing_key","is_default","created_at","updated_at"],"title":"EdgeQueueResponse","type":"object"},"EdgeQueueUpdate":{"properties":{"is_default":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Default"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"next_signing_key":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Next Signing Key"},"provider":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"provider_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Provider Config"},"queue_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Queue Token"},"queue_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Queue Url"},"signing_key":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Signing Key"}},"title":"EdgeQueueUpdate","type":"object"},"EdgeVectorCreate":{"properties":{"is_default":{"default":false,"title":"Is Default","type":"boolean"},"name":{"title":"Name","type":"string"},"provider":{"title":"Provider","type":"string"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"provider_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"description":"Provider-specific config like dimensions, metric type, table name (no secrets)","title":"Provider Config"},"vector_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Vector Token"},"vector_url":{"description":"Vector database connection URL or DSN","maxLength":500,"title":"Vector Url","type":"string"}},"required":["name","provider","vector_url"],"title":"EdgeVectorCreate","type":"object"},"EdgeVectorResponse":{"properties":{"account_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Account Name"},"created_at":{"title":"Created At","type":"string"},"engine_count":{"default":0,"title":"Engine Count","type":"integer"},"has_token":{"title":"Has Token","type":"boolean"},"id":{"title":"Id","type":"string"},"is_default":{"title":"Is Default","type":"boolean"},"is_system":{"default":false,"title":"Is System","type":"boolean"},"linked_engines":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Linked Engines","type":"array"},"name":{"title":"Name","type":"string"},"provider":{"title":"Provider","type":"string"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"provider_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Provider Config"},"supports_remote_delete":{"default":false,"title":"Supports Remote Delete","type":"boolean"},"updated_at":{"title":"Updated At","type":"string"},"vector_url":{"title":"Vector Url","type":"string"}},"required":["id","name","provider","vector_url","has_token","is_default","created_at","updated_at"],"title":"EdgeVectorResponse","type":"object"},"EdgeVectorUpdate":{"properties":{"is_default":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Default"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"provider":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"provider_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Provider Config"},"vector_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Vector Token"},"vector_url":{"anyOf":[{"maxLength":500,"type":"string"},{"type":"null"}],"description":"Vector database connection URL or DSN","title":"Vector Url"}},"title":"EdgeVectorUpdate","type":"object"},"EngineBatchResult":{"description":"Result of a batch operation.","properties":{"failed":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Failed","type":"array"},"success":{"default":[],"items":{"type":"string"},"title":"Success","type":"array"},"total":{"default":0,"title":"Total","type":"integer"}},"title":"EngineBatchResult","type":"object"},"ExecutionStatus":{"description":"Workflow execution statuses","enum":["started","executing","completed","error","cancelled"],"title":"ExecutionStatus","type":"string"},"ExportRequest":{"description":"Request body for ``POST /api/edge-engines/{engine_id}/export``.\n\nThe passphrase seals the bundle envelope and is its only transit protection for a\ncross-deployment move — treat it like a password. It is never stored.","properties":{"passphrase":{"description":"Passphrase to seal the bundle (>= 8 characters).","maxLength":256,"minLength":8,"title":"Passphrase","type":"string"}},"required":["passphrase"],"title":"ExportRequest","type":"object"},"FinalizeMoveRequest":{"description":"Request body for ``POST /api/edge-engines/{engine_id}/finalize-move``.","properties":{"confirm_secret":{"description":"S, revealed by the target import.","minLength":1,"title":"Confirm Secret","type":"string"}},"required":["confirm_secret"],"title":"FinalizeMoveRequest","type":"object"},"ForgotPasswordRequest":{"properties":{"email":{"format":"email","title":"Email","type":"string"},"turnstile_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Turnstile Token"},"website":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Website"}},"required":["email"],"title":"ForgotPasswordRequest","type":"object"},"ForgotPasswordResponse":{"properties":{"dev_link":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Dev Link"},"error_code":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error Code"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"ForgotPasswordResponse","type":"object"},"GPUModelCreate":{"properties":{"edge_engine_id":{"title":"Edge Engine Id","type":"string"},"model_id":{"title":"Model Id","type":"string"},"model_type":{"title":"Model Type","type":"string"},"name":{"title":"Name","type":"string"},"provider":{"title":"Provider","type":"string"},"provider_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Provider Config"}},"required":["name","model_type","provider","model_id","edge_engine_id"],"title":"GPUModelCreate","type":"object"},"GPUModelSummary":{"description":"Embedded GPU model summary within engine response.","properties":{"endpoint_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Endpoint Url"},"id":{"title":"Id","type":"string"},"model_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Model Id"},"model_type":{"title":"Model Type","type":"string"},"name":{"title":"Name","type":"string"},"slug":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Slug"}},"required":["id","name","model_type"],"title":"GPUModelSummary","type":"object"},"GPUModelUpdate":{"properties":{"is_active":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Active"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"provider_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Provider Config"}},"title":"GPUModelUpdate","type":"object"},"GeneralSettings":{"properties":{"defaultLanguage":{"default":"en","title":"Defaultlanguage","type":"string"},"siteName":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Sitename"},"siteUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Siteurl"},"timezone":{"default":"UTC","title":"Timezone","type":"string"}},"title":"GeneralSettings","type":"object"},"GenericDeployRequest":{"description":"Provider-agnostic deploy request for the Deploy Engine Wizard.\n\nThe endpoint resolves the provider type from provider_id and routes\nto the correct deployer. `worker_name` is the resource name\n(CF worker, Supabase function, Vercel project, etc.).","properties":{"adapter_type":{"default":"automations","enum":["edge","pages","automations","full"],"title":"Adapter Type","type":"string"},"compute_type":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Compute Type"},"datasource_ids":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Datasource Ids"},"edge_auth_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Auth Id"},"edge_cache_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Cache Id"},"edge_db_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Db Id"},"edge_queue_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Queue Id"},"provider_id":{"title":"Provider Id","type":"string"},"storage_ids":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Storage Ids"},"worker_name":{"maxLength":200,"minLength":1,"title":"Worker Name","type":"string"}},"required":["provider_id","worker_name"],"title":"GenericDeployRequest","type":"object"},"HTTPValidationError":{"properties":{"detail":{"items":{"$ref":"#/components/schemas/ValidationError"},"title":"Detail","type":"array"}},"title":"HTTPValidationError","type":"object"},"HealthStatus":{"properties":{"message":{"title":"Message","type":"string"},"status":{"title":"Status","type":"string"},"test_mode":{"title":"Test Mode","type":"boolean"}},"required":["status","message","test_mode"],"title":"HealthStatus","type":"object"},"IPBlockRequest":{"properties":{"ip_or_range":{"title":"Ip Or Range","type":"string"},"reason":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Reason"}},"required":["ip_or_range"],"title":"IPBlockRequest","type":"object"},"ImportRequest":{"description":"Request body for ``POST /api/edge-engines/import``.\n\n``bundle`` is the ``FBENG1.…`` string from an export; ``passphrase`` unseals it.\nOn success the response includes ``confirm_secret`` (S), which the caller pastes\nback into the source to finalize the move.","properties":{"bundle":{"description":"Sealed bundle from an export.","minLength":1,"title":"Bundle","type":"string"},"passphrase":{"description":"Passphrase used at export time.","minLength":1,"title":"Passphrase","type":"string"}},"required":["bundle","passphrase"],"title":"ImportRequest","type":"object"},"InspectRequest":{"description":"Inspect a deployed worker's content, settings, or secrets.","properties":{"provider_id":{"description":"ID of the EdgeProviderAccount","title":"Provider Id","type":"string"},"worker_name":{"description":"Worker script name to inspect","title":"Worker Name","type":"string"}},"required":["provider_id","worker_name"],"title":"InspectRequest","type":"object"},"InviteInfo":{"properties":{"email":{"title":"Email","type":"string"},"role":{"title":"Role","type":"string"},"tenant_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Tenant Name"},"tenant_slug":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Tenant Slug"}},"required":["email","role"],"title":"InviteInfo","type":"object"},"LicenseValidationRequest":{"properties":{"install_id":{"title":"Install Id","type":"string"},"license_key":{"title":"License Key","type":"string"}},"required":["license_key","install_id"],"title":"LicenseValidationRequest","type":"object"},"LicenseValidationResponse":{"properties":{"features":{"items":{"type":"string"},"title":"Features","type":"array"},"message":{"title":"Message","type":"string"},"tier":{"title":"Tier","type":"string"},"valid":{"title":"Valid","type":"boolean"}},"required":["valid","tier","features","message"],"title":"LicenseValidationResponse","type":"object"},"LoginRequest":{"properties":{"email":{"format":"email","title":"Email","type":"string"},"password":{"title":"Password","type":"string"},"turnstile_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Turnstile Token"},"website":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Website"}},"required":["email","password"],"title":"LoginRequest","type":"object"},"McpServerCreate":{"properties":{"auth_type":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Auth Type"},"category":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Category"},"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"is_active":{"default":true,"title":"Is Active","type":"boolean"},"name":{"maxLength":100,"minLength":1,"title":"Name","type":"string"},"profile_slug":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Profile Slug"},"slug":{"maxLength":80,"minLength":1,"title":"Slug","type":"string"},"token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Token"},"tool_filter":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Tool Filter"},"transport":{"default":"streamable-http","title":"Transport","type":"string"},"url":{"maxLength":500,"minLength":1,"title":"Url","type":"string"}},"required":["name","slug","url"],"title":"McpServerCreate","type":"object"},"McpServerUpdate":{"properties":{"auth_type":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Auth Type"},"category":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Category"},"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"is_active":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Active"},"name":{"anyOf":[{"maxLength":100,"minLength":1,"type":"string"},{"type":"null"}],"title":"Name"},"profile_slug":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Profile Slug"},"token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Token"},"tool_filter":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Tool Filter"},"transport":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Transport"},"url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Url"}},"title":"McpServerUpdate","type":"object"},"MessageResponse":{"description":"Bare `{\"message\": ...}` acknowledgement (deletes and simple actions).","properties":{"message":{"title":"Message","type":"string"}},"required":["message"],"title":"MessageResponse","type":"object"},"MoveToProjectRequest":{"description":"Request body for ``POST /api/edge-engines/{engine_id}/move-to-project``.\n\nSame-deployment fast path: move the engine to another project in THIS deployment\natomically (no bundle, no passphrase).","properties":{"target_project_id":{"minLength":1,"title":"Target Project Id","type":"string"}},"required":["target_project_id"],"title":"MoveToProjectRequest","type":"object"},"NodePosition":{"description":"Position of a node on the canvas","properties":{"x":{"title":"X","type":"number"},"y":{"title":"Y","type":"number"}},"required":["x","y"],"title":"NodePosition","type":"object"},"PageCreateRequest":{"properties":{"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"isHomepage":{"anyOf":[{"type":"boolean"},{"type":"null"}],"default":false,"title":"Ishomepage"},"isPublic":{"anyOf":[{"type":"boolean"},{"type":"null"}],"default":true,"title":"Ispublic"},"keywords":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Keywords"},"layoutData":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Layoutdata"},"name":{"maxLength":100,"minLength":1,"title":"Name","type":"string"},"slug":{"maxLength":100,"minLength":1,"title":"Slug","type":"string"},"title":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Title"}},"required":["name","slug"],"title":"PageCreateRequest","type":"object"},"PageDeploymentOut":{"properties":{"contentHash":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Contenthash"},"engineId":{"title":"Engineid","type":"string"},"errorMessage":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Errormessage"},"id":{"title":"Id","type":"string"},"previewUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Previewurl"},"publishedAt":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Publishedat"},"status":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Status"},"target":{"$ref":"#/components/schemas/PageDeploymentTarget"},"version":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Version"}},"required":["id","engineId","target"],"title":"PageDeploymentOut","type":"object"},"PageDeploymentTarget":{"description":"Engine summary embedded in a deployment record (may be empty).","properties":{"id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Id"},"is_shared":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Shared"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"provider":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider"},"url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Url"}},"title":"PageDeploymentTarget","type":"object"},"PageEnvelope":{"description":"Single-page (or data-less ack) envelope used by the pages CRUD routes.","properties":{"data":{"anyOf":[{"$ref":"#/components/schemas/PageOut"},{"type":"null"}]},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"PageEnvelope","type":"object"},"PageListEnvelope":{"properties":{"data":{"anyOf":[{"items":{"$ref":"#/components/schemas/PageOut"},"type":"array"},{"type":"null"}],"title":"Data"},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"PageListEnvelope","type":"object"},"PageOut":{"description":"serialize_page() shape.","properties":{"contentHash":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Contenthash"},"createdAt":{"title":"Createdat","type":"string"},"deletedAt":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Deletedat"},"deployments":{"default":[],"items":{"$ref":"#/components/schemas/PageDeploymentOut"},"title":"Deployments","type":"array"},"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"hasUnpublishedChanges":{"title":"Hasunpublishedchanges","type":"boolean"},"id":{"title":"Id","type":"string"},"isHomepage":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Ishomepage"},"isPublic":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Ispublic"},"keywords":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Keywords"},"layoutData":{"additionalProperties":true,"title":"Layoutdata","type":"object"},"name":{"title":"Name","type":"string"},"slug":{"title":"Slug","type":"string"},"title":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Title"},"updatedAt":{"title":"Updatedat","type":"string"}},"required":["id","name","slug","layoutData","createdAt","updatedAt","hasUnpublishedChanges"],"title":"PageOut","type":"object"},"PageUpdateRequest":{"properties":{"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"isHomepage":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Ishomepage"},"isPublic":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Ispublic"},"keywords":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Keywords"},"layoutData":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Layoutdata"},"name":{"anyOf":[{"maxLength":100,"minLength":1,"type":"string"},{"type":"null"}],"title":"Name"},"slug":{"anyOf":[{"maxLength":100,"type":"string"},{"type":"null"}],"title":"Slug"},"title":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Title"}},"title":"PageUpdateRequest","type":"object"},"PageVersionEnvelope":{"properties":{"data":{"anyOf":[{"$ref":"#/components/schemas/PageVersionOut"},{"type":"null"}]},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"PageVersionEnvelope","type":"object"},"PageVersionListEnvelope":{"properties":{"data":{"anyOf":[{"items":{"$ref":"#/components/schemas/PageVersionOut"},"type":"array"},{"type":"null"}],"title":"Data"},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"PageVersionListEnvelope","type":"object"},"PageVersionOut":{"description":"serialize_version() shape; layoutData only present on the detail route.","properties":{"contentHash":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Contenthash"},"createdAt":{"title":"Createdat","type":"string"},"id":{"title":"Id","type":"string"},"label":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Label"},"layoutData":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Layoutdata"},"pageId":{"title":"Pageid","type":"string"},"versionNumber":{"title":"Versionnumber","type":"integer"}},"required":["id","pageId","versionNumber","createdAt"],"title":"PageVersionOut","type":"object"},"Parameter":{"description":"Node parameter definition","properties":{"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"name":{"title":"Name","type":"string"},"required":{"anyOf":[{"type":"boolean"},{"type":"null"}],"default":false,"title":"Required"},"type":{"title":"Type","type":"string"},"value":{"anyOf":[{},{"type":"null"}],"title":"Value"}},"required":["name","type"],"title":"Parameter","type":"object"},"PrivacySettings-Input":{"properties":{"advancedVariables":{"$ref":"#/components/schemas/AdvancedVariables","default":{"browser":{"collect":true,"expose":true},"connectionType":{"collect":true,"expose":false},"ip":{"collect":false,"expose":false},"isBot":{"collect":true,"expose":true},"language":{"collect":true,"expose":true},"os":{"collect":true,"expose":true},"referrer":{"collect":true,"expose":true},"themePreference":{"collect":true,"expose":true},"viewport":{"collect":true,"expose":true}}},"cookieExpiryDays":{"default":365,"title":"Cookieexpirydays","type":"integer"},"cookieVariables":{"$ref":"#/components/schemas/CookieVariables","default":{"firstVisitAt":{"collect":true,"expose":true},"isFirstVisit":{"collect":true,"expose":true},"landingPage":{"collect":true,"expose":true},"visitCount":{"collect":true,"expose":true}}},"customHeadHtml":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Customheadhtml"},"enableVisitorTracking":{"default":false,"title":"Enablevisitortracking","type":"boolean"},"ga4MeasurementId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ga4Measurementid"},"gtmContainerId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Gtmcontainerid"},"requireCookieConsent":{"default":true,"title":"Requirecookieconsent","type":"boolean"}},"title":"PrivacySettings","type":"object"},"PrivacySettings-Output":{"properties":{"advancedVariables":{"$ref":"#/components/schemas/AdvancedVariables","default":{"browser":{"collect":true,"expose":true},"connectionType":{"collect":true,"expose":false},"ip":{"collect":false,"expose":false},"isBot":{"collect":true,"expose":true},"language":{"collect":true,"expose":true},"os":{"collect":true,"expose":true},"referrer":{"collect":true,"expose":true},"themePreference":{"collect":true,"expose":true},"viewport":{"collect":true,"expose":true}}},"cookieExpiryDays":{"default":365,"title":"Cookieexpirydays","type":"integer"},"cookieVariables":{"$ref":"#/components/schemas/CookieVariables","default":{"firstVisitAt":{"collect":true,"expose":true},"isFirstVisit":{"collect":true,"expose":true},"landingPage":{"collect":true,"expose":true},"visitCount":{"collect":true,"expose":true}}},"customHeadHtml":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Customheadhtml"},"enableVisitorTracking":{"default":false,"title":"Enablevisitortracking","type":"boolean"},"ga4MeasurementId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ga4Measurementid"},"gtmContainerId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Gtmcontainerid"},"requireCookieConsent":{"default":true,"title":"Requirecookieconsent","type":"boolean"}},"title":"PrivacySettings","type":"object"},"ProjectResponse":{"properties":{"appUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Appurl"},"created_at":{"format":"date-time","title":"Created At","type":"string"},"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"faviconUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Faviconurl"},"id":{"title":"Id","type":"string"},"logoUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Logourl"},"name":{"title":"Name","type":"string"},"supabase_anon_key":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Supabase Anon Key"},"supabase_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Supabase Url"},"updated_at":{"format":"date-time","title":"Updated At","type":"string"},"usersConfig":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Usersconfig"}},"required":["id","name","created_at","updated_at"],"title":"ProjectResponse","type":"object"},"ProjectUpdateRequest":{"properties":{"appUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Appurl"},"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"faviconUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Faviconurl"},"logoUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Logourl"},"name":{"anyOf":[{"maxLength":100,"minLength":1,"type":"string"},{"type":"null"}],"title":"Name"},"supabase_anon_key":{"anyOf":[{"minLength":1,"type":"string"},{"type":"null"}],"title":"Supabase Anon Key"},"supabase_service_key":{"anyOf":[{"minLength":1,"type":"string"},{"type":"null"}],"title":"Supabase Service Key"},"supabase_url":{"anyOf":[{"minLength":1,"type":"string"},{"type":"null"}],"title":"Supabase Url"},"usersConfig":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Usersconfig"}},"title":"ProjectUpdateRequest","type":"object"},"PublishResponse":{"description":"Response from publishing a workflow","properties":{"message":{"title":"Message","type":"string"},"success":{"title":"Success","type":"boolean"},"version":{"title":"Version","type":"integer"},"workflow_id":{"title":"Workflow Id","type":"string"}},"required":["success","message","workflow_id","version"],"title":"PublishResponse","type":"object"},"PublishResult":{"description":"Single-target publish: {success, message?, previewUrl?, version?} | {success, error}.","properties":{"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"previewUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Previewurl"},"success":{"title":"Success","type":"boolean"},"version":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Version"}},"required":["success"],"title":"PublishResult","type":"object"},"QueueBatchResult":{"properties":{"failed":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Failed","type":"array"},"success":{"default":[],"items":{"type":"string"},"title":"Success","type":"array"},"total":{"default":0,"title":"Total","type":"integer"}},"title":"QueueBatchResult","type":"object"},"QueueHealth":{"properties":{"active":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Active"},"active_workers":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Active Workers"},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"registered":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Registered"},"status":{"title":"Status","type":"string"}},"required":["status"],"title":"QueueHealth","type":"object"},"RLSMetadataRequest":{"properties":{"formData":{"additionalProperties":true,"title":"Formdata","type":"object"},"generatedCheck":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Generatedcheck"},"generatedUsing":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Generatedusing"},"policyName":{"title":"Policyname","type":"string"},"tableName":{"title":"Tablename","type":"string"}},"required":["tableName","policyName","formData"],"title":"RLSMetadataRequest","type":"object"},"ReconfigureRequest":{"description":"Reconfigure an engine's DB/cache/queue bindings and push secrets to the remote.","properties":{"datasource_ids":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Datasource Ids"},"edge_auth_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Auth Id"},"edge_cache_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Cache Id"},"edge_db_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Db Id"},"edge_queue_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Edge Queue Id"},"storage_ids":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Storage Ids"}},"title":"ReconfigureRequest","type":"object"},"RedisSettings":{"properties":{"cache_ttl_count":{"default":300,"title":"Cache Ttl Count","type":"integer"},"cache_ttl_data":{"default":60,"title":"Cache Ttl Data","type":"integer"},"redis_enabled":{"default":false,"title":"Redis Enabled","type":"boolean"},"redis_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Redis Token"},"redis_type":{"default":"upstash","enum":["upstash","self-hosted"],"title":"Redis Type","type":"string"},"redis_url":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Redis Url"}},"title":"RedisSettings","type":"object"},"RedisTestResult":{"properties":{"message":{"title":"Message","type":"string"},"success":{"title":"Success","type":"boolean"}},"required":["success","message"],"title":"RedisTestResult","type":"object"},"ResetPasswordRequest":{"properties":{"email":{"format":"email","title":"Email","type":"string"},"password":{"title":"Password","type":"string"},"token":{"title":"Token","type":"string"},"turnstile_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Turnstile Token"},"website":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Website"}},"required":["email","token","password"],"title":"ResetPasswordRequest","type":"object"},"ResetRolePasswordRequest":{"properties":{"db_url":{"title":"Db Url","type":"string"},"provider_account_id":{"title":"Provider Account Id","type":"string"},"schema_name":{"title":"Schema Name","type":"string"}},"required":["db_url","schema_name","provider_account_id"],"title":"ResetRolePasswordRequest","type":"object"},"RlsBulkDeleteRequest":{"properties":{"policies":{"items":{"additionalProperties":true,"type":"object"},"title":"Policies","type":"array"}},"required":["policies"],"title":"RlsBulkDeleteRequest","type":"object"},"RlsDataEnvelope":{"description":"Arbitrary-data envelope (metadata list/detail shapes vary by source).","properties":{"data":{"anyOf":[{},{"type":"null"}],"title":"Data"},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"RlsDataEnvelope","type":"object"},"RlsListEnvelope":{"properties":{"data":{"anyOf":[{"items":{"additionalProperties":true,"type":"object"},"type":"array"},{"type":"null"}],"title":"Data"},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"RlsListEnvelope","type":"object"},"RlsMessageEnvelope":{"properties":{"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"RlsMessageEnvelope","type":"object"},"RlsMetadataSaveData":{"properties":{"policyName":{"title":"Policyname","type":"string"},"sqlHash":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Sqlhash"},"tableName":{"title":"Tablename","type":"string"}},"required":["tableName","policyName"],"title":"RlsMetadataSaveData","type":"object"},"RlsMetadataSaveEnvelope":{"properties":{"data":{"anyOf":[{"$ref":"#/components/schemas/RlsMetadataSaveData"},{"type":"null"}]},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"RlsMetadataSaveEnvelope","type":"object"},"RlsVerifyData":{"properties":{"formData":{"anyOf":[{},{"type":"null"}],"title":"Formdata"},"hasMetadata":{"title":"Hasmetadata","type":"boolean"},"isVerified":{"title":"Isverified","type":"boolean"},"reason":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Reason"}},"required":["hasMetadata","isVerified"],"title":"RlsVerifyData","type":"object"},"RlsVerifyEnvelope":{"properties":{"data":{"anyOf":[{"$ref":"#/components/schemas/RlsVerifyData"},{"type":"null"}]},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"RlsVerifyEnvelope","type":"object"},"RollbackEnvelope":{"properties":{"data":{"anyOf":[{"$ref":"#/components/schemas/RollbackResult"},{"type":"null"}]},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"RollbackEnvelope","type":"object"},"RollbackRequest":{"properties":{"version_id":{"title":"Version Id","type":"string"}},"required":["version_id"],"title":"RollbackRequest","type":"object"},"RollbackResult":{"properties":{"preRollbackVersionId":{"title":"Prerollbackversionid","type":"string"},"restoredVersionNumber":{"title":"Restoredversionnumber","type":"integer"}},"required":["preRollbackVersionId","restoredVersionNumber"],"title":"RollbackResult","type":"object"},"RollbackRotationRequest":{"description":"Request body for POST /api/edge-engines/{engine_id}/rollback-rotation.","properties":{"rotation_id":{"description":"Rotation ID to rollback","title":"Rotation Id","type":"string"}},"required":["rotation_id"],"title":"RollbackRotationRequest","type":"object"},"RootStatus":{"properties":{"message":{"title":"Message","type":"string"},"test_mode":{"title":"Test Mode","type":"boolean"}},"required":["message","test_mode"],"title":"RootStatus","type":"object"},"RotateSecretsKeyRequest":{"description":"Request body for POST /api/edge-engines/{engine_id}/rotate-secrets-key.","properties":{"dry_run":{"default":false,"description":"If true, validate + plan only; no mutation or deploy.","title":"Dry Run","type":"boolean"},"strategy":{"default":"random","description":"Key generation strategy: 'random' (new 256-bit key) or 'hkdf' (derive from system_key).","enum":["random","hkdf"],"title":"Strategy","type":"string"},"window_seconds":{"default":300,"description":"Transition window (s) during which the old key stays valid.","maximum":86400,"minimum":0,"title":"Window Seconds","type":"integer"}},"title":"RotateSecretsKeyRequest","type":"object"},"SecuritySettings":{"description":"Security-log IP retention (Post-sprint 2.1 — configurable GDPR strict mode).\n\nControls how long security audit logs (`audit_logs`) keep the FULL client IP\nbefore it is purged to NULL (the anonymized /24 or /48 value is retained\nlong-term). Full IPs are needed short-term for new-IP login alerts.\n\nfull_ip_retention_days:\n  >0  = retain the full IP for this many days, then purge (default 30)\n   0  = anonymize immediately (strictest privacy; disables new-IP alerts)\n  -1  = retain indefinitely (legitimate-interest mode; never auto-purge)","properties":{"full_ip_retention_days":{"default":30,"title":"Full Ip Retention Days","type":"integer"}},"title":"SecuritySettings","type":"object"},"SetWorkspaceDefaultRequest":{"properties":{"provider_id":{"title":"Provider Id","type":"string"}},"required":["provider_id"],"title":"SetWorkspaceDefaultRequest","type":"object"},"SettingsResponse":{"additionalProperties":false,"description":"Response for GET /api/agent/settings.\n\n``settings`` is the *effective* merged set (profile → tenant → user) so the\nmodal shows the user exactly what their next turn will use.\n``inherited_from`` describes the most specific layer that contributed.","properties":{"can_modify_tenant":{"default":false,"description":"True when the caller may write tenant-wide (user_id IS NULL) settings","title":"Can Modify Tenant","type":"boolean"},"inherited_from":{"default":"default","description":"user | tenant | profile | default","title":"Inherited From","type":"string"},"settings":{"$ref":"#/components/schemas/AgentSettings"}},"required":["settings"],"title":"SettingsResponse","type":"object"},"SettingsUpdate":{"additionalProperties":false,"description":"Request body for PUT /api/agent/settings.\n\n``scope`` selects which row is written: ``user`` (the caller's override) or\n``tenant`` (tenant-wide default; requires admin / master).","properties":{"general":{"$ref":"#/components/schemas/AgentSettingsGeneral"},"scope":{"default":"user","pattern":"^(user|tenant)$","title":"Scope","type":"string"},"system":{"$ref":"#/components/schemas/AgentSettingsSystem"}},"title":"SettingsUpdate","type":"object"},"SignupRequest":{"properties":{"email":{"format":"email","title":"Email","type":"string"},"invite_code":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Invite Code"},"password":{"title":"Password","type":"string"},"slug":{"title":"Slug","type":"string"},"user_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"User Id"},"workspace_name":{"title":"Workspace Name","type":"string"}},"required":["email","password","workspace_name","slug"],"title":"SignupRequest","type":"object"},"SkillCreate":{"properties":{"category":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Category"},"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"name":{"maxLength":100,"minLength":1,"title":"Name","type":"string"},"profile_slug":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Profile Slug"},"slug":{"maxLength":80,"minLength":1,"title":"Slug","type":"string"},"tool_definitions":{"items":{"additionalProperties":true,"type":"object"},"title":"Tool Definitions","type":"array"},"version":{"default":"1.0.0","title":"Version","type":"string"}},"required":["slug","name","tool_definitions"],"title":"SkillCreate","type":"object"},"SkillInstall":{"properties":{"config_overrides":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Config Overrides"},"skill_id":{"title":"Skill Id","type":"string"}},"required":["skill_id"],"title":"SkillInstall","type":"object"},"SkillUpdate":{"properties":{"category":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Category"},"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"is_active":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Is Active"},"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"profile_slug":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Profile Slug"},"tool_definitions":{"anyOf":[{"items":{"additionalProperties":true,"type":"object"},"type":"array"},{"type":"null"}],"title":"Tool Definitions"}},"title":"SkillUpdate","type":"object"},"SlugCheck":{"properties":{"available":{"title":"Available","type":"boolean"},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"slug":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Slug"}},"required":["available"],"title":"SlugCheck","type":"object"},"StatusRequest":{"properties":{"provider_id":{"description":"ID of the EdgeProviderAccount","title":"Provider Id","type":"string"},"worker_name":{"default":"frontbase-edge","title":"Worker Name","type":"string"}},"required":["provider_id"],"title":"StatusRequest","type":"object"},"StorageBucketResult":{"description":"Bucket create / compute-size / bucket-by-id data return.","properties":{"bucket":{"anyOf":[{},{"type":"null"}],"title":"Bucket"},"cached":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Cached"},"path":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Path"},"size":{"anyOf":[{},{"type":"null"}],"title":"Size"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"StorageBucketResult","type":"object"},"StorageFilesResult":{"description":"`GET /list` — paged file listing.","properties":{"files":{"default":[],"items":{},"title":"Files","type":"array"},"success":{"title":"Success","type":"boolean"},"total":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Total"}},"required":["success"],"title":"StorageFilesResult","type":"object"},"StorageMessageAck":{"description":"`{success, message?}` — provider/bucket delete, update, empty, move, folder.","properties":{"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"StorageMessageAck","type":"object"},"StorageResultEnvelope":{"description":"Generic `{success, **dynamic}` for upload / move-cross (provider-specific).","properties":{"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"StorageResultEnvelope","type":"object"},"StorageSignedUrlResult":{"description":"Signed/public URL responses (one of signedUrl/publicUrl populated).","properties":{"publicUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Publicurl"},"signedUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Signedurl"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"StorageSignedUrlResult","type":"object"},"SuccessMessageResponse":{"description":"`{\"success\": bool, \"message\"?: str}` — blocklist ops, reset, bot toggle.","properties":{"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"SuccessMessageResponse","type":"object"},"SuccessResponse":{"properties":{"data":{"anyOf":[{},{"type":"null"}],"title":"Data"},"message":{"title":"Message","type":"string"},"success":{"title":"Success","type":"boolean"}},"required":["success","message"],"title":"SuccessResponse","type":"object"},"TableDataEnvelope":{"description":"Paged rows from a user table — rows are dynamic dicts by nature.","properties":{"data":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Data","type":"array"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"success":{"title":"Success","type":"boolean"},"total":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Total"}},"required":["success"],"title":"TableDataEnvelope","type":"object"},"TableRef":{"description":"A table reference from the database catalog (e.g. Supabase definitions).\n\n`schema` is exposed as the JSON key `schema` (matching the catalog payload)\nvia an alias, so the field name does not shadow `BaseModel.schema`.","properties":{"name":{"title":"Name","type":"string"},"schema":{"default":"public","title":"Schema","type":"string"}},"required":["name"],"title":"TableRef","type":"object"},"TableRulePolicyData":{"properties":{"checkExpression":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Checkexpression"},"operation":{"title":"Operation","type":"string"},"tableName":{"title":"Tablename","type":"string"},"usingExpression":{"title":"Usingexpression","type":"string"}},"required":["tableName","operation","usingExpression"],"title":"TableRulePolicyData","type":"object"},"TableSchemaData":{"properties":{"columns":{"items":{"$ref":"#/components/schemas/ColumnInfo"},"title":"Columns","type":"array"},"table_name":{"title":"Table Name","type":"string"}},"required":["table_name","columns"],"title":"TableSchemaData","type":"object"},"TableSchemaEnvelope":{"properties":{"data":{"anyOf":[{"$ref":"#/components/schemas/TableSchemaData"},{"type":"null"}]},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"TableSchemaEnvelope","type":"object"},"TablesData":{"properties":{"tables":{"items":{"$ref":"#/components/schemas/TableRef"},"title":"Tables","type":"array"}},"required":["tables"],"title":"TablesData","type":"object"},"TablesEnvelope":{"properties":{"data":{"anyOf":[{"$ref":"#/components/schemas/TablesData"},{"type":"null"}]},"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"TablesEnvelope","type":"object"},"TargetToggleRequest":{"description":"Request to toggle a workflow on a specific target engine","properties":{"is_active":{"title":"Is Active","type":"boolean"}},"required":["is_active"],"title":"TargetToggleRequest","type":"object"},"TeardownRequest":{"properties":{"provider_id":{"description":"ID of the EdgeProviderAccount","title":"Provider Id","type":"string"},"worker_name":{"default":"frontbase-edge","title":"Worker Name","type":"string"}},"required":["provider_id"],"title":"TeardownRequest","type":"object"},"TelemetryAck":{"properties":{"message":{"title":"Message","type":"string"},"success":{"title":"Success","type":"boolean"}},"required":["success","message"],"title":"TelemetryAck","type":"object"},"TelemetryData":{"properties":{"automation_count":{"title":"Automation Count","type":"integer"},"data_sources":{"items":{"type":"string"},"title":"Data Sources","type":"array"},"edition":{"title":"Edition","type":"string"},"email_providers":{"items":{"type":"string"},"title":"Email Providers","type":"array"},"install_id":{"title":"Install Id","type":"string"},"page_count":{"title":"Page Count","type":"integer"},"storage_providers":{"items":{"type":"string"},"title":"Storage Providers","type":"array"},"tier":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Tier"}},"required":["install_id","edition","page_count","automation_count","data_sources","storage_providers","email_providers"],"title":"TelemetryData","type":"object"},"TemplateFilter":{"properties":{"args":{"anyOf":[{"items":{"type":"string"},"type":"array"},{"type":"null"}],"title":"Args"},"category":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Category"},"description":{"title":"Description","type":"string"},"name":{"title":"Name","type":"string"}},"required":["name","description"],"title":"TemplateFilter","type":"object"},"TemplateRegistryResponse":{"properties":{"filters":{"items":{"$ref":"#/components/schemas/TemplateFilter"},"title":"Filters","type":"array"},"variables":{"items":{"$ref":"#/components/schemas/TemplateVariable"},"title":"Variables","type":"array"}},"required":["variables","filters"],"title":"TemplateRegistryResponse","type":"object"},"TemplateVariable":{"properties":{"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"path":{"title":"Path","type":"string"},"source":{"title":"Source","type":"string"},"type":{"title":"Type","type":"string"}},"required":["path","type","source"],"title":"TemplateVariable","type":"object"},"TestCacheResult":{"properties":{"latency_ms":{"anyOf":[{"type":"number"},{"type":"null"}],"title":"Latency Ms"},"message":{"title":"Message","type":"string"},"success":{"title":"Success","type":"boolean"}},"required":["success","message"],"title":"TestCacheResult","type":"object"},"TestConnectionRequest":{"properties":{"credentials":{"additionalProperties":true,"description":"Provider credentials to validate","title":"Credentials","type":"object"},"provider":{"description":"Provider type (cloudflare, supabase, vercel, netlify, deno, upstash)","title":"Provider","type":"string"}},"required":["provider","credentials"],"title":"TestConnectionRequest","type":"object"},"TestConnectionResult":{"description":"Result of testing an engine connection.","properties":{"latency_ms":{"anyOf":[{"type":"number"},{"type":"null"}],"title":"Latency Ms"},"message":{"title":"Message","type":"string"},"success":{"title":"Success","type":"boolean"}},"required":["success","message"],"title":"TestConnectionResult","type":"object"},"TestExecuteRequest":{"description":"Request to test-execute a workflow draft","properties":{"parameters":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Parameters"}},"title":"TestExecuteRequest","type":"object"},"TestExecuteResponse":{"description":"Response from test execution","properties":{"execution_id":{"title":"Execution Id","type":"string"},"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"status":{"$ref":"#/components/schemas/ExecutionStatus"}},"required":["execution_id","status"],"title":"TestExecuteResponse","type":"object"},"TestQueueInline":{"properties":{"provider":{"title":"Provider","type":"string"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"queue_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Queue Token"},"queue_url":{"title":"Queue Url","type":"string"}},"required":["provider","queue_url"],"title":"TestQueueInline","type":"object"},"TestQueueResult":{"properties":{"latency_ms":{"anyOf":[{"type":"number"},{"type":"null"}],"title":"Latency Ms"},"message":{"title":"Message","type":"string"},"success":{"title":"Success","type":"boolean"}},"required":["success","message"],"title":"TestQueueResult","type":"object"},"ToggleActiveRequest":{"properties":{"is_active":{"title":"Is Active","type":"boolean"}},"required":["is_active"],"title":"ToggleActiveRequest","type":"object"},"ToggleRLSRequest":{"properties":{"enable":{"title":"Enable","type":"boolean"}},"required":["enable"],"title":"ToggleRLSRequest","type":"object"},"TursoDatabaseEntry":{"properties":{"name":{"description":"Display name for the database","title":"Name","type":"string"},"token":{"description":"Database auth token","title":"Token","type":"string"},"url":{"description":"libsql:// URL for the database","title":"Url","type":"string"}},"required":["name","url","token"],"title":"TursoDatabaseEntry","type":"object"},"UpdatePolicyRequest":{"properties":{"checkExpression":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Checkexpression"},"newPolicyName":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Newpolicyname"},"operation":{"title":"Operation","type":"string"},"permissive":{"default":true,"title":"Permissive","type":"boolean"},"roles":{"default":["authenticated"],"items":{"type":"string"},"title":"Roles","type":"array"},"usingExpression":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Usingexpression"}},"required":["operation"],"title":"UpdatePolicyRequest","type":"object"},"UserPayload":{"description":"User dict embedded in auth responses (fields vary by code path).","properties":{"message":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message"},"tenant":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Tenant"},"user":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"User"}},"title":"UserPayload","type":"object"},"UserResponse":{"properties":{"created_at":{"title":"Created At","type":"string"},"email":{"title":"Email","type":"string"},"id":{"title":"Id","type":"string"},"is_master":{"anyOf":[{"type":"boolean"},{"type":"null"}],"default":false,"title":"Is Master"},"role":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Role"},"tenant_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Tenant Id"},"tenant_slug":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Tenant Slug"},"updated_at":{"title":"Updated At","type":"string"},"username":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Username"}},"required":["id","email","created_at","updated_at"],"title":"UserResponse","type":"object"},"ValidationError":{"properties":{"ctx":{"title":"Context","type":"object"},"input":{"title":"Input"},"loc":{"items":{"anyOf":[{"type":"string"},{"type":"integer"}]},"title":"Location","type":"array"},"msg":{"title":"Message","type":"string"},"type":{"title":"Error Type","type":"string"}},"required":["loc","msg","type"],"title":"ValidationError","type":"object"},"VariableCreateRequest":{"properties":{"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"formula":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Formula"},"name":{"maxLength":50,"minLength":1,"title":"Name","type":"string"},"type":{"pattern":"^(variable|calculated)$","title":"Type","type":"string"},"value":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Value"}},"required":["name","type"],"title":"VariableCreateRequest","type":"object"},"VariableResponse":{"properties":{"created_at":{"format":"date-time","title":"Created At","type":"string"},"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"formula":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Formula"},"id":{"title":"Id","type":"string"},"name":{"title":"Name","type":"string"},"type":{"title":"Type","type":"string"},"value":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Value"}},"required":["id","name","type","created_at"],"title":"VariableResponse","type":"object"},"VariableUpdateRequest":{"properties":{"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"formula":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Formula"},"name":{"anyOf":[{"maxLength":50,"minLength":1,"type":"string"},{"type":"null"}],"title":"Name"},"type":{"anyOf":[{"pattern":"^(variable|calculated)$","type":"string"},{"type":"null"}],"title":"Type"},"value":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Value"}},"title":"VariableUpdateRequest","type":"object"},"VectorBatchResult":{"properties":{"failed":{"default":[],"items":{"additionalProperties":true,"type":"object"},"title":"Failed","type":"array"},"success":{"default":[],"items":{"type":"string"},"title":"Success","type":"array"},"total":{"default":0,"title":"Total","type":"integer"}},"title":"VectorBatchResult","type":"object"},"VectorTestConnectionRequest":{"properties":{"provider":{"title":"Provider","type":"string"},"provider_account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"},"provider_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Provider Config"},"vector_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Vector Token"},"vector_url":{"title":"Vector Url","type":"string"}},"required":["provider","vector_url"],"title":"VectorTestConnectionRequest","type":"object"},"VerifyRLSRequest":{"properties":{"currentUsing":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Currentusing"},"policyName":{"title":"Policyname","type":"string"},"tableName":{"title":"Tablename","type":"string"}},"required":["tableName","policyName"],"title":"VerifyRLSRequest","type":"object"},"VersionLabelRequest":{"properties":{"label":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Label"}},"title":"VersionLabelRequest","type":"object"},"WafStatus":{"properties":{"enabled":{"title":"Enabled","type":"boolean"}},"required":["enabled"],"title":"WafStatus","type":"object"},"WafUpdateRequest":{"properties":{"enabled":{"title":"Enabled","type":"boolean"}},"required":["enabled"],"title":"WafUpdateRequest","type":"object"},"WafUpdateResponse":{"properties":{"enabled":{"title":"Enabled","type":"boolean"},"success":{"title":"Success","type":"boolean"}},"required":["success","enabled"],"title":"WafUpdateResponse","type":"object"},"WorkflowBatchPublishRequest":{"properties":{"engine_ids":{"items":{"type":"string"},"title":"Engine Ids","type":"array"}},"required":["engine_ids"],"title":"WorkflowBatchPublishRequest","type":"object"},"WorkflowDraftCreate":{"description":"Schema for creating a new workflow draft","properties":{"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"edges":{"items":{"$ref":"#/components/schemas/WorkflowEdge"},"title":"Edges","type":"array"},"name":{"maxLength":255,"minLength":1,"title":"Name","type":"string"},"nodes":{"items":{"$ref":"#/components/schemas/WorkflowNode"},"title":"Nodes","type":"array"},"settings":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Settings"},"trigger_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Trigger Config"},"trigger_type":{"default":"manual","title":"Trigger Type","type":"string"}},"required":["name"],"title":"WorkflowDraftCreate","type":"object"},"WorkflowDraftListResponse":{"description":"Response for listing workflow drafts","properties":{"drafts":{"items":{"$ref":"#/components/schemas/WorkflowDraftResponse"},"title":"Drafts","type":"array"},"total":{"title":"Total","type":"integer"}},"required":["drafts","total"],"title":"WorkflowDraftListResponse","type":"object"},"WorkflowDraftResponse":{"description":"Response schema for workflow drafts","properties":{"content_hash":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Content Hash"},"created_at":{"format":"date-time","title":"Created At","type":"string"},"created_by":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Created By"},"deployed_engines":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Deployed Engines"},"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"edges":{"items":{"$ref":"#/components/schemas/WorkflowEdge"},"title":"Edges","type":"array"},"id":{"title":"Id","type":"string"},"is_active":{"default":true,"title":"Is Active","type":"boolean"},"is_published":{"default":false,"title":"Is Published","type":"boolean"},"name":{"maxLength":255,"minLength":1,"title":"Name","type":"string"},"nodes":{"items":{"$ref":"#/components/schemas/WorkflowNode"},"title":"Nodes","type":"array"},"published_version":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Published Version"},"settings":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Settings"},"trigger_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Trigger Config"},"trigger_type":{"default":"manual","title":"Trigger Type","type":"string"},"updated_at":{"format":"date-time","title":"Updated At","type":"string"}},"required":["name","id","created_at","updated_at"],"title":"WorkflowDraftResponse","type":"object"},"WorkflowDraftUpdate":{"description":"Schema for updating an existing workflow draft (partial)","properties":{"description":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Description"},"edges":{"anyOf":[{"items":{"$ref":"#/components/schemas/WorkflowEdge"},"type":"array"},{"type":"null"}],"title":"Edges"},"name":{"anyOf":[{"maxLength":255,"minLength":1,"type":"string"},{"type":"null"}],"title":"Name"},"nodes":{"anyOf":[{"items":{"$ref":"#/components/schemas/WorkflowNode"},"type":"array"},{"type":"null"}],"title":"Nodes"},"settings":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Settings"},"trigger_config":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Trigger Config"},"trigger_type":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Trigger Type"}},"title":"WorkflowDraftUpdate","type":"object"},"WorkflowEdge":{"description":"Connection between two nodes","properties":{"source":{"title":"Source","type":"string"},"sourceOutput":{"title":"Sourceoutput","type":"string"},"target":{"title":"Target","type":"string"},"targetInput":{"title":"Targetinput","type":"string"}},"required":["source","target","sourceOutput","targetInput"],"title":"WorkflowEdge","type":"object"},"WorkflowEmailRequest":{"properties":{"from_email":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"From Email"},"from_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"From Name"},"html":{"title":"Html","type":"string"},"reply_to":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Reply To"},"subject":{"title":"Subject","type":"string"},"to":{"items":{"type":"string"},"title":"To","type":"array"}},"required":["to","subject","html"],"title":"WorkflowEmailRequest","type":"object"},"WorkflowEmailResult":{"properties":{"message_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Message Id"},"success":{"title":"Success","type":"boolean"}},"required":["success"],"title":"WorkflowEmailResult","type":"object"},"WorkflowNode":{"description":"A single node in the workflow graph","properties":{"error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Error"},"id":{"title":"Id","type":"string"},"inputs":{"items":{"$ref":"#/components/schemas/Parameter"},"title":"Inputs","type":"array"},"name":{"title":"Name","type":"string"},"outputs":{"items":{"$ref":"#/components/schemas/Parameter"},"title":"Outputs","type":"array"},"position":{"$ref":"#/components/schemas/NodePosition"},"type":{"title":"Type","type":"string"}},"required":["id","name","type","position"],"title":"WorkflowNode","type":"object"},"_AddDomainBody":{"properties":{"domain":{"title":"Domain","type":"string"}},"required":["domain"],"title":"_AddDomainBody","type":"object"}}},"info":{"description":"Unified API for Frontbase and DB-Sync functionality","title":"Frontbase-DBSync API","version":"1.0.0"},"openapi":"3.1.0","paths":{"/":{"get":{"operationId":"meta_root","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RootStatus"}}},"description":"Successful Response"}},"summary":"Root","tags":["Meta"]}},"/api/actions/drafts":{"get":{"description":"List all workflow drafts","operationId":"actions_list_drafts","parameters":[{"in":"query","name":"skip","required":false,"schema":{"default":0,"title":"Skip","type":"integer"}},{"in":"query","name":"limit","required":false,"schema":{"default":50,"title":"Limit","type":"integer"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowDraftListResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Drafts","tags":["Actions"]},"post":{"description":"Create a new workflow draft","operationId":"actions_create_draft","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowDraftCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowDraftResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Draft","tags":["Actions"]}},"/api/actions/drafts/bulk-delete":{"post":{"description":"Delete multiple workflow drafts at once","operationId":"actions_bulk_delete_drafts","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ActionBulkDeleteRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Bulk Delete Drafts","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Bulk Delete Drafts","tags":["Actions"]}},"/api/actions/drafts/{draft_id}":{"delete":{"description":"Delete a workflow draft","operationId":"actions_delete_draft","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}}],"responses":{"204":{"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Draft","tags":["Actions"]},"get":{"description":"Get a specific workflow draft","operationId":"actions_get_draft","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowDraftResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Draft","tags":["Actions"]},"patch":{"description":"Update a workflow draft","operationId":"actions_update_draft","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowDraftUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowDraftResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Draft","tags":["Actions"]}},"/api/actions/drafts/{draft_id}/active":{"patch":{"description":"Toggle a workflow draft's is_active status.","operationId":"actions_toggle_draft_active","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ToggleActiveRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Toggle Draft Active","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Toggle Draft Active","tags":["Actions"]}},"/api/actions/drafts/{draft_id}/publish":{"post":{"description":"Publish a workflow draft to the local Edge Engine.\nKept for backward compatibility (no engine_id = local dev edge).","operationId":"actions_publish_draft","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PublishResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Publish Draft","tags":["Actions"]}},"/api/actions/drafts/{draft_id}/publish-batch/":{"post":{"description":"Batch-publish a workflow draft to multiple Edge Engines.\nBuilds the deploy payload ONCE, fans out to all engines in parallel.","operationId":"actions_publish_draft_batch","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowBatchPublishRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Publish Draft Batch","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Publish Draft Batch","tags":["Actions"]}},"/api/actions/drafts/{draft_id}/publish/{engine_id}/":{"post":{"description":"Publish a workflow draft to a specific Edge Engine target.\nMirrors the page publish_to_target() pattern.\nUses Release-Before-IO (AGENTS.md §4.3).","operationId":"actions_publish_draft_to_engine","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}},{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PublishResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Publish Draft To Engine","tags":["Actions"]}},"/api/actions/drafts/{draft_id}/publish/{engine_id}/toggle":{"post":{"description":"Toggle a workflow's active status on a specific target engine by republishing it with the new active state.","operationId":"actions_toggle_target_active","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}},{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TargetToggleRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Toggle Target Active","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Toggle Target Active","tags":["Actions"]}},"/api/actions/drafts/{draft_id}/rollback/":{"post":{"description":"Roll back an automation draft to a previous version.\nCreates a NEW version snapshot of the current state BEFORE overwriting,\nso the rollback itself can be undone.","operationId":"actions_rollback_automation_to_version","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AutomationRollbackRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Rollback Automation To Version","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Rollback Automation To Version","tags":["Actions"]}},"/api/actions/drafts/{draft_id}/test":{"post":{"description":"Test-execute a workflow draft.\n\nThis publishes the draft temporarily (if not already published)\nand triggers an execution.","operationId":"actions_test_draft","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestExecuteRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestExecuteResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Draft","tags":["Actions"]}},"/api/actions/drafts/{draft_id}/test-node/{node_id}":{"post":{"description":"Test-execute a single node within a workflow draft.\n\nThis deploys the draft and executes only the specified node\n(and its upstream dependencies).","operationId":"actions_test_node","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}},{"in":"path","name":"node_id","required":true,"schema":{"title":"Node Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestExecuteRequest","default":{}}}}},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestExecuteResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Node","tags":["Actions"]}},"/api/actions/drafts/{draft_id}/versions/":{"get":{"description":"List all version snapshots for a workflow automation, newest first.","operationId":"actions_list_automation_versions","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions List Automation Versions","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Automation Versions","tags":["Actions"]},"post":{"description":"Manually create a named version snapshot of a workflow draft.","operationId":"actions_create_manual_automation_version","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AutomationVersionLabelRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Create Manual Automation Version","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Manual Automation Version","tags":["Actions"]}},"/api/actions/drafts/{draft_id}/versions/{version_id}/":{"get":{"description":"Get a specific workflow automation version including nodes/edges details.","operationId":"actions_get_automation_version_detail","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}},{"in":"path","name":"version_id","required":true,"schema":{"title":"Version Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Get Automation Version Detail","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Automation Version Detail","tags":["Actions"]}},"/api/actions/execution-stats":{"get":{"description":"Get execution run counts for all workflows","operationId":"actions_get_execution_stats","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Get Execution Stats","type":"object"}}},"description":"Successful Response"}},"summary":"Get Execution Stats","tags":["Actions"]}},"/api/actions/execution/{execution_id}":{"get":{"description":"Get detailed execution result from Edge Engine","operationId":"actions_get_execution_result","parameters":[{"in":"path","name":"execution_id","required":true,"schema":{"title":"Execution Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Get Execution Result","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Execution Result","tags":["Actions"]}},"/api/actions/executions":{"get":{"description":"Global execution log — pulls from all edges with deployed workflows.\nCaches in Redis for 20 minutes. Pass ?fresh=true to bypass cache.","operationId":"actions_list_all_executions","parameters":[{"in":"query","name":"limit","required":false,"schema":{"default":100,"title":"Limit","type":"integer"}},{"in":"query","name":"status","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Status"}},{"in":"query","name":"engine_name","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Engine Name"}},{"in":"query","name":"trigger_type","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Trigger Type"}},{"in":"query","name":"fresh","required":false,"schema":{"default":false,"title":"Fresh","type":"boolean"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions List All Executions","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List All Executions","tags":["Actions"]}},"/api/actions/executions/detail/{execution_id}":{"get":{"description":"Fetch full execution detail (nodeExecutions, triggerPayload) from the\ncorrect Edge engine.  The global log strips these fields for payload size;\nthe frontend calls this endpoint when a user expands a row.\n\n- engine_url provided → proxy to that remote edge\n- engine_url absent   → fall back to local EDGE_URL","operationId":"actions_get_execution_detail","parameters":[{"in":"path","name":"execution_id","required":true,"schema":{"title":"Execution Id","type":"string"}},{"in":"query","name":"engine_url","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Engine Url"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Get Execution Detail","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Execution Detail","tags":["Actions"]}},"/api/actions/executions/export":{"get":{"description":"Export execution logs as CSV. Always pulls fresh from selected edges.\nAlso updates the Redis cache with fresh data.","operationId":"actions_export_executions_csv","parameters":[{"in":"query","name":"engine_ids","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Engine Ids"}},{"in":"query","name":"workflow_ids","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Workflow Ids"}},{"in":"query","name":"statuses","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Statuses"}},{"in":"query","name":"date_from","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Date From"}},{"in":"query","name":"date_to","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Date To"}}],"responses":{"200":{"content":{"application/json":{"schema":{"title":"Response Actions Export Executions Csv","type":"string"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Export Executions Csv","tags":["Actions"]}},"/api/actions/executions/{draft_id}":{"get":{"description":"Get execution history for a draft — merges backend test logs + production\nlogs from ALL edges where this workflow is deployed (fan-out).","operationId":"actions_get_draft_executions","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}},{"in":"query","name":"limit","required":false,"schema":{"default":20,"title":"Limit","type":"integer"}}],"responses":{"200":{"content":{"application/json":{"schema":{"anyOf":[{"additionalProperties":true,"type":"object"},{"items":{"additionalProperties":true,"type":"object"},"type":"array"}],"title":"Response Actions Get Draft Executions"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Draft Executions","tags":["Actions"]}},"/api/actions/executions/{draft_id}/production/{engine_id}":{"get":{"description":"Get production execution history from a specific edge engine.","operationId":"actions_get_production_executions","parameters":[{"in":"path","name":"draft_id","required":true,"schema":{"title":"Draft Id","type":"string"}},{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}},{"in":"query","name":"limit","required":false,"schema":{"default":20,"title":"Limit","type":"integer"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Actions Get Production Executions","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Production Executions","tags":["Actions"]}},"/api/agent-catalogue":{"get":{"description":"Return global catalogue of MCP servers, skills, and core tools.\n\nUsed by the frontend settings modal to populate the exclusion toggles.\nReturns all available items regardless of tenant exclusions (so the\nfrontend can show the full list with on/off toggles).","operationId":"agent_integrations_get_agent_catalogue","parameters":[{"in":"query","name":"profile_slug","required":false,"schema":{"default":"workspace","title":"Profile Slug","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations Get Agent Catalogue","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Agent Catalogue","tags":["agent-integrations"]}},"/api/agent-profiles/{profile_id}/skills":{"get":{"operationId":"agent_integrations_list_profile_skills","parameters":[{"in":"path","name":"profile_id","required":true,"schema":{"title":"Profile Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations List Profile Skills","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Profile Skills","tags":["agent-integrations"]},"post":{"operationId":"agent_integrations_install_skill","parameters":[{"in":"path","name":"profile_id","required":true,"schema":{"title":"Profile Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SkillInstall"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations Install Skill","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Install Skill","tags":["agent-integrations"]}},"/api/agent-profiles/{profile_id}/skills/{install_id}":{"delete":{"operationId":"agent_integrations_uninstall_skill","parameters":[{"in":"path","name":"profile_id","required":true,"schema":{"title":"Profile Id","type":"string"}},{"in":"path","name":"install_id","required":true,"schema":{"title":"Install Id","type":"string"}}],"responses":{"204":{"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Uninstall Skill","tags":["agent-integrations"]}},"/api/agent-skills":{"get":{"description":"List global skills catalogue, excluding tenant-disabled items.\n\nReturns only built-in and global (tenant_id IS NULL) skills for all tenants,\nfiltered by profile_slug. Master admins see all skills including disabled ones.","operationId":"agent_integrations_list_skills","parameters":[{"in":"query","name":"profile_slug","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Profile Slug"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations List Skills","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Skills","tags":["agent-integrations"]},"post":{"operationId":"agent_integrations_create_skill","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SkillCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations Create Skill","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Skill","tags":["agent-integrations"]}},"/api/agent-skills/{skill_id}":{"delete":{"operationId":"agent_integrations_delete_skill","parameters":[{"in":"path","name":"skill_id","required":true,"schema":{"title":"Skill Id","type":"string"}}],"responses":{"204":{"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Skill","tags":["agent-integrations"]},"put":{"operationId":"agent_integrations_update_skill","parameters":[{"in":"path","name":"skill_id","required":true,"schema":{"title":"Skill Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SkillUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations Update Skill","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Skill","tags":["agent-integrations"]}},"/api/agent/chat":{"post":{"description":"Streaming chat endpoint for the Workspace Agent.","operationId":"agent_agent_chat","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Agent Chat","type":"object"}}},"description":"Successful Response"}},"summary":"Agent Chat","tags":["Agent"]}},"/api/agent/chat/{profile_slug}":{"post":{"description":"Same as /chat but with a profile slug (forwards to the shared impl).","operationId":"agent_agent_chat_with_profile","parameters":[{"in":"path","name":"profile_slug","required":true,"schema":{"title":"Profile Slug","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Agent Chat With Profile","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Agent Chat With Profile","tags":["Agent"]}},"/api/agent/credits":{"get":{"description":"Current Workspace Agent credit balance for the caller.\n\nReturns ``unlimited: true`` for self-host / master admin (no quota). In cloud\ntenant mode returns the live daily + monthly remaining counts and reset times.","operationId":"agent_agent_credits","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Agent Credits","type":"object"}}},"description":"Successful Response"}},"summary":"Agent Credits","tags":["Agent"]}},"/api/agent/mcp/{profile_slug}":{"get":{"description":"MCP server discovery endpoint.\n\nReturns server metadata including:\n- name: Server name\n- version: Protocol version\n- capabilities: Supported features (tools, resources, prompts)","operationId":"agent_mcp_mcp_root","parameters":[{"in":"path","name":"profile_slug","required":true,"schema":{"title":"Profile Slug","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Mcp Mcp Root","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Mcp Root","tags":["Agent MCP"]}},"/api/agent/mcp/{profile_slug}/prompts/get":{"post":{"description":"Get a specific prompt by name.","operationId":"agent_mcp_get_prompt","parameters":[{"in":"path","name":"profile_slug","required":true,"schema":{"title":"Profile Slug","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Mcp Get Prompt","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Prompt","tags":["Agent MCP"]}},"/api/agent/mcp/{profile_slug}/prompts/list":{"post":{"description":"List available prompts (system prompts).","operationId":"agent_mcp_list_prompts","parameters":[{"in":"path","name":"profile_slug","required":true,"schema":{"title":"Profile Slug","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Mcp List Prompts","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Prompts","tags":["Agent MCP"]}},"/api/agent/mcp/{profile_slug}/resources/list":{"post":{"description":"List available MCP resources.\n\nResources represent structured data the agent can access:\n- Pages (from the CMS)\n- Workflows\n- Configuration","operationId":"agent_mcp_list_resources","parameters":[{"in":"path","name":"profile_slug","required":true,"schema":{"title":"Profile Slug","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Mcp List Resources","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Resources","tags":["Agent MCP"]}},"/api/agent/mcp/{profile_slug}/tools/call":{"post":{"description":"Execute a tool and return the result.\n\nAccepts:\n- name: Tool name to execute\n- arguments: Tool input parameters (dict)\n\nReturns:\n- content: Result content (text or JSON)\n- isError: True if the tool failed","operationId":"agent_mcp_call_tool","parameters":[{"in":"path","name":"profile_slug","required":true,"schema":{"title":"Profile Slug","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"title":"Response Agent Mcp Call Tool","type":"string"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Call Tool","tags":["Agent MCP"]}},"/api/agent/mcp/{profile_slug}/tools/list":{"post":{"description":"List all tools available on this agent profile.\n\nReturns a list of tool schemas following the MCP tool specification.\nIncludes:\n- Curated Workspace Agent tools (pages, workflows, datasources, etc.)\n- Auto-registered API tools (if enabled)\n- Installed MCP client tools (if any)\n- Installed skills (if any)","operationId":"agent_mcp_list_tools","parameters":[{"in":"path","name":"profile_slug","required":true,"schema":{"title":"Profile Slug","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Mcp List Tools","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Tools","tags":["Agent MCP"]}},"/api/agent/settings":{"delete":{"description":"Delete the caller's user override (``scope=user``) or tenant default\n(``scope=tenant``, admin-gated), falling back to the lower layer.","operationId":"agent_settings_reset_agent_settings","parameters":[{"in":"query","name":"scope","required":false,"schema":{"default":"user","title":"Scope","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Settings Reset Agent Settings","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Reset Agent Settings","tags":["Agent Settings"]},"get":{"description":"Return the effective merged settings the caller's next turn will use.","operationId":"agent_settings_get_agent_settings","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SettingsResponse"}}},"description":"Successful Response"}},"summary":"Get Agent Settings","tags":["Agent Settings"]},"put":{"description":"Upsert the caller's user override (``scope=user``) or tenant default\n(``scope=tenant``, admin-gated).","operationId":"agent_settings_update_agent_settings","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SettingsUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Settings Update Agent Settings","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Agent Settings","tags":["Agent Settings"]}},"/api/auth-forms/":{"get":{"description":"List all auth forms","operationId":"auth_forms_list_auth_forms","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Auth Forms List Auth Forms","type":"object"}}},"description":"Successful Response"}},"summary":"List Auth Forms","tags":["Auth Forms"]},"post":{"description":"Create a new auth form","operationId":"auth_forms_create_auth_form","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AuthFormCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Auth Forms Create Auth Form","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Auth Form","tags":["Auth Forms"]}},"/api/auth-forms/primary/":{"get":{"description":"Get the primary auth form (used for private page gating).\nReads is_primary from config JSON with Python filtering.","operationId":"auth_forms_get_primary_auth_form","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Auth Forms Get Primary Auth Form","type":"object"}}},"description":"Successful Response"}},"summary":"Get Primary Auth Form","tags":["Auth Forms"]}},"/api/auth-forms/{form_id}/":{"delete":{"description":"Delete an auth form","operationId":"auth_forms_delete_auth_form","parameters":[{"in":"path","name":"form_id","required":true,"schema":{"title":"Form Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Auth Forms Delete Auth Form","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Auth Form","tags":["Auth Forms"]},"get":{"description":"Get a single auth form by ID","operationId":"auth_forms_get_auth_form","parameters":[{"in":"path","name":"form_id","required":true,"schema":{"title":"Form Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Auth Forms Get Auth Form","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Auth Form","tags":["Auth Forms"]},"put":{"description":"Update an existing auth form","operationId":"auth_forms_update_auth_form","parameters":[{"in":"path","name":"form_id","required":true,"schema":{"title":"Form Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AuthFormUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Auth Forms Update Auth Form","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Auth Form","tags":["Auth Forms"]}},"/api/auth-forms/{form_id}/set-primary/":{"put":{"description":"Set a form as primary (clears primary from all others).\nUpdates is_primary flag inside config JSON for each form.","operationId":"auth_forms_set_primary_auth_form","parameters":[{"in":"path","name":"form_id","required":true,"schema":{"title":"Form Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Auth Forms Set Primary Auth Form","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Set Primary Auth Form","tags":["Auth Forms"]}},"/api/auth/accept-invite":{"post":{"description":"Public — create an account for the invited email and join the tenant.","operationId":"authentication_accept_invite","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AcceptInviteRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserPayload"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Accept Invite","tags":["Authentication"]}},"/api/auth/check-slug/{slug}":{"get":{"description":"Check if a workspace slug is available. Public endpoint.","operationId":"authentication_check_slug","parameters":[{"in":"path","name":"slug","required":true,"schema":{"title":"Slug","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SlugCheck"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Check Slug","tags":["Authentication"]}},"/api/auth/forgot-password":{"post":{"description":"Request a password reset link (Self-hosted only).","operationId":"authentication_forgot_password","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ForgotPasswordRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ForgotPasswordResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Forgot Password","tags":["Authentication"]}},"/api/auth/invite/{token}":{"get":{"description":"Public — return invite details for the accept page.","operationId":"authentication_get_invite","parameters":[{"in":"path","name":"token","required":true,"schema":{"title":"Token","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InviteInfo"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Invite","tags":["Authentication"]}},"/api/auth/login":{"options":{"description":"Handle CORS preflight for login.","operationId":"authentication_login_options","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Authentication Login Options","type":"object"}}},"description":"Successful Response"}},"summary":"Login Options","tags":["Authentication"]},"post":{"description":"Login with email and password.\n\nPath 1: Master admin (env-var) — always checked first.\nPath 2: SuperTokens emailpassword (cloud mode) — tenant users.","operationId":"authentication_login","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LoginRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AuthResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Login","tags":["Authentication"]}},"/api/auth/logout":{"post":{"description":"Logout — revokes provider session and/or master admin cookie.","operationId":"authentication_logout","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/MessageResponse"}}},"description":"Successful Response"}},"summary":"Logout","tags":["Authentication"]}},"/api/auth/me":{"get":{"description":"Get current authenticated user with tenant context.\n\nChecks configured auth provider session (cloud mode), then master admin cookie.","operationId":"authentication_get_me","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserPayload"}}},"description":"Successful Response"}},"summary":"Get Me","tags":["Authentication"]}},"/api/auth/reset-password":{"post":{"description":"Reset password using the reset token (Self-hosted only).","operationId":"authentication_reset_password","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ResetPasswordRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessMessageResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Reset Password","tags":["Authentication"]}},"/api/auth/security/audit-logs":{"get":{"operationId":"authentication_get_audit_logs","parameters":[{"in":"query","name":"limit","required":false,"schema":{"default":50,"title":"Limit","type":"integer"}}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/AuditLogEntry"},"title":"Response Authentication Get Audit Logs","type":"array"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Audit Logs","tags":["Authentication"]}},"/api/auth/security/blocklist":{"get":{"operationId":"authentication_get_blocklist","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/BlocklistEntry"},"title":"Response Authentication Get Blocklist","type":"array"}}},"description":"Successful Response"}},"summary":"Get Blocklist","tags":["Authentication"]},"post":{"operationId":"authentication_add_ip_ban","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/IPBlockRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessMessageResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Add Ip Ban","tags":["Authentication"]}},"/api/auth/security/blocklist/{ban_id}":{"delete":{"operationId":"authentication_delete_ip_ban","parameters":[{"in":"path","name":"ban_id","required":true,"schema":{"title":"Ban Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessMessageResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Ip Ban","tags":["Authentication"]}},"/api/auth/security/bot-protection":{"get":{"operationId":"authentication_get_bot_protection_settings","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BotProtectionSettings"}}},"description":"Successful Response"}},"summary":"Get Bot Protection Settings","tags":["Authentication"]},"post":{"operationId":"authentication_update_bot_protection_settings","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BotProtectionUpdateRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessMessageResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Bot Protection Settings","tags":["Authentication"]}},"/api/auth/security/bot-protection/metrics":{"get":{"operationId":"authentication_get_bot_protection_metrics","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BotProtectionMetrics"}}},"description":"Successful Response"}},"summary":"Get Bot Protection Metrics","tags":["Authentication"]}},"/api/auth/security/waf":{"get":{"operationId":"authentication_get_waf_settings","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WafStatus"}}},"description":"Successful Response"}},"summary":"Get Waf Settings","tags":["Authentication"]},"post":{"operationId":"authentication_update_waf_settings","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WafUpdateRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WafUpdateResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Waf Settings","tags":["Authentication"]}},"/api/auth/signup":{"options":{"description":"Handle CORS preflight for signup.","operationId":"authentication_signup_options","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Authentication Signup Options","type":"object"}}},"description":"Successful Response"}},"summary":"Signup Options","tags":["Authentication"]},"post":{"description":"Register a new tenant user with workspace.\n\nCreates: SuperTokens/Supabase user → Tenant → TenantMember → Project → Session.\nCloud mode only.","operationId":"authentication_signup","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SignupRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserPayload"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Signup","tags":["Authentication"]}},"/api/cloudflare/connect":{"post":{"description":"List existing workers using saved credentials from EdgeProviderAccount.\n\nUses run_in_executor to run sync httpx calls in a thread,\navoiding Windows ProactorEventLoop Errno 22 with HTTPS.","operationId":"cloudflare_deploy_connect_cloudflare","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ConnectRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Cloudflare Deploy Connect Cloudflare","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Connect Cloudflare","tags":["Cloudflare Deploy"]}},"/api/cloudflare/deploy":{"post":{"description":"One-click deploy the Edge Engine to Cloudflare Workers.","operationId":"cloudflare_deploy_deploy_to_cloudflare","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/DeployRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Cloudflare Deploy Deploy To Cloudflare","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Deploy To Cloudflare","tags":["Cloudflare Deploy"]}},"/api/cloudflare/inspect/content":{"post":{"description":"Fetch the deployed worker's script source code.","operationId":"cloudflare_inspector_inspect_worker_content","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InspectRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Cloudflare Inspector Inspect Worker Content","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Inspect Worker Content","tags":["Cloudflare Inspector"]}},"/api/cloudflare/inspect/secrets":{"post":{"description":"List secret names deployed to a worker (values are never returned by CF).","operationId":"cloudflare_inspector_inspect_worker_secrets","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InspectRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Cloudflare Inspector Inspect Worker Secrets","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Inspect Worker Secrets","tags":["Cloudflare Inspector"]}},"/api/cloudflare/inspect/settings":{"post":{"description":"Fetch a worker's settings: bindings, compatibility, routes, crons.","operationId":"cloudflare_inspector_inspect_worker_settings","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InspectRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Cloudflare Inspector Inspect Worker Settings","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Inspect Worker Settings","tags":["Cloudflare Inspector"]}},"/api/cloudflare/status":{"post":{"description":"Check if a Worker is deployed and get its details.","operationId":"cloudflare_deploy_cloudflare_status","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StatusRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Cloudflare Deploy Cloudflare Status","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Cloudflare Status","tags":["Cloudflare Deploy"]}},"/api/cloudflare/teardown":{"post":{"description":"Remove a Worker and deactivate its edge engine target.","operationId":"cloudflare_deploy_teardown_cloudflare","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TeardownRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Cloudflare Deploy Teardown Cloudflare","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Teardown Cloudflare","tags":["Cloudflare Deploy"]}},"/api/database/advanced-query/":{"post":{"description":"Execute advanced query.\nOptimized: Releases DB connection before external API calls.","operationId":"database_advanced_query","requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AdvancedQueryEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Advanced Query","tags":["database"]}},"/api/database/connect-supabase/":{"post":{"description":"Connect to Supabase","operationId":"database_connect_supabase","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/DatabaseConnectionRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Connect Supabase","tags":["database"]}},"/api/database/connections/":{"get":{"description":"Get database connections — checks Connected Accounts first, then legacy.","operationId":"database_get_connections","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/DatabaseConnectionResponse"}}},"description":"Successful Response"}},"summary":"Get Connections","tags":["database"]}},"/api/database/disconnect-supabase/":{"delete":{"description":"Disconnect from Supabase","operationId":"database_disconnect_supabase","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessResponse"}}},"description":"Successful Response"}},"summary":"Disconnect Supabase","tags":["database"]}},"/api/database/distinct-values/":{"post":{"description":"Get distinct values for a column.\nOptimized: Releases DB connection before external API calls.","operationId":"database_get_distinct_values","requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/DistinctValuesEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Distinct Values","tags":["database"]}},"/api/database/rls/batch/":{"post":{"description":"Create multiple RLS policies in a single HTTP request using batch RPC function","operationId":"rls_create_batch_policies","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreateBatchPolicyRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsMessageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Batch Policies","tags":["rls"]}},"/api/database/rls/bulk-delete/":{"post":{"description":"Delete multiple RLS policies from Supabase in bulk","operationId":"rls_bulk_delete_policies","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsBulkDeleteRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsMessageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Bulk Delete Policies","tags":["rls"]}},"/api/database/rls/metadata/":{"get":{"description":"Get all stored RLS metadata for categorization by contact_type","operationId":"rls_get_all_rls_metadata","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsDataEnvelope"}}},"description":"Successful Response"}},"summary":"Get All Rls Metadata","tags":["rls"]},"post":{"description":"Save metadata when creating a policy","operationId":"rls_save_rls_metadata","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RLSMetadataRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsMetadataSaveEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Save Rls Metadata","tags":["rls"]}},"/api/database/rls/metadata/verify/":{"post":{"description":"Verify if a policy's current USING expression matches the stored hash","operationId":"rls_verify_rls_metadata","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/VerifyRLSRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsVerifyEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Verify Rls Metadata","tags":["rls"]}},"/api/database/rls/metadata/{table_name}/{policy_name}":{"delete":{"description":"Delete metadata","operationId":"rls_delete_rls_metadata","parameters":[{"in":"path","name":"table_name","required":true,"schema":{"title":"Table Name","type":"string"}},{"in":"path","name":"policy_name","required":true,"schema":{"title":"Policy Name","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsMessageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Rls Metadata","tags":["rls"]},"get":{"description":"Get stored metadata for a policy","operationId":"rls_get_rls_metadata","parameters":[{"in":"path","name":"table_name","required":true,"schema":{"title":"Table Name","type":"string"}},{"in":"path","name":"policy_name","required":true,"schema":{"title":"Policy Name","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsDataEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Rls Metadata","tags":["rls"]}},"/api/database/rls/policies/":{"get":{"description":"List all RLS policies in the schema","operationId":"rls_list_policies","parameters":[{"in":"query","name":"schema","required":false,"schema":{"default":"public","title":"Schema","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsListEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Policies","tags":["rls"]},"post":{"description":"Create a new RLS policy","operationId":"rls_create_policy","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreatePolicyRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsMessageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Policy","tags":["rls"]}},"/api/database/rls/policies/{table_name}":{"get":{"description":"Get policies for a specific table","operationId":"rls_get_table_policies","parameters":[{"in":"path","name":"table_name","required":true,"schema":{"title":"Table Name","type":"string"}},{"in":"query","name":"schema","required":false,"schema":{"default":"public","title":"Schema","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsListEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Table Policies","tags":["rls"]}},"/api/database/rls/policies/{table_name}/{policy_name}":{"delete":{"description":"Delete an RLS policy","operationId":"rls_delete_policy","parameters":[{"in":"path","name":"table_name","required":true,"schema":{"title":"Table Name","type":"string"}},{"in":"path","name":"policy_name","required":true,"schema":{"title":"Policy Name","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsMessageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Policy","tags":["rls"]},"put":{"description":"Update an existing RLS policy","operationId":"rls_update_policy","parameters":[{"in":"path","name":"table_name","required":true,"schema":{"title":"Table Name","type":"string"}},{"in":"path","name":"policy_name","required":true,"schema":{"title":"Policy Name","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UpdatePolicyRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsMessageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Policy","tags":["rls"]}},"/api/database/rls/tables/":{"get":{"description":"Get RLS status for all tables","operationId":"rls_get_tables_rls_status","parameters":[{"in":"query","name":"schema","required":false,"schema":{"default":"public","title":"Schema","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsListEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Tables Rls Status","tags":["rls"]}},"/api/database/rls/tables/{table_name}/toggle/":{"post":{"description":"Enable or disable RLS on a table","operationId":"rls_toggle_table_rls","parameters":[{"in":"path","name":"table_name","required":true,"schema":{"title":"Table Name","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ToggleRLSRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RlsMessageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Toggle Table Rls","tags":["rls"]}},"/api/database/supabase-tables/":{"get":{"description":"Get database tables.\nOptimized: Releases DB connection before external API calls.","operationId":"database_get_supabase_tables","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TablesEnvelope"}}},"description":"Successful Response"}},"summary":"Get Supabase Tables","tags":["database"]}},"/api/database/table-data/{table_name}/":{"get":{"description":"Get table data with pagination and filtering.\nOptimized: Releases DB connection before external API calls to prevent pool exhaustion.","operationId":"database_get_table_data","parameters":[{"in":"path","name":"table_name","required":true,"schema":{"title":"Table Name","type":"string"}},{"in":"query","name":"limit","required":false,"schema":{"default":20,"title":"Limit","type":"integer"}},{"in":"query","name":"offset","required":false,"schema":{"default":0,"title":"Offset","type":"integer"}},{"in":"query","name":"orderBy","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Orderby"}},{"in":"query","name":"orderDirection","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"default":"asc","title":"Orderdirection"}},{"in":"query","name":"mode","required":false,"schema":{"default":"builder","title":"Mode","type":"string"}},{"in":"query","name":"select","required":false,"schema":{"default":"*","title":"Select","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TableDataEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Table Data","tags":["database"]}},"/api/database/table-schema/{table_name}/":{"get":{"description":"Get table schema with foreign key information.\nOptimized: Releases DB connection before external API calls.","operationId":"database_get_table_schema","parameters":[{"in":"path","name":"table_name","required":true,"schema":{"title":"Table Name","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TableSchemaEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Table Schema","tags":["database"]}},"/api/database/tables/":{"get":{"description":"Get database tables (aliased to supabase-tables)","operationId":"database_get_tables","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TablesEnvelope"}}},"description":"Successful Response"}},"summary":"Get Tables","tags":["database"]}},"/api/database/test-supabase/":{"post":{"description":"Test Supabase connection credentials - tries service key first, falls back to anon key","operationId":"database_test_supabase","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/DatabaseConnectionRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SuccessResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Supabase","tags":["database"]}},"/api/deno/connect":{"post":{"description":"Auto-detect Deno org info using the personal (ddp_) token.\n...","operationId":"deno_deploy_connect_deno","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/DenoConnectRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Deno Deploy Connect Deno","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Connect Deno","tags":["Deno Deploy"]}},"/api/edge-api-keys":{"get":{"description":"List API keys. Optionally filter by engine_id (includes 'All Engines' keys).","operationId":"edge_api_keys_list_api_keys","parameters":[{"in":"query","name":"engine_id","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Engine Id"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Api Keys List Api Keys","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Api Keys","tags":["edge-api-keys"]},"post":{"description":"Create a new API key. Returns the full key ONCE.","operationId":"edge_api_keys_create_api_key","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/APIKeyCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Api Keys Create Api Key","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Api Key","tags":["edge-api-keys"]}},"/api/edge-api-keys/{key_id}":{"delete":{"description":"Revoke and delete an API key.","operationId":"edge_api_keys_delete_api_key","parameters":[{"in":"path","name":"key_id","required":true,"schema":{"title":"Key Id","type":"string"}}],"responses":{"204":{"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Api Key","tags":["edge-api-keys"]},"put":{"description":"Update an API key's name, active status, or expiry.","operationId":"edge_api_keys_update_api_key","parameters":[{"in":"path","name":"key_id","required":true,"schema":{"title":"Key Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/APIKeyUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Api Keys Update Api Key","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Api Key","tags":["edge-api-keys"]}},"/api/edge-api-keys/{key_id}/reveal":{"get":{"description":"Reveal the full API key (only works for Fernet-encrypted keys).","operationId":"edge_api_keys_reveal_api_key","parameters":[{"in":"path","name":"key_id","required":true,"schema":{"title":"Key Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Api Keys Reveal Api Key","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Reveal Api Key","tags":["edge-api-keys"]}},"/api/edge-caches/":{"get":{"description":"List all configured edge caches.","operationId":"edge_caches_list_edge_caches","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/EdgeCacheResponse"},"title":"Response Edge Caches List Edge Caches","type":"array"}}},"description":"Successful Response"}},"summary":"List Edge Caches","tags":["edge-caches"]},"post":{"description":"Create a new edge cache connection.","operationId":"edge_caches_create_edge_cache","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeCacheCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeCacheResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Edge Cache","tags":["edge-caches"]}},"/api/edge-caches/batch/delete":{"post":{"description":"Batch delete caches. Optionally delete remote resources in parallel.","operationId":"edge_caches_batch_delete_caches","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchDeleteCacheRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CacheBatchResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Batch Delete Caches","tags":["edge-caches"]}},"/api/edge-caches/test-connection":{"post":{"description":"Test a cache connection before saving it.","operationId":"edge_caches_test_connection_inline","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeCacheCreate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestCacheResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Connection Inline","tags":["edge-caches"]}},"/api/edge-caches/{cache_id}":{"delete":{"description":"Delete an edge cache connection.\n\nIf delete_remote=True and the cache was created from a connected account,\nalso delete the resource at the provider.","operationId":"edge_caches_delete_edge_cache","parameters":[{"in":"path","name":"cache_id","required":true,"schema":{"title":"Cache Id","type":"string"}},{"in":"query","name":"delete_remote","required":false,"schema":{"default":false,"title":"Delete Remote","type":"boolean"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Caches Delete Edge Cache","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Edge Cache","tags":["edge-caches"]},"put":{"description":"Update an existing edge cache connection.","operationId":"edge_caches_update_edge_cache","parameters":[{"in":"path","name":"cache_id","required":true,"schema":{"title":"Cache Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeCacheUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeCacheResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Edge Cache","tags":["edge-caches"]}},"/api/edge-caches/{cache_id}/test":{"post":{"description":"Test connectivity to an edge cache.","operationId":"edge_caches_test_edge_cache","parameters":[{"in":"path","name":"cache_id","required":true,"schema":{"title":"Cache Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestCacheResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Edge Cache","tags":["edge-caches"]}},"/api/edge-databases/":{"get":{"description":"List all configured edge databases.","operationId":"edge_databases_list_edge_databases","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/EdgeDatabaseResponse"},"title":"Response Edge Databases List Edge Databases","type":"array"}}},"description":"Successful Response"}},"summary":"List Edge Databases","tags":["edge-databases"]},"post":{"description":"Create a new edge database connection.\n\nIf provider_account_id is provided, db_token is optional — it will be\nresolved from the Connected Account at deploy time.","operationId":"edge_databases_create_edge_database","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeDatabaseCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeDatabaseResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Edge Database","tags":["edge-databases"]}},"/api/edge-databases/batch/delete":{"post":{"description":"Batch delete databases. Optionally delete remote resources in parallel.","operationId":"edge_databases_batch_delete_databases","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchDeleteDatabaseRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/DatabaseBatchResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Batch Delete Databases","tags":["edge-databases"]}},"/api/edge-databases/create-schema":{"post":{"description":"Create a new frontbase_edge_<suffix> schema in a PG database.\n\nSuffix must be lowercase alphanumeric + underscores.","operationId":"edge_databases_create_schema","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreateSchemaRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Databases Create Schema","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Schema","tags":["edge-databases"]}},"/api/edge-databases/discover-schemas":{"post":{"description":"Discover existing frontbase_edge* schemas in a PG database.\n\nCalled after user picks a Supabase/Neon/Postgres resource to list\navailable schemas for state isolation.","operationId":"edge_databases_discover_schemas","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/DiscoverSchemasRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Databases Discover Schemas","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Discover Schemas","tags":["edge-databases"]}},"/api/edge-databases/reset-role-password":{"post":{"description":"Reset the scoped role password for an existing Supabase schema.\n\nUsed during re-import: the schema exists but the password is lost.\nReturns {success, role_name, role_password}.","operationId":"edge_databases_reset_role_password","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ResetRolePasswordRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Databases Reset Role Password","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Reset Role Password","tags":["edge-databases"]}},"/api/edge-databases/test-connection":{"post":{"description":"Test a database connection before saving it.","operationId":"edge_databases_test_connection_inline","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeDatabaseCreate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestConnectionResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Connection Inline","tags":["edge-databases"]}},"/api/edge-databases/{db_id}":{"delete":{"description":"Delete an edge database connection.\n\nFails if any deployment targets still reference this DB.\nIf delete_remote=True and provider supports it, also deletes the remote resource.","operationId":"edge_databases_delete_edge_database","parameters":[{"in":"path","name":"db_id","required":true,"schema":{"title":"Db Id","type":"string"}},{"in":"query","name":"delete_remote","required":false,"schema":{"default":false,"title":"Delete Remote","type":"boolean"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Databases Delete Edge Database","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Edge Database","tags":["edge-databases"]},"put":{"description":"Update an existing edge database connection.","operationId":"edge_databases_update_edge_database","parameters":[{"in":"path","name":"db_id","required":true,"schema":{"title":"Db Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeDatabaseUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeDatabaseResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Edge Database","tags":["edge-databases"]}},"/api/edge-databases/{db_id}/test":{"post":{"description":"Test connectivity to an edge database.","operationId":"edge_databases_test_edge_database","parameters":[{"in":"path","name":"db_id","required":true,"schema":{"title":"Db Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestConnectionResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Edge Database","tags":["edge-databases"]}},"/api/edge-engines/":{"get":{"description":"List all edge engines with outdated detection.","operationId":"edge_engines_list_engines","parameters":[{"description":"If true, fetches live versions concurrently","in":"query","name":"detailed","required":false,"schema":{"default":true,"description":"If true, fetches live versions concurrently","title":"Detailed","type":"boolean"}}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/EdgeEngineResponse"},"title":"Response Edge Engines List Engines","type":"array"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Engines","tags":["Edge Engines"]},"post":{"description":"Create a new engine record (manual mode - does not deploy code).","operationId":"edge_engines_create_engine","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeEngineCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeEngineResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Engine","tags":["Edge Engines"]}},"/api/edge-engines/active/by-scope/{scope}":{"get":{"description":"List active edge engines filtered by adapter scope.\n\nUsed by the publish pipeline to determine where to push pages/automations.\n'full' scope targets match both 'pages' and 'automations' queries.","operationId":"edge_engines_list_active_engines_by_scope","parameters":[{"in":"path","name":"scope","required":true,"schema":{"enum":["pages","automations","full"],"title":"Scope","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"additionalProperties":true,"type":"object"},"title":"Response Edge Engines List Active Engines By Scope","type":"array"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Active Engines By Scope","tags":["Edge Engines"]}},"/api/edge-engines/batch/delete":{"post":{"description":"Batch delete engine records. Optionally delete remote resources.","operationId":"edge_engines_batch_delete_engines","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchDeleteRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EngineBatchResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Batch Delete Engines","tags":["Edge Engines"]}},"/api/edge-engines/batch/redeploy":{"post":{"description":"Batch redeploy multiple edge engines.\n\nUses asyncio.Semaphore(3) to limit concurrent redeploys and avoid provider rate limits.","operationId":"edge_engines_batch_redeploy_engines","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EngineBatchResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Batch Redeploy Engines","tags":["Edge Engines"]}},"/api/edge-engines/batch/rotate-secrets-key":{"post":{"description":"Batch rotate the per-worker secrets key across multiple shared engines.\n\nUses asyncio.Semaphore(3) to limit concurrent rotations (each triggers a\nredeploy) and avoid provider rate limits. Engines that are not found, not\nowned by the caller, or not shared are reported as failed rather than\naborting the batch. See services/edge_secrets_push.rotate_secrets_key.","operationId":"edge_engines_batch_rotate_secrets_key","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchRotateSecretsRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EngineBatchResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Batch Rotate Secrets Key","tags":["Edge Engines"]}},"/api/edge-engines/batch/sync-check":{"post":{"description":"Batch sync-check: verify engines are reachable and update last_synced_at.","operationId":"edge_engines_batch_sync_check","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EngineBatchResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Batch Sync Check","tags":["Edge Engines"]}},"/api/edge-engines/batch/toggle":{"post":{"description":"Batch activate/deactivate routing.","operationId":"edge_engines_batch_toggle_engines","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchToggleRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EngineBatchResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Batch Toggle Engines","tags":["Edge Engines"]}},"/api/edge-engines/bundle-hashes/":{"get":{"description":"Return current source hash for drift detection.","operationId":"edge_engines_get_bundle_hashes","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Get Bundle Hashes","type":"object"}}},"description":"Successful Response"}},"summary":"Get Bundle Hashes","tags":["Edge Engines"]}},"/api/edge-engines/deploy":{"post":{"description":"Provider-agnostic one-click deploy. Delegates to engine_provisioner.","operationId":"edge_engines_deploy_engine","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/GenericDeployRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Deploy Engine","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Deploy Engine","tags":["Edge Engines"]}},"/api/edge-engines/import":{"post":{"description":"Import an engine from a sealed bundle into this tenant's project.\n\nUnseals the bundle, remaps IDs, matches-or-creates shared resources, re-encrypts\nsecrets with the local key, and inserts the engine (inactive, undeployed) in one\ntransaction. Returns the new engine id, a summary, and the confirm secret S —\npaste S back into the source's finalize-move to complete the transfer.","operationId":"edge_engines_import_engine","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ImportRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Import Engine","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Import Engine","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}":{"delete":{"description":"Delete an engine record explicitly.","operationId":"edge_engines_delete_engine","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}},{"description":"Also delete from provider","in":"query","name":"delete_remote","required":false,"schema":{"default":false,"description":"Also delete from provider","title":"Delete Remote","type":"boolean"}}],"responses":{"204":{"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Engine","tags":["Edge Engines"]},"get":{"description":"Get standalone engine by ID with live status.","operationId":"edge_engines_get_engine","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeEngineResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Engine","tags":["Edge Engines"]},"put":{"description":"Update engine metadata (does not trigger redeploy).","operationId":"edge_engines_update_engine","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeEngineUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeEngineResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Engine","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/agent-profiles":{"get":{"operationId":"edge_agent_profiles_list_profiles","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Agent Profiles List Profiles","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Profiles","tags":["edge-agent-profiles"]},"post":{"operationId":"edge_agent_profiles_create_profile","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeAgentProfileCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Agent Profiles Create Profile","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Profile","tags":["edge-agent-profiles"]}},"/api/edge-engines/{engine_id}/agent-profiles/{profile_id}":{"delete":{"operationId":"edge_agent_profiles_delete_profile","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}},{"in":"path","name":"profile_id","required":true,"schema":{"title":"Profile Id","type":"string"}}],"responses":{"204":{"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Profile","tags":["edge-agent-profiles"]},"put":{"operationId":"edge_agent_profiles_update_profile","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}},{"in":"path","name":"profile_id","required":true,"schema":{"title":"Profile Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeAgentProfileUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Agent Profiles Update Profile","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Profile","tags":["edge-agent-profiles"]}},"/api/edge-engines/{engine_id}/audit/tenant-secrets":{"get":{"description":"List the tenant-secrets audit trail for an engine (newest first).\n\nReturns control-plane operations (push/delete/rotate) on the engine's\nper-tenant secrets, with optional tenant_slug / operation / status filters.\nMirrors the edge-side vault audit, but centralized in the backend DB.\nSee services/tenant_secrets_audit.py.","operationId":"edge_engines_tenant_secrets_audit_logs","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}},{"description":"Filter to a single tenant slug","in":"query","name":"tenant_slug","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"Filter to a single tenant slug","title":"Tenant Slug"}},{"description":"Filter by operation: push | delete | rotate","in":"query","name":"operation","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"Filter by operation: push | delete | rotate","title":"Operation"}},{"description":"Filter by status: success | failure","in":"query","name":"status","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"Filter by status: success | failure","title":"Status"}},{"in":"query","name":"limit","required":false,"schema":{"default":100,"maximum":500,"minimum":1,"title":"Limit","type":"integer"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Tenant Secrets Audit Logs","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Tenant Secrets Audit Logs","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/cancel-move":{"post":{"description":"Cancel a pending move and restore the engine to active.","operationId":"edge_engines_cancel_move","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Cancel Move","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Cancel Move","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/export":{"post":{"description":"Export an engine into a sealed, portable bundle and soft-lock it (moved_out).\n\nCross-deployment move: the full dependency closure (engine + owned children +\nshared infra + connected accounts + datasources + storage) is decrypted with the\nlocal key and sealed with the caller's passphrase. The source engine is then\nfrozen (move_status=moved_out, is_active=False) until the move is finalized or\ncancelled. System/shared engines cannot be moved. See\ndocs/portable-engine-move-plan.md.","operationId":"edge_engines_export_engine","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ExportRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Export Engine","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Export Engine","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/finalize-move":{"post":{"description":"Finalize a pending move: verify the confirm secret and delete the source engine.\n\nConstant-time compare of ``sha256(confirm_secret)`` against the stored\n``move_secret_hash``. A match proves the target successfully unsealed the bundle and\ncommitted the import — safe to cascade-delete the source (owned children go with it;\nshared accounts/infra/datasources/storage stay). Idempotent in the sense that a\nrepeat call 404s once the engine is gone.","operationId":"edge_engines_finalize_move","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/FinalizeMoveRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Finalize Move","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Finalize Move","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/health-check":{"get":{"description":"Proxy health check to the edge engine with FRONTBASE_SYSTEM_KEY.\n\nResolves the system key from engine_config (Fernet-encrypted),\ncalls GET {engine_url}/api/health with x-system-key header,\nand returns the full diagnostic response.","operationId":"engine_inspector_health_check","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Engine Inspector Health Check","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Health Check","tags":["Engine Inspector"]}},"/api/edge-engines/{engine_id}/inspect/domains":{"get":{"description":"List custom domains for this engine.","operationId":"engine_inspector_inspect_engine_domains","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Engine Inspector Inspect Engine Domains","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Inspect Engine Domains","tags":["Engine Inspector"]},"post":{"description":"Add a custom domain to this engine.\n\nCustom domains are intentionally NOT quota-gated: on BYO tiers they're configured via the\ntenant's own provider (free, bypassable, no COGS); on managed tiers they're a paid add-on\n(`managed_domain`, gated at provisioning via `tenant_addons`). See [TIERS] §4.4.","operationId":"engine_inspector_add_engine_domain","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/_AddDomainBody"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Engine Inspector Add Engine Domain","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Add Engine Domain","tags":["Engine Inspector"]}},"/api/edge-engines/{engine_id}/inspect/domains/{domain_id}":{"delete":{"description":"Remove a custom domain from this engine.","operationId":"engine_inspector_delete_engine_domain","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}},{"in":"path","name":"domain_id","required":true,"schema":{"title":"Domain Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Engine Inspector Delete Engine Domain","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Engine Domain","tags":["Engine Inspector"]}},"/api/edge-engines/{engine_id}/inspect/domains/{domain_id}/verify":{"post":{"description":"Trigger DNS verification for a custom domain.","operationId":"engine_inspector_verify_engine_domain","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}},{"in":"path","name":"domain_id","required":true,"schema":{"title":"Domain Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Engine Inspector Verify Engine Domain","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Verify Engine Domain","tags":["Engine Inspector"]}},"/api/edge-engines/{engine_id}/inspect/secrets":{"get":{"description":"Fetch deployed secrets/env vars from provider API.","operationId":"engine_inspector_inspect_engine_secrets","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Engine Inspector Inspect Engine Secrets","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Inspect Engine Secrets","tags":["Engine Inspector"]}},"/api/edge-engines/{engine_id}/inspect/settings":{"get":{"description":"Fetch deployed engine settings/config from provider API.","operationId":"engine_inspector_inspect_engine_settings","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Engine Inspector Inspect Engine Settings","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Inspect Engine Settings","tags":["Engine Inspector"]}},"/api/edge-engines/{engine_id}/inspect/source":{"get":{"description":"Fetch deployed source code from provider API.","operationId":"engine_inspector_inspect_engine_source","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Engine Inspector Inspect Engine Source","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Inspect Engine Source","tags":["Engine Inspector"]}},"/api/edge-engines/{engine_id}/logs":{"get":{"description":"Fetch runtime logs from the engine's provider.\n\nReturns normalized UnifiedLogEntry objects with cursor pagination.\nResults are cached L1 (60s in-memory) and L2 (5 min Redis).","operationId":"edge_engines_get_engine_logs","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}},{"in":"query","name":"limit","required":false,"schema":{"default":50,"maximum":500,"minimum":1,"title":"Limit","type":"integer"}},{"in":"query","name":"cursor","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Cursor"}},{"in":"query","name":"level","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Level"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Get Engine Logs","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Engine Logs","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/logs/config":{"patch":{"description":"Enable/disable log persistence and configure sync interval.\n\nPayload: {\n    \"enabled\": bool,\n    \"interval_hours\": int,  # must be <= provider retention\n}\n\nPrerequisites: engine must have edge_db_id, edge_cache_id, edge_queue_id.","operationId":"edge_engines_update_log_config","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Payload","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Update Log Config","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Log Config","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/logs/retention":{"get":{"description":"Get the provider's log retention period and current plan tier.","operationId":"edge_engines_get_log_retention","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Get Log Retention","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Log Retention","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/logs/sync":{"post":{"description":"Batch-sync logs from provider to the edge state DB.\n\nTriggered by QStash cron. Fetches all logs since last sync,\npushes them to the edge engine's POST /api/edge-logs endpoint.","operationId":"edge_engines_sync_engine_logs","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Sync Engine Logs","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Sync Engine Logs","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/move-to-project":{"post":{"description":"Same-deployment fast path (Step 6): move an engine to another project in THIS\ndeployment atomically — no bundle, no passphrase, no confirm token. Source and\ntarget share the local FERNET_KEY, so transport crypto is unnecessary.","operationId":"edge_engines_move_engine_to_project_endpoint","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/MoveToProjectRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Move Engine To Project Endpoint","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Move Engine To Project Endpoint","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/reconfigure":{"post":{"description":"Live-reconfigure an engine's DB/cache/queue bindings.\n\nDelegates to engine_reconfigure service (CF Settings API PATCH).","operationId":"edge_engines_reconfigure_engine","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ReconfigureRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Reconfigure Engine","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Reconfigure Engine","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/redeploy":{"post":{"description":"Redeploy an engine with the latest bundle code + current secrets.","operationId":"edge_engines_redeploy_engine","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Redeploy Engine","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Redeploy Engine","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/rollback-rotation":{"post":{"description":"Roll back an in-flight key rotation during its transition window.\n\nRestores the previous key (and resolver mode), records the rotation as\n'rolled_back' in history, and redeploys. See\nservices/edge_secrets_push.rollback_rotation.","operationId":"edge_engines_rollback_rotation","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RollbackRotationRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Rollback Rotation","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Rollback Rotation","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/rotate-secrets-key":{"post":{"description":"Rotate a shared engine's per-worker secrets key (zero-downtime).\n\nGenerates a new key, re-encrypts every tenant secret under it during the\nnext deploy, and keeps the old key valid for `window_seconds` (graceful\ntransition). See services/edge_secrets_push.rotate_secrets_key.","operationId":"edge_engines_rotate_secrets_key","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RotateSecretsKeyRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Rotate Secrets Key","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Rotate Secrets Key","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/rotation-history":{"get":{"description":"List key-rotation history for an engine (in-flight transition + past 10).","operationId":"edge_engines_rotation_history","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Rotation History","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Rotation History","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/rotation-status":{"get":{"description":"Report the current key-rotation state for an engine (active window, versions).","operationId":"edge_engines_rotation_status","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Rotation Status","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Rotation Status","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/source":{"get":{"description":"Return the TypeScript source snapshot captured at last deploy.\n\nProvider-agnostic — works for any engine that has been deployed.","operationId":"edge_engines_get_engine_source","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Get Engine Source","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Engine Source","tags":["Edge Engines"]},"put":{"description":"Save modified source files to the engine's DB snapshot (per-engine isolation).\n\nPayload: { files: { \"relative/path.ts\": \"content\", ... } }\nOnly updates the files provided — other snapshot files remain untouched.\n\nCore Zone Convention:\n- Files under frontbase-core/ are tracked in modified_core_files\n- Files outside frontbase-core/ set is_forked = True","operationId":"edge_engines_update_engine_source","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Payload","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Update Engine Source","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Engine Source","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/sync-manifest":{"post":{"description":"Fetch /api/manifest from a running engine and sync GPU models + metadata.\n\nDelegates to services/engine_manifest.py.\nSilent on failure — engine might not be a Frontbase engine.","operationId":"edge_engines_sync_manifest","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Engines Sync Manifest","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Sync Manifest","tags":["Edge Engines"]}},"/api/edge-engines/{engine_id}/test":{"post":{"description":"Hit the engine's /_health route to check code version and connection status.","operationId":"edge_engines_test_engine_connection","parameters":[{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestConnectionResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Engine Connection","tags":["Edge Engines"]}},"/api/edge-gpu/":{"get":{"description":"List all deployed GPU models.","operationId":"edge_gpu_list_gpu_models","responses":{"200":{"content":{"application/json":{"schema":{"items":{"additionalProperties":true,"type":"object"},"title":"Response Edge Gpu List Gpu Models","type":"array"}}},"description":"Successful Response"}},"summary":"List Gpu Models","tags":["edge-gpu"]},"post":{"description":"Deploy a new GPU model to an edge engine.\n\nAfter saving the model record, auto-redeploys CF engines so the AI\nbinding + FRONTBASE_GPU_MODELS secret are pushed immediately.","operationId":"edge_gpu_create_gpu_model","parameters":[{"in":"query","name":"skip_redeploy","required":false,"schema":{"default":false,"title":"Skip Redeploy","type":"boolean"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/GPUModelCreate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Gpu Create Gpu Model","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Gpu Model","tags":["edge-gpu"]}},"/api/edge-gpu/catalog":{"get":{"description":"Fetch available models from a GPU provider.\n\nUses the adapter factory to select the correct implementation.\nFor CF Workers AI, calls GET /accounts/{id}/ai/models/search.","operationId":"edge_gpu_get_catalog","parameters":[{"in":"query","name":"provider_id","required":true,"schema":{"title":"Provider Id","type":"string"}},{"in":"query","name":"provider","required":false,"schema":{"default":"workers_ai","title":"Provider","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Gpu Get Catalog","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Catalog","tags":["edge-gpu"]}},"/api/edge-gpu/schemas":{"get":{"description":"Return all available I/O schemas by task type.","operationId":"edge_gpu_get_schemas","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Gpu Get Schemas","type":"object"}}},"description":"Successful Response"}},"summary":"Get Schemas","tags":["edge-gpu"]}},"/api/edge-gpu/{model_id}":{"delete":{"description":"Delete a GPU model.\n\nAfter deletion, auto-redeploys CF engines to remove stale AI\nbinding / secrets.","operationId":"edge_gpu_delete_gpu_model","parameters":[{"in":"path","name":"model_id","required":true,"schema":{"title":"Model Id","type":"string"}},{"in":"query","name":"skip_redeploy","required":false,"schema":{"default":false,"title":"Skip Redeploy","type":"boolean"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Gpu Delete Gpu Model","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Gpu Model","tags":["edge-gpu"]},"put":{"description":"Update a GPU model's configuration.","operationId":"edge_gpu_update_gpu_model","parameters":[{"in":"path","name":"model_id","required":true,"schema":{"title":"Model Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/GPUModelUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Gpu Update Gpu Model","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Gpu Model","tags":["edge-gpu"]}},"/api/edge-gpu/{model_id}/test":{"post":{"description":"Test a deployed GPU model by running a sample inference.","operationId":"edge_gpu_test_gpu_model","parameters":[{"in":"path","name":"model_id","required":true,"schema":{"title":"Model Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Gpu Test Gpu Model","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Gpu Model","tags":["edge-gpu"]}},"/api/edge-providers/":{"get":{"description":"List all connected edge provider accounts.","operationId":"edge_providers_list_providers","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/EdgeProviderAccountResponse"},"title":"Response Edge Providers List Providers","type":"array"}}},"description":"Successful Response"}},"summary":"List Providers","tags":["edge-providers"]},"post":{"description":"Create and connect a new edge provider account.\n\nCredentials are encrypted with Fernet AES-256 before storage.\nNon-secret metadata (account_id, project_ref) is stored separately for UI display.","operationId":"edge_providers_create_provider","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeProviderAccountCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeProviderAccountResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Provider","tags":["edge-providers"]}},"/api/edge-providers/accounts/{account_id}/tables":{"get":{"description":"List database tables from a connected account's credentials.\n\nResolves credentials directly from EdgeProviderAccount — no sync datasource needed.\nUsed by the Users panel (Auth Provider → Contacts Database → Table selector).\n\nSupported providers:\n- supabase: calls /rest/v1/rpc/frontbase_get_schema_info\n- neon: discovers projects then uses SQL via Neon serverless driver\n- postgres/mysql: direct connection via info schema (future)","operationId":"edge_providers_list_account_tables","parameters":[{"in":"path","name":"account_id","required":true,"schema":{"title":"Account Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers List Account Tables","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Account Tables","tags":["edge-providers"]}},"/api/edge-providers/create-resource-by-account/{account_id}":{"post":{"description":"Create a new resource (Redis DB) via Connected Account's management API.","operationId":"edge_providers_create_resource_by_account","parameters":[{"in":"path","name":"account_id","required":true,"schema":{"title":"Account Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreateResourceRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Create Resource By Account","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Resource By Account","tags":["edge-providers"]}},"/api/edge-providers/discover":{"post":{"description":"Discover resources (projects, databases, sites) available with the given credentials.\n\nUsed during the connect flow to let users pick which project/resource to bind.","operationId":"edge_providers_discover_resources_endpoint","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/DiscoverRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Discover Resources Endpoint","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Discover Resources Endpoint","tags":["edge-providers"]}},"/api/edge-providers/discover-by-account/{account_id}":{"post":{"description":"Discover resources using stored credentials from a Connected Account.\n\nDecrypts saved credentials server-side and calls the same discovery logic.\nFor Turso: returns manually-registered databases from stored JSON.\nUsed by Edge DB/Cache/Queue forms to list available resources.","operationId":"edge_providers_discover_by_account","parameters":[{"in":"path","name":"account_id","required":true,"schema":{"title":"Account Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Discover By Account","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Discover By Account","tags":["edge-providers"]}},"/api/edge-providers/retest/{provider_id}":{"post":{"description":"Re-validate an existing provider's credentials.\n\nDecrypts stored secrets server-side and calls the same validation logic.","operationId":"edge_providers_retest_provider","parameters":[{"in":"path","name":"provider_id","required":true,"schema":{"title":"Provider Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Retest Provider","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Retest Provider","tags":["edge-providers"]}},"/api/edge-providers/test-connection":{"post":{"description":"Validate provider credentials by making a lightweight API call.\n\nDoes NOT create a record — just verifies the credentials work.\nCalled before saving to prevent storing invalid tokens.","operationId":"edge_providers_test_connection","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestConnectionRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Test Connection","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Connection","tags":["edge-providers"]}},"/api/edge-providers/workspace-agent-token":{"get":{"description":"Generate a stateless JWT for the Workspace Agent using the active GPU provider.","operationId":"edge_providers_get_workspace_agent_token","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Get Workspace Agent Token","type":"object"}}},"description":"Successful Response"}},"summary":"Get Workspace Agent Token","tags":["edge-providers"]},"post":{"description":"Set a specific provider as the default Workspace Agent provider and generate token.","operationId":"edge_providers_set_workspace_agent_token","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SetWorkspaceDefaultRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Set Workspace Agent Token","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Set Workspace Agent Token","tags":["edge-providers"]}},"/api/edge-providers/{account_id}/list-engines":{"post":{"description":"List engines/functions/apps from a connected edge provider.\n\nDispatches to provider-specific listing API and returns unified shape.","operationId":"edge_providers_list_engines_for_provider","parameters":[{"in":"path","name":"account_id","required":true,"schema":{"title":"Account Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers List Engines For Provider","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Engines For Provider","tags":["edge-providers"]}},"/api/edge-providers/{account_id}/turso-databases":{"post":{"description":"Add a database to a Turso provider account (manual registry).","operationId":"edge_providers_add_turso_database","parameters":[{"in":"path","name":"account_id","required":true,"schema":{"title":"Account Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TursoDatabaseEntry"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Add Turso Database","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Add Turso Database","tags":["edge-providers"]}},"/api/edge-providers/{account_id}/turso-databases/{db_id}":{"delete":{"description":"Remove a database from a Turso provider account.","operationId":"edge_providers_remove_turso_database","parameters":[{"in":"path","name":"account_id","required":true,"schema":{"title":"Account Id","type":"string"}},{"in":"path","name":"db_id","required":true,"schema":{"title":"Db Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Remove Turso Database","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Remove Turso Database","tags":["edge-providers"]}},"/api/edge-providers/{account_id}/turso-databases/{db_id}/test":{"post":{"description":"Test connection to a specific Turso database within an account.","operationId":"edge_providers_test_turso_database","parameters":[{"in":"path","name":"account_id","required":true,"schema":{"title":"Account Id","type":"string"}},{"in":"path","name":"db_id","required":true,"schema":{"title":"Db Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Test Turso Database","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Turso Database","tags":["edge-providers"]}},"/api/edge-providers/{provider_id}":{"delete":{"description":"Delete a provider account if no engines depend on it.","operationId":"edge_providers_delete_provider","parameters":[{"in":"path","name":"provider_id","required":true,"schema":{"title":"Provider Id","type":"string"}}],"responses":{"204":{"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Provider","tags":["edge-providers"]},"get":{"description":"Get a specific edge provider account.","operationId":"edge_providers_get_provider","parameters":[{"in":"path","name":"provider_id","required":true,"schema":{"title":"Provider Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeProviderAccountResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Provider","tags":["edge-providers"]},"put":{"description":"Update a provider account. Credentials are re-encrypted on change.","operationId":"edge_providers_update_provider","parameters":[{"in":"path","name":"provider_id","required":true,"schema":{"title":"Provider Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeProviderAccountUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeProviderAccountResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Provider","tags":["edge-providers"]}},"/api/edge-providers/{provider_id}/credentials":{"get":{"description":"Return decrypted credentials for a provider account.\n\nInternal endpoint used by the db-synchronizer credential bridge to resolve\ndatasource credentials from connected accounts. Avoids duplicating\nencryption/decryption logic across services.","operationId":"edge_providers_get_credentials","parameters":[{"in":"path","name":"provider_id","required":true,"schema":{"title":"Provider Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Providers Get Credentials","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Credentials","tags":["edge-providers"]}},"/api/edge-queues/":{"get":{"description":"List all configured edge queues.","operationId":"edge_queues_list_edge_queues","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/EdgeQueueResponse"},"title":"Response Edge Queues List Edge Queues","type":"array"}}},"description":"Successful Response"}},"summary":"List Edge Queues","tags":["edge-queues"]},"post":{"description":"Create a new edge queue connection.","operationId":"edge_queues_create_edge_queue","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeQueueCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeQueueResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Edge Queue","tags":["edge-queues"]}},"/api/edge-queues/batch/delete":{"post":{"description":"Batch delete queues. Optionally delete remote resources in parallel.","operationId":"edge_queues_batch_delete_queues","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchDeleteQueueRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/QueueBatchResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Batch Delete Queues","tags":["edge-queues"]}},"/api/edge-queues/test-connection":{"post":{"description":"Test a queue connection before saving it.","operationId":"edge_queues_test_connection_inline","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestQueueInline"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestQueueResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Connection Inline","tags":["edge-queues"]}},"/api/edge-queues/{queue_id}":{"delete":{"description":"Delete an edge queue connection.\n\nFails if any edge engines still reference this queue.\nIf delete_remote=True and provider supports it, also deletes the remote resource.","operationId":"edge_queues_delete_edge_queue","parameters":[{"in":"path","name":"queue_id","required":true,"schema":{"title":"Queue Id","type":"string"}},{"in":"query","name":"delete_remote","required":false,"schema":{"default":false,"title":"Delete Remote","type":"boolean"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Queues Delete Edge Queue","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Edge Queue","tags":["edge-queues"]},"put":{"description":"Update an existing edge queue connection.","operationId":"edge_queues_update_edge_queue","parameters":[{"in":"path","name":"queue_id","required":true,"schema":{"title":"Queue Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeQueueUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeQueueResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Edge Queue","tags":["edge-queues"]}},"/api/edge-queues/{queue_id}/test/":{"post":{"description":"Test connectivity to a saved edge queue.","operationId":"edge_queues_test_edge_queue","parameters":[{"in":"path","name":"queue_id","required":true,"schema":{"title":"Queue Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TestQueueResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Edge Queue","tags":["edge-queues"]}},"/api/edge-vectors/":{"get":{"description":"List all configured edge vector stores.","operationId":"edge_vectors_list_edge_vectors","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/EdgeVectorResponse"},"title":"Response Edge Vectors List Edge Vectors","type":"array"}}},"description":"Successful Response"}},"summary":"List Edge Vectors","tags":["edge-vectors"]},"post":{"description":"Create a new edge vector store connection.","operationId":"edge_vectors_create_edge_vector","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeVectorCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeVectorResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Edge Vector","tags":["edge-vectors"]}},"/api/edge-vectors/batch/delete":{"post":{"description":"Batch delete multiple edge vector stores.","operationId":"edge_vectors_batch_delete_vectors","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchDeleteVectorRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/VectorBatchResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Batch Delete Vectors","tags":["edge-vectors"]}},"/api/edge-vectors/test-connection":{"post":{"description":"Test connection using raw fields (pre-save).","operationId":"edge_vectors_test_connection_inline","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/VectorTestConnectionRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Vectors Test Connection Inline","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Connection Inline","tags":["edge-vectors"]}},"/api/edge-vectors/{vector_id}":{"delete":{"description":"Delete an edge vector store connection.\n\nIf delete_remote=True and the store was created from a Connected Account,\nalso delete the resource at the provider (e.g. CF Vectorize index).","operationId":"edge_vectors_delete_edge_vector","parameters":[{"in":"path","name":"vector_id","required":true,"schema":{"title":"Vector Id","type":"string"}},{"in":"query","name":"delete_remote","required":false,"schema":{"default":false,"title":"Delete Remote","type":"boolean"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Vectors Delete Edge Vector","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Edge Vector","tags":["edge-vectors"]},"put":{"description":"Update an existing edge vector store connection.","operationId":"edge_vectors_update_edge_vector","parameters":[{"in":"path","name":"vector_id","required":true,"schema":{"title":"Vector Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeVectorUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EdgeVectorResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Edge Vector","tags":["edge-vectors"]}},"/api/edge-vectors/{vector_id}/test":{"post":{"description":"Test connection to an existing edge vector store.","operationId":"edge_vectors_test_edge_vector_connection","parameters":[{"in":"path","name":"vector_id","required":true,"schema":{"title":"Vector Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Edge Vectors Test Edge Vector Connection","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Edge Vector Connection","tags":["edge-vectors"]}},"/api/mcp-servers":{"get":{"description":"List global MCP servers catalogue, excluding tenant-disabled items.\n\nReturns only global (tenant_id IS NULL) MCP servers for all tenants, filtered\nby profile_slug if provided. Master admins see all servers including disabled ones.","operationId":"agent_integrations_list_mcp_servers","parameters":[{"in":"query","name":"profile_slug","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Profile Slug"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations List Mcp Servers","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Mcp Servers","tags":["agent-integrations"]},"post":{"operationId":"agent_integrations_create_mcp_server","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/McpServerCreate"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations Create Mcp Server","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Mcp Server","tags":["agent-integrations"]}},"/api/mcp-servers/{server_id}":{"delete":{"operationId":"agent_integrations_delete_mcp_server","parameters":[{"in":"path","name":"server_id","required":true,"schema":{"title":"Server Id","type":"string"}}],"responses":{"204":{"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Mcp Server","tags":["agent-integrations"]},"get":{"operationId":"agent_integrations_get_mcp_server","parameters":[{"in":"path","name":"server_id","required":true,"schema":{"title":"Server Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations Get Mcp Server","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Mcp Server","tags":["agent-integrations"]},"put":{"operationId":"agent_integrations_update_mcp_server","parameters":[{"in":"path","name":"server_id","required":true,"schema":{"title":"Server Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/McpServerUpdate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations Update Mcp Server","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Mcp Server","tags":["agent-integrations"]}},"/api/mcp-servers/{server_id}/test":{"post":{"operationId":"agent_integrations_test_mcp_server","parameters":[{"in":"path","name":"server_id","required":true,"schema":{"title":"Server Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations Test Mcp Server","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Mcp Server","tags":["agent-integrations"]}},"/api/mcp-servers/{server_id}/tools":{"get":{"operationId":"agent_integrations_list_mcp_server_tools","parameters":[{"in":"path","name":"server_id","required":true,"schema":{"title":"Server Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Agent Integrations List Mcp Server Tools","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Mcp Server Tools","tags":["agent-integrations"]}},"/api/pages/":{"get":{"description":"Get all pages - matches Express: { success, data: pages[] }","operationId":"pages_get_pages","parameters":[{"in":"query","name":"includeDeleted","required":false,"schema":{"default":false,"title":"Includedeleted","type":"boolean"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageListEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Pages","tags":["pages"]},"post":{"description":"Create a new page - matches Express: { success, data: page }","operationId":"pages_create_page_endpoint","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageCreateRequest"}}},"required":true},"responses":{"201":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Page Endpoint","tags":["pages"]}},"/api/pages/homepage/":{"get":{"description":"Get the homepage for Edge pull-publish.\nEdge calls this when it has no homepage in its local DB.","operationId":"pages_get_homepage","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageEnvelope"}}},"description":"Successful Response"}},"summary":"Get Homepage","tags":["pages"]}},"/api/pages/public/{slug}/":{"get":{"description":"Get a public page by slug for SSR.\nNo authentication required - used by Edge Engine.\nReturns page data if page exists and is public (or all for now during dev).","operationId":"pages_get_public_page","parameters":[{"in":"path","name":"slug","required":true,"schema":{"title":"Slug","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Public Page","tags":["pages"]}},"/api/pages/{page_id}/":{"delete":{"description":"Soft delete a page - matches Express: { success, message }.\nUnpublishes from ALL active full-bundle Edge Engines.","operationId":"pages_delete_page","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Page","tags":["pages"]},"get":{"description":"Get a page by ID - matches Express: { success, data: page }","operationId":"pages_get_page","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Page","tags":["pages"]},"put":{"description":"Update a page - matches Express: { success, data: page }","operationId":"pages_update_page_endpoint","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageUpdateRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Page Endpoint","tags":["pages"]}},"/api/pages/{page_id}/layout/":{"put":{"description":"Update page layout - matches Express: { success, data: page }","operationId":"pages_update_page_layout","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Page Layout","tags":["pages"]}},"/api/pages/{page_id}/permanent/":{"delete":{"description":"Permanently delete a page - matches Express: { success, message }.\nUnpublishes from ALL active full-bundle Edge Engines, then hard-deletes.","operationId":"pages_permanent_delete_page","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Permanent Delete Page","tags":["pages"]}},"/api/pages/{page_id}/publish-batch/":{"post":{"description":"Publish a page to multiple Edge Engines in one request.\nSerializes the page ONCE, then fans out to all engines in parallel.","operationId":"pages_publish_to_targets_batch","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchPublishRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BatchPublishResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Publish To Targets Batch","tags":["pages"]}},"/api/pages/{page_id}/publish/{engine_id}/":{"post":{"description":"Publish a page to a specific Edge Engine target.","operationId":"pages_publish_to_target","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}},{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PublishResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Publish To Target","tags":["pages"]}},"/api/pages/{page_id}/restore/":{"post":{"description":"Restore a deleted page - matches Express: { success, data: page, message }","operationId":"pages_restore_page","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Restore Page","tags":["pages"]}},"/api/pages/{page_id}/rollback/":{"post":{"description":"Roll back a page to a previous version.\nCreates a NEW version snapshot of the current state BEFORE overwriting,\nso the rollback itself can be undone.","operationId":"pages_rollback_to_version","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RollbackRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RollbackEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Rollback To Version","tags":["pages"]}},"/api/pages/{page_id}/unpublish/{engine_id}/":{"post":{"description":"Unpublish a page from a specific Edge Engine target.\nPage remains in the backend DB and on other targets.","operationId":"pages_unpublish_page_from_target","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}},{"in":"path","name":"engine_id","required":true,"schema":{"title":"Engine Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Unpublish Page From Target","tags":["pages"]}},"/api/pages/{page_id}/versions/":{"get":{"description":"List all version snapshots for a page, newest first.","operationId":"pages_list_versions","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageVersionListEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Versions","tags":["pages"]},"post":{"description":"Manually create a named version snapshot (e.g., \"Pre-launch backup\").","operationId":"pages_create_manual_version","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/VersionLabelRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageVersionEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Manual Version","tags":["pages"]}},"/api/pages/{page_id}/versions/{version_id}/":{"get":{"description":"Get a specific version including its full layout_data snapshot.","operationId":"pages_get_version_detail","parameters":[{"in":"path","name":"page_id","required":true,"schema":{"title":"Page Id","type":"string"}},{"in":"path","name":"version_id","required":true,"schema":{"title":"Version Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PageVersionEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Version Detail","tags":["pages"]}},"/api/project/":{"get":{"description":"Get project settings","operationId":"project_get_project_endpoint","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ProjectResponse"}}},"description":"Successful Response"}},"summary":"Get Project Endpoint","tags":["project"]},"put":{"description":"Update project settings and sync to Edge for SSR self-sufficiency.\nOptimized: Releases DB connection before Edge sync HTTP call.","operationId":"project_update_project_endpoint","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ProjectUpdateRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ProjectResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Project Endpoint","tags":["project"]}},"/api/project/assets/upload/":{"post":{"description":"Upload branding assets (favicon, logo) stored locally.\nThese are independent of user-configured Supabase storage.\nReturns a URL path that works in both admin and SSR contexts.","operationId":"project_upload_branding_asset","requestBody":{"content":{"multipart/form-data":{"schema":{"$ref":"#/components/schemas/Body_project_upload_branding_asset"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Project Upload Branding Asset","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Upload Branding Asset","tags":["project"]}},"/api/queue/health":{"get":{"operationId":"meta_queue_health","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/QueueHealth"}}},"description":"Successful Response"}},"summary":"Queue Health","tags":["Meta"]}},"/api/security-events/":{"get":{"description":"List security events for the calling tenant (read-only).\n\nFilters: event_type, severity, and a created_at date window. ``created_at``\nis stored as an ISO-8601 UTC string, so lexicographic comparison is\nchronological and the date filters accept plain ``YYYY-MM-DD`` or full\ntimestamps.","operationId":"security_events_list_security_events","parameters":[{"description":"Filter by event type (e.g. ssrf_attempt_blocked)","in":"query","name":"event_type","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"Filter by event type (e.g. ssrf_attempt_blocked)","title":"Event Type"}},{"description":"Filter by severity","in":"query","name":"severity","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"Filter by severity","title":"Severity"}},{"description":"ISO-8601 lower bound on created_at (inclusive)","in":"query","name":"start_date","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"ISO-8601 lower bound on created_at (inclusive)","title":"Start Date"}},{"description":"ISO-8601 upper bound on created_at (inclusive)","in":"query","name":"end_date","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"ISO-8601 upper bound on created_at (inclusive)","title":"End Date"}},{"in":"query","name":"limit","required":false,"schema":{"default":100,"maximum":500,"minimum":1,"title":"Limit","type":"integer"}},{"in":"query","name":"offset","required":false,"schema":{"default":0,"minimum":0,"title":"Offset","type":"integer"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Security Events List Security Events","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Security Events","tags":["security-events"]}},"/api/security-events/summary":{"get":{"description":"Lightweight counts by severity for dashboard badges/header chips.\n\nReturns ``{total, by_severity: {low, medium, high, critical}}`` scoped to\nthe calling tenant (same isolation rules as the list endpoint).","operationId":"security_events_security_events_summary","responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Security Events Security Events Summary","type":"object"}}},"description":"Successful Response"}},"summary":"Security Events Summary","tags":["security-events"]}},"/api/settings/general":{"get":{"description":"Get general site settings","operationId":"settings_get_general_settings","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/GeneralSettings"}}},"description":"Successful Response"}},"summary":"Get General Settings","tags":["settings"]},"put":{"description":"Update general site settings","operationId":"settings_update_general_settings","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/GeneralSettings"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/GeneralSettings"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update General Settings","tags":["settings"]}},"/api/settings/invites":{"post":{"description":"Send an invitation email to a new admin.","operationId":"settings_send_admin_invite","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AdminInviteRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AdminInviteResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Send Admin Invite","tags":["settings"]}},"/api/settings/privacy/":{"get":{"description":"Get privacy and tracking settings.\n\nReturns configuration for visitor tracking cookies and advanced variables.","operationId":"settings_get_privacy_settings","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PrivacySettings-Output"}}},"description":"Successful Response"}},"summary":"Get Privacy Settings","tags":["settings"]},"put":{"description":"Update privacy and tracking settings.\n\nConfigures visitor tracking behavior:\n- enableVisitorTracking: Enable/disable visitor tracking cookies\n- cookieExpiryDays: Number of days before tracking cookie expires\n- requireCookieConsent: Require user consent before setting tracking cookies","operationId":"settings_update_privacy_settings","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PrivacySettings-Input"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PrivacySettings-Output"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Privacy Settings","tags":["settings"]}},"/api/settings/redis/":{"get":{"description":"Get Redis cache settings.\n\nReturns the explicitly configured Upstash instance from UI if present.\nOtherwise, returns the fallback local Redis configuration (powered by env vars).","operationId":"settings_get_redis_settings","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RedisSettings"}}},"description":"Successful Response"}},"summary":"Get Redis Settings","tags":["settings"]},"put":{"description":"Update Redis cache settings.","operationId":"settings_update_redis_settings","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RedisSettings"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RedisSettings"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Redis Settings","tags":["settings"]}},"/api/settings/redis/test/":{"post":{"description":"Test Redis connection with provided settings.","operationId":"settings_test_redis_connection","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RedisSettings"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RedisTestResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Test Redis Connection","tags":["settings"]}},"/api/settings/security/":{"get":{"description":"Get security-log IP retention settings.","operationId":"settings_get_security_settings","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SecuritySettings"}}},"description":"Successful Response"}},"summary":"Get Security Settings","tags":["settings"]},"put":{"description":"Update security-log IP retention.\n\n- full_ip_retention_days > 0 : retain full IP N days, then purge\n- 0  : anonymize immediately (strict privacy)\n- -1 : retain indefinitely (legitimate interest)","operationId":"settings_update_security_settings","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SecuritySettings"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SecuritySettings"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Security Settings","tags":["settings"]}},"/api/settings/telemetry":{"post":{"description":"Collects anonymized telemetry from self-hosted editions.\nCurrently mocked to just log locally.","operationId":"settings_collect_telemetry","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TelemetryData"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TelemetryAck"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Collect Telemetry","tags":["settings"]}},"/api/settings/validate-license":{"post":{"description":"Validates a license key for Enterprise or Community Free upgrades.\nCurrently mocked to accept any key starting with 'fb_'.","operationId":"settings_validate_license","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LicenseValidationRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LicenseValidationResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Validate License","tags":["settings"]}},"/api/storage/buckets":{"get":{"description":"List all buckets for a storage provider (fast — no size computation).","operationId":"storage_list_buckets","parameters":[{"description":"StorageProvider ID","in":"query","name":"provider_id","required":true,"schema":{"description":"StorageProvider ID","title":"Provider Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Storage List Buckets","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Buckets","tags":["storage"]},"post":{"description":"Create a new bucket.","operationId":"storage_create_bucket","parameters":[{"description":"StorageProvider ID","in":"query","name":"provider_id","required":true,"schema":{"description":"StorageProvider ID","title":"Provider Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageBucketResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Bucket","tags":["storage"]}},"/api/storage/buckets/{bucket_id}":{"delete":{"description":"Delete a bucket (must be empty).","operationId":"storage_delete_bucket","parameters":[{"in":"path","name":"bucket_id","required":true,"schema":{"title":"Bucket Id","type":"string"}},{"description":"StorageProvider ID","in":"query","name":"provider_id","required":true,"schema":{"description":"StorageProvider ID","title":"Provider Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageMessageAck"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Bucket","tags":["storage"]},"get":{"description":"Get a specific bucket.","operationId":"storage_get_bucket","parameters":[{"in":"path","name":"bucket_id","required":true,"schema":{"title":"Bucket Id","type":"string"}},{"description":"StorageProvider ID","in":"query","name":"provider_id","required":true,"schema":{"description":"StorageProvider ID","title":"Provider Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageBucketResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Bucket","tags":["storage"]},"put":{"description":"Update bucket settings.","operationId":"storage_update_bucket","parameters":[{"in":"path","name":"bucket_id","required":true,"schema":{"title":"Bucket Id","type":"string"}},{"description":"StorageProvider ID","in":"query","name":"provider_id","required":true,"schema":{"description":"StorageProvider ID","title":"Provider Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageBucketResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Bucket","tags":["storage"]}},"/api/storage/buckets/{bucket_id}/empty":{"post":{"description":"Empty a bucket.","operationId":"storage_empty_bucket","parameters":[{"in":"path","name":"bucket_id","required":true,"schema":{"title":"Bucket Id","type":"string"}},{"description":"StorageProvider ID","in":"query","name":"provider_id","required":true,"schema":{"description":"StorageProvider ID","title":"Provider Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageMessageAck"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Empty Bucket","tags":["storage"]}},"/api/storage/compute-size":{"get":{"description":"Compute recursive size with L1/L2/L3 caching.\n\nL1: In-memory dict (instant)\nL2: Redis with 10-min TTL (survives restart)\nL3: Recursive Supabase API walk (expensive, populates L1 + L2)","operationId":"storage_compute_size","parameters":[{"description":"Bucket name","in":"query","name":"bucket","required":true,"schema":{"description":"Bucket name","title":"Bucket","type":"string"}},{"description":"StorageProvider ID","in":"query","name":"provider_id","required":true,"schema":{"description":"StorageProvider ID","title":"Provider Id","type":"string"}},{"description":"Folder path (empty for entire bucket)","in":"query","name":"path","required":false,"schema":{"default":"","description":"Folder path (empty for entire bucket)","title":"Path","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageBucketResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Compute Size","tags":["storage"]}},"/api/storage/create-folder":{"post":{"description":"Create a folder.","operationId":"storage_create_folder","requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageMessageAck"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Folder","tags":["storage"]}},"/api/storage/delete":{"delete":{"description":"Delete files from a bucket.","operationId":"storage_delete_files","requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageMessageAck"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Files","tags":["storage"]}},"/api/storage/list":{"get":{"description":"List files in a bucket path with global sorting, lazy folder size lookup, and pagination.","operationId":"storage_list_files","parameters":[{"in":"query","name":"bucket","required":true,"schema":{"title":"Bucket","type":"string"}},{"description":"StorageProvider ID","in":"query","name":"provider_id","required":true,"schema":{"description":"StorageProvider ID","title":"Provider Id","type":"string"}},{"in":"query","name":"path","required":false,"schema":{"default":"","title":"Path","type":"string"}},{"in":"query","name":"limit","required":false,"schema":{"default":100,"title":"Limit","type":"integer"}},{"in":"query","name":"offset","required":false,"schema":{"default":0,"title":"Offset","type":"integer"}},{"in":"query","name":"search","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Search"}},{"description":"Field to sort by (name, size, type, updated_at)","in":"query","name":"sort_by","required":false,"schema":{"default":"name","description":"Field to sort by (name, size, type, updated_at)","title":"Sort By","type":"string"}},{"description":"Sort order (asc, desc)","in":"query","name":"sort_order","required":false,"schema":{"default":"asc","description":"Sort order (asc, desc)","title":"Sort Order","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageFilesResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Files","tags":["storage"]}},"/api/storage/move":{"post":{"description":"Move or rename a file.","operationId":"storage_move_file","requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageMessageAck"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Move File","tags":["storage"]}},"/api/storage/move-cross":{"post":{"description":"Move a file across buckets / providers (Sprint 4B + Post-sprint 2.2).\n\nBody:\n  source_provider_id, source_bucket, source_key\n  dest_provider_id,   dest_bucket,   dest_key\n\nSmall files (< 50 MB, or unknown size) are moved synchronously: download from\nsource → upload to dest → delete source. Large files (≥ 50 MB) are moved by a\nbackground job — this returns ``{async: true, job_id}``` and the client polls\n``/api/storage/move-status/{job_id}``. Same-provider adapters with native\nserver-side copy override ``move_cross`` for efficiency.","operationId":"storage_move_file_cross","requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageResultEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Move File Cross","tags":["storage"]}},"/api/storage/move-status/{job_id}":{"get":{"description":"Poll the status of a background cross-bucket move (Post-sprint 2.2).","operationId":"storage_get_move_status","parameters":[{"in":"path","name":"job_id","required":true,"schema":{"title":"Job Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageResultEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Move Status","tags":["storage"]}},"/api/storage/netlify-sites":{"get":{"description":"List Netlify sites for a connected account (used by the site-picker in Add Storage).","operationId":"storage_list_netlify_sites","parameters":[{"description":"EdgeProviderAccount ID","in":"query","name":"account_id","required":true,"schema":{"description":"EdgeProviderAccount ID","title":"Account Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"additionalProperties":true,"type":"object"},"title":"Response Storage List Netlify Sites","type":"array"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Netlify Sites","tags":["storage"]},"post":{"description":"Create a new Netlify site for storage (reuses netlify_deploy_api.create_site).\n\nAfter creation, triggers a minimal empty deploy to activate Netlify Blobs.\nWithout at least one deploy, Blobs write API returns 401 \"Access Denied\".","operationId":"storage_create_netlify_site","requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Storage Create Netlify Site","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Netlify Site","tags":["storage"]}},"/api/storage/providers/":{"get":{"description":"List all explicitly-added storage providers.","operationId":"storage_list_storage_providers","responses":{"200":{"content":{"application/json":{"schema":{"items":{"additionalProperties":true,"type":"object"},"title":"Response Storage List Storage Providers","type":"array"}}},"description":"Successful Response"}},"summary":"List Storage Providers","tags":["storage"]},"post":{"description":"Create a new storage provider linking to a connected account.","operationId":"storage_create_storage_provider","requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Storage Create Storage Provider","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Storage Provider","tags":["storage"]}},"/api/storage/providers/{provider_id}":{"delete":{"description":"Remove a storage provider.","operationId":"storage_delete_storage_provider","parameters":[{"in":"path","name":"provider_id","required":true,"schema":{"title":"Provider Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageMessageAck"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Storage Provider","tags":["storage"]}},"/api/storage/public-url":{"get":{"description":"Get the public URL for a file.","operationId":"storage_get_public_url","parameters":[{"in":"query","name":"bucket","required":true,"schema":{"title":"Bucket","type":"string"}},{"in":"query","name":"path","required":true,"schema":{"title":"Path","type":"string"}},{"description":"StorageProvider ID","in":"query","name":"provider_id","required":true,"schema":{"description":"StorageProvider ID","title":"Provider Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageSignedUrlResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Public Url","tags":["storage"]}},"/api/storage/signed-url":{"get":{"description":"Get a signed URL for temporary download.","operationId":"storage_get_signed_url","parameters":[{"in":"query","name":"bucket","required":true,"schema":{"title":"Bucket","type":"string"}},{"in":"query","name":"path","required":true,"schema":{"title":"Path","type":"string"}},{"description":"StorageProvider ID","in":"query","name":"provider_id","required":true,"schema":{"description":"StorageProvider ID","title":"Provider Id","type":"string"}},{"in":"query","name":"expiresIn","required":false,"schema":{"default":3600,"title":"Expiresin","type":"integer"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageSignedUrlResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Signed Url","tags":["storage"]}},"/api/storage/upload":{"post":{"description":"Upload a file.","operationId":"storage_upload_file","requestBody":{"content":{"multipart/form-data":{"schema":{"$ref":"#/components/schemas/Body_storage_upload_file"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StorageResultEnvelope"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Upload File","tags":["storage"]}},"/api/storage/vercel-projects":{"get":{"description":"List Vercel projects for a connected account (used by project-picker in Create Bucket).","operationId":"storage_list_vercel_projects","parameters":[{"description":"EdgeProviderAccount ID","in":"query","name":"account_id","required":true,"schema":{"description":"EdgeProviderAccount ID","title":"Account Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"additionalProperties":true,"type":"object"},"title":"Response Storage List Vercel Projects","type":"array"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"List Vercel Projects","tags":["storage"]},"post":{"description":"Create a new Vercel project for blob storage connection.","operationId":"storage_create_vercel_project","requestBody":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Request","type":"object"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"additionalProperties":true,"title":"Response Storage Create Vercel Project","type":"object"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Vercel Project","tags":["storage"]}},"/api/themes/":{"get":{"description":"Get all themes, optionally filtered by component type.","operationId":"themes_get_themes","parameters":[{"in":"query","name":"component_type","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Component Type"}}],"responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/ComponentThemeOut"},"title":"Response Themes Get Themes","type":"array"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Themes","tags":["Themes"]},"post":{"description":"Create a new custom theme.","operationId":"themes_create_theme","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ComponentThemeCreate"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ComponentThemeOut"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Theme","tags":["Themes"]}},"/api/themes/{theme_id}":{"delete":{"description":"Delete a custom theme. System themes cannot be deleted.","operationId":"themes_delete_theme","parameters":[{"in":"path","name":"theme_id","required":true,"schema":{"title":"Theme Id","type":"string"}}],"responses":{"204":{"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Theme","tags":["Themes"]}},"/api/variables/":{"get":{"description":"Get all variables","operationId":"variables_get_variables","responses":{"200":{"content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/VariableResponse"},"title":"Response Variables Get Variables","type":"array"}}},"description":"Successful Response"}},"summary":"Get Variables","tags":["variables"]},"post":{"description":"Create a new variable","operationId":"variables_create_variable_endpoint","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/VariableCreateRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/VariableResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Create Variable Endpoint","tags":["variables"]}},"/api/variables/registry/":{"get":{"description":"Get available template variables and filters for Builder autocomplete.\n\nReturns variable scopes (page, user, visitor, url, system, record, local, session, cookies).\nUser variables are dynamically loaded from the configured contacts table schema.\n\nIf page_id is provided, could include page-specific custom variables (future feature).","operationId":"variables_get_template_registry","parameters":[{"in":"query","name":"page_id","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Page Id"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TemplateRegistryResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Template Registry","tags":["variables"]}},"/api/variables/{variable_id}":{"get":{"description":"Get a variable by ID","operationId":"variables_get_variable","parameters":[{"in":"path","name":"variable_id","required":true,"schema":{"title":"Variable Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/VariableResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Get Variable","tags":["variables"]}},"/api/variables/{variable_id}/":{"delete":{"description":"Delete a variable","operationId":"variables_delete_variable","parameters":[{"in":"path","name":"variable_id","required":true,"schema":{"title":"Variable Id","type":"string"}}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/MessageResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Delete Variable","tags":["variables"]},"put":{"description":"Update a variable","operationId":"variables_update_variable_endpoint","parameters":[{"in":"path","name":"variable_id","required":true,"schema":{"title":"Variable Id","type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/VariableUpdateRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/VariableResponse"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Update Variable Endpoint","tags":["variables"]}},"/api/workflows/send-email":{"post":{"description":"Send an email on behalf of a workflow automation run.","operationId":"workflows_send_workflow_email","parameters":[{"in":"query","name":"provider_account_id","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Provider Account Id"}},{"in":"query","name":"project_id","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Project Id"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowEmailRequest"}}},"required":true},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkflowEmailResult"}}},"description":"Successful Response"},"422":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}},"description":"Validation Error"}},"summary":"Send Workflow Email","tags":["Workflows"]}},"/health":{"get":{"operationId":"meta_health_check","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/HealthStatus"}}},"description":"Successful Response"}},"summary":"Health Check","tags":["Meta"]}}}};
+const SPEC: Record<string, unknown> = {
+  "components": {
+    "schemas": {
+      "APIKeyCreate": {
+        "properties": {
+          "edge_engine_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Engine Id"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "scope": {
+            "default": "user",
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "APIKeyCreate",
+        "type": "object"
+      },
+      "APIKeyUpdate": {
+        "properties": {
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          }
+        },
+        "title": "APIKeyUpdate",
+        "type": "object"
+      },
+      "AcceptInviteRequest": {
+        "properties": {
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ],
+        "title": "AcceptInviteRequest",
+        "type": "object"
+      },
+      "ActionBulkDeleteRequest": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "ActionBulkDeleteRequest",
+        "type": "object"
+      },
+      "AddTursoDatabaseResult": {
+        "properties": {
+          "database": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "AddTursoDatabaseResult",
+        "type": "object"
+      },
+      "AdminInviteRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "default": "admin",
+            "enum": [
+              "admin",
+              "member"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "AdminInviteRequest",
+        "type": "object"
+      },
+      "AdminInviteResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "AdminInviteResponse",
+        "type": "object"
+      },
+      "AdvancedQueryEnvelope": {
+        "properties": {
+          "data": {
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "rows": {
+            "title": "Rows"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "AdvancedQueryEnvelope",
+        "type": "object"
+      },
+      "AdvancedVariableConfig": {
+        "properties": {
+          "collect": {
+            "default": true,
+            "title": "Collect",
+            "type": "boolean"
+          },
+          "expose": {
+            "default": true,
+            "title": "Expose",
+            "type": "boolean"
+          }
+        },
+        "title": "AdvancedVariableConfig",
+        "type": "object"
+      },
+      "AdvancedVariables": {
+        "properties": {
+          "browser": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          },
+          "connectionType": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": false
+            }
+          },
+          "ip": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": false,
+              "expose": false
+            }
+          },
+          "isBot": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          },
+          "language": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          },
+          "os": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          },
+          "referrer": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          },
+          "themePreference": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          },
+          "viewport": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          }
+        },
+        "title": "AdvancedVariables",
+        "type": "object"
+      },
+      "AgentSettings": {
+        "additionalProperties": false,
+        "description": "Complete agent settings envelope persisted to ``tenant_agent_settings``.",
+        "properties": {
+          "general": {
+            "$ref": "#/components/schemas/AgentSettingsGeneral"
+          },
+          "system": {
+            "$ref": "#/components/schemas/AgentSettingsSystem"
+          }
+        },
+        "title": "AgentSettings",
+        "type": "object"
+      },
+      "AgentSettingsGeneral": {
+        "additionalProperties": false,
+        "description": "Generation parameters a tenant/user may override.\n\n``max_tokens`` is optional: ``None`` means \"use the model / profile default\".\nThe numeric fields use sentinel defaults only so the modal can render \u2014 at\napply time only non-None values override the profile config.",
+        "properties": {
+          "max_tokens": {
+            "anyOf": [
+              {
+                "maximum": 200000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "temperature": {
+            "default": 0.7,
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Temperature",
+            "type": "number"
+          },
+          "timeout_seconds": {
+            "default": 60,
+            "maximum": 600.0,
+            "minimum": 10.0,
+            "title": "Timeout Seconds",
+            "type": "integer"
+          },
+          "top_p": {
+            "default": 0.9,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Top P",
+            "type": "number"
+          }
+        },
+        "title": "AgentSettingsGeneral",
+        "type": "object"
+      },
+      "AgentSettingsSystem": {
+        "additionalProperties": false,
+        "description": "Tool and integration exclusion controls for tenants.\n\nSystem prompts are now master-admin-only. Tenants can only disable\nspecific tools, MCP servers, and skills from the global catalogue.\n\nExclusion lists are merged from tenant default and user override\n(user exclusions take precedence).",
+        "properties": {
+          "disabled_mcp_servers": {
+            "description": "List of MCP server IDs to disable (global catalogue IDs).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Disabled Mcp Servers",
+            "type": "array"
+          },
+          "disabled_skills": {
+            "description": "List of skill slugs to disable (global catalogue slugs).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Disabled Skills",
+            "type": "array"
+          },
+          "disabled_tools": {
+            "description": "List of tool names to disable (e.g., 'pages_update', 'queryDatasource').",
+            "items": {
+              "type": "string"
+            },
+            "title": "Disabled Tools",
+            "type": "array"
+          }
+        },
+        "title": "AgentSettingsSystem",
+        "type": "object"
+      },
+      "AuditLogEntry": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "created_at": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "details": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "user_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent"
+          },
+          "user_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "title": "AuditLogEntry",
+        "type": "object"
+      },
+      "AuthFormCreate": {
+        "properties": {
+          "allowed_contact_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": [],
+            "title": "Allowed Contact Types"
+          },
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": {},
+            "title": "Config"
+          },
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "redirect_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Url"
+          },
+          "target_contact_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Contact Type"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "AuthFormCreate",
+        "type": "object"
+      },
+      "AuthFormUpdate": {
+        "properties": {
+          "allowed_contact_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Contact Types"
+          },
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "redirect_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Url"
+          },
+          "target_contact_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Contact Type"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "title": "AuthFormUpdate",
+        "type": "object"
+      },
+      "AuthResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
+          }
+        },
+        "required": [
+          "user",
+          "message"
+        ],
+        "title": "AuthResponse",
+        "type": "object"
+      },
+      "AutomationRollbackRequest": {
+        "properties": {
+          "version_id": {
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id"
+        ],
+        "title": "AutomationRollbackRequest",
+        "type": "object"
+      },
+      "AutomationVersionLabelRequest": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "title": "AutomationVersionLabelRequest",
+        "type": "object"
+      },
+      "BatchDeleteCacheRequest": {
+        "properties": {
+          "delete_remote": {
+            "default": false,
+            "title": "Delete Remote",
+            "type": "boolean"
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "BatchDeleteCacheRequest",
+        "type": "object"
+      },
+      "BatchDeleteDatabaseRequest": {
+        "properties": {
+          "delete_remote": {
+            "default": false,
+            "title": "Delete Remote",
+            "type": "boolean"
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "BatchDeleteDatabaseRequest",
+        "type": "object"
+      },
+      "BatchDeleteQueueRequest": {
+        "properties": {
+          "delete_remote": {
+            "default": false,
+            "title": "Delete Remote",
+            "type": "boolean"
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "BatchDeleteQueueRequest",
+        "type": "object"
+      },
+      "BatchDeleteRequest": {
+        "description": "Batch delete with optional remote teardown.",
+        "properties": {
+          "delete_remote": {
+            "default": false,
+            "title": "Delete Remote",
+            "type": "boolean"
+          },
+          "engine_ids": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Engine Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "engine_ids"
+        ],
+        "title": "BatchDeleteRequest",
+        "type": "object"
+      },
+      "BatchDeleteVectorRequest": {
+        "properties": {
+          "delete_remote": {
+            "default": false,
+            "title": "Delete Remote",
+            "type": "boolean"
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "BatchDeleteVectorRequest",
+        "type": "object"
+      },
+      "BatchPublishEngineResult": {
+        "properties": {
+          "engineId": {
+            "title": "Engineid",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "previewUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previewurl"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "engineId",
+          "success"
+        ],
+        "title": "BatchPublishEngineResult",
+        "type": "object"
+      },
+      "BatchPublishRequest": {
+        "properties": {
+          "engine_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Engine Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "engine_ids"
+        ],
+        "title": "BatchPublishRequest",
+        "type": "object"
+      },
+      "BatchPublishResult": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "results": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BatchPublishEngineResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "BatchPublishResult",
+        "type": "object"
+      },
+      "BatchRequest": {
+        "description": "Base batch request with engine IDs.",
+        "properties": {
+          "engine_ids": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Engine Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "engine_ids"
+        ],
+        "title": "BatchRequest",
+        "type": "object"
+      },
+      "BatchRotateSecretsRequest": {
+        "description": "Request body for POST /api/edge-engines/batch/rotate-secrets-key.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "engine_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Engine Ids",
+            "type": "array"
+          },
+          "strategy": {
+            "default": "hkdf",
+            "enum": [
+              "random",
+              "hkdf"
+            ],
+            "title": "Strategy",
+            "type": "string"
+          },
+          "window_seconds": {
+            "default": 3600,
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Window Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "engine_ids"
+        ],
+        "title": "BatchRotateSecretsRequest",
+        "type": "object"
+      },
+      "BatchToggleRequest": {
+        "description": "Batch toggle active status.",
+        "properties": {
+          "engine_ids": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Engine Ids",
+            "type": "array"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "engine_ids",
+          "is_active"
+        ],
+        "title": "BatchToggleRequest",
+        "type": "object"
+      },
+      "BlocklistEntry": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "ip_or_range": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Or Range"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "BlocklistEntry",
+        "type": "object"
+      },
+      "Body_project_upload_branding_asset": {
+        "properties": {
+          "asset_type": {
+            "default": "favicon",
+            "title": "Asset Type",
+            "type": "string"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_project_upload_branding_asset",
+        "type": "object"
+      },
+      "Body_storage_upload_file": {
+        "properties": {
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "bucket",
+          "provider_id"
+        ],
+        "title": "Body_storage_upload_file",
+        "type": "object"
+      },
+      "BotProtectionMetrics": {
+        "properties": {
+          "banned_ips": {
+            "title": "Banned Ips",
+            "type": "integer"
+          },
+          "blocked_solves": {
+            "title": "Blocked Solves",
+            "type": "integer"
+          },
+          "solve_rate": {
+            "title": "Solve Rate",
+            "type": "number"
+          },
+          "total_challenges": {
+            "title": "Total Challenges",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "solve_rate",
+          "total_challenges",
+          "blocked_solves",
+          "banned_ips"
+        ],
+        "title": "BotProtectionMetrics",
+        "type": "object"
+      },
+      "BotProtectionSettings": {
+        "properties": {
+          "auto_ban_lockout_hours": {
+            "default": 24,
+            "title": "Auto Ban Lockout Hours",
+            "type": "integer"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "protect_forgot_password": {
+            "default": true,
+            "title": "Protect Forgot Password",
+            "type": "boolean"
+          },
+          "protect_login": {
+            "default": true,
+            "title": "Protect Login",
+            "type": "boolean"
+          },
+          "provider": {
+            "default": "cloudflare",
+            "enum": [
+              "cloudflare",
+              "recaptcha_v2",
+              "recaptcha_v3"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "recaptcha_v3_threshold": {
+            "default": 0.5,
+            "title": "Recaptcha V3 Threshold",
+            "type": "number"
+          },
+          "secret_key": {
+            "default": "",
+            "title": "Secret Key",
+            "type": "string"
+          },
+          "site_key": {
+            "default": "",
+            "title": "Site Key",
+            "type": "string"
+          },
+          "widget_size": {
+            "default": "normal",
+            "enum": [
+              "normal",
+              "compact",
+              "invisible"
+            ],
+            "title": "Widget Size",
+            "type": "string"
+          },
+          "widget_theme": {
+            "default": "auto",
+            "enum": [
+              "light",
+              "dark",
+              "auto"
+            ],
+            "title": "Widget Theme",
+            "type": "string"
+          }
+        },
+        "title": "BotProtectionSettings",
+        "type": "object"
+      },
+      "BotProtectionUpdateRequest": {
+        "properties": {
+          "auto_ban_lockout_hours": {
+            "title": "Auto Ban Lockout Hours",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "protect_forgot_password": {
+            "title": "Protect Forgot Password",
+            "type": "boolean"
+          },
+          "protect_login": {
+            "title": "Protect Login",
+            "type": "boolean"
+          },
+          "provider": {
+            "enum": [
+              "cloudflare",
+              "recaptcha_v2",
+              "recaptcha_v3"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "recaptcha_v3_threshold": {
+            "title": "Recaptcha V3 Threshold",
+            "type": "number"
+          },
+          "secret_key": {
+            "title": "Secret Key",
+            "type": "string"
+          },
+          "site_key": {
+            "title": "Site Key",
+            "type": "string"
+          },
+          "widget_size": {
+            "enum": [
+              "normal",
+              "compact",
+              "invisible"
+            ],
+            "title": "Widget Size",
+            "type": "string"
+          },
+          "widget_theme": {
+            "enum": [
+              "light",
+              "dark",
+              "auto"
+            ],
+            "title": "Widget Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "provider",
+          "site_key",
+          "secret_key",
+          "protect_login",
+          "protect_forgot_password",
+          "recaptcha_v3_threshold",
+          "widget_theme",
+          "widget_size",
+          "auto_ban_lockout_hours"
+        ],
+        "title": "BotProtectionUpdateRequest",
+        "type": "object"
+      },
+      "BulkDeleteDraftsResult": {
+        "properties": {
+          "deleted": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted"
+          }
+        },
+        "title": "BulkDeleteDraftsResult",
+        "type": "object"
+      },
+      "CacheBatchResult": {
+        "properties": {
+          "failed": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "success": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Success",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "CacheBatchResult",
+        "type": "object"
+      },
+      "CancelMoveResult": {
+        "properties": {
+          "cancelled": {
+            "title": "Cancelled",
+            "type": "boolean"
+          },
+          "engine": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          }
+        },
+        "required": [
+          "cancelled"
+        ],
+        "title": "CancelMoveResult",
+        "type": "object"
+      },
+      "CloudflareStatusResult": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "deployed": {
+            "title": "Deployed",
+            "type": "boolean"
+          },
+          "url": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "worker_name": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Name"
+          }
+        },
+        "required": [
+          "deployed"
+        ],
+        "title": "CloudflareStatusResult",
+        "type": "object"
+      },
+      "ColumnInfo": {
+        "description": "Column descriptor with both snake_case and frontend-alias keys.",
+        "properties": {
+          "column_default": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column Default"
+          },
+          "column_name": {
+            "title": "Column Name",
+            "type": "string"
+          },
+          "data_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Type"
+          },
+          "foreignColumn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreigncolumn"
+          },
+          "foreignTable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreigntable"
+          },
+          "foreign_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreign Column"
+          },
+          "foreign_table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreign Table"
+          },
+          "isForeign": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isforeign"
+          },
+          "is_foreign": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Foreign"
+          },
+          "is_nullable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Nullable"
+          },
+          "is_primary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Primary"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "column_name",
+          "name"
+        ],
+        "title": "ColumnInfo",
+        "type": "object"
+      },
+      "ComponentThemeCreate": {
+        "properties": {
+          "component_type": {
+            "description": "Component type e.g. InfoList, DataTable",
+            "title": "Component Type",
+            "type": "string"
+          },
+          "is_system": {
+            "default": false,
+            "description": "Whether this is a pre-seeded system theme",
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Name of the theme",
+            "title": "Name",
+            "type": "string"
+          },
+          "styles_data": {
+            "additionalProperties": true,
+            "description": "StylesData JSON object",
+            "title": "Styles Data",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "component_type",
+          "styles_data"
+        ],
+        "title": "ComponentThemeCreate",
+        "type": "object"
+      },
+      "ComponentThemeOut": {
+        "properties": {
+          "component_type": {
+            "description": "Component type e.g. InfoList, DataTable",
+            "title": "Component Type",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_system": {
+            "default": false,
+            "description": "Whether this is a pre-seeded system theme",
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Name of the theme",
+            "title": "Name",
+            "type": "string"
+          },
+          "styles_data": {
+            "additionalProperties": true,
+            "description": "StylesData JSON object",
+            "title": "Styles Data",
+            "type": "object"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "component_type",
+          "styles_data",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ComponentThemeOut",
+        "type": "object"
+      },
+      "ConnectDenoResult": {
+        "properties": {
+          "account_name": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "auto_detected": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Detected"
+          },
+          "detail": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "org_slug": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Slug"
+          },
+          "org_uuid": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Uuid"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "user_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "ConnectDenoResult",
+        "type": "object"
+      },
+      "ConnectRequest": {
+        "description": "List existing workers for a provider account.",
+        "properties": {
+          "provider_id": {
+            "description": "ID of the EdgeProviderAccount",
+            "title": "Provider Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ],
+        "title": "ConnectRequest",
+        "type": "object"
+      },
+      "CookieVariables": {
+        "properties": {
+          "firstVisitAt": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          },
+          "isFirstVisit": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          },
+          "landingPage": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          },
+          "visitCount": {
+            "$ref": "#/components/schemas/AdvancedVariableConfig",
+            "default": {
+              "collect": true,
+              "expose": true
+            }
+          }
+        },
+        "title": "CookieVariables",
+        "type": "object"
+      },
+      "CreateBatchPolicyRequest": {
+        "properties": {
+          "permissive": {
+            "default": true,
+            "title": "Permissive",
+            "type": "boolean"
+          },
+          "policyBaseName": {
+            "title": "Policybasename",
+            "type": "string"
+          },
+          "roles": {
+            "default": [
+              "authenticated"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "tableRules": {
+            "items": {
+              "$ref": "#/components/schemas/TableRulePolicyData"
+            },
+            "title": "Tablerules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "policyBaseName",
+          "tableRules"
+        ],
+        "title": "CreateBatchPolicyRequest",
+        "type": "object"
+      },
+      "CreateNetlifySiteResult": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "url": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "CreateNetlifySiteResult",
+        "type": "object"
+      },
+      "CreatePolicyRequest": {
+        "properties": {
+          "checkExpression": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkexpression"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "permissive": {
+            "default": true,
+            "title": "Permissive",
+            "type": "boolean"
+          },
+          "policyName": {
+            "title": "Policyname",
+            "type": "string"
+          },
+          "propagateTo": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": [],
+            "title": "Propagateto"
+          },
+          "roles": {
+            "default": [
+              "authenticated"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "tableName": {
+            "title": "Tablename",
+            "type": "string"
+          },
+          "usingExpression": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usingexpression"
+          }
+        },
+        "required": [
+          "tableName",
+          "policyName",
+          "operation"
+        ],
+        "title": "CreatePolicyRequest",
+        "type": "object"
+      },
+      "CreateResourceRequest": {
+        "properties": {
+          "name": {
+            "description": "Name for the new resource",
+            "title": "Name",
+            "type": "string"
+          },
+          "region": {
+            "default": "us-east-1",
+            "description": "Region for the resource",
+            "title": "Region",
+            "type": "string"
+          },
+          "resource_type": {
+            "description": "Type of resource to create: 'redis'",
+            "title": "Resource Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_type",
+          "name"
+        ],
+        "title": "CreateResourceRequest",
+        "type": "object"
+      },
+      "CreateSchemaRequest": {
+        "properties": {
+          "db_url": {
+            "title": "Db Url",
+            "type": "string"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "suffix": {
+            "title": "Suffix",
+            "type": "string"
+          }
+        },
+        "required": [
+          "db_url",
+          "suffix"
+        ],
+        "title": "CreateSchemaRequest",
+        "type": "object"
+      },
+      "CreateStorageProviderResult": {
+        "properties": {
+          "account_name": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "config": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          },
+          "created_at": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "provider": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          }
+        },
+        "required": [
+          "is_active"
+        ],
+        "title": "CreateStorageProviderResult",
+        "type": "object"
+      },
+      "CreateVercelProjectResult": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "CreateVercelProjectResult",
+        "type": "object"
+      },
+      "DatabaseBatchResult": {
+        "properties": {
+          "failed": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "success": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Success",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "DatabaseBatchResult",
+        "type": "object"
+      },
+      "DatabaseConnectionRequest": {
+        "properties": {
+          "anonKey": {
+            "minLength": 1,
+            "title": "Anonkey",
+            "type": "string"
+          },
+          "serviceKey": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servicekey"
+          },
+          "url": {
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "anonKey"
+        ],
+        "title": "DatabaseConnectionRequest",
+        "type": "object"
+      },
+      "DatabaseConnectionResponse": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "DatabaseConnectionResponse",
+        "type": "object"
+      },
+      "DeleteEdgeVectorResult": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "message": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "remote_deleted": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remote Deleted"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "DeleteEdgeVectorResult",
+        "type": "object"
+      },
+      "DenoConnectRequest": {
+        "properties": {
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ],
+        "title": "DenoConnectRequest",
+        "type": "object"
+      },
+      "DeployRequest": {
+        "properties": {
+          "adapter_type": {
+            "default": "automations",
+            "description": "Engine type: 'automations' (Lite) or 'full'",
+            "title": "Adapter Type",
+            "type": "string"
+          },
+          "cache_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cache REST auth token",
+            "title": "Cache Token"
+          },
+          "cache_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cache REST URL (Upstash, SRH, etc.)",
+            "title": "Cache Url"
+          },
+          "edge_cache_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "EdgeCache ID to attach",
+            "title": "Edge Cache Id"
+          },
+          "edge_db_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "EdgeDatabase ID to attach (uses default if omitted)",
+            "title": "Edge Db Id"
+          },
+          "edge_queue_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "EdgeQueue ID to attach",
+            "title": "Edge Queue Id"
+          },
+          "provider_id": {
+            "description": "ID of the EdgeProviderAccount",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "worker_name": {
+            "default": "frontbase-edge",
+            "description": "Worker script name",
+            "title": "Worker Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ],
+        "title": "DeployRequest",
+        "type": "object"
+      },
+      "DeployToCloudflareResult": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "engine_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Id"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "url": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "worker_name": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Name"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "DeployToCloudflareResult",
+        "type": "object"
+      },
+      "DiscoverRequest": {
+        "properties": {
+          "credentials": {
+            "additionalProperties": true,
+            "description": "Provider credentials",
+            "title": "Credentials",
+            "type": "object"
+          },
+          "provider": {
+            "description": "Provider type",
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "credentials"
+        ],
+        "title": "DiscoverRequest",
+        "type": "object"
+      },
+      "DiscoverSchemasRequest": {
+        "properties": {
+          "db_url": {
+            "title": "Db Url",
+            "type": "string"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          }
+        },
+        "required": [
+          "db_url"
+        ],
+        "title": "DiscoverSchemasRequest",
+        "type": "object"
+      },
+      "DistinctValuesEnvelope": {
+        "properties": {
+          "data": {
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "DistinctValuesEnvelope",
+        "type": "object"
+      },
+      "EdgeAgentProfileCreate": {
+        "properties": {
+          "excluded_tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excluded Tools"
+          },
+          "max_auto_tools": {
+            "anyOf": [
+              {
+                "maximum": 500.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Auto Tools"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "maximum": 128000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "mcp_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mcp Enabled"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "permissions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permissions"
+          },
+          "skills_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills Enabled"
+          },
+          "slug": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Slug",
+            "type": "string"
+          },
+          "system_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Prompt"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          }
+        },
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "EdgeAgentProfileCreate",
+        "type": "object"
+      },
+      "EdgeAgentProfileUpdate": {
+        "properties": {
+          "excluded_tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excluded Tools"
+          },
+          "max_auto_tools": {
+            "anyOf": [
+              {
+                "maximum": 500.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Auto Tools"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "maximum": 128000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "mcp_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mcp Enabled"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "permissions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permissions"
+          },
+          "skills_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills Enabled"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "system_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Prompt"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          }
+        },
+        "title": "EdgeAgentProfileUpdate",
+        "type": "object"
+      },
+      "EdgeCacheCreate": {
+        "properties": {
+          "cache_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Token"
+          },
+          "cache_url": {
+            "title": "Cache Url",
+            "type": "string"
+          },
+          "is_default": {
+            "default": false,
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "cache_url"
+        ],
+        "title": "EdgeCacheCreate",
+        "type": "object"
+      },
+      "EdgeCacheResponse": {
+        "properties": {
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "cache_url": {
+            "title": "Cache Url",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "engine_count": {
+            "default": 0,
+            "title": "Engine Count",
+            "type": "integer"
+          },
+          "has_token": {
+            "title": "Has Token",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "is_system": {
+            "default": false,
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "linked_engines": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Linked Engines",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "supports_remote_delete": {
+            "default": false,
+            "title": "Supports Remote Delete",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "cache_url",
+          "has_token",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EdgeCacheResponse",
+        "type": "object"
+      },
+      "EdgeCacheUpdate": {
+        "properties": {
+          "cache_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Token"
+          },
+          "cache_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Url"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          }
+        },
+        "title": "EdgeCacheUpdate",
+        "type": "object"
+      },
+      "EdgeDatabaseCreate": {
+        "properties": {
+          "db_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Db Token"
+          },
+          "db_url": {
+            "title": "Db Url",
+            "type": "string"
+          },
+          "is_default": {
+            "default": false,
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "schema_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Name"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "db_url"
+        ],
+        "title": "EdgeDatabaseCreate",
+        "type": "object"
+      },
+      "EdgeDatabaseResponse": {
+        "properties": {
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "db_url": {
+            "title": "Db Url",
+            "type": "string"
+          },
+          "has_token": {
+            "title": "Has Token",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "is_system": {
+            "default": false,
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "linked_engines": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Linked Engines",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "schema_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Name"
+          },
+          "supports_remote_delete": {
+            "default": false,
+            "title": "Supports Remote Delete",
+            "type": "boolean"
+          },
+          "target_count": {
+            "default": 0,
+            "title": "Target Count",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "db_url",
+          "has_token",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EdgeDatabaseResponse",
+        "type": "object"
+      },
+      "EdgeDatabaseUpdate": {
+        "properties": {
+          "db_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Db Token"
+          },
+          "db_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Db Url"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "schema_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Name"
+          }
+        },
+        "title": "EdgeDatabaseUpdate",
+        "type": "object"
+      },
+      "EdgeEngineCreate": {
+        "description": "Create a new edge engine.",
+        "properties": {
+          "adapter_type": {
+            "default": "full",
+            "enum": [
+              "edge",
+              "pages",
+              "automations",
+              "full"
+            ],
+            "title": "Adapter Type",
+            "type": "string"
+          },
+          "datasource_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasource Ids"
+          },
+          "edge_auth_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Auth Id"
+          },
+          "edge_cache_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Cache Id"
+          },
+          "edge_db_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Db Id"
+          },
+          "edge_provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Provider Id"
+          },
+          "edge_queue_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Queue Id"
+          },
+          "engine_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Config"
+          },
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_imported": {
+            "default": false,
+            "title": "Is Imported",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "storage_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Ids"
+          },
+          "url": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "url"
+        ],
+        "title": "EdgeEngineCreate",
+        "type": "object"
+      },
+      "EdgeEngineResponse": {
+        "description": "Edge engine response.",
+        "properties": {
+          "adapter_type": {
+            "title": "Adapter Type",
+            "type": "string"
+          },
+          "bundle_checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bundle Checksum"
+          },
+          "config_checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Checksum"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "datasource_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Datasource Ids",
+            "type": "array"
+          },
+          "datasources": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Datasources",
+            "type": "array"
+          },
+          "edge_auth_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Auth Id"
+          },
+          "edge_cache_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Cache Id"
+          },
+          "edge_cache_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Cache Name"
+          },
+          "edge_db_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Db Id"
+          },
+          "edge_db_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Db Name"
+          },
+          "edge_provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Provider Id"
+          },
+          "edge_queue_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Queue Id"
+          },
+          "edge_queue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Queue Name"
+          },
+          "engine_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Config"
+          },
+          "gpu_models": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GPUModelSummary"
+            },
+            "title": "Gpu Models",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_imported": {
+            "default": false,
+            "title": "Is Imported",
+            "type": "boolean"
+          },
+          "is_outdated": {
+            "default": false,
+            "title": "Is Outdated",
+            "type": "boolean"
+          },
+          "is_shared": {
+            "default": false,
+            "title": "Is Shared",
+            "type": "boolean"
+          },
+          "is_system": {
+            "default": false,
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "last_deployed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Deployed At"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "move_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move Status"
+          },
+          "moved_out_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moved Out At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "storage_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Storage Ids",
+            "type": "array"
+          },
+          "storages": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Storages",
+            "type": "array"
+          },
+          "sync_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Status"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "adapter_type",
+          "url",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EdgeEngineResponse",
+        "type": "object"
+      },
+      "EdgeEngineUpdate": {
+        "description": "Update an existing edge engine.",
+        "properties": {
+          "adapter_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "edge",
+                  "pages",
+                  "automations",
+                  "full"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Type"
+          },
+          "datasource_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasource Ids"
+          },
+          "edge_auth_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Auth Id"
+          },
+          "edge_cache_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Cache Id"
+          },
+          "edge_db_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Db Id"
+          },
+          "edge_provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Provider Id"
+          },
+          "edge_queue_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Queue Id"
+          },
+          "engine_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Config"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "is_imported": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Imported"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "storage_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Ids"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "EdgeEngineUpdate",
+        "type": "object"
+      },
+      "EdgeProviderAccountCreate": {
+        "properties": {
+          "name": {
+            "description": "Name of the provider account (e.g. 'Personal Cloudflare')",
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "description": "Provider type (cloudflare, docker, vercel, etc.)",
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_credentials": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "API tokens, account IDs, etc.",
+            "title": "Provider Credentials"
+          }
+        },
+        "required": [
+          "name",
+          "provider"
+        ],
+        "title": "EdgeProviderAccountCreate",
+        "type": "object"
+      },
+      "EdgeProviderAccountResponse": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "has_credentials": {
+            "default": false,
+            "title": "Has Credentials",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Metadata"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EdgeProviderAccountResponse",
+        "type": "object"
+      },
+      "EdgeProviderAccountUpdate": {
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "provider_credentials": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Credentials"
+          }
+        },
+        "title": "EdgeProviderAccountUpdate",
+        "type": "object"
+      },
+      "EdgeQueueCreate": {
+        "properties": {
+          "is_default": {
+            "default": false,
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "next_signing_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Signing Key"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          },
+          "queue_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Token"
+          },
+          "queue_url": {
+            "title": "Queue Url",
+            "type": "string"
+          },
+          "signing_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signing Key"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "queue_url"
+        ],
+        "title": "EdgeQueueCreate",
+        "type": "object"
+      },
+      "EdgeQueueResponse": {
+        "properties": {
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "engine_count": {
+            "default": 0,
+            "title": "Engine Count",
+            "type": "integer"
+          },
+          "has_signing_key": {
+            "title": "Has Signing Key",
+            "type": "boolean"
+          },
+          "has_token": {
+            "title": "Has Token",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "is_system": {
+            "default": false,
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "linked_engines": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Linked Engines",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "queue_url": {
+            "title": "Queue Url",
+            "type": "string"
+          },
+          "supports_remote_delete": {
+            "default": false,
+            "title": "Supports Remote Delete",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "queue_url",
+          "has_token",
+          "has_signing_key",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EdgeQueueResponse",
+        "type": "object"
+      },
+      "EdgeQueueUpdate": {
+        "properties": {
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "next_signing_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Signing Key"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          },
+          "queue_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Token"
+          },
+          "queue_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Url"
+          },
+          "signing_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signing Key"
+          }
+        },
+        "title": "EdgeQueueUpdate",
+        "type": "object"
+      },
+      "EdgeVectorCreate": {
+        "properties": {
+          "is_default": {
+            "default": false,
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Provider-specific config like dimensions, metric type, table name (no secrets)",
+            "title": "Provider Config"
+          },
+          "vector_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Token"
+          },
+          "vector_url": {
+            "description": "Vector database connection URL or DSN",
+            "maxLength": 500,
+            "title": "Vector Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "vector_url"
+        ],
+        "title": "EdgeVectorCreate",
+        "type": "object"
+      },
+      "EdgeVectorResponse": {
+        "properties": {
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "engine_count": {
+            "default": 0,
+            "title": "Engine Count",
+            "type": "integer"
+          },
+          "has_token": {
+            "title": "Has Token",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "is_system": {
+            "default": false,
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "linked_engines": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Linked Engines",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          },
+          "supports_remote_delete": {
+            "default": false,
+            "title": "Supports Remote Delete",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "vector_url": {
+            "title": "Vector Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "vector_url",
+          "has_token",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EdgeVectorResponse",
+        "type": "object"
+      },
+      "EdgeVectorUpdate": {
+        "properties": {
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          },
+          "vector_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Token"
+          },
+          "vector_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Vector database connection URL or DSN",
+            "title": "Vector Url"
+          }
+        },
+        "title": "EdgeVectorUpdate",
+        "type": "object"
+      },
+      "EngineBatchResult": {
+        "description": "Result of a batch operation.",
+        "properties": {
+          "failed": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "success": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Success",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "EngineBatchResult",
+        "type": "object"
+      },
+      "ExecutionStatus": {
+        "description": "Workflow execution statuses",
+        "enum": [
+          "started",
+          "executing",
+          "completed",
+          "error",
+          "cancelled"
+        ],
+        "title": "ExecutionStatus",
+        "type": "string"
+      },
+      "ExportEngineResult": {
+        "properties": {
+          "bundle": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bundle"
+          },
+          "engine_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Id"
+          },
+          "move_status": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move Status"
+          }
+        },
+        "title": "ExportEngineResult",
+        "type": "object"
+      },
+      "ExportRequest": {
+        "description": "Request body for ``POST /api/edge-engines/{engine_id}/export``.\n\nThe passphrase seals the bundle envelope and is its only transit protection for a\ncross-deployment move \u2014 treat it like a password. It is never stored.",
+        "properties": {
+          "passphrase": {
+            "description": "Passphrase to seal the bundle (>= 8 characters).",
+            "maxLength": 256,
+            "minLength": 8,
+            "title": "Passphrase",
+            "type": "string"
+          }
+        },
+        "required": [
+          "passphrase"
+        ],
+        "title": "ExportRequest",
+        "type": "object"
+      },
+      "FinalizeMoveRequest": {
+        "description": "Request body for ``POST /api/edge-engines/{engine_id}/finalize-move``.",
+        "properties": {
+          "confirm_secret": {
+            "description": "S, revealed by the target import.",
+            "minLength": 1,
+            "title": "Confirm Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirm_secret"
+        ],
+        "title": "FinalizeMoveRequest",
+        "type": "object"
+      },
+      "FinalizeMoveResult": {
+        "properties": {
+          "engine_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Id"
+          },
+          "finalized": {
+            "title": "Finalized",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "finalized"
+        ],
+        "title": "FinalizeMoveResult",
+        "type": "object"
+      },
+      "ForgotPasswordRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "turnstile_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turnstile Token"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "ForgotPasswordRequest",
+        "type": "object"
+      },
+      "ForgotPasswordResponse": {
+        "properties": {
+          "dev_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dev Link"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "ForgotPasswordResponse",
+        "type": "object"
+      },
+      "GPUModelCreate": {
+        "properties": {
+          "edge_engine_id": {
+            "title": "Edge Engine Id",
+            "type": "string"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "model_type": {
+            "title": "Model Type",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          }
+        },
+        "required": [
+          "name",
+          "model_type",
+          "provider",
+          "model_id",
+          "edge_engine_id"
+        ],
+        "title": "GPUModelCreate",
+        "type": "object"
+      },
+      "GPUModelSummary": {
+        "description": "Embedded GPU model summary within engine response.",
+        "properties": {
+          "endpoint_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint Url"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "model_type": {
+            "title": "Model Type",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "model_type"
+        ],
+        "title": "GPUModelSummary",
+        "type": "object"
+      },
+      "GPUModelUpdate": {
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          }
+        },
+        "title": "GPUModelUpdate",
+        "type": "object"
+      },
+      "GeneralSettings": {
+        "properties": {
+          "defaultLanguage": {
+            "default": "en",
+            "title": "Defaultlanguage",
+            "type": "string"
+          },
+          "siteName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sitename"
+          },
+          "siteUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Siteurl"
+          },
+          "timezone": {
+            "default": "UTC",
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "title": "GeneralSettings",
+        "type": "object"
+      },
+      "GenericDeployRequest": {
+        "description": "Provider-agnostic deploy request for the Deploy Engine Wizard.\n\nThe endpoint resolves the provider type from provider_id and routes\nto the correct deployer. `worker_name` is the resource name\n(CF worker, Supabase function, Vercel project, etc.).",
+        "properties": {
+          "adapter_type": {
+            "default": "automations",
+            "enum": [
+              "edge",
+              "pages",
+              "automations",
+              "full"
+            ],
+            "title": "Adapter Type",
+            "type": "string"
+          },
+          "compute_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compute Type"
+          },
+          "datasource_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasource Ids"
+          },
+          "edge_auth_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Auth Id"
+          },
+          "edge_cache_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Cache Id"
+          },
+          "edge_db_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Db Id"
+          },
+          "edge_queue_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Queue Id"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "storage_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Ids"
+          },
+          "worker_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Worker Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "worker_name"
+        ],
+        "title": "GenericDeployRequest",
+        "type": "object"
+      },
+      "GetAgentCatalogueResult": {
+        "properties": {
+          "coreTools": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coretools"
+          },
+          "mcpServers": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mcpservers"
+          },
+          "skills": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          }
+        },
+        "title": "GetAgentCatalogueResult",
+        "type": "object"
+      },
+      "GetCatalogResult": {
+        "properties": {
+          "models_by_type": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Models By Type"
+          },
+          "provider": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "total": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "GetCatalogResult",
+        "type": "object"
+      },
+      "GetEngineLogsResult": {
+        "properties": {
+          "cached": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cached"
+          },
+          "logs": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logs"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "provider": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          }
+        },
+        "title": "GetEngineLogsResult",
+        "type": "object"
+      },
+      "GetEngineSourceResult": {
+        "properties": {
+          "file_count": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Count"
+          },
+          "files": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "total_size": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Size"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "GetEngineSourceResult",
+        "type": "object"
+      },
+      "GetLogRetentionResult": {
+        "properties": {
+          "log_persistence": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Persistence"
+          },
+          "plan_tier": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Tier"
+          },
+          "prerequisites_met": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prerequisites Met"
+          },
+          "provider": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "retention_hours": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Hours"
+          }
+        },
+        "title": "GetLogRetentionResult",
+        "type": "object"
+      },
+      "GetPromptResult": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "messages": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messages"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "name"
+        ],
+        "title": "GetPromptResult",
+        "type": "object"
+      },
+      "GetSchemasResult": {
+        "properties": {
+          "providers": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Providers"
+          },
+          "schemas": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schemas"
+          }
+        },
+        "title": "GetSchemasResult",
+        "type": "object"
+      },
+      "GetWorkspaceAgentTokenResult": {
+        "properties": {
+          "token": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          }
+        },
+        "title": "GetWorkspaceAgentTokenResult",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthStatus": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "test_mode": {
+            "title": "Test Mode",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "test_mode"
+        ],
+        "title": "HealthStatus",
+        "type": "object"
+      },
+      "IPBlockRequest": {
+        "properties": {
+          "ip_or_range": {
+            "title": "Ip Or Range",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "ip_or_range"
+        ],
+        "title": "IPBlockRequest",
+        "type": "object"
+      },
+      "ImportEngineResult": {
+        "properties": {
+          "confirm_secret": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm Secret"
+          },
+          "engine_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Id"
+          },
+          "summary": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "title": "ImportEngineResult",
+        "type": "object"
+      },
+      "ImportRequest": {
+        "description": "Request body for ``POST /api/edge-engines/import``.\n\n``bundle`` is the ``FBENG1.\u2026`` string from an export; ``passphrase`` unseals it.\nOn success the response includes ``confirm_secret`` (S), which the caller pastes\nback into the source to finalize the move.",
+        "properties": {
+          "bundle": {
+            "description": "Sealed bundle from an export.",
+            "minLength": 1,
+            "title": "Bundle",
+            "type": "string"
+          },
+          "passphrase": {
+            "description": "Passphrase used at export time.",
+            "minLength": 1,
+            "title": "Passphrase",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bundle",
+          "passphrase"
+        ],
+        "title": "ImportRequest",
+        "type": "object"
+      },
+      "InspectRequest": {
+        "description": "Inspect a deployed worker's content, settings, or secrets.",
+        "properties": {
+          "provider_id": {
+            "description": "ID of the EdgeProviderAccount",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "worker_name": {
+            "description": "Worker script name to inspect",
+            "title": "Worker Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "worker_name"
+        ],
+        "title": "InspectRequest",
+        "type": "object"
+      },
+      "InspectWorkerSecretsResult": {
+        "properties": {
+          "secrets": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secrets"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "InspectWorkerSecretsResult",
+        "type": "object"
+      },
+      "InspectWorkerSettingsResult": {
+        "properties": {
+          "settings": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "InspectWorkerSettingsResult",
+        "type": "object"
+      },
+      "InstallSkillResult": {
+        "properties": {
+          "installed": {
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "profileId": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profileid"
+          },
+          "skillId": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skillid"
+          }
+        },
+        "required": [
+          "installed"
+        ],
+        "title": "InstallSkillResult",
+        "type": "object"
+      },
+      "InviteInfo": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "tenant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Name"
+          },
+          "tenant_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Slug"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ],
+        "title": "InviteInfo",
+        "type": "object"
+      },
+      "LicenseValidationRequest": {
+        "properties": {
+          "install_id": {
+            "title": "Install Id",
+            "type": "string"
+          },
+          "license_key": {
+            "title": "License Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_key",
+          "install_id"
+        ],
+        "title": "LicenseValidationRequest",
+        "type": "object"
+      },
+      "LicenseValidationResponse": {
+        "properties": {
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "tier",
+          "features",
+          "message"
+        ],
+        "title": "LicenseValidationResponse",
+        "type": "object"
+      },
+      "ListApiKeysResult": {
+        "properties": {
+          "keys": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keys"
+          },
+          "total": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "ListApiKeysResult",
+        "type": "object"
+      },
+      "ListEnginesForProviderResult": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "engines": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engines"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "ListEnginesForProviderResult",
+        "type": "object"
+      },
+      "ListMcpServerToolsResult": {
+        "properties": {
+          "tools": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tools"
+          },
+          "total": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "ListMcpServerToolsResult",
+        "type": "object"
+      },
+      "ListMcpServersResult": {
+        "properties": {
+          "mcpServers": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mcpservers"
+          },
+          "total": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "ListMcpServersResult",
+        "type": "object"
+      },
+      "ListProfileSkillsResult": {
+        "properties": {
+          "skills": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          },
+          "total": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "ListProfileSkillsResult",
+        "type": "object"
+      },
+      "ListProfilesResult": {
+        "properties": {
+          "profiles": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profiles"
+          },
+          "total": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "ListProfilesResult",
+        "type": "object"
+      },
+      "ListPromptsResult": {
+        "properties": {
+          "prompts": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompts"
+          }
+        },
+        "title": "ListPromptsResult",
+        "type": "object"
+      },
+      "ListResourcesResult": {
+        "properties": {
+          "resources": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resources"
+          }
+        },
+        "title": "ListResourcesResult",
+        "type": "object"
+      },
+      "ListSecurityEventsResult": {
+        "properties": {
+          "events": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events"
+          },
+          "limit": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "offset": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offset"
+          },
+          "total": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "ListSecurityEventsResult",
+        "type": "object"
+      },
+      "ListSkillsResult": {
+        "properties": {
+          "skills": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          },
+          "total": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "ListSkillsResult",
+        "type": "object"
+      },
+      "ListToolsResult": {
+        "properties": {
+          "tools": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tools"
+          }
+        },
+        "title": "ListToolsResult",
+        "type": "object"
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "turnstile_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turnstile Token"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
+      "McpRootResult": {
+        "properties": {
+          "capabilities": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "instructions": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions"
+          },
+          "name": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "protocolVersion": {
+            "title": "Protocolversion",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "version"
+        ],
+        "title": "McpRootResult",
+        "type": "object"
+      },
+      "McpServerCreate": {
+        "properties": {
+          "auth_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Type"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "profile_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Slug"
+          },
+          "slug": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Slug",
+            "type": "string"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "tool_filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Filter"
+          },
+          "transport": {
+            "default": "streamable-http",
+            "title": "Transport",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug",
+          "url"
+        ],
+        "title": "McpServerCreate",
+        "type": "object"
+      },
+      "McpServerUpdate": {
+        "properties": {
+          "auth_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Type"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "profile_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Slug"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "tool_filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Filter"
+          },
+          "transport": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transport"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "McpServerUpdate",
+        "type": "object"
+      },
+      "MessageResponse": {
+        "description": "Bare `{\"message\": ...}` acknowledgement (deletes and simple actions).",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "MessageResponse",
+        "type": "object"
+      },
+      "MoveEngineToProjectEndpointResult": {
+        "properties": {
+          "engine_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Id"
+          },
+          "summary": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "title": "MoveEngineToProjectEndpointResult",
+        "type": "object"
+      },
+      "MoveToProjectRequest": {
+        "description": "Request body for ``POST /api/edge-engines/{engine_id}/move-to-project``.\n\nSame-deployment fast path: move the engine to another project in THIS deployment\natomically (no bundle, no passphrase).",
+        "properties": {
+          "target_project_id": {
+            "minLength": 1,
+            "title": "Target Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_project_id"
+        ],
+        "title": "MoveToProjectRequest",
+        "type": "object"
+      },
+      "NodePosition": {
+        "description": "Position of a node on the canvas",
+        "properties": {
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "NodePosition",
+        "type": "object"
+      },
+      "PageCreateRequest": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "isHomepage": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": false,
+            "title": "Ishomepage"
+          },
+          "isPublic": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": true,
+            "title": "Ispublic"
+          },
+          "keywords": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keywords"
+          },
+          "layoutData": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layoutdata"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "PageCreateRequest",
+        "type": "object"
+      },
+      "PageDeploymentOut": {
+        "properties": {
+          "contentHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contenthash"
+          },
+          "engineId": {
+            "title": "Engineid",
+            "type": "string"
+          },
+          "errorMessage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errormessage"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "previewUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previewurl"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publishedat"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "target": {
+            "$ref": "#/components/schemas/PageDeploymentTarget"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "id",
+          "engineId",
+          "target"
+        ],
+        "title": "PageDeploymentOut",
+        "type": "object"
+      },
+      "PageDeploymentTarget": {
+        "description": "Engine summary embedded in a deployment record (may be empty).",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "is_shared": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Shared"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "PageDeploymentTarget",
+        "type": "object"
+      },
+      "PageEnvelope": {
+        "description": "Single-page (or data-less ack) envelope used by the pages CRUD routes.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "PageEnvelope",
+        "type": "object"
+      },
+      "PageListEnvelope": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PageOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "PageListEnvelope",
+        "type": "object"
+      },
+      "PageOut": {
+        "description": "serialize_page() shape.",
+        "properties": {
+          "contentHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contenthash"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "deletedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletedat"
+          },
+          "deployments": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PageDeploymentOut"
+            },
+            "title": "Deployments",
+            "type": "array"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "hasUnpublishedChanges": {
+            "title": "Hasunpublishedchanges",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "isHomepage": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ishomepage"
+          },
+          "isPublic": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ispublic"
+          },
+          "keywords": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keywords"
+          },
+          "layoutData": {
+            "additionalProperties": true,
+            "title": "Layoutdata",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updatedAt": {
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "layoutData",
+          "createdAt",
+          "updatedAt",
+          "hasUnpublishedChanges"
+        ],
+        "title": "PageOut",
+        "type": "object"
+      },
+      "PageUpdateRequest": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "isHomepage": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ishomepage"
+          },
+          "isPublic": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ispublic"
+          },
+          "keywords": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keywords"
+          },
+          "layoutData": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layoutdata"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "PageUpdateRequest",
+        "type": "object"
+      },
+      "PageVersionEnvelope": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageVersionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "PageVersionEnvelope",
+        "type": "object"
+      },
+      "PageVersionListEnvelope": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PageVersionOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "PageVersionListEnvelope",
+        "type": "object"
+      },
+      "PageVersionOut": {
+        "description": "serialize_version() shape; layoutData only present on the detail route.",
+        "properties": {
+          "contentHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contenthash"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "layoutData": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layoutdata"
+          },
+          "pageId": {
+            "title": "Pageid",
+            "type": "string"
+          },
+          "versionNumber": {
+            "title": "Versionnumber",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "pageId",
+          "versionNumber",
+          "createdAt"
+        ],
+        "title": "PageVersionOut",
+        "type": "object"
+      },
+      "Parameter": {
+        "description": "Node parameter definition",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": false,
+            "title": "Required"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "Parameter",
+        "type": "object"
+      },
+      "PrivacySettings-Input": {
+        "properties": {
+          "advancedVariables": {
+            "$ref": "#/components/schemas/AdvancedVariables",
+            "default": {
+              "browser": {
+                "collect": true,
+                "expose": true
+              },
+              "connectionType": {
+                "collect": true,
+                "expose": false
+              },
+              "ip": {
+                "collect": false,
+                "expose": false
+              },
+              "isBot": {
+                "collect": true,
+                "expose": true
+              },
+              "language": {
+                "collect": true,
+                "expose": true
+              },
+              "os": {
+                "collect": true,
+                "expose": true
+              },
+              "referrer": {
+                "collect": true,
+                "expose": true
+              },
+              "themePreference": {
+                "collect": true,
+                "expose": true
+              },
+              "viewport": {
+                "collect": true,
+                "expose": true
+              }
+            }
+          },
+          "cookieExpiryDays": {
+            "default": 365,
+            "title": "Cookieexpirydays",
+            "type": "integer"
+          },
+          "cookieVariables": {
+            "$ref": "#/components/schemas/CookieVariables",
+            "default": {
+              "firstVisitAt": {
+                "collect": true,
+                "expose": true
+              },
+              "isFirstVisit": {
+                "collect": true,
+                "expose": true
+              },
+              "landingPage": {
+                "collect": true,
+                "expose": true
+              },
+              "visitCount": {
+                "collect": true,
+                "expose": true
+              }
+            }
+          },
+          "customHeadHtml": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customheadhtml"
+          },
+          "enableVisitorTracking": {
+            "default": false,
+            "title": "Enablevisitortracking",
+            "type": "boolean"
+          },
+          "ga4MeasurementId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ga4Measurementid"
+          },
+          "gtmContainerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gtmcontainerid"
+          },
+          "requireCookieConsent": {
+            "default": true,
+            "title": "Requirecookieconsent",
+            "type": "boolean"
+          }
+        },
+        "title": "PrivacySettings",
+        "type": "object"
+      },
+      "PrivacySettings-Output": {
+        "properties": {
+          "advancedVariables": {
+            "$ref": "#/components/schemas/AdvancedVariables",
+            "default": {
+              "browser": {
+                "collect": true,
+                "expose": true
+              },
+              "connectionType": {
+                "collect": true,
+                "expose": false
+              },
+              "ip": {
+                "collect": false,
+                "expose": false
+              },
+              "isBot": {
+                "collect": true,
+                "expose": true
+              },
+              "language": {
+                "collect": true,
+                "expose": true
+              },
+              "os": {
+                "collect": true,
+                "expose": true
+              },
+              "referrer": {
+                "collect": true,
+                "expose": true
+              },
+              "themePreference": {
+                "collect": true,
+                "expose": true
+              },
+              "viewport": {
+                "collect": true,
+                "expose": true
+              }
+            }
+          },
+          "cookieExpiryDays": {
+            "default": 365,
+            "title": "Cookieexpirydays",
+            "type": "integer"
+          },
+          "cookieVariables": {
+            "$ref": "#/components/schemas/CookieVariables",
+            "default": {
+              "firstVisitAt": {
+                "collect": true,
+                "expose": true
+              },
+              "isFirstVisit": {
+                "collect": true,
+                "expose": true
+              },
+              "landingPage": {
+                "collect": true,
+                "expose": true
+              },
+              "visitCount": {
+                "collect": true,
+                "expose": true
+              }
+            }
+          },
+          "customHeadHtml": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customheadhtml"
+          },
+          "enableVisitorTracking": {
+            "default": false,
+            "title": "Enablevisitortracking",
+            "type": "boolean"
+          },
+          "ga4MeasurementId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ga4Measurementid"
+          },
+          "gtmContainerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gtmcontainerid"
+          },
+          "requireCookieConsent": {
+            "default": true,
+            "title": "Requirecookieconsent",
+            "type": "boolean"
+          }
+        },
+        "title": "PrivacySettings",
+        "type": "object"
+      },
+      "ProjectResponse": {
+        "properties": {
+          "appUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appurl"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "faviconUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Faviconurl"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "logoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logourl"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "supabase_anon_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supabase Anon Key"
+          },
+          "supabase_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supabase Url"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "usersConfig": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usersconfig"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProjectResponse",
+        "type": "object"
+      },
+      "ProjectUpdateRequest": {
+        "properties": {
+          "appUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appurl"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "faviconUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Faviconurl"
+          },
+          "logoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logourl"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "supabase_anon_key": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supabase Anon Key"
+          },
+          "supabase_service_key": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supabase Service Key"
+          },
+          "supabase_url": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supabase Url"
+          },
+          "usersConfig": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usersconfig"
+          }
+        },
+        "title": "ProjectUpdateRequest",
+        "type": "object"
+      },
+      "PublishDraftBatchResult": {
+        "properties": {
+          "engineId": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engineid"
+          },
+          "error": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "message": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "name": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "results": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results"
+          },
+          "success": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success"
+          },
+          "version": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "title": "PublishDraftBatchResult",
+        "type": "object"
+      },
+      "PublishResponse": {
+        "description": "Response from publishing a workflow",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "workflow_id",
+          "version"
+        ],
+        "title": "PublishResponse",
+        "type": "object"
+      },
+      "PublishResult": {
+        "description": "Single-target publish: {success, message?, previewUrl?, version?} | {success, error}.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "previewUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previewurl"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "PublishResult",
+        "type": "object"
+      },
+      "QueueBatchResult": {
+        "properties": {
+          "failed": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "success": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Success",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "QueueBatchResult",
+        "type": "object"
+      },
+      "QueueHealth": {
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "active_workers": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Workers"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "registered": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registered"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "QueueHealth",
+        "type": "object"
+      },
+      "RLSMetadataRequest": {
+        "properties": {
+          "formData": {
+            "additionalProperties": true,
+            "title": "Formdata",
+            "type": "object"
+          },
+          "generatedCheck": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generatedcheck"
+          },
+          "generatedUsing": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generatedusing"
+          },
+          "policyName": {
+            "title": "Policyname",
+            "type": "string"
+          },
+          "tableName": {
+            "title": "Tablename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tableName",
+          "policyName",
+          "formData"
+        ],
+        "title": "RLSMetadataRequest",
+        "type": "object"
+      },
+      "ReconfigureRequest": {
+        "description": "Reconfigure an engine's DB/cache/queue bindings and push secrets to the remote.",
+        "properties": {
+          "datasource_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasource Ids"
+          },
+          "edge_auth_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Auth Id"
+          },
+          "edge_cache_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Cache Id"
+          },
+          "edge_db_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Db Id"
+          },
+          "edge_queue_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Queue Id"
+          },
+          "storage_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Ids"
+          }
+        },
+        "title": "ReconfigureRequest",
+        "type": "object"
+      },
+      "RedisSettings": {
+        "properties": {
+          "cache_ttl_count": {
+            "default": 300,
+            "title": "Cache Ttl Count",
+            "type": "integer"
+          },
+          "cache_ttl_data": {
+            "default": 60,
+            "title": "Cache Ttl Data",
+            "type": "integer"
+          },
+          "redis_enabled": {
+            "default": false,
+            "title": "Redis Enabled",
+            "type": "boolean"
+          },
+          "redis_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis Token"
+          },
+          "redis_type": {
+            "default": "upstash",
+            "enum": [
+              "upstash",
+              "self-hosted"
+            ],
+            "title": "Redis Type",
+            "type": "string"
+          },
+          "redis_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis Url"
+          }
+        },
+        "title": "RedisSettings",
+        "type": "object"
+      },
+      "RedisTestResult": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "RedisTestResult",
+        "type": "object"
+      },
+      "RemoteDeleteAck": {
+        "description": "Edge-resource delete: local ack + whether the remote resource was deleted.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "remote_deleted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remote Deleted"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "RemoteDeleteAck",
+        "type": "object"
+      },
+      "RemoveTursoDatabaseResult": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "detail",
+          "success"
+        ],
+        "title": "RemoveTursoDatabaseResult",
+        "type": "object"
+      },
+      "ResetAgentSettingsResult": {
+        "properties": {
+          "deleted": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ResetAgentSettingsResult",
+        "type": "object"
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "turnstile_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turnstile Token"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "required": [
+          "email",
+          "token",
+          "password"
+        ],
+        "title": "ResetPasswordRequest",
+        "type": "object"
+      },
+      "ResetRolePasswordRequest": {
+        "properties": {
+          "db_url": {
+            "title": "Db Url",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "title": "Provider Account Id",
+            "type": "string"
+          },
+          "schema_name": {
+            "title": "Schema Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "db_url",
+          "schema_name",
+          "provider_account_id"
+        ],
+        "title": "ResetRolePasswordRequest",
+        "type": "object"
+      },
+      "RevealApiKeyResult": {
+        "properties": {
+          "key": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          }
+        },
+        "title": "RevealApiKeyResult",
+        "type": "object"
+      },
+      "RlsBulkDeleteRequest": {
+        "properties": {
+          "policies": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Policies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "policies"
+        ],
+        "title": "RlsBulkDeleteRequest",
+        "type": "object"
+      },
+      "RlsDataEnvelope": {
+        "description": "Arbitrary-data envelope (metadata list/detail shapes vary by source).",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "RlsDataEnvelope",
+        "type": "object"
+      },
+      "RlsListEnvelope": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "RlsListEnvelope",
+        "type": "object"
+      },
+      "RlsMessageEnvelope": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "RlsMessageEnvelope",
+        "type": "object"
+      },
+      "RlsMetadataSaveData": {
+        "properties": {
+          "policyName": {
+            "title": "Policyname",
+            "type": "string"
+          },
+          "sqlHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sqlhash"
+          },
+          "tableName": {
+            "title": "Tablename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tableName",
+          "policyName"
+        ],
+        "title": "RlsMetadataSaveData",
+        "type": "object"
+      },
+      "RlsMetadataSaveEnvelope": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RlsMetadataSaveData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "RlsMetadataSaveEnvelope",
+        "type": "object"
+      },
+      "RlsVerifyData": {
+        "properties": {
+          "formData": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formdata"
+          },
+          "hasMetadata": {
+            "title": "Hasmetadata",
+            "type": "boolean"
+          },
+          "isVerified": {
+            "title": "Isverified",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "hasMetadata",
+          "isVerified"
+        ],
+        "title": "RlsVerifyData",
+        "type": "object"
+      },
+      "RlsVerifyEnvelope": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RlsVerifyData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "RlsVerifyEnvelope",
+        "type": "object"
+      },
+      "RollbackEnvelope": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RollbackResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "RollbackEnvelope",
+        "type": "object"
+      },
+      "RollbackRequest": {
+        "properties": {
+          "version_id": {
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id"
+        ],
+        "title": "RollbackRequest",
+        "type": "object"
+      },
+      "RollbackResult": {
+        "properties": {
+          "preRollbackVersionId": {
+            "title": "Prerollbackversionid",
+            "type": "string"
+          },
+          "restoredVersionNumber": {
+            "title": "Restoredversionnumber",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "preRollbackVersionId",
+          "restoredVersionNumber"
+        ],
+        "title": "RollbackResult",
+        "type": "object"
+      },
+      "RollbackRotationRequest": {
+        "description": "Request body for POST /api/edge-engines/{engine_id}/rollback-rotation.",
+        "properties": {
+          "rotation_id": {
+            "description": "Rotation ID to rollback",
+            "title": "Rotation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rotation_id"
+        ],
+        "title": "RollbackRotationRequest",
+        "type": "object"
+      },
+      "RootStatus": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "test_mode": {
+            "title": "Test Mode",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "message",
+          "test_mode"
+        ],
+        "title": "RootStatus",
+        "type": "object"
+      },
+      "RotateSecretsKeyRequest": {
+        "description": "Request body for POST /api/edge-engines/{engine_id}/rotate-secrets-key.",
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "description": "If true, validate + plan only; no mutation or deploy.",
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "strategy": {
+            "default": "random",
+            "description": "Key generation strategy: 'random' (new 256-bit key) or 'hkdf' (derive from system_key).",
+            "enum": [
+              "random",
+              "hkdf"
+            ],
+            "title": "Strategy",
+            "type": "string"
+          },
+          "window_seconds": {
+            "default": 300,
+            "description": "Transition window (s) during which the old key stays valid.",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Window Seconds",
+            "type": "integer"
+          }
+        },
+        "title": "RotateSecretsKeyRequest",
+        "type": "object"
+      },
+      "RotationHistoryResult": {
+        "properties": {
+          "history": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History"
+          }
+        },
+        "title": "RotationHistoryResult",
+        "type": "object"
+      },
+      "SecurityEventsSummaryResult": {
+        "properties": {
+          "by_severity": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Severity"
+          },
+          "total": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "SecurityEventsSummaryResult",
+        "type": "object"
+      },
+      "SecuritySettings": {
+        "description": "Security-log IP retention (Post-sprint 2.1 \u2014 configurable GDPR strict mode).\n\nControls how long security audit logs (`audit_logs`) keep the FULL client IP\nbefore it is purged to NULL (the anonymized /24 or /48 value is retained\nlong-term). Full IPs are needed short-term for new-IP login alerts.\n\nfull_ip_retention_days:\n  >0  = retain the full IP for this many days, then purge (default 30)\n   0  = anonymize immediately (strictest privacy; disables new-IP alerts)\n  -1  = retain indefinitely (legitimate-interest mode; never auto-purge)",
+        "properties": {
+          "full_ip_retention_days": {
+            "default": 30,
+            "title": "Full Ip Retention Days",
+            "type": "integer"
+          }
+        },
+        "title": "SecuritySettings",
+        "type": "object"
+      },
+      "SetWorkspaceDefaultRequest": {
+        "properties": {
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ],
+        "title": "SetWorkspaceDefaultRequest",
+        "type": "object"
+      },
+      "SettingsResponse": {
+        "additionalProperties": false,
+        "description": "Response for GET /api/agent/settings.\n\n``settings`` is the *effective* merged set (profile \u2192 tenant \u2192 user) so the\nmodal shows the user exactly what their next turn will use.\n``inherited_from`` describes the most specific layer that contributed.",
+        "properties": {
+          "can_modify_tenant": {
+            "default": false,
+            "description": "True when the caller may write tenant-wide (user_id IS NULL) settings",
+            "title": "Can Modify Tenant",
+            "type": "boolean"
+          },
+          "inherited_from": {
+            "default": "default",
+            "description": "user | tenant | profile | default",
+            "title": "Inherited From",
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/AgentSettings"
+          }
+        },
+        "required": [
+          "settings"
+        ],
+        "title": "SettingsResponse",
+        "type": "object"
+      },
+      "SettingsUpdate": {
+        "additionalProperties": false,
+        "description": "Request body for PUT /api/agent/settings.\n\n``scope`` selects which row is written: ``user`` (the caller's override) or\n``tenant`` (tenant-wide default; requires admin / master).",
+        "properties": {
+          "general": {
+            "$ref": "#/components/schemas/AgentSettingsGeneral"
+          },
+          "scope": {
+            "default": "user",
+            "pattern": "^(user|tenant)$",
+            "title": "Scope",
+            "type": "string"
+          },
+          "system": {
+            "$ref": "#/components/schemas/AgentSettingsSystem"
+          }
+        },
+        "title": "SettingsUpdate",
+        "type": "object"
+      },
+      "SignupRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "invite_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Code"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "workspace_name": {
+            "title": "Workspace Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "workspace_name",
+          "slug"
+        ],
+        "title": "SignupRequest",
+        "type": "object"
+      },
+      "SkillCreate": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "profile_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Slug"
+          },
+          "slug": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Slug",
+            "type": "string"
+          },
+          "tool_definitions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Tool Definitions",
+            "type": "array"
+          },
+          "version": {
+            "default": "1.0.0",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "tool_definitions"
+        ],
+        "title": "SkillCreate",
+        "type": "object"
+      },
+      "SkillInstall": {
+        "properties": {
+          "config_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Overrides"
+          },
+          "skill_id": {
+            "title": "Skill Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id"
+        ],
+        "title": "SkillInstall",
+        "type": "object"
+      },
+      "SkillUpdate": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "profile_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Slug"
+          },
+          "tool_definitions": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Definitions"
+          }
+        },
+        "title": "SkillUpdate",
+        "type": "object"
+      },
+      "SlugCheck": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "title": "SlugCheck",
+        "type": "object"
+      },
+      "StatusRequest": {
+        "properties": {
+          "provider_id": {
+            "description": "ID of the EdgeProviderAccount",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "worker_name": {
+            "default": "frontbase-edge",
+            "title": "Worker Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ],
+        "title": "StatusRequest",
+        "type": "object"
+      },
+      "StorageBucketResult": {
+        "description": "Bucket create / compute-size / bucket-by-id data return.",
+        "properties": {
+          "bucket": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bucket"
+          },
+          "cached": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cached"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "size": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "StorageBucketResult",
+        "type": "object"
+      },
+      "StorageFilesResult": {
+        "description": "`GET /list` \u2014 paged file listing.",
+        "properties": {
+          "files": {
+            "default": [],
+            "items": {},
+            "title": "Files",
+            "type": "array"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "StorageFilesResult",
+        "type": "object"
+      },
+      "StorageMessageAck": {
+        "description": "`{success, message?}` \u2014 provider/bucket delete, update, empty, move, folder.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "StorageMessageAck",
+        "type": "object"
+      },
+      "StorageResultEnvelope": {
+        "description": "Generic `{success, **dynamic}` for upload / move-cross (provider-specific).",
+        "properties": {
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "StorageResultEnvelope",
+        "type": "object"
+      },
+      "StorageSignedUrlResult": {
+        "description": "Signed/public URL responses (one of signedUrl/publicUrl populated).",
+        "properties": {
+          "publicUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicurl"
+          },
+          "signedUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signedurl"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "StorageSignedUrlResult",
+        "type": "object"
+      },
+      "SuccessDataEnvelope": {
+        "description": "`{\"success\", \"data\"?, \"message\"?, \"error\"?}` envelope.",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "SuccessDataEnvelope",
+        "type": "object"
+      },
+      "SuccessMessageAck": {
+        "description": "`{\"success\", \"message\"?}` acknowledgement.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "SuccessMessageAck",
+        "type": "object"
+      },
+      "SuccessMessageResponse": {
+        "description": "`{\"success\": bool, \"message\"?: str}` \u2014 blocklist ops, reset, bot toggle.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "SuccessMessageResponse",
+        "type": "object"
+      },
+      "SuccessResponse": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "SuccessResponse",
+        "type": "object"
+      },
+      "SyncEngineLogsResult": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "synced": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced"
+          }
+        },
+        "title": "SyncEngineLogsResult",
+        "type": "object"
+      },
+      "TableDataEnvelope": {
+        "description": "Paged rows from a user table \u2014 rows are dynamic dicts by nature.",
+        "properties": {
+          "data": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "TableDataEnvelope",
+        "type": "object"
+      },
+      "TableRef": {
+        "description": "A table reference from the database catalog (e.g. Supabase definitions).\n\n`schema` is exposed as the JSON key `schema` (matching the catalog payload)\nvia an alias, so the field name does not shadow `BaseModel.schema`.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "schema": {
+            "default": "public",
+            "title": "Schema",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "TableRef",
+        "type": "object"
+      },
+      "TableRulePolicyData": {
+        "properties": {
+          "checkExpression": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkexpression"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "tableName": {
+            "title": "Tablename",
+            "type": "string"
+          },
+          "usingExpression": {
+            "title": "Usingexpression",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tableName",
+          "operation",
+          "usingExpression"
+        ],
+        "title": "TableRulePolicyData",
+        "type": "object"
+      },
+      "TableSchemaData": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnInfo"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "table_name": {
+            "title": "Table Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_name",
+          "columns"
+        ],
+        "title": "TableSchemaData",
+        "type": "object"
+      },
+      "TableSchemaEnvelope": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TableSchemaData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "TableSchemaEnvelope",
+        "type": "object"
+      },
+      "TablesData": {
+        "properties": {
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/TableRef"
+            },
+            "title": "Tables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tables"
+        ],
+        "title": "TablesData",
+        "type": "object"
+      },
+      "TablesEnvelope": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TablesData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "TablesEnvelope",
+        "type": "object"
+      },
+      "TargetToggleRequest": {
+        "description": "Request to toggle a workflow on a specific target engine",
+        "properties": {
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "is_active"
+        ],
+        "title": "TargetToggleRequest",
+        "type": "object"
+      },
+      "TeardownRequest": {
+        "properties": {
+          "provider_id": {
+            "description": "ID of the EdgeProviderAccount",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "worker_name": {
+            "default": "frontbase-edge",
+            "title": "Worker Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id"
+        ],
+        "title": "TeardownRequest",
+        "type": "object"
+      },
+      "TelemetryAck": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "TelemetryAck",
+        "type": "object"
+      },
+      "TelemetryData": {
+        "properties": {
+          "automation_count": {
+            "title": "Automation Count",
+            "type": "integer"
+          },
+          "data_sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Data Sources",
+            "type": "array"
+          },
+          "edition": {
+            "title": "Edition",
+            "type": "string"
+          },
+          "email_providers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Email Providers",
+            "type": "array"
+          },
+          "install_id": {
+            "title": "Install Id",
+            "type": "string"
+          },
+          "page_count": {
+            "title": "Page Count",
+            "type": "integer"
+          },
+          "storage_providers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Storage Providers",
+            "type": "array"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
+          }
+        },
+        "required": [
+          "install_id",
+          "edition",
+          "page_count",
+          "automation_count",
+          "data_sources",
+          "storage_providers",
+          "email_providers"
+        ],
+        "title": "TelemetryData",
+        "type": "object"
+      },
+      "TemplateFilter": {
+        "properties": {
+          "args": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Args"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description"
+        ],
+        "title": "TemplateFilter",
+        "type": "object"
+      },
+      "TemplateRegistryResponse": {
+        "properties": {
+          "filters": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateFilter"
+            },
+            "title": "Filters",
+            "type": "array"
+          },
+          "variables": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateVariable"
+            },
+            "title": "Variables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "variables",
+          "filters"
+        ],
+        "title": "TemplateRegistryResponse",
+        "type": "object"
+      },
+      "TemplateVariable": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "type",
+          "source"
+        ],
+        "title": "TemplateVariable",
+        "type": "object"
+      },
+      "TenantSecretsAuditLogsResult": {
+        "properties": {
+          "engine_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Id"
+          },
+          "filters": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filters"
+          },
+          "is_shared": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Shared"
+          },
+          "logs": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logs"
+          }
+        },
+        "title": "TenantSecretsAuditLogsResult",
+        "type": "object"
+      },
+      "TestCacheResult": {
+        "properties": {
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "TestCacheResult",
+        "type": "object"
+      },
+      "TestConnectionRequest": {
+        "properties": {
+          "credentials": {
+            "additionalProperties": true,
+            "description": "Provider credentials to validate",
+            "title": "Credentials",
+            "type": "object"
+          },
+          "provider": {
+            "description": "Provider type (cloudflare, supabase, vercel, netlify, deno, upstash)",
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "credentials"
+        ],
+        "title": "TestConnectionRequest",
+        "type": "object"
+      },
+      "TestConnectionResult": {
+        "description": "Result of testing an engine connection.",
+        "properties": {
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "TestConnectionResult",
+        "type": "object"
+      },
+      "TestExecuteRequest": {
+        "description": "Request to test-execute a workflow draft",
+        "properties": {
+          "parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters"
+          }
+        },
+        "title": "TestExecuteRequest",
+        "type": "object"
+      },
+      "TestExecuteResponse": {
+        "description": "Response from test execution",
+        "properties": {
+          "execution_id": {
+            "title": "Execution Id",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExecutionStatus"
+          }
+        },
+        "required": [
+          "execution_id",
+          "status"
+        ],
+        "title": "TestExecuteResponse",
+        "type": "object"
+      },
+      "TestMcpServerResult": {
+        "properties": {
+          "reachable": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reachable"
+          },
+          "serverId": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serverid"
+          }
+        },
+        "title": "TestMcpServerResult",
+        "type": "object"
+      },
+      "TestQueueInline": {
+        "properties": {
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "queue_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Token"
+          },
+          "queue_url": {
+            "title": "Queue Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "queue_url"
+        ],
+        "title": "TestQueueInline",
+        "type": "object"
+      },
+      "TestQueueResult": {
+        "properties": {
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "TestQueueResult",
+        "type": "object"
+      },
+      "TestTursoDatabaseResult": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "success": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success"
+          }
+        },
+        "title": "TestTursoDatabaseResult",
+        "type": "object"
+      },
+      "ToggleActiveRequest": {
+        "properties": {
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "is_active"
+        ],
+        "title": "ToggleActiveRequest",
+        "type": "object"
+      },
+      "ToggleDraftActiveResult": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "is_active": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "title": "ToggleDraftActiveResult",
+        "type": "object"
+      },
+      "ToggleRLSRequest": {
+        "properties": {
+          "enable": {
+            "title": "Enable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enable"
+        ],
+        "title": "ToggleRLSRequest",
+        "type": "object"
+      },
+      "TursoDatabaseEntry": {
+        "properties": {
+          "name": {
+            "description": "Display name for the database",
+            "title": "Name",
+            "type": "string"
+          },
+          "token": {
+            "description": "Database auth token",
+            "title": "Token",
+            "type": "string"
+          },
+          "url": {
+            "description": "libsql:// URL for the database",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "token"
+        ],
+        "title": "TursoDatabaseEntry",
+        "type": "object"
+      },
+      "UpdateAgentSettingsResult": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "UpdateAgentSettingsResult",
+        "type": "object"
+      },
+      "UpdateEngineSourceResult": {
+        "properties": {
+          "file_count": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Count"
+          },
+          "files_saved": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files Saved"
+          },
+          "is_forked": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Forked"
+          },
+          "modified_core_files": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modified Core Files"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "UpdateEngineSourceResult",
+        "type": "object"
+      },
+      "UpdateLogConfigResult": {
+        "properties": {
+          "log_persistence": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Persistence"
+          }
+        },
+        "title": "UpdateLogConfigResult",
+        "type": "object"
+      },
+      "UpdatePolicyRequest": {
+        "properties": {
+          "checkExpression": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkexpression"
+          },
+          "newPolicyName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Newpolicyname"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "permissive": {
+            "default": true,
+            "title": "Permissive",
+            "type": "boolean"
+          },
+          "roles": {
+            "default": [
+              "authenticated"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "usingExpression": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usingexpression"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "title": "UpdatePolicyRequest",
+        "type": "object"
+      },
+      "UserPayload": {
+        "description": "User dict embedded in auth responses (fields vary by code path).",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "tenant": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User"
+          }
+        },
+        "title": "UserPayload",
+        "type": "object"
+      },
+      "UserResponse": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_master": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": false,
+            "title": "Is Master"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "tenant_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Slug"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "UserResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VariableCreateRequest": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "formula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formula"
+          },
+          "name": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "pattern": "^(variable|calculated)$",
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "VariableCreateRequest",
+        "type": "object"
+      },
+      "VariableResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "formula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formula"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "created_at"
+        ],
+        "title": "VariableResponse",
+        "type": "object"
+      },
+      "VariableUpdateRequest": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "formula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formula"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "pattern": "^(variable|calculated)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "title": "VariableUpdateRequest",
+        "type": "object"
+      },
+      "VectorBatchResult": {
+        "properties": {
+          "failed": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "success": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Success",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "VectorBatchResult",
+        "type": "object"
+      },
+      "VectorTestConnectionRequest": {
+        "properties": {
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          },
+          "vector_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Token"
+          },
+          "vector_url": {
+            "title": "Vector Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "vector_url"
+        ],
+        "title": "VectorTestConnectionRequest",
+        "type": "object"
+      },
+      "VerifyRLSRequest": {
+        "properties": {
+          "currentUsing": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentusing"
+          },
+          "policyName": {
+            "title": "Policyname",
+            "type": "string"
+          },
+          "tableName": {
+            "title": "Tablename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tableName",
+          "policyName"
+        ],
+        "title": "VerifyRLSRequest",
+        "type": "object"
+      },
+      "VersionLabelRequest": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "title": "VersionLabelRequest",
+        "type": "object"
+      },
+      "WafStatus": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "WafStatus",
+        "type": "object"
+      },
+      "WafUpdateRequest": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "WafUpdateRequest",
+        "type": "object"
+      },
+      "WafUpdateResponse": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "enabled"
+        ],
+        "title": "WafUpdateResponse",
+        "type": "object"
+      },
+      "WorkflowBatchPublishRequest": {
+        "properties": {
+          "engine_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Engine Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "engine_ids"
+        ],
+        "title": "WorkflowBatchPublishRequest",
+        "type": "object"
+      },
+      "WorkflowDraftCreate": {
+        "description": "Schema for creating a new workflow draft",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "trigger_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Config"
+          },
+          "trigger_type": {
+            "default": "manual",
+            "title": "Trigger Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "WorkflowDraftCreate",
+        "type": "object"
+      },
+      "WorkflowDraftListResponse": {
+        "description": "Response for listing workflow drafts",
+        "properties": {
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowDraftResponse"
+            },
+            "title": "Drafts",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "drafts",
+          "total"
+        ],
+        "title": "WorkflowDraftListResponse",
+        "type": "object"
+      },
+      "WorkflowDraftResponse": {
+        "description": "Response schema for workflow drafts",
+        "properties": {
+          "content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Hash"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "deployed_engines": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployed Engines"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_published": {
+            "default": false,
+            "title": "Is Published",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "published_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Version"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "trigger_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Config"
+          },
+          "trigger_type": {
+            "default": "manual",
+            "title": "Trigger Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "WorkflowDraftResponse",
+        "type": "object"
+      },
+      "WorkflowDraftUpdate": {
+        "description": "Schema for updating an existing workflow draft (partial)",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "edges": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowEdge"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edges"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "nodes": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowNode"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nodes"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "trigger_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Config"
+          },
+          "trigger_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Type"
+          }
+        },
+        "title": "WorkflowDraftUpdate",
+        "type": "object"
+      },
+      "WorkflowEdge": {
+        "description": "Connection between two nodes",
+        "properties": {
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "sourceOutput": {
+            "title": "Sourceoutput",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "targetInput": {
+            "title": "Targetinput",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "sourceOutput",
+          "targetInput"
+        ],
+        "title": "WorkflowEdge",
+        "type": "object"
+      },
+      "WorkflowEmailRequest": {
+        "properties": {
+          "from_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Email"
+          },
+          "from_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Name"
+          },
+          "html": {
+            "title": "Html",
+            "type": "string"
+          },
+          "reply_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply To"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "to": {
+            "items": {
+              "type": "string"
+            },
+            "title": "To",
+            "type": "array"
+          }
+        },
+        "required": [
+          "to",
+          "subject",
+          "html"
+        ],
+        "title": "WorkflowEmailRequest",
+        "type": "object"
+      },
+      "WorkflowEmailResult": {
+        "properties": {
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "WorkflowEmailResult",
+        "type": "object"
+      },
+      "WorkflowNode": {
+        "description": "A single node in the workflow graph",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "inputs": {
+            "items": {
+              "$ref": "#/components/schemas/Parameter"
+            },
+            "title": "Inputs",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "outputs": {
+            "items": {
+              "$ref": "#/components/schemas/Parameter"
+            },
+            "title": "Outputs",
+            "type": "array"
+          },
+          "position": {
+            "$ref": "#/components/schemas/NodePosition"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "position"
+        ],
+        "title": "WorkflowNode",
+        "type": "object"
+      },
+      "_AddDomainBody": {
+        "properties": {
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "title": "_AddDomainBody",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Unified API for Frontbase and DB-Sync functionality",
+    "title": "Frontbase-DBSync API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "meta_root",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RootStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Root",
+        "tags": [
+          "Meta"
+        ]
+      }
+    },
+    "/api/actions/drafts": {
+      "get": {
+        "description": "List all workflow drafts",
+        "operationId": "actions_list_drafts",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowDraftListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Drafts",
+        "tags": [
+          "Actions"
+        ]
+      },
+      "post": {
+        "description": "Create a new workflow draft",
+        "operationId": "actions_create_draft",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowDraftCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowDraftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Draft",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/bulk-delete": {
+      "post": {
+        "description": "Delete multiple workflow drafts at once",
+        "operationId": "actions_bulk_delete_drafts",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionBulkDeleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDeleteDraftsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bulk Delete Drafts",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}": {
+      "delete": {
+        "description": "Delete a workflow draft",
+        "operationId": "actions_delete_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Draft",
+        "tags": [
+          "Actions"
+        ]
+      },
+      "get": {
+        "description": "Get a specific workflow draft",
+        "operationId": "actions_get_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowDraftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Draft",
+        "tags": [
+          "Actions"
+        ]
+      },
+      "patch": {
+        "description": "Update a workflow draft",
+        "operationId": "actions_update_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowDraftUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowDraftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Draft",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}/active": {
+      "patch": {
+        "description": "Toggle a workflow draft's is_active status.",
+        "operationId": "actions_toggle_draft_active",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleActiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToggleDraftActiveResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Toggle Draft Active",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}/publish": {
+      "post": {
+        "description": "Publish a workflow draft to the local Edge Engine.\nKept for backward compatibility (no engine_id = local dev edge).",
+        "operationId": "actions_publish_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Publish Draft",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}/publish-batch/": {
+      "post": {
+        "description": "Batch-publish a workflow draft to multiple Edge Engines.\nBuilds the deploy payload ONCE, fans out to all engines in parallel.",
+        "operationId": "actions_publish_draft_batch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowBatchPublishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishDraftBatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Publish Draft Batch",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}/publish/{engine_id}/": {
+      "post": {
+        "description": "Publish a workflow draft to a specific Edge Engine target.\nMirrors the page publish_to_target() pattern.\nUses Release-Before-IO (AGENTS.md \u00a74.3).",
+        "operationId": "actions_publish_draft_to_engine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Publish Draft To Engine",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}/publish/{engine_id}/toggle": {
+      "post": {
+        "description": "Toggle a workflow's active status on a specific target engine by republishing it with the new active state.",
+        "operationId": "actions_toggle_target_active",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TargetToggleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessageAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Toggle Target Active",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}/rollback/": {
+      "post": {
+        "description": "Roll back an automation draft to a previous version.\nCreates a NEW version snapshot of the current state BEFORE overwriting,\nso the rollback itself can be undone.",
+        "operationId": "actions_rollback_automation_to_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationRollbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rollback Automation To Version",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}/test": {
+      "post": {
+        "description": "Test-execute a workflow draft.\n\nThis publishes the draft temporarily (if not already published)\nand triggers an execution.",
+        "operationId": "actions_test_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestExecuteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Draft",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}/test-node/{node_id}": {
+      "post": {
+        "description": "Test-execute a single node within a workflow draft.\n\nThis deploys the draft and executes only the specified node\n(and its upstream dependencies).",
+        "operationId": "actions_test_node",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestExecuteRequest",
+                "default": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestExecuteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Node",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}/versions/": {
+      "get": {
+        "description": "List all version snapshots for a workflow automation, newest first.",
+        "operationId": "actions_list_automation_versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Automation Versions",
+        "tags": [
+          "Actions"
+        ]
+      },
+      "post": {
+        "description": "Manually create a named version snapshot of a workflow draft.",
+        "operationId": "actions_create_manual_automation_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationVersionLabelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Manual Automation Version",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/drafts/{draft_id}/versions/{version_id}/": {
+      "get": {
+        "description": "Get a specific workflow automation version including nodes/edges details.",
+        "operationId": "actions_get_automation_version_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Automation Version Detail",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/execution-stats": {
+      "get": {
+        "description": "Get execution run counts for all workflows",
+        "operationId": "actions_get_execution_stats",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Actions Get Execution Stats",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Execution Stats",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/execution/{execution_id}": {
+      "get": {
+        "description": "Get detailed execution result from Edge Engine",
+        "operationId": "actions_get_execution_result",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "execution_id",
+            "required": true,
+            "schema": {
+              "title": "Execution Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Actions Get Execution Result",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Execution Result",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/executions": {
+      "get": {
+        "description": "Global execution log \u2014 pulls from all edges with deployed workflows.\nCaches in Redis for 20 minutes. Pass ?fresh=true to bypass cache.",
+        "operationId": "actions_list_all_executions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "engine_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Engine Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "trigger_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Trigger Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fresh",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Fresh",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Actions List All Executions",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List All Executions",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/executions/detail/{execution_id}": {
+      "get": {
+        "description": "Fetch full execution detail (nodeExecutions, triggerPayload) from the\ncorrect Edge engine.  The global log strips these fields for payload size;\nthe frontend calls this endpoint when a user expands a row.\n\n- engine_url provided \u2192 proxy to that remote edge\n- engine_url absent   \u2192 fall back to local EDGE_URL",
+        "operationId": "actions_get_execution_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "execution_id",
+            "required": true,
+            "schema": {
+              "title": "Execution Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "engine_url",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Engine Url"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Actions Get Execution Detail",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Execution Detail",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/executions/export": {
+      "get": {
+        "description": "Export execution logs as CSV. Always pulls fresh from selected edges.\nAlso updates the Redis cache with fresh data.",
+        "operationId": "actions_export_executions_csv",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "engine_ids",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Engine Ids"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workflow_ids",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workflow Ids"
+            }
+          },
+          {
+            "in": "query",
+            "name": "statuses",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Statuses"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Actions Export Executions Csv",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Executions Csv",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/executions/{draft_id}": {
+      "get": {
+        "description": "Get execution history for a draft \u2014 merges backend test logs + production\nlogs from ALL edges where this workflow is deployed (fan-out).",
+        "operationId": "actions_get_draft_executions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    {
+                      "items": {
+                        "additionalProperties": true,
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  ],
+                  "title": "Response Actions Get Draft Executions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Draft Executions",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/actions/executions/{draft_id}/production/{engine_id}": {
+      "get": {
+        "description": "Get production execution history from a specific edge engine.",
+        "operationId": "actions_get_production_executions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Actions Get Production Executions",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Production Executions",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/agent-catalogue": {
+      "get": {
+        "description": "Return global catalogue of MCP servers, skills, and core tools.\n\nUsed by the frontend settings modal to populate the exclusion toggles.\nReturns all available items regardless of tenant exclusions (so the\nfrontend can show the full list with on/off toggles).",
+        "operationId": "agent_integrations_get_agent_catalogue",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "profile_slug",
+            "required": false,
+            "schema": {
+              "default": "workspace",
+              "title": "Profile Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetAgentCatalogueResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Agent Catalogue",
+        "tags": [
+          "agent-integrations"
+        ]
+      }
+    },
+    "/api/agent-profiles/{profile_id}/skills": {
+      "get": {
+        "operationId": "agent_integrations_list_profile_skills",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListProfileSkillsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Profile Skills",
+        "tags": [
+          "agent-integrations"
+        ]
+      },
+      "post": {
+        "operationId": "agent_integrations_install_skill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillInstall"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallSkillResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Install Skill",
+        "tags": [
+          "agent-integrations"
+        ]
+      }
+    },
+    "/api/agent-profiles/{profile_id}/skills/{install_id}": {
+      "delete": {
+        "operationId": "agent_integrations_uninstall_skill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "install_id",
+            "required": true,
+            "schema": {
+              "title": "Install Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Uninstall Skill",
+        "tags": [
+          "agent-integrations"
+        ]
+      }
+    },
+    "/api/agent-skills": {
+      "get": {
+        "description": "List global skills catalogue, excluding tenant-disabled items.\n\nReturns only built-in and global (tenant_id IS NULL) skills for all tenants,\nfiltered by profile_slug. Master admins see all skills including disabled ones.",
+        "operationId": "agent_integrations_list_skills",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "profile_slug",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSkillsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Skills",
+        "tags": [
+          "agent-integrations"
+        ]
+      },
+      "post": {
+        "operationId": "agent_integrations_create_skill",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Agent Integrations Create Skill",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Skill",
+        "tags": [
+          "agent-integrations"
+        ]
+      }
+    },
+    "/api/agent-skills/{skill_id}": {
+      "delete": {
+        "operationId": "agent_integrations_delete_skill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "title": "Skill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Skill",
+        "tags": [
+          "agent-integrations"
+        ]
+      },
+      "put": {
+        "operationId": "agent_integrations_update_skill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "title": "Skill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Agent Integrations Update Skill",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Skill",
+        "tags": [
+          "agent-integrations"
+        ]
+      }
+    },
+    "/api/agent/chat": {
+      "post": {
+        "description": "Streaming chat endpoint for the Workspace Agent.",
+        "operationId": "agent_agent_chat",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Agent Agent Chat",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agent Chat",
+        "tags": [
+          "Agent"
+        ]
+      }
+    },
+    "/api/agent/chat/{profile_slug}": {
+      "post": {
+        "description": "Same as /chat but with a profile slug (forwards to the shared impl).",
+        "operationId": "agent_agent_chat_with_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "title": "Profile Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Agent Agent Chat With Profile",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Chat With Profile",
+        "tags": [
+          "Agent"
+        ]
+      }
+    },
+    "/api/agent/credits": {
+      "get": {
+        "description": "Current Workspace Agent credit balance for the caller.\n\nReturns ``unlimited: true`` for self-host / master admin (no quota). In cloud\ntenant mode returns the live daily + monthly remaining counts and reset times.",
+        "operationId": "agent_agent_credits",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Agent Agent Credits",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agent Credits",
+        "tags": [
+          "Agent"
+        ]
+      }
+    },
+    "/api/agent/mcp/{profile_slug}": {
+      "get": {
+        "description": "MCP server discovery endpoint.\n\nReturns server metadata including:\n- name: Server name\n- version: Protocol version\n- capabilities: Supported features (tools, resources, prompts)",
+        "operationId": "agent_mcp_mcp_root",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "title": "Profile Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpRootResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp Root",
+        "tags": [
+          "Agent MCP"
+        ]
+      }
+    },
+    "/api/agent/mcp/{profile_slug}/prompts/get": {
+      "post": {
+        "description": "Get a specific prompt by name.",
+        "operationId": "agent_mcp_get_prompt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "title": "Profile Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPromptResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Prompt",
+        "tags": [
+          "Agent MCP"
+        ]
+      }
+    },
+    "/api/agent/mcp/{profile_slug}/prompts/list": {
+      "post": {
+        "description": "List available prompts (system prompts).",
+        "operationId": "agent_mcp_list_prompts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "title": "Profile Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPromptsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Prompts",
+        "tags": [
+          "Agent MCP"
+        ]
+      }
+    },
+    "/api/agent/mcp/{profile_slug}/resources/list": {
+      "post": {
+        "description": "List available MCP resources.\n\nResources represent structured data the agent can access:\n- Pages (from the CMS)\n- Workflows\n- Configuration",
+        "operationId": "agent_mcp_list_resources",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "title": "Profile Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResourcesResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Resources",
+        "tags": [
+          "Agent MCP"
+        ]
+      }
+    },
+    "/api/agent/mcp/{profile_slug}/tools/call": {
+      "post": {
+        "description": "Execute a tool and return the result.\n\nAccepts:\n- name: Tool name to execute\n- arguments: Tool input parameters (dict)\n\nReturns:\n- content: Result content (text or JSON)\n- isError: True if the tool failed",
+        "operationId": "agent_mcp_call_tool",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "title": "Profile Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Agent Mcp Call Tool",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Call Tool",
+        "tags": [
+          "Agent MCP"
+        ]
+      }
+    },
+    "/api/agent/mcp/{profile_slug}/tools/list": {
+      "post": {
+        "description": "List all tools available on this agent profile.\n\nReturns a list of tool schemas following the MCP tool specification.\nIncludes:\n- Curated Workspace Agent tools (pages, workflows, datasources, etc.)\n- Auto-registered API tools (if enabled)\n- Installed MCP client tools (if any)\n- Installed skills (if any)",
+        "operationId": "agent_mcp_list_tools",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "title": "Profile Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListToolsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tools",
+        "tags": [
+          "Agent MCP"
+        ]
+      }
+    },
+    "/api/agent/settings": {
+      "delete": {
+        "description": "Delete the caller's user override (``scope=user``) or tenant default\n(``scope=tenant``, admin-gated), falling back to the lower layer.",
+        "operationId": "agent_settings_reset_agent_settings",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "user",
+              "title": "Scope",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetAgentSettingsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Agent Settings",
+        "tags": [
+          "Agent Settings"
+        ]
+      },
+      "get": {
+        "description": "Return the effective merged settings the caller's next turn will use.",
+        "operationId": "agent_settings_get_agent_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Agent Settings",
+        "tags": [
+          "Agent Settings"
+        ]
+      },
+      "put": {
+        "description": "Upsert the caller's user override (``scope=user``) or tenant default\n(``scope=tenant``, admin-gated).",
+        "operationId": "agent_settings_update_agent_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateAgentSettingsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Agent Settings",
+        "tags": [
+          "Agent Settings"
+        ]
+      }
+    },
+    "/api/auth-forms/": {
+      "get": {
+        "description": "List all auth forms",
+        "operationId": "auth_forms_list_auth_forms",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Auth Forms",
+        "tags": [
+          "Auth Forms"
+        ]
+      },
+      "post": {
+        "description": "Create a new auth form",
+        "operationId": "auth_forms_create_auth_form",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthFormCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Auth Form",
+        "tags": [
+          "Auth Forms"
+        ]
+      }
+    },
+    "/api/auth-forms/primary/": {
+      "get": {
+        "description": "Get the primary auth form (used for private page gating).\nReads is_primary from config JSON with Python filtering.",
+        "operationId": "auth_forms_get_primary_auth_form",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Primary Auth Form",
+        "tags": [
+          "Auth Forms"
+        ]
+      }
+    },
+    "/api/auth-forms/{form_id}/": {
+      "delete": {
+        "description": "Delete an auth form",
+        "operationId": "auth_forms_delete_auth_form",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Auth Form",
+        "tags": [
+          "Auth Forms"
+        ]
+      },
+      "get": {
+        "description": "Get a single auth form by ID",
+        "operationId": "auth_forms_get_auth_form",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Auth Form",
+        "tags": [
+          "Auth Forms"
+        ]
+      },
+      "put": {
+        "description": "Update an existing auth form",
+        "operationId": "auth_forms_update_auth_form",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthFormUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Auth Form",
+        "tags": [
+          "Auth Forms"
+        ]
+      }
+    },
+    "/api/auth-forms/{form_id}/set-primary/": {
+      "put": {
+        "description": "Set a form as primary (clears primary from all others).\nUpdates is_primary flag inside config JSON for each form.",
+        "operationId": "auth_forms_set_primary_auth_form",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "title": "Form Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Primary Auth Form",
+        "tags": [
+          "Auth Forms"
+        ]
+      }
+    },
+    "/api/auth/accept-invite": {
+      "post": {
+        "description": "Public \u2014 create an account for the invited email and join the tenant.",
+        "operationId": "authentication_accept_invite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInviteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Invite",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/check-slug/{slug}": {
+      "get": {
+        "description": "Check if a workspace slug is available. Public endpoint.",
+        "operationId": "authentication_check_slug",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlugCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Slug",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/forgot-password": {
+      "post": {
+        "description": "Request a password reset link (Self-hosted only).",
+        "operationId": "authentication_forgot_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForgotPasswordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Forgot Password",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/invite/{token}": {
+      "get": {
+        "description": "Public \u2014 return invite details for the accept page.",
+        "operationId": "authentication_get_invite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Invite",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "options": {
+        "description": "Handle CORS preflight for login.",
+        "operationId": "authentication_login_options",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Authentication Login Options",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Login Options",
+        "tags": [
+          "Authentication"
+        ]
+      },
+      "post": {
+        "description": "Login with email and password.\n\nPath 1: Master admin (env-var) \u2014 always checked first.\nPath 2: SuperTokens emailpassword (cloud mode) \u2014 tenant users.",
+        "operationId": "authentication_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "description": "Logout \u2014 revokes provider session and/or master admin cookie.",
+        "operationId": "authentication_logout",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "description": "Get current authenticated user with tenant context.\n\nChecks configured auth provider session (cloud mode), then master admin cookie.",
+        "operationId": "authentication_get_me",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Me",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "description": "Reset password using the reset token (Self-hosted only).",
+        "operationId": "authentication_reset_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Password",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/security/audit-logs": {
+      "get": {
+        "operationId": "authentication_get_audit_logs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditLogEntry"
+                  },
+                  "title": "Response Authentication Get Audit Logs",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Audit Logs",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/security/blocklist": {
+      "get": {
+        "operationId": "authentication_get_blocklist",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BlocklistEntry"
+                  },
+                  "title": "Response Authentication Get Blocklist",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Blocklist",
+        "tags": [
+          "Authentication"
+        ]
+      },
+      "post": {
+        "operationId": "authentication_add_ip_ban",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IPBlockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Ip Ban",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/security/blocklist/{ban_id}": {
+      "delete": {
+        "operationId": "authentication_delete_ip_ban",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ban_id",
+            "required": true,
+            "schema": {
+              "title": "Ban Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Ip Ban",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/security/bot-protection": {
+      "get": {
+        "operationId": "authentication_get_bot_protection_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotProtectionSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Bot Protection Settings",
+        "tags": [
+          "Authentication"
+        ]
+      },
+      "post": {
+        "operationId": "authentication_update_bot_protection_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BotProtectionUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Bot Protection Settings",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/security/bot-protection/metrics": {
+      "get": {
+        "operationId": "authentication_get_bot_protection_metrics",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotProtectionMetrics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Bot Protection Metrics",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/security/waf": {
+      "get": {
+        "operationId": "authentication_get_waf_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WafStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Waf Settings",
+        "tags": [
+          "Authentication"
+        ]
+      },
+      "post": {
+        "operationId": "authentication_update_waf_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WafUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WafUpdateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Waf Settings",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/signup": {
+      "options": {
+        "description": "Handle CORS preflight for signup.",
+        "operationId": "authentication_signup_options",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Authentication Signup Options",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Signup Options",
+        "tags": [
+          "Authentication"
+        ]
+      },
+      "post": {
+        "description": "Register a new tenant user with workspace.\n\nCreates: SuperTokens/Supabase user \u2192 Tenant \u2192 TenantMember \u2192 Project \u2192 Session.\nCloud mode only.",
+        "operationId": "authentication_signup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Signup",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/cloudflare/connect": {
+      "post": {
+        "description": "List existing workers using saved credentials from EdgeProviderAccount.\n\nUses run_in_executor to run sync httpx calls in a thread,\navoiding Windows ProactorEventLoop Errno 22 with HTTPS.",
+        "operationId": "cloudflare_deploy_connect_cloudflare",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Cloudflare Deploy Connect Cloudflare",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Connect Cloudflare",
+        "tags": [
+          "Cloudflare Deploy"
+        ]
+      }
+    },
+    "/api/cloudflare/deploy": {
+      "post": {
+        "description": "One-click deploy the Edge Engine to Cloudflare Workers.",
+        "operationId": "cloudflare_deploy_deploy_to_cloudflare",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeployRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeployToCloudflareResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Deploy To Cloudflare",
+        "tags": [
+          "Cloudflare Deploy"
+        ]
+      }
+    },
+    "/api/cloudflare/inspect/content": {
+      "post": {
+        "description": "Fetch the deployed worker's script source code.",
+        "operationId": "cloudflare_inspector_inspect_worker_content",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Cloudflare Inspector Inspect Worker Content",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inspect Worker Content",
+        "tags": [
+          "Cloudflare Inspector"
+        ]
+      }
+    },
+    "/api/cloudflare/inspect/secrets": {
+      "post": {
+        "description": "List secret names deployed to a worker (values are never returned by CF).",
+        "operationId": "cloudflare_inspector_inspect_worker_secrets",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectWorkerSecretsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inspect Worker Secrets",
+        "tags": [
+          "Cloudflare Inspector"
+        ]
+      }
+    },
+    "/api/cloudflare/inspect/settings": {
+      "post": {
+        "description": "Fetch a worker's settings: bindings, compatibility, routes, crons.",
+        "operationId": "cloudflare_inspector_inspect_worker_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectWorkerSettingsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inspect Worker Settings",
+        "tags": [
+          "Cloudflare Inspector"
+        ]
+      }
+    },
+    "/api/cloudflare/status": {
+      "post": {
+        "description": "Check if a Worker is deployed and get its details.",
+        "operationId": "cloudflare_deploy_cloudflare_status",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudflareStatusResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cloudflare Status",
+        "tags": [
+          "Cloudflare Deploy"
+        ]
+      }
+    },
+    "/api/cloudflare/teardown": {
+      "post": {
+        "description": "Remove a Worker and deactivate its edge engine target.",
+        "operationId": "cloudflare_deploy_teardown_cloudflare",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeardownRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessageAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Teardown Cloudflare",
+        "tags": [
+          "Cloudflare Deploy"
+        ]
+      }
+    },
+    "/api/database/advanced-query/": {
+      "post": {
+        "description": "Execute advanced query.\nOptimized: Releases DB connection before external API calls.",
+        "operationId": "database_advanced_query",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvancedQueryEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Advanced Query",
+        "tags": [
+          "database"
+        ]
+      }
+    },
+    "/api/database/connect-supabase/": {
+      "post": {
+        "description": "Connect to Supabase",
+        "operationId": "database_connect_supabase",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatabaseConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Connect Supabase",
+        "tags": [
+          "database"
+        ]
+      }
+    },
+    "/api/database/connections/": {
+      "get": {
+        "description": "Get database connections \u2014 checks Connected Accounts first, then legacy.",
+        "operationId": "database_get_connections",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseConnectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Connections",
+        "tags": [
+          "database"
+        ]
+      }
+    },
+    "/api/database/disconnect-supabase/": {
+      "delete": {
+        "description": "Disconnect from Supabase",
+        "operationId": "database_disconnect_supabase",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Disconnect Supabase",
+        "tags": [
+          "database"
+        ]
+      }
+    },
+    "/api/database/distinct-values/": {
+      "post": {
+        "description": "Get distinct values for a column.\nOptimized: Releases DB connection before external API calls.",
+        "operationId": "database_get_distinct_values",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistinctValuesEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Distinct Values",
+        "tags": [
+          "database"
+        ]
+      }
+    },
+    "/api/database/rls/batch/": {
+      "post": {
+        "description": "Create multiple RLS policies in a single HTTP request using batch RPC function",
+        "operationId": "rls_create_batch_policies",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBatchPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsMessageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Batch Policies",
+        "tags": [
+          "rls"
+        ]
+      }
+    },
+    "/api/database/rls/bulk-delete/": {
+      "post": {
+        "description": "Delete multiple RLS policies from Supabase in bulk",
+        "operationId": "rls_bulk_delete_policies",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RlsBulkDeleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsMessageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bulk Delete Policies",
+        "tags": [
+          "rls"
+        ]
+      }
+    },
+    "/api/database/rls/metadata/": {
+      "get": {
+        "description": "Get all stored RLS metadata for categorization by contact_type",
+        "operationId": "rls_get_all_rls_metadata",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get All Rls Metadata",
+        "tags": [
+          "rls"
+        ]
+      },
+      "post": {
+        "description": "Save metadata when creating a policy",
+        "operationId": "rls_save_rls_metadata",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RLSMetadataRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsMetadataSaveEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Rls Metadata",
+        "tags": [
+          "rls"
+        ]
+      }
+    },
+    "/api/database/rls/metadata/verify/": {
+      "post": {
+        "description": "Verify if a policy's current USING expression matches the stored hash",
+        "operationId": "rls_verify_rls_metadata",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyRLSRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsVerifyEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Rls Metadata",
+        "tags": [
+          "rls"
+        ]
+      }
+    },
+    "/api/database/rls/metadata/{table_name}/{policy_name}": {
+      "delete": {
+        "description": "Delete metadata",
+        "operationId": "rls_delete_rls_metadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_name",
+            "required": true,
+            "schema": {
+              "title": "Policy Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsMessageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Rls Metadata",
+        "tags": [
+          "rls"
+        ]
+      },
+      "get": {
+        "description": "Get stored metadata for a policy",
+        "operationId": "rls_get_rls_metadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_name",
+            "required": true,
+            "schema": {
+              "title": "Policy Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Rls Metadata",
+        "tags": [
+          "rls"
+        ]
+      }
+    },
+    "/api/database/rls/policies/": {
+      "get": {
+        "description": "List all RLS policies in the schema",
+        "operationId": "rls_list_policies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "schema",
+            "required": false,
+            "schema": {
+              "default": "public",
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Policies",
+        "tags": [
+          "rls"
+        ]
+      },
+      "post": {
+        "description": "Create a new RLS policy",
+        "operationId": "rls_create_policy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsMessageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Policy",
+        "tags": [
+          "rls"
+        ]
+      }
+    },
+    "/api/database/rls/policies/{table_name}": {
+      "get": {
+        "description": "Get policies for a specific table",
+        "operationId": "rls_get_table_policies",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "schema",
+            "required": false,
+            "schema": {
+              "default": "public",
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Policies",
+        "tags": [
+          "rls"
+        ]
+      }
+    },
+    "/api/database/rls/policies/{table_name}/{policy_name}": {
+      "delete": {
+        "description": "Delete an RLS policy",
+        "operationId": "rls_delete_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_name",
+            "required": true,
+            "schema": {
+              "title": "Policy Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsMessageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Policy",
+        "tags": [
+          "rls"
+        ]
+      },
+      "put": {
+        "description": "Update an existing RLS policy",
+        "operationId": "rls_update_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_name",
+            "required": true,
+            "schema": {
+              "title": "Policy Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsMessageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Policy",
+        "tags": [
+          "rls"
+        ]
+      }
+    },
+    "/api/database/rls/tables/": {
+      "get": {
+        "description": "Get RLS status for all tables",
+        "operationId": "rls_get_tables_rls_status",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "schema",
+            "required": false,
+            "schema": {
+              "default": "public",
+              "title": "Schema",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tables Rls Status",
+        "tags": [
+          "rls"
+        ]
+      }
+    },
+    "/api/database/rls/tables/{table_name}/toggle/": {
+      "post": {
+        "description": "Enable or disable RLS on a table",
+        "operationId": "rls_toggle_table_rls",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleRLSRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RlsMessageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Toggle Table Rls",
+        "tags": [
+          "rls"
+        ]
+      }
+    },
+    "/api/database/supabase-tables/": {
+      "get": {
+        "description": "Get database tables.\nOptimized: Releases DB connection before external API calls.",
+        "operationId": "database_get_supabase_tables",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TablesEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Supabase Tables",
+        "tags": [
+          "database"
+        ]
+      }
+    },
+    "/api/database/table-data/{table_name}/": {
+      "get": {
+        "description": "Get table data with pagination and filtering.\nOptimized: Releases DB connection before external API calls to prevent pool exhaustion.",
+        "operationId": "database_get_table_data",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "orderBy",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Orderby"
+            }
+          },
+          {
+            "in": "query",
+            "name": "orderDirection",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "asc",
+              "title": "Orderdirection"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "default": "builder",
+              "title": "Mode",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "select",
+            "required": false,
+            "schema": {
+              "default": "*",
+              "title": "Select",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDataEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Data",
+        "tags": [
+          "database"
+        ]
+      }
+    },
+    "/api/database/table-schema/{table_name}/": {
+      "get": {
+        "description": "Get table schema with foreign key information.\nOptimized: Releases DB connection before external API calls.",
+        "operationId": "database_get_table_schema",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableSchemaEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Schema",
+        "tags": [
+          "database"
+        ]
+      }
+    },
+    "/api/database/tables/": {
+      "get": {
+        "description": "Get database tables (aliased to supabase-tables)",
+        "operationId": "database_get_tables",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TablesEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Tables",
+        "tags": [
+          "database"
+        ]
+      }
+    },
+    "/api/database/test-supabase/": {
+      "post": {
+        "description": "Test Supabase connection credentials - tries service key first, falls back to anon key",
+        "operationId": "database_test_supabase",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatabaseConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Supabase",
+        "tags": [
+          "database"
+        ]
+      }
+    },
+    "/api/deno/connect": {
+      "post": {
+        "description": "Auto-detect Deno org info using the personal (ddp_) token.\n...",
+        "operationId": "deno_deploy_connect_deno",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DenoConnectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectDenoResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Connect Deno",
+        "tags": [
+          "Deno Deploy"
+        ]
+      }
+    },
+    "/api/edge-api-keys": {
+      "get": {
+        "description": "List API keys. Optionally filter by engine_id (includes 'All Engines' keys).",
+        "operationId": "edge_api_keys_list_api_keys",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "engine_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Engine Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListApiKeysResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Api Keys",
+        "tags": [
+          "edge-api-keys"
+        ]
+      },
+      "post": {
+        "description": "Create a new API key. Returns the full key ONCE.",
+        "operationId": "edge_api_keys_create_api_key",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/APIKeyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Api Keys Create Api Key",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Api Key",
+        "tags": [
+          "edge-api-keys"
+        ]
+      }
+    },
+    "/api/edge-api-keys/{key_id}": {
+      "delete": {
+        "description": "Revoke and delete an API key.",
+        "operationId": "edge_api_keys_delete_api_key",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Api Key",
+        "tags": [
+          "edge-api-keys"
+        ]
+      },
+      "put": {
+        "description": "Update an API key's name, active status, or expiry.",
+        "operationId": "edge_api_keys_update_api_key",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/APIKeyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Api Keys Update Api Key",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Api Key",
+        "tags": [
+          "edge-api-keys"
+        ]
+      }
+    },
+    "/api/edge-api-keys/{key_id}/reveal": {
+      "get": {
+        "description": "Reveal the full API key (only works for Fernet-encrypted keys).",
+        "operationId": "edge_api_keys_reveal_api_key",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealApiKeyResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reveal Api Key",
+        "tags": [
+          "edge-api-keys"
+        ]
+      }
+    },
+    "/api/edge-caches/": {
+      "get": {
+        "description": "List all configured edge caches.",
+        "operationId": "edge_caches_list_edge_caches",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EdgeCacheResponse"
+                  },
+                  "title": "Response Edge Caches List Edge Caches",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Edge Caches",
+        "tags": [
+          "edge-caches"
+        ]
+      },
+      "post": {
+        "description": "Create a new edge cache connection.",
+        "operationId": "edge_caches_create_edge_cache",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeCacheCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeCacheResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Edge Cache",
+        "tags": [
+          "edge-caches"
+        ]
+      }
+    },
+    "/api/edge-caches/batch/delete": {
+      "post": {
+        "description": "Batch delete caches. Optionally delete remote resources in parallel.",
+        "operationId": "edge_caches_batch_delete_caches",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchDeleteCacheRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheBatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Delete Caches",
+        "tags": [
+          "edge-caches"
+        ]
+      }
+    },
+    "/api/edge-caches/test-connection": {
+      "post": {
+        "description": "Test a cache connection before saving it.",
+        "operationId": "edge_caches_test_connection_inline",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeCacheCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestCacheResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Connection Inline",
+        "tags": [
+          "edge-caches"
+        ]
+      }
+    },
+    "/api/edge-caches/{cache_id}": {
+      "delete": {
+        "description": "Delete an edge cache connection.\n\nIf delete_remote=True and the cache was created from a connected account,\nalso delete the resource at the provider.",
+        "operationId": "edge_caches_delete_edge_cache",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cache_id",
+            "required": true,
+            "schema": {
+              "title": "Cache Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "delete_remote",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Delete Remote",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoteDeleteAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Edge Cache",
+        "tags": [
+          "edge-caches"
+        ]
+      },
+      "put": {
+        "description": "Update an existing edge cache connection.",
+        "operationId": "edge_caches_update_edge_cache",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cache_id",
+            "required": true,
+            "schema": {
+              "title": "Cache Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeCacheUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeCacheResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Edge Cache",
+        "tags": [
+          "edge-caches"
+        ]
+      }
+    },
+    "/api/edge-caches/{cache_id}/test": {
+      "post": {
+        "description": "Test connectivity to an edge cache.",
+        "operationId": "edge_caches_test_edge_cache",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cache_id",
+            "required": true,
+            "schema": {
+              "title": "Cache Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestCacheResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Edge Cache",
+        "tags": [
+          "edge-caches"
+        ]
+      }
+    },
+    "/api/edge-databases/": {
+      "get": {
+        "description": "List all configured edge databases.",
+        "operationId": "edge_databases_list_edge_databases",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EdgeDatabaseResponse"
+                  },
+                  "title": "Response Edge Databases List Edge Databases",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Edge Databases",
+        "tags": [
+          "edge-databases"
+        ]
+      },
+      "post": {
+        "description": "Create a new edge database connection.\n\nIf provider_account_id is provided, db_token is optional \u2014 it will be\nresolved from the Connected Account at deploy time.",
+        "operationId": "edge_databases_create_edge_database",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeDatabaseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeDatabaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Edge Database",
+        "tags": [
+          "edge-databases"
+        ]
+      }
+    },
+    "/api/edge-databases/batch/delete": {
+      "post": {
+        "description": "Batch delete databases. Optionally delete remote resources in parallel.",
+        "operationId": "edge_databases_batch_delete_databases",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchDeleteDatabaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseBatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Delete Databases",
+        "tags": [
+          "edge-databases"
+        ]
+      }
+    },
+    "/api/edge-databases/create-schema": {
+      "post": {
+        "description": "Create a new frontbase_edge_<suffix> schema in a PG database.\n\nSuffix must be lowercase alphanumeric + underscores.",
+        "operationId": "edge_databases_create_schema",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSchemaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Databases Create Schema",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Schema",
+        "tags": [
+          "edge-databases"
+        ]
+      }
+    },
+    "/api/edge-databases/discover-schemas": {
+      "post": {
+        "description": "Discover existing frontbase_edge* schemas in a PG database.\n\nCalled after user picks a Supabase/Neon/Postgres resource to list\navailable schemas for state isolation.",
+        "operationId": "edge_databases_discover_schemas",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscoverSchemasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Databases Discover Schemas",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discover Schemas",
+        "tags": [
+          "edge-databases"
+        ]
+      }
+    },
+    "/api/edge-databases/reset-role-password": {
+      "post": {
+        "description": "Reset the scoped role password for an existing Supabase schema.\n\nUsed during re-import: the schema exists but the password is lost.\nReturns {success, role_name, role_password}.",
+        "operationId": "edge_databases_reset_role_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetRolePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Databases Reset Role Password",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Role Password",
+        "tags": [
+          "edge-databases"
+        ]
+      }
+    },
+    "/api/edge-databases/test-connection": {
+      "post": {
+        "description": "Test a database connection before saving it.",
+        "operationId": "edge_databases_test_connection_inline",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeDatabaseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestConnectionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Connection Inline",
+        "tags": [
+          "edge-databases"
+        ]
+      }
+    },
+    "/api/edge-databases/{db_id}": {
+      "delete": {
+        "description": "Delete an edge database connection.\n\nFails if any deployment targets still reference this DB.\nIf delete_remote=True and provider supports it, also deletes the remote resource.",
+        "operationId": "edge_databases_delete_edge_database",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "db_id",
+            "required": true,
+            "schema": {
+              "title": "Db Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "delete_remote",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Delete Remote",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoteDeleteAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Edge Database",
+        "tags": [
+          "edge-databases"
+        ]
+      },
+      "put": {
+        "description": "Update an existing edge database connection.",
+        "operationId": "edge_databases_update_edge_database",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "db_id",
+            "required": true,
+            "schema": {
+              "title": "Db Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeDatabaseUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeDatabaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Edge Database",
+        "tags": [
+          "edge-databases"
+        ]
+      }
+    },
+    "/api/edge-databases/{db_id}/test": {
+      "post": {
+        "description": "Test connectivity to an edge database.",
+        "operationId": "edge_databases_test_edge_database",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "db_id",
+            "required": true,
+            "schema": {
+              "title": "Db Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestConnectionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Edge Database",
+        "tags": [
+          "edge-databases"
+        ]
+      }
+    },
+    "/api/edge-engines/": {
+      "get": {
+        "description": "List all edge engines with outdated detection.",
+        "operationId": "edge_engines_list_engines",
+        "parameters": [
+          {
+            "description": "If true, fetches live versions concurrently",
+            "in": "query",
+            "name": "detailed",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "If true, fetches live versions concurrently",
+              "title": "Detailed",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EdgeEngineResponse"
+                  },
+                  "title": "Response Edge Engines List Engines",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Engines",
+        "tags": [
+          "Edge Engines"
+        ]
+      },
+      "post": {
+        "description": "Create a new engine record (manual mode - does not deploy code).",
+        "operationId": "edge_engines_create_engine",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeEngineCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeEngineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Engine",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/active/by-scope/{scope}": {
+      "get": {
+        "description": "List active edge engines filtered by adapter scope.\n\nUsed by the publish pipeline to determine where to push pages/automations.\n'full' scope targets match both 'pages' and 'automations' queries.",
+        "operationId": "edge_engines_list_active_engines_by_scope",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scope",
+            "required": true,
+            "schema": {
+              "enum": [
+                "pages",
+                "automations",
+                "full"
+              ],
+              "title": "Scope",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Edge Engines List Active Engines By Scope",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Active Engines By Scope",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/batch/delete": {
+      "post": {
+        "description": "Batch delete engine records. Optionally delete remote resources.",
+        "operationId": "edge_engines_batch_delete_engines",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchDeleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineBatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Delete Engines",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/batch/redeploy": {
+      "post": {
+        "description": "Batch redeploy multiple edge engines.\n\nUses asyncio.Semaphore(3) to limit concurrent redeploys and avoid provider rate limits.",
+        "operationId": "edge_engines_batch_redeploy_engines",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineBatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Redeploy Engines",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/batch/rotate-secrets-key": {
+      "post": {
+        "description": "Batch rotate the per-worker secrets key across multiple shared engines.\n\nUses asyncio.Semaphore(3) to limit concurrent rotations (each triggers a\nredeploy) and avoid provider rate limits. Engines that are not found, not\nowned by the caller, or not shared are reported as failed rather than\naborting the batch. See services/edge_secrets_push.rotate_secrets_key.",
+        "operationId": "edge_engines_batch_rotate_secrets_key",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRotateSecretsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineBatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Rotate Secrets Key",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/batch/sync-check": {
+      "post": {
+        "description": "Batch sync-check: verify engines are reachable and update last_synced_at.",
+        "operationId": "edge_engines_batch_sync_check",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineBatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Sync Check",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/batch/toggle": {
+      "post": {
+        "description": "Batch activate/deactivate routing.",
+        "operationId": "edge_engines_batch_toggle_engines",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchToggleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineBatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Toggle Engines",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/bundle-hashes/": {
+      "get": {
+        "description": "Return current source hash for drift detection.",
+        "operationId": "edge_engines_get_bundle_hashes",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Engines Get Bundle Hashes",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Bundle Hashes",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/deploy": {
+      "post": {
+        "description": "Provider-agnostic one-click deploy. Delegates to engine_provisioner.",
+        "operationId": "edge_engines_deploy_engine",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenericDeployRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Engines Deploy Engine",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Deploy Engine",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/import": {
+      "post": {
+        "description": "Import an engine from a sealed bundle into this tenant's project.\n\nUnseals the bundle, remaps IDs, matches-or-creates shared resources, re-encrypts\nsecrets with the local key, and inserts the engine (inactive, undeployed) in one\ntransaction. Returns the new engine id, a summary, and the confirm secret S \u2014\npaste S back into the source's finalize-move to complete the transfer.",
+        "operationId": "edge_engines_import_engine",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportEngineResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Engine",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}": {
+      "delete": {
+        "description": "Delete an engine record explicitly.",
+        "operationId": "edge_engines_delete_engine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Also delete from provider",
+            "in": "query",
+            "name": "delete_remote",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Also delete from provider",
+              "title": "Delete Remote",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Engine",
+        "tags": [
+          "Edge Engines"
+        ]
+      },
+      "get": {
+        "description": "Get standalone engine by ID with live status.",
+        "operationId": "edge_engines_get_engine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeEngineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Engine",
+        "tags": [
+          "Edge Engines"
+        ]
+      },
+      "put": {
+        "description": "Update engine metadata (does not trigger redeploy).",
+        "operationId": "edge_engines_update_engine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeEngineUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeEngineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Engine",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/agent-profiles": {
+      "get": {
+        "operationId": "edge_agent_profiles_list_profiles",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListProfilesResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Profiles",
+        "tags": [
+          "edge-agent-profiles"
+        ]
+      },
+      "post": {
+        "operationId": "edge_agent_profiles_create_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeAgentProfileCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Agent Profiles Create Profile",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Profile",
+        "tags": [
+          "edge-agent-profiles"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/agent-profiles/{profile_id}": {
+      "delete": {
+        "operationId": "edge_agent_profiles_delete_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Profile",
+        "tags": [
+          "edge-agent-profiles"
+        ]
+      },
+      "put": {
+        "operationId": "edge_agent_profiles_update_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeAgentProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Agent Profiles Update Profile",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Profile",
+        "tags": [
+          "edge-agent-profiles"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/audit/tenant-secrets": {
+      "get": {
+        "description": "List the tenant-secrets audit trail for an engine (newest first).\n\nReturns control-plane operations (push/delete/rotate) on the engine's\nper-tenant secrets, with optional tenant_slug / operation / status filters.\nMirrors the edge-side vault audit, but centralized in the backend DB.\nSee services/tenant_secrets_audit.py.",
+        "operationId": "edge_engines_tenant_secrets_audit_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter to a single tenant slug",
+            "in": "query",
+            "name": "tenant_slug",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter to a single tenant slug",
+              "title": "Tenant Slug"
+            }
+          },
+          {
+            "description": "Filter by operation: push | delete | rotate",
+            "in": "query",
+            "name": "operation",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by operation: push | delete | rotate",
+              "title": "Operation"
+            }
+          },
+          {
+            "description": "Filter by status: success | failure",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status: success | failure",
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSecretsAuditLogsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tenant Secrets Audit Logs",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/cancel-move": {
+      "post": {
+        "description": "Cancel a pending move and restore the engine to active.",
+        "operationId": "edge_engines_cancel_move",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelMoveResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Move",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/export": {
+      "post": {
+        "description": "Export an engine into a sealed, portable bundle and soft-lock it (moved_out).\n\nCross-deployment move: the full dependency closure (engine + owned children +\nshared infra + connected accounts + datasources + storage) is decrypted with the\nlocal key and sealed with the caller's passphrase. The source engine is then\nfrozen (move_status=moved_out, is_active=False) until the move is finalized or\ncancelled. System/shared engines cannot be moved. See\ndocs/portable-engine-move-plan.md.",
+        "operationId": "edge_engines_export_engine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportEngineResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Engine",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/finalize-move": {
+      "post": {
+        "description": "Finalize a pending move: verify the confirm secret and delete the source engine.\n\nConstant-time compare of ``sha256(confirm_secret)`` against the stored\n``move_secret_hash``. A match proves the target successfully unsealed the bundle and\ncommitted the import \u2014 safe to cascade-delete the source (owned children go with it;\nshared accounts/infra/datasources/storage stay). Idempotent in the sense that a\nrepeat call 404s once the engine is gone.",
+        "operationId": "edge_engines_finalize_move",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalizeMoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinalizeMoveResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Finalize Move",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/health-check": {
+      "get": {
+        "description": "Proxy health check to the edge engine with FRONTBASE_SYSTEM_KEY.\n\nResolves the system key from engine_config (Fernet-encrypted),\ncalls GET {engine_url}/api/health with x-system-key header,\nand returns the full diagnostic response.",
+        "operationId": "engine_inspector_health_check",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Engine Inspector Health Check",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Health Check",
+        "tags": [
+          "Engine Inspector"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/inspect/domains": {
+      "get": {
+        "description": "List custom domains for this engine.",
+        "operationId": "engine_inspector_inspect_engine_domains",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Engine Inspector Inspect Engine Domains",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inspect Engine Domains",
+        "tags": [
+          "Engine Inspector"
+        ]
+      },
+      "post": {
+        "description": "Add a custom domain to this engine.\n\nCustom domains are intentionally NOT quota-gated: on BYO tiers they're configured via the\ntenant's own provider (free, bypassable, no COGS); on managed tiers they're a paid add-on\n(`managed_domain`, gated at provisioning via `tenant_addons`). See [TIERS] \u00a74.4.",
+        "operationId": "engine_inspector_add_engine_domain",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_AddDomainBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Engine Inspector Add Engine Domain",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Engine Domain",
+        "tags": [
+          "Engine Inspector"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/inspect/domains/{domain_id}": {
+      "delete": {
+        "description": "Remove a custom domain from this engine.",
+        "operationId": "engine_inspector_delete_engine_domain",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Engine Inspector Delete Engine Domain",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Engine Domain",
+        "tags": [
+          "Engine Inspector"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/inspect/domains/{domain_id}/verify": {
+      "post": {
+        "description": "Trigger DNS verification for a custom domain.",
+        "operationId": "engine_inspector_verify_engine_domain",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "title": "Domain Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Engine Inspector Verify Engine Domain",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Engine Domain",
+        "tags": [
+          "Engine Inspector"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/inspect/secrets": {
+      "get": {
+        "description": "Fetch deployed secrets/env vars from provider API.",
+        "operationId": "engine_inspector_inspect_engine_secrets",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Engine Inspector Inspect Engine Secrets",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inspect Engine Secrets",
+        "tags": [
+          "Engine Inspector"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/inspect/settings": {
+      "get": {
+        "description": "Fetch deployed engine settings/config from provider API.",
+        "operationId": "engine_inspector_inspect_engine_settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Engine Inspector Inspect Engine Settings",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inspect Engine Settings",
+        "tags": [
+          "Engine Inspector"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/inspect/source": {
+      "get": {
+        "description": "Fetch deployed source code from provider API.",
+        "operationId": "engine_inspector_inspect_engine_source",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Engine Inspector Inspect Engine Source",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inspect Engine Source",
+        "tags": [
+          "Engine Inspector"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/logs": {
+      "get": {
+        "description": "Fetch runtime logs from the engine's provider.\n\nReturns normalized UnifiedLogEntry objects with cursor pagination.\nResults are cached L1 (60s in-memory) and L2 (5 min Redis).",
+        "operationId": "edge_engines_get_engine_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEngineLogsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Engine Logs",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/logs/config": {
+      "patch": {
+        "description": "Enable/disable log persistence and configure sync interval.\n\nPayload: {\n    \"enabled\": bool,\n    \"interval_hours\": int,  # must be <= provider retention\n}\n\nPrerequisites: engine must have edge_db_id, edge_cache_id, edge_queue_id.",
+        "operationId": "edge_engines_update_log_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateLogConfigResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Log Config",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/logs/retention": {
+      "get": {
+        "description": "Get the provider's log retention period and current plan tier.",
+        "operationId": "edge_engines_get_log_retention",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetLogRetentionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Log Retention",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/logs/sync": {
+      "post": {
+        "description": "Batch-sync logs from provider to the edge state DB.\n\nTriggered by QStash cron. Fetches all logs since last sync,\npushes them to the edge engine's POST /api/edge-logs endpoint.",
+        "operationId": "edge_engines_sync_engine_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncEngineLogsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Engine Logs",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/move-to-project": {
+      "post": {
+        "description": "Same-deployment fast path (Step 6): move an engine to another project in THIS\ndeployment atomically \u2014 no bundle, no passphrase, no confirm token. Source and\ntarget share the local FERNET_KEY, so transport crypto is unnecessary.",
+        "operationId": "edge_engines_move_engine_to_project_endpoint",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveToProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoveEngineToProjectEndpointResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Move Engine To Project Endpoint",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/reconfigure": {
+      "post": {
+        "description": "Live-reconfigure an engine's DB/cache/queue bindings.\n\nDelegates to engine_reconfigure service (CF Settings API PATCH).",
+        "operationId": "edge_engines_reconfigure_engine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconfigureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Engines Reconfigure Engine",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reconfigure Engine",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/redeploy": {
+      "post": {
+        "description": "Redeploy an engine with the latest bundle code + current secrets.",
+        "operationId": "edge_engines_redeploy_engine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Engines Redeploy Engine",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Redeploy Engine",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/rollback-rotation": {
+      "post": {
+        "description": "Roll back an in-flight key rotation during its transition window.\n\nRestores the previous key (and resolver mode), records the rotation as\n'rolled_back' in history, and redeploys. See\nservices/edge_secrets_push.rollback_rotation.",
+        "operationId": "edge_engines_rollback_rotation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollbackRotationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Engines Rollback Rotation",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rollback Rotation",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/rotate-secrets-key": {
+      "post": {
+        "description": "Rotate a shared engine's per-worker secrets key (zero-downtime).\n\nGenerates a new key, re-encrypts every tenant secret under it during the\nnext deploy, and keeps the old key valid for `window_seconds` (graceful\ntransition). See services/edge_secrets_push.rotate_secrets_key.",
+        "operationId": "edge_engines_rotate_secrets_key",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateSecretsKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Engines Rotate Secrets Key",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rotate Secrets Key",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/rotation-history": {
+      "get": {
+        "description": "List key-rotation history for an engine (in-flight transition + past 10).",
+        "operationId": "edge_engines_rotation_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotationHistoryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rotation History",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/rotation-status": {
+      "get": {
+        "description": "Report the current key-rotation state for an engine (active window, versions).",
+        "operationId": "edge_engines_rotation_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Engines Rotation Status",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rotation Status",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/source": {
+      "get": {
+        "description": "Return the TypeScript source snapshot captured at last deploy.\n\nProvider-agnostic \u2014 works for any engine that has been deployed.",
+        "operationId": "edge_engines_get_engine_source",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEngineSourceResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Engine Source",
+        "tags": [
+          "Edge Engines"
+        ]
+      },
+      "put": {
+        "description": "Save modified source files to the engine's DB snapshot (per-engine isolation).\n\nPayload: { files: { \"relative/path.ts\": \"content\", ... } }\nOnly updates the files provided \u2014 other snapshot files remain untouched.\n\nCore Zone Convention:\n- Files under frontbase-core/ are tracked in modified_core_files\n- Files outside frontbase-core/ set is_forked = True",
+        "operationId": "edge_engines_update_engine_source",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateEngineSourceResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Engine Source",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/sync-manifest": {
+      "post": {
+        "description": "Fetch /api/manifest from a running engine and sync GPU models + metadata.\n\nDelegates to services/engine_manifest.py.\nSilent on failure \u2014 engine might not be a Frontbase engine.",
+        "operationId": "edge_engines_sync_manifest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Engines Sync Manifest",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Manifest",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-engines/{engine_id}/test": {
+      "post": {
+        "description": "Hit the engine's /_health route to check code version and connection status.",
+        "operationId": "edge_engines_test_engine_connection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestConnectionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Engine Connection",
+        "tags": [
+          "Edge Engines"
+        ]
+      }
+    },
+    "/api/edge-gpu/": {
+      "get": {
+        "description": "List all deployed GPU models.",
+        "operationId": "edge_gpu_list_gpu_models",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Edge Gpu List Gpu Models",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Gpu Models",
+        "tags": [
+          "edge-gpu"
+        ]
+      },
+      "post": {
+        "description": "Deploy a new GPU model to an edge engine.\n\nAfter saving the model record, auto-redeploys CF engines so the AI\nbinding + FRONTBASE_GPU_MODELS secret are pushed immediately.",
+        "operationId": "edge_gpu_create_gpu_model",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "skip_redeploy",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Skip Redeploy",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GPUModelCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Gpu Create Gpu Model",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Gpu Model",
+        "tags": [
+          "edge-gpu"
+        ]
+      }
+    },
+    "/api/edge-gpu/catalog": {
+      "get": {
+        "description": "Fetch available models from a GPU provider.\n\nUses the adapter factory to select the correct implementation.\nFor CF Workers AI, calls GET /accounts/{id}/ai/models/search.",
+        "operationId": "edge_gpu_get_catalog",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "default": "workers_ai",
+              "title": "Provider",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCatalogResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Catalog",
+        "tags": [
+          "edge-gpu"
+        ]
+      }
+    },
+    "/api/edge-gpu/schemas": {
+      "get": {
+        "description": "Return all available I/O schemas by task type.",
+        "operationId": "edge_gpu_get_schemas",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSchemasResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Schemas",
+        "tags": [
+          "edge-gpu"
+        ]
+      }
+    },
+    "/api/edge-gpu/{model_id}": {
+      "delete": {
+        "description": "Delete a GPU model.\n\nAfter deletion, auto-redeploys CF engines to remove stale AI\nbinding / secrets.",
+        "operationId": "edge_gpu_delete_gpu_model",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "skip_redeploy",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Skip Redeploy",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Gpu Delete Gpu Model",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Gpu Model",
+        "tags": [
+          "edge-gpu"
+        ]
+      },
+      "put": {
+        "description": "Update a GPU model's configuration.",
+        "operationId": "edge_gpu_update_gpu_model",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GPUModelUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Gpu Update Gpu Model",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Gpu Model",
+        "tags": [
+          "edge-gpu"
+        ]
+      }
+    },
+    "/api/edge-gpu/{model_id}/test": {
+      "post": {
+        "description": "Test a deployed GPU model by running a sample inference.",
+        "operationId": "edge_gpu_test_gpu_model",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Gpu Test Gpu Model",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Gpu Model",
+        "tags": [
+          "edge-gpu"
+        ]
+      }
+    },
+    "/api/edge-providers/": {
+      "get": {
+        "description": "List all connected edge provider accounts.",
+        "operationId": "edge_providers_list_providers",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EdgeProviderAccountResponse"
+                  },
+                  "title": "Response Edge Providers List Providers",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Providers",
+        "tags": [
+          "edge-providers"
+        ]
+      },
+      "post": {
+        "description": "Create and connect a new edge provider account.\n\nCredentials are encrypted with Fernet AES-256 before storage.\nNon-secret metadata (account_id, project_ref) is stored separately for UI display.",
+        "operationId": "edge_providers_create_provider",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeProviderAccountCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeProviderAccountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Provider",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/accounts/{account_id}/tables": {
+      "get": {
+        "description": "List database tables from a connected account's credentials.\n\nResolves credentials directly from EdgeProviderAccount \u2014 no sync datasource needed.\nUsed by the Users panel (Auth Provider \u2192 Contacts Database \u2192 Table selector).\n\nSupported providers:\n- supabase: calls /rest/v1/rpc/frontbase_get_schema_info\n- neon: discovers projects then uses SQL via Neon serverless driver\n- postgres/mysql: direct connection via info schema (future)",
+        "operationId": "edge_providers_list_account_tables",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Providers List Account Tables",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Account Tables",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/create-resource-by-account/{account_id}": {
+      "post": {
+        "description": "Create a new resource (Redis DB) via Connected Account's management API.",
+        "operationId": "edge_providers_create_resource_by_account",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResourceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Providers Create Resource By Account",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Resource By Account",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/discover": {
+      "post": {
+        "description": "Discover resources (projects, databases, sites) available with the given credentials.\n\nUsed during the connect flow to let users pick which project/resource to bind.",
+        "operationId": "edge_providers_discover_resources_endpoint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscoverRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Providers Discover Resources Endpoint",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discover Resources Endpoint",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/discover-by-account/{account_id}": {
+      "post": {
+        "description": "Discover resources using stored credentials from a Connected Account.\n\nDecrypts saved credentials server-side and calls the same discovery logic.\nFor Turso: returns manually-registered databases from stored JSON.\nUsed by Edge DB/Cache/Queue forms to list available resources.",
+        "operationId": "edge_providers_discover_by_account",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Providers Discover By Account",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discover By Account",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/retest/{provider_id}": {
+      "post": {
+        "description": "Re-validate an existing provider's credentials.\n\nDecrypts stored secrets server-side and calls the same validation logic.",
+        "operationId": "edge_providers_retest_provider",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Providers Retest Provider",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retest Provider",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/test-connection": {
+      "post": {
+        "description": "Validate provider credentials by making a lightweight API call.\n\nDoes NOT create a record \u2014 just verifies the credentials work.\nCalled before saving to prevent storing invalid tokens.",
+        "operationId": "edge_providers_test_connection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Providers Test Connection",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Connection",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/workspace-agent-token": {
+      "get": {
+        "description": "Generate a stateless JWT for the Workspace Agent using the active GPU provider.",
+        "operationId": "edge_providers_get_workspace_agent_token",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetWorkspaceAgentTokenResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Workspace Agent Token",
+        "tags": [
+          "edge-providers"
+        ]
+      },
+      "post": {
+        "description": "Set a specific provider as the default Workspace Agent provider and generate token.",
+        "operationId": "edge_providers_set_workspace_agent_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetWorkspaceDefaultRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Providers Set Workspace Agent Token",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Workspace Agent Token",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/{account_id}/list-engines": {
+      "post": {
+        "description": "List engines/functions/apps from a connected edge provider.\n\nDispatches to provider-specific listing API and returns unified shape.",
+        "operationId": "edge_providers_list_engines_for_provider",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListEnginesForProviderResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Engines For Provider",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/{account_id}/turso-databases": {
+      "post": {
+        "description": "Add a database to a Turso provider account (manual registry).",
+        "operationId": "edge_providers_add_turso_database",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TursoDatabaseEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddTursoDatabaseResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Turso Database",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/{account_id}/turso-databases/{db_id}": {
+      "delete": {
+        "description": "Remove a database from a Turso provider account.",
+        "operationId": "edge_providers_remove_turso_database",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "db_id",
+            "required": true,
+            "schema": {
+              "title": "Db Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoveTursoDatabaseResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Turso Database",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/{account_id}/turso-databases/{db_id}/test": {
+      "post": {
+        "description": "Test connection to a specific Turso database within an account.",
+        "operationId": "edge_providers_test_turso_database",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "db_id",
+            "required": true,
+            "schema": {
+              "title": "Db Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestTursoDatabaseResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Turso Database",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/{provider_id}": {
+      "delete": {
+        "description": "Delete a provider account if no engines depend on it.",
+        "operationId": "edge_providers_delete_provider",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Provider",
+        "tags": [
+          "edge-providers"
+        ]
+      },
+      "get": {
+        "description": "Get a specific edge provider account.",
+        "operationId": "edge_providers_get_provider",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeProviderAccountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Provider",
+        "tags": [
+          "edge-providers"
+        ]
+      },
+      "put": {
+        "description": "Update a provider account. Credentials are re-encrypted on change.",
+        "operationId": "edge_providers_update_provider",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeProviderAccountUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeProviderAccountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Provider",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-providers/{provider_id}/credentials": {
+      "get": {
+        "description": "Return decrypted credentials for a provider account.\n\nInternal endpoint used by the db-synchronizer credential bridge to resolve\ndatasource credentials from connected accounts. Avoids duplicating\nencryption/decryption logic across services.",
+        "operationId": "edge_providers_get_credentials",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Providers Get Credentials",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Credentials",
+        "tags": [
+          "edge-providers"
+        ]
+      }
+    },
+    "/api/edge-queues/": {
+      "get": {
+        "description": "List all configured edge queues.",
+        "operationId": "edge_queues_list_edge_queues",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EdgeQueueResponse"
+                  },
+                  "title": "Response Edge Queues List Edge Queues",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Edge Queues",
+        "tags": [
+          "edge-queues"
+        ]
+      },
+      "post": {
+        "description": "Create a new edge queue connection.",
+        "operationId": "edge_queues_create_edge_queue",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeQueueCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeQueueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Edge Queue",
+        "tags": [
+          "edge-queues"
+        ]
+      }
+    },
+    "/api/edge-queues/batch/delete": {
+      "post": {
+        "description": "Batch delete queues. Optionally delete remote resources in parallel.",
+        "operationId": "edge_queues_batch_delete_queues",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchDeleteQueueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueBatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Delete Queues",
+        "tags": [
+          "edge-queues"
+        ]
+      }
+    },
+    "/api/edge-queues/test-connection": {
+      "post": {
+        "description": "Test a queue connection before saving it.",
+        "operationId": "edge_queues_test_connection_inline",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestQueueInline"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestQueueResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Connection Inline",
+        "tags": [
+          "edge-queues"
+        ]
+      }
+    },
+    "/api/edge-queues/{queue_id}": {
+      "delete": {
+        "description": "Delete an edge queue connection.\n\nFails if any edge engines still reference this queue.\nIf delete_remote=True and provider supports it, also deletes the remote resource.",
+        "operationId": "edge_queues_delete_edge_queue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "queue_id",
+            "required": true,
+            "schema": {
+              "title": "Queue Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "delete_remote",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Delete Remote",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoteDeleteAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Edge Queue",
+        "tags": [
+          "edge-queues"
+        ]
+      },
+      "put": {
+        "description": "Update an existing edge queue connection.",
+        "operationId": "edge_queues_update_edge_queue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "queue_id",
+            "required": true,
+            "schema": {
+              "title": "Queue Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeQueueUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeQueueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Edge Queue",
+        "tags": [
+          "edge-queues"
+        ]
+      }
+    },
+    "/api/edge-queues/{queue_id}/test/": {
+      "post": {
+        "description": "Test connectivity to a saved edge queue.",
+        "operationId": "edge_queues_test_edge_queue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "queue_id",
+            "required": true,
+            "schema": {
+              "title": "Queue Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestQueueResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Edge Queue",
+        "tags": [
+          "edge-queues"
+        ]
+      }
+    },
+    "/api/edge-vectors/": {
+      "get": {
+        "description": "List all configured edge vector stores.",
+        "operationId": "edge_vectors_list_edge_vectors",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EdgeVectorResponse"
+                  },
+                  "title": "Response Edge Vectors List Edge Vectors",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Edge Vectors",
+        "tags": [
+          "edge-vectors"
+        ]
+      },
+      "post": {
+        "description": "Create a new edge vector store connection.",
+        "operationId": "edge_vectors_create_edge_vector",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeVectorCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeVectorResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Edge Vector",
+        "tags": [
+          "edge-vectors"
+        ]
+      }
+    },
+    "/api/edge-vectors/batch/delete": {
+      "post": {
+        "description": "Batch delete multiple edge vector stores.",
+        "operationId": "edge_vectors_batch_delete_vectors",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchDeleteVectorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VectorBatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Delete Vectors",
+        "tags": [
+          "edge-vectors"
+        ]
+      }
+    },
+    "/api/edge-vectors/test-connection": {
+      "post": {
+        "description": "Test connection using raw fields (pre-save).",
+        "operationId": "edge_vectors_test_connection_inline",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VectorTestConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Vectors Test Connection Inline",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Connection Inline",
+        "tags": [
+          "edge-vectors"
+        ]
+      }
+    },
+    "/api/edge-vectors/{vector_id}": {
+      "delete": {
+        "description": "Delete an edge vector store connection.\n\nIf delete_remote=True and the store was created from a Connected Account,\nalso delete the resource at the provider (e.g. CF Vectorize index).",
+        "operationId": "edge_vectors_delete_edge_vector",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vector_id",
+            "required": true,
+            "schema": {
+              "title": "Vector Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "delete_remote",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Delete Remote",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteEdgeVectorResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Edge Vector",
+        "tags": [
+          "edge-vectors"
+        ]
+      },
+      "put": {
+        "description": "Update an existing edge vector store connection.",
+        "operationId": "edge_vectors_update_edge_vector",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vector_id",
+            "required": true,
+            "schema": {
+              "title": "Vector Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeVectorUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeVectorResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Edge Vector",
+        "tags": [
+          "edge-vectors"
+        ]
+      }
+    },
+    "/api/edge-vectors/{vector_id}/test": {
+      "post": {
+        "description": "Test connection to an existing edge vector store.",
+        "operationId": "edge_vectors_test_edge_vector_connection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vector_id",
+            "required": true,
+            "schema": {
+              "title": "Vector Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edge Vectors Test Edge Vector Connection",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Edge Vector Connection",
+        "tags": [
+          "edge-vectors"
+        ]
+      }
+    },
+    "/api/mcp-servers": {
+      "get": {
+        "description": "List global MCP servers catalogue, excluding tenant-disabled items.\n\nReturns only global (tenant_id IS NULL) MCP servers for all tenants, filtered\nby profile_slug if provided. Master admins see all servers including disabled ones.",
+        "operationId": "agent_integrations_list_mcp_servers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "profile_slug",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMcpServersResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Mcp Servers",
+        "tags": [
+          "agent-integrations"
+        ]
+      },
+      "post": {
+        "operationId": "agent_integrations_create_mcp_server",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpServerCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Agent Integrations Create Mcp Server",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Mcp Server",
+        "tags": [
+          "agent-integrations"
+        ]
+      }
+    },
+    "/api/mcp-servers/{server_id}": {
+      "delete": {
+        "operationId": "agent_integrations_delete_mcp_server",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Mcp Server",
+        "tags": [
+          "agent-integrations"
+        ]
+      },
+      "get": {
+        "operationId": "agent_integrations_get_mcp_server",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Agent Integrations Get Mcp Server",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mcp Server",
+        "tags": [
+          "agent-integrations"
+        ]
+      },
+      "put": {
+        "operationId": "agent_integrations_update_mcp_server",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpServerUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Agent Integrations Update Mcp Server",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Mcp Server",
+        "tags": [
+          "agent-integrations"
+        ]
+      }
+    },
+    "/api/mcp-servers/{server_id}/test": {
+      "post": {
+        "operationId": "agent_integrations_test_mcp_server",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestMcpServerResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Mcp Server",
+        "tags": [
+          "agent-integrations"
+        ]
+      }
+    },
+    "/api/mcp-servers/{server_id}/tools": {
+      "get": {
+        "operationId": "agent_integrations_list_mcp_server_tools",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMcpServerToolsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Mcp Server Tools",
+        "tags": [
+          "agent-integrations"
+        ]
+      }
+    },
+    "/api/pages/": {
+      "get": {
+        "description": "Get all pages - matches Express: { success, data: pages[] }",
+        "operationId": "pages_get_pages",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "includeDeleted",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Includedeleted",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Pages",
+        "tags": [
+          "pages"
+        ]
+      },
+      "post": {
+        "description": "Create a new page - matches Express: { success, data: page }",
+        "operationId": "pages_create_page_endpoint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Page Endpoint",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/homepage/": {
+      "get": {
+        "description": "Get the homepage for Edge pull-publish.\nEdge calls this when it has no homepage in its local DB.",
+        "operationId": "pages_get_homepage",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Homepage",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/public/{slug}/": {
+      "get": {
+        "description": "Get a public page by slug for SSR.\nNo authentication required - used by Edge Engine.\nReturns page data if page exists and is public (or all for now during dev).",
+        "operationId": "pages_get_public_page",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Public Page",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/{page_id}/": {
+      "delete": {
+        "description": "Soft delete a page - matches Express: { success, message }.\nUnpublishes from ALL active full-bundle Edge Engines.",
+        "operationId": "pages_delete_page",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Page",
+        "tags": [
+          "pages"
+        ]
+      },
+      "get": {
+        "description": "Get a page by ID - matches Express: { success, data: page }",
+        "operationId": "pages_get_page",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Page",
+        "tags": [
+          "pages"
+        ]
+      },
+      "put": {
+        "description": "Update a page - matches Express: { success, data: page }",
+        "operationId": "pages_update_page_endpoint",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Page Endpoint",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/{page_id}/layout/": {
+      "put": {
+        "description": "Update page layout - matches Express: { success, data: page }",
+        "operationId": "pages_update_page_layout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Page Layout",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/{page_id}/permanent/": {
+      "delete": {
+        "description": "Permanently delete a page - matches Express: { success, message }.\nUnpublishes from ALL active full-bundle Edge Engines, then hard-deletes.",
+        "operationId": "pages_permanent_delete_page",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Permanent Delete Page",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/{page_id}/publish-batch/": {
+      "post": {
+        "description": "Publish a page to multiple Edge Engines in one request.\nSerializes the page ONCE, then fans out to all engines in parallel.",
+        "operationId": "pages_publish_to_targets_batch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchPublishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchPublishResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Publish To Targets Batch",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/{page_id}/publish/{engine_id}/": {
+      "post": {
+        "description": "Publish a page to a specific Edge Engine target.",
+        "operationId": "pages_publish_to_target",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Publish To Target",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/{page_id}/restore/": {
+      "post": {
+        "description": "Restore a deleted page - matches Express: { success, data: page, message }",
+        "operationId": "pages_restore_page",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Page",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/{page_id}/rollback/": {
+      "post": {
+        "description": "Roll back a page to a previous version.\nCreates a NEW version snapshot of the current state BEFORE overwriting,\nso the rollback itself can be undone.",
+        "operationId": "pages_rollback_to_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RollbackEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rollback To Version",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/{page_id}/unpublish/{engine_id}/": {
+      "post": {
+        "description": "Unpublish a page from a specific Edge Engine target.\nPage remains in the backend DB and on other targets.",
+        "operationId": "pages_unpublish_page_from_target",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unpublish Page From Target",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/{page_id}/versions/": {
+      "get": {
+        "description": "List all version snapshots for a page, newest first.",
+        "operationId": "pages_list_versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageVersionListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Versions",
+        "tags": [
+          "pages"
+        ]
+      },
+      "post": {
+        "description": "Manually create a named version snapshot (e.g., \"Pre-launch backup\").",
+        "operationId": "pages_create_manual_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionLabelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageVersionEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Manual Version",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/pages/{page_id}/versions/{version_id}/": {
+      "get": {
+        "description": "Get a specific version including its full layout_data snapshot.",
+        "operationId": "pages_get_version_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageVersionEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Version Detail",
+        "tags": [
+          "pages"
+        ]
+      }
+    },
+    "/api/project/": {
+      "get": {
+        "description": "Get project settings",
+        "operationId": "project_get_project_endpoint",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Project Endpoint",
+        "tags": [
+          "project"
+        ]
+      },
+      "put": {
+        "description": "Update project settings and sync to Edge for SSR self-sufficiency.\nOptimized: Releases DB connection before Edge sync HTTP call.",
+        "operationId": "project_update_project_endpoint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Project Endpoint",
+        "tags": [
+          "project"
+        ]
+      }
+    },
+    "/api/project/assets/upload/": {
+      "post": {
+        "description": "Upload branding assets (favicon, logo) stored locally.\nThese are independent of user-configured Supabase storage.\nReturns a URL path that works in both admin and SSR contexts.",
+        "operationId": "project_upload_branding_asset",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_project_upload_branding_asset"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Project Upload Branding Asset",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Branding Asset",
+        "tags": [
+          "project"
+        ]
+      }
+    },
+    "/api/queue/health": {
+      "get": {
+        "operationId": "meta_queue_health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueHealth"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Queue Health",
+        "tags": [
+          "Meta"
+        ]
+      }
+    },
+    "/api/security-events/": {
+      "get": {
+        "description": "List security events for the calling tenant (read-only).\n\nFilters: event_type, severity, and a created_at date window. ``created_at``\nis stored as an ISO-8601 UTC string, so lexicographic comparison is\nchronological and the date filters accept plain ``YYYY-MM-DD`` or full\ntimestamps.",
+        "operationId": "security_events_list_security_events",
+        "parameters": [
+          {
+            "description": "Filter by event type (e.g. ssrf_attempt_blocked)",
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by event type (e.g. ssrf_attempt_blocked)",
+              "title": "Event Type"
+            }
+          },
+          {
+            "description": "Filter by severity",
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by severity",
+              "title": "Severity"
+            }
+          },
+          {
+            "description": "ISO-8601 lower bound on created_at (inclusive)",
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ISO-8601 lower bound on created_at (inclusive)",
+              "title": "Start Date"
+            }
+          },
+          {
+            "description": "ISO-8601 upper bound on created_at (inclusive)",
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ISO-8601 upper bound on created_at (inclusive)",
+              "title": "End Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSecurityEventsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Security Events",
+        "tags": [
+          "security-events"
+        ]
+      }
+    },
+    "/api/security-events/summary": {
+      "get": {
+        "description": "Lightweight counts by severity for dashboard badges/header chips.\n\nReturns ``{total, by_severity: {low, medium, high, critical}}`` scoped to\nthe calling tenant (same isolation rules as the list endpoint).",
+        "operationId": "security_events_security_events_summary",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityEventsSummaryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Security Events Summary",
+        "tags": [
+          "security-events"
+        ]
+      }
+    },
+    "/api/settings/general": {
+      "get": {
+        "description": "Get general site settings",
+        "operationId": "settings_get_general_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get General Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "description": "Update general site settings",
+        "operationId": "settings_update_general_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeneralSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update General Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/invites": {
+      "post": {
+        "description": "Send an invitation email to a new admin.",
+        "operationId": "settings_send_admin_invite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminInviteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminInviteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send Admin Invite",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/privacy/": {
+      "get": {
+        "description": "Get privacy and tracking settings.\n\nReturns configuration for visitor tracking cookies and advanced variables.",
+        "operationId": "settings_get_privacy_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettings-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Privacy Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "description": "Update privacy and tracking settings.\n\nConfigures visitor tracking behavior:\n- enableVisitorTracking: Enable/disable visitor tracking cookies\n- cookieExpiryDays: Number of days before tracking cookie expires\n- requireCookieConsent: Require user consent before setting tracking cookies",
+        "operationId": "settings_update_privacy_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacySettings-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettings-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Privacy Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/redis/": {
+      "get": {
+        "description": "Get Redis cache settings.\n\nReturns the explicitly configured Upstash instance from UI if present.\nOtherwise, returns the fallback local Redis configuration (powered by env vars).",
+        "operationId": "settings_get_redis_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedisSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Redis Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "description": "Update Redis cache settings.",
+        "operationId": "settings_update_redis_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedisSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedisSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Redis Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/redis/test/": {
+      "post": {
+        "description": "Test Redis connection with provided settings.",
+        "operationId": "settings_test_redis_connection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedisSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedisTestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Redis Connection",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/security/": {
+      "get": {
+        "description": "Get security-log IP retention settings.",
+        "operationId": "settings_get_security_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecuritySettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Security Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "description": "Update security-log IP retention.\n\n- full_ip_retention_days > 0 : retain full IP N days, then purge\n- 0  : anonymize immediately (strict privacy)\n- -1 : retain indefinitely (legitimate interest)",
+        "operationId": "settings_update_security_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecuritySettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecuritySettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Security Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/telemetry": {
+      "post": {
+        "description": "Collects anonymized telemetry from self-hosted editions.\nCurrently mocked to just log locally.",
+        "operationId": "settings_collect_telemetry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelemetryData"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Collect Telemetry",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/validate-license": {
+      "post": {
+        "description": "Validates a license key for Enterprise or Community Free upgrades.\nCurrently mocked to accept any key starting with 'fb_'.",
+        "operationId": "settings_validate_license",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LicenseValidationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LicenseValidationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate License",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/storage/buckets": {
+      "get": {
+        "description": "List all buckets for a storage provider (fast \u2014 no size computation).",
+        "operationId": "storage_list_buckets",
+        "parameters": [
+          {
+            "description": "StorageProvider ID",
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "description": "StorageProvider ID",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Storage List Buckets",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Buckets",
+        "tags": [
+          "storage"
+        ]
+      },
+      "post": {
+        "description": "Create a new bucket.",
+        "operationId": "storage_create_bucket",
+        "parameters": [
+          {
+            "description": "StorageProvider ID",
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "description": "StorageProvider ID",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageBucketResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Bucket",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/buckets/{bucket_id}": {
+      "delete": {
+        "description": "Delete a bucket (must be empty).",
+        "operationId": "storage_delete_bucket",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bucket_id",
+            "required": true,
+            "schema": {
+              "title": "Bucket Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "StorageProvider ID",
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "description": "StorageProvider ID",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageMessageAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Bucket",
+        "tags": [
+          "storage"
+        ]
+      },
+      "get": {
+        "description": "Get a specific bucket.",
+        "operationId": "storage_get_bucket",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bucket_id",
+            "required": true,
+            "schema": {
+              "title": "Bucket Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "StorageProvider ID",
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "description": "StorageProvider ID",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageBucketResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Bucket",
+        "tags": [
+          "storage"
+        ]
+      },
+      "put": {
+        "description": "Update bucket settings.",
+        "operationId": "storage_update_bucket",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bucket_id",
+            "required": true,
+            "schema": {
+              "title": "Bucket Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "StorageProvider ID",
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "description": "StorageProvider ID",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageBucketResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Bucket",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/buckets/{bucket_id}/empty": {
+      "post": {
+        "description": "Empty a bucket.",
+        "operationId": "storage_empty_bucket",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bucket_id",
+            "required": true,
+            "schema": {
+              "title": "Bucket Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "StorageProvider ID",
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "description": "StorageProvider ID",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageMessageAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Empty Bucket",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/compute-size": {
+      "get": {
+        "description": "Compute recursive size with L1/L2/L3 caching.\n\nL1: In-memory dict (instant)\nL2: Redis with 10-min TTL (survives restart)\nL3: Recursive Supabase API walk (expensive, populates L1 + L2)",
+        "operationId": "storage_compute_size",
+        "parameters": [
+          {
+            "description": "Bucket name",
+            "in": "query",
+            "name": "bucket",
+            "required": true,
+            "schema": {
+              "description": "Bucket name",
+              "title": "Bucket",
+              "type": "string"
+            }
+          },
+          {
+            "description": "StorageProvider ID",
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "description": "StorageProvider ID",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Folder path (empty for entire bucket)",
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "Folder path (empty for entire bucket)",
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageBucketResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compute Size",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/create-folder": {
+      "post": {
+        "description": "Create a folder.",
+        "operationId": "storage_create_folder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageMessageAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Folder",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/delete": {
+      "delete": {
+        "description": "Delete files from a bucket.",
+        "operationId": "storage_delete_files",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageMessageAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Files",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/list": {
+      "get": {
+        "description": "List files in a bucket path with global sorting, lazy folder size lookup, and pagination.",
+        "operationId": "storage_list_files",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "bucket",
+            "required": true,
+            "schema": {
+              "title": "Bucket",
+              "type": "string"
+            }
+          },
+          {
+            "description": "StorageProvider ID",
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "description": "StorageProvider ID",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Field to sort by (name, size, type, updated_at)",
+            "in": "query",
+            "name": "sort_by",
+            "required": false,
+            "schema": {
+              "default": "name",
+              "description": "Field to sort by (name, size, type, updated_at)",
+              "title": "Sort By",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Sort order (asc, desc)",
+            "in": "query",
+            "name": "sort_order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "Sort order (asc, desc)",
+              "title": "Sort Order",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageFilesResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Files",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/move": {
+      "post": {
+        "description": "Move or rename a file.",
+        "operationId": "storage_move_file",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageMessageAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Move File",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/move-cross": {
+      "post": {
+        "description": "Move a file across buckets / providers (Sprint 4B + Post-sprint 2.2).\n\nBody:\n  source_provider_id, source_bucket, source_key\n  dest_provider_id,   dest_bucket,   dest_key\n\nSmall files (< 50 MB, or unknown size) are moved synchronously: download from\nsource \u2192 upload to dest \u2192 delete source. Large files (\u2265 50 MB) are moved by a\nbackground job \u2014 this returns ``{async: true, job_id}``` and the client polls\n``/api/storage/move-status/{job_id}``. Same-provider adapters with native\nserver-side copy override ``move_cross`` for efficiency.",
+        "operationId": "storage_move_file_cross",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageResultEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Move File Cross",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/move-status/{job_id}": {
+      "get": {
+        "description": "Poll the status of a background cross-bucket move (Post-sprint 2.2).",
+        "operationId": "storage_get_move_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageResultEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Move Status",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/netlify-sites": {
+      "get": {
+        "description": "List Netlify sites for a connected account (used by the site-picker in Add Storage).",
+        "operationId": "storage_list_netlify_sites",
+        "parameters": [
+          {
+            "description": "EdgeProviderAccount ID",
+            "in": "query",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "EdgeProviderAccount ID",
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Storage List Netlify Sites",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Netlify Sites",
+        "tags": [
+          "storage"
+        ]
+      },
+      "post": {
+        "description": "Create a new Netlify site for storage (reuses netlify_deploy_api.create_site).\n\nAfter creation, triggers a minimal empty deploy to activate Netlify Blobs.\nWithout at least one deploy, Blobs write API returns 401 \"Access Denied\".",
+        "operationId": "storage_create_netlify_site",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateNetlifySiteResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Netlify Site",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/providers/": {
+      "get": {
+        "description": "List all explicitly-added storage providers.",
+        "operationId": "storage_list_storage_providers",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Storage List Storage Providers",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Storage Providers",
+        "tags": [
+          "storage"
+        ]
+      },
+      "post": {
+        "description": "Create a new storage provider linking to a connected account.",
+        "operationId": "storage_create_storage_provider",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateStorageProviderResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Storage Provider",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/providers/{provider_id}": {
+      "delete": {
+        "description": "Remove a storage provider.",
+        "operationId": "storage_delete_storage_provider",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageMessageAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Storage Provider",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/public-url": {
+      "get": {
+        "description": "Get the public URL for a file.",
+        "operationId": "storage_get_public_url",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "bucket",
+            "required": true,
+            "schema": {
+              "title": "Bucket",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "description": "StorageProvider ID",
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "description": "StorageProvider ID",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageSignedUrlResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Public Url",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/signed-url": {
+      "get": {
+        "description": "Get a signed URL for temporary download.",
+        "operationId": "storage_get_signed_url",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "bucket",
+            "required": true,
+            "schema": {
+              "title": "Bucket",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "description": "StorageProvider ID",
+            "in": "query",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "description": "StorageProvider ID",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expiresIn",
+            "required": false,
+            "schema": {
+              "default": 3600,
+              "title": "Expiresin",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageSignedUrlResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Signed Url",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/upload": {
+      "post": {
+        "description": "Upload a file.",
+        "operationId": "storage_upload_file",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_storage_upload_file"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageResultEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload File",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/storage/vercel-projects": {
+      "get": {
+        "description": "List Vercel projects for a connected account (used by project-picker in Create Bucket).",
+        "operationId": "storage_list_vercel_projects",
+        "parameters": [
+          {
+            "description": "EdgeProviderAccount ID",
+            "in": "query",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "EdgeProviderAccount ID",
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Storage List Vercel Projects",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Vercel Projects",
+        "tags": [
+          "storage"
+        ]
+      },
+      "post": {
+        "description": "Create a new Vercel project for blob storage connection.",
+        "operationId": "storage_create_vercel_project",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Request",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateVercelProjectResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Vercel Project",
+        "tags": [
+          "storage"
+        ]
+      }
+    },
+    "/api/themes/": {
+      "get": {
+        "description": "Get all themes, optionally filtered by component type.",
+        "operationId": "themes_get_themes",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "component_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Component Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ComponentThemeOut"
+                  },
+                  "title": "Response Themes Get Themes",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Themes",
+        "tags": [
+          "Themes"
+        ]
+      },
+      "post": {
+        "description": "Create a new custom theme.",
+        "operationId": "themes_create_theme",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentThemeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentThemeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Theme",
+        "tags": [
+          "Themes"
+        ]
+      }
+    },
+    "/api/themes/{theme_id}": {
+      "delete": {
+        "description": "Delete a custom theme. System themes cannot be deleted.",
+        "operationId": "themes_delete_theme",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "theme_id",
+            "required": true,
+            "schema": {
+              "title": "Theme Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Theme",
+        "tags": [
+          "Themes"
+        ]
+      }
+    },
+    "/api/variables/": {
+      "get": {
+        "description": "Get all variables",
+        "operationId": "variables_get_variables",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VariableResponse"
+                  },
+                  "title": "Response Variables Get Variables",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Variables",
+        "tags": [
+          "variables"
+        ]
+      },
+      "post": {
+        "description": "Create a new variable",
+        "operationId": "variables_create_variable_endpoint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariableCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VariableResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Variable Endpoint",
+        "tags": [
+          "variables"
+        ]
+      }
+    },
+    "/api/variables/registry/": {
+      "get": {
+        "description": "Get available template variables and filters for Builder autocomplete.\n\nReturns variable scopes (page, user, visitor, url, system, record, local, session, cookies).\nUser variables are dynamically loaded from the configured contacts table schema.\n\nIf page_id is provided, could include page-specific custom variables (future feature).",
+        "operationId": "variables_get_template_registry",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Page Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateRegistryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Template Registry",
+        "tags": [
+          "variables"
+        ]
+      }
+    },
+    "/api/variables/{variable_id}": {
+      "get": {
+        "description": "Get a variable by ID",
+        "operationId": "variables_get_variable",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variable_id",
+            "required": true,
+            "schema": {
+              "title": "Variable Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VariableResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Variable",
+        "tags": [
+          "variables"
+        ]
+      }
+    },
+    "/api/variables/{variable_id}/": {
+      "delete": {
+        "description": "Delete a variable",
+        "operationId": "variables_delete_variable",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variable_id",
+            "required": true,
+            "schema": {
+              "title": "Variable Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Variable",
+        "tags": [
+          "variables"
+        ]
+      },
+      "put": {
+        "description": "Update a variable",
+        "operationId": "variables_update_variable_endpoint",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variable_id",
+            "required": true,
+            "schema": {
+              "title": "Variable Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariableUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VariableResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Variable Endpoint",
+        "tags": [
+          "variables"
+        ]
+      }
+    },
+    "/api/workflows/send-email": {
+      "post": {
+        "description": "Send an email on behalf of a workflow automation run.",
+        "operationId": "workflows_send_workflow_email",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "provider_account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Account Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEmailResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send Workflow Email",
+        "tags": [
+          "Workflows"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "meta_health_check",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check",
+        "tags": [
+          "Meta"
+        ]
+      }
+    }
+  }
+};
 export default SPEC;

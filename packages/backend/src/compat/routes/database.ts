@@ -15,9 +15,13 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 export function registerDatabaseRoutes(app: App, kvFor: (t: string) => KeyValueStore, now: () => string): void {
     // GET /api/database/connections/
+    // Contract (bf1ac54) requires DatabaseConnectionResponse {success, data?, message?}.
     app.get('/api/database/connections/', async (c) => {
         const conn = await kvFor(c.get('tenant')).getJson<{ connected?: boolean }>('db_connection', {});
-        return c.json({ supabase: { connected: !!conn.connected, url: '', hasServiceKey: !!conn.connected } });
+        return c.json({
+            success: true,
+            data: { supabase: { connected: !!conn.connected, url: '', hasServiceKey: !!conn.connected } },
+        });
     });
     // POST /api/database/test-supabase/
     app.post('/api/database/test-supabase/', (c) => c.json({ success: false, message: 'No Supabase connection configured' }));

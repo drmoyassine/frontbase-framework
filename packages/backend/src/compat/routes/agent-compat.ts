@@ -8,7 +8,12 @@ export function registerAgentCompatRoutes(app: App, runner: DbRunner, kvFor: (t:
     app.post('/api/agent/chat', (c) => c.json({ success: false, detail: 'No LLM provider configured' }));
     app.post('/api/agent/chat/:profile_slug', (c) => c.json({ success: false, detail: 'No LLM provider configured' }));
     app.get('/api/agent/credits', (c) => c.json({ credits: -1, daily_used: 0, daily_limit: -1, monthly_used: 0, monthly_limit: -1 }));
-    app.get('/api/agent/settings', async (c) => c.json(await kvFor(c.get('tenant')).getJson('agent_settings', {})));
+    // Contract (bf1ac54) requires SettingsResponse {settings, can_modify_tenant?, inherited_from?}.
+    app.get('/api/agent/settings', async (c) => c.json({
+        settings: await kvFor(c.get('tenant')).getJson('agent_settings', {}),
+        can_modify_tenant: true,
+        inherited_from: 'default', // community merges one layer only
+    }));
     app.put('/api/agent/settings', async (c) => { const b = await c.req.json().catch(() => ({})); await kvFor(c.get('tenant')).setJson('agent_settings', b, ''); return c.json(b); });
     app.delete('/api/agent/settings', async (c) => { await kvFor(c.get('tenant')).setJson('agent_settings', {}, ''); return c.json({ success: true }); });
     app.get('/api/agent/mcp/:profile_slug', (c) => c.json({}));
