@@ -25,7 +25,7 @@ Where any older note conflicts with this file, this file controls.
 |---|---|---|
 | **P0** | Product repo emits a committed, typed OpenAPI contract + generated client | ✅ **Green (Gate 0).** The "artifact lags source" reading was a CRLF false positive: `core.autocrlf` rewrote the generated JSON on checkout, so byte-comparing gates saw phantom edits (`--numstat` showed 0 changed lines). Fixed by pinning those paths to LF in `.gitattributes` (product `e79abee`). |
 | **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ⚠️ **Inventory gate, not conformance gate.** The emitted spec is *cloned* from the product doc and stamped by a manual registry — it proves an endpoint is *registered*, not that its handler accepts/returns the right shapes. Only the `variables` tag is Zod-validated. |
-| **P2** | 285 compat handlers implementing the community contract | ⚠️ **Route/shape coverage complete; behavior + security incomplete.** Many Wave 2–5 handlers are empty-state/success-shaped placeholders. **One 🔴 CRITICAL security defect (plaintext API keys) and one 🔴 HIGH defect (no-op password reset).** No Wave 2–5 behavior tests, no tenant-isolation matrix, no auth mutation proofs beyond the guard split. |
+| **P2** | 285 compat handlers implementing the community contract | ⚠️ **Shapes now verified (Gate 1a: 47 violations → 0, gated); behavior + security still incomplete.** Many Wave 2–5 handlers are empty-state/success-shaped placeholders. **One 🔴 CRITICAL security defect (plaintext API keys) and one 🔴 HIGH defect (no-op password reset).** No Wave 2–5 behavior tests, no tenant-isolation matrix, no auth mutation proofs beyond the guard split. |
 | **P3** | Serve the product console from the cf-full worker | ⚠️ **Locally integrated; acceptance open.** Routing/auth/static-assets/setup-hardening are real and smoke-green (21/21). No Playwright, no real-CF deploy proof, console/contract pins mismatch, no owner sign-off. A field incident (two dashboards) was found and remediated. |
 
 **Current machine-verified facts (2026-07-27):**
@@ -352,6 +352,32 @@ Fixed; probe now 30/30. This is direct empirical confirmation of the P1 finding.
   retyped operations (POST/PUT, param routes) are **unmeasured**; true divergence is ≥4.
 - **Also closed here:** the console artifact split (§6a) — CI can build the deployable
   worker again, and cf-full smoke now runs in CI.
+
+### Gate 1a — response conformance burn-down · ✅ **CLOSED 2026-07-27** (`17f8ca1`, `fe63b4b`)
+
+Gate 0's probe covered 30 param-less GETs. Extending it to all 286 ops — synthesizing
+request bodies from the contract's own schemas, harvesting ids from real POSTs so param
+routes reach their handlers — put the true number at **47**, not 4.
+
+They were four repeated mistakes, not 47 unrelated ones: `success` as a boolean where
+the contract types it as the list of ids a batch op processed; create/update returning
+`{id, name}` instead of the full resource; test results omitting the required `message`;
+collections returning bare arrays where an object is required. Each family had been
+independently re-invented per tag during P2, which is how they independently drifted.
+They now share one definition in `compat/routes/edge-shapes.ts`.
+
+Two defects beyond response shaping:
+- **Migration v13** — `workflows` had no `created_at` column at all, yet
+  `WorkflowDraftResponse` requires it. The Builder's draft list was being served a field
+  that did not exist. Backfilled from `updated_at`; set on insert only.
+- `POST /api/actions/drafts/{id}/test` returned status `running`, not in the contract enum.
+
+- **Exit met:** `VIOLATES 0`; `test/compat-conformance.mjs --gate` runs in the backend
+  suite and in CI; proven RED by mutating a single response field.
+- **Measured 156/286 (55%).** `UNREACHABLE 45` is *not* a pass — those handlers answer
+  4xx/5xx because the probe lacks fixtures. `NO_SCHEMA 85` are ops whose contract
+  documents no `$ref` 2xx body (a P0 contract-tightening gap, not a handler gap).
+  Closing both is Gate 1 proper.
 
 ### Gate 1 — repair P1 conformance semantics
 1. Generate request/param/response validators from the vendored OpenAPI and wrap
