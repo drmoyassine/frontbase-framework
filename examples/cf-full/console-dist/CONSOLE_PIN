@@ -1,7 +1,10 @@
 {
   "commit": "bf1ac54152906cade057d4d8c14f667a5c456b9a",
-  "sha256": "597b8a18236a57af40f7acf53e5061fd267b3f3d519be4ef1abea3850e94abe8",
+  "sha256": "f1a56eb5ce6adb06efe0350566559b56585c7746033ecdd585b0a26a56783731",
   "jsBundles": [
     "index-CK4W6mfw-1784147030566.js"
+  ],
+  "cssBundles": [
+    "index-BRcOQHqp-1784147030566.css"
   ]
 }

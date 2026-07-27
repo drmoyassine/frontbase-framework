@@ -39,6 +39,7 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
+import { validateConsoleArtifact } from './console-pin.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
@@ -63,6 +64,19 @@ const opts = {
     appName: value('app-name'),
     d1DatabaseId: value('d1-database-id'),
 };
+
+// ---- 0. Deploy-level console gate. build.mjs validates only the committed shell
+//         (level 'shell') so a fresh clone and CI can build. Shipping additionally
+//         requires the real bundle bytes, hash-matched against CONSOLE_PIN — the
+//         Worker serves them via Static Assets, so without them /frontbase-admin
+//         deploys as a shell pointing at 404s. This is the check that must hold. ----
+try {
+    validateConsoleArtifact(repoRoot, { level: 'deploy' });
+} catch (error) {
+    console.error(`✗ ${error.message}`);
+    console.error('\n✗ refusing to deploy without a verified console artifact.');
+    process.exit(1);
+}
 
 // ---- 1. Build cf-full (its own build.mjs — inlines SW + admin SPA) ----
 console.log('→ building examples/cf-full (engine + console + admin console, one artifact)...');

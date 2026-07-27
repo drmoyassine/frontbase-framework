@@ -16,7 +16,7 @@
  */
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { hashBundles } from './console-pin.mjs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -72,16 +72,18 @@ copyDir(srcDist, consoleRoot);
 // Do not publish pin metadata or source maps as public Worker assets.
 writeFileSync(join(consoleDist, '.assetsignore'), 'CONSOLE_PIN\n**/*.map\n');
 
-// Hash the JS bundle for the pin
+// Hash every asset the shell loads — JS and CSS — for the pin. The shell
+// (frontbase-admin/index.html) is committed while these bundles are not, so the
+// pin is what ties the two together: validateConsoleArtifact requires the shell's
+// asset references and this list to agree exactly, in both directions.
 const assetsDir = join(consoleRoot, 'assets');
-const jsBundles = existsSync(assetsDir)
-    ? readdirSync(assetsDir).filter((f) => f.endsWith('.js')).sort()
-    : [];
+const assetFiles = existsSync(assetsDir) ? readdirSync(assetsDir) : [];
+const jsBundles = assetFiles.filter((f) => f.endsWith('.js')).sort();
+const cssBundles = assetFiles.filter((f) => f.endsWith('.css')).sort();
 if (jsBundles.length === 0) { console.error('✗ product build contains no JavaScript bundle'); process.exit(1); }
-const digest = createHash('sha256');
-for (const file of jsBundles) digest.update(file).update('\0').update(readFileSync(join(assetsDir, file)));
-const sha256 = digest.digest('hex');
+const sha256 = hashBundles(assetsDir, [...jsBundles, ...cssBundles]);
 const commit = execSync('git rev-parse HEAD', { cwd: productDir, encoding: 'utf-8' }).trim();
 
-writeFileSync(join(consoleDist, 'CONSOLE_PIN'), JSON.stringify({ commit, sha256, jsBundles }, null, 2) + '\n');
-console.log(`✓ console-dist/frontbase-admin populated (pin: ${commit.slice(0, 12)}, ${jsBundles.length} JS bundle(s))`);
+writeFileSync(join(consoleDist, 'CONSOLE_PIN'), JSON.stringify({ commit, sha256, jsBundles, cssBundles }, null, 2) + '\n');
+console.log(`✓ console-dist/frontbase-admin populated (pin: ${commit.slice(0, 12)}, ${jsBundles.length} JS + ${cssBundles.length} CSS bundle(s))`);
+console.log('  NOTE: frontbase-admin/index.html and CONSOLE_PIN are both committed — commit them together.');

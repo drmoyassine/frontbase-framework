@@ -17,7 +17,7 @@ import { existsSync, readFileSync, statSync, mkdirSync, copyFileSync } from 'nod
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { validateConsoleArtifact } from '../../scripts/console-pin.mjs';
+import { validateConsoleArtifact, consoleBundlesPresent } from '../../scripts/console-pin.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 mkdirSync(join(here, 'dist'), { recursive: true });
@@ -34,18 +34,23 @@ const REPO_ROOT = (function findRoot(dir) {
     }
     return dir;
 })(here);
+// The Worker bundle embeds only the SPA shell (see consoleShellPlugin below); the
+// hashed bundles are served by Workers Static Assets and are never bundled. So the
+// build validates at level 'shell' — everything it actually consumes, all of it
+// committed, so this succeeds in a fresh clone and in CI. The bundle bytes are a
+// DEPLOY requirement, enforced at level 'deploy' by scripts/deploy.mjs; building a
+// worker without them is fine, shipping one is not.
 try {
-    validateConsoleArtifact(REPO_ROOT);
+    validateConsoleArtifact(REPO_ROOT, { level: 'shell' });
 } catch (error) {
     console.error(`✗ ${error.message}`);
     process.exit(1);
 }
 const CONSOLE_ROOT = join(here, 'console-dist', 'frontbase-admin');
 const CONSOLE_INDEX_PATH = join(CONSOLE_ROOT, 'index.html');
-const CONSOLE_ASSETS_PATH = join(CONSOLE_ROOT, 'assets');
-if (!existsSync(CONSOLE_INDEX_PATH) || !existsSync(CONSOLE_ASSETS_PATH)) {
-    console.error('✗ product console artifact is missing or incomplete. Run `pnpm run fetch:console` before build/deploy.');
-    process.exit(1);
+if (!consoleBundlesPresent(REPO_ROOT)) {
+    console.log('⚠ console bundles absent — building against the committed shell only.');
+    console.log('  This artifact is NOT deployable; run `pnpm run fetch:console` before deploying.');
 }
 const DEP_PKGS = [
     { name: '@frontbase/edge-core', artifact: 'dist/index.js' },

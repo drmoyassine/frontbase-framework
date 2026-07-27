@@ -30,6 +30,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm -r build
+      # The deployable Worker, exercised in-process against a memory runner. This
+      # is new coverage: cf-full's build demanded the gitignored console bundles,
+      # so from the console cutover until the artifact split it could not build in
+      # CI at all. It now builds from the committed shell; the two checks that read
+      # real bundle bytes report SKIPPED here and run on the deploy path.
+      - name: cf-full smoke (deployable worker)
+        run: pnpm --filter @frontbase/example-cf-full smoke
+      - name: Console artifact split guarantees
+        run: node examples/cf-full/test/console-pin.mjs
       - name: Spec staleness gate
         run: pnpm --filter @frontbase/backend run contracts:check
       - name: Contract drift gate (missing / divergent)

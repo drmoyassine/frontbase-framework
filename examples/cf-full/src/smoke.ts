@@ -43,6 +43,17 @@ const check = async (label: string, fn: () => Promise<boolean>) => {
     catch (e) { failures++; console.log(`  ❌ ${label} — threw: ${(e as Error).message}`); }
 };
 
+// The SPA shell is committed; the hashed bundles it loads are not (posture B), so
+// checks that read real bundle BYTES cannot run from a bare checkout or in CI.
+// They are skipped loudly rather than quietly weakened — a skip is visible in the
+// log and counted in the summary, so "green" never means "these silently passed".
+const bundlesPresent = existsSync(join(consoleRoot, 'assets'));
+let skipped = 0;
+const checkBundles = async (label: string, fn: () => Promise<boolean>) => {
+    if (!bundlesPresent) { skipped++; console.log(`  ⏭️  ${label} — SKIPPED (no console bundles; run \`pnpm run fetch:console\`)`); return; }
+    await check(label, fn);
+};
+
 // ---- public face (eSSR + SW) ----
 await check('GET / renders (edge)', async () => {
     const r = await req('/');
@@ -66,14 +77,18 @@ await check('GET /frontbase-admin serves the SPA shell', async () => {
     const body = await r.text();
     const asset = body.match(/(?:src|href)="\/frontbase-admin\/(assets\/[^"?]+\.(?:js|css))/)?.[1];
     return r.status === 200 && ct.includes('text/html') && body.includes('id="root"')
-        && !body.includes('Console bundle not found') && !!asset
-        && existsSync(join(consoleRoot, ...asset.split('/')));
+        && !body.includes('Console bundle not found') && !!asset;
 });
 await check('GET /frontbase-admin/pages serves the SPA shell (SPA fallback)', async () => {
     const r = await req('/frontbase-admin/pages');
     return r.status === 200 && (await r.text()).includes('id="root"');
 });
-await check('hashed console asset is real + immutable', async () => {
+await checkBundles('shell references resolve to real bundle files', async () => {
+    const body = await (await req('/frontbase-admin')).text();
+    const assets = [...body.matchAll(/(?:src|href)="\/frontbase-admin\/(assets\/[^"?]+\.(?:js|css))/g)].map((m) => m[1]);
+    return assets.length > 0 && assets.every((a) => existsSync(join(consoleRoot, ...a.split('/'))));
+});
+await checkBundles('hashed console asset is real + immutable', async () => {
     const html = readFileSync(join(consoleRoot, 'index.html'), 'utf8');
     const path = html.match(/src="(\/frontbase-admin\/assets\/[^"]+\.js)"/)?.[1];
     if (!path) return false;
@@ -198,5 +213,6 @@ await check('GET /api/auth/security/blocklist WITHOUT session → 401', async ()
 await check('GET /api/auth/security/blocklist WITH session → 200', async () =>
     (await req('/api/auth/security/blocklist', { headers: { cookie: compatCookie } })).status === 200);
 
+if (skipped > 0) console.log(`\n⚠ ${skipped} bundle-dependent check(s) skipped — this run did NOT verify the console bundles.`);
 console.log(failures === 0 ? '\ncf-full smoke: PASS ✅' : `\ncf-full smoke: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

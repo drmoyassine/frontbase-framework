@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "smoke": "node build.mjs && node dist/smoke.mjs"
+    "smoke": "node build.mjs && node dist/smoke.mjs",
+    "test": "node test/console-pin.mjs"
   },
   "dependencies": {
     "@frontbase/edge-core": "workspace:*",
