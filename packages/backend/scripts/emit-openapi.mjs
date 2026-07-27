@@ -37,6 +37,7 @@ const app = await createCompatApp({
     now: () => '1970-01-01T00:00:00.000Z',
     sessionSecret: 'emit-only-not-a-real-secret',
     userStoreFor: (tenant) => new UserStore(runner, tenant),
+    includeProductRoot: true,
 });
 const spec = buildFrameworkSpec(implementedOps(app));
 // Deterministic without a replacer: buildFrameworkSpec inserts paths in stable

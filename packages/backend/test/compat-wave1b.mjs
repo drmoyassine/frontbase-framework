@@ -73,7 +73,9 @@ test('pages: publish + public/homepage', async () => {
     await req(app, 'PUT', '/api/pages/' + p.data.id + '/', { isHomepage: true });
     const pub = await (await req(app, 'POST', '/api/pages/' + p.data.id + '/publish/local/')).json();
     assert.equal(pub.success, true);
-    const batch = await (await req(app, 'POST', '/api/pages/' + p.data.id + '/publish-batch/')).json();
+    const batch = await (await req(app, 'POST', '/api/pages/' + p.data.id + '/publish-batch/', {
+        engine_ids: ['local'],
+    })).json();
     assert.ok(Array.isArray(batch.results));
     const pubslug = await (await req(app, 'GET', '/api/pages/public/pub/')).json();
     assert.equal(pubslug.data.slug, 'pub');
@@ -102,8 +104,11 @@ test('rls: policies/tables empty; metadata round-trips', async () => {
     assert.equal(saved.data.tableName, 'users');
     const got = await (await req(app, 'GET', '/api/database/rls/metadata/users/p1')).json();
     assert.equal(got.data.policyName, 'p1');
-    const verify = await (await req(app, 'POST', '/api/database/rls/metadata/verify/')).json();
-    assert.equal(verify.data.isVerified, false);
+    const verify = await (await req(app, 'POST', '/api/database/rls/metadata/verify/', {
+        tableName: 'users',
+        policyName: 'p1',
+    })).json();
+    assert.equal(verify.data.isVerified, true);
 });
 
 // Runner

@@ -50,8 +50,8 @@ export function buildPackage(pkg) {
 }
 
 /** Run a gate script in a package; returns its exit code (0 = green/pass, ≠0 = red/fail). */
-export function runGate(pkgDir, script) {
-    const r = spawnSync('node', [script], { cwd: pkgDir });
+export function runGate(pkgDir, script, args = []) {
+    const r = spawnSync('node', [script, ...args], { cwd: pkgDir });
     return r.status ?? 0;
 }
 

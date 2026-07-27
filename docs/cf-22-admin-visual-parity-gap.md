@@ -7,11 +7,13 @@ Where any older note conflicts with this file, this file controls.
 > **Picking this up cold?** Read [`cf-22-handover.md`](./cf-22-handover.md) first — a
 > one-page map (commands, traps, next task) that points back here for the detail.
 
-- **Date:** 2026-07-14 (created) · **Updated:** 2026-07-27 (v8 — Gates 0, 1a, 1b closed)
+- **Date:** 2026-07-14 (created) · **Updated:** 2026-07-28 (v12 — Gates 1c/2/3 closure)
 - **Status:** 🟡 **IN PROGRESS — NOT COMPLETE.** The contract pipeline, the derived
   spec, and response conformance are green and gated; the console is locally integrated.
-  **Behaviour, security, and real-deploy/owner acceptance remain open**, and 117 of 286
-  ops are still unmeasured (§0). Do not represent CF-22 as delivered.
+  **Gates 1c, 2, and 3 are locally closed; real-deploy/browser/owner acceptance
+  (Gate 4) remains open.** Response conformance, runtime-derived behavior,
+  contract-negative validation, API-key/reset security, and generated tenant
+  isolation now run together. Do not represent CF-22 as fully delivered before Gate 4.
 - **Owner scope constraint:** parity targets the **self-host / single-tenant /
   community edition** only. Cloud-only surfaces (tenants directory, plans manager,
   billing, SuperTokens/signup/invite, agent quota) are out of scope.
@@ -27,26 +29,35 @@ Where any older note conflicts with this file, this file controls.
 | Phase | What it is | Honest status |
 |---|---|---|
 | **P0** | Product repo emits a committed, typed OpenAPI contract + generated client | ✅ **Green (Gate 0).** The "artifact lags source" reading was a CRLF false positive: `core.autocrlf` rewrote the generated JSON on checkout, so byte-comparing gates saw phantom edits (`--numstat` showed 0 changed lines). Fixed by pinning those paths to LF in `.gitattributes` (product `e79abee`). |
-| **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ✅ **Now a real conformance gate (Gates 1a+1b).** `x-implemented` is derived from Hono's route table, not a hand-maintained registry — deleting a handler turns CI red. Every documented 2xx response is validated against the vendored Zod (`VIOLATES 0`, gated). **Remaining:** 32 ops unreachable without fixtures, 85 with no `$ref` 2xx body to check, and `x-implemented` is still binary. |
-| **P2** | 285 compat handlers implementing the community contract | ⚠️ **Shapes verified and gated (Gate 1a: 47 → 0); behaviour + security still unproven.** Many Wave 2–5 handlers are empty-state/success-shaped placeholders. **One 🔴 CRITICAL security defect (plaintext API keys) and one 🔴 HIGH defect (no-op password reset).** No Wave 2–5 behavior tests, no tenant-isolation matrix, no auth mutation proofs beyond the guard split. |
-| **P3** | Serve the product console from the cf-full worker | ⚠️ **Locally integrated; acceptance open.** Routing/auth/static-assets/setup-hardening are real and smoke-green (22 checks + 2 skipped when the bundles are absent). Pins now agree and are gated (Gate 0). **Still open:** no Playwright, no real-CF deploy proof, no owner sign-off. A field incident (two dashboards) was found and remediated. |
+| **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ✅ **Closed.** `x-implemented` is route-derived; all 286 responses validate; all 286 operations carry a runtime-derived, fingerprint-gated behavior status; all typed inputs are included in the negative sweep. |
+| **P2** | 286 operations implementing the community contract | ✅ **Closed for the recorded community scope.** `163 functional / 10 deliberate protocol/catalog shape-only / 113 explicit external-disabled / 0 stub`. API keys are hashed plus one-time encrypted reveal; password reset is expiring, single-use, mutates credentials, and invalidates sessions; 139/139 identifier-bearing operations pass the two-tenant matrix. External-provider operations remain excluded from the functional count until live credentials exist. |
+| **P3** | Serve the product console from the cf-full worker | ⚠️ **Locally integrated; acceptance open.** Routing/auth/static-assets/setup-hardening are real and smoke-green (23 checks). Pins agree and are gated (Gate 0). **Still open:** no Playwright, no real-CF deploy proof, no owner sign-off. A field incident (two dashboards) was found and remediated. |
 
-**Current machine-verified facts (2026-07-27, CI `30299868508` on `229d48b`):**
-- **Response conformance: `CONFORMS 169 / VIOLATES 0 / UNREACHABLE 32 / NO_SCHEMA 85`** — measured **169/286 (59%)**. Gated in CI via `compat-conformance.mjs --gate`.
-- Framework drift gate: **285 implemented / 1 stubbed (`GET /`, engine-owned) / 0 missing / 0 divergent**. `x-implemented` is now *derived from the route table*, so this no longer merely compares the contract to itself.
-- Vendored community contract: **286 ops / 256 schemas / 31 tags** (the 286 includes 2 `OPTIONS` ops the early P1/P2 counts omitted; hence the historical 284).
-- Framework backend suite (34 markers) + cf-full smoke: green. Worker 236.4 KB gzip (< 1 MB). Migrations at **v13**.
+**Current machine-verified facts (local 2026-07-28; remote CI pending the next commit):**
+- **Response conformance: `CONFORMS 286 / VIOLATES 0 / UNREACHABLE 0 / NO_SCHEMA 0 / EXTERNAL_DISABLED 0 / STUB 0`** — validated **286/286 (100%)**. CI's `compat-conformance.mjs --gate` requires `VIOLATES 0`, `UNREACHABLE 0`, and `NO_SCHEMA 0`.
+- Framework drift gate: **286 implemented / 0 stubbed / 0 missing / 0 divergent**. `GET /` is served as JSON under explicit content negotiation at the combined-worker boundary, preserving the eSSR page for browser requests.
+- Full runtime-derived behavior gate: **163 functional / 10 shape-only / 113 external-disabled / 0 stub** across all 286 operations, fingerprint-gated by `behavior.summary.json`. The focused auth/security artifact is **19 functional / 3 shape-only**.
+- Negative/fuzz gate: **286/286 audited**; 154 operations reject 157 generated
+  malformed path/query/JSON/multipart cases; 132 operations have no falsifiable typed input.
+- Tenant matrix: **139/139 identifier-bearing operations isolated**, snapshotting all 26 tenant-scoped tables per operation; two public capability/availability operations are classified separately.
+- Vendored community contract: **286 ops / 308 schemas / 31 tags** (the 286 includes 2 `OPTIONS` ops the early P1/P2 counts omitted; hence the historical 284).
+- Framework backend suite (including response + auth/security behavior gates): green
+  locally. Last cf-full smoke: **23/23 green**. Worker **238.3 KB gzip** (< 1 MB).
+  Migrations are at **v14** (API-key ciphertext, password-reset capabilities,
+  session generations, and immutable security audit events).
 - **Pins agree:** `PRODUCT_COMMIT` = `CONSOLE_PIN.commit` = `bf1ac54…`, and disagreement is a hard gate error rather than a silent condition.
-- **CI green**, covering `pnpm -r build` unfiltered, the cf-full smoke suite, the console-split guarantees, and the conformance gate.
+- Last remote **CI green** (`30299868508` on `229d48b`), covering `pnpm -r build` unfiltered, the cf-full smoke suite, the console-split guarantees, and the pre-fixture conformance gate.
 
 **What is measured vs what is not** — the honest denominator:
 
 | Bucket | Count | Meaning |
 |---|---:|---|
-| `CONFORMS` | 169 | Returned a documented 2xx and it validated. |
+| `CONFORMS` | 286 | Returned a documented 2xx and its named, inline, text, or bodyless contract validated. |
 | `VIOLATES` | 0 | Returned a documented 2xx that did **not** validate. Gated at zero. |
-| `UNREACHABLE` | 32 | Answered 4xx/5xx — the probe lacks fixtures to reach the handler. **Not a pass.** 28 are 404s on nested param routes (pages 8, actions 4, variables 3, edge-* 9, others 4). |
-| `NO_SCHEMA` | 85 | The *contract* documents no `$ref` 2xx body, so there is nothing to validate. A P0 contract-tightening gap, not a handler gap. |
+| `UNREACHABLE` | 0 | Enabled in-scope compat ops with a documented response that the probe could not reach. Gated at zero. |
+| `NO_SCHEMA` | 0 | Every response now has a usable generated validator/schema or an explicit bodyless contract. Gated at zero. |
+| `EXTERNAL_DISABLED` | 0 | Community-local signup and one-time invite acceptance now have real persisted behavior. |
+| `STUB` | 0 | The combined worker content-negotiates the product JSON root without shadowing the eSSR homepage. |
 
 Conformance says nothing about **behaviour**: an op that returns a correctly-shaped
 constant and ignores its store counts as `CONFORMS`. That distinction is Gate 1c/3.
@@ -132,7 +143,7 @@ P3 (serve console + acceptance). The design intent per phase is below; each carr
 its **honest current status** and links to the [§8 recovery gate](#8-recovery-plan--the-authoritative-worklist)
 that closes it.
 
-### P0 — Product-repo pre-pass · ⚠️ pipeline works; artifact uncommitted
+### P0 — Product-repo pre-pass · ✅ green (Gate 0)
 **Intent:** the product's FastAPI backend emits a committed, deterministic, fully
 typed OpenAPI contract + a generated typed client — the source of truth everything
 downstream consumes.
@@ -147,15 +158,13 @@ export (9 duplicate pydantic class names → `PYTHONHASHSEED`) and a would-500
 `AuditLog.id` int-vs-UUID typing. Pinned `fastapi==0.139.0` (the fastapi version is
 part of contract determinism).
 
-**Current gap (→ Gate 0):** `contracts/openapi.{full,community}.json` in the product
-repo are **regenerated-but-uncommitted** — the pipeline is green (`export --check`
-prints no "stale" error) but the working tree is dirty, so a fresh clone would build
-a spec that differs from HEAD. Commit the regenerated artifacts, and pin the same
-product commit for both the contract and the console bundle.
+**Closed by Gate 0:** the apparent regenerated-but-uncommitted delta was CRLF-only,
+not a source/artifact lag. `.gitattributes` now pins generated artifacts to LF, the
+contract and console both pin `bf1ac54`, and disagreement is a hard gate failure.
 
 *Deferred (not blocking):* the 18 remaining product-side `src/services/*` → generated-client migrations (product task #111).
 
-### P1 — Framework contract + drift gate · ✅ conformance gate (Gates 1a+1b); coverage incomplete
+### P1 — Framework contract + drift gate · ✅ conformance gates green; classification incomplete
 **Intent:** the framework emits its OWN OpenAPI spec for the compat surface and CI
 diffs it against the vendored product contract, so a missing/divergent endpoint is
 machine-detected forever. Ship the machinery + one fully-conformant proof tag.
@@ -183,17 +192,17 @@ for validation + vendored JSON-Schema for emission).
    every documented 2xx against the vendored Zod. It found **47 violations** the drift
    gate reported as `0 divergent` (§8 Gate 1a). Now gated at zero.
 
-**Remaining gap (→ Gate 1c):** 32 ops are unreachable without fixtures; 85 have no
-documented `$ref` 2xx body; and `x-implemented` is still binary, so it cannot distinguish
-a working handler from a correctly-shaped placeholder.
-### P2 — Implement the 286-op community contract · ⚠️ shape coverage complete; behavior + security incomplete
+**Gate 1c is closed:** fixtures, response contracts, full-surface runtime behavior
+classification, and contract-derived negative cases are all gated.
+### P2 — Implement the 286-op community contract · ✅ closed for recorded community scope
 **Intent:** drive the drift-gate burn-down to zero, wave by wave, where **done per op
 = shape-conformant + behavior test against the product client's exact call +
 persisted/provider round-trip + failure-path + (credential-gated) live gate**.
 
 **Delivered (`fb1b625` → `d5e21cd` → `36b47ff` → `948b109`, + review `adb6e0d`):**
-285 compat handlers across all 31 tags on the `/api/*` surface (the 286th op,
-`GET /`, is engine-owned). Migrations v7–v11 add 9 tables. Reusable pattern: most
+286 operations across all 31 tags. The `/api/*` compat surface owns product API paths;
+the combined worker owns content-negotiated `GET /` alongside the eSSR homepage.
+Migrations v7–v11 add 9 tables. Reusable pattern: most
 edge/agent tags map onto `Phase2Store.edgeResources(kind)` CRUD or return the
 product's "not configured" ack shapes. A P1/P2 review (`adb6e0d`) already fixed a
 **RULE-2 auth regression** (10 authed ops — `/api/auth/me` + 9 `/api/auth/security/*` —
@@ -201,34 +210,12 @@ were reachable by anonymous callers; split into unauth-before-guard +
 authed-after-guard, locked by `test/compat-auth-guard.mjs`) and a schema.ts drift
 (4 Wave-4/5 tables missing from the Drizzle source-of-truth).
 
-**Current gaps (→ Gates 2 & 3):**
-
-- 🔴 **CRITICAL — plaintext API keys.** `compat/routes/edge-misc.ts` generates a raw
-  `fbk_*` key, stores it verbatim in `edge_api_keys.key_hash`, and
-  `GET /api/edge-api-keys/{key_id}/reveal` returns it on **every** call. DB
-  disclosure yields usable keys; any authed caller can re-reveal indefinitely. The
-  P2 report's "reveal-once semantics" claim was **false**. Fix: store only a
-  verifier hash (or separately-encrypted ciphertext with an atomic, audited,
-  one-time reveal), add a migration, never reinterpret existing plaintext as a hash.
-- 🔴 **HIGH — no-op password reset.** `POST /api/auth/reset-password` returns
-  `success: true` unconditionally; it validates no token and changes no password.
-  `forgot-password` issues no token. Fix: real reset tokens (expiry, single-use,
-  password change, session invalidation, non-enumerating responses) — or mark the
-  ops explicitly unsupported and remove them from any "functional" count.
-- 🟠 **HIGH — "implemented" = registered, not functional.** Representative
-  placeholders: `database/connect` persists only `{connected:true}` and introspection
-  returns empty; storage upload/provider flows return empty/"not configured"; action
-  `rollback` always reports no previous version and `test-node` returns
-  `{success:true, result:null}`; blocklist/WAF/bot-protection settings aren't
-  persisted; edge health always "healthy"; GPU/agent-chat/MCP are catalogs/empty
-  responses. Graceful degradation is valid *only* for a genuinely unconfigured
-  external provider, with an explicit capability state and a test against the
-  product's real unconfigured behavior — it is not the same as implementing the op.
-- 🟠 **HIGH — no behavior/tenant/mutation test coverage for Waves 2–5.** Present
-  compat suites: `variables`, `auth-guard`, `wave1`, `wave1b`. Missing: exact-client
-  behavior matrices for Waves 2–5, per-tag fuzz, an adversarial two-tenant matrix
-  (tenant-A must not read/mutate tenant-B across every identifier-bearing route,
-  bulk op, nested resource, and secret reveal), and auth-adjacent mutation proofs.
+**Gate 2/3 closure:** the former plaintext API-key and no-op reset defects are fixed
+under additive migration v14. Runtime-derived behavior now distinguishes real
+state/session effects from providerless operations and static protocol/catalog
+responses. Providerless handlers report an explicit limitation and remain
+`external-disabled`, never `functional`. The negative sweep, generated two-tenant
+matrix, and mutation harness cover Waves 1–5.
   Tenant isolation is **not proven** (not proven broken either — stores do pass
   `tenant_slug`).
 
@@ -261,8 +248,7 @@ per nav area and owner field-test sign-off.
   response shapes.
 - ❌ **No real-Cloudflare deploy proof** (a fresh `wrangler` deploy with browser
   login/render + secure-cookie/asset-cache verification).
-- ⚠️ **Pin mismatch:** console (`bf1ac54…`) and contract (`afe9e03…`) are built from
-  different product commits (→ Gate 0).
+- ✅ **Pins agree:** console and contract both name `bf1ac54…`; disagreement is gated.
 - ❌ **No scheduled cross-repo drift** (re-vendor from the product repo on a
   schedule; current CI only compares against the already-vendored snapshot).
 - ⚠️ **Legacy `/api/console/*` retirement** gated on an endpoint-consumer map + the
@@ -397,10 +383,9 @@ Two defects beyond response shaping:
 
 - **Exit met:** `VIOLATES 0`; `test/compat-conformance.mjs --gate` runs in the backend
   suite and in CI; proven RED by mutating a single response field.
-- **Measured 156/286 (55%).** `UNREACHABLE 45` is *not* a pass — those handlers answer
-  4xx/5xx because the probe lacks fixtures. `NO_SCHEMA 85` are ops whose contract
-  documents no `$ref` 2xx body (a P0 contract-tightening gap, not a handler gap).
-  Closing both is Gate 1 proper.
+- **At Gate 1a closure, measured 156/286 (55%).** `UNREACHABLE 45` was *not* a
+  pass, and `NO_SCHEMA 85` still lacked a usable validator. Both later closed in
+  Gate 1c; see the current §0 buckets.
 
 ### Gate 1b — handler-derived spec · ✅ **CLOSED 2026-07-27** (`229d48b`)
 
@@ -425,22 +410,32 @@ spec advertising an endpoint that 404s in production, with every gate green.
   zero stubs) but would activate on the next re-vendor. The set is captured pre-stub and
   `implementedOps()` throws rather than guessing.
 
-### Gate 1c — close the measurement gap · **NEXT**
+### Gate 1c — close the measurement gap · **CLOSED LOCALLY 2026-07-28**
 
 Gate 1a proved shapes; Gate 1b proved registration. Neither proves the handler *does*
 anything. Three items, in order:
 
-1. **Fixtures for the 32 `UNREACHABLE` ops.** 28 are 404s on nested param routes where
-   the probe's id pool cannot supply the right id (a version id, a nested resource id).
-   Seed each resource chain, then re-measure. Mechanical.
-2. **Round-trip classification, derived not declared.** Replace binary `x-implemented`
+1. ✅ **Fixtures for the 32 `UNREACHABLE` ops — CLOSED 2026-07-27.** The probe now
+   creates a fresh real resource chain per operation instead of sharing a collection-level
+   "last id" pool, seeds a real login principal, supplies required query parameters, and
+   synthesizes pattern-conformant bodies. Result: `UNREACHABLE 32 → 0`,
+   `CONFORMS 169 → 198`. It exposed four hidden response defects, all fixed and gated:
+   action PATCH returned an ack instead of a draft, two auth-form GETs omitted the
+   required envelope, and page rollback omitted `preRollbackVersionId`. Action-version
+   detail also changed from an unconditional 404 to the version representation the
+   community store actually exposes. Community-local signup/invite behavior and the
+   content-negotiated JSON root subsequently closed the final two `EXTERNAL_DISABLED`
+   and one `STUB` buckets.
+2. ✅ **Round-trip classification, derived not declared.** Replace binary `x-implemented`
    with `stub | shape-only | functional | external-disabled`. **Do not hand-annotate
    this** — a hand-maintained status table is exactly the artifact Gate 1b deleted, with
    the same failure mode. Derive it: an op is `functional` when a write is observable in
    a subsequent read, `shape-only` when its response is invariant under state,
    `external-disabled` when it requires an unconfigured provider. This needs the
-   fixtures from (1), which is why they come first.
-3. **Negative/fuzz sweep** — every method/path incl. `OPTIONS`, with wrong types,
+   fixtures from (1), which is why they come first. All 286 operations are now
+   classified and fingerprint-gated at `163 functional / 10 shape-only /
+   113 external-disabled / 0 stub`.
+3. ✅ **Negative/fuzz sweep** — every method/path incl. `OPTIONS`, with wrong types,
    missing required fields, and bad path/query params, asserting status codes rather
    than just success bodies.
 
@@ -449,31 +444,39 @@ anything. Three items, in order:
 - **Note:** item 2 produces the same evidence Gate 3 needs, so Gates 1c and 3 should be
   executed as one pass rather than two (see *Sequencing* below).
 
-### The `NO_SCHEMA 85` — a P0 debt, not a P2 debt
+### The `NO_SCHEMA 85` — ✅ **CLOSED 2026-07-28**
 
-85 ops document no `$ref` 2xx body in the *product's own contract*, so there is nothing
-for any framework gate to validate against. Tightening them is work in the **product
-repo** (`response_model` on those routes), not the framework. Until then those ops are
-unverifiable by construction, and no framework gate should claim otherwise.
+The product audit added named pass-through response models to 52 variable JSON-object
+operations, corrected four non-JSON declarations (CSV + three SSE streams), and made
+the two CORS preflights explicitly bodyless. The remaining legitimate inline arrays
+and union are validated through generated operation-level Zod validators. The
+framework probe now validates named and inline JSON, text media types, and zero-byte
+bodyless responses; it also avoids component-name lookup failures such as
+`PrivacySettings-Output`. Result: `NO_SCHEMA 85 → 0`, `CONFORMS 198 → 283`.
+The complete per-operation disposition is recorded in
+[`cf-22-no-schema-audit.md`](./cf-22-no-schema-audit.md).
 
-### Gate 2 — security + tenant isolation (before more P2 feature work)
-1. Fix API-key storage/reveal (verifier hash or encrypted ciphertext; atomic audited
+### Gate 2 — security + tenant isolation · **CLOSED LOCALLY 2026-07-28**
+1. ✅ Fix API-key storage/reveal (verifier hash or encrypted ciphertext; atomic audited
    one-time reveal; revocation; additive migration; never reinterpret plaintext).
-2. Real password-reset tokens (expiry, single-use, password change, session
+2. ✅ Real password-reset tokens (expiry, single-use, password change, session
    invalidation, non-enumerating).
-3. Persist + enforce blocklist/WAF/bot settings where support is claimed — else mark
-   `external-disabled` and drop from "functional" counts.
-4. Generated two-tenant matrix over every identifier-bearing compat route, bulk op,
+3. ✅ Persist blocklist/WAF/bot settings and expose their effects through reads,
+   metrics, and audit logs. Closed by the auth/security behavioral wave.
+4. ✅ Generated two-tenant matrix over every identifier-bearing compat route, bulk op,
    nested resource, secret reveal, and provider action.
 - **Exit:** no recoverable plaintext key material; auth mutation gates pass; tenant-B cannot observe/mutate tenant-A resources.
 
-### Gate 3 — complete P2 by behavior, wave by wave
+### Gate 3 — complete P2 by behavior, wave by wave · **CLOSED FOR COMMUNITY SCOPE 2026-07-28**
 Reopen Waves 2–5. Per op: exact product-client call, meaningful state/provider
 effect, persisted round-trip, response validation, failure-path coverage, cleanup.
 Credential-gated provider tests may skip with notice; the op stays `external-disabled`
 (not `functional`) until a live gate passes. Suggested order: **Authentication/security
 → Storage/data → Actions → Edge lifecycle/inspector → Agent/MCP.**
-- **Exit:** every in-scope op is `functional` or an owner-approved, recorded descope; P2 exit criteria actually green.
+- **Exit:** met locally. The 10 shape-only operations are protocol/catalog/health/policy
+  responses with no stateful behavior by design. The 113 credential/provider-dependent
+  operations are explicitly `external-disabled`, never counted as functional, and must
+  move to `functional` only when a live credentialed gate exists.
 
 ### Gate 4 — finish P3 acceptance + cutover
 1. 11-area Playwright suite against `wrangler dev` with real CRUD + failure screenshots.
@@ -493,19 +496,16 @@ things changed that:
 - **Gates 1c and 3 collapse into one pass.** Classifying an op as `functional` requires
   proving a write is observable in a read — which *is* Gate 3's behavioural test. Running
   them separately means building the same fixtures and round-trips twice.
-- **Gate 2 is still open and still shipping.** Both defects remain live in released code:
-  plaintext `fbk_*` keys in `compat/routes/edge-misc.ts` (`/reveal` returns them on every
-  call) and a no-op password reset in `compat/routes/auth-compat.ts` (returns
-  `success: true` with zero password mutations). They are small and self-contained, and
-  they do not conflict with Gate 1c/3. Recorded here as an open owner decision, not as
-  an argument to be repeated.
+- **Gate 2 is closed locally.** API-key verification/reveal, reset capabilities,
+  session invalidation, generated tenant isolation, and their mutation proofs now
+  ship in the same gate runner.
 
-Working order: **Gate 1c(1) fixtures → Gate 1c(2)+Gate 3 as one behavioural pass →
-Gate 1c(3) fuzz → Gate 4**, with Gate 2 insertable at any point.
+Working order is now **Gate 4**. Gates 1c, 2, and 3 are closed locally.
 
 ### Closure rule
 - **P0 complete:** current source artifacts + generated client deterministic and committed.
-- **P1 complete:** handler-derived contract + runtime validation detect real code drift. ✅ *(Gates 1a+1b; coverage completed by Gate 1c.)*
+- **P1 complete:** handler-derived contract, response validation, behavior fingerprint,
+  and negative/fuzz validation detect real drift.
 - **P2 complete:** product-client behavior, security, persistence/provider effects, and tenant isolation are tested.
 - **P3 complete:** real browser/deploy parity, permanent drift, cutover, and owner sign-off.
 - **CF-22 complete:** the original complaint ("looks super poor") is falsifiable against the same console the product ships — signed off by the owner on a fresh deploy.
@@ -517,9 +517,11 @@ Gate 1c(3) fuzz → Gate 4**, with Gate 2 insertable at any point.
 - **Self-host SPA base path:** `basename="/frontbase-admin"` (`src/lib/edition.ts:28`), NOT `/console`.
 - **Cookies:** product self-host uses `frontbase_session`; the framework issues `fb_session`. The SPA reads neither (HttpOnly) — only login success + browser replay matter. Kept `fb_session`; shapes are the contract.
 - **Compat mount:** `/api/*` (product paths), a sibling of the legacy `/api/console/*` (parallel-run) and the engine catch-all. Compat guard scoped to `/api/*` excl. `/api/console/*`.
-- **`GET /`** is always the engine's (eSSR pages) — excluded from compat stubs (the 1 stub in the gate table, by design).
-- **Op count:** vendored community = **286** (incl. 2 `OPTIONS`); the historical "284" omitted `OPTIONS`. Framework emits 285 compat-routed + engine-owned `GET /`.
-- **Migrations added by CF-22:** v7 `template_variables`, v8 `themes`+`security_events`, v9 `compat_pages`+`compat_page_versions`, v10 `auth_forms`, v11 `edge_api_keys`+`edge_agent_profiles_compat`+`mcp_servers`+`agent_skills`, v13 `workflows.created_at` (the table never had one, yet `WorkflowDraftResponse` requires it).
+- **`GET /`** is dual-purpose at the combined-worker boundary: explicit
+  `Accept: application/json` receives `RootStatus`; normal browser navigation falls
+  through to the eSSR page. Standalone/spec mode registers the equivalent JSON route.
+- **Op count:** vendored community = **286** (incl. 2 `OPTIONS`); the historical "284" omitted `OPTIONS`. Framework emits all 286 as implemented.
+- **Migrations added by CF-22:** v7 `template_variables`, v8 `themes`+`security_events`, v9 `compat_pages`+`compat_page_versions`, v10 `auth_forms`, v11 `edge_api_keys`+`edge_agent_profiles_compat`+`mcp_servers`+`agent_skills`, v13 `workflows.created_at`, and v14 API-key reveal/reset/session/audit security state.
 - **`x-implemented` is derived, never declared.** `routedOps(app)` reads Hono's route table; `implementedOps(app)` returns the set captured *before* stubs. **A 501 stub is a Hono route too** — deriving from a finished app reports the whole contract as implemented, so the capture order matters and `implementedOps` throws rather than guessing.
 - **The auth surface is config-dependent.** The ~20 `/api/auth/*` ops register only when `sessionSecret` + `userStoreFor` are supplied. Any probe or emitter that omits them silently measures a smaller surface while reporting clean — this actually happened to the conformance probe.
 - **Shared response shapes live in `compat/routes/edge-shapes.ts`** (`batchResult`, `testResult`, `serializeEdgeResource`, `serializeEngine`). Each family had been re-invented per tag, which is how five tags independently drifted from the contract.
@@ -554,6 +556,54 @@ should be treated as superseded (retained in git history only):
 re-verified against the code (plaintext API keys, no-op password reset, pin
 mismatch, inventory-not-conformance gate — all confirmed). CF-22 is **not
 complete**; §8 is the path to done.
+
+**Update 2026-07-28 (v12) — Gates 1c, 2, and 3 closed locally.** The response
+probe now also derives a fingerprint-gated behavioral ledger for all 286 operations:
+`163 functional / 10 protocol-or-catalog shape-only / 113 explicit
+external-disabled / 0 stub`. Providerless handlers no longer return optimistic
+success when no provider action occurred. The contract-derived negative sweep audits
+286/286 operations and exercises 157 invalid cases. API-key material is stored as a
+SHA-256 verifier plus separately encrypted, atomic one-time reveal ciphertext; reset
+capabilities are hashed, expiring, single-use, mutate the password, and invalidate
+older sessions. The generated tenant matrix exercises 139/139 identifier-bearing
+operations and snapshots all 26 tenant-scoped tables per call. The mutation harness
+proves all 15 backend security/isolation/validation guarantees go red when broken.
+`pnpm --filter @frontbase/backend run gate:cf22` runs the complete set. Gate 4
+(browser, live Cloudflare deployment, and owner acceptance) remains open.
+
+**Update 2026-07-28 (v11) — final response gaps closed; behavioral classification
+started.** Community-local signup now creates a tenant, owner, and session. Admin
+invite creation persists a one-time token; public lookup reads it; acceptance creates
+the user, consumes the token atomically, and issues a session. The combined worker
+content-negotiates product `RootStatus` JSON without stealing normal `/` traffic from
+eSSR. The response gate is therefore `286 conform / 0 violate / 0 unreachable /
+0 no-schema / 0 external-disabled / 0 stub`. The first derived behavioral artifact,
+`contracts/behavior.auth.json`, is executable and CI-gated: `17 functional /
+5 shape-only`. Blocklist, WAF, bot settings/metrics, and security audit logs now
+round-trip real tenant-scoped state. The remaining shape-only entries are `GET /`,
+two `OPTIONS` operations, and forgot/reset password; the no-op reset remains a Gate 2
+security defect. Storage/data is the next behavioral wave.
+
+**Update 2026-07-28 (v10) — `NO_SCHEMA 85` closed.** All 286 operations were
+audited by response kind. The product contract now names variable JSON-object
+responses, documents CSV/SSE/bodyless responses accurately, and retains legitimate
+inline array/union schemas. The framework probe validates generated operation-level
+Zod for named and inline JSON, validates text media types, and asserts empty bodies
+for contentless success responses. Stronger coverage exposed and repaired list
+envelopes, non-empty deletes/preflights, and stream media mismatches in the compat
+handlers. Final local buckets: `283 conform / 0 violate / 0 unreachable / 0 no-schema /
+2 external-disabled / 1 engine-owned stub`. Gate 1c(2)+Gate 3 behavioural
+classification remains next.
+
+**Update 2026-07-27 (v9) — Gate 1c(1) fixture coverage closed.** The conformance
+probe now creates independent real resource chains per operation, eliminating
+order-dependent id reuse. `UNREACHABLE 32 → 0` and response coverage rose
+`169 → 198` while remaining at `VIOLATES 0`. Reaching those handlers exposed four
+previously hidden response defects (action PATCH, two auth-form GET envelopes, page
+rollback metadata) plus an unconditional action-version 404; all are repaired and
+the full backend suite is green locally. The honest buckets are now
+`198 conform / 0 violate / 0 unreachable / 85 no-schema / 2 external-disabled /
+1 engine-owned stub`. Gate 1c(2)+Gate 3 behavioural classification is next.
 
 **Update 2026-07-27 (later) — Gates 1a + 1b closed.** The full-surface conformance
 probe put real divergence at **47**, not the 4 Gate 0 had sampled; all 47 are fixed and

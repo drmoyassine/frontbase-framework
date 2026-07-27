@@ -89,6 +89,7 @@ const optionalStub = {
 
 const shared = {
     bundle: true,
+    absWorkingDir: here,
     platform: 'browser',   // V8 isolate target (no nodejs_compat) — Web Crypto only
     format: 'esm',
     logLevel: 'silent',
@@ -98,7 +99,7 @@ const shared = {
 // 1. The service-worker bundle (browser engine, edge-core only).
 const swResult = await esbuild.build({
     ...shared,
-    entryPoints: [join(here, 'src', 'sw.ts')],
+    entryPoints: ['src/sw.ts'],
     write: false,
     format: 'iife',
     minify: true,
@@ -138,7 +139,7 @@ const consoleShellPlugin = {
 
 await esbuild.build({
     ...shared,
-    entryPoints: [join(here, 'src', 'worker.ts')],
+    entryPoints: ['src/worker.ts'],
     outfile: join(here, 'dist', 'worker.mjs'),
     minify: true,
     plugins: [inlineSwPlugin, consoleShellPlugin, optionalStub],
@@ -153,7 +154,7 @@ await esbuild.build({
     ...shared,
     platform: 'node',
     packages: 'external',
-    entryPoints: [join(here, 'src', 'smoke.ts')],
+    entryPoints: ['src/smoke.ts'],
     outfile: join(here, 'dist', 'smoke.mjs'),
     minify: false,
     plugins: [inlineSwPlugin, consoleShellPlugin],

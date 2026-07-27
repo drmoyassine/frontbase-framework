@@ -36,15 +36,15 @@ export function registerDatabaseRoutes(app: App, kvFor: (t: string) => KeyValueS
         return c.json({ success: true, message: 'Disconnected' });
     });
     // GET /api/database/tables/  +  /api/database/supabase-tables/  (not configured → empty)
-    const emptyTables = { success: true, data: { tables: [] }, message: null, error: null };
+    const emptyTables = { success: false, data: { tables: [] }, message: 'No datasource configured', error: null };
     app.get('/api/database/tables/', (c) => c.json(emptyTables));
     app.get('/api/database/supabase-tables/', (c) => c.json(emptyTables));
     // GET /api/database/table-data/{table_name}/
-    app.get('/api/database/table-data/:table_name/', (c) => c.json({ success: true, message: 'Data retrieved successfully', data: [], total: 0 }));
+    app.get('/api/database/table-data/:table_name/', (c) => c.json({ success: false, message: 'No datasource configured', data: [], total: 0 }));
     // GET /api/database/table-schema/{table_name}/
-    app.get('/api/database/table-schema/:table_name/', (c) => c.json({ success: true, data: { table_name: c.req.param('table_name'), columns: [] }, error: null }));
+    app.get('/api/database/table-schema/:table_name/', (c) => c.json({ success: false, data: { table_name: c.req.param('table_name'), columns: [] }, error: 'No datasource configured' }));
     // POST /api/database/advanced-query/
     app.post('/api/database/advanced-query/', (c) => c.json({ success: false, data: [], rows: [], error: 'No datasource configured' }));
     // POST /api/database/distinct-values/
-    app.post('/api/database/distinct-values/', (c) => c.json({ success: true, data: [], error: null }));
+    app.post('/api/database/distinct-values/', (c) => c.json({ success: false, data: [], error: 'No datasource configured' }));
 }

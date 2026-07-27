@@ -23,4 +23,8 @@ export class TenantStore {
         const rows = await this.runner.query('SELECT slug FROM tenants WHERE slug = ?', [slug]);
         return rows.length > 0;
     }
+
+    async deleteTenant(slug: string): Promise<void> {
+        await this.runner.exec('DELETE FROM tenants WHERE slug = ?', [slug]);
+    }
 }

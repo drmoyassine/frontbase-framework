@@ -144,13 +144,17 @@ export class PagesStore {
         await this.runner.exec('INSERT INTO compat_page_versions (id, page_id, tenant_slug, version_number, layout_data, content_hash, label, created_at) VALUES (?,?,?,?,?,?,?,?)', [id, pageId, this.tenant, next, layout, contentHash, label, now]);
         return { id, page_id: pageId, version_number: next, layout_data: layout, content_hash: contentHash, label, created_at: now };
     }
-    async rollback(pageId: string, versionId: string, now: string): Promise<{ page: CompatPageRow; version: CompatVersionRow } | null> {
+    async rollback(pageId: string, versionId: string, now: string): Promise<{ page: CompatPageRow; version: CompatVersionRow; preRollbackVersion: CompatVersionRow } | null> {
         const v = await this.getVersion(versionId);
         const page = await this.get(pageId);
         if (!v || !page) return null;
         // snapshot current before rolling back, then restore the target layout
-        await this.snapshot(pageId, page.layout_data, page.content_hash, `Pre-rollback`, now);
+        const preRollbackVersion = await this.snapshot(pageId, page.layout_data, page.content_hash, `Pre-rollback`, now);
         await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=?', [v.layout_data, v.content_hash, now, this.tenant, pageId]);
-        return { page: { ...page, layout_data: v.layout_data, content_hash: v.content_hash, updated_at: now }, version: v };
+        return {
+            page: { ...page, layout_data: v.layout_data, content_hash: v.content_hash, updated_at: now },
+            version: v,
+            preRollbackVersion,
+        };
     }
 }

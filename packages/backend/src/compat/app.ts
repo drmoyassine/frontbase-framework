@@ -14,9 +14,10 @@
  */
 import { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
-import { defaultDenyAuth, type ConsoleAuthVars } from '../mw/auth.js';
+import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from '../mw/auth.js';
 import { opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
+import { contractRequestValidation } from './request-validation.js';
 import { routedOps, attachImplementedOps } from './spec.js';
 import { registerVariablesRoutes } from './routes/variables.js';
 import { registerMetaRoutes } from './routes/meta.js';
@@ -38,11 +39,12 @@ import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
 import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
 import { registerEdgeMiscRoutes } from './routes/edge-misc.js';
 import { registerAgentCompatRoutes } from './routes/agent-compat.js';
-import { TemplateVariableStore, KeyValueStore, ThemesStore, SecurityEventsStore } from './store.js';
+import { CommunityInviteStore, PasswordResetStore, TemplateVariableStore, KeyValueStore, ThemesStore, SecurityEventsStore } from './store.js';
 import { PagesStore } from './pages-store.js';
 import { Phase2Store } from '../db/phase2-store.js';
-import { noopCipher } from '../db/secret-cipher.js';
+import { createSecretCipher, noopCipher } from '../db/secret-cipher.js';
 import type { UserStore } from '../db/users.js';
+import { TenantStore } from '../db/tenants.js';
 
 export interface CreateCompatAppDeps {
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */
@@ -56,6 +58,12 @@ export interface CreateCompatAppDeps {
     sessionSecret?: string;
     /** Optional: user store factory for login credential lookup. */
     userStoreFor?: (tenant: string) => UserStore;
+    /** Standalone/spec mode: register the product's JSON GET /. The combined CMS
+     * worker owns this at its outer boundary to preserve eSSR browser routing. */
+    includeProductRoot?: boolean;
+    /** Deliver a raw reset capability out-of-band. The public response remains
+     * identical for existing and unknown email addresses. */
+    passwordResetDelivery?: (email: string, token: string) => Promise<void>;
 }
 
 /** Build a per-tenant store cache. */
@@ -79,20 +87,41 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     const themesFor = storeCache((t: string) => new ThemesStore(runner, t));
     const secEventsFor = storeCache((t: string) => new SecurityEventsStore(runner, t));
     const pagesFor = storeCache((t: string) => new PagesStore(runner, t));
-    const phase2For = storeCache((t: string) => new Phase2Store(runner, t, noopCipher));
+    const secretCipher = deps.sessionSecret
+        ? await createSecretCipher(deps.sessionSecret).catch(() => noopCipher)
+        : noopCipher;
+    const phase2For = storeCache((t: string) => new Phase2Store(runner, t, secretCipher));
+    const invites = new CommunityInviteStore(runner);
+    const passwordResets = new PasswordResetStore(runner);
+    const tenants = new TenantStore(runner);
+    const resolvePrincipal = deps.userStoreFor
+        ? withSessionVersion(
+            deps.resolvePrincipal as (req: Request) => Promise<any>,
+            (tenant, userId) => deps.userStoreFor!(tenant).getSessionVersion(userId),
+        )
+        : deps.resolvePrincipal;
 
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
     app.onError(opaqueErrors);
 
     // UNAUTHENTICATED routes — registered BEFORE default-deny:
     // 1. Meta (health/liveness)
-    registerMetaRoutes(app);
+    registerMetaRoutes(app, deps.includeProductRoot);
     // 2. UNAUTHENTICATED auth ops only (login/logout/signup/forgot/reset/invite/
     //    accept/check-slug) — a user can't present a session to log in. The
     //    AUTHENTICATED auth ops (me + security console) are registered AFTER the
     //    guard below (they read/modify admin security state — RULE 2).
     if (deps.sessionSecret && deps.userStoreFor) {
-        registerAuthCompatUnauthRoutes(app, deps.userStoreFor, deps.sessionSecret);
+        registerAuthCompatUnauthRoutes(
+            app,
+            deps.userStoreFor,
+            tenants,
+            invites,
+            passwordResets,
+            deps.sessionSecret,
+            now,
+            deps.passwordResetDelivery,
+        );
     }
 
     // Everything below requires an authenticated, tenant-scoped principal.
@@ -105,18 +134,21 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         if (!path.startsWith('/api/') || path.startsWith('/api/console/')) {
             return next(); // Not a compat path — let the next mounted app handle it
         }
-        return defaultDenyAuth(deps.resolvePrincipal as (req: Request) => Promise<any>)(c, next);
+        return defaultDenyAuth(resolvePrincipal as (req: Request) => Promise<any>)(c, next);
     });
+    // Validate protected requests only after authentication, preserving default-
+    // deny semantics (anonymous callers receive 401, not schema-oracle 422s).
+    app.use('*', contractRequestValidation());
 
     // AUTHENTICATED auth ops (me + security) — behind the guard (RULE 2).
     if (deps.sessionSecret && deps.userStoreFor) {
-        registerAuthCompatAuthedRoutes(app);
+        registerAuthCompatAuthedRoutes(app, kvFor, now);
     }
 
     // Real handlers for implemented ops, registered with the exact product paths
     // on the main app (no sub-app mount — that mismatches trailing slashes).
     registerVariablesRoutes(app, varStoreFor, now);
-    registerSettingsRoutes(app, kvFor, now);
+    registerSettingsRoutes(app, kvFor, invites, now);
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
     registerSecurityEventsRoutes(app, secEventsFor);
@@ -134,13 +166,14 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerEdgeEnginesRoutes(app, phase2For, now);
     registerEdgeProvidersRoutes(app, phase2For, now);
     registerEdgeGenericRoutes(app, phase2For, now);
-    registerEdgeMiscRoutes(app, runner, phase2For, now);
+    registerEdgeMiscRoutes(app, runner, phase2For, secretCipher, now);
     // Wave 5 — workspace agent
     registerAgentCompatRoutes(app, runner, kvFor);
 
     // Derive what is implemented from the routes just registered, rather than
     // from a parallel hand-maintained list. Everything else in the contract gets a
-    // 501 stub. GET / is the one intentional exception (the eSSR engine owns it).
+    // 501 stub. In the combined worker GET / is implemented at the outer routing
+    // boundary; standalone/spec builds opt into the equivalent route above.
     // Captured BEFORE stubs: a 501 stub is a Hono route too, so deriving after
     // this point would report the entire contract as implemented.
     const implemented = routedOps(app);

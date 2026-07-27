@@ -236,6 +236,46 @@ export const edgeApiKeys = sqliteTable('edge_api_keys', {
     updatedAt: text('updated_at').notNull(),
 });
 
+/** One-time recoverable material for API-key reveal (migration v14). */
+export const edgeApiKeySecrets = sqliteTable('edge_api_key_secrets', {
+    keyId: text('key_id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    prefix: text('prefix').notNull(),
+    ciphertext: text('ciphertext'),
+    revealedAt: text('revealed_at'),
+    createdAt: text('created_at').notNull(),
+});
+
+/** Hashed, expiring, single-use password reset capabilities (migration v14). */
+export const passwordResetTokens = sqliteTable('password_reset_tokens', {
+    tokenHash: text('token_hash').primaryKey(),
+    userId: text('user_id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    email: text('email').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    usedAt: text('used_at'),
+    createdAt: text('created_at').notNull(),
+});
+
+/** Credential generation checked against session JWT claims (migration v14). */
+export const userSessionVersions = sqliteTable('user_session_versions', {
+    userId: text('user_id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    version: integer('version').notNull().default(0),
+    updatedAt: text('updated_at').notNull(),
+});
+
+/** Immutable security audit trail for secret lifecycle operations. */
+export const securityAuditEvents = sqliteTable('security_audit_events', {
+    id: text('id').notNull(),
+    tenantSlug: text('tenant_slug').notNull(),
+    action: text('action').notNull(),
+    resourceType: text('resource_type'),
+    resourceId: text('resource_id'),
+    details: text('details'),
+    createdAt: text('created_at').notNull(),
+});
+
 /** Edge agent profiles (compat) — CF-22 P2 Wave 4 (migration v11). */
 export const edgeAgentProfilesCompat = sqliteTable('edge_agent_profiles_compat', {
     id: text('id').notNull(),

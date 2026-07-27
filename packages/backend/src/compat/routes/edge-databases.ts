@@ -22,9 +22,9 @@ const asDatabase = (row: Record<string, unknown>): Record<string, unknown> =>
 
 export function registerEdgeDatabasesRoutes(app: App, phase2For: (t: string) => Phase2Store, now: () => string): void {
     // GET /api/edge-databases/
-    app.get('/api/edge-databases/', async (c) => c.json({
-        databases: (await phase2For(c.get('tenant')).listEdgeResources('database')).map(asDatabase),
-    }));
+    app.get('/api/edge-databases/', async (c) => c.json(
+        (await phase2For(c.get('tenant')).listEdgeResources('database')).map(asDatabase),
+    ));
     // POST /api/edge-databases/
     app.post('/api/edge-databases/', async (c) => {
         const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };

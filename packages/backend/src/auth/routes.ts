@@ -46,7 +46,13 @@ export function authRoutes(deps: AuthRouteDeps): Hono {
         if (!matched) return c.json({ error: 'invalid_credentials' }, 401);
 
         const token = await issueSession(
-            { sub: matched.id, email: matched.email, role: matched.role, tenant_slug: matched.tenantSlug },
+            {
+                sub: matched.id,
+                email: matched.email,
+                role: matched.role,
+                tenant_slug: matched.tenantSlug,
+                session_version: await deps.userStoreFor(matched.tenantSlug).getSessionVersion(matched.id),
+            },
             deps.sessionSecret,
             Math.floor(Date.now() / 1000),
         );

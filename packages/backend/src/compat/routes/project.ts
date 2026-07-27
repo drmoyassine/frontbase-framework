@@ -42,6 +42,8 @@ export function registerProjectRoutes(app: App, kvFor: (t: string) => KeyValueSt
     app.post('/api/project/assets/upload/', async (c) => {
         const form = await c.req.formData().catch(() => null);
         const file = form?.get('file') as File | null;
-        return c.json({ success: true, name: file?.name ?? null, size: file?.size ?? 0, url: '' });
+        const asset = { success: true, name: file?.name ?? null, size: file?.size ?? 0, url: '' };
+        await kvFor(c.get('tenant')).setJson('project_asset', asset, now());
+        return c.json(asset);
     });
 }

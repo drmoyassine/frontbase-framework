@@ -10,6 +10,26 @@ import type { Principal } from '@frontbase/edge-core';
 
 export interface ConsoleAuthVars { principal: Principal; tenant: string; }
 
+/**
+ * Reject a JWT issued before the user's latest credential reset. Tokens created
+ * before session_version existed are generation 0 and remain backward-compatible
+ * until the first reset advances the stored generation.
+ */
+export function withSessionVersion(
+    resolvePrincipal: (req: Request) => Promise<Principal>,
+    currentVersion: (tenant: string, userId: string) => Promise<number>,
+): (req: Request) => Promise<Principal> {
+    return async (req) => {
+        const principal = await resolvePrincipal(req);
+        const user = principal.user as { id?: string; sub?: string; session_version?: number } | null;
+        const userId = user?.id ?? user?.sub;
+        if (!userId || !principal.tenant) return principal;
+        const stored = await currentVersion(principal.tenant, userId);
+        const claimed = Number(user?.session_version ?? 0);
+        return stored === claimed ? principal : { user: null, tenant: undefined };
+    };
+}
+
 /** Build the default-deny guard from a resolvePrincipal. */
 export function defaultDenyAuth(resolvePrincipal: (req: Request) => Promise<Principal>): MiddlewareHandler<{ Variables: ConsoleAuthVars }> {
     return async (c, next) => {

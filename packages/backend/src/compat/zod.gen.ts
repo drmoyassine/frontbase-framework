@@ -38,6 +38,31 @@ export const zActionBulkDeleteRequest = z.object({
 });
 
 /**
+ * ActionsGetExecutionDetailResponse
+ */
+export const zActionsGetExecutionDetailResponse = z.record(z.unknown());
+
+/**
+ * ActionsGetExecutionResultResponse
+ */
+export const zActionsGetExecutionResultResponse = z.record(z.unknown());
+
+/**
+ * ActionsGetExecutionStatsResponse
+ */
+export const zActionsGetExecutionStatsResponse = z.record(z.unknown());
+
+/**
+ * ActionsGetProductionExecutionsResponse
+ */
+export const zActionsGetProductionExecutionsResponse = z.record(z.unknown());
+
+/**
+ * ActionsListAllExecutionsResponse
+ */
+export const zActionsListAllExecutionsResponse = z.record(z.unknown());
+
+/**
  * AddTursoDatabaseResult
  */
 export const zAddTursoDatabaseResult = z.object({
@@ -135,12 +160,42 @@ export const zAdvancedVariables = z.object({
 });
 
 /**
+ * AgentAgentCreditsResponse
+ */
+export const zAgentAgentCreditsResponse = z.record(z.unknown());
+
+/**
  * AgentConfigUpdate
  */
 export const zAgentConfigUpdate = z.object({
     enabled: z.boolean().nullish(),
     quota_exceeded_action: z.string().nullish()
 });
+
+/**
+ * AgentIntegrationsCreateMcpServerResponse
+ */
+export const zAgentIntegrationsCreateMcpServerResponse = z.record(z.unknown());
+
+/**
+ * AgentIntegrationsCreateSkillResponse
+ */
+export const zAgentIntegrationsCreateSkillResponse = z.record(z.unknown());
+
+/**
+ * AgentIntegrationsGetMcpServerResponse
+ */
+export const zAgentIntegrationsGetMcpServerResponse = z.record(z.unknown());
+
+/**
+ * AgentIntegrationsUpdateMcpServerResponse
+ */
+export const zAgentIntegrationsUpdateMcpServerResponse = z.record(z.unknown());
+
+/**
+ * AgentIntegrationsUpdateSkillResponse
+ */
+export const zAgentIntegrationsUpdateSkillResponse = z.record(z.unknown());
 
 /**
  * AgentProfileConfigUpdate
@@ -497,6 +552,16 @@ export const zCheckoutRequestBody = z.object({
 });
 
 /**
+ * CloudflareDeployConnectCloudflareResponse
+ */
+export const zCloudflareDeployConnectCloudflareResponse = z.record(z.unknown());
+
+/**
+ * CloudflareInspectorInspectWorkerContentResponse
+ */
+export const zCloudflareInspectorInspectWorkerContentResponse = z.record(z.unknown());
+
+/**
  * CloudflareStatusResult
  */
 export const zCloudflareStatusResult = z.object({
@@ -847,6 +912,26 @@ export const zEdgeAgentProfileUpdate = z.object({
 });
 
 /**
+ * EdgeAgentProfilesCreateProfileResponse
+ */
+export const zEdgeAgentProfilesCreateProfileResponse = z.record(z.unknown());
+
+/**
+ * EdgeAgentProfilesUpdateProfileResponse
+ */
+export const zEdgeAgentProfilesUpdateProfileResponse = z.record(z.unknown());
+
+/**
+ * EdgeApiKeysCreateApiKeyResponse
+ */
+export const zEdgeApiKeysCreateApiKeyResponse = z.record(z.unknown());
+
+/**
+ * EdgeApiKeysUpdateApiKeyResponse
+ */
+export const zEdgeApiKeysUpdateApiKeyResponse = z.record(z.unknown());
+
+/**
  * EdgeCacheCreate
  */
 export const zEdgeCacheCreate = z.object({
@@ -940,6 +1025,21 @@ export const zEdgeDatabaseUpdate = z.object({
 });
 
 /**
+ * EdgeDatabasesCreateSchemaResponse
+ */
+export const zEdgeDatabasesCreateSchemaResponse = z.record(z.unknown());
+
+/**
+ * EdgeDatabasesDiscoverSchemasResponse
+ */
+export const zEdgeDatabasesDiscoverSchemasResponse = z.record(z.unknown());
+
+/**
+ * EdgeDatabasesResetRolePasswordResponse
+ */
+export const zEdgeDatabasesResetRolePasswordResponse = z.record(z.unknown());
+
+/**
  * EdgeEngineCreate
  *
  * Create a new edge engine.
@@ -992,6 +1092,66 @@ export const zEdgeEngineUpdate = z.object({
 });
 
 /**
+ * EdgeEnginesDeployEngineResponse
+ */
+export const zEdgeEnginesDeployEngineResponse = z.record(z.unknown());
+
+/**
+ * EdgeEnginesGetBundleHashesResponse
+ */
+export const zEdgeEnginesGetBundleHashesResponse = z.record(z.unknown());
+
+/**
+ * EdgeEnginesReconfigureEngineResponse
+ */
+export const zEdgeEnginesReconfigureEngineResponse = z.record(z.unknown());
+
+/**
+ * EdgeEnginesRedeployEngineResponse
+ */
+export const zEdgeEnginesRedeployEngineResponse = z.record(z.unknown());
+
+/**
+ * EdgeEnginesRollbackRotationResponse
+ */
+export const zEdgeEnginesRollbackRotationResponse = z.record(z.unknown());
+
+/**
+ * EdgeEnginesRotateSecretsKeyResponse
+ */
+export const zEdgeEnginesRotateSecretsKeyResponse = z.record(z.unknown());
+
+/**
+ * EdgeEnginesRotationStatusResponse
+ */
+export const zEdgeEnginesRotationStatusResponse = z.record(z.unknown());
+
+/**
+ * EdgeEnginesSyncManifestResponse
+ */
+export const zEdgeEnginesSyncManifestResponse = z.record(z.unknown());
+
+/**
+ * EdgeGpuCreateGpuModelResponse
+ */
+export const zEdgeGpuCreateGpuModelResponse = z.record(z.unknown());
+
+/**
+ * EdgeGpuDeleteGpuModelResponse
+ */
+export const zEdgeGpuDeleteGpuModelResponse = z.record(z.unknown());
+
+/**
+ * EdgeGpuTestGpuModelResponse
+ */
+export const zEdgeGpuTestGpuModelResponse = z.record(z.unknown());
+
+/**
+ * EdgeGpuUpdateGpuModelResponse
+ */
+export const zEdgeGpuUpdateGpuModelResponse = z.record(z.unknown());
+
+/**
  * EdgeProviderAccountCreate
  */
 export const zEdgeProviderAccountCreate = z.object({
@@ -1022,6 +1182,46 @@ export const zEdgeProviderAccountUpdate = z.object({
     name: z.string().nullish(),
     provider_credentials: z.record(z.unknown()).nullish()
 });
+
+/**
+ * EdgeProvidersCreateResourceByAccountResponse
+ */
+export const zEdgeProvidersCreateResourceByAccountResponse = z.record(z.unknown());
+
+/**
+ * EdgeProvidersDiscoverByAccountResponse
+ */
+export const zEdgeProvidersDiscoverByAccountResponse = z.record(z.unknown());
+
+/**
+ * EdgeProvidersDiscoverResourcesEndpointResponse
+ */
+export const zEdgeProvidersDiscoverResourcesEndpointResponse = z.record(z.unknown());
+
+/**
+ * EdgeProvidersGetCredentialsResponse
+ */
+export const zEdgeProvidersGetCredentialsResponse = z.record(z.unknown());
+
+/**
+ * EdgeProvidersListAccountTablesResponse
+ */
+export const zEdgeProvidersListAccountTablesResponse = z.record(z.unknown());
+
+/**
+ * EdgeProvidersRetestProviderResponse
+ */
+export const zEdgeProvidersRetestProviderResponse = z.record(z.unknown());
+
+/**
+ * EdgeProvidersSetWorkspaceAgentTokenResponse
+ */
+export const zEdgeProvidersSetWorkspaceAgentTokenResponse = z.record(z.unknown());
+
+/**
+ * EdgeProvidersTestConnectionResponse
+ */
+export const zEdgeProvidersTestConnectionResponse = z.record(z.unknown());
 
 /**
  * EdgeQueueCreate
@@ -1123,6 +1323,16 @@ export const zEdgeVectorUpdate = z.object({
 });
 
 /**
+ * EdgeVectorsTestConnectionInlineResponse
+ */
+export const zEdgeVectorsTestConnectionInlineResponse = z.record(z.unknown());
+
+/**
+ * EdgeVectorsTestEdgeVectorConnectionResponse
+ */
+export const zEdgeVectorsTestEdgeVectorConnectionResponse = z.record(z.unknown());
+
+/**
  * EmbeddingParams
  */
 export const zEmbeddingParams = z.object({
@@ -1142,6 +1352,46 @@ export const zEngineBatchResult = z.object({
     success: z.array(z.string()).optional().default([]),
     total: z.number().int().optional().default(0)
 });
+
+/**
+ * EngineInspectorAddEngineDomainResponse
+ */
+export const zEngineInspectorAddEngineDomainResponse = z.record(z.unknown());
+
+/**
+ * EngineInspectorDeleteEngineDomainResponse
+ */
+export const zEngineInspectorDeleteEngineDomainResponse = z.record(z.unknown());
+
+/**
+ * EngineInspectorHealthCheckResponse
+ */
+export const zEngineInspectorHealthCheckResponse = z.record(z.unknown());
+
+/**
+ * EngineInspectorInspectEngineDomainsResponse
+ */
+export const zEngineInspectorInspectEngineDomainsResponse = z.record(z.unknown());
+
+/**
+ * EngineInspectorInspectEngineSecretsResponse
+ */
+export const zEngineInspectorInspectEngineSecretsResponse = z.record(z.unknown());
+
+/**
+ * EngineInspectorInspectEngineSettingsResponse
+ */
+export const zEngineInspectorInspectEngineSettingsResponse = z.record(z.unknown());
+
+/**
+ * EngineInspectorInspectEngineSourceResponse
+ */
+export const zEngineInspectorInspectEngineSourceResponse = z.record(z.unknown());
+
+/**
+ * EngineInspectorVerifyEngineDomainResponse
+ */
+export const zEngineInspectorVerifyEngineDomainResponse = z.record(z.unknown());
 
 /**
  * ExecutionStatus
@@ -2168,6 +2418,11 @@ export const zProjectUpdateRequest = z.object({
 });
 
 /**
+ * ProjectUploadBrandingAssetResponse
+ */
+export const zProjectUploadBrandingAssetResponse = z.record(z.unknown());
+
+/**
  * ProvisionBody
  */
 export const zProvisionBody = z.object({
@@ -2640,6 +2895,11 @@ export const zStorageFilesResult = z.object({
     success: z.boolean(),
     total: z.number().int().nullish()
 });
+
+/**
+ * StorageListBucketsResponse
+ */
+export const zStorageListBucketsResponse = z.record(z.unknown());
 
 /**
  * StorageMessageAck
@@ -3603,22 +3863,18 @@ export const zActionsGetAutomationVersionDetailPath = z.object({
 export const zActionsGetAutomationVersionDetailResponse = zSuccessDataEnvelope;
 
 /**
- * Response Actions Get Execution Stats
- *
  * Successful Response
  */
-export const zActionsGetExecutionStatsResponse = z.record(z.unknown());
+export const zActionsGetExecutionStatsResponse2 = zActionsGetExecutionStatsResponse;
 
 export const zActionsGetExecutionResultPath = z.object({
     execution_id: z.string()
 });
 
 /**
- * Response Actions Get Execution Result
- *
  * Successful Response
  */
-export const zActionsGetExecutionResultResponse = z.record(z.unknown());
+export const zActionsGetExecutionResultResponse2 = zActionsGetExecutionResultResponse;
 
 export const zActionsListAllExecutionsQuery = z.object({
     limit: z.number().int().optional().default(100),
@@ -3629,11 +3885,9 @@ export const zActionsListAllExecutionsQuery = z.object({
 });
 
 /**
- * Response Actions List All Executions
- *
  * Successful Response
  */
-export const zActionsListAllExecutionsResponse = z.record(z.unknown());
+export const zActionsListAllExecutionsResponse2 = zActionsListAllExecutionsResponse;
 
 export const zActionsGetExecutionDetailPath = z.object({
     execution_id: z.string()
@@ -3644,11 +3898,9 @@ export const zActionsGetExecutionDetailQuery = z.object({
 });
 
 /**
- * Response Actions Get Execution Detail
- *
  * Successful Response
  */
-export const zActionsGetExecutionDetailResponse = z.record(z.unknown());
+export const zActionsGetExecutionDetailResponse2 = zActionsGetExecutionDetailResponse;
 
 export const zActionsExportExecutionsCsvQuery = z.object({
     engine_ids: z.string().nullish(),
@@ -3659,9 +3911,7 @@ export const zActionsExportExecutionsCsvQuery = z.object({
 });
 
 /**
- * Response Actions Export Executions Csv
- *
- * Successful Response
+ * Execution log CSV
  */
 export const zActionsExportExecutionsCsvResponse = z.string();
 
@@ -3693,11 +3943,9 @@ export const zActionsGetProductionExecutionsQuery = z.object({
 });
 
 /**
- * Response Actions Get Production Executions
- *
  * Successful Response
  */
-export const zActionsGetProductionExecutionsResponse = z.record(z.unknown());
+export const zActionsGetProductionExecutionsResponse2 = zActionsGetProductionExecutionsResponse;
 
 /**
  * Response Admin Plans List Addons
@@ -3977,11 +4225,9 @@ export const zAgentIntegrationsListSkillsResponse = zListSkillsResult;
 export const zAgentIntegrationsCreateSkillBody = zSkillCreate;
 
 /**
- * Response Agent Integrations Create Skill
- *
  * Successful Response
  */
-export const zAgentIntegrationsCreateSkillResponse = z.record(z.unknown());
+export const zAgentIntegrationsCreateSkillResponse2 = zAgentIntegrationsCreateSkillResponse;
 
 export const zAgentIntegrationsDeleteSkillPath = z.object({
     skill_id: z.string()
@@ -3999,36 +4245,28 @@ export const zAgentIntegrationsUpdateSkillPath = z.object({
 });
 
 /**
- * Response Agent Integrations Update Skill
- *
  * Successful Response
  */
-export const zAgentIntegrationsUpdateSkillResponse = z.record(z.unknown());
+export const zAgentIntegrationsUpdateSkillResponse2 = zAgentIntegrationsUpdateSkillResponse;
 
 /**
- * Response Agent Agent Chat
- *
- * Successful Response
+ * Server-sent agent events
  */
-export const zAgentAgentChatResponse = z.record(z.unknown());
+export const zAgentAgentChatResponse = z.string();
 
 export const zAgentAgentChatWithProfilePath = z.object({
     profile_slug: z.string()
 });
 
 /**
- * Response Agent Agent Chat With Profile
- *
- * Successful Response
+ * Server-sent agent events
  */
-export const zAgentAgentChatWithProfileResponse = z.record(z.unknown());
+export const zAgentAgentChatWithProfileResponse = z.string();
 
 /**
- * Response Agent Agent Credits
- *
  * Successful Response
  */
-export const zAgentAgentCreditsResponse = z.record(z.unknown());
+export const zAgentAgentCreditsResponse2 = zAgentAgentCreditsResponse;
 
 export const zAgentMcpMcpRootPath = z.object({
     profile_slug: z.string()
@@ -4071,9 +4309,7 @@ export const zAgentMcpCallToolPath = z.object({
 });
 
 /**
- * Response Agent Mcp Call Tool
- *
- * Successful Response
+ * Server-sent tool execution events
  */
 export const zAgentMcpCallToolResponse = z.string();
 
@@ -4194,13 +4430,6 @@ export const zAuthenticationGetInvitePath = z.object({
  */
 export const zAuthenticationGetInviteResponse = zInviteInfo;
 
-/**
- * Response Authentication Login Options
- *
- * Successful Response
- */
-export const zAuthenticationLoginOptionsResponse = z.record(z.unknown());
-
 export const zAuthenticationLoginBody = zLoginRequest;
 
 /**
@@ -4288,13 +4517,6 @@ export const zAuthenticationUpdateWafSettingsBody = zWafUpdateRequest;
  */
 export const zAuthenticationUpdateWafSettingsResponse = zWafUpdateResponse;
 
-/**
- * Response Authentication Signup Options
- *
- * Successful Response
- */
-export const zAuthenticationSignupOptionsResponse = z.record(z.unknown());
-
 export const zAuthenticationSignupBody = zSignupRequest;
 
 /**
@@ -4328,11 +4550,9 @@ export const zBillingHandleWebhookResponse = zHandleWebhookResult;
 export const zCloudflareDeployConnectCloudflareBody = zConnectRequest;
 
 /**
- * Response Cloudflare Deploy Connect Cloudflare
- *
  * Successful Response
  */
-export const zCloudflareDeployConnectCloudflareResponse = z.record(z.unknown());
+export const zCloudflareDeployConnectCloudflareResponse2 = zCloudflareDeployConnectCloudflareResponse;
 
 export const zCloudflareDeployDeployToCloudflareBody = zDeployRequest;
 
@@ -4344,11 +4564,9 @@ export const zCloudflareDeployDeployToCloudflareResponse = zDeployToCloudflareRe
 export const zCloudflareInspectorInspectWorkerContentBody = zInspectRequest;
 
 /**
- * Response Cloudflare Inspector Inspect Worker Content
- *
  * Successful Response
  */
-export const zCloudflareInspectorInspectWorkerContentResponse = z.record(z.unknown());
+export const zCloudflareInspectorInspectWorkerContentResponse2 = zCloudflareInspectorInspectWorkerContentResponse;
 
 export const zCloudflareInspectorInspectWorkerSecretsBody = zInspectRequest;
 
@@ -4602,11 +4820,9 @@ export const zEdgeApiKeysListApiKeysResponse = zListApiKeysResult;
 export const zEdgeApiKeysCreateApiKeyBody = zApiKeyCreate;
 
 /**
- * Response Edge Api Keys Create Api Key
- *
  * Successful Response
  */
-export const zEdgeApiKeysCreateApiKeyResponse = z.record(z.unknown());
+export const zEdgeApiKeysCreateApiKeyResponse2 = zEdgeApiKeysCreateApiKeyResponse;
 
 export const zEdgeApiKeysDeleteApiKeyPath = z.object({
     key_id: z.string()
@@ -4624,11 +4840,9 @@ export const zEdgeApiKeysUpdateApiKeyPath = z.object({
 });
 
 /**
- * Response Edge Api Keys Update Api Key
- *
  * Successful Response
  */
-export const zEdgeApiKeysUpdateApiKeyResponse = z.record(z.unknown());
+export const zEdgeApiKeysUpdateApiKeyResponse2 = zEdgeApiKeysUpdateApiKeyResponse;
 
 export const zEdgeApiKeysRevealApiKeyPath = z.object({
     key_id: z.string()
@@ -4724,29 +4938,23 @@ export const zEdgeDatabasesBatchDeleteDatabasesResponse = zDatabaseBatchResult;
 export const zEdgeDatabasesCreateSchemaBody = zCreateSchemaRequest;
 
 /**
- * Response Edge Databases Create Schema
- *
  * Successful Response
  */
-export const zEdgeDatabasesCreateSchemaResponse = z.record(z.unknown());
+export const zEdgeDatabasesCreateSchemaResponse2 = zEdgeDatabasesCreateSchemaResponse;
 
 export const zEdgeDatabasesDiscoverSchemasBody = zDiscoverSchemasRequest;
 
 /**
- * Response Edge Databases Discover Schemas
- *
  * Successful Response
  */
-export const zEdgeDatabasesDiscoverSchemasResponse = z.record(z.unknown());
+export const zEdgeDatabasesDiscoverSchemasResponse2 = zEdgeDatabasesDiscoverSchemasResponse;
 
 export const zEdgeDatabasesResetRolePasswordBody = zResetRolePasswordRequest;
 
 /**
- * Response Edge Databases Reset Role Password
- *
  * Successful Response
  */
-export const zEdgeDatabasesResetRolePasswordResponse = z.record(z.unknown());
+export const zEdgeDatabasesResetRolePasswordResponse2 = zEdgeDatabasesResetRolePasswordResponse;
 
 export const zEdgeDatabasesTestConnectionInlineBody = zEdgeDatabaseCreate;
 
@@ -4857,20 +5065,16 @@ export const zEdgeEnginesBatchToggleEnginesBody = zBatchToggleRequest;
 export const zEdgeEnginesBatchToggleEnginesResponse = zEngineBatchResult;
 
 /**
- * Response Edge Engines Get Bundle Hashes
- *
  * Successful Response
  */
-export const zEdgeEnginesGetBundleHashesResponse = z.record(z.unknown());
+export const zEdgeEnginesGetBundleHashesResponse2 = zEdgeEnginesGetBundleHashesResponse;
 
 export const zEdgeEnginesDeployEngineBody = zGenericDeployRequest;
 
 /**
- * Response Edge Engines Deploy Engine
- *
  * Successful Response
  */
-export const zEdgeEnginesDeployEngineResponse = z.record(z.unknown());
+export const zEdgeEnginesDeployEngineResponse2 = zEdgeEnginesDeployEngineResponse;
 
 export const zEdgeEnginesImportEngineBody = zImportRequest;
 
@@ -4928,11 +5132,9 @@ export const zEdgeAgentProfilesCreateProfilePath = z.object({
 });
 
 /**
- * Response Edge Agent Profiles Create Profile
- *
  * Successful Response
  */
-export const zEdgeAgentProfilesCreateProfileResponse = z.record(z.unknown());
+export const zEdgeAgentProfilesCreateProfileResponse2 = zEdgeAgentProfilesCreateProfileResponse;
 
 export const zEdgeAgentProfilesDeleteProfilePath = z.object({
     engine_id: z.string(),
@@ -4952,11 +5154,9 @@ export const zEdgeAgentProfilesUpdateProfilePath = z.object({
 });
 
 /**
- * Response Edge Agent Profiles Update Profile
- *
  * Successful Response
  */
-export const zEdgeAgentProfilesUpdateProfileResponse = z.record(z.unknown());
+export const zEdgeAgentProfilesUpdateProfileResponse2 = zEdgeAgentProfilesUpdateProfileResponse;
 
 export const zEdgeEnginesTenantSecretsAuditLogsPath = z.object({
     engine_id: z.string()
@@ -5010,22 +5210,18 @@ export const zEngineInspectorHealthCheckPath = z.object({
 });
 
 /**
- * Response Engine Inspector Health Check
- *
  * Successful Response
  */
-export const zEngineInspectorHealthCheckResponse = z.record(z.unknown());
+export const zEngineInspectorHealthCheckResponse2 = zEngineInspectorHealthCheckResponse;
 
 export const zEngineInspectorInspectEngineDomainsPath = z.object({
     engine_id: z.string()
 });
 
 /**
- * Response Engine Inspector Inspect Engine Domains
- *
  * Successful Response
  */
-export const zEngineInspectorInspectEngineDomainsResponse = z.record(z.unknown());
+export const zEngineInspectorInspectEngineDomainsResponse2 = zEngineInspectorInspectEngineDomainsResponse;
 
 export const zEngineInspectorAddEngineDomainBody = zAddDomainBody;
 
@@ -5034,11 +5230,9 @@ export const zEngineInspectorAddEngineDomainPath = z.object({
 });
 
 /**
- * Response Engine Inspector Add Engine Domain
- *
  * Successful Response
  */
-export const zEngineInspectorAddEngineDomainResponse = z.record(z.unknown());
+export const zEngineInspectorAddEngineDomainResponse2 = zEngineInspectorAddEngineDomainResponse;
 
 export const zEngineInspectorDeleteEngineDomainPath = z.object({
     engine_id: z.string(),
@@ -5046,11 +5240,9 @@ export const zEngineInspectorDeleteEngineDomainPath = z.object({
 });
 
 /**
- * Response Engine Inspector Delete Engine Domain
- *
  * Successful Response
  */
-export const zEngineInspectorDeleteEngineDomainResponse = z.record(z.unknown());
+export const zEngineInspectorDeleteEngineDomainResponse2 = zEngineInspectorDeleteEngineDomainResponse;
 
 export const zEngineInspectorVerifyEngineDomainPath = z.object({
     engine_id: z.string(),
@@ -5058,44 +5250,36 @@ export const zEngineInspectorVerifyEngineDomainPath = z.object({
 });
 
 /**
- * Response Engine Inspector Verify Engine Domain
- *
  * Successful Response
  */
-export const zEngineInspectorVerifyEngineDomainResponse = z.record(z.unknown());
+export const zEngineInspectorVerifyEngineDomainResponse2 = zEngineInspectorVerifyEngineDomainResponse;
 
 export const zEngineInspectorInspectEngineSecretsPath = z.object({
     engine_id: z.string()
 });
 
 /**
- * Response Engine Inspector Inspect Engine Secrets
- *
  * Successful Response
  */
-export const zEngineInspectorInspectEngineSecretsResponse = z.record(z.unknown());
+export const zEngineInspectorInspectEngineSecretsResponse2 = zEngineInspectorInspectEngineSecretsResponse;
 
 export const zEngineInspectorInspectEngineSettingsPath = z.object({
     engine_id: z.string()
 });
 
 /**
- * Response Engine Inspector Inspect Engine Settings
- *
  * Successful Response
  */
-export const zEngineInspectorInspectEngineSettingsResponse = z.record(z.unknown());
+export const zEngineInspectorInspectEngineSettingsResponse2 = zEngineInspectorInspectEngineSettingsResponse;
 
 export const zEngineInspectorInspectEngineSourcePath = z.object({
     engine_id: z.string()
 });
 
 /**
- * Response Engine Inspector Inspect Engine Source
- *
  * Successful Response
  */
-export const zEngineInspectorInspectEngineSourceResponse = z.record(z.unknown());
+export const zEngineInspectorInspectEngineSourceResponse2 = zEngineInspectorInspectEngineSourceResponse;
 
 export const zEdgeEnginesGetEngineLogsPath = z.object({
     engine_id: z.string()
@@ -5162,22 +5346,18 @@ export const zEdgeEnginesReconfigureEnginePath = z.object({
 });
 
 /**
- * Response Edge Engines Reconfigure Engine
- *
  * Successful Response
  */
-export const zEdgeEnginesReconfigureEngineResponse = z.record(z.unknown());
+export const zEdgeEnginesReconfigureEngineResponse2 = zEdgeEnginesReconfigureEngineResponse;
 
 export const zEdgeEnginesRedeployEnginePath = z.object({
     engine_id: z.string()
 });
 
 /**
- * Response Edge Engines Redeploy Engine
- *
  * Successful Response
  */
-export const zEdgeEnginesRedeployEngineResponse = z.record(z.unknown());
+export const zEdgeEnginesRedeployEngineResponse2 = zEdgeEnginesRedeployEngineResponse;
 
 export const zEdgeEnginesRollbackRotationBody = zRollbackRotationRequest;
 
@@ -5186,11 +5366,9 @@ export const zEdgeEnginesRollbackRotationPath = z.object({
 });
 
 /**
- * Response Edge Engines Rollback Rotation
- *
  * Successful Response
  */
-export const zEdgeEnginesRollbackRotationResponse = z.record(z.unknown());
+export const zEdgeEnginesRollbackRotationResponse2 = zEdgeEnginesRollbackRotationResponse;
 
 export const zEdgeEnginesRotateSecretsKeyBody = zRotateSecretsKeyRequest;
 
@@ -5199,11 +5377,9 @@ export const zEdgeEnginesRotateSecretsKeyPath = z.object({
 });
 
 /**
- * Response Edge Engines Rotate Secrets Key
- *
  * Successful Response
  */
-export const zEdgeEnginesRotateSecretsKeyResponse = z.record(z.unknown());
+export const zEdgeEnginesRotateSecretsKeyResponse2 = zEdgeEnginesRotateSecretsKeyResponse;
 
 export const zEdgeEnginesRotationHistoryPath = z.object({
     engine_id: z.string()
@@ -5219,11 +5395,9 @@ export const zEdgeEnginesRotationStatusPath = z.object({
 });
 
 /**
- * Response Edge Engines Rotation Status
- *
  * Successful Response
  */
-export const zEdgeEnginesRotationStatusResponse = z.record(z.unknown());
+export const zEdgeEnginesRotationStatusResponse2 = zEdgeEnginesRotationStatusResponse;
 
 export const zEdgeEnginesGetEngineSourcePath = z.object({
     engine_id: z.string()
@@ -5253,11 +5427,9 @@ export const zEdgeEnginesSyncManifestPath = z.object({
 });
 
 /**
- * Response Edge Engines Sync Manifest
- *
  * Successful Response
  */
-export const zEdgeEnginesSyncManifestResponse = z.record(z.unknown());
+export const zEdgeEnginesSyncManifestResponse2 = zEdgeEnginesSyncManifestResponse;
 
 export const zEdgeEnginesTestEngineConnectionPath = z.object({
     engine_id: z.string()
@@ -5282,11 +5454,9 @@ export const zEdgeGpuCreateGpuModelQuery = z.object({
 });
 
 /**
- * Response Edge Gpu Create Gpu Model
- *
  * Successful Response
  */
-export const zEdgeGpuCreateGpuModelResponse = z.record(z.unknown());
+export const zEdgeGpuCreateGpuModelResponse2 = zEdgeGpuCreateGpuModelResponse;
 
 export const zEdgeGpuGetCatalogQuery = z.object({
     provider_id: z.string(),
@@ -5312,11 +5482,9 @@ export const zEdgeGpuDeleteGpuModelQuery = z.object({
 });
 
 /**
- * Response Edge Gpu Delete Gpu Model
- *
  * Successful Response
  */
-export const zEdgeGpuDeleteGpuModelResponse = z.record(z.unknown());
+export const zEdgeGpuDeleteGpuModelResponse2 = zEdgeGpuDeleteGpuModelResponse;
 
 export const zEdgeGpuUpdateGpuModelBody = zGpuModelUpdate;
 
@@ -5325,22 +5493,18 @@ export const zEdgeGpuUpdateGpuModelPath = z.object({
 });
 
 /**
- * Response Edge Gpu Update Gpu Model
- *
  * Successful Response
  */
-export const zEdgeGpuUpdateGpuModelResponse = z.record(z.unknown());
+export const zEdgeGpuUpdateGpuModelResponse2 = zEdgeGpuUpdateGpuModelResponse;
 
 export const zEdgeGpuTestGpuModelPath = z.object({
     model_id: z.string()
 });
 
 /**
- * Response Edge Gpu Test Gpu Model
- *
  * Successful Response
  */
-export const zEdgeGpuTestGpuModelResponse = z.record(z.unknown());
+export const zEdgeGpuTestGpuModelResponse2 = zEdgeGpuTestGpuModelResponse;
 
 /**
  * Response Edge Providers List Providers
@@ -5361,11 +5525,9 @@ export const zEdgeProvidersListAccountTablesPath = z.object({
 });
 
 /**
- * Response Edge Providers List Account Tables
- *
  * Successful Response
  */
-export const zEdgeProvidersListAccountTablesResponse = z.record(z.unknown());
+export const zEdgeProvidersListAccountTablesResponse2 = zEdgeProvidersListAccountTablesResponse;
 
 export const zEdgeProvidersCreateResourceByAccountBody = zCreateResourceRequest;
 
@@ -5374,51 +5536,41 @@ export const zEdgeProvidersCreateResourceByAccountPath = z.object({
 });
 
 /**
- * Response Edge Providers Create Resource By Account
- *
  * Successful Response
  */
-export const zEdgeProvidersCreateResourceByAccountResponse = z.record(z.unknown());
+export const zEdgeProvidersCreateResourceByAccountResponse2 = zEdgeProvidersCreateResourceByAccountResponse;
 
 export const zEdgeProvidersDiscoverResourcesEndpointBody = zDiscoverRequest;
 
 /**
- * Response Edge Providers Discover Resources Endpoint
- *
  * Successful Response
  */
-export const zEdgeProvidersDiscoverResourcesEndpointResponse = z.record(z.unknown());
+export const zEdgeProvidersDiscoverResourcesEndpointResponse2 = zEdgeProvidersDiscoverResourcesEndpointResponse;
 
 export const zEdgeProvidersDiscoverByAccountPath = z.object({
     account_id: z.string()
 });
 
 /**
- * Response Edge Providers Discover By Account
- *
  * Successful Response
  */
-export const zEdgeProvidersDiscoverByAccountResponse = z.record(z.unknown());
+export const zEdgeProvidersDiscoverByAccountResponse2 = zEdgeProvidersDiscoverByAccountResponse;
 
 export const zEdgeProvidersRetestProviderPath = z.object({
     provider_id: z.string()
 });
 
 /**
- * Response Edge Providers Retest Provider
- *
  * Successful Response
  */
-export const zEdgeProvidersRetestProviderResponse = z.record(z.unknown());
+export const zEdgeProvidersRetestProviderResponse2 = zEdgeProvidersRetestProviderResponse;
 
 export const zEdgeProvidersTestConnectionBody = zTestConnectionRequest;
 
 /**
- * Response Edge Providers Test Connection
- *
  * Successful Response
  */
-export const zEdgeProvidersTestConnectionResponse = z.record(z.unknown());
+export const zEdgeProvidersTestConnectionResponse2 = zEdgeProvidersTestConnectionResponse;
 
 /**
  * Successful Response
@@ -5428,11 +5580,9 @@ export const zEdgeProvidersGetWorkspaceAgentTokenResponse = zGetWorkspaceAgentTo
 export const zEdgeProvidersSetWorkspaceAgentTokenBody = zSetWorkspaceDefaultRequest;
 
 /**
- * Response Edge Providers Set Workspace Agent Token
- *
  * Successful Response
  */
-export const zEdgeProvidersSetWorkspaceAgentTokenResponse = z.record(z.unknown());
+export const zEdgeProvidersSetWorkspaceAgentTokenResponse2 = zEdgeProvidersSetWorkspaceAgentTokenResponse;
 
 export const zEdgeProvidersListEnginesForProviderPath = z.object({
     account_id: z.string()
@@ -5508,11 +5658,9 @@ export const zEdgeProvidersGetCredentialsPath = z.object({
 });
 
 /**
- * Response Edge Providers Get Credentials
- *
  * Successful Response
  */
-export const zEdgeProvidersGetCredentialsResponse = z.record(z.unknown());
+export const zEdgeProvidersGetCredentialsResponse2 = zEdgeProvidersGetCredentialsResponse;
 
 /**
  * Response Edge Queues List Edge Queues
@@ -5599,11 +5747,9 @@ export const zEdgeVectorsBatchDeleteVectorsResponse = zVectorBatchResult;
 export const zEdgeVectorsTestConnectionInlineBody = zVectorTestConnectionRequest;
 
 /**
- * Response Edge Vectors Test Connection Inline
- *
  * Successful Response
  */
-export const zEdgeVectorsTestConnectionInlineResponse = z.record(z.unknown());
+export const zEdgeVectorsTestConnectionInlineResponse2 = zEdgeVectorsTestConnectionInlineResponse;
 
 export const zEdgeVectorsDeleteEdgeVectorPath = z.object({
     vector_id: z.string()
@@ -5634,11 +5780,9 @@ export const zEdgeVectorsTestEdgeVectorConnectionPath = z.object({
 });
 
 /**
- * Response Edge Vectors Test Edge Vector Connection
- *
  * Successful Response
  */
-export const zEdgeVectorsTestEdgeVectorConnectionResponse = z.record(z.unknown());
+export const zEdgeVectorsTestEdgeVectorConnectionResponse2 = zEdgeVectorsTestEdgeVectorConnectionResponse;
 
 export const zAgentIntegrationsListMcpServersQuery = z.object({
     profile_slug: z.string().nullish()
@@ -5652,11 +5796,9 @@ export const zAgentIntegrationsListMcpServersResponse = zListMcpServersResult;
 export const zAgentIntegrationsCreateMcpServerBody = zMcpServerCreate;
 
 /**
- * Response Agent Integrations Create Mcp Server
- *
  * Successful Response
  */
-export const zAgentIntegrationsCreateMcpServerResponse = z.record(z.unknown());
+export const zAgentIntegrationsCreateMcpServerResponse2 = zAgentIntegrationsCreateMcpServerResponse;
 
 export const zAgentIntegrationsDeleteMcpServerPath = z.object({
     server_id: z.string()
@@ -5672,11 +5814,9 @@ export const zAgentIntegrationsGetMcpServerPath = z.object({
 });
 
 /**
- * Response Agent Integrations Get Mcp Server
- *
  * Successful Response
  */
-export const zAgentIntegrationsGetMcpServerResponse = z.record(z.unknown());
+export const zAgentIntegrationsGetMcpServerResponse2 = zAgentIntegrationsGetMcpServerResponse;
 
 export const zAgentIntegrationsUpdateMcpServerBody = zMcpServerUpdate;
 
@@ -5685,11 +5825,9 @@ export const zAgentIntegrationsUpdateMcpServerPath = z.object({
 });
 
 /**
- * Response Agent Integrations Update Mcp Server
- *
  * Successful Response
  */
-export const zAgentIntegrationsUpdateMcpServerResponse = z.record(z.unknown());
+export const zAgentIntegrationsUpdateMcpServerResponse2 = zAgentIntegrationsUpdateMcpServerResponse;
 
 export const zAgentIntegrationsTestMcpServerPath = z.object({
     server_id: z.string()
@@ -5892,11 +6030,9 @@ export const zProjectUpdateProjectEndpointResponse = zProjectResponse;
 export const zProjectUploadBrandingAssetBody = zBodyProjectUploadBrandingAsset;
 
 /**
- * Response Project Upload Branding Asset
- *
  * Successful Response
  */
-export const zProjectUploadBrandingAssetResponse = z.record(z.unknown());
+export const zProjectUploadBrandingAssetResponse2 = zProjectUploadBrandingAssetResponse;
 
 /**
  * Successful Response
@@ -6116,11 +6252,9 @@ export const zStorageListBucketsQuery = z.object({
 });
 
 /**
- * Response Storage List Buckets
- *
  * Successful Response
  */
-export const zStorageListBucketsResponse = z.record(z.unknown());
+export const zStorageListBucketsResponse2 = zStorageListBucketsResponse;
 
 /**
  * Request

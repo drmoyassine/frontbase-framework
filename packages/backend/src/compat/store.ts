@@ -93,6 +93,159 @@ export class KeyValueStore {
     }
 }
 
+export interface CommunityInvite {
+    token: string;
+    email: string;
+    role: string;
+    tenantSlug: string;
+    tenantName: string | null;
+    status: 'pending' | 'accepted';
+    createdAt: string;
+    expiresAt: string;
+    acceptedAt?: string;
+}
+
+/**
+ * Community invite persistence on the existing settings table.
+ *
+ * Invite lookup is intentionally token-global: the unauthenticated accept page
+ * does not know a tenant yet, and possession of the random token is the
+ * capability. Consumption uses compare-and-swap on the serialized value so the
+ * same token cannot create two users under concurrent requests.
+ */
+export class CommunityInviteStore {
+    constructor(private runner: DbRunner) {}
+
+    async create(
+        tenantSlug: string,
+        input: { email: string; role: string; tenantName?: string | null },
+        now: string,
+    ): Promise<CommunityInvite> {
+        const token = crypto.randomUUID();
+        const created = new Date(now);
+        const expires = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const invite: CommunityInvite = {
+            token,
+            email: input.email.trim().toLowerCase(),
+            role: input.role,
+            tenantSlug,
+            tenantName: input.tenantName ?? null,
+            status: 'pending',
+            createdAt: created.toISOString(),
+            expiresAt: expires.toISOString(),
+        };
+        await this.runner.exec(
+            'INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?)',
+            [tenantSlug, this.key(token), JSON.stringify(invite), now],
+        );
+        return invite;
+    }
+
+    async getPending(token: string, now: string): Promise<CommunityInvite | null> {
+        const found = await this.find(token);
+        if (!found || found.invite.status !== 'pending') return null;
+        if (Date.parse(found.invite.expiresAt) <= Date.parse(now)) return null;
+        return found.invite;
+    }
+
+    async consume(token: string, now: string): Promise<CommunityInvite | null> {
+        const found = await this.find(token);
+        if (!found || found.invite.status !== 'pending') return null;
+        if (Date.parse(found.invite.expiresAt) <= Date.parse(now)) return null;
+        const accepted: CommunityInvite = {
+            ...found.invite,
+            status: 'accepted',
+            acceptedAt: now,
+        };
+        const changed = await this.runner.exec(
+            'UPDATE settings SET value = ?, updated_at = ? WHERE tenant_slug = ? AND key = ? AND value = ?',
+            [JSON.stringify(accepted), now, found.invite.tenantSlug, this.key(token), found.raw],
+        );
+        return changed > 0 ? found.invite : null;
+    }
+
+    private key(token: string): string {
+        return `community_invite:${token}`;
+    }
+
+    private async find(token: string): Promise<{ invite: CommunityInvite; raw: string } | null> {
+        const rows = await this.runner.query(
+            'SELECT value FROM settings WHERE key = ? LIMIT 1',
+            [this.key(token)],
+        );
+        const raw = rows[0]?.value;
+        if (typeof raw !== 'string') return null;
+        try {
+            const invite = JSON.parse(raw) as CommunityInvite;
+            return invite.token === token ? { invite, raw } : null;
+        } catch {
+            return null;
+        }
+    }
+}
+
+export interface PasswordResetCapability {
+    userId: string;
+    tenantSlug: string;
+    email: string;
+}
+
+async function sha256Hex(value: string): Promise<string> {
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+    return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/** Hashed, expiring, single-use password-reset capability store. */
+export class PasswordResetStore {
+    constructor(private runner: DbRunner) {}
+
+    async create(
+        user: { id: string; tenantSlug: string; email: string },
+        now: string,
+    ): Promise<string> {
+        const token = `${crypto.randomUUID()}${crypto.randomUUID().replaceAll('-', '')}`;
+        const tokenHash = await sha256Hex(token);
+        const created = new Date(now);
+        const expiresAt = new Date(created.getTime() + 60 * 60 * 1000).toISOString();
+        // Supersede unused tokens for this account; a reset email always carries
+        // the only currently valid capability.
+        await this.runner.exec(
+            'DELETE FROM password_reset_tokens WHERE user_id = ? AND tenant_slug = ? AND used_at IS NULL',
+            [user.id, user.tenantSlug],
+        );
+        await this.runner.exec(
+            `INSERT INTO password_reset_tokens
+             (token_hash, user_id, tenant_slug, email, expires_at, used_at, created_at)
+             VALUES (?,?,?,?,?,NULL,?)`,
+            [tokenHash, user.id, user.tenantSlug, user.email.toLowerCase(), expiresAt, created.toISOString()],
+        );
+        return token;
+    }
+
+    async consume(email: string, token: string, now: string): Promise<PasswordResetCapability | null> {
+        const tokenHash = await sha256Hex(token);
+        const rows = await this.runner.query(
+            `SELECT user_id, tenant_slug, email, expires_at, used_at
+             FROM password_reset_tokens WHERE token_hash = ?`,
+            [tokenHash],
+        );
+        const row = rows[0];
+        if (!row || row.used_at || String(row.email).toLowerCase() !== email.toLowerCase()) return null;
+        if (Date.parse(String(row.expires_at)) <= Date.parse(now)) return null;
+        const changed = await this.runner.exec(
+            `UPDATE password_reset_tokens SET used_at = ?
+             WHERE token_hash = ? AND used_at IS NULL`,
+            [now, tokenHash],
+        );
+        if (changed !== 1) return null;
+        return {
+            userId: String(row.user_id),
+            tenantSlug: String(row.tenant_slug),
+            email: String(row.email),
+        };
+    }
+}
+
 export interface ThemeRow { id: string; name: string; component_type: string; styles_data: string; is_system: number; created_at: string; updated_at: string; }
 
 /** CF-22 P2 Wave 1 — component themes (migration v8). */

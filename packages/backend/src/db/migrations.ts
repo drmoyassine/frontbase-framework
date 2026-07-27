@@ -186,6 +186,26 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [],
     },
+    {
+        // CF-22 Gates 1c/2/3: additive security state. Keep recoverable API-key
+        // material separate from verifier hashes so reveal can atomically clear
+        // it. Password-reset tokens are hashed, expiring, and single-use.
+        // Session versions invalidate cookies issued before a credential reset.
+        version: 14,
+        name: 'compat_security_state',
+        up: [
+            `CREATE TABLE IF NOT EXISTS edge_api_key_secrets (key_id TEXT NOT NULL, tenant_slug TEXT NOT NULL, prefix TEXT NOT NULL, ciphertext TEXT, revealed_at TEXT, created_at TEXT NOT NULL, PRIMARY KEY (key_id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS password_reset_tokens (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, tenant_slug TEXT NOT NULL, email TEXT NOT NULL, expires_at TEXT NOT NULL, used_at TEXT, created_at TEXT NOT NULL)`,
+            `CREATE TABLE IF NOT EXISTS user_session_versions (user_id TEXT NOT NULL, tenant_slug TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, PRIMARY KEY (user_id, tenant_slug))`,
+            `CREATE TABLE IF NOT EXISTS security_audit_events (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, action TEXT NOT NULL, resource_type TEXT, resource_id TEXT, details TEXT, created_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+        ],
+        down: [
+            `DROP TABLE IF EXISTS security_audit_events`,
+            `DROP TABLE IF EXISTS user_session_versions`,
+            `DROP TABLE IF EXISTS password_reset_tokens`,
+            `DROP TABLE IF EXISTS edge_api_key_secrets`,
+        ],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

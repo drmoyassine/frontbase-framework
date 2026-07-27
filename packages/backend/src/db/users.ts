@@ -69,6 +69,34 @@ export class UserStore {
         return r ? { id: String(r.id), email: String(r.email), role: String(r.role), tenantSlug: String(r.tenant_slug) } : null;
     }
 
+    async getSessionVersion(id: string): Promise<number> {
+        const rows = await this.runner.query(
+            'SELECT version FROM user_session_versions WHERE user_id = ? AND tenant_slug = ?',
+            [id, this.tenant],
+        );
+        return Number(rows[0]?.version ?? 0);
+    }
+
+    /**
+     * Replace a credential and atomically advance the session generation.
+     * Existing JWTs either carry the old generation or implicitly generation 0.
+     */
+    async updatePasswordAndInvalidateSessions(id: string, passwordHash: string, now: string): Promise<number> {
+        const changed = await this.runner.exec(
+            'UPDATE users SET password_hash = ? WHERE id = ? AND tenant_slug = ?',
+            [passwordHash, id, this.tenant],
+        );
+        if (changed !== 1) throw new Error('user_not_found');
+        await this.runner.exec(
+            `INSERT INTO user_session_versions (user_id, tenant_slug, version, updated_at)
+             VALUES (?,?,1,?)
+             ON CONFLICT(user_id, tenant_slug)
+             DO UPDATE SET version = user_session_versions.version + 1, updated_at = excluded.updated_at`,
+            [id, this.tenant, now],
+        );
+        return this.getSessionVersion(id);
+    }
+
     /** List all users in this tenant (CF-18 Phase 2 — App Users). */
     async listUsers(): Promise<PublicUser[]> {
         const rows = await this.runner.query(

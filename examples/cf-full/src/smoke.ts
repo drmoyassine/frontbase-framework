@@ -59,6 +59,11 @@ await check('GET / renders (edge)', async () => {
     const r = await req('/');
     return r.status === 200 && (await r.text()).includes('chimera-rendered-by" content="edge"');
 });
+await check('GET / with Accept: application/json returns product API status', async () => {
+    const r = await req('/', { headers: { accept: 'application/json' } });
+    const body = await r.json() as { message?: string; test_mode?: boolean };
+    return r.status === 200 && typeof body.message === 'string' && body.test_mode === false;
+});
 await check('GET /sw.js serves the browser engine bundle', async () => {
     const r = await req('/sw.js');
     return r.status === 200 && r.headers.get('content-type') === 'text/javascript' && (await r.text()).length > 1000;

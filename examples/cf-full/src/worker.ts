@@ -177,6 +177,16 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     //    own routes don't register for them, so Hono falls through to engine.
 
     // 4. Compat /api/* surface.
+    // The product contract also defines a JSON API status at GET /. Preserve the
+    // eSSR homepage for normal browser navigation and serve the API form only to
+    // clients that explicitly request JSON.
+    app.get('/', async (c, next) => {
+        const accepts = c.req.header('accept') ?? '';
+        if (accepts.toLowerCase().includes('application/json')) {
+            return c.json({ message: 'Frontbase API is operational', test_mode: false });
+        }
+        return next();
+    });
     app.route('/', compatApp);
 
     // 5. Engine.

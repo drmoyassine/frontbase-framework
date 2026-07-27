@@ -18,7 +18,7 @@ import type { Principal } from '@frontbase/edge-core';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { sqliteRunner, createResolvePrincipal, s3StorageProvider, cloudflareProvisioner, supabaseProvisioner, noopProvisioner, type StorageProvider, type Provisioner } from '@frontbase/edge-infra';
 import type { QueryRegistry } from '@frontbase/compiler/manifest';
-import { defaultDenyAuth, type ConsoleAuthVars } from './mw/auth.js';
+import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from './mw/auth.js';
 import { opaqueErrors } from './mw/errors.js';
 import { pagesRoutes } from './routes/pages.js';
 import { healthRoutes } from './routes/health.js';
@@ -97,7 +97,7 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
 
     // Resolve the principal resolver: explicit wins; sessionSecret builds one for
     // the fb_session JWT cookie (M-ID.1, D2); else anonymous.
-    const resolvePrincipal = deps.resolvePrincipal
+    const baseResolvePrincipal = deps.resolvePrincipal
         ?? (deps.sessionSecret ? createResolvePrincipal({ jwtSecret: deps.sessionSecret, jwtCookie: 'fb_session' })
             : (async () => ({ user: null, tenant: undefined })));
 
@@ -114,6 +114,15 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
         if (!s) { s = new UserStore(sharedRunner, tenant); userStores.set(tenant, s); }
         return s;
     };
+    // Session generations apply to framework-issued JWT sessions. Hosts that
+    // inject their own principal resolver own that resolver's revocation model
+    // and may not even expose the framework user/session tables.
+    const resolvePrincipal = deps.sessionSecret
+        ? withSessionVersion(
+            baseResolvePrincipal,
+            (tenant, userId) => userStoreFor(tenant).getSessionVersion(userId),
+        )
+        : baseResolvePrincipal;
     // Phase 2 stores per tenant (automations, edge resources, storage, settings, variables).
     // Secret variables are encrypted at rest (F6) — the cipher is built once from the
     // session secret (or a dedicated SECRETS_KEY if provided).

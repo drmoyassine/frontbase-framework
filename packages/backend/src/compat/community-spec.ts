@@ -128,6 +128,36 @@ const SPEC: Record<string, unknown> = {
         "title": "ActionBulkDeleteRequest",
         "type": "object"
       },
+      "ActionsGetExecutionDetailResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "ActionsGetExecutionDetailResponse",
+        "type": "object"
+      },
+      "ActionsGetExecutionResultResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "ActionsGetExecutionResultResponse",
+        "type": "object"
+      },
+      "ActionsGetExecutionStatsResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "ActionsGetExecutionStatsResponse",
+        "type": "object"
+      },
+      "ActionsGetProductionExecutionsResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "ActionsGetProductionExecutionsResponse",
+        "type": "object"
+      },
+      "ActionsListAllExecutionsResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "ActionsListAllExecutionsResponse",
+        "type": "object"
+      },
       "AddTursoDatabaseResult": {
         "properties": {
           "database": {
@@ -303,6 +333,42 @@ const SPEC: Record<string, unknown> = {
           }
         },
         "title": "AdvancedVariables",
+        "type": "object"
+      },
+      "AgentAgentCreditsResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "AgentAgentCreditsResponse",
+        "type": "object"
+      },
+      "AgentIntegrationsCreateMcpServerResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "AgentIntegrationsCreateMcpServerResponse",
+        "type": "object"
+      },
+      "AgentIntegrationsCreateSkillResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "AgentIntegrationsCreateSkillResponse",
+        "type": "object"
+      },
+      "AgentIntegrationsGetMcpServerResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "AgentIntegrationsGetMcpServerResponse",
+        "type": "object"
+      },
+      "AgentIntegrationsUpdateMcpServerResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "AgentIntegrationsUpdateMcpServerResponse",
+        "type": "object"
+      },
+      "AgentIntegrationsUpdateSkillResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "AgentIntegrationsUpdateSkillResponse",
         "type": "object"
       },
       "AgentSettings": {
@@ -1312,6 +1378,18 @@ const SPEC: Record<string, unknown> = {
           "cancelled"
         ],
         "title": "CancelMoveResult",
+        "type": "object"
+      },
+      "CloudflareDeployConnectCloudflareResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "CloudflareDeployConnectCloudflareResponse",
+        "type": "object"
+      },
+      "CloudflareInspectorInspectWorkerContentResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "CloudflareInspectorInspectWorkerContentResponse",
         "type": "object"
       },
       "CloudflareStatusResult": {
@@ -2643,6 +2721,30 @@ const SPEC: Record<string, unknown> = {
         "title": "EdgeAgentProfileUpdate",
         "type": "object"
       },
+      "EdgeAgentProfilesCreateProfileResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeAgentProfilesCreateProfileResponse",
+        "type": "object"
+      },
+      "EdgeAgentProfilesUpdateProfileResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeAgentProfilesUpdateProfileResponse",
+        "type": "object"
+      },
+      "EdgeApiKeysCreateApiKeyResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeApiKeysCreateApiKeyResponse",
+        "type": "object"
+      },
+      "EdgeApiKeysUpdateApiKeyResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeApiKeysUpdateApiKeyResponse",
+        "type": "object"
+      },
       "EdgeCacheCreate": {
         "properties": {
           "cache_token": {
@@ -3128,6 +3230,24 @@ const SPEC: Record<string, unknown> = {
           }
         },
         "title": "EdgeDatabaseUpdate",
+        "type": "object"
+      },
+      "EdgeDatabasesCreateSchemaResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeDatabasesCreateSchemaResponse",
+        "type": "object"
+      },
+      "EdgeDatabasesDiscoverSchemasResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeDatabasesDiscoverSchemasResponse",
+        "type": "object"
+      },
+      "EdgeDatabasesResetRolePasswordResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeDatabasesResetRolePasswordResponse",
         "type": "object"
       },
       "EdgeEngineCreate": {
@@ -3730,6 +3850,78 @@ const SPEC: Record<string, unknown> = {
         "title": "EdgeEngineUpdate",
         "type": "object"
       },
+      "EdgeEnginesDeployEngineResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeEnginesDeployEngineResponse",
+        "type": "object"
+      },
+      "EdgeEnginesGetBundleHashesResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeEnginesGetBundleHashesResponse",
+        "type": "object"
+      },
+      "EdgeEnginesReconfigureEngineResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeEnginesReconfigureEngineResponse",
+        "type": "object"
+      },
+      "EdgeEnginesRedeployEngineResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeEnginesRedeployEngineResponse",
+        "type": "object"
+      },
+      "EdgeEnginesRollbackRotationResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeEnginesRollbackRotationResponse",
+        "type": "object"
+      },
+      "EdgeEnginesRotateSecretsKeyResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeEnginesRotateSecretsKeyResponse",
+        "type": "object"
+      },
+      "EdgeEnginesRotationStatusResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeEnginesRotationStatusResponse",
+        "type": "object"
+      },
+      "EdgeEnginesSyncManifestResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeEnginesSyncManifestResponse",
+        "type": "object"
+      },
+      "EdgeGpuCreateGpuModelResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeGpuCreateGpuModelResponse",
+        "type": "object"
+      },
+      "EdgeGpuDeleteGpuModelResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeGpuDeleteGpuModelResponse",
+        "type": "object"
+      },
+      "EdgeGpuTestGpuModelResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeGpuTestGpuModelResponse",
+        "type": "object"
+      },
+      "EdgeGpuUpdateGpuModelResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeGpuUpdateGpuModelResponse",
+        "type": "object"
+      },
       "EdgeProviderAccountCreate": {
         "properties": {
           "name": {
@@ -3856,6 +4048,54 @@ const SPEC: Record<string, unknown> = {
           }
         },
         "title": "EdgeProviderAccountUpdate",
+        "type": "object"
+      },
+      "EdgeProvidersCreateResourceByAccountResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeProvidersCreateResourceByAccountResponse",
+        "type": "object"
+      },
+      "EdgeProvidersDiscoverByAccountResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeProvidersDiscoverByAccountResponse",
+        "type": "object"
+      },
+      "EdgeProvidersDiscoverResourcesEndpointResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeProvidersDiscoverResourcesEndpointResponse",
+        "type": "object"
+      },
+      "EdgeProvidersGetCredentialsResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeProvidersGetCredentialsResponse",
+        "type": "object"
+      },
+      "EdgeProvidersListAccountTablesResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeProvidersListAccountTablesResponse",
+        "type": "object"
+      },
+      "EdgeProvidersRetestProviderResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeProvidersRetestProviderResponse",
+        "type": "object"
+      },
+      "EdgeProvidersSetWorkspaceAgentTokenResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeProvidersSetWorkspaceAgentTokenResponse",
+        "type": "object"
+      },
+      "EdgeProvidersTestConnectionResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeProvidersTestConnectionResponse",
         "type": "object"
       },
       "EdgeQueueCreate": {
@@ -4415,6 +4655,18 @@ const SPEC: Record<string, unknown> = {
         "title": "EdgeVectorUpdate",
         "type": "object"
       },
+      "EdgeVectorsTestConnectionInlineResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeVectorsTestConnectionInlineResponse",
+        "type": "object"
+      },
+      "EdgeVectorsTestEdgeVectorConnectionResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EdgeVectorsTestEdgeVectorConnectionResponse",
+        "type": "object"
+      },
       "EngineBatchResult": {
         "description": "Result of a batch operation.",
         "properties": {
@@ -4442,6 +4694,54 @@ const SPEC: Record<string, unknown> = {
           }
         },
         "title": "EngineBatchResult",
+        "type": "object"
+      },
+      "EngineInspectorAddEngineDomainResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EngineInspectorAddEngineDomainResponse",
+        "type": "object"
+      },
+      "EngineInspectorDeleteEngineDomainResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EngineInspectorDeleteEngineDomainResponse",
+        "type": "object"
+      },
+      "EngineInspectorHealthCheckResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EngineInspectorHealthCheckResponse",
+        "type": "object"
+      },
+      "EngineInspectorInspectEngineDomainsResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EngineInspectorInspectEngineDomainsResponse",
+        "type": "object"
+      },
+      "EngineInspectorInspectEngineSecretsResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EngineInspectorInspectEngineSecretsResponse",
+        "type": "object"
+      },
+      "EngineInspectorInspectEngineSettingsResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EngineInspectorInspectEngineSettingsResponse",
+        "type": "object"
+      },
+      "EngineInspectorInspectEngineSourceResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EngineInspectorInspectEngineSourceResponse",
+        "type": "object"
+      },
+      "EngineInspectorVerifyEngineDomainResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "EngineInspectorVerifyEngineDomainResponse",
         "type": "object"
       },
       "ExecutionStatus": {
@@ -7337,6 +7637,12 @@ const SPEC: Record<string, unknown> = {
         "title": "ProjectUpdateRequest",
         "type": "object"
       },
+      "ProjectUploadBrandingAssetResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "ProjectUploadBrandingAssetResponse",
+        "type": "object"
+      },
       "PublishDraftBatchResult": {
         "properties": {
           "engineId": {
@@ -8812,6 +9118,12 @@ const SPEC: Record<string, unknown> = {
           "success"
         ],
         "title": "StorageFilesResult",
+        "type": "object"
+      },
+      "StorageListBucketsResponse": {
+        "additionalProperties": true,
+        "properties": {},
+        "title": "StorageListBucketsResponse",
         "type": "object"
       },
       "StorageMessageAck": {
@@ -11892,9 +12204,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Actions Get Execution Stats",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ActionsGetExecutionStatsResponse"
                 }
               }
             },
@@ -11927,9 +12237,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Actions Get Execution Result",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ActionsGetExecutionResultResponse"
                 }
               }
             },
@@ -12031,9 +12339,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Actions List All Executions",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ActionsListAllExecutionsResponse"
                 }
               }
             },
@@ -12092,9 +12398,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Actions Get Execution Detail",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ActionsGetExecutionDetailResponse"
                 }
               }
             },
@@ -12206,14 +12510,13 @@ const SPEC: Record<string, unknown> = {
         "responses": {
           "200": {
             "content": {
-              "application/json": {
+              "text/csv": {
                 "schema": {
-                  "title": "Response Actions Export Executions Csv",
                   "type": "string"
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Execution log CSV"
           },
           "422": {
             "content": {
@@ -12337,9 +12640,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Actions Get Production Executions",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ActionsGetProductionExecutionsResponse"
                 }
               }
             },
@@ -12608,9 +12909,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Agent Integrations Create Skill",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AgentIntegrationsCreateSkillResponse"
                 }
               }
             },
@@ -12695,9 +12994,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Agent Integrations Update Skill",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AgentIntegrationsUpdateSkillResponse"
                 }
               }
             },
@@ -12727,15 +13024,13 @@ const SPEC: Record<string, unknown> = {
         "responses": {
           "200": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Agent Agent Chat",
-                  "type": "object"
+                  "type": "string"
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent agent events"
           }
         },
         "summary": "Agent Chat",
@@ -12762,15 +13057,13 @@ const SPEC: Record<string, unknown> = {
         "responses": {
           "200": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Agent Agent Chat With Profile",
-                  "type": "object"
+                  "type": "string"
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent agent events"
           },
           "422": {
             "content": {
@@ -12798,9 +13091,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Agent Agent Credits",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AgentAgentCreditsResponse"
                 }
               }
             },
@@ -13003,14 +13294,13 @@ const SPEC: Record<string, unknown> = {
         "responses": {
           "200": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
-                  "title": "Response Agent Mcp Call Tool",
                   "type": "string"
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent tool execution events"
           },
           "422": {
             "content": {
@@ -13614,15 +13904,6 @@ const SPEC: Record<string, unknown> = {
         "operationId": "authentication_login_options",
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Authentication Login Options",
-                  "type": "object"
-                }
-              }
-            },
             "description": "Successful Response"
           }
         },
@@ -14058,15 +14339,6 @@ const SPEC: Record<string, unknown> = {
         "operationId": "authentication_signup_options",
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Authentication Signup Options",
-                  "type": "object"
-                }
-              }
-            },
             "description": "Successful Response"
           }
         },
@@ -14135,9 +14407,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Cloudflare Deploy Connect Cloudflare",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CloudflareDeployConnectCloudflareResponse"
                 }
               }
             },
@@ -14221,9 +14491,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Cloudflare Inspector Inspect Worker Content",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CloudflareInspectorInspectWorkerContentResponse"
                 }
               }
             },
@@ -15578,9 +15846,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Api Keys Create Api Key",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeApiKeysCreateApiKeyResponse"
                 }
               }
             },
@@ -15667,9 +15933,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Api Keys Update Api Key",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeApiKeysUpdateApiKeyResponse"
                 }
               }
             },
@@ -16159,9 +16423,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Databases Create Schema",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeDatabasesCreateSchemaResponse"
                 }
               }
             },
@@ -16203,9 +16465,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Databases Discover Schemas",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeDatabasesDiscoverSchemasResponse"
                 }
               }
             },
@@ -16247,9 +16507,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Databases Reset Role Password",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeDatabasesResetRolePasswordResponse"
                 }
               }
             },
@@ -16823,9 +17081,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Engines Get Bundle Hashes",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeEnginesGetBundleHashesResponse"
                 }
               }
             },
@@ -16857,9 +17113,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Engines Deploy Engine",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeEnginesDeployEngineResponse"
                 }
               }
             },
@@ -17133,9 +17387,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Agent Profiles Create Profile",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeAgentProfilesCreateProfileResponse"
                 }
               }
             },
@@ -17238,9 +17490,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Agent Profiles Update Profile",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeAgentProfilesUpdateProfileResponse"
                 }
               }
             },
@@ -17541,9 +17791,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Engine Inspector Health Check",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EngineInspectorHealthCheckResponse"
                 }
               }
             },
@@ -17586,9 +17834,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Engine Inspector Inspect Engine Domains",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EngineInspectorInspectEngineDomainsResponse"
                 }
               }
             },
@@ -17639,9 +17885,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Engine Inspector Add Engine Domain",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EngineInspectorAddEngineDomainResponse"
                 }
               }
             },
@@ -17693,9 +17937,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Engine Inspector Delete Engine Domain",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EngineInspectorDeleteEngineDomainResponse"
                 }
               }
             },
@@ -17747,9 +17989,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Engine Inspector Verify Engine Domain",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EngineInspectorVerifyEngineDomainResponse"
                 }
               }
             },
@@ -17792,9 +18032,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Engine Inspector Inspect Engine Secrets",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EngineInspectorInspectEngineSecretsResponse"
                 }
               }
             },
@@ -17837,9 +18075,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Engine Inspector Inspect Engine Settings",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EngineInspectorInspectEngineSettingsResponse"
                 }
               }
             },
@@ -17882,9 +18118,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Engine Inspector Inspect Engine Source",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EngineInspectorInspectEngineSourceResponse"
                 }
               }
             },
@@ -18218,9 +18452,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Engines Reconfigure Engine",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeEnginesReconfigureEngineResponse"
                 }
               }
             },
@@ -18263,9 +18495,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Engines Redeploy Engine",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeEnginesRedeployEngineResponse"
                 }
               }
             },
@@ -18318,9 +18548,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Engines Rollback Rotation",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeEnginesRollbackRotationResponse"
                 }
               }
             },
@@ -18373,9 +18601,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Engines Rotate Secrets Key",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeEnginesRotateSecretsKeyResponse"
                 }
               }
             },
@@ -18461,9 +18687,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Engines Rotation Status",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeEnginesRotationStatusResponse"
                 }
               }
             },
@@ -18602,9 +18826,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Engines Sync Manifest",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeEnginesSyncManifestResponse"
                 }
               }
             },
@@ -18726,9 +18948,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Gpu Create Gpu Model",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeGpuCreateGpuModelResponse"
                 }
               }
             },
@@ -18856,9 +19076,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Gpu Delete Gpu Model",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeGpuDeleteGpuModelResponse"
                 }
               }
             },
@@ -18909,9 +19127,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Gpu Update Gpu Model",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeGpuUpdateGpuModelResponse"
                 }
               }
             },
@@ -18954,9 +19170,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Gpu Test Gpu Model",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeGpuTestGpuModelResponse"
                 }
               }
             },
@@ -19065,9 +19279,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Providers List Account Tables",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeProvidersListAccountTablesResponse"
                 }
               }
             },
@@ -19120,9 +19332,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Providers Create Resource By Account",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeProvidersCreateResourceByAccountResponse"
                 }
               }
             },
@@ -19164,9 +19374,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Providers Discover Resources Endpoint",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeProvidersDiscoverResourcesEndpointResponse"
                 }
               }
             },
@@ -19209,9 +19417,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Providers Discover By Account",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeProvidersDiscoverByAccountResponse"
                 }
               }
             },
@@ -19254,9 +19460,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Providers Retest Provider",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeProvidersRetestProviderResponse"
                 }
               }
             },
@@ -19298,9 +19502,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Providers Test Connection",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeProvidersTestConnectionResponse"
                 }
               }
             },
@@ -19362,9 +19564,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Providers Set Workspace Agent Token",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeProvidersSetWorkspaceAgentTokenResponse"
                 }
               }
             },
@@ -19735,9 +19935,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Providers Get Credentials",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeProvidersGetCredentialsResponse"
                 }
               }
             },
@@ -20184,9 +20382,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Vectors Test Connection Inline",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeVectorsTestConnectionInlineResponse"
                 }
               }
             },
@@ -20333,9 +20529,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Edge Vectors Test Edge Vector Connection",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EdgeVectorsTestEdgeVectorConnectionResponse"
                 }
               }
             },
@@ -20424,9 +20618,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Agent Integrations Create Mcp Server",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AgentIntegrationsCreateMcpServerResponse"
                 }
               }
             },
@@ -20501,9 +20693,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Agent Integrations Get Mcp Server",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AgentIntegrationsGetMcpServerResponse"
                 }
               }
             },
@@ -20553,9 +20743,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Agent Integrations Update Mcp Server",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AgentIntegrationsUpdateMcpServerResponse"
                 }
               }
             },
@@ -21524,9 +21712,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Project Upload Branding Asset",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProjectUploadBrandingAssetResponse"
                 }
               }
             },
@@ -22159,9 +22345,7 @@ const SPEC: Record<string, unknown> = {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Storage List Buckets",
-                  "type": "object"
+                  "$ref": "#/components/schemas/StorageListBucketsResponse"
                 }
               }
             },

@@ -13,6 +13,8 @@ export interface SessionClaims {
     email: string;
     role: string;
     tenant_slug: string;
+    /** Incremented after credential resets so older cookies can be rejected. */
+    session_version?: number;
 }
 
 /** Sign a session JWT valid for 7 days from `now` (seconds since epoch). */

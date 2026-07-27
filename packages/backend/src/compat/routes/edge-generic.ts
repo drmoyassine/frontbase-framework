@@ -20,9 +20,9 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 function reg(app: App, p2: (t: string) => Phase2Store, now: () => string, pre: string, kind: string, idP: string, tSuf: string, urlField: string, extra: Record<string, unknown> = {}): void {
     const param = idP.replace(':', '');
 
-    app.get(pre + '/', async (c) => c.json({
-        [kind + 's']: (await p2(c.get('tenant')).listEdgeResources(kind)).map((r) => serialize(r, urlField, extra)),
-    }));
+    app.get(pre + '/', async (c) => c.json(
+        (await p2(c.get('tenant')).listEdgeResources(kind)).map((r) => serialize(r, urlField, extra)),
+    ));
 
     app.post(pre + '/', async (c) => {
         const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };

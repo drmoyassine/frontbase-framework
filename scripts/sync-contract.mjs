@@ -24,6 +24,7 @@
  *   node scripts/contract-diff.mjs
  */
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -44,6 +45,48 @@ const sources = [
     ['src/client/zod.gen.ts', 'src/compat/zod.gen.ts'],
 ];
 
+// Pin: explicit commit arg wins; else the product checkout's HEAD.
+let commit = args.commit;
+if (!commit) {
+    try {
+        commit = execSync('git rev-parse HEAD', { cwd: product, encoding: 'utf-8' }).trim();
+    } catch {
+        commit = 'unknown';
+    }
+}
+
+/**
+ * Provenance — the files vendored MUST be the ones at `commit`, not whatever
+ * happens to be sitting in the product working tree.
+ *
+ * This is not hypothetical. The contract was once vendored from an uncommitted
+ * product tree while PRODUCT_COMMIT named an older revision. The pin gate still
+ * passed — it compared two identical strings — while the vendored contract
+ * corresponded to no commit at all and could not be reproduced from any checkout.
+ * Comparing content against `git show <commit>:<path>` is what makes the pin mean
+ * something.
+ */
+if (commit !== 'unknown') {
+    for (const [rel] of sources) {
+        let atCommit;
+        try {
+            atCommit = execSync(`git show ${commit}:${rel}`, { cwd: product, encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024 });
+        } catch {
+            console.error(`✗ ${rel} does not exist at ${commit.slice(0, 12)} in ${product}`);
+            process.exit(1);
+        }
+        const onDisk = readFileSync(resolve(product, rel), 'utf-8');
+        // EOL-insensitive: the checkout may be CRLF while the stored blob is LF.
+        if (onDisk.replace(/\r\n/g, '\n') !== atCommit.replace(/\r\n/g, '\n')) {
+            console.error(`✗ ${rel} in the product working tree differs from ${commit.slice(0, 12)}.`);
+            console.error('  Vendoring it would pin the contract to a commit it did not come from,');
+            console.error('  leaving it unreproducible from any checkout. Commit the product changes');
+            console.error('  first, then re-run — or pass --commit <sha> naming the revision you want.');
+            process.exit(1);
+        }
+    }
+}
+
 for (const [rel, destRel] of sources) {
     const src = resolve(product, rel);
     const dst = resolve(resolve('packages/backend'), destRel);
@@ -55,18 +98,17 @@ for (const [rel, destRel] of sources) {
         process.exit(1);
     }
 }
-
-// Pin: explicit commit arg wins; else the product checkout's HEAD.
-let commit = args.commit;
-if (!commit) {
-    try {
-        commit = execSync('git rev-parse HEAD', { cwd: product, encoding: 'utf-8' }).trim();
-    } catch {
-        commit = 'unknown';
-    }
-}
 writeFileSync(resolve(contractsDir, 'PRODUCT_COMMIT'), commit + '\n');
 console.log(`✓ PRODUCT_COMMIT = ${commit.slice(0, 12)}`);
+
+// Digest of exactly what was vendored. CI has no product checkout, so it cannot
+// re-derive provenance from git — but it CAN detect the vendored contract being
+// edited in place afterwards, which would silently decouple it from the pin.
+const contractSha = createHash('sha256')
+    .update(readFileSync(resolve(contractsDir, 'openapi.community.json'), 'utf-8').replace(/\r\n/g, '\n'))
+    .digest('hex');
+writeFileSync(resolve(contractsDir, 'CONTRACT_SHA256'), contractSha + '\n');
+console.log(`✓ CONTRACT_SHA256 = ${contractSha.slice(0, 12)}`);
 
 // Regenerate the embedded (Workers-safe) TS copy of the spec — the backend
 // imports it at runtime (no node:fs in the Workers runtime).

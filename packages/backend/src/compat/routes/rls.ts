@@ -15,15 +15,15 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 export function registerRlsRoutes(app: App, kvFor: (t: string) => KeyValueStore): void {
     // ---- policies (graceful: no datasource) ----
-    app.get('/api/database/rls/policies/', (c) => c.json({ success: true, data: [], error: null }));
-    app.get('/api/database/rls/tables/', (c) => c.json({ success: true, data: [], error: null }));
-    app.get('/api/database/rls/policies/:table_name', (c) => c.json({ success: true, data: [], error: null }));
+    app.get('/api/database/rls/policies/', (c) => c.json({ success: false, data: [], error: 'No datasource configured' }));
+    app.get('/api/database/rls/tables/', (c) => c.json({ success: false, data: [], error: 'No datasource configured' }));
+    app.get('/api/database/rls/policies/:table_name', (c) => c.json({ success: false, data: [], error: 'No datasource configured' }));
     app.post('/api/database/rls/policies/', (c) => c.json({ success: false, message: 'No datasource configured', error: null }));
     app.put('/api/database/rls/policies/:table_name/:policy_name', (c) => c.json({ success: false, message: 'No datasource configured', error: null }));
     app.delete('/api/database/rls/policies/:table_name/:policy_name', (c) => c.json({ success: false, message: 'No datasource configured', error: null }));
     app.post('/api/database/rls/tables/:table_name/toggle/', (c) => c.json({ success: false, message: 'No datasource configured', error: null }));
     app.post('/api/database/rls/batch/', (c) => c.json({ success: false, message: 'Batch creation completed (no datasource)', error: null }));
-    app.post('/api/database/rls/bulk-delete/', (c) => c.json({ success: true, message: 'Deleted 0 policies', error: null }));
+    app.post('/api/database/rls/bulk-delete/', (c) => c.json({ success: false, message: 'No datasource configured', error: null }));
 
     // ---- metadata (local form-state; round-trips in the console) ----
     app.get('/api/database/rls/metadata/', async (c) => c.json({ success: true, data: await kvFor(c.get('tenant')).getJson('rls_metadata', []), error: null }));
@@ -46,5 +46,15 @@ export function registerRlsRoutes(app: App, kvFor: (t: string) => KeyValueStore)
         await kvFor(c.get('tenant')).setJson('rls_metadata', all.filter((m) => !(m.tableName === c.req.param('table_name') && m.policyName === c.req.param('policy_name'))), '');
         return c.json({ success: true, message: 'Metadata deleted', error: null });
     });
-    app.post('/api/database/rls/metadata/verify/', (c) => c.json({ success: true, data: { hasMetadata: false, isVerified: false, reason: 'no_metadata' }, error: null }));
+    app.post('/api/database/rls/metadata/verify/', async (c) => {
+        const body = await c.req.json().catch(() => ({})) as { tableName?: string; policyName?: string };
+        const all = await kvFor(c.get('tenant')).getJson<Array<{ tableName?: string; policyName?: string }>>('rls_metadata', []);
+        const found = all.some((entry) =>
+            entry.tableName === body.tableName && entry.policyName === body.policyName);
+        return c.json({
+            success: true,
+            data: { hasMetadata: found, isVerified: found, reason: found ? 'metadata_found' : 'no_metadata' },
+            error: null,
+        });
+    });
 }

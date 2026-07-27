@@ -25,6 +25,7 @@ async function makeApp() {
         makeRunner: async () => runner,
         resolvePrincipal: async () => ({ user: { id: 'owner' }, tenant: '_default' }),
         now: () => '2026-07-15T00:00:00Z',
+        includeProductRoot: true,
     });
 }
 const req = (app, method, path, body, form) =>
@@ -37,7 +38,8 @@ const req = (app, method, path, body, form) =>
 // ---- Meta (unauthenticated health) ----
 test('Meta: GET /health / queue-health conform (and need no auth)', async () => {
     const runner = sqliteRunner(':memory:'); await migrateUp(runner);
-    const anon = await createCompatApp({ makeRunner: async () => runner, resolvePrincipal: async () => ({ user: null, tenant: undefined }) });
+    const anon = await createCompatApp({ makeRunner: async () => runner, resolvePrincipal: async () => ({ user: null, tenant: undefined }), includeProductRoot: true });
+    zRootStatus.parse(await (await req(anon, 'GET', '/')).json());
     zHealthStatus.parse(await (await req(anon, 'GET', '/health')).json());
     zQueueHealth.parse(await (await req(anon, 'GET', '/api/queue/health')).json());
 });
@@ -63,10 +65,24 @@ test('settings: PUT general round-trips conformantly', async () => {
 
 test('settings: action endpoints return conformant acks', async () => {
     const app = await makeApp();
-    zRedisTestResult.parse(await (await req(app, 'POST', '/api/settings/redis/test/')).json());
-    zTelemetryAck.parse(await (await req(app, 'POST', '/api/settings/telemetry')).json());
-    zLicenseValidationResponse.parse(await (await req(app, 'POST', '/api/settings/validate-license')).json());
-    zAdminInviteResponse.parse(await (await req(app, 'POST', '/api/settings/invites')).json());
+    zRedisTestResult.parse(await (await req(app, 'POST', '/api/settings/redis/test/', {})).json());
+    zTelemetryAck.parse(await (await req(app, 'POST', '/api/settings/telemetry', {
+        install_id: 'compat-wave1',
+        edition: 'community',
+        page_count: 0,
+        automation_count: 0,
+        data_sources: [],
+        storage_providers: [],
+        email_providers: [],
+    })).json());
+    zLicenseValidationResponse.parse(await (await req(app, 'POST', '/api/settings/validate-license', {
+        license_key: 'community',
+        install_id: 'compat-wave1',
+    })).json());
+    zAdminInviteResponse.parse(await (await req(app, 'POST', '/api/settings/invites', {
+        email: 'invited-admin@example.com',
+        role: 'admin',
+    })).json());
 });
 
 // ---- Themes ----

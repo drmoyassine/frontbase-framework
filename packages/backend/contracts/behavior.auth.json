@@ -1,0 +1,135 @@
+{
+  "scope": "authentication/security + closed root/invite producer",
+  "counts": {
+    "shape-only": 3,
+    "functional": 19
+  },
+  "operations": {
+    "DELETE /api/auth/security/blocklist/{ban_id}": {
+      "status": "functional",
+      "evidence": [
+        "deleted ban disappears from blocklist"
+      ]
+    },
+    "GET /": {
+      "status": "shape-only",
+      "evidence": []
+    },
+    "GET /api/auth/check-slug/{slug}": {
+      "status": "functional",
+      "evidence": [
+        "response changes when the tenant slug is persisted"
+      ]
+    },
+    "GET /api/auth/invite/{token}": {
+      "status": "functional",
+      "evidence": [
+        "response reflects the persisted invite"
+      ]
+    },
+    "GET /api/auth/me": {
+      "status": "functional",
+      "evidence": [
+        "response reflects the authenticated session principal"
+      ]
+    },
+    "GET /api/auth/security/audit-logs": {
+      "status": "functional",
+      "evidence": [
+        "security mutation appears in audit log"
+      ]
+    },
+    "GET /api/auth/security/blocklist": {
+      "status": "functional",
+      "evidence": [
+        "list reflects a persisted ban"
+      ]
+    },
+    "GET /api/auth/security/bot-protection": {
+      "status": "functional",
+      "evidence": [
+        "read reflects persisted bot settings"
+      ]
+    },
+    "GET /api/auth/security/bot-protection/metrics": {
+      "status": "functional",
+      "evidence": [
+        "metric reflects persisted blocklist state"
+      ]
+    },
+    "GET /api/auth/security/waf": {
+      "status": "functional",
+      "evidence": [
+        "read reflects persisted WAF state"
+      ]
+    },
+    "OPTIONS /api/auth/login": {
+      "status": "shape-only",
+      "evidence": []
+    },
+    "OPTIONS /api/auth/signup": {
+      "status": "shape-only",
+      "evidence": []
+    },
+    "POST /api/auth/accept-invite": {
+      "status": "functional",
+      "evidence": [
+        "user login succeeds and the one-time token cannot be replayed"
+      ]
+    },
+    "POST /api/auth/forgot-password": {
+      "status": "functional",
+      "evidence": [
+        "opaque response delivers a capability while only its SHA-256 hash persists"
+      ]
+    },
+    "POST /api/auth/login": {
+      "status": "functional",
+      "evidence": [
+        "issued session is observed by GET /api/auth/me"
+      ]
+    },
+    "POST /api/auth/logout": {
+      "status": "functional",
+      "evidence": [
+        "session cookie is explicitly invalidated"
+      ]
+    },
+    "POST /api/auth/reset-password": {
+      "status": "functional",
+      "evidence": [
+        "password changes, token is single-use, and pre-reset session is invalidated"
+      ]
+    },
+    "POST /api/auth/security/blocklist": {
+      "status": "functional",
+      "evidence": [
+        "ban is observable in blocklist"
+      ]
+    },
+    "POST /api/auth/security/bot-protection": {
+      "status": "functional",
+      "evidence": [
+        "update is observable through bot settings read"
+      ]
+    },
+    "POST /api/auth/security/waf": {
+      "status": "functional",
+      "evidence": [
+        "update is observable through WAF read"
+      ]
+    },
+    "POST /api/auth/signup": {
+      "status": "functional",
+      "evidence": [
+        "created tenant/user are observable through credential login"
+      ]
+    },
+    "POST /api/settings/invites": {
+      "status": "functional",
+      "evidence": [
+        "created token is observable through GET /api/auth/invite/{token}"
+      ]
+    }
+  }
+}

@@ -110,6 +110,9 @@ export function createResolvePrincipal(cfg: AuthConfig) {
                         id: String(claims.sub ?? claims.user_id ?? 'user'),
                         ...(claims.email != null ? { email: String(claims.email) } : {}),
                         ...(claims.role != null ? { role: String(claims.role) } : {}),
+                        ...(claims.session_version != null
+                            ? { session_version: Number(claims.session_version) }
+                            : {}),
                     } as never;
                     const tenant = claims.tenant_slug ? String(claims.tenant_slug) : undefined;
                     return { user, tenant };

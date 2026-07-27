@@ -74,6 +74,26 @@ export function validateConsoleArtifact(rootDir, options = {}) {
             '`node scripts/sync-contract.mjs --commit <sha>` and `pnpm run fetch:console -- --commit <sha>`.',
         );
     }
+    // ...and the vendored contract must still be the bytes that pin was taken from.
+    // Pin-string equality alone is not provenance: it once passed while the contract
+    // had been vendored from an uncommitted product tree, so it matched no commit at
+    // all. sync-contract.mjs verifies against `git show <commit>:<path>` (it has the
+    // product checkout); this catches the vendored file being edited afterwards.
+    const shaPath = resolve(rootDir, 'packages', 'backend', 'contracts', 'CONTRACT_SHA256');
+    const contractPath = resolve(rootDir, 'packages', 'backend', 'contracts', 'openapi.community.json');
+    if (existsSync(shaPath) && existsSync(contractPath)) {
+        const recorded = readFileSync(shaPath, 'utf8').trim();
+        const actual = createHash('sha256')
+            .update(readFileSync(contractPath, 'utf8').replace(/\r\n/g, '\n'))
+            .digest('hex');
+        if (recorded !== actual) {
+            throw new Error(
+                'vendored contract does not match CONTRACT_SHA256 — it was edited in place after being ' +
+                `vendored from ${productCommit.slice(0, 12)}, so the pin no longer describes it. ` +
+                'Re-run `node scripts/sync-contract.mjs` against a committed product revision.',
+            );
+        }
+    }
     if (!at('shell')) return pin;
 
     // ---- shell: committed, so this holds in a fresh clone ----

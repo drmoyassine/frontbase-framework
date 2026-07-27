@@ -68,9 +68,16 @@ export function registerStorageRoutes(app: App, phase2For: (t: string) => Phase2
 
     // ---- graceful acks: no external provider wired in the community worker ----
     // POST /api/storage/create-folder  (folder = provider-side concept; no object store here)
-    app.post('/api/storage/create-folder', (c) => c.json({ success: true, message: 'Folder created' }));
+    app.post('/api/storage/create-folder', (c) => c.json({ success: false, message: 'No storage provider configured' }));
     // GET /api/storage/compute-size  (no remote provider → 0)
-    app.get('/api/storage/compute-size', (c) => c.json({ success: true, size: 0, human_readable: '0 B' }));
+    app.get('/api/storage/compute-size', async (c) => {
+        const store = phase2For(c.get('tenant'));
+        let size = 0;
+        for (const bucket of await store.listBuckets()) {
+            for (const file of await store.listFiles(String(bucket.id))) size += Number(file.size ?? 0);
+        }
+        return c.json({ success: true, size, human_readable: `${size} B` });
+    });
     // POST /api/storage/upload  (bytes would go to object storage — not configured)
     app.post('/api/storage/upload', (c) => c.json({ success: false, message: 'No storage provider configured' }));
     // POST /api/storage/move
@@ -78,28 +85,37 @@ export function registerStorageRoutes(app: App, phase2For: (t: string) => Phase2
     // POST /api/storage/move-cross
     app.post('/api/storage/move-cross', (c) => c.json({ success: false, message: 'No storage provider configured' }));
     // GET /api/storage/move-status/{job_id}
-    app.get('/api/storage/move-status/:job_id', (c) => c.json({ success: true, job_id: c.req.param('job_id'), status: 'unknown', progress: 0 }));
+    app.get('/api/storage/move-status/:job_id', (c) => c.json({ success: false, job_id: c.req.param('job_id'), status: 'unknown', progress: 0, message: 'No storage provider configured' }));
     // GET /api/storage/public-url
-    app.get('/api/storage/public-url', (c) => c.json({ success: true, publicUrl: '' }));
+    app.get('/api/storage/public-url', (c) => c.json({ success: false, publicUrl: '', message: 'No storage provider configured' }));
     // GET /api/storage/signed-url
-    app.get('/api/storage/signed-url', (c) => c.json({ success: true, signedUrl: '' }));
+    app.get('/api/storage/signed-url', (c) => c.json({ success: false, signedUrl: '', message: 'No storage provider configured' }));
 
     // ---- providers (local-only: empty registry) ----
     // GET /api/storage/providers/
-    app.get('/api/storage/providers/', (c) => c.json({ providers: [] }));
+    app.get('/api/storage/providers/', (c) => {
+        c.header('X-Frontbase-External-Disabled', 'storage-provider-not-configured');
+        return c.json([]);
+    });
     // POST /api/storage/providers/
     // CreateStorageProviderResult requires `is_active`.
-    app.post('/api/storage/providers/', (c) => c.json({ is_active: false, id: null, name: null, provider: null, config: null, created_at: null, account_name: null, provider_account_id: null }));
+    app.post('/api/storage/providers/', (c) => c.json({ is_active: false, id: null, name: null, provider: null, config: null, created_at: null, account_name: null, provider_account_id: null, detail: 'No storage provider configured' }));
     // DELETE /api/storage/providers/{provider_id}
-    app.delete('/api/storage/providers/:provider_id', (c) => c.json({ success: true, message: 'Provider removed' }));
+    app.delete('/api/storage/providers/:provider_id', (c) => c.json({ success: false, message: 'No storage provider configured' }));
 
     // ---- netlify / vercel (no third-party integration in the worker) ----
     // GET /api/storage/netlify-sites
-    app.get('/api/storage/netlify-sites', (c) => c.json({ sites: [] }));
+    app.get('/api/storage/netlify-sites', (c) => {
+        c.header('X-Frontbase-External-Disabled', 'netlify-provider-not-configured');
+        return c.json([]);
+    });
     // POST /api/storage/netlify-sites
     app.post('/api/storage/netlify-sites', (c) => c.json({ success: false, message: 'Netlify integration not configured' }));
     // GET /api/storage/vercel-projects
-    app.get('/api/storage/vercel-projects', (c) => c.json({ projects: [] }));
+    app.get('/api/storage/vercel-projects', (c) => {
+        c.header('X-Frontbase-External-Disabled', 'vercel-provider-not-configured');
+        return c.json([]);
+    });
     // POST /api/storage/vercel-projects
     app.post('/api/storage/vercel-projects', (c) => c.json({ success: false, message: 'Vercel integration not configured' }));
 }

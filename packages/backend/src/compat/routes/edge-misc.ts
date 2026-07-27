@@ -4,27 +4,186 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { Phase2Store } from '../../db/phase2-store.js';
-export function registerEdgeMiscRoutes(app: App, runner: DbRunner, p2: (t: string) => Phase2Store, now: () => string): void {
+import type { SecretCipher } from '../../db/secret-cipher.js';
+import { zApiKeyCreate, zApiKeyUpdate } from '../zod.gen.js';
+
+async function sha256Hex(value: string): Promise<string> {
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+    return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function auditSecret(
+    runner: DbRunner,
+    tenant: string,
+    action: string,
+    resourceId: string,
+    now: string,
+): Promise<void> {
+    await runner.exec(
+        `INSERT INTO security_audit_events
+         (id, tenant_slug, action, resource_type, resource_id, details, created_at)
+         VALUES (?,?,?,?,?,?,?)`,
+        [crypto.randomUUID(), tenant, action, 'edge_api_key', resourceId, '{}', now],
+    );
+}
+
+export function registerEdgeMiscRoutes(
+    app: App,
+    runner: DbRunner,
+    p2: (t: string) => Phase2Store,
+    cipher: SecretCipher,
+    now: () => string,
+): void {
     // edge-api-keys (5)
-    app.get('/api/edge-api-keys', async (c) => c.json({ keys: await runner.query('SELECT id, name, scope, is_active, expires_at FROM edge_api_keys WHERE tenant_slug = ?', [c.get('tenant')]) }));
-    app.post('/api/edge-api-keys', async (c) => { const b = await c.req.json().catch(() => ({})); const id = crypto.randomUUID(); const key = 'fbk_' + crypto.randomUUID(); await runner.exec('INSERT INTO edge_api_keys (id, tenant_slug, name, scope, key_hash, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)', [id, c.get('tenant'), b.name ?? 'key', b.scope ?? 'user', key, 1, now(), now()]); return c.json({ id, key, name: b.name, scope: b.scope ?? 'user' }); });
-    app.put('/api/edge-api-keys/:key_id', async (c) => { const b = await c.req.json().catch(() => ({})); await runner.exec('UPDATE edge_api_keys SET is_active = ?, updated_at = ? WHERE tenant_slug = ? AND id = ?', [b.is_active ? 1 : 0, now(), c.get('tenant'), c.req.param('key_id')]); return c.json({ success: true }); });
-    app.delete('/api/edge-api-keys/:key_id', async (c) => { await runner.exec('DELETE FROM edge_api_keys WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), c.req.param('key_id')]); return c.json({ success: true }); });
-    app.get('/api/edge-api-keys/:key_id/reveal', async (c) => { const r = await runner.query('SELECT key_hash FROM edge_api_keys WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), c.req.param('key_id')]); return r[0] ? c.json({ key: String(r[0].key_hash) }) : c.json({ detail: 'Not found' }, 404); });
+    app.get('/api/edge-api-keys', async (c) => {
+        const keys = await runner.query(
+            `SELECT k.id, k.name, k.scope, k.is_active, k.expires_at,
+                    k.created_at, k.updated_at, s.prefix,
+                    CASE WHEN s.ciphertext IS NOT NULL AND s.revealed_at IS NULL THEN 1 ELSE 0 END AS can_reveal
+             FROM edge_api_keys k
+             LEFT JOIN edge_api_key_secrets s
+               ON s.key_id = k.id AND s.tenant_slug = k.tenant_slug
+             WHERE k.tenant_slug = ?`,
+            [c.get('tenant')],
+        );
+        return c.json({ keys, total: keys.length });
+    });
+    app.post('/api/edge-api-keys', async (c) => {
+        const parsed = zApiKeyCreate.safeParse(await c.req.json().catch(() => null));
+        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!cipher.isEncrypted(await cipher.encrypt('probe'))) {
+            return c.json({ detail: 'Secret encryption is not configured' }, 503);
+        }
+        if (!['user', 'management', 'all'].includes(parsed.data.scope)) {
+            return c.json({ detail: 'invalid_scope' }, 400);
+        }
+        const id = crypto.randomUUID();
+        const key = `fbk_${crypto.randomUUID().replaceAll('-', '')}${crypto.randomUUID().replaceAll('-', '')}`;
+        const prefix = `${key.slice(0, 14)}...`;
+        const timestamp = now();
+        const encrypted = await cipher.encrypt(key);
+        await runner.exec(
+            `INSERT INTO edge_api_keys
+             (id, tenant_slug, name, scope, key_hash, is_active, expires_at, created_at, updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?)`,
+            [id, c.get('tenant'), parsed.data.name, parsed.data.scope, await sha256Hex(key), 1, parsed.data.expires_at ?? null, timestamp, timestamp],
+        );
+        await runner.exec(
+            `INSERT INTO edge_api_key_secrets
+             (key_id, tenant_slug, prefix, ciphertext, revealed_at, created_at)
+             VALUES (?,?,?,?,NULL,?)`,
+            [id, c.get('tenant'), prefix, encrypted, timestamp],
+        );
+        await auditSecret(runner, c.get('tenant'), 'edge_api_key_created', id, timestamp);
+        return c.json({
+            id,
+            key,
+            name: parsed.data.name,
+            scope: parsed.data.scope,
+            prefix,
+            is_active: true,
+            expires_at: parsed.data.expires_at ?? null,
+            can_reveal: true,
+            created_at: timestamp,
+            updated_at: timestamp,
+        }, 201);
+    });
+    app.put('/api/edge-api-keys/:key_id', async (c) => {
+        const parsed = zApiKeyUpdate.safeParse(await c.req.json().catch(() => null));
+        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (parsed.data.scope && !['user', 'management', 'all'].includes(parsed.data.scope)) {
+            return c.json({ detail: 'invalid_scope' }, 400);
+        }
+        const current = await runner.query(
+            'SELECT id, name, scope, is_active, expires_at FROM edge_api_keys WHERE tenant_slug = ? AND id = ?',
+            [c.get('tenant'), c.req.param('key_id')],
+        );
+        if (!current[0]) return c.json({ detail: 'Not found' }, 404);
+        const row = current[0];
+        const timestamp = now();
+        await runner.exec(
+            `UPDATE edge_api_keys
+             SET name = ?, scope = ?, is_active = ?, expires_at = ?, updated_at = ?
+             WHERE tenant_slug = ? AND id = ?`,
+            [
+                parsed.data.name ?? String(row.name),
+                parsed.data.scope ?? String(row.scope),
+                parsed.data.is_active === null || parsed.data.is_active === undefined
+                    ? Number(row.is_active)
+                    : parsed.data.is_active ? 1 : 0,
+                parsed.data.expires_at === undefined ? row.expires_at ?? null : parsed.data.expires_at,
+                timestamp,
+                c.get('tenant'),
+                c.req.param('key_id'),
+            ],
+        );
+        await auditSecret(runner, c.get('tenant'), 'edge_api_key_updated', c.req.param('key_id'), timestamp);
+        return c.json({ success: true });
+    });
+    app.delete('/api/edge-api-keys/:key_id', async (c) => {
+        const id = c.req.param('key_id');
+        await runner.exec('DELETE FROM edge_api_key_secrets WHERE tenant_slug = ? AND key_id = ?', [c.get('tenant'), id]);
+        await runner.exec('DELETE FROM edge_api_keys WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), id]);
+        await auditSecret(runner, c.get('tenant'), 'edge_api_key_deleted', id, now());
+        return c.body(null, 204);
+    });
+    app.get('/api/edge-api-keys/:key_id/reveal', async (c) => {
+        const id = c.req.param('key_id');
+        const rows = await runner.query(
+            `SELECT ciphertext, revealed_at FROM edge_api_key_secrets
+             WHERE tenant_slug = ? AND key_id = ?`,
+            [c.get('tenant'), id],
+        );
+        if (!rows[0]) return c.json({ detail: 'Not found' }, 404);
+        const ciphertext = rows[0].ciphertext;
+        if (!ciphertext || rows[0].revealed_at) {
+            return c.json({ detail: 'API key has already been revealed' }, 410);
+        }
+        const key = await cipher.decrypt(String(ciphertext));
+        const timestamp = now();
+        const claimed = await runner.exec(
+            `UPDATE edge_api_key_secrets SET ciphertext = NULL, revealed_at = ?
+             WHERE tenant_slug = ? AND key_id = ? AND ciphertext = ? AND revealed_at IS NULL`,
+            [timestamp, c.get('tenant'), id, ciphertext],
+        );
+        if (claimed !== 1) return c.json({ detail: 'API key has already been revealed' }, 410);
+        await auditSecret(runner, c.get('tenant'), 'edge_api_key_revealed', id, timestamp);
+        return c.json({ key });
+    });
     // edge-gpu (7)
-    app.get('/api/edge-gpu/', async (c) => c.json({ models: await p2(c.get('tenant')).listEdgeResources('gpu') }));
+    app.get('/api/edge-gpu/', async (c) => c.json(await p2(c.get('tenant')).listEdgeResources('gpu')));
     app.get('/api/edge-gpu/schemas', (c) => c.json({ schemas: {}, providers: [] }));
-    app.get('/api/edge-gpu/catalog', (c) => c.json({ provider: '', total: 0, models_by_type: {} }));
+    app.get('/api/edge-gpu/catalog', async (c) => {
+        const models = await p2(c.get('tenant')).listEdgeResources('gpu');
+        return c.json({ provider: 'community', total: models.length, models_by_type: { configured: models } });
+    });
     app.post('/api/edge-gpu/', async (c) => { const b = await c.req.json().catch(() => ({})); const id = crypto.randomUUID(); await p2(c.get('tenant')).upsertEdgeResource({ id, kind: 'gpu', name: b.name ?? 'GPU Model', provider: b.provider }, now()); return c.json({ id, name: b.name }); });
-    app.put('/api/edge-gpu/:model_id', (c) => c.json({ success: true }));
+    app.put('/api/edge-gpu/:model_id', async (c) => {
+        const store = p2(c.get('tenant'));
+        const existing = await store.getEdgeResource(c.req.param('model_id'));
+        if (!existing) return c.json({ detail: 'Not found' }, 404);
+        const body = await c.req.json().catch(() => ({})) as { name?: string; provider?: string };
+        await store.upsertEdgeResource({
+            id: c.req.param('model_id'),
+            kind: 'gpu',
+            name: body.name ?? String(existing.name),
+            provider: body.provider ?? (existing.provider as string | undefined),
+        }, now());
+        return c.json({ success: true });
+    });
     app.delete('/api/edge-gpu/:model_id', async (c) => { await p2(c.get('tenant')).deleteEdgeResource(c.req.param('model_id')); return c.json({ success: true }); });
-    app.post('/api/edge-gpu/:model_id/test', (c) => c.json({ success: false }));
+    app.post('/api/edge-gpu/:model_id/test', (c) => c.json({ success: false, message: 'No GPU provider configured' }));
     // Cloudflare Deploy (4) + Inspector (3) + Deno (1).
     // /status is broken out of the loop: CloudflareStatusResult requires
     // `deployed`, not the generic {success, detail} ack the others share.
-    app.post('/api/cloudflare/status', (c) => c.json({ deployed: false, account_id: null, url: null, worker_name: null }));
+    app.post('/api/cloudflare/status', (c) => c.json({
+        deployed: false,
+        account_id: null,
+        url: null,
+        worker_name: null,
+        detail: 'No Cloudflare provider configured',
+    }));
     for (const p of ['/api/cloudflare/connect', '/api/cloudflare/deploy', '/api/cloudflare/teardown', '/api/cloudflare/inspect/content', '/api/cloudflare/inspect/secrets', '/api/cloudflare/inspect/settings', '/api/deno/connect']) {
         app.post(p, (c) => c.json({ success: false, detail: 'Not configured' }));
     }
 }
-

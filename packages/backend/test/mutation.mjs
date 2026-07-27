@@ -23,13 +23,32 @@ const ROLES = 'packages/backend/src/auth/roles.ts';
 const SETUP = 'packages/backend/src/routes/setup.ts';
 const BACKEND_INDEX = 'packages/backend/src/index.ts';
 const PHASE2STORE = 'packages/backend/src/db/phase2-store.ts';
+const COMPAT_EDGE_MISC = 'packages/backend/src/compat/routes/edge-misc.ts';
+const COMPAT_STORE = 'packages/backend/src/compat/store.ts';
+const COMPAT_APP = 'packages/backend/src/compat/app.ts';
 
 console.log('— backend mutation harness —\n');
 if (!buildPackage(PKG)) { console.log('baseline build failed'); process.exit(2); }
-for (const g of ['authz', 'errors', 'seed', 'login-e2e', 'provision', 'setup', 'durable-execution']) {
-    if (runGate(pkgDir, `test/${g}.mjs`) !== 0) { console.log(`baseline ${g} RED — fix first`); process.exit(2); }
+for (const g of [
+    'authz',
+    'errors',
+    'seed',
+    'login-e2e',
+    'provision',
+    'setup',
+    'durable-execution',
+    'compat-security',
+    'compat-behavior-auth',
+    'compat-negative',
+    'compat-tenant-matrix',
+]) {
+    const args = g === 'compat-behavior-auth' ? ['--gate'] : [];
+    if (runGate(pkgDir, `test/${g}.mjs`, args) !== 0) {
+        console.log(`baseline ${g} RED — fix first`);
+        process.exit(2);
+    }
 }
-console.log('baseline: authz + errors + seed + login-e2e + provision + setup + durable-execution GREEN\n');
+console.log('baseline: core + compat security/fuzz/tenant gates GREEN\n');
 
 // 1. Drop the tenant predicate from getDraft → cross-tenant read (SHARED db).
 await withSourceMutation(
@@ -144,6 +163,81 @@ await withSourceMutation(
     async () => {
         buildPackage(PKG);
         expectRed('durable: goes red when the completeExecution guard is removed', runGate(pkgDir, 'test/durable-execution.mjs'));
+    },
+);
+
+// 10. API-key verifier storage — persist the raw key instead of SHA-256.
+await withSourceMutation(
+    'compat API key: one-way verifier',
+    COMPAT_EDGE_MISC,
+    'await sha256Hex(key), 1, parsed.data.expires_at',
+    'key, 1, parsed.data.expires_at',
+    async () => {
+        buildPackage(PKG);
+        expectRed('compat-security: goes red when raw API keys are persisted', runGate(pkgDir, 'test/compat-security.mjs'));
+    },
+);
+
+// 11. One-time reveal — leave the ciphertext and reveal marker reusable.
+await withSourceMutation(
+    'compat API key: atomic one-time reveal',
+    COMPAT_EDGE_MISC,
+    'SET ciphertext = NULL, revealed_at = ?',
+    'SET ciphertext = ciphertext, revealed_at = NULL',
+    async () => {
+        buildPackage(PKG);
+        expectRed('compat-security: goes red when API-key reveal can be replayed', runGate(pkgDir, 'test/compat-security.mjs'));
+    },
+);
+
+// 12. Reset capability secrecy — store the raw bearer token.
+await withSourceMutation(
+    'compat password reset: token hashing',
+    COMPAT_STORE,
+    'const tokenHash = await sha256Hex(token);',
+    'const tokenHash = token;',
+    async () => {
+        buildPackage(PKG);
+        expectRed('auth behavior: goes red when reset tokens persist raw', runGate(pkgDir, 'test/compat-behavior-auth.mjs'));
+    },
+);
+
+// 13. Session generation — allow every pre-reset session after credential change.
+await withSourceMutation(
+    'compat password reset: session invalidation',
+    AUTH,
+    'return stored === claimed ? principal : { user: null, tenant: undefined };',
+    'return principal; // MUTATION: session generation ignored',
+    async () => {
+        buildPackage(PKG);
+        expectRed(
+            'auth behavior: goes red when old sessions survive reset',
+            runGate(pkgDir, 'test/compat-behavior-auth.mjs', ['--gate']),
+        );
+    },
+);
+
+// 14. Generated tenant matrix — drop one compat read predicate.
+await withSourceMutation(
+    'compat tenant matrix: variable read confinement',
+    COMPAT_STORE,
+    "'SELECT id, name, type, description, formula, value, created_at FROM template_variables WHERE tenant_slug = ? AND id = ?',\n            [this.tenant, id]",
+    "'SELECT id, name, type, description, formula, value, created_at FROM template_variables WHERE id = ?',\n            [id]",
+    async () => {
+        buildPackage(PKG);
+        expectRed('tenant matrix: goes red on a cross-tenant compat read', runGate(pkgDir, 'test/compat-tenant-matrix.mjs'));
+    },
+);
+
+// 15. Contract boundary — remove generated request validation.
+await withSourceMutation(
+    'compat request validation boundary',
+    COMPAT_APP,
+    "app.use('*', contractRequestValidation());",
+    '/* MUTATION: contract request validation removed */',
+    async () => {
+        buildPackage(PKG);
+        expectRed('negative sweep: goes red when request validation is removed', runGate(pkgDir, 'test/compat-negative.mjs'));
     },
 );
 

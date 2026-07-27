@@ -6,10 +6,12 @@
   It is the *only* CF-22 status document — seven earlier ones were folded into it and
   deleted. If any other note conflicts with it, it wins. Start at **§0** (status +
   measured/unmeasured table) and **§8** (the gate worklist).
-- **Handed over:** 2026-07-27, at commit `0d26f9e`. CI green (`contracts` workflow).
-- **Scope constraint:** self-host / single-tenant / community edition **only**. Cloud
-  surfaces (tenants directory, plans, billing, SuperTokens signup/invite, agent quota)
-  are out of scope — see §10.
+- **Original handover:** 2026-07-27, at commit `0d26f9e`. Resumed locally through
+  2026-07-28: Gates 1c, 2, and 3 are locally closed in one reproducible runner;
+  remote CI awaits the next commit.
+- **Scope constraint:** self-host / community edition **only**. Cloud services
+  (billing, SuperTokens, provider-delivered signup/invite, agent quota) are out of
+  scope; the compat layer now supplies local signup and one-time invite behavior.
 
 ---
 
@@ -28,21 +30,24 @@ the product's community FastAPI backend.
 | 0 — one source revision | ✅ Closed. Contract + console pins agree; disagreement is a hard error. |
 | 1a — response conformance | ✅ Closed. 47 violations → 0, gated in CI. |
 | 1b — handler-derived spec | ✅ Closed. Manual registry deleted; deleting a handler turns CI red. |
-| **1c — close the measurement gap** | **← start here** |
-| 2 — security | 🔴 Open. **Two defects are live in shipped code** (see §5). |
-| 3 — behaviour | Open; merges with 1c. |
+| **1c — close the measurement gap** | ✅ Closed locally. 286/286 behavior-classified and negative-audited. |
+| 2 — security | ✅ Closed locally. API-key/reset/session controls, tenant matrix, and mutation proofs are green. |
+| 3 — behaviour | ✅ Closed for the recorded community scope: 163 functional, 10 deliberate shape-only, 113 explicit external-disabled. |
 | 4 — acceptance | Open (Playwright, real CF deploy, owner sign-off). |
 
 **The number to keep honest:**
 
 ```
-CONFORMS 169 | VIOLATES 0 | UNREACHABLE 32 | NO_SCHEMA 85   →  measured 169/286 (59%)
+CONFORMS 286 | VIOLATES 0 | UNREACHABLE 0 | NO_SCHEMA 0
+EXTERNAL_DISABLED 0 | STUB 0   →  response-validated 286/286 (100%)
 ```
 
-`VIOLATES 0` means nothing without that denominator. 41% of the contract is unmeasured,
-and **conformance says nothing about behaviour** — an op that returns a correctly-shaped
-constant and ignores its store counts as `CONFORMS`. Do not report CF-22 as "green"
-on the strength of a passing gate alone.
+All operations now have a usable response contract and a reachable implementation:
+named JSON
+models, validated inline schemas, text/SSE/CSV, or explicit bodyless responses.
+**Conformance still says nothing about behaviour** — an op that returns a
+correctly-shaped constant and ignores its store counts as `CONFORMS`. Do not report
+CF-22 as "green" on the strength of a passing shape gate alone.
 
 ## 3. Commands you will actually use
 
@@ -53,13 +58,15 @@ pnpm -r build && pnpm --filter @frontbase/backend test
 | What | Command |
 |---|---|
 | Everything CI runs | `pnpm -r build`, then the four gates below |
+| Complete CF-22 Gates 1c/2/3 | `pnpm --filter @frontbase/backend run gate:cf22` |
 | Conformance report (readable) | `pnpm --filter @frontbase/backend run conformance` |
 | Conformance report + unreachable list | `node packages/backend/test/compat-conformance.mjs --verbose` |
+| Auth/security behavior gate | `pnpm --filter @frontbase/backend run behavior:auth` |
 | Spec staleness gate | `pnpm --filter @frontbase/backend run contracts:check` |
 | Drift gate (missing / divergent) | `pnpm run contracts:diff` |
 | Console artifact + pin agreement | `pnpm run console:check` |
 | Deployable worker, end to end | `pnpm --filter @frontbase/example-cf-full smoke` |
-| Mutation gates (22, all must go RED on break) | `pnpm -r test:mutation` |
+| Mutation gates (all must go RED on break) | `pnpm -r test:mutation` |
 | Re-vendor the contract | `node scripts/sync-contract.mjs --commit <sha>` |
 | Re-fetch the console bundle | `pnpm run fetch:console` |
 
@@ -84,32 +91,33 @@ pnpm -r build && pnpm --filter @frontbase/backend test
 7. **Trailing slashes are load-bearing.** Register the exact OpenAPI path; do not mount
    sub-apps (they mismatch trailing slashes).
 
-## 5. Live security defects — not fixed, deliberately deferred
+## 5. Security closure
 
-The owner sequenced Gate 2 after 1/3/4. Both are in released code:
-
-- [`compat/routes/edge-misc.ts:10`](../packages/backend/src/compat/routes/edge-misc.ts) —
-  the raw `fbk_*` API key is stored in the `key_hash` column, and `/reveal` returns it on
-  every call. No hashing, no one-time semantics.
-- [`compat/routes/auth-compat.ts:101`](../packages/backend/src/compat/routes/auth-compat.ts) —
-  `reset-password` returns `success: true` while performing zero password mutations.
-
-If you are about to ship or demo publicly, raise these first.
+The two previously live defects are closed. API keys now persist a SHA-256 verifier
+and separately encrypted reveal material; reveal is tenant-scoped, audited, atomic,
+and one-time. Password-reset capabilities are delivered out of band, stored only as
+hashes, expire, cannot be replayed, change the password, and invalidate older
+framework-issued sessions. Migration v14 adds the required state without
+reinterpreting legacy plaintext. `compat-security`, the auth behavior gate, the
+139-operation tenant matrix, and six new mutations enforce these properties.
 
 ## 6. What to do next
 
-**Gate 1c(1) — fixtures.** Drive `UNREACHABLE` from 32 to 0. 28 are 404s on nested param
-routes where the probe's id pool cannot supply the right id (a version id, a sub-resource
-id). By tag: pages 8, actions 4, variables 3, edge-providers 2, edge-engines 2,
-auth-forms 2, then one each across storage / edge-{vectors,queues,databases,caches,api-keys}.
-Plus 2×400, 1×401, 1×422. The pool lives at the top of
-`packages/backend/test/compat-conformance.mjs` and currently keys by collection only.
+**Gate 1c(1) + response-schema coverage are closed.** The probe creates a fresh
+resource chain per operation; `UNREACHABLE 32 → 0`, then named/inline/text/bodyless
+validation moved `CONFORMS 198 → 283` and `NO_SCHEMA 85 → 0`. The gate now fails on
+a violation, unreachable op, or missing usable response contract. This pass also
+corrected product media contracts for CSV and three SSE endpoints, then repaired the
+framework list/bodyless/stream responses those stronger validators exposed. Do not
+restore the old collection-level id pool: deletes made it order-dependent and it could
+not represent nested version or execution ids.
 
-**Then Gate 1c(2) + Gate 3 as ONE pass.** Classifying an op as `functional` requires
-proving a write is observable in a read — that *is* the behavioural test. Derive the
-`stub | shape-only | functional | external-disabled` status; **do not hand-annotate it**
-(see trap 6). Order: Authentication/security → Storage/data → Actions → Edge lifecycle →
-Agent/MCP.
+**Gates 1c(2), 1c(3), 2, and 3 now run as one command.** Runtime observations derive
+and fingerprint all 286 behavior statuses at `163 functional / 10 shape-only /
+113 external-disabled / 0 stub`. The negative sweep audits every operation; the
+generated two-tenant matrix exercises every identifier-bearing operation. The next
+work is Gate 4 only: browser acceptance, a fresh Cloudflare deployment, scheduled
+cross-repo drift, and owner sign-off.
 
 Rationale for this sequencing is in §8 *Sequencing (revised 2026-07-27)*.
 
@@ -121,6 +129,13 @@ Rationale for this sequencing is in §8 *Sequencing (revised 2026-07-27)*.
 | `packages/backend/src/compat/routes/edge-shapes.ts` | Shared response shapes — fix once, lands everywhere |
 | `packages/backend/contracts/` | Vendored product contract + `PRODUCT_COMMIT` pin + emitted `framework.openapi.json` |
 | `packages/backend/test/compat-conformance.mjs` | The conformance probe/gate |
+| `packages/backend/test/compat-behavior-auth.mjs` | Derived authentication/security round-trip gate |
+| `packages/backend/contracts/behavior.auth.json` | Gated, generated auth/security classification |
+| `packages/backend/contracts/behavior.summary.json` | Fingerprint and counts for the runtime-derived 286-operation ledger |
+| `packages/backend/test/compat-negative.mjs` | Contract-derived wrong-type/missing-field/path/query sweep |
+| `packages/backend/test/compat-tenant-matrix.mjs` | Generated 139-operation two-tenant isolation matrix |
+| `packages/backend/test/cf22-gates.mjs` | One-command Gates 1c/2/3 runner |
+| `docs/cf-22-no-schema-audit.md` | Per-operation ledger for the closed `NO_SCHEMA 85` |
 | `packages/backend/test/routed-ops.mjs` | Proves `x-implemented` is derived |
 | `examples/cf-full/` | The deployable worker + smoke suite |
 | `examples/cf-full/console-dist/` | Console shell (committed) + bundles (gitignored) — see §6a of the source of truth |

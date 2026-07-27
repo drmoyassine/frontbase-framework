@@ -143,7 +143,14 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
         if (!targetVersionId) return c.json({ success: false, error: 'version_id is required' }, 422);
         const res = await storeFor(c.get('tenant')).rollback(c.req.param('page_id'), targetVersionId, now());
         if (!res) return c.json({ success: false, error: 'Page or version not found' }, 404);
-        // snapshot the pre-rollback state so we capture its id
-        return c.json({ success: true, message: `Rolled back to version ${res.version.version_number}`, data: { restoredVersionNumber: res.version.version_number }, error: null });
+        return c.json({
+            success: true,
+            message: `Rolled back to version ${res.version.version_number}`,
+            data: {
+                preRollbackVersionId: res.preRollbackVersion.id,
+                restoredVersionNumber: res.version.version_number,
+            },
+            error: null,
+        });
     });
 }
