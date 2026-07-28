@@ -1,0 +1,5796 @@
+{
+  "generatedBy": "scripts/generate-differential-corpus.mjs",
+  "contract": "packages/backend/contracts/openapi.community.json",
+  "normalization": [
+    {
+      "field": "id",
+      "reason": "each system mints its own identifiers, at any nesting depth"
+    },
+    {
+      "field": "created_at",
+      "reason": "wall-clock at row creation"
+    },
+    {
+      "field": "updated_at",
+      "reason": "wall-clock at row update"
+    },
+    {
+      "field": "createdAt",
+      "reason": "camelCase variant of created_at"
+    },
+    {
+      "field": "updatedAt",
+      "reason": "camelCase variant of updated_at"
+    },
+    {
+      "field": "timestamp_utc",
+      "reason": "response generation time"
+    },
+    {
+      "field": "last_tested_at",
+      "reason": "wall-clock of the last connectivity probe"
+    },
+    {
+      "field": "expires_at",
+      "reason": "derived from generation time"
+    },
+    {
+      "field": "contentHash",
+      "reason": "derived from generated ids embedded in the payload"
+    }
+  ],
+  "cases": [
+    {
+      "operationId": "pages_create_page_endpoint",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/pages/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "slug": "parity"
+      },
+      "capture": {
+        "page_id": "/id",
+        "page_id_data": "/data/id"
+      },
+      "note": "seeds {{page_id}} for /api/pages/* cases"
+    },
+    {
+      "operationId": "actions_create_draft",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity"
+      },
+      "capture": {
+        "draft_id": "/id",
+        "draft_id_data": "/data/id"
+      },
+      "note": "seeds {{draft_id}} for /api/actions/drafts* cases"
+    },
+    {
+      "operationId": "variables_create_variable_endpoint",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/variables/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "type": "parity"
+      },
+      "capture": {
+        "variable_id": "/id",
+        "variable_id_data": "/data/id"
+      },
+      "note": "seeds {{variable_id}} for /api/variables/* cases"
+    },
+    {
+      "operationId": "themes_create_theme",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/themes/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "component_type": "parity",
+        "styles_data": {}
+      },
+      "capture": {
+        "theme_id": "/id",
+        "theme_id_data": "/data/id"
+      },
+      "note": "seeds {{theme_id}} for /api/themes/* cases"
+    },
+    {
+      "operationId": "auth_forms_create_auth_form",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth-forms/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "type": "parity"
+      },
+      "capture": {
+        "form_id": "/id",
+        "form_id_data": "/data/id"
+      },
+      "note": "seeds {{form_id}} for /api/auth-forms/* cases"
+    },
+    {
+      "operationId": "edge_engines_create_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "url": "parity"
+      },
+      "capture": {
+        "engine_id": "/id",
+        "engine_id_data": "/data/id"
+      },
+      "note": "seeds {{engine_id}} for /api/edge-engines/* cases"
+    },
+    {
+      "operationId": "edge_providers_create_provider",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity"
+      },
+      "capture": {
+        "provider_id": "/id",
+        "provider_id_data": "/data/id"
+      },
+      "note": "seeds {{provider_id}} for /api/edge-providers/* cases"
+    },
+    {
+      "operationId": "edge_databases_create_edge_database",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-databases/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "db_url": "parity"
+      },
+      "capture": {
+        "db_id": "/id",
+        "db_id_data": "/data/id"
+      },
+      "note": "seeds {{db_id}} for /api/edge-databases/* cases"
+    },
+    {
+      "operationId": "edge_caches_create_edge_cache",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-caches/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "cache_url": "parity"
+      },
+      "capture": {
+        "cache_id": "/id",
+        "cache_id_data": "/data/id"
+      },
+      "note": "seeds {{cache_id}} for /api/edge-caches/* cases"
+    },
+    {
+      "operationId": "edge_queues_create_edge_queue",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-queues/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "queue_url": "parity"
+      },
+      "capture": {
+        "queue_id": "/id",
+        "queue_id_data": "/data/id"
+      },
+      "note": "seeds {{queue_id}} for /api/edge-queues/* cases"
+    },
+    {
+      "operationId": "edge_vectors_create_edge_vector",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-vectors/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "vector_url": "parity"
+      },
+      "capture": {
+        "vector_id": "/id",
+        "vector_id_data": "/data/id"
+      },
+      "note": "seeds {{vector_id}} for /api/edge-vectors/* cases"
+    },
+    {
+      "operationId": "create_datasource_datasources__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "type": "supabase"
+      },
+      "capture": {
+        "datasource_id": "/id",
+        "datasource_id_data": "/data/id"
+      },
+      "note": "seeds {{datasource_id}} for /api/sync/datasources/* cases"
+    },
+    {
+      "operationId": "meta_root",
+      "kind": "success",
+      "method": "GET",
+      "path": "/"
+    },
+    {
+      "operationId": "meta_root",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_list_drafts",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/drafts"
+    },
+    {
+      "operationId": "actions_list_drafts",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_create_draft",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity"
+      }
+    },
+    {
+      "operationId": "actions_bulk_delete_drafts",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts/bulk-delete",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ids": []
+      }
+    },
+    {
+      "operationId": "actions_bulk_delete_drafts",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/actions/drafts/bulk-delete/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ids": []
+      }
+    },
+    {
+      "operationId": "actions_get_draft",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/drafts/{{draft_id}}"
+    },
+    {
+      "operationId": "actions_get_draft",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_update_draft",
+      "kind": "success",
+      "method": "PATCH",
+      "path": "/api/actions/drafts/{{draft_id}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "actions_update_draft",
+      "kind": "failure",
+      "method": "PATCH",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "actions_delete_draft",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/actions/drafts/{{draft_id}}"
+    },
+    {
+      "operationId": "actions_delete_draft",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_toggle_draft_active",
+      "kind": "success",
+      "method": "PATCH",
+      "path": "/api/actions/drafts/{{draft_id}}/active",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "is_active": false
+      }
+    },
+    {
+      "operationId": "actions_toggle_draft_active",
+      "kind": "failure",
+      "method": "PATCH",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/active",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "is_active": false
+      }
+    },
+    {
+      "operationId": "actions_publish_draft",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts/{{draft_id}}/publish"
+    },
+    {
+      "operationId": "actions_publish_draft",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/publish"
+    },
+    {
+      "operationId": "actions_publish_draft_batch",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts/{{draft_id}}/publish-batch/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": []
+      }
+    },
+    {
+      "operationId": "actions_publish_draft_batch",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/publish-batch/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": []
+      }
+    },
+    {
+      "operationId": "actions_publish_draft_to_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts/{{draft_id}}/publish/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "actions_publish_draft_to_engine",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/publish/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "actions_toggle_target_active",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts/{{draft_id}}/publish/00000000-0000-4000-8000-000000000000/toggle",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "is_active": false
+      }
+    },
+    {
+      "operationId": "actions_toggle_target_active",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/publish/00000000-0000-4000-8000-000000000000/toggle",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "is_active": false
+      }
+    },
+    {
+      "operationId": "actions_rollback_automation_to_version",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts/{{draft_id}}/rollback/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "version_id": "parity"
+      }
+    },
+    {
+      "operationId": "actions_rollback_automation_to_version",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/rollback/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "version_id": "parity"
+      }
+    },
+    {
+      "operationId": "actions_test_draft",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts/{{draft_id}}/test",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "actions_test_draft",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/test",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "actions_test_node",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts/{{draft_id}}/test-node/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "actions_test_node",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/test-node/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "actions_list_automation_versions",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/drafts/{{draft_id}}/versions/"
+    },
+    {
+      "operationId": "actions_list_automation_versions",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/versions/"
+    },
+    {
+      "operationId": "actions_create_manual_automation_version",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts/{{draft_id}}/versions/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "actions_create_manual_automation_version",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/versions/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "actions_get_automation_version_detail",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/drafts/{{draft_id}}/versions/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "actions_get_automation_version_detail",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/versions/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "actions_get_execution_stats",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/execution-stats"
+    },
+    {
+      "operationId": "actions_get_execution_stats",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/execution-stats/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_get_execution_result",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/execution/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_get_execution_result",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/execution/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_list_all_executions",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/executions"
+    },
+    {
+      "operationId": "actions_list_all_executions",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/executions/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_get_execution_detail",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/executions/detail/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_get_execution_detail",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/executions/detail/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_export_executions_csv",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/executions/export"
+    },
+    {
+      "operationId": "actions_export_executions_csv",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/executions/export/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_get_draft_executions",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/executions/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_get_draft_executions",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/executions/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_get_production_executions",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/executions/00000000-0000-4000-8000-000000000000/production/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "actions_get_production_executions",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/actions/executions/00000000-0000-4000-8000-000000000000/production/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_get_agent_catalogue",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/agent-catalogue"
+    },
+    {
+      "operationId": "agent_integrations_get_agent_catalogue",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/agent-catalogue/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_list_profile_skills",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/agent-profiles/00000000-0000-4000-8000-000000000000/skills"
+    },
+    {
+      "operationId": "agent_integrations_list_profile_skills",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/agent-profiles/00000000-0000-4000-8000-000000000000/skills"
+    },
+    {
+      "operationId": "agent_integrations_install_skill",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/agent-profiles/00000000-0000-4000-8000-000000000000/skills",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "skill_id": "parity"
+      }
+    },
+    {
+      "operationId": "agent_integrations_install_skill",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/agent-profiles/00000000-0000-4000-8000-000000000000/skills",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "skill_id": "parity"
+      }
+    },
+    {
+      "operationId": "agent_integrations_uninstall_skill",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/agent-profiles/00000000-0000-4000-8000-000000000000/skills/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_uninstall_skill",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/agent-profiles/00000000-0000-4000-8000-000000000000/skills/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_list_skills",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/agent-skills"
+    },
+    {
+      "operationId": "agent_integrations_list_skills",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/agent-skills/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_create_skill",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/agent-skills",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "slug": "parity",
+        "name": "parity",
+        "tool_definitions": []
+      }
+    },
+    {
+      "operationId": "agent_integrations_create_skill",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/agent-skills/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "slug": "parity",
+        "name": "parity",
+        "tool_definitions": []
+      }
+    },
+    {
+      "operationId": "agent_integrations_update_skill",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/agent-skills/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "agent_integrations_update_skill",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/agent-skills/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "agent_integrations_delete_skill",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/agent-skills/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_delete_skill",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/agent-skills/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_agent_chat",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/agent/chat"
+    },
+    {
+      "operationId": "agent_agent_chat",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/agent/chat/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_agent_chat_with_profile",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/agent/chat/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_agent_chat_with_profile",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/agent/chat/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_agent_credits",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/agent/credits"
+    },
+    {
+      "operationId": "agent_agent_credits",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/agent/credits/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_mcp_mcp_root",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_mcp_mcp_root",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_mcp_get_prompt",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/prompts/get"
+    },
+    {
+      "operationId": "agent_mcp_get_prompt",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/prompts/get"
+    },
+    {
+      "operationId": "agent_mcp_list_prompts",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/prompts/list"
+    },
+    {
+      "operationId": "agent_mcp_list_prompts",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/prompts/list"
+    },
+    {
+      "operationId": "agent_mcp_list_resources",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/resources/list"
+    },
+    {
+      "operationId": "agent_mcp_list_resources",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/resources/list"
+    },
+    {
+      "operationId": "agent_mcp_call_tool",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/tools/call"
+    },
+    {
+      "operationId": "agent_mcp_call_tool",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/tools/call"
+    },
+    {
+      "operationId": "agent_mcp_list_tools",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/tools/list"
+    },
+    {
+      "operationId": "agent_mcp_list_tools",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/tools/list"
+    },
+    {
+      "operationId": "agent_settings_get_agent_settings",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/agent/settings"
+    },
+    {
+      "operationId": "agent_settings_get_agent_settings",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/agent/settings/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_settings_update_agent_settings",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/agent/settings",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "agent_settings_update_agent_settings",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/agent/settings/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "agent_settings_reset_agent_settings",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/agent/settings"
+    },
+    {
+      "operationId": "agent_settings_reset_agent_settings",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/agent/settings/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "auth_forms_list_auth_forms",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth-forms/"
+    },
+    {
+      "operationId": "auth_forms_list_auth_forms",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "auth_forms_create_auth_form",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "type": "parity"
+      }
+    },
+    {
+      "operationId": "auth_forms_get_primary_auth_form",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth-forms/primary/"
+    },
+    {
+      "operationId": "auth_forms_get_primary_auth_form",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth-forms/primary/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "auth_forms_get_auth_form",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth-forms/{{form_id}}/"
+    },
+    {
+      "operationId": "auth_forms_get_auth_form",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "auth_forms_update_auth_form",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/auth-forms/{{form_id}}/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "auth_forms_update_auth_form",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "auth_forms_delete_auth_form",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/auth-forms/{{form_id}}/"
+    },
+    {
+      "operationId": "auth_forms_delete_auth_form",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "auth_forms_set_primary_auth_form",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/auth-forms/{{form_id}}/set-primary/"
+    },
+    {
+      "operationId": "auth_forms_set_primary_auth_form",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/set-primary/"
+    },
+    {
+      "operationId": "authentication_accept_invite",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth/accept-invite",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "token": "parity",
+        "password": "parity"
+      }
+    },
+    {
+      "operationId": "authentication_accept_invite",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/auth/accept-invite/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "token": "parity",
+        "password": "parity"
+      }
+    },
+    {
+      "operationId": "authentication_check_slug",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth/check-slug/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_check_slug",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth/check-slug/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_forgot_password",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "email": "parity@example.com"
+      }
+    },
+    {
+      "operationId": "authentication_forgot_password",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/auth/forgot-password/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "email": "parity@example.com"
+      }
+    },
+    {
+      "operationId": "authentication_get_invite",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth/invite/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_get_invite",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth/invite/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_login",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "email": "parity@example.com",
+        "password": "parity"
+      }
+    },
+    {
+      "operationId": "authentication_login",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/auth/login/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "email": "parity@example.com",
+        "password": "parity"
+      }
+    },
+    {
+      "operationId": "authentication_login_options",
+      "kind": "success",
+      "method": "OPTIONS",
+      "path": "/api/auth/login"
+    },
+    {
+      "operationId": "authentication_login_options",
+      "kind": "failure",
+      "method": "OPTIONS",
+      "path": "/api/auth/login/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_logout",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth/logout"
+    },
+    {
+      "operationId": "authentication_logout",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/auth/logout/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_get_me",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth/me"
+    },
+    {
+      "operationId": "authentication_get_me",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth/me/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_reset_password",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "email": "parity@example.com",
+        "token": "parity",
+        "password": "parity"
+      }
+    },
+    {
+      "operationId": "authentication_reset_password",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/auth/reset-password/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "email": "parity@example.com",
+        "token": "parity",
+        "password": "parity"
+      }
+    },
+    {
+      "operationId": "authentication_get_audit_logs",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth/security/audit-logs"
+    },
+    {
+      "operationId": "authentication_get_audit_logs",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth/security/audit-logs/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_get_blocklist",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth/security/blocklist"
+    },
+    {
+      "operationId": "authentication_get_blocklist",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth/security/blocklist/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_add_ip_ban",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth/security/blocklist",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ip_or_range": "parity"
+      }
+    },
+    {
+      "operationId": "authentication_add_ip_ban",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/auth/security/blocklist/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ip_or_range": "parity"
+      }
+    },
+    {
+      "operationId": "authentication_delete_ip_ban",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/auth/security/blocklist/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_delete_ip_ban",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/auth/security/blocklist/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_get_bot_protection_settings",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth/security/bot-protection"
+    },
+    {
+      "operationId": "authentication_get_bot_protection_settings",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth/security/bot-protection/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_update_bot_protection_settings",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth/security/bot-protection",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "enabled": false,
+        "provider": "cloudflare",
+        "site_key": "parity",
+        "secret_key": "parity",
+        "protect_login": false,
+        "protect_forgot_password": false,
+        "recaptcha_v3_threshold": 1,
+        "widget_theme": "light",
+        "widget_size": "normal",
+        "auto_ban_lockout_hours": 1
+      }
+    },
+    {
+      "operationId": "authentication_update_bot_protection_settings",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/auth/security/bot-protection/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "enabled": false,
+        "provider": "cloudflare",
+        "site_key": "parity",
+        "secret_key": "parity",
+        "protect_login": false,
+        "protect_forgot_password": false,
+        "recaptcha_v3_threshold": 1,
+        "widget_theme": "light",
+        "widget_size": "normal",
+        "auto_ban_lockout_hours": 1
+      }
+    },
+    {
+      "operationId": "authentication_get_bot_protection_metrics",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth/security/bot-protection/metrics"
+    },
+    {
+      "operationId": "authentication_get_bot_protection_metrics",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth/security/bot-protection/metrics/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_get_waf_settings",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth/security/waf"
+    },
+    {
+      "operationId": "authentication_get_waf_settings",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth/security/waf/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "authentication_update_waf_settings",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth/security/waf",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "enabled": false
+      }
+    },
+    {
+      "operationId": "authentication_update_waf_settings",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/auth/security/waf/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "enabled": false
+      }
+    },
+    {
+      "operationId": "authentication_signup",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth/signup",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "email": "parity@example.com",
+        "password": "parity",
+        "workspace_name": "parity",
+        "slug": "parity"
+      }
+    },
+    {
+      "operationId": "authentication_signup",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/auth/signup/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "email": "parity@example.com",
+        "password": "parity",
+        "workspace_name": "parity",
+        "slug": "parity"
+      }
+    },
+    {
+      "operationId": "authentication_signup_options",
+      "kind": "success",
+      "method": "OPTIONS",
+      "path": "/api/auth/signup"
+    },
+    {
+      "operationId": "authentication_signup_options",
+      "kind": "failure",
+      "method": "OPTIONS",
+      "path": "/api/auth/signup/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "cloudflare_deploy_connect_cloudflare",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/cloudflare/connect",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_deploy_connect_cloudflare",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/cloudflare/connect/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_deploy_deploy_to_cloudflare",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/cloudflare/deploy",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_deploy_deploy_to_cloudflare",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/cloudflare/deploy/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_inspector_inspect_worker_content",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/cloudflare/inspect/content",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity",
+        "worker_name": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_inspector_inspect_worker_content",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/cloudflare/inspect/content/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity",
+        "worker_name": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_inspector_inspect_worker_secrets",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/cloudflare/inspect/secrets",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity",
+        "worker_name": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_inspector_inspect_worker_secrets",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/cloudflare/inspect/secrets/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity",
+        "worker_name": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_inspector_inspect_worker_settings",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/cloudflare/inspect/settings",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity",
+        "worker_name": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_inspector_inspect_worker_settings",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/cloudflare/inspect/settings/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity",
+        "worker_name": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_deploy_cloudflare_status",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/cloudflare/status",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_deploy_cloudflare_status",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/cloudflare/status/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_deploy_teardown_cloudflare",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/cloudflare/teardown",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "cloudflare_deploy_teardown_cloudflare",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/cloudflare/teardown/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "database_advanced_query",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/database/advanced-query/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "database_advanced_query",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/database/advanced-query/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "database_connect_supabase",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/database/connect-supabase/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "url": "parity",
+        "anonKey": "parity"
+      }
+    },
+    {
+      "operationId": "database_connect_supabase",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/database/connect-supabase/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "url": "parity",
+        "anonKey": "parity"
+      }
+    },
+    {
+      "operationId": "database_get_connections",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/database/connections/"
+    },
+    {
+      "operationId": "database_get_connections",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/database/connections/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "database_disconnect_supabase",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/database/disconnect-supabase/"
+    },
+    {
+      "operationId": "database_disconnect_supabase",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/database/disconnect-supabase/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "database_get_distinct_values",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/database/distinct-values/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "database_get_distinct_values",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/database/distinct-values/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "rls_create_batch_policies",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/database/rls/batch/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "policyBaseName": "parity",
+        "tableRules": []
+      }
+    },
+    {
+      "operationId": "rls_create_batch_policies",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/database/rls/batch/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "policyBaseName": "parity",
+        "tableRules": []
+      }
+    },
+    {
+      "operationId": "rls_bulk_delete_policies",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/database/rls/bulk-delete/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "policies": []
+      }
+    },
+    {
+      "operationId": "rls_bulk_delete_policies",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/database/rls/bulk-delete/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "policies": []
+      }
+    },
+    {
+      "operationId": "rls_get_all_rls_metadata",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/database/rls/metadata/"
+    },
+    {
+      "operationId": "rls_get_all_rls_metadata",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/database/rls/metadata/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "rls_save_rls_metadata",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/database/rls/metadata/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "tableName": "parity",
+        "policyName": "parity",
+        "formData": {}
+      }
+    },
+    {
+      "operationId": "rls_save_rls_metadata",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/database/rls/metadata/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "tableName": "parity",
+        "policyName": "parity",
+        "formData": {}
+      }
+    },
+    {
+      "operationId": "rls_verify_rls_metadata",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/database/rls/metadata/verify/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "tableName": "parity",
+        "policyName": "parity"
+      }
+    },
+    {
+      "operationId": "rls_verify_rls_metadata",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/database/rls/metadata/verify/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "tableName": "parity",
+        "policyName": "parity"
+      }
+    },
+    {
+      "operationId": "rls_get_rls_metadata",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/database/rls/metadata/parity_table/parity_table"
+    },
+    {
+      "operationId": "rls_get_rls_metadata",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/database/rls/metadata/00000000-0000-4000-8000-000000000000/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "rls_delete_rls_metadata",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/database/rls/metadata/parity_table/parity_table"
+    },
+    {
+      "operationId": "rls_delete_rls_metadata",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/database/rls/metadata/00000000-0000-4000-8000-000000000000/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "rls_list_policies",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/database/rls/policies/"
+    },
+    {
+      "operationId": "rls_list_policies",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/database/rls/policies/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "rls_create_policy",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/database/rls/policies/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "tableName": "parity",
+        "policyName": "parity",
+        "operation": "parity"
+      }
+    },
+    {
+      "operationId": "rls_create_policy",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/database/rls/policies/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "tableName": "parity",
+        "policyName": "parity",
+        "operation": "parity"
+      }
+    },
+    {
+      "operationId": "rls_get_table_policies",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/database/rls/policies/parity_table"
+    },
+    {
+      "operationId": "rls_get_table_policies",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/database/rls/policies/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "rls_update_policy",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/database/rls/policies/parity_table/parity_table",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "operation": "parity"
+      }
+    },
+    {
+      "operationId": "rls_update_policy",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/database/rls/policies/00000000-0000-4000-8000-000000000000/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "operation": "parity"
+      }
+    },
+    {
+      "operationId": "rls_delete_policy",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/database/rls/policies/parity_table/parity_table"
+    },
+    {
+      "operationId": "rls_delete_policy",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/database/rls/policies/00000000-0000-4000-8000-000000000000/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "rls_get_tables_rls_status",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/database/rls/tables/"
+    },
+    {
+      "operationId": "rls_get_tables_rls_status",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/database/rls/tables/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "rls_toggle_table_rls",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/database/rls/tables/parity_table/toggle/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "enable": false
+      }
+    },
+    {
+      "operationId": "rls_toggle_table_rls",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/database/rls/tables/00000000-0000-4000-8000-000000000000/toggle/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "enable": false
+      }
+    },
+    {
+      "operationId": "database_get_supabase_tables",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/database/supabase-tables/"
+    },
+    {
+      "operationId": "database_get_supabase_tables",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/database/supabase-tables/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "database_get_table_data",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/database/table-data/parity_table/"
+    },
+    {
+      "operationId": "database_get_table_data",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/database/table-data/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "database_get_table_schema",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/database/table-schema/parity_table/"
+    },
+    {
+      "operationId": "database_get_table_schema",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/database/table-schema/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "database_get_tables",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/database/tables/"
+    },
+    {
+      "operationId": "database_get_tables",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/database/tables/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "database_test_supabase",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/database/test-supabase/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "url": "parity",
+        "anonKey": "parity"
+      }
+    },
+    {
+      "operationId": "database_test_supabase",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/database/test-supabase/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "url": "parity",
+        "anonKey": "parity"
+      }
+    },
+    {
+      "operationId": "deno_deploy_connect_deno",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/deno/connect",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "deno_deploy_connect_deno",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/deno/connect/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_api_keys_list_api_keys",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-api-keys"
+    },
+    {
+      "operationId": "edge_api_keys_list_api_keys",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_api_keys_create_api_key",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-api-keys",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity"
+      }
+    },
+    {
+      "operationId": "edge_api_keys_create_api_key",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity"
+      }
+    },
+    {
+      "operationId": "edge_api_keys_update_api_key",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_api_keys_update_api_key",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_api_keys_delete_api_key",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_api_keys_delete_api_key",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_api_keys_reveal_api_key",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000/reveal"
+    },
+    {
+      "operationId": "edge_api_keys_reveal_api_key",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000/reveal"
+    },
+    {
+      "operationId": "edge_caches_list_edge_caches",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-caches/"
+    },
+    {
+      "operationId": "edge_caches_list_edge_caches",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-caches/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_caches_create_edge_cache",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-caches/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "cache_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_caches_batch_delete_caches",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-caches/batch/delete",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ids": []
+      }
+    },
+    {
+      "operationId": "edge_caches_batch_delete_caches",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-caches/batch/delete/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ids": []
+      }
+    },
+    {
+      "operationId": "edge_caches_test_connection_inline",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-caches/test-connection",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "cache_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_caches_test_connection_inline",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-caches/test-connection/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "cache_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_caches_update_edge_cache",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-caches/{{cache_id}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_caches_update_edge_cache",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/edge-caches/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_caches_delete_edge_cache",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-caches/{{cache_id}}"
+    },
+    {
+      "operationId": "edge_caches_delete_edge_cache",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-caches/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_caches_test_edge_cache",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-caches/{{cache_id}}/test"
+    },
+    {
+      "operationId": "edge_caches_test_edge_cache",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-caches/00000000-0000-4000-8000-000000000000/test"
+    },
+    {
+      "operationId": "edge_databases_list_edge_databases",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-databases/"
+    },
+    {
+      "operationId": "edge_databases_list_edge_databases",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-databases/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_databases_create_edge_database",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-databases/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "db_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_databases_batch_delete_databases",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-databases/batch/delete",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ids": []
+      }
+    },
+    {
+      "operationId": "edge_databases_batch_delete_databases",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-databases/batch/delete/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ids": []
+      }
+    },
+    {
+      "operationId": "edge_databases_create_schema",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-databases/create-schema",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "db_url": "parity",
+        "suffix": "parity"
+      }
+    },
+    {
+      "operationId": "edge_databases_create_schema",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-databases/create-schema/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "db_url": "parity",
+        "suffix": "parity"
+      }
+    },
+    {
+      "operationId": "edge_databases_discover_schemas",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-databases/discover-schemas",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "db_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_databases_discover_schemas",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-databases/discover-schemas/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "db_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_databases_reset_role_password",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-databases/reset-role-password",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "db_url": "parity",
+        "schema_name": "parity",
+        "provider_account_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_databases_reset_role_password",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-databases/reset-role-password/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "db_url": "parity",
+        "schema_name": "parity",
+        "provider_account_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_databases_test_connection_inline",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-databases/test-connection",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "db_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_databases_test_connection_inline",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-databases/test-connection/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "db_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_databases_update_edge_database",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-databases/{{db_id}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_databases_update_edge_database",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/edge-databases/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_databases_delete_edge_database",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-databases/{{db_id}}"
+    },
+    {
+      "operationId": "edge_databases_delete_edge_database",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-databases/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_databases_test_edge_database",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-databases/{{db_id}}/test"
+    },
+    {
+      "operationId": "edge_databases_test_edge_database",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-databases/00000000-0000-4000-8000-000000000000/test"
+    },
+    {
+      "operationId": "edge_engines_list_engines",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/"
+    },
+    {
+      "operationId": "edge_engines_list_engines",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_engines_create_engine",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_engines_list_active_engines_by_scope",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/active/by-scope/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_engines_list_active_engines_by_scope",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/active/by-scope/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_engines_batch_delete_engines",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/batch/delete",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": [
+          "parity"
+        ]
+      }
+    },
+    {
+      "operationId": "edge_engines_batch_delete_engines",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/batch/delete/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": [
+          "parity"
+        ]
+      }
+    },
+    {
+      "operationId": "edge_engines_batch_redeploy_engines",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/batch/redeploy",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": [
+          "parity"
+        ]
+      }
+    },
+    {
+      "operationId": "edge_engines_batch_redeploy_engines",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/batch/redeploy/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": [
+          "parity"
+        ]
+      }
+    },
+    {
+      "operationId": "edge_engines_batch_rotate_secrets_key",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/batch/rotate-secrets-key",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": [
+          "parity"
+        ]
+      }
+    },
+    {
+      "operationId": "edge_engines_batch_rotate_secrets_key",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/batch/rotate-secrets-key/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": [
+          "parity"
+        ]
+      }
+    },
+    {
+      "operationId": "edge_engines_batch_sync_check",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/batch/sync-check",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": [
+          "parity"
+        ]
+      }
+    },
+    {
+      "operationId": "edge_engines_batch_sync_check",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/batch/sync-check/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": [
+          "parity"
+        ]
+      }
+    },
+    {
+      "operationId": "edge_engines_batch_toggle_engines",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/batch/toggle",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": [
+          "parity"
+        ],
+        "is_active": false
+      }
+    },
+    {
+      "operationId": "edge_engines_batch_toggle_engines",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/batch/toggle/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": [
+          "parity"
+        ],
+        "is_active": false
+      }
+    },
+    {
+      "operationId": "edge_engines_get_bundle_hashes",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/bundle-hashes/"
+    },
+    {
+      "operationId": "edge_engines_get_bundle_hashes",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/bundle-hashes/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_engines_deploy_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/deploy",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity",
+        "worker_name": "parity"
+      }
+    },
+    {
+      "operationId": "edge_engines_deploy_engine",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/deploy/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity",
+        "worker_name": "parity"
+      }
+    },
+    {
+      "operationId": "edge_engines_import_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/import",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "bundle": "parity",
+        "passphrase": "parity"
+      }
+    },
+    {
+      "operationId": "edge_engines_import_engine",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/import/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "bundle": "parity",
+        "passphrase": "parity"
+      }
+    },
+    {
+      "operationId": "edge_engines_get_engine",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}"
+    },
+    {
+      "operationId": "edge_engines_get_engine",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_engines_update_engine",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-engines/{{engine_id}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_engines_update_engine",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_engines_delete_engine",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-engines/{{engine_id}}"
+    },
+    {
+      "operationId": "edge_engines_delete_engine",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_agent_profiles_list_profiles",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/agent-profiles"
+    },
+    {
+      "operationId": "edge_agent_profiles_list_profiles",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/agent-profiles"
+    },
+    {
+      "operationId": "edge_agent_profiles_create_profile",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/agent-profiles",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "slug": "parity"
+      }
+    },
+    {
+      "operationId": "edge_agent_profiles_create_profile",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/agent-profiles",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "slug": "parity"
+      }
+    },
+    {
+      "operationId": "edge_agent_profiles_update_profile",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-engines/{{engine_id}}/agent-profiles/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_agent_profiles_update_profile",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/agent-profiles/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_agent_profiles_delete_profile",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-engines/{{engine_id}}/agent-profiles/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_agent_profiles_delete_profile",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/agent-profiles/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_engines_tenant_secrets_audit_logs",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/audit/tenant-secrets"
+    },
+    {
+      "operationId": "edge_engines_tenant_secrets_audit_logs",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/audit/tenant-secrets"
+    },
+    {
+      "operationId": "edge_engines_cancel_move",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/cancel-move"
+    },
+    {
+      "operationId": "edge_engines_cancel_move",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/cancel-move"
+    },
+    {
+      "operationId": "edge_engines_export_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/export",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "passphrase": "parityxx"
+      }
+    },
+    {
+      "operationId": "edge_engines_export_engine",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/export",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "passphrase": "parityxx"
+      }
+    },
+    {
+      "operationId": "edge_engines_finalize_move",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/finalize-move",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "confirm_secret": "parity"
+      }
+    },
+    {
+      "operationId": "edge_engines_finalize_move",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/finalize-move",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "confirm_secret": "parity"
+      }
+    },
+    {
+      "operationId": "engine_inspector_health_check",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/health-check"
+    },
+    {
+      "operationId": "engine_inspector_health_check",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/health-check"
+    },
+    {
+      "operationId": "engine_inspector_inspect_engine_domains",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/inspect/domains"
+    },
+    {
+      "operationId": "engine_inspector_inspect_engine_domains",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/domains"
+    },
+    {
+      "operationId": "engine_inspector_add_engine_domain",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/inspect/domains",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "domain": "parity"
+      }
+    },
+    {
+      "operationId": "engine_inspector_add_engine_domain",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/domains",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "domain": "parity"
+      }
+    },
+    {
+      "operationId": "engine_inspector_delete_engine_domain",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-engines/{{engine_id}}/inspect/domains/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "engine_inspector_delete_engine_domain",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/domains/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "engine_inspector_verify_engine_domain",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/inspect/domains/00000000-0000-4000-8000-000000000000/verify"
+    },
+    {
+      "operationId": "engine_inspector_verify_engine_domain",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/domains/00000000-0000-4000-8000-000000000000/verify"
+    },
+    {
+      "operationId": "engine_inspector_inspect_engine_secrets",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/inspect/secrets"
+    },
+    {
+      "operationId": "engine_inspector_inspect_engine_secrets",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/secrets"
+    },
+    {
+      "operationId": "engine_inspector_inspect_engine_settings",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/inspect/settings"
+    },
+    {
+      "operationId": "engine_inspector_inspect_engine_settings",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/settings"
+    },
+    {
+      "operationId": "engine_inspector_inspect_engine_source",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/inspect/source"
+    },
+    {
+      "operationId": "engine_inspector_inspect_engine_source",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/source"
+    },
+    {
+      "operationId": "edge_engines_get_engine_logs",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/logs"
+    },
+    {
+      "operationId": "edge_engines_get_engine_logs",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/logs"
+    },
+    {
+      "operationId": "edge_engines_update_log_config",
+      "kind": "success",
+      "method": "PATCH",
+      "path": "/api/edge-engines/{{engine_id}}/logs/config",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_engines_update_log_config",
+      "kind": "failure",
+      "method": "PATCH",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/logs/config",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_engines_get_log_retention",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/logs/retention"
+    },
+    {
+      "operationId": "edge_engines_get_log_retention",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/logs/retention"
+    },
+    {
+      "operationId": "edge_engines_sync_engine_logs",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/logs/sync"
+    },
+    {
+      "operationId": "edge_engines_sync_engine_logs",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/logs/sync"
+    },
+    {
+      "operationId": "edge_engines_move_engine_to_project_endpoint",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/move-to-project",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "target_project_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_engines_move_engine_to_project_endpoint",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/move-to-project",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "target_project_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_engines_reconfigure_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/reconfigure",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_engines_reconfigure_engine",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/reconfigure",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_engines_redeploy_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/redeploy"
+    },
+    {
+      "operationId": "edge_engines_redeploy_engine",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/redeploy"
+    },
+    {
+      "operationId": "edge_engines_rollback_rotation",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/rollback-rotation",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "rotation_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_engines_rollback_rotation",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/rollback-rotation",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "rotation_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_engines_rotate_secrets_key",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/rotate-secrets-key",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_engines_rotate_secrets_key",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/rotate-secrets-key",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_engines_rotation_history",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/rotation-history"
+    },
+    {
+      "operationId": "edge_engines_rotation_history",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/rotation-history"
+    },
+    {
+      "operationId": "edge_engines_rotation_status",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/rotation-status"
+    },
+    {
+      "operationId": "edge_engines_rotation_status",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/rotation-status"
+    },
+    {
+      "operationId": "edge_engines_get_engine_source",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/source"
+    },
+    {
+      "operationId": "edge_engines_get_engine_source",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/source"
+    },
+    {
+      "operationId": "edge_engines_update_engine_source",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-engines/{{engine_id}}/source",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_engines_update_engine_source",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/source",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_engines_sync_manifest",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/sync-manifest"
+    },
+    {
+      "operationId": "edge_engines_sync_manifest",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/sync-manifest"
+    },
+    {
+      "operationId": "edge_engines_test_engine_connection",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/test"
+    },
+    {
+      "operationId": "edge_engines_test_engine_connection",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/test"
+    },
+    {
+      "operationId": "edge_gpu_list_gpu_models",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-gpu/"
+    },
+    {
+      "operationId": "edge_gpu_list_gpu_models",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_gpu_create_gpu_model",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-gpu/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "model_type": "parity",
+        "provider": "parity",
+        "model_id": "parity",
+        "edge_engine_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_gpu_create_gpu_model",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "model_type": "parity",
+        "provider": "parity",
+        "model_id": "parity",
+        "edge_engine_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_gpu_get_catalog",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-gpu/catalog"
+    },
+    {
+      "operationId": "edge_gpu_get_catalog",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-gpu/catalog/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_gpu_get_schemas",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-gpu/schemas"
+    },
+    {
+      "operationId": "edge_gpu_get_schemas",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-gpu/schemas/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_gpu_update_gpu_model",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_gpu_update_gpu_model",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_gpu_delete_gpu_model",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_gpu_delete_gpu_model",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_gpu_test_gpu_model",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000/test"
+    },
+    {
+      "operationId": "edge_gpu_test_gpu_model",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000/test"
+    },
+    {
+      "operationId": "edge_providers_list_providers",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-providers/"
+    },
+    {
+      "operationId": "edge_providers_list_providers",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_providers_create_provider",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity"
+      }
+    },
+    {
+      "operationId": "edge_providers_list_account_tables",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-providers/accounts/00000000-0000-4000-8000-000000000000/tables"
+    },
+    {
+      "operationId": "edge_providers_list_account_tables",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-providers/accounts/00000000-0000-4000-8000-000000000000/tables"
+    },
+    {
+      "operationId": "edge_providers_create_resource_by_account",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/create-resource-by-account/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "resource_type": "parity",
+        "name": "parity"
+      }
+    },
+    {
+      "operationId": "edge_providers_create_resource_by_account",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-providers/create-resource-by-account/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "resource_type": "parity",
+        "name": "parity"
+      }
+    },
+    {
+      "operationId": "edge_providers_discover_resources_endpoint",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/discover",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider": "parity",
+        "credentials": {}
+      }
+    },
+    {
+      "operationId": "edge_providers_discover_resources_endpoint",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-providers/discover/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider": "parity",
+        "credentials": {}
+      }
+    },
+    {
+      "operationId": "edge_providers_discover_by_account",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/discover-by-account/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_providers_discover_by_account",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-providers/discover-by-account/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_providers_retest_provider",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/retest/{{provider_id}}"
+    },
+    {
+      "operationId": "edge_providers_retest_provider",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-providers/retest/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_providers_test_connection",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/test-connection",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider": "parity",
+        "credentials": {}
+      }
+    },
+    {
+      "operationId": "edge_providers_test_connection",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-providers/test-connection/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider": "parity",
+        "credentials": {}
+      }
+    },
+    {
+      "operationId": "edge_providers_get_workspace_agent_token",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-providers/workspace-agent-token"
+    },
+    {
+      "operationId": "edge_providers_get_workspace_agent_token",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-providers/workspace-agent-token/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_providers_set_workspace_agent_token",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/workspace-agent-token",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_providers_set_workspace_agent_token",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-providers/workspace-agent-token/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider_id": "parity"
+      }
+    },
+    {
+      "operationId": "edge_providers_list_engines_for_provider",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/list-engines"
+    },
+    {
+      "operationId": "edge_providers_list_engines_for_provider",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/list-engines"
+    },
+    {
+      "operationId": "edge_providers_add_turso_database",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/turso-databases",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "url": "parity",
+        "token": "parity"
+      }
+    },
+    {
+      "operationId": "edge_providers_add_turso_database",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/turso-databases",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "url": "parity",
+        "token": "parity"
+      }
+    },
+    {
+      "operationId": "edge_providers_remove_turso_database",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/turso-databases/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_providers_remove_turso_database",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/turso-databases/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_providers_test_turso_database",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/turso-databases/00000000-0000-4000-8000-000000000000/test"
+    },
+    {
+      "operationId": "edge_providers_test_turso_database",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/turso-databases/00000000-0000-4000-8000-000000000000/test"
+    },
+    {
+      "operationId": "edge_providers_get_provider",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-providers/{{provider_id}}"
+    },
+    {
+      "operationId": "edge_providers_get_provider",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_providers_update_provider",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-providers/{{provider_id}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_providers_update_provider",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_providers_delete_provider",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-providers/{{provider_id}}"
+    },
+    {
+      "operationId": "edge_providers_delete_provider",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_providers_get_credentials",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-providers/{{provider_id}}/credentials"
+    },
+    {
+      "operationId": "edge_providers_get_credentials",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/credentials"
+    },
+    {
+      "operationId": "edge_queues_list_edge_queues",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-queues/"
+    },
+    {
+      "operationId": "edge_queues_list_edge_queues",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-queues/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_queues_create_edge_queue",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-queues/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "queue_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_queues_batch_delete_queues",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-queues/batch/delete",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ids": []
+      }
+    },
+    {
+      "operationId": "edge_queues_batch_delete_queues",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-queues/batch/delete/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ids": []
+      }
+    },
+    {
+      "operationId": "edge_queues_test_connection_inline",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-queues/test-connection",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider": "parity",
+        "queue_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_queues_test_connection_inline",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-queues/test-connection/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider": "parity",
+        "queue_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_queues_update_edge_queue",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-queues/{{queue_id}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_queues_update_edge_queue",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/edge-queues/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_queues_delete_edge_queue",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-queues/{{queue_id}}"
+    },
+    {
+      "operationId": "edge_queues_delete_edge_queue",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-queues/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_queues_test_edge_queue",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-queues/{{queue_id}}/test/"
+    },
+    {
+      "operationId": "edge_queues_test_edge_queue",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-queues/00000000-0000-4000-8000-000000000000/test/"
+    },
+    {
+      "operationId": "edge_vectors_list_edge_vectors",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-vectors/"
+    },
+    {
+      "operationId": "edge_vectors_list_edge_vectors",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/edge-vectors/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_vectors_create_edge_vector",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-vectors/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "vector_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_vectors_batch_delete_vectors",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-vectors/batch/delete",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ids": []
+      }
+    },
+    {
+      "operationId": "edge_vectors_batch_delete_vectors",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-vectors/batch/delete/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "ids": []
+      }
+    },
+    {
+      "operationId": "edge_vectors_test_connection_inline",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-vectors/test-connection",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider": "parity",
+        "vector_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_vectors_test_connection_inline",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-vectors/test-connection/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "provider": "parity",
+        "vector_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_vectors_update_edge_vector",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-vectors/{{vector_id}}",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_vectors_update_edge_vector",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/edge-vectors/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "edge_vectors_delete_edge_vector",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/edge-vectors/{{vector_id}}"
+    },
+    {
+      "operationId": "edge_vectors_delete_edge_vector",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/edge-vectors/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "edge_vectors_test_edge_vector_connection",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-vectors/{{vector_id}}/test"
+    },
+    {
+      "operationId": "edge_vectors_test_edge_vector_connection",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/edge-vectors/00000000-0000-4000-8000-000000000000/test"
+    },
+    {
+      "operationId": "agent_integrations_list_mcp_servers",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/mcp-servers"
+    },
+    {
+      "operationId": "agent_integrations_list_mcp_servers",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_create_mcp_server",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/mcp-servers",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "slug": "parity",
+        "url": "parity"
+      }
+    },
+    {
+      "operationId": "agent_integrations_create_mcp_server",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "slug": "parity",
+        "url": "parity"
+      }
+    },
+    {
+      "operationId": "agent_integrations_get_mcp_server",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_get_mcp_server",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_update_mcp_server",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "agent_integrations_update_mcp_server",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "agent_integrations_delete_mcp_server",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_delete_mcp_server",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "agent_integrations_test_mcp_server",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000/test"
+    },
+    {
+      "operationId": "agent_integrations_test_mcp_server",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000/test"
+    },
+    {
+      "operationId": "agent_integrations_list_mcp_server_tools",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000/tools"
+    },
+    {
+      "operationId": "agent_integrations_list_mcp_server_tools",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000/tools"
+    },
+    {
+      "operationId": "pages_get_pages",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/pages/"
+    },
+    {
+      "operationId": "pages_get_pages",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "pages_create_page_endpoint",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "slug": "parity"
+      }
+    },
+    {
+      "operationId": "pages_get_homepage",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/pages/homepage/"
+    },
+    {
+      "operationId": "pages_get_homepage",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/pages/homepage/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "pages_get_public_page",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/pages/public/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "pages_get_public_page",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/pages/public/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "pages_get_page",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/pages/{{page_id}}/"
+    },
+    {
+      "operationId": "pages_get_page",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "pages_update_page_endpoint",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/pages/{{page_id}}/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "pages_update_page_endpoint",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "pages_delete_page",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/pages/{{page_id}}/"
+    },
+    {
+      "operationId": "pages_delete_page",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "pages_update_page_layout",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/pages/{{page_id}}/layout/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "pages_update_page_layout",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/layout/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "pages_permanent_delete_page",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/pages/{{page_id}}/permanent/"
+    },
+    {
+      "operationId": "pages_permanent_delete_page",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/permanent/"
+    },
+    {
+      "operationId": "pages_publish_to_targets_batch",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/pages/{{page_id}}/publish-batch/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": []
+      }
+    },
+    {
+      "operationId": "pages_publish_to_targets_batch",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/publish-batch/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "engine_ids": []
+      }
+    },
+    {
+      "operationId": "pages_publish_to_target",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/pages/{{page_id}}/publish/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "pages_publish_to_target",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/publish/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "pages_restore_page",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/pages/{{page_id}}/restore/"
+    },
+    {
+      "operationId": "pages_restore_page",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/restore/"
+    },
+    {
+      "operationId": "pages_rollback_to_version",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/pages/{{page_id}}/rollback/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "version_id": "parity"
+      }
+    },
+    {
+      "operationId": "pages_rollback_to_version",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/rollback/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "version_id": "parity"
+      }
+    },
+    {
+      "operationId": "pages_unpublish_page_from_target",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/pages/{{page_id}}/unpublish/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "pages_unpublish_page_from_target",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/unpublish/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "pages_list_versions",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/pages/{{page_id}}/versions/"
+    },
+    {
+      "operationId": "pages_list_versions",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/versions/"
+    },
+    {
+      "operationId": "pages_create_manual_version",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/pages/{{page_id}}/versions/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "pages_create_manual_version",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/versions/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "pages_get_version_detail",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/pages/{{page_id}}/versions/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "pages_get_version_detail",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/pages/00000000-0000-4000-8000-000000000000/versions/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "project_get_project_endpoint",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/project/"
+    },
+    {
+      "operationId": "project_get_project_endpoint",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/project/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "project_update_project_endpoint",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/project/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "project_update_project_endpoint",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/project/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "project_upload_branding_asset",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/project/assets/upload/"
+    },
+    {
+      "operationId": "project_upload_branding_asset",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/project/assets/upload/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "meta_queue_health",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/queue/health"
+    },
+    {
+      "operationId": "meta_queue_health",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/queue/health/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "security_events_list_security_events",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/security-events/"
+    },
+    {
+      "operationId": "security_events_list_security_events",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/security-events/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "security_events_security_events_summary",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/security-events/summary"
+    },
+    {
+      "operationId": "security_events_security_events_summary",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/security-events/summary/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "settings_get_general_settings",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/settings/general"
+    },
+    {
+      "operationId": "settings_get_general_settings",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/settings/general/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "settings_update_general_settings",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/settings/general",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "settings_update_general_settings",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/settings/general/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "settings_send_admin_invite",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/settings/invites",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "email": "parity"
+      }
+    },
+    {
+      "operationId": "settings_send_admin_invite",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/settings/invites/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "email": "parity"
+      }
+    },
+    {
+      "operationId": "settings_get_privacy_settings",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/settings/privacy/"
+    },
+    {
+      "operationId": "settings_get_privacy_settings",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/settings/privacy/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "settings_update_privacy_settings",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/settings/privacy/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "settings_update_privacy_settings",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/settings/privacy/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "settings_get_redis_settings",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/settings/redis/"
+    },
+    {
+      "operationId": "settings_get_redis_settings",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/settings/redis/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "settings_update_redis_settings",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/settings/redis/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "settings_update_redis_settings",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/settings/redis/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "settings_test_redis_connection",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/settings/redis/test/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "settings_test_redis_connection",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/settings/redis/test/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "settings_get_security_settings",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/settings/security/"
+    },
+    {
+      "operationId": "settings_get_security_settings",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/settings/security/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "settings_update_security_settings",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/settings/security/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "settings_update_security_settings",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/settings/security/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "settings_collect_telemetry",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/settings/telemetry",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "install_id": "parity",
+        "edition": "parity",
+        "page_count": 1,
+        "automation_count": 1,
+        "data_sources": [],
+        "storage_providers": [],
+        "email_providers": []
+      }
+    },
+    {
+      "operationId": "settings_collect_telemetry",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/settings/telemetry/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "install_id": "parity",
+        "edition": "parity",
+        "page_count": 1,
+        "automation_count": 1,
+        "data_sources": [],
+        "storage_providers": [],
+        "email_providers": []
+      }
+    },
+    {
+      "operationId": "settings_validate_license",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/settings/validate-license",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "license_key": "parity",
+        "install_id": "parity"
+      }
+    },
+    {
+      "operationId": "settings_validate_license",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/settings/validate-license/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "license_key": "parity",
+        "install_id": "parity"
+      }
+    },
+    {
+      "operationId": "storage_list_buckets",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/buckets"
+    },
+    {
+      "operationId": "storage_list_buckets",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_create_bucket",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/storage/buckets",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_create_bucket",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_get_bucket",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_get_bucket",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_update_bucket",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_update_bucket",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_delete_bucket",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_delete_bucket",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_empty_bucket",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000/empty"
+    },
+    {
+      "operationId": "storage_empty_bucket",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000/empty"
+    },
+    {
+      "operationId": "storage_compute_size",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/compute-size"
+    },
+    {
+      "operationId": "storage_compute_size",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/storage/compute-size/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_create_folder",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/storage/create-folder",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_create_folder",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/storage/create-folder/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_delete_files",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/storage/delete",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_delete_files",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/storage/delete/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_list_files",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/list"
+    },
+    {
+      "operationId": "storage_list_files",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/storage/list/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_move_file",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/storage/move",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_move_file",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/storage/move/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_move_file_cross",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/storage/move-cross",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_move_file_cross",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/storage/move-cross/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_get_move_status",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/move-status/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_get_move_status",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/storage/move-status/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_list_netlify_sites",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/netlify-sites"
+    },
+    {
+      "operationId": "storage_list_netlify_sites",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/storage/netlify-sites/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_create_netlify_site",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/storage/netlify-sites",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_create_netlify_site",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/storage/netlify-sites/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_list_storage_providers",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/providers/"
+    },
+    {
+      "operationId": "storage_list_storage_providers",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/storage/providers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_create_storage_provider",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/storage/providers/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_create_storage_provider",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/storage/providers/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_delete_storage_provider",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/storage/providers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_delete_storage_provider",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/storage/providers/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_get_public_url",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/public-url"
+    },
+    {
+      "operationId": "storage_get_public_url",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/storage/public-url/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_get_signed_url",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/signed-url"
+    },
+    {
+      "operationId": "storage_get_signed_url",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/storage/signed-url/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_upload_file",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/storage/upload"
+    },
+    {
+      "operationId": "storage_upload_file",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/storage/upload/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_list_vercel_projects",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/vercel-projects"
+    },
+    {
+      "operationId": "storage_list_vercel_projects",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/storage/vercel-projects/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "storage_create_vercel_project",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/storage/vercel-projects",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "storage_create_vercel_project",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/storage/vercel-projects/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "list_datasources_datasources__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/"
+    },
+    {
+      "operationId": "list_datasources_datasources__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "create_datasource_datasources__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "type": "supabase"
+      }
+    },
+    {
+      "operationId": "search_all_datasources_datasources_search_all__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/search-all/"
+    },
+    {
+      "operationId": "search_all_datasources_datasources_search_all__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/search-all/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "sheets_connect_callback_datasources_sheets_connect_callback__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/sheets/connect/callback/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "token": "parityxxxx",
+        "spreadsheetId": "parity",
+        "webAppUrl": "parityxxxx",
+        "webAppSecret": "parityxx"
+      }
+    },
+    {
+      "operationId": "sheets_connect_callback_datasources_sheets_connect_callback__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/sheets/connect/callback/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "token": "parityxxxx",
+        "spreadsheetId": "parity",
+        "webAppUrl": "parityxxxx",
+        "webAppSecret": "parityxx"
+      }
+    },
+    {
+      "operationId": "sheets_connect_issue_datasources_sheets_connect_issue__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/sheets/connect/issue/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "sheets_connect_issue_datasources_sheets_connect_issue__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/sheets/connect/issue/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "sheets_connect_status_datasources_sheets_connect_status__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/sheets/connect/status/"
+    },
+    {
+      "operationId": "sheets_connect_status_datasources_sheets_connect_status__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/sheets/connect/status/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "test_new_datasource_datasources_test_raw__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/test-raw/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "type": "supabase"
+      }
+    },
+    {
+      "operationId": "test_new_datasource_datasources_test_raw__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/test-raw/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "type": "supabase"
+      }
+    },
+    {
+      "operationId": "get_datasource_datasources__datasource_id___get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/"
+    },
+    {
+      "operationId": "get_datasource_datasources__datasource_id___get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "update_datasource_datasources__datasource_id___put",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/sync/datasources/{{datasource_id}}/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "update_datasource_datasources__datasource_id___put",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "delete_datasource_datasources__datasource_id___delete",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/sync/datasources/{{datasource_id}}/"
+    },
+    {
+      "operationId": "delete_datasource_datasources__datasource_id___delete",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "apply_datasource_migration_datasources__datasource_id__apply_migration_post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/apply-migration"
+    },
+    {
+      "operationId": "apply_datasource_migration_datasources__datasource_id__apply_migration_post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/apply-migration"
+    },
+    {
+      "operationId": "check_datasource_migration_datasources__datasource_id__check_migration_get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/check-migration"
+    },
+    {
+      "operationId": "check_datasource_migration_datasources__datasource_id__check_migration_get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/check-migration"
+    },
+    {
+      "operationId": "get_datasource_relationships_datasources__datasource_id__relationships__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/"
+    },
+    {
+      "operationId": "get_datasource_relationships_datasources__datasource_id__relationships__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/"
+    },
+    {
+      "operationId": "create_user_relationship_datasources__datasource_id__relationships__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "from_table": "parity",
+        "from_column": "parity",
+        "to_table": "parity",
+        "to_column": "parity"
+      }
+    },
+    {
+      "operationId": "create_user_relationship_datasources__datasource_id__relationships__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "from_table": "parity",
+        "from_column": "parity",
+        "to_table": "parity",
+        "to_column": "parity"
+      }
+    },
+    {
+      "operationId": "list_user_relationships_datasources__datasource_id__relationships_user_defined__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/user-defined/"
+    },
+    {
+      "operationId": "list_user_relationships_datasources__datasource_id__relationships_user_defined__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/user-defined/"
+    },
+    {
+      "operationId": "update_relationship_datasources__datasource_id__relationships__index___put",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/00000000-0000-4000-8000-000000000000/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "from_table": "parity",
+        "from_column": "parity",
+        "to_table": "parity",
+        "to_column": "parity"
+      }
+    },
+    {
+      "operationId": "update_relationship_datasources__datasource_id__relationships__index___put",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/00000000-0000-4000-8000-000000000000/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "from_table": "parity",
+        "from_column": "parity",
+        "to_table": "parity",
+        "to_column": "parity"
+      }
+    },
+    {
+      "operationId": "remove_relationship_datasources__datasource_id__relationships__index___delete",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "remove_relationship_datasources__datasource_id__relationships__index___delete",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "search_datasource_tables_datasources__datasource_id__search_get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/search"
+    },
+    {
+      "operationId": "search_datasource_tables_datasources__datasource_id__search_get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/search"
+    },
+    {
+      "operationId": "get_datasource_tables_datasources__datasource_id__tables__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/"
+    },
+    {
+      "operationId": "get_datasource_tables_datasources__datasource_id__tables__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/"
+    },
+    {
+      "operationId": "get_table_session_datasources__datasource_id__tables__table_name__session__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/"
+    },
+    {
+      "operationId": "get_table_session_datasources__datasource_id__tables__table_name__session__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/session/"
+    },
+    {
+      "operationId": "save_table_session_datasources__datasource_id__tables__table_name__session__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "save_table_session_datasources__datasource_id__tables__table_name__session__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/session/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "clear_table_session_datasources__datasource_id__tables__table_name__session__delete",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/"
+    },
+    {
+      "operationId": "clear_table_session_datasources__datasource_id__tables__table_name__session__delete",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/session/"
+    },
+    {
+      "operationId": "get_datasource_table_aggregate_datasources__datasource_id__tables__table__aggregate__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/aggregate/"
+    },
+    {
+      "operationId": "get_datasource_table_aggregate_datasources__datasource_id__tables__table__aggregate__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/aggregate/"
+    },
+    {
+      "operationId": "get_datasource_table_data_datasources__datasource_id__tables__table__data__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/data/"
+    },
+    {
+      "operationId": "get_datasource_table_data_datasources__datasource_id__tables__table__data__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/data/"
+    },
+    {
+      "operationId": "get_distinct_values_datasources__datasource_id__tables__table__distinct__column___get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/distinct/parity_table/"
+    },
+    {
+      "operationId": "get_distinct_values_datasources__datasource_id__tables__table__distinct__column___get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/distinct/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "create_record_datasources__datasource_id__tables__table__records__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/records/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "create_record_datasources__datasource_id__tables__table__records__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/records/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "update_record_datasources__datasource_id__tables__table__records__record_id__patch",
+      "kind": "success",
+      "method": "PATCH",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/records/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "update_record_datasources__datasource_id__tables__table__records__record_id__patch",
+      "kind": "failure",
+      "method": "PATCH",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/records/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "get_table_schema_datasources__datasource_id__tables__table__schema__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/schema/"
+    },
+    {
+      "operationId": "get_table_schema_datasources__datasource_id__tables__table__schema__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/schema/"
+    },
+    {
+      "operationId": "test_datasource_update_datasources__datasource_id__test_update__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/test-update/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "test_datasource_update_datasources__datasource_id__test_update__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/test-update/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "test_datasource_datasources__datasource_id__test__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/test/"
+    },
+    {
+      "operationId": "test_datasource_datasources__datasource_id__test__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/test/"
+    },
+    {
+      "operationId": "list_datasource_views_datasources__datasource_id__views__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/views/"
+    },
+    {
+      "operationId": "list_datasource_views_datasources__datasource_id__views__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/views/"
+    },
+    {
+      "operationId": "create_datasource_view_datasources__datasource_id__views__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/views/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "target_table": "parity"
+      }
+    },
+    {
+      "operationId": "create_datasource_view_datasources__datasource_id__views__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/views/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "target_table": "parity"
+      }
+    },
+    {
+      "operationId": "get_wordpress_discovery_datasources__datasource_id__wordpress_discover__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/wordpress/discover/"
+    },
+    {
+      "operationId": "get_wordpress_discovery_datasources__datasource_id__wordpress_discover__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/wordpress/discover/"
+    },
+    {
+      "operationId": "health_health__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/health/"
+    },
+    {
+      "operationId": "health_health__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/health/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "get_redis_settings_settings_redis__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/settings/redis/"
+    },
+    {
+      "operationId": "get_redis_settings_settings_redis__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/settings/redis/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "update_redis_settings_settings_redis__put",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/sync/settings/redis/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "update_redis_settings_settings_redis__put",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/sync/settings/redis/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "test_redis_settings_redis_test__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/settings/redis/test/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "test_redis_settings_redis_test__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/settings/redis/test/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "get_datasource_view_views__view_id___get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "get_datasource_view_views__view_id___get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "update_datasource_view_views__view_id___patch",
+      "kind": "success",
+      "method": "PATCH",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "update_datasource_view_views__view_id___patch",
+      "kind": "failure",
+      "method": "PATCH",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "delete_datasource_view_views__view_id___delete",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "delete_datasource_view_views__view_id___delete",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "get_view_count_views__view_id__count_get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/count"
+    },
+    {
+      "operationId": "get_view_count_views__view_id__count_get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/count"
+    },
+    {
+      "operationId": "create_view_record_views__view_id__records_post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "create_view_record_views__view_id__records_post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "patch_view_record_views__view_id__records_patch",
+      "kind": "success",
+      "method": "PATCH",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "patch_view_record_views__view_id__records_patch",
+      "kind": "failure",
+      "method": "PATCH",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "get_view_records_views__view_id__records__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records/"
+    },
+    {
+      "operationId": "get_view_records_views__view_id__records__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records/"
+    },
+    {
+      "operationId": "trigger_view_webhook_views__view_id__trigger__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/trigger/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "trigger_view_webhook_views__view_id__trigger__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/trigger/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "start_import_wordpress_import__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/wordpress/import/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "datasource_id": "parity"
+      }
+    },
+    {
+      "operationId": "start_import_wordpress_import__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/wordpress/import/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "datasource_id": "parity"
+      }
+    },
+    {
+      "operationId": "get_import_result_wordpress_import__import_id___get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/wordpress/import/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "get_import_result_wordpress_import__import_id___get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/wordpress/import/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "import_progress_stream_wordpress_import__import_id__progress__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/wordpress/import/00000000-0000-4000-8000-000000000000/progress/"
+    },
+    {
+      "operationId": "import_progress_stream_wordpress_import__import_id__progress__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/wordpress/import/00000000-0000-4000-8000-000000000000/progress/"
+    },
+    {
+      "operationId": "themes_get_themes",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/themes/"
+    },
+    {
+      "operationId": "themes_get_themes",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/themes/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "themes_create_theme",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/themes/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "component_type": "parity",
+        "styles_data": {}
+      }
+    },
+    {
+      "operationId": "themes_delete_theme",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/themes/{{theme_id}}"
+    },
+    {
+      "operationId": "themes_delete_theme",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/themes/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "variables_get_variables",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/variables/"
+    },
+    {
+      "operationId": "variables_get_variables",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/variables/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "variables_create_variable_endpoint",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/variables/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "type": "parity"
+      }
+    },
+    {
+      "operationId": "variables_get_template_registry",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/variables/registry/"
+    },
+    {
+      "operationId": "variables_get_template_registry",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/variables/registry/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "variables_get_variable",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/variables/{{variable_id}}"
+    },
+    {
+      "operationId": "variables_get_variable",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/variables/00000000-0000-4000-8000-000000000000"
+    },
+    {
+      "operationId": "variables_update_variable_endpoint",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/variables/{{variable_id}}/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "variables_update_variable_endpoint",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/variables/00000000-0000-4000-8000-000000000000/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {}
+    },
+    {
+      "operationId": "variables_delete_variable",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/variables/{{variable_id}}/"
+    },
+    {
+      "operationId": "variables_delete_variable",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/variables/00000000-0000-4000-8000-000000000000/"
+    },
+    {
+      "operationId": "workflows_send_workflow_email",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/workflows/send-email",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "to": [],
+        "subject": "parity",
+        "html": "parity"
+      }
+    },
+    {
+      "operationId": "workflows_send_workflow_email",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/workflows/send-email/00000000-0000-4000-8000-000000000000",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "to": [],
+        "subject": "parity",
+        "html": "parity"
+      }
+    },
+    {
+      "operationId": "meta_health_check",
+      "kind": "success",
+      "method": "GET",
+      "path": "/health"
+    },
+    {
+      "operationId": "meta_health_check",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/health/00000000-0000-4000-8000-000000000000"
+    }
+  ]
+}

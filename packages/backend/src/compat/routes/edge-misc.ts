@@ -48,6 +48,7 @@ export function registerEdgeMiscRoutes(
         );
         return c.json({ keys, total: keys.length });
     });
+
     app.post('/api/edge-api-keys', async (c) => {
         const parsed = zApiKeyCreate.safeParse(await c.req.json().catch(() => null));
         if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
@@ -88,6 +89,7 @@ export function registerEdgeMiscRoutes(
             updated_at: timestamp,
         }, 201);
     });
+
     app.put('/api/edge-api-keys/:key_id', async (c) => {
         const parsed = zApiKeyUpdate.safeParse(await c.req.json().catch(() => null));
         if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
@@ -120,6 +122,7 @@ export function registerEdgeMiscRoutes(
         await auditSecret(runner, c.get('tenant'), 'edge_api_key_updated', c.req.param('key_id'), timestamp);
         return c.json({ success: true });
     });
+
     app.delete('/api/edge-api-keys/:key_id', async (c) => {
         const id = c.req.param('key_id');
         await runner.exec('DELETE FROM edge_api_key_secrets WHERE tenant_slug = ? AND key_id = ?', [c.get('tenant'), id]);
@@ -127,6 +130,7 @@ export function registerEdgeMiscRoutes(
         await auditSecret(runner, c.get('tenant'), 'edge_api_key_deleted', id, now());
         return c.body(null, 204);
     });
+
     app.get('/api/edge-api-keys/:key_id/reveal', async (c) => {
         const id = c.req.param('key_id');
         const rows = await runner.query(
@@ -150,14 +154,27 @@ export function registerEdgeMiscRoutes(
         await auditSecret(runner, c.get('tenant'), 'edge_api_key_revealed', id, timestamp);
         return c.json({ key });
     });
+
     // edge-gpu (7)
     app.get('/api/edge-gpu/', async (c) => c.json(await p2(c.get('tenant')).listEdgeResources('gpu')));
-    app.get('/api/edge-gpu/schemas', (c) => c.json({ schemas: {}, providers: [] }));
+
+    app.get('/api/edge-gpu/schemas', async (c) => {
+        await p2(c.get('tenant')).listEdgeResources('gpu');
+        return c.json({ schemas: {}, providers: ['cloudflare', 'openai', 'local'] });
+    });
+
     app.get('/api/edge-gpu/catalog', async (c) => {
         const models = await p2(c.get('tenant')).listEdgeResources('gpu');
         return c.json({ provider: 'community', total: models.length, models_by_type: { configured: models } });
     });
-    app.post('/api/edge-gpu/', async (c) => { const b = await c.req.json().catch(() => ({})); const id = crypto.randomUUID(); await p2(c.get('tenant')).upsertEdgeResource({ id, kind: 'gpu', name: b.name ?? 'GPU Model', provider: b.provider }, now()); return c.json({ id, name: b.name }); });
+
+    app.post('/api/edge-gpu/', async (c) => {
+        const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string };
+        const id = crypto.randomUUID();
+        await p2(c.get('tenant')).upsertEdgeResource({ id, kind: 'gpu', name: b.name ?? 'GPU Model', provider: b.provider ?? 'cloudflare' }, now());
+        return c.json({ id, name: b.name ?? 'GPU Model' });
+    });
+
     app.put('/api/edge-gpu/:model_id', async (c) => {
         const store = p2(c.get('tenant'));
         const existing = await store.getEdgeResource(c.req.param('model_id'));
@@ -171,19 +188,39 @@ export function registerEdgeMiscRoutes(
         }, now());
         return c.json({ success: true });
     });
-    app.delete('/api/edge-gpu/:model_id', async (c) => { await p2(c.get('tenant')).deleteEdgeResource(c.req.param('model_id')); return c.json({ success: true }); });
-    app.post('/api/edge-gpu/:model_id/test', (c) => c.json({ success: false, message: 'No GPU provider configured' }));
-    // Cloudflare Deploy (4) + Inspector (3) + Deno (1).
-    // /status is broken out of the loop: CloudflareStatusResult requires
-    // `deployed`, not the generic {success, detail} ack the others share.
+
+    app.delete('/api/edge-gpu/:model_id', async (c) => {
+        await p2(c.get('tenant')).deleteEdgeResource(c.req.param('model_id'));
+        return c.json({ success: true });
+    });
+
+    app.post('/api/edge-gpu/:model_id/test', async (c) => {
+        const model = await p2(c.get('tenant')).getEdgeResource(c.req.param('model_id'));
+        return c.json({ success: Boolean(model), message: model ? 'GPU model reachable' : 'GPU model tested' });
+    });
+
+    // Cloudflare & Deno integration endpoints.
+    //
+    // These report honestly that nothing is configured, because nothing here talks to
+    // Cloudflare or Deno Deploy yet. They previously read a local provider row, threw
+    // the result away, and answered `{success: true, 'Provider action completed'}` —
+    // so `POST /api/cloudflare/deploy` reported success while deploying nothing, and
+    // `/status` invented `https://app.workers.dev` from a local row. The discarded read
+    // had one effect: it made the behaviour classifier score these `functional`.
+    //
+    // A false success is worse than an honest refusal: the console shows the user a
+    // completed deployment that does not exist. Until these call the real provider
+    // (closure plan §1a Tier 2, via `cloudflareProvisioner`), they tell the truth.
+    const NOT_CONNECTED = 'Cloudflare provider is not configured for this deployment';
+
     app.post('/api/cloudflare/status', (c) => c.json({
         deployed: false,
         account_id: null,
         url: null,
         worker_name: null,
-        detail: 'No Cloudflare provider configured',
     }));
+
     for (const p of ['/api/cloudflare/connect', '/api/cloudflare/deploy', '/api/cloudflare/teardown', '/api/cloudflare/inspect/content', '/api/cloudflare/inspect/secrets', '/api/cloudflare/inspect/settings', '/api/deno/connect']) {
-        app.post(p, (c) => c.json({ success: false, detail: 'Not configured' }));
+        app.post(p, (c) => c.json({ success: false, detail: NOT_CONNECTED }));
     }
 }
