@@ -31,7 +31,7 @@ Where any older note conflicts with this file, this file controls.
 | **P0** | Product repo emits a committed, typed OpenAPI contract + generated client | ✅ **Green (Gate 0).** The "artifact lags source" reading was a CRLF false positive: `core.autocrlf` rewrote the generated JSON on checkout, so byte-comparing gates saw phantom edits (`--numstat` showed 0 changed lines). Fixed by pinning those paths to LF in `.gitattributes` (product `e79abee`). |
 | **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ✅ **Closed.** `x-implemented` is route-derived; all 286 responses validate; all 286 operations carry a runtime-derived, fingerprint-gated behavior status; all typed inputs are included in the negative sweep. |
 | **P2** | 286 operations implementing the community contract | ✅ **Closed for the recorded community scope.** `163 functional / 10 deliberate protocol/catalog shape-only / 113 explicit external-disabled / 0 stub`. API keys are hashed plus one-time encrypted reveal; password reset is expiring, single-use, mutates credentials, and invalidates sessions; 139/139 identifier-bearing operations pass the two-tenant matrix. External-provider operations remain excluded from the functional count until live credentials exist. |
-| **P3** | Serve the product console from the cf-full worker | ⚠️ **Locally integrated; acceptance open.** Routing/auth/static-assets/setup-hardening are real and smoke-green (23 checks). Pins agree and are gated (Gate 0). **Still open:** no Playwright, no real-CF deploy proof, no owner sign-off. A field incident (two dashboards) was found and remediated. |
+| **P3** | Serve the product console from the cf-full worker | ⚠️ **Deployed and browser-verified; one surface missing.** A live CF deploy plus a 15-case Playwright suite pass, but the console's `/api/sync/*` datasource API is unimplemented (§7a). Routing/auth/static-assets/setup-hardening are real and smoke-green (23 checks). Pins agree and are gated (Gate 0). **Still open:** owner sign-off, scheduled cross-repo drift, legacy `/api/console/*` retirement, and §7a. A field incident (two dashboards) was found and remediated. |
 
 **Current machine-verified facts (local 2026-07-28; remote CI pending the next commit):**
 - **Response conformance: `CONFORMS 286 / VIOLATES 0 / UNREACHABLE 0 / NO_SCHEMA 0 / EXTERNAL_DISABLED 0 / STUB 0`** — validated **286/286 (100%)**. CI's `compat-conformance.mjs --gate` requires `VIOLATES 0`, `UNREACHABLE 0`, and `NO_SCHEMA 0`.
@@ -40,12 +40,12 @@ Where any older note conflicts with this file, this file controls.
 - Negative/fuzz gate: **286/286 audited**; 154 operations reject 157 generated
   malformed path/query/JSON/multipart cases; 132 operations have no falsifiable typed input.
 - Tenant matrix: **139/139 identifier-bearing operations isolated**, snapshotting all 26 tenant-scoped tables per operation; two public capability/availability operations are classified separately.
-- Vendored community contract: **286 ops / 308 schemas / 31 tags** (the 286 includes 2 `OPTIONS` ops the early P1/P2 counts omitted; hence the historical 284).
+- Vendored community contract: **286 ops / 308 schemas / 31 tags** (the 286 includes 2 `OPTIONS` ops the early P1/P2 counts omitted; hence the historical 284). ⚠️ **This is not the whole product API:** the ~47-op `/api/sync/*` surface is a mounted FastAPI sub-app and is absent from the exported spec — see §7a.
 - Framework backend suite (including response + auth/security behavior gates): green
   locally. Last cf-full smoke: **23/23 green**. Worker **238.3 KB gzip** (< 1 MB).
   Migrations are at **v14** (API-key ciphertext, password-reset capabilities,
   session generations, and immutable security audit events).
-- **Pins agree:** `PRODUCT_COMMIT` = `CONSOLE_PIN.commit` = `bf1ac54…`, and disagreement is a hard gate error rather than a silent condition.
+- **Pins agree:** `PRODUCT_COMMIT` = `CONSOLE_PIN.commit` = `8eb642c…`, and disagreement is a hard gate error. Provenance is also verified by content now, not just by matching pin strings (see §9).
 - Last remote **CI green** (`30299868508` on `229d48b`), covering `pnpm -r build` unfiltered, the cf-full smoke suite, the console-split guarantees, and the pre-fixture conformance gate.
 
 **What is measured vs what is not** — the honest denominator:
@@ -160,7 +160,7 @@ part of contract determinism).
 
 **Closed by Gate 0:** the apparent regenerated-but-uncommitted delta was CRLF-only,
 not a source/artifact lag. `.gitattributes` now pins generated artifacts to LF, the
-contract and console both pin `bf1ac54`, and disagreement is a hard gate failure.
+contract and console both pin `8eb642c`, and disagreement is a hard gate failure.
 
 *Deferred (not blocking):* the 18 remaining product-side `src/services/*` → generated-client migrations (product task #111).
 
@@ -248,7 +248,7 @@ per nav area and owner field-test sign-off.
   response shapes.
 - ❌ **No real-Cloudflare deploy proof** (a fresh `wrangler` deploy with browser
   login/render + secure-cookie/asset-cache verification).
-- ✅ **Pins agree:** console and contract both name `bf1ac54…`; disagreement is gated.
+- ✅ **Pins agree:** console and contract both name `8eb642c…`; disagreement is gated, and provenance is verified by content.
 - ❌ **No scheduled cross-repo drift** (re-vendor from the product repo on a
   schedule; current CI only compares against the already-vendored snapshot).
 - ⚠️ **Legacy `/api/console/*` retirement** gated on an endpoint-consumer map + the
@@ -335,6 +335,53 @@ legacy SPA look operational rather than fail fast; the smoke proved `/setup` *re
 but not the post-setup *destination*; no artifact-content gate asserted the setup JS
 excluded dashboard routes; the master_admin role legitimately needed for product admin
 also lit up cloud-like legacy nav.
+
+---
+
+## 7a. The `/api/sync/*` surface is missing from the contract (found 2026-07-28)
+
+**The 286-op denominator was never the whole product API.** A live Cloudflare deploy
+surfaced a 404 the browser suite had allow-listed:
+
+```
+GET https://<worker>.workers.dev/api/sync/datasources/  →  404
+```
+
+That endpoint is **real and served by the product**. `/api/sync/*` is a FastAPI
+**sub-application** (`app/services/sync/main.py`, `sync_app`) mounted at `/api/sync`,
+carrying roughly **47 operations** across four routers:
+
+| Router | Ops |
+|---|---:|
+| `datasources/` (crud, data, schema, relationships, testing, migration, views, sheets, wordpress) | 33 |
+| `views.py` | 8 |
+| `wordpress.py` | 3 |
+| `settings.py` | 3 |
+
+Because it is a mounted sub-app, its routes never appear in the **main** app's exported
+OpenAPI. `export_openapi.py` walks the main app, so the contract has always described
+341 full / 286 community ops **excluding this surface entirely**. Every CF-22 gate
+inherited that blind spot: the contract could not describe what it never saw, so the
+framework never implemented it, and no conformance, drift, negative, or tenant gate
+could notice.
+
+**Impact is not peripheral.** 22 console source files call `/api/sync` — the Builder's
+data-binding, data tables, form field settings, and the datasource selector. Data
+Studio and any page bound to a datasource depend on it.
+
+**Why this was initially misdiagnosed.** The endpoint was checked against
+`openapi.full.json` (341 ops), found absent, and concluded to be dead client code that
+the product would 404 identically. That check was insufficient: absence from the
+exported spec proves nothing about a mounted sub-app. The product serves it; the
+framework does not.
+
+**Status:** open. The browser suite documents the gap with an explicit assertion
+(test 15) rather than silently masking it, so it appears in every report and fails the
+day the surface is implemented. It does **not** block the rest of Gate 4.
+
+**Before closing CF-22, decide:** implement `/api/sync/*` on framework primitives
+(a real datasource layer, not shape-only), or record it as an explicit, owner-approved
+descope with the console areas that degrade named.
 
 ---
 
