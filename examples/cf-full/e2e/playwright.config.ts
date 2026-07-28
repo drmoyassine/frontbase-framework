@@ -49,8 +49,12 @@ export default defineConfig({
     projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
     // Only manage a server when testing locally; an external target is already up.
     webServer: externalTarget ? undefined : {
+        // NOTE: the worker is built by the `e2e` npm script BEFORE this runs. Do not
+        // build here — wrangler's watcher would see dist/worker.mjs appear under a
+        // live server and reload mid-suite, failing whichever test was in flight
+        // with "Your worker restarted mid-request".
         command: [
-            'node build.mjs && wrangler dev',
+            'wrangler dev',
             `--port ${PORT}`,
             '--var SESSION_SECRET:e2e-secret-not-for-prod-0123456789abcdef',
             `--var ADMIN_EMAIL:${ADMIN.email}`,

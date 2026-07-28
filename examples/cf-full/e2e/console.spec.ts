@@ -31,10 +31,14 @@ const CONSOLE = '/frontbase-admin';
  * implement it. 22 console files depend on it — the Builder's data-binding, data
  * tables, form fields and datasource selector.
  *
- * It is tolerated here so the rest of the suite can run, NOT because it is
- * acceptable. Test 15 asserts the gap explicitly, so it is visible in every
- * report and will fail loudly the day it is implemented (forcing this list to be
- * updated rather than silently rotting). Any OTHER /api/ 404 still fails.
+ * As of product 7fbc0b9 the exporter walks mounted sub-apps, so these 48 operations
+ * ARE now in the contract — and the framework auto-registers 501 stubs for them.
+ * They therefore answer 501 ("declared, not implemented") rather than 404 ("no such
+ * route"), which is the honest state and what the drift-gate burn-down reflects.
+ *
+ * Tolerated here so the rest of the suite can run, NOT because it is acceptable.
+ * Test 15 asserts the gap explicitly, so it is visible in every report and fails
+ * the day the surface is implemented. Any OTHER failing /api/ call still fails.
  */
 const KNOWN_GAP_SYNC_API = ['/api/sync/'];
 
@@ -178,17 +182,20 @@ test.describe('CF-22 Gate 4 — console acceptance', () => {
     // Documents the gap rather than hiding it: this test FAILS the day /api/sync
     // is implemented, forcing KNOWN_GAP_SYNC_API to be revisited instead of quietly
     // masking a surface that has since started working.
-    test('15. KNOWN GAP — the /api/sync datasources API is not implemented', async ({ page }) => {
+    test('15. KNOWN GAP — the /api/sync datasources API is declared but not implemented', async ({ page }) => {
         await login(page);
         const status = await page.evaluate(async () => {
             const r = await fetch('/api/sync/datasources/', { credentials: 'include' });
             return r.status;
         });
+        // 501 = in the contract, auto-stubbed, no handler. 404 would mean the
+        // contract regressed to omitting the mounted sub-app again.
         expect(
             status,
-            'If this is no longer 404, /api/sync has been implemented — remove it from ' +
-            'KNOWN_GAP_SYNC_API so real regressions on that surface are caught.',
-        ).toBe(404);
+            'Expected 501 (declared, unimplemented). A 2xx means /api/sync now works — ' +
+            'remove it from KNOWN_GAP_SYNC_API so real regressions are caught. A 404 means ' +
+            'the exporter stopped walking mounted sub-apps.',
+        ).toBe(501);
     });
 
     test('14. logging out revokes access to the console', async ({ page }) => {

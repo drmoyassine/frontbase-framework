@@ -1567,6 +1567,81 @@
         "title": "ColumnInfo",
         "type": "object"
       },
+      "ColumnSchema": {
+        "description": "Schema for a single column.",
+        "properties": {
+          "default": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default"
+          },
+          "foreign_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreign Column"
+          },
+          "foreign_table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreign Table"
+          },
+          "is_foreign": {
+            "default": false,
+            "title": "Is Foreign",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nullable": {
+            "default": true,
+            "title": "Nullable",
+            "type": "boolean"
+          },
+          "primary_key": {
+            "default": false,
+            "title": "Primary Key",
+            "type": "boolean"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "ColumnSchema",
+        "type": "object"
+      },
       "ComponentThemeCreate": {
         "properties": {
           "component_type": {
@@ -2171,6 +2246,1105 @@
         "title": "DatabaseConnectionResponse",
         "type": "object"
       },
+      "DatasourceCreate": {
+        "description": "Schema for creating a datasource.",
+        "properties": {
+          "anon_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anon Key"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "api_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Url"
+          },
+          "app_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Password"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "connection_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Uri"
+          },
+          "database": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database"
+          },
+          "extra_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Config"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "port": {
+            "anyOf": [
+              {
+                "maximum": 65535.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Port"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "table_prefix": {
+            "default": "wp_",
+            "maxLength": 50,
+            "title": "Table Prefix",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DatasourceType"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "DatasourceCreate",
+        "type": "object"
+      },
+      "DatasourceResponse": {
+        "description": "Schema for datasource response.",
+        "properties": {
+          "api_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "database": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database"
+          },
+          "extra_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Config"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "last_test_success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Test Success"
+          },
+          "last_tested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Tested At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "port": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Port"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "table_prefix": {
+            "default": "wp_",
+            "title": "Table Prefix",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DatasourceType"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "views": {
+            "items": {
+              "$ref": "#/components/schemas/DatasourceViewResponse"
+            },
+            "title": "Views",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DatasourceResponse",
+        "type": "object"
+      },
+      "DatasourceTestRequest": {
+        "description": "Schema for testing a new datasource connection.",
+        "properties": {
+          "anon_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anon Key"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "api_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Url"
+          },
+          "app_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Password"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "connection_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Uri"
+          },
+          "database": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database"
+          },
+          "extra_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Config"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "port": {
+            "anyOf": [
+              {
+                "maximum": 65535.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Port"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "table_prefix": {
+            "default": "wp_",
+            "maxLength": 50,
+            "title": "Table Prefix",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DatasourceType"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "DatasourceTestRequest",
+        "type": "object"
+      },
+      "DatasourceTestResult": {
+        "description": "Schema for connection test result.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          },
+          "tables": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tables"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "DatasourceTestResult",
+        "type": "object"
+      },
+      "DatasourceType": {
+        "description": "Supported datasource types.",
+        "enum": [
+          "supabase",
+          "postgres",
+          "wordpress",
+          "wordpress_rest",
+          "wordpress_graphql",
+          "wordpress_plugin",
+          "neon",
+          "planetscale",
+          "turso",
+          "mysql",
+          "sqlite",
+          "google_sheets",
+          "rest"
+        ],
+        "title": "DatasourceType",
+        "type": "string"
+      },
+      "DatasourceUpdate": {
+        "description": "Schema for updating a datasource.",
+        "properties": {
+          "anon_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anon Key"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "api_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Url"
+          },
+          "app_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Password"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "connection_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Uri"
+          },
+          "database": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database"
+          },
+          "extra_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Config"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "port": {
+            "anyOf": [
+              {
+                "maximum": 65535.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Port"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "table_prefix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Prefix"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "title": "DatasourceUpdate",
+        "type": "object"
+      },
+      "DatasourceViewCreate": {
+        "description": "Schema for creating a datasource view.",
+        "properties": {
+          "column_order": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Column Order",
+            "type": "array"
+          },
+          "datasource_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasource Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "field_mappings": {
+            "additionalProperties": true,
+            "title": "Field Mappings",
+            "type": "object"
+          },
+          "filters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Filters",
+            "type": "array"
+          },
+          "linked_views": {
+            "additionalProperties": true,
+            "title": "Linked Views",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "pinned_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Pinned Columns",
+            "type": "array"
+          },
+          "target_table": {
+            "title": "Target Table",
+            "type": "string"
+          },
+          "visible_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Visible Columns",
+            "type": "array"
+          },
+          "webhooks": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Webhooks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "target_table"
+        ],
+        "title": "DatasourceViewCreate",
+        "type": "object"
+      },
+      "DatasourceViewResponse": {
+        "description": "Schema for datasource view response.",
+        "properties": {
+          "column_order": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Column Order",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "datasource_id": {
+            "title": "Datasource Id",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "field_mappings": {
+            "additionalProperties": true,
+            "title": "Field Mappings",
+            "type": "object"
+          },
+          "filters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Filters",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "linked_views": {
+            "additionalProperties": true,
+            "title": "Linked Views",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "pinned_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Pinned Columns",
+            "type": "array"
+          },
+          "target_table": {
+            "title": "Target Table",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "visible_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Visible Columns",
+            "type": "array"
+          },
+          "webhooks": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Webhooks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "target_table",
+          "id",
+          "datasource_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DatasourceViewResponse",
+        "type": "object"
+      },
+      "DatasourceViewUpdate": {
+        "description": "Schema for updating a datasource view.",
+        "properties": {
+          "column_order": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column Order"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "field_mappings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Mappings"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filters"
+          },
+          "linked_views": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Views"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "pinned_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned Columns"
+          },
+          "target_table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Table"
+          },
+          "visible_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visible Columns"
+          },
+          "webhooks": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhooks"
+          }
+        },
+        "title": "DatasourceViewUpdate",
+        "type": "object"
+      },
       "DeleteEdgeVectorResult": {
         "properties": {
           "id": {
@@ -2440,6 +3614,25 @@
           "success"
         ],
         "title": "DistinctValuesEnvelope",
+        "type": "object"
+      },
+      "DistinctValuesResponse": {
+        "additionalProperties": true,
+        "description": "GET /{datasource_id}/tables/{table}/distinct/{column}/.",
+        "properties": {
+          "data": {
+            "default": [],
+            "items": {},
+            "title": "Data",
+            "type": "array"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "title": "DistinctValuesResponse",
         "type": "object"
       },
       "EdgeAgentProfileCreate": {
@@ -6375,6 +7568,94 @@
         "title": "MessageResponse",
         "type": "object"
       },
+      "MigrationApplyResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "applicable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicable"
+          },
+          "applied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "title": "MigrationApplyResponse",
+        "type": "object"
+      },
+      "MigrationCheckResponse": {
+        "additionalProperties": true,
+        "description": "GET check-migration \u2014 `applicable` False for non-Supabase datasources.",
+        "properties": {
+          "applicable": {
+            "title": "Applicable",
+            "type": "boolean"
+          },
+          "applied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "applicable"
+        ],
+        "title": "MigrationCheckResponse",
+        "type": "object"
+      },
       "MoveEngineToProjectEndpointResult": {
         "properties": {
           "engine_id": {
@@ -8008,6 +9289,31 @@
         "title": "ReconfigureRequest",
         "type": "object"
       },
+      "RecordMutationResponse": {
+        "additionalProperties": true,
+        "description": "POST/PATCH a single record \u2014 echoes the affected row.",
+        "properties": {
+          "record": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "title": "RecordMutationResponse",
+        "type": "object"
+      },
       "RedisSettings": {
         "properties": {
           "cache_ttl_count": {
@@ -8060,6 +9366,104 @@
         "title": "RedisSettings",
         "type": "object"
       },
+      "RedisSettingsResponse": {
+        "description": "Schema for Redis settings response.",
+        "properties": {
+          "cache_ttl_count": {
+            "default": 300,
+            "title": "Cache Ttl Count",
+            "type": "integer"
+          },
+          "cache_ttl_data": {
+            "default": 60,
+            "title": "Cache Ttl Data",
+            "type": "integer"
+          },
+          "redis_enabled": {
+            "default": false,
+            "title": "Redis Enabled",
+            "type": "boolean"
+          },
+          "redis_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis Token"
+          },
+          "redis_type": {
+            "default": "upstash",
+            "title": "Redis Type",
+            "type": "string"
+          },
+          "redis_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis Url"
+          }
+        },
+        "title": "RedisSettingsResponse",
+        "type": "object"
+      },
+      "RedisSettingsUpdate": {
+        "description": "Schema for updating Redis settings.",
+        "properties": {
+          "cache_ttl_count": {
+            "default": 300,
+            "title": "Cache Ttl Count",
+            "type": "integer"
+          },
+          "cache_ttl_data": {
+            "default": 60,
+            "title": "Cache Ttl Data",
+            "type": "integer"
+          },
+          "redis_enabled": {
+            "default": false,
+            "title": "Redis Enabled",
+            "type": "boolean"
+          },
+          "redis_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis Token"
+          },
+          "redis_type": {
+            "default": "upstash",
+            "title": "Redis Type",
+            "type": "string"
+          },
+          "redis_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis Url"
+          }
+        },
+        "title": "RedisSettingsUpdate",
+        "type": "object"
+      },
       "RedisTestResult": {
         "properties": {
           "message": {
@@ -8076,6 +9480,131 @@
           "message"
         ],
         "title": "RedisTestResult",
+        "type": "object"
+      },
+      "RelationshipDefinition": {
+        "description": "A manually-defined FK relationship.",
+        "properties": {
+          "cascade_delete": {
+            "default": false,
+            "description": "Delete related rows when source is deleted (future)",
+            "title": "Cascade Delete",
+            "type": "boolean"
+          },
+          "display_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Column in the parent (to_table) whose value to display for this FK (e.g. show a school's name instead of its id). When set, the table data endpoint returns a lookup map for this FK column.",
+            "title": "Display Column"
+          },
+          "from_column": {
+            "description": "Source column (the FK)",
+            "minLength": 1,
+            "title": "From Column",
+            "type": "string"
+          },
+          "from_table": {
+            "description": "Source table (holds the FK column)",
+            "minLength": 1,
+            "title": "From Table",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Human-readable label for the UI",
+            "title": "Label"
+          },
+          "relationship_type": {
+            "default": "many_to_one",
+            "description": "many_to_one | one_to_one | one_to_many | many_to_many",
+            "title": "Relationship Type",
+            "type": "string"
+          },
+          "to_column": {
+            "description": "Target column (the referenced PK/column)",
+            "minLength": 1,
+            "title": "To Column",
+            "type": "string"
+          },
+          "to_table": {
+            "description": "Target table (the referenced table)",
+            "minLength": 1,
+            "title": "To Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_table",
+          "from_column",
+          "to_table",
+          "to_column"
+        ],
+        "title": "RelationshipDefinition",
+        "type": "object"
+      },
+      "RelationshipRemovedResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "removed": {
+            "title": "Removed"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "title": "RelationshipRemovedResponse",
+        "type": "object"
+      },
+      "RelationshipResponse": {
+        "description": "Relationship echoed back after create/update, with its array index.",
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/RelationshipDefinition"
+          }
+        },
+        "required": [
+          "index",
+          "relationship"
+        ],
+        "title": "RelationshipResponse",
+        "type": "object"
+      },
+      "RelationshipsResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "relationships": {
+            "default": [],
+            "items": {},
+            "title": "Relationships",
+            "type": "array"
+          },
+          "tables": {
+            "default": [],
+            "items": {},
+            "title": "Tables",
+            "type": "array"
+          }
+        },
+        "title": "RelationshipsResponse",
         "type": "object"
       },
       "RemoteDeleteAck": {
@@ -8662,6 +10191,23 @@
         "title": "RotationHistoryResult",
         "type": "object"
       },
+      "SearchAllResponse": {
+        "additionalProperties": true,
+        "description": "GET /search-all/ \u2014 matches across every datasource.",
+        "properties": {
+          "matches": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Matches",
+            "type": "array"
+          }
+        },
+        "title": "SearchAllResponse",
+        "type": "object"
+      },
       "SecurityEventsSummaryResult": {
         "properties": {
           "by_severity": {
@@ -8755,6 +10301,161 @@
           }
         },
         "title": "SettingsUpdate",
+        "type": "object"
+      },
+      "SheetsConnectCallback": {
+        "properties": {
+          "spreadsheetId": {
+            "description": "Google Sheet ID",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Spreadsheetid",
+            "type": "string"
+          },
+          "spreadsheetName": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Human-readable sheet name",
+            "title": "Spreadsheetname"
+          },
+          "token": {
+            "description": "Connect token from /issue",
+            "maxLength": 128,
+            "minLength": 10,
+            "title": "Token",
+            "type": "string"
+          },
+          "webAppSecret": {
+            "description": "Shared secret for Web App",
+            "maxLength": 256,
+            "minLength": 8,
+            "title": "Webappsecret",
+            "type": "string"
+          },
+          "webAppUrl": {
+            "description": "Apps Script Web App exec URL",
+            "maxLength": 1000,
+            "minLength": 10,
+            "title": "Webappurl",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "spreadsheetId",
+          "webAppUrl",
+          "webAppSecret"
+        ],
+        "title": "SheetsConnectCallback",
+        "type": "object"
+      },
+      "SheetsConnectIssueRequest": {
+        "description": "Optional reconnect target. If omitted, a new datasource is created.",
+        "properties": {
+          "datasource_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasource Id"
+          }
+        },
+        "title": "SheetsConnectIssueRequest",
+        "type": "object"
+      },
+      "SheetsConnectIssueResponse": {
+        "properties": {
+          "addonInstallUrl": {
+            "title": "Addoninstallurl",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "addonInstallUrl",
+          "expiresAt"
+        ],
+        "title": "SheetsConnectIssueResponse",
+        "type": "object"
+      },
+      "SheetsConnectResult": {
+        "properties": {
+          "accountId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accountid"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "SheetsConnectResult",
+        "type": "object"
+      },
+      "SheetsConnectStatus": {
+        "properties": {
+          "accountId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accountid"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "spreadsheetName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spreadsheetname"
+          }
+        },
+        "required": [
+          "connected"
+        ],
+        "title": "SheetsConnectStatus",
         "type": "object"
       },
       "SignupRequest": {
@@ -9344,6 +11045,55 @@
         "title": "SyncEngineLogsResult",
         "type": "object"
       },
+      "SyncHealthResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SyncHealthResponse",
+        "type": "object"
+      },
+      "SyncRedisTestResult": {
+        "description": "Schema for Redis connection test result.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "RedisTestResult",
+        "type": "object"
+      },
+      "TableAggregateResponse": {
+        "additionalProperties": true,
+        "description": "GET /{datasource_id}/tables/{table}/aggregate/ \u2014 caller-chosen aggregates.",
+        "properties": {
+          "data": {
+            "title": "Data"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "title": "TableAggregateResponse",
+        "type": "object"
+      },
       "TableDataEnvelope": {
         "description": "Paged rows from a user table \u2014 rows are dynamic dicts by nature.",
         "properties": {
@@ -9387,6 +11137,62 @@
           "success"
         ],
         "title": "TableDataEnvelope",
+        "type": "object"
+      },
+      "TableDataResponse": {
+        "additionalProperties": true,
+        "description": "GET /{datasource_id}/tables/{table}/data/ \u2014 a page of rows.",
+        "properties": {
+          "fk_columns": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Fk Columns",
+            "type": "object"
+          },
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "timestamp_utc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Utc"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "records",
+          "total",
+          "offset",
+          "limit",
+          "has_more"
+        ],
+        "title": "TableDataResponse",
         "type": "object"
       },
       "TableRef": {
@@ -9442,6 +11248,31 @@
         "title": "TableRulePolicyData",
         "type": "object"
       },
+      "TableSchema": {
+        "description": "Schema for a table/resource.",
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnSchema"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "foreign_keys": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Foreign Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "columns"
+        ],
+        "title": "TableSchema",
+        "type": "object"
+      },
       "TableSchemaData": {
         "properties": {
           "columns": {
@@ -9495,6 +11326,75 @@
           "success"
         ],
         "title": "TableSchemaEnvelope",
+        "type": "object"
+      },
+      "TableSearchResponse": {
+        "additionalProperties": true,
+        "description": "GET /{datasource_id}/search \u2014 per-table match counts.",
+        "properties": {
+          "matches": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Matches",
+            "type": "array"
+          }
+        },
+        "title": "TableSearchResponse",
+        "type": "object"
+      },
+      "TableSessionClearedResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "TableSessionClearedResponse",
+        "type": "object"
+      },
+      "TableSessionResponse": {
+        "additionalProperties": true,
+        "description": "GET session \u2014 an arbitrary persisted editor session blob (may be empty).",
+        "properties": {},
+        "title": "TableSessionResponse",
+        "type": "object"
+      },
+      "TableSessionSaveResponse": {
+        "additionalProperties": true,
+        "description": "POST session \u2014 `persisted` is False when Redis is unavailable.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "persisted": {
+            "title": "Persisted",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "persisted"
+        ],
+        "title": "TableSessionSaveResponse",
         "type": "object"
       },
       "TablesData": {
@@ -10325,6 +12225,27 @@
         "title": "UserPayload",
         "type": "object"
       },
+      "UserRelationshipsResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "relationships": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Relationships",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "UserRelationshipsResponse",
+        "type": "object"
+      },
       "UserResponse": {
         "properties": {
           "created_at": {
@@ -10755,6 +12676,206 @@
         "title": "VersionLabelRequest",
         "type": "object"
       },
+      "ViewCountResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "datasource_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasource Name"
+          },
+          "target_table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Table"
+          },
+          "timestamp_utc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Utc"
+          },
+          "total_records": {
+            "title": "Total Records",
+            "type": "integer"
+          },
+          "view_id": {
+            "title": "View Id"
+          },
+          "view_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View Name"
+          }
+        },
+        "required": [
+          "view_id",
+          "total_records"
+        ],
+        "title": "ViewCountResponse",
+        "type": "object"
+      },
+      "ViewRecordMutationResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "title": "ViewRecordMutationResponse",
+        "type": "object"
+      },
+      "ViewRecordsResponse": {
+        "additionalProperties": true,
+        "description": "GET /views/{view_id}/records/ \u2014 a page of rows plus view metadata.",
+        "properties": {
+          "current_page": {
+            "title": "Current Page",
+            "type": "integer"
+          },
+          "datasource_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasource Name"
+          },
+          "per_page": {
+            "title": "Per Page",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "target_table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Table"
+          },
+          "timestamp_utc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Utc"
+          },
+          "total_pages": {
+            "title": "Total Pages",
+            "type": "integer"
+          },
+          "total_records": {
+            "title": "Total Records",
+            "type": "integer"
+          },
+          "view_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View Name"
+          },
+          "visible_columns": {
+            "default": [],
+            "items": {},
+            "title": "Visible Columns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "records",
+          "total_records",
+          "current_page",
+          "total_pages",
+          "per_page"
+        ],
+        "title": "ViewRecordsResponse",
+        "type": "object"
+      },
+      "ViewTriggerResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "data": {
+            "title": "Data"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "title": "ViewTriggerResponse",
+        "type": "object"
+      },
       "WafStatus": {
         "properties": {
           "enabled": {
@@ -10797,6 +12918,25 @@
           "enabled"
         ],
         "title": "WafUpdateResponse",
+        "type": "object"
+      },
+      "WordPressImportRequest": {
+        "description": "Body for POST /import/.",
+        "properties": {
+          "datasource_id": {
+            "title": "Datasource Id",
+            "type": "string"
+          },
+          "options": {
+            "additionalProperties": true,
+            "title": "Options",
+            "type": "object"
+          }
+        },
+        "required": [
+          "datasource_id"
+        ],
+        "title": "WordPressImportRequest",
         "type": "object"
       },
       "WorkflowBatchPublishRequest": {
@@ -23526,6 +25666,2560 @@
         "summary": "Create Vercel Project",
         "tags": [
           "storage"
+        ]
+      }
+    },
+    "/api/sync/datasources/": {
+      "get": {
+        "description": "List all registered datasources.",
+        "operationId": "list_datasources_datasources__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DatasourceResponse"
+                  },
+                  "title": "Response List Datasources Datasources  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Datasources",
+        "tags": [
+          "Datasources"
+        ]
+      },
+      "post": {
+        "description": "Register a new datasource.",
+        "operationId": "create_datasource_datasources__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasourceCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Datasource",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/search-all/": {
+      "get": {
+        "description": "Search for a string across all tables in ALL datasources.",
+        "operationId": "search_all_datasources_datasources_search_all__get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "detailed",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Detailed",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchAllResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search All Datasources",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/sheets/connect/callback/": {
+      "post": {
+        "description": "Add-on callback: validate token, upsert a google_sheets Connected Account.\n\nPhase 2: Creates an EdgeProviderAccount in the main DB (not a Datasource).\nStores webAppSecret encrypted and webAppUrl/spreadsheetId in provider_metadata.\n\nNo tenant session \u2014 the token IS the credential (random, single-use, scoped).\nRate limited to prevent brute force or DoS attacks.",
+        "operationId": "sheets_connect_callback_datasources_sheets_connect_callback__post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "local_kw",
+            "required": true,
+            "schema": {
+              "title": "Local Kw"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SheetsConnectCallback"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SheetsConnectResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sheets Connect Callback",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/sheets/connect/issue/": {
+      "post": {
+        "description": "Mint a single-use connect token for the Sheets add-on.\n\nTenant-scoped: the token is bound to the caller's tenant + project so the\nunauthenticated add-on callback can only ever write into this scope.\n(In cloud, ``get_tenant_context`` already 401s unauthenticated callers; in\nself-host it returns None and project_id is None \u2014 consistent with crud.py.)",
+        "operationId": "sheets_connect_issue_datasources_sheets_connect_issue__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SheetsConnectIssueRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SheetsConnectIssueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sheets Connect Issue",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/sheets/connect/status/": {
+      "get": {
+        "description": "Polled by the modal until the add-on callback completes the connection.\n\nPhase 2: Returns accountId (Connected Account) instead of datasourceId.",
+        "operationId": "sheets_connect_status_datasources_sheets_connect_status__get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SheetsConnectStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sheets Connect Status",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/test-raw/": {
+      "post": {
+        "description": "Test a new datasource connection with raw credentials without saving.",
+        "operationId": "test_new_datasource_datasources_test_raw__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasourceTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceTestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test New Datasource",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/": {
+      "delete": {
+        "description": "Delete a datasource.",
+        "operationId": "delete_datasource_datasources__datasource_id___delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Datasource",
+        "tags": [
+          "Datasources"
+        ]
+      },
+      "get": {
+        "description": "Get a specific datasource by ID.",
+        "operationId": "get_datasource_datasources__datasource_id___get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Datasource",
+        "tags": [
+          "Datasources"
+        ]
+      },
+      "put": {
+        "description": "Update a datasource.",
+        "operationId": "update_datasource_datasources__datasource_id___put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasourceUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Datasource",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/apply-migration": {
+      "post": {
+        "description": "Apply Frontbase migration SQL to a Supabase datasource.\nCreates required RPC functions for schema introspection, user management, etc.",
+        "operationId": "apply_datasource_migration_datasources__datasource_id__apply_migration_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationApplyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apply Datasource Migration",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/check-migration": {
+      "get": {
+        "description": "Check if Frontbase migration has been applied to a Supabase datasource.\nReturns status of required RPC functions.",
+        "operationId": "check_datasource_migration_datasources__datasource_id__check_migration_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationCheckResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Datasource Migration",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/relationships/": {
+      "get": {
+        "description": "Get all foreign key relationships for all tables in a datasource.\n\nUses cached schemas from SQLite (single source of truth).\nUse ?refresh=true to re-discover from external datasource.",
+        "operationId": "get_datasource_relationships_datasources__datasource_id__relationships__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "refresh",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Refresh",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Datasource Relationships",
+        "tags": [
+          "Datasources"
+        ]
+      },
+      "post": {
+        "description": "Add a user-defined relationship to the datasource (stored in extra_config).",
+        "operationId": "create_user_relationship_datasources__datasource_id__relationships__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipDefinition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create User Relationship",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/relationships/user-defined/": {
+      "get": {
+        "description": "List only the user-defined relationships (raw, with index).",
+        "operationId": "list_user_relationships_datasources__datasource_id__relationships_user_defined__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRelationshipsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List User Relationships",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/relationships/{index}/": {
+      "delete": {
+        "description": "Remove the user-defined relationship at `index`.",
+        "operationId": "remove_relationship_datasources__datasource_id__relationships__index___delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "title": "Index",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipRemovedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Relationship",
+        "tags": [
+          "Datasources"
+        ]
+      },
+      "put": {
+        "description": "Replace the user-defined relationship at `index`.",
+        "operationId": "update_relationship_datasources__datasource_id__relationships__index___put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "title": "Index",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipDefinition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Relationship",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/search": {
+      "get": {
+        "description": "Search for a string across all tables in a specific datasource.",
+        "operationId": "search_datasource_tables_datasources__datasource_id__search_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "detailed",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Detailed",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Datasource Tables",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/tables/": {
+      "get": {
+        "description": "Get list of tables/resources from a datasource.",
+        "operationId": "get_datasource_tables_datasources__datasource_id__tables__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Get Datasource Tables Datasources  Datasource Id  Tables  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Datasource Tables",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/tables/{table_name}/session/": {
+      "delete": {
+        "description": "Clear draft layout/config from Redis session.",
+        "operationId": "clear_table_session_datasources__datasource_id__tables__table_name__session__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableSessionClearedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clear Table Session",
+        "tags": [
+          "Datasources"
+        ]
+      },
+      "get": {
+        "description": "Retrieve draft layout/config from Redis session.",
+        "operationId": "get_table_session_datasources__datasource_id__tables__table_name__session__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Session",
+        "tags": [
+          "Datasources"
+        ]
+      },
+      "post": {
+        "description": "Save draft layout/config to Redis session (optional - gracefully degrades if Redis unavailable).",
+        "operationId": "save_table_session_datasources__datasource_id__tables__table_name__session__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "title": "Table Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Session Data",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableSessionSaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Table Session",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/tables/{table}/aggregate/": {
+      "get": {
+        "description": "Group a table by `category` and aggregate a measure per group for charts.\n\nAggregation happens in the database (GROUP BY) so counts/sums are correct for\nthe whole table, not a fetched page. Returns rows shaped {category, value}.",
+        "operationId": "get_datasource_table_aggregate_datasources__datasource_id__tables__table__aggregate__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "title": "Category",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "aggregation",
+            "required": false,
+            "schema": {
+              "default": "count",
+              "title": "Aggregation",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "value",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Value"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "none",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filters",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filters"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hidden_filters",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hidden Filters"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableAggregateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Datasource Table Aggregate",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/tables/{table}/data/": {
+      "get": {
+        "description": "Get data for a specific table in a datasource with pagination, sorting, search, and related data.",
+        "operationId": "get_datasource_table_data_datasources__datasource_id__tables__table__data__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filters",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filters"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "asc",
+              "title": "Order"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search_cols",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search Cols"
+            }
+          },
+          {
+            "in": "query",
+            "name": "select",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Select"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDataResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Datasource Table Data",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/tables/{table}/distinct/{column}/": {
+      "get": {
+        "description": "Get distinct values for a column (for dropdown filter options).",
+        "operationId": "get_distinct_values_datasources__datasource_id__tables__table__distinct__column___get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "column",
+            "required": true,
+            "schema": {
+              "title": "Column",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistinctValuesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Distinct Values",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/tables/{table}/records/": {
+      "post": {
+        "description": "Create a new record in a table.",
+        "operationId": "create_record_datasources__datasource_id__tables__table__records__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordMutationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Record",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/tables/{table}/records/{record_id}": {
+      "patch": {
+        "description": "Update an existing record in a table.",
+        "operationId": "update_record_datasources__datasource_id__tables__table__records__record_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordMutationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Record",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/tables/{table}/schema/": {
+      "get": {
+        "description": "Get schema for a specific table in a datasource.\n\nSchema is cached in SQLite for instant subsequent loads.\nUse ?refresh=true to force a fresh fetch from the source.",
+        "operationId": "get_table_schema_datasources__datasource_id__tables__table__schema__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "refresh",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Refresh",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Schema",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/test-update/": {
+      "post": {
+        "description": "Test a datasource connection with proposed updates merged into existing config.",
+        "operationId": "test_datasource_update_datasources__datasource_id__test_update__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasourceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceTestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Datasource Update",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/test/": {
+      "post": {
+        "description": "Test a datasource connection.",
+        "operationId": "test_datasource_datasources__datasource_id__test__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceTestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Datasource",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/views/": {
+      "get": {
+        "description": "List all views for a specific datasource.",
+        "operationId": "list_datasource_views_datasources__datasource_id__views__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DatasourceViewResponse"
+                  },
+                  "title": "Response List Datasource Views Datasources  Datasource Id  Views  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Datasource Views",
+        "tags": [
+          "Datasources"
+        ]
+      },
+      "post": {
+        "description": "Create a new view for a datasource.",
+        "operationId": "create_datasource_view_datasources__datasource_id__views__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasourceViewCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceViewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Datasource View",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/datasources/{datasource_id}/wordpress/discover/": {
+      "get": {
+        "description": "Return the full WordPress discovery manifest for a plugin datasource.\n\nRequires the datasource ``type`` to be ``wordpress_plugin``. The adapter\ncaches the manifest (Redis + in-process) for ~5 minutes.",
+        "operationId": "get_wordpress_discovery_datasources__datasource_id__wordpress_discover__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "title": "Datasource Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Wordpress Discovery Datasources  Datasource Id  Wordpress Discover  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "WordPress discovery manifest (Frontbase Connector plugin)",
+        "tags": [
+          "Datasources"
+        ]
+      }
+    },
+    "/api/sync/health/": {
+      "get": {
+        "description": "Health check endpoint.",
+        "operationId": "health_health__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "Service"
+        ]
+      }
+    },
+    "/api/sync/settings/redis/": {
+      "get": {
+        "description": "Get current Redis settings \u2014 delegates to main app's settings.json.",
+        "operationId": "get_redis_settings_settings_redis__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedisSettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Redis Settings",
+        "tags": [
+          "Settings"
+        ]
+      },
+      "put": {
+        "description": "Update Redis settings.",
+        "operationId": "update_redis_settings_settings_redis__put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedisSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedisSettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Redis Settings",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/sync/settings/redis/test/": {
+      "post": {
+        "description": "Test Redis connection with provided URL and token.",
+        "operationId": "test_redis_settings_redis_test__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedisSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncRedisTestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Redis",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/sync/views/{view_id}/": {
+      "delete": {
+        "description": "Delete a datasource view.",
+        "operationId": "delete_datasource_view_views__view_id___delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "title": "View Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Datasource View",
+        "tags": [
+          "Views"
+        ]
+      },
+      "get": {
+        "description": "Get a specific datasource view.",
+        "operationId": "get_datasource_view_views__view_id___get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "title": "View Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceViewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Datasource View",
+        "tags": [
+          "Views"
+        ]
+      },
+      "patch": {
+        "description": "Update an existing datasource view.",
+        "operationId": "update_datasource_view_views__view_id___patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "title": "View Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasourceViewUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceViewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Datasource View",
+        "tags": [
+          "Views"
+        ]
+      }
+    },
+    "/api/sync/views/{view_id}/count": {
+      "get": {
+        "description": "Get the total number of records matching a view's filters.\n\nThis is a lightweight endpoint that only returns the count,\nuseful for displaying totals without fetching all data.",
+        "operationId": "get_view_count_views__view_id__count_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "title": "View Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewCountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get View Count",
+        "tags": [
+          "Views"
+        ]
+      }
+    },
+    "/api/sync/views/{view_id}/records": {
+      "patch": {
+        "description": "Partially update an existing record in the table associated with this view.",
+        "operationId": "patch_view_record_views__view_id__records_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "title": "View Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "key_column",
+            "required": false,
+            "schema": {
+              "default": "id",
+              "title": "Key Column",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Record",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewRecordMutationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch View Record",
+        "tags": [
+          "Views"
+        ]
+      },
+      "post": {
+        "description": "Create a new record in the table associated with this view.",
+        "operationId": "create_view_record_views__view_id__records_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "title": "View Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Record",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewRecordMutationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create View Record",
+        "tags": [
+          "Views"
+        ]
+      }
+    },
+    "/api/sync/views/{view_id}/records/": {
+      "get": {
+        "description": "Get data matching the view's filters with pagination.\n\n- **page**: Page number (1-indexed, default 1)\n- **limit**: Records per page (default 10)\n\nReturns paginated records with total count and page info.",
+        "operationId": "get_view_records_views__view_id__records__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "title": "View Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewRecordsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get View Records",
+        "tags": [
+          "Views"
+        ]
+      }
+    },
+    "/api/sync/views/{view_id}/trigger/": {
+      "post": {
+        "description": "Manually trigger the view logic and forward to registered webhooks.\nCan be used by external sources to route data through db-synchronizer.",
+        "operationId": "trigger_view_webhook_views__view_id__trigger__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "title": "View Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewTriggerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger View Webhook",
+        "tags": [
+          "Views"
+        ]
+      }
+    },
+    "/api/sync/wordpress/import/": {
+      "post": {
+        "description": "Start a WordPress \u2192 Frontbase import and return its ``import_id``.",
+        "operationId": "start_import_wordpress_import__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WordPressImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Start Import Wordpress Import  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start a WordPress import",
+        "tags": [
+          "WordPress Import"
+        ]
+      }
+    },
+    "/api/sync/wordpress/import/{import_id}/": {
+      "get": {
+        "description": "Return the final result of a completed/failed import.\n\nCRITICAL: Validates tenant ownership. Returns 404 if the import doesn't\nexist or doesn't belong to the requesting tenant.",
+        "operationId": "get_import_result_wordpress_import__import_id___get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "import_id",
+            "required": true,
+            "schema": {
+              "title": "Import Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Import Result Wordpress Import  Import Id   Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Final import result (JSON)",
+        "tags": [
+          "WordPress Import"
+        ]
+      }
+    },
+    "/api/sync/wordpress/import/{import_id}/progress/": {
+      "get": {
+        "description": "Stream import progress as Server-Sent Events.\n\nEmits ``progress`` frames while running and a final ``complete`` frame\n(carrying the full result) when the import reaches a terminal state.\n\nCRITICAL: Validates tenant ownership before streaming. Returns 404 if\nthe import doesn't exist or doesn't belong to the requesting tenant.",
+        "operationId": "import_progress_stream_wordpress_import__import_id__progress__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "import_id",
+            "required": true,
+            "schema": {
+              "title": "Import Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Server-sent import progress events"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "SSE stream of import progress",
+        "tags": [
+          "WordPress Import"
         ]
       }
     },

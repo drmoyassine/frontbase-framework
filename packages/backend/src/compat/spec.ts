@@ -133,15 +133,21 @@ export function implementedOps(app: object): Set<OpKey> {
  * Used by the trailing-slash reconciliation below. Built lazily and cached: 286
  * regexes are only ever tested on a request that already 404'd.
  */
+let CONTRACT_LITERALS: Set<string> | null = null;
 let CONTRACT_MATCHERS: RegExp[] | null = null;
 export function matchesContractPath(path: string): boolean {
-    if (!CONTRACT_MATCHERS) {
-        CONTRACT_MATCHERS = Object.keys(productSpec().paths ?? {}).map((p) => new RegExp(
+    if (!CONTRACT_LITERALS) {
+        const paths = Object.keys(productSpec().paths ?? {});
+        // Two tiers: an exact Set for the ~200 param-less paths (O(1), and this runs
+        // on EVERY /api/* request), and regexes only for the templated ones.
+        CONTRACT_LITERALS = new Set(paths.filter((p) => !p.includes('{')));
+        CONTRACT_MATCHERS = paths.filter((p) => p.includes('{')).map((p) => new RegExp(
             '^' + p.replace(/[.*+?^${}()|[\]\\]/g, (ch) => (ch === '{' || ch === '}' ? ch : '\\' + ch))
                 .replace(/\{[^}]+\}/g, '[^/]+') + '$',
         ));
     }
-    return CONTRACT_MATCHERS.some((re) => re.test(path));
+    if (CONTRACT_LITERALS.has(path)) return true;
+    return CONTRACT_MATCHERS!.some((re) => re.test(path));
 }
 
 /**

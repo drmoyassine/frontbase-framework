@@ -108,16 +108,34 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // endpoints without the slash the contract declares; FastAPI 307s those to the
     // canonical form, so they work against the product and 404'd here. Runs
     // post-hoc on 404 only — see canonicalSlashVariant() for why it cannot loop.
+    // Decided BEFORE routing, deliberately. The first version did this post-hoc —
+    // `await next()`, then replace `c.res` on a 404 — which crashed the workerd
+    // isolate ("Your worker restarted mid-request"): the handler chain had already
+    // run against a POST whose body was never consumed. GET hid it, because workerd
+    // auto-retries GETs after a restart; POST is not retried, so only a real
+    // browser POST exposed it. Deciding up front means no handler runs and no
+    // request state is left half-consumed.
     app.use('*', async (c, next) => {
-        await next();
-        if (c.res.status !== 404) return;
         const url = new URL(c.req.url);
-        if (!url.pathname.startsWith('/api/') || url.pathname.startsWith('/api/console/')) return;
-        const variant = canonicalSlashVariant(url.pathname);
-        if (!variant) return;
-        url.pathname = variant;
-        // 307 preserves method and body, so a POST/PUT is not silently downgraded.
-        c.res = c.redirect(url.toString(), 307);
+        if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/console/')) {
+            // Returns null when the path is already canonical, so valid requests
+            // fall straight through.
+            const variant = canonicalSlashVariant(url.pathname);
+            if (variant) {
+                url.pathname = variant;
+                // Drain the body before responding. Redirecting a POST without
+                // consuming its stream tears down the workerd isolate, so the
+                // client's replayed request lands on a dying isolate and gets 503
+                // ("Your worker restarted mid-request"). GET masked this — workerd
+                // auto-retries GETs — so only a browser POST exposed it.
+                if (c.req.raw.body) {
+                    try { await c.req.raw.arrayBuffer(); } catch { /* already consumed */ }
+                }
+                // 307 preserves method and body — a POST/PUT is not downgraded to GET.
+                return c.redirect(url.toString(), 307);
+            }
+        }
+        return next();
     });
 
     // UNAUTHENTICATED routes — registered BEFORE default-deny:

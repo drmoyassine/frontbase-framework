@@ -593,6 +593,25 @@ export const zColumnInfo = z.object({
 });
 
 /**
+ * ColumnSchema
+ *
+ * Schema for a single column.
+ */
+export const zColumnSchema = z.object({
+    default: z.unknown().nullish(),
+    foreign_column: z.string().nullish(),
+    foreign_table: z.string().nullish(),
+    is_foreign: z.boolean().optional().default(false),
+    name: z.string(),
+    nullable: z.boolean().optional().default(true),
+    primary_key: z.boolean().optional().default(false),
+    type: z.union([
+        z.string(),
+        z.array(z.string())
+    ])
+});
+
+/**
  * ComponentThemeCreate
  */
 export const zComponentThemeCreate = z.object({
@@ -810,6 +829,196 @@ export const zDatabaseConnectionResponse = z.object({
 });
 
 /**
+ * DatasourceTestResult
+ *
+ * Schema for connection test result.
+ */
+export const zDatasourceTestResult = z.object({
+    error: z.string().nullish(),
+    message: z.string(),
+    success: z.boolean(),
+    suggestion: z.string().nullish(),
+    tables: z.array(z.string()).nullish()
+});
+
+/**
+ * DatasourceType
+ *
+ * Supported datasource types.
+ */
+export const zDatasourceType = z.enum([
+    'supabase',
+    'postgres',
+    'wordpress',
+    'wordpress_rest',
+    'wordpress_graphql',
+    'wordpress_plugin',
+    'neon',
+    'planetscale',
+    'turso',
+    'mysql',
+    'sqlite',
+    'google_sheets',
+    'rest'
+]);
+
+/**
+ * DatasourceCreate
+ *
+ * Schema for creating a datasource.
+ */
+export const zDatasourceCreate = z.object({
+    anon_key: z.string().nullish(),
+    api_key: z.string().nullish(),
+    api_url: z.string().nullish(),
+    app_password: z.string().nullish(),
+    base_url: z.string().max(512).nullish(),
+    connection_uri: z.string().nullish(),
+    database: z.string().max(255).nullish(),
+    extra_config: z.record(z.unknown()).nullish(),
+    host: z.string().max(255).nullish(),
+    name: z.string().min(1).max(255),
+    password: z.string().nullish(),
+    port: z.number().int().gte(1).lte(65535).nullish(),
+    provider_account_id: z.string().nullish(),
+    table_prefix: z.string().max(50).optional().default('wp_'),
+    type: zDatasourceType,
+    username: z.string().nullish()
+});
+
+/**
+ * DatasourceTestRequest
+ *
+ * Schema for testing a new datasource connection.
+ */
+export const zDatasourceTestRequest = z.object({
+    anon_key: z.string().nullish(),
+    api_key: z.string().nullish(),
+    api_url: z.string().nullish(),
+    app_password: z.string().nullish(),
+    base_url: z.string().nullish(),
+    connection_uri: z.string().nullish(),
+    database: z.string().max(255).nullish(),
+    extra_config: z.record(z.unknown()).nullish(),
+    host: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    password: z.string().nullish(),
+    port: z.number().int().gte(1).lte(65535).nullish(),
+    provider_account_id: z.string().nullish(),
+    table_prefix: z.string().max(50).optional().default('wp_'),
+    type: zDatasourceType,
+    username: z.string().nullish()
+});
+
+/**
+ * DatasourceUpdate
+ *
+ * Schema for updating a datasource.
+ */
+export const zDatasourceUpdate = z.object({
+    anon_key: z.string().nullish(),
+    api_key: z.string().nullish(),
+    api_url: z.string().nullish(),
+    app_password: z.string().nullish(),
+    base_url: z.string().nullish(),
+    connection_uri: z.string().nullish(),
+    database: z.string().nullish(),
+    extra_config: z.record(z.unknown()).nullish(),
+    host: z.string().nullish(),
+    is_active: z.boolean().nullish(),
+    name: z.string().min(1).max(255).nullish(),
+    password: z.string().nullish(),
+    port: z.number().int().gte(1).lte(65535).nullish(),
+    provider_account_id: z.string().nullish(),
+    table_prefix: z.string().nullish(),
+    username: z.string().nullish()
+});
+
+/**
+ * DatasourceViewCreate
+ *
+ * Schema for creating a datasource view.
+ */
+export const zDatasourceViewCreate = z.object({
+    column_order: z.array(z.string()).optional(),
+    datasource_id: z.string().nullish(),
+    description: z.string().nullish(),
+    field_mappings: z.record(z.unknown()).optional(),
+    filters: z.array(z.record(z.unknown())).optional(),
+    linked_views: z.record(z.unknown()).optional(),
+    name: z.string().min(1).max(255),
+    pinned_columns: z.array(z.string()).optional(),
+    target_table: z.string(),
+    visible_columns: z.array(z.string()).optional(),
+    webhooks: z.array(z.record(z.unknown())).optional()
+});
+
+/**
+ * DatasourceViewResponse
+ *
+ * Schema for datasource view response.
+ */
+export const zDatasourceViewResponse = z.object({
+    column_order: z.array(z.string()).optional(),
+    created_at: z.string().datetime(),
+    datasource_id: z.string(),
+    description: z.string().nullish(),
+    field_mappings: z.record(z.unknown()).optional(),
+    filters: z.array(z.record(z.unknown())).optional(),
+    id: z.string(),
+    linked_views: z.record(z.unknown()).optional(),
+    name: z.string().min(1).max(255),
+    pinned_columns: z.array(z.string()).optional(),
+    target_table: z.string(),
+    updated_at: z.string().datetime(),
+    visible_columns: z.array(z.string()).optional(),
+    webhooks: z.array(z.record(z.unknown())).optional()
+});
+
+/**
+ * DatasourceResponse
+ *
+ * Schema for datasource response.
+ */
+export const zDatasourceResponse = z.object({
+    api_url: z.string().nullish(),
+    created_at: z.string().datetime(),
+    database: z.string().nullish(),
+    extra_config: z.record(z.unknown()).nullish(),
+    host: z.string().nullish(),
+    id: z.string(),
+    is_active: z.boolean(),
+    last_test_success: z.boolean().nullish(),
+    last_tested_at: z.string().datetime().nullish(),
+    name: z.string(),
+    port: z.number().int().nullish(),
+    project_id: z.string().nullish(),
+    table_prefix: z.string().optional().default('wp_'),
+    type: zDatasourceType,
+    updated_at: z.string().datetime(),
+    username: z.string().nullish(),
+    views: z.array(zDatasourceViewResponse).optional()
+});
+
+/**
+ * DatasourceViewUpdate
+ *
+ * Schema for updating a datasource view.
+ */
+export const zDatasourceViewUpdate = z.object({
+    column_order: z.array(z.string()).nullish(),
+    description: z.string().nullish(),
+    field_mappings: z.record(z.unknown()).nullish(),
+    filters: z.array(z.record(z.unknown())).nullish(),
+    linked_views: z.record(z.unknown()).nullish(),
+    name: z.string().min(1).max(255).nullish(),
+    pinned_columns: z.array(z.string()).nullish(),
+    target_table: z.string().nullish(),
+    visible_columns: z.array(z.string()).nullish(),
+    webhooks: z.array(z.record(z.unknown())).nullish()
+});
+
+/**
  * DeleteEdgeVectorResult
  */
 export const zDeleteEdgeVectorResult = z.object({
@@ -875,6 +1084,16 @@ export const zDistinctValuesEnvelope = z.object({
     data: z.unknown().optional(),
     error: z.string().nullish(),
     success: z.boolean()
+});
+
+/**
+ * DistinctValuesResponse
+ *
+ * GET /{datasource_id}/tables/{table}/distinct/{column}/.
+ */
+export const zDistinctValuesResponse = z.object({
+    data: z.array(z.unknown()).optional().default([]),
+    success: z.boolean().optional().default(true)
 });
 
 /**
@@ -2095,6 +2314,27 @@ export const zMessageResponse = z.object({
 });
 
 /**
+ * MigrationApplyResponse
+ */
+export const zMigrationApplyResponse = z.object({
+    applicable: z.boolean().nullish(),
+    applied: z.boolean().nullish(),
+    error: z.string().nullish()
+});
+
+/**
+ * MigrationCheckResponse
+ *
+ * GET check-migration — `applicable` False for non-Supabase datasources.
+ */
+export const zMigrationCheckResponse = z.object({
+    applicable: z.boolean(),
+    applied: z.boolean().nullish(),
+    error: z.string().nullish(),
+    reason: z.string().nullish()
+});
+
+/**
  * MoveEngineToProjectEndpointResult
  */
 export const zMoveEngineToProjectEndpointResult = z.object({
@@ -2520,6 +2760,16 @@ export const zReconfigureRequest = z.object({
 });
 
 /**
+ * RecordMutationResponse
+ *
+ * POST/PATCH a single record — echoes the affected row.
+ */
+export const zRecordMutationResponse = z.object({
+    record: z.record(z.unknown()).nullish(),
+    success: z.boolean().optional().default(true)
+});
+
+/**
  * RedisSettings
  */
 export const zRedisSettings = z.object({
@@ -2532,11 +2782,81 @@ export const zRedisSettings = z.object({
 });
 
 /**
+ * RedisSettingsResponse
+ *
+ * Schema for Redis settings response.
+ */
+export const zRedisSettingsResponse = z.object({
+    cache_ttl_count: z.number().int().optional().default(300),
+    cache_ttl_data: z.number().int().optional().default(60),
+    redis_enabled: z.boolean().optional().default(false),
+    redis_token: z.string().nullish(),
+    redis_type: z.string().optional().default('upstash'),
+    redis_url: z.string().nullish()
+});
+
+/**
+ * RedisSettingsUpdate
+ *
+ * Schema for updating Redis settings.
+ */
+export const zRedisSettingsUpdate = z.object({
+    cache_ttl_count: z.number().int().optional().default(300),
+    cache_ttl_data: z.number().int().optional().default(60),
+    redis_enabled: z.boolean().optional().default(false),
+    redis_token: z.string().nullish(),
+    redis_type: z.string().optional().default('upstash'),
+    redis_url: z.string().nullish()
+});
+
+/**
  * RedisTestResult
  */
 export const zRedisTestResult = z.object({
     message: z.string(),
     success: z.boolean()
+});
+
+/**
+ * RelationshipDefinition
+ *
+ * A manually-defined FK relationship.
+ */
+export const zRelationshipDefinition = z.object({
+    cascade_delete: z.boolean().optional().default(false),
+    display_column: z.string().nullish(),
+    from_column: z.string().min(1),
+    from_table: z.string().min(1),
+    label: z.string().nullish(),
+    relationship_type: z.string().optional().default('many_to_one'),
+    to_column: z.string().min(1),
+    to_table: z.string().min(1)
+});
+
+/**
+ * RelationshipRemovedResponse
+ */
+export const zRelationshipRemovedResponse = z.object({
+    removed: z.unknown().optional(),
+    success: z.boolean().optional().default(true)
+});
+
+/**
+ * RelationshipResponse
+ *
+ * Relationship echoed back after create/update, with its array index.
+ */
+export const zRelationshipResponse = z.object({
+    index: z.number().int(),
+    relationship: zRelationshipDefinition
+});
+
+/**
+ * RelationshipsResponse
+ */
+export const zRelationshipsResponse = z.object({
+    relationships: z.array(z.unknown()).optional().default([]),
+    tables: z.array(z.unknown()).optional().default([])
 });
 
 /**
@@ -2742,6 +3062,15 @@ export const zRotationHistoryResult = z.object({
 });
 
 /**
+ * SearchAllResponse
+ *
+ * GET /search-all/ — matches across every datasource.
+ */
+export const zSearchAllResponse = z.object({
+    matches: z.array(z.record(z.unknown())).optional().default([])
+});
+
+/**
  * SecurityEventsSummaryResult
  */
 export const zSecurityEventsSummaryResult = z.object({
@@ -2808,6 +3137,52 @@ export const zSettingsUpdate = z.object({
     general: zAgentSettingsGeneral.optional(),
     scope: z.string().regex(/^(user|tenant)$/).optional().default('user'),
     system: zAgentSettingsSystem.optional()
+});
+
+/**
+ * SheetsConnectCallback
+ */
+export const zSheetsConnectCallback = z.object({
+    spreadsheetId: z.string().min(1).max(100),
+    spreadsheetName: z.string().max(500).nullish(),
+    token: z.string().min(10).max(128),
+    webAppSecret: z.string().min(8).max(256),
+    webAppUrl: z.string().min(10).max(1000)
+});
+
+/**
+ * SheetsConnectIssueRequest
+ *
+ * Optional reconnect target. If omitted, a new datasource is created.
+ */
+export const zSheetsConnectIssueRequest = z.object({
+    datasource_id: z.string().max(100).nullish()
+});
+
+/**
+ * SheetsConnectIssueResponse
+ */
+export const zSheetsConnectIssueResponse = z.object({
+    addonInstallUrl: z.string(),
+    expiresAt: z.string().datetime(),
+    token: z.string()
+});
+
+/**
+ * SheetsConnectResult
+ */
+export const zSheetsConnectResult = z.object({
+    accountId: z.string().nullish(),
+    ok: z.boolean()
+});
+
+/**
+ * SheetsConnectStatus
+ */
+export const zSheetsConnectStatus = z.object({
+    accountId: z.string().nullish(),
+    connected: z.boolean(),
+    spreadsheetName: z.string().nullish()
 });
 
 /**
@@ -2998,6 +3373,33 @@ export const zSyncEngineLogsResult = z.object({
 });
 
 /**
+ * SyncHealthResponse
+ */
+export const zSyncHealthResponse = z.object({
+    status: z.string()
+});
+
+/**
+ * RedisTestResult
+ *
+ * Schema for Redis connection test result.
+ */
+export const zSyncRedisTestResult = z.object({
+    message: z.string(),
+    success: z.boolean()
+});
+
+/**
+ * TableAggregateResponse
+ *
+ * GET /{datasource_id}/tables/{table}/aggregate/ — caller-chosen aggregates.
+ */
+export const zTableAggregateResponse = z.object({
+    data: z.unknown().optional(),
+    success: z.boolean().optional().default(true)
+});
+
+/**
  * TableDataEnvelope
  *
  * Paged rows from a user table — rows are dynamic dicts by nature.
@@ -3007,6 +3409,21 @@ export const zTableDataEnvelope = z.object({
     message: z.string().nullish(),
     success: z.boolean(),
     total: z.number().int().nullish()
+});
+
+/**
+ * TableDataResponse
+ *
+ * GET /{datasource_id}/tables/{table}/data/ — a page of rows.
+ */
+export const zTableDataResponse = z.object({
+    fk_columns: z.record(z.unknown()).optional().default({}),
+    has_more: z.boolean(),
+    limit: z.number().int(),
+    offset: z.number().int(),
+    records: z.array(z.record(z.unknown())),
+    timestamp_utc: z.string().nullish(),
+    total: z.number().int()
 });
 
 /**
@@ -3043,6 +3460,16 @@ export const zCreateBatchPolicyRequest = z.object({
 });
 
 /**
+ * TableSchema
+ *
+ * Schema for a table/resource.
+ */
+export const zTableSchema = z.object({
+    columns: z.array(zColumnSchema),
+    foreign_keys: z.array(z.record(z.unknown())).optional()
+});
+
+/**
  * TableSchemaData
  */
 export const zTableSchemaData = z.object({
@@ -3057,6 +3484,40 @@ export const zTableSchemaEnvelope = z.object({
     data: zTableSchemaData.nullish(),
     error: z.string().nullish(),
     success: z.boolean()
+});
+
+/**
+ * TableSearchResponse
+ *
+ * GET /{datasource_id}/search — per-table match counts.
+ */
+export const zTableSearchResponse = z.object({
+    matches: z.array(z.record(z.unknown())).optional().default([])
+});
+
+/**
+ * TableSessionClearedResponse
+ */
+export const zTableSessionClearedResponse = z.object({
+    status: z.string()
+});
+
+/**
+ * TableSessionResponse
+ *
+ * GET session — an arbitrary persisted editor session blob (may be empty).
+ */
+export const zTableSessionResponse = z.record(z.unknown());
+
+/**
+ * TableSessionSaveResponse
+ *
+ * POST session — `persisted` is False when Redis is unavailable.
+ */
+export const zTableSessionSaveResponse = z.object({
+    message: z.string().nullish(),
+    persisted: z.boolean(),
+    status: z.string()
 });
 
 /**
@@ -3379,6 +3840,14 @@ export const zUserPayload = z.object({
 });
 
 /**
+ * UserRelationshipsResponse
+ */
+export const zUserRelationshipsResponse = z.object({
+    relationships: z.array(z.record(z.unknown())).optional().default([]),
+    total: z.number().int().optional().default(0)
+});
+
+/**
  * UserResponse
  */
 export const zUserResponse = z.object({
@@ -3541,6 +4010,53 @@ export const zVersionLabelRequest = z.object({
 });
 
 /**
+ * ViewCountResponse
+ */
+export const zViewCountResponse = z.object({
+    datasource_name: z.string().nullish(),
+    target_table: z.string().nullish(),
+    timestamp_utc: z.string().nullish(),
+    total_records: z.number().int(),
+    view_id: z.unknown(),
+    view_name: z.string().nullish()
+});
+
+/**
+ * ViewRecordMutationResponse
+ */
+export const zViewRecordMutationResponse = z.object({
+    message: z.string().nullish(),
+    success: z.boolean().optional().default(true)
+});
+
+/**
+ * ViewRecordsResponse
+ *
+ * GET /views/{view_id}/records/ — a page of rows plus view metadata.
+ */
+export const zViewRecordsResponse = z.object({
+    current_page: z.number().int(),
+    datasource_name: z.string().nullish(),
+    per_page: z.number().int(),
+    records: z.array(z.record(z.unknown())),
+    target_table: z.string().nullish(),
+    timestamp_utc: z.string().nullish(),
+    total_pages: z.number().int(),
+    total_records: z.number().int(),
+    view_name: z.string().nullish(),
+    visible_columns: z.array(z.unknown()).optional().default([])
+});
+
+/**
+ * ViewTriggerResponse
+ */
+export const zViewTriggerResponse = z.object({
+    data: z.unknown().optional(),
+    message: z.string().nullish(),
+    success: z.boolean().optional().default(true)
+});
+
+/**
  * WafStatus
  */
 export const zWafStatus = z.object({
@@ -3560,6 +4076,16 @@ export const zWafUpdateRequest = z.object({
 export const zWafUpdateResponse = z.object({
     enabled: z.boolean(),
     success: z.boolean()
+});
+
+/**
+ * WordPressImportRequest
+ *
+ * Body for POST /import/.
+ */
+export const zWordPressImportRequest = z.object({
+    datasource_id: z.string(),
+    options: z.record(z.unknown()).optional()
 });
 
 /**
@@ -6500,6 +7026,536 @@ export const zStorageCreateVercelProjectBody = z.record(z.unknown());
  * Successful Response
  */
 export const zStorageCreateVercelProjectResponse = zCreateVercelProjectResult;
+
+/**
+ * Response List Datasources Datasources  Get
+ *
+ * Successful Response
+ */
+export const zListDatasourcesDatasourcesGetResponse = z.array(zDatasourceResponse);
+
+export const zCreateDatasourceDatasourcesPostBody = zDatasourceCreate;
+
+/**
+ * Successful Response
+ */
+export const zCreateDatasourceDatasourcesPostResponse = zDatasourceResponse;
+
+export const zSearchAllDatasourcesDatasourcesSearchAllGetQuery = z.object({
+    q: z.string(),
+    detailed: z.boolean().optional().default(false),
+    limit: z.number().int().optional().default(10)
+});
+
+/**
+ * Successful Response
+ */
+export const zSearchAllDatasourcesDatasourcesSearchAllGetResponse = zSearchAllResponse;
+
+export const zSheetsConnectCallbackDatasourcesSheetsConnectCallbackPostBody = zSheetsConnectCallback;
+
+export const zSheetsConnectCallbackDatasourcesSheetsConnectCallbackPostQuery = z.object({
+    local_kw: z.unknown()
+});
+
+/**
+ * Successful Response
+ */
+export const zSheetsConnectCallbackDatasourcesSheetsConnectCallbackPostResponse = zSheetsConnectResult;
+
+/**
+ * Body
+ */
+export const zSheetsConnectIssueDatasourcesSheetsConnectIssuePostBody = zSheetsConnectIssueRequest.nullable();
+
+/**
+ * Successful Response
+ */
+export const zSheetsConnectIssueDatasourcesSheetsConnectIssuePostResponse = zSheetsConnectIssueResponse;
+
+export const zSheetsConnectStatusDatasourcesSheetsConnectStatusGetQuery = z.object({
+    token: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zSheetsConnectStatusDatasourcesSheetsConnectStatusGetResponse = zSheetsConnectStatus;
+
+export const zTestNewDatasourceDatasourcesTestRawPostBody = zDatasourceTestRequest;
+
+/**
+ * Successful Response
+ */
+export const zTestNewDatasourceDatasourcesTestRawPostResponse = zDatasourceTestResult;
+
+export const zDeleteDatasourceDatasourcesDatasourceIdDeletePath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zDeleteDatasourceDatasourcesDatasourceIdDeleteResponse = z.void();
+
+export const zGetDatasourceDatasourcesDatasourceIdGetPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zGetDatasourceDatasourcesDatasourceIdGetResponse = zDatasourceResponse;
+
+export const zUpdateDatasourceDatasourcesDatasourceIdPutBody = zDatasourceUpdate;
+
+export const zUpdateDatasourceDatasourcesDatasourceIdPutPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zUpdateDatasourceDatasourcesDatasourceIdPutResponse = zDatasourceResponse;
+
+export const zApplyDatasourceMigrationDatasourcesDatasourceIdApplyMigrationPostPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zApplyDatasourceMigrationDatasourcesDatasourceIdApplyMigrationPostResponse = zMigrationApplyResponse;
+
+export const zCheckDatasourceMigrationDatasourcesDatasourceIdCheckMigrationGetPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zCheckDatasourceMigrationDatasourcesDatasourceIdCheckMigrationGetResponse = zMigrationCheckResponse;
+
+export const zGetDatasourceRelationshipsDatasourcesDatasourceIdRelationshipsGetPath = z.object({
+    datasource_id: z.string()
+});
+
+export const zGetDatasourceRelationshipsDatasourcesDatasourceIdRelationshipsGetQuery = z.object({
+    refresh: z.boolean().optional().default(false)
+});
+
+/**
+ * Successful Response
+ */
+export const zGetDatasourceRelationshipsDatasourcesDatasourceIdRelationshipsGetResponse = zRelationshipsResponse;
+
+export const zCreateUserRelationshipDatasourcesDatasourceIdRelationshipsPostBody = zRelationshipDefinition;
+
+export const zCreateUserRelationshipDatasourcesDatasourceIdRelationshipsPostPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zCreateUserRelationshipDatasourcesDatasourceIdRelationshipsPostResponse = zRelationshipResponse;
+
+export const zListUserRelationshipsDatasourcesDatasourceIdRelationshipsUserDefinedGetPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zListUserRelationshipsDatasourcesDatasourceIdRelationshipsUserDefinedGetResponse = zUserRelationshipsResponse;
+
+export const zRemoveRelationshipDatasourcesDatasourceIdRelationshipsIndexDeletePath = z.object({
+    index: z.number().int(),
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zRemoveRelationshipDatasourcesDatasourceIdRelationshipsIndexDeleteResponse = zRelationshipRemovedResponse;
+
+export const zUpdateRelationshipDatasourcesDatasourceIdRelationshipsIndexPutBody = zRelationshipDefinition;
+
+export const zUpdateRelationshipDatasourcesDatasourceIdRelationshipsIndexPutPath = z.object({
+    index: z.number().int(),
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zUpdateRelationshipDatasourcesDatasourceIdRelationshipsIndexPutResponse = zRelationshipResponse;
+
+export const zSearchDatasourceTablesDatasourcesDatasourceIdSearchGetPath = z.object({
+    datasource_id: z.string()
+});
+
+export const zSearchDatasourceTablesDatasourcesDatasourceIdSearchGetQuery = z.object({
+    q: z.string(),
+    detailed: z.boolean().optional().default(false),
+    limit: z.number().int().optional().default(10)
+});
+
+/**
+ * Successful Response
+ */
+export const zSearchDatasourceTablesDatasourcesDatasourceIdSearchGetResponse = zTableSearchResponse;
+
+export const zGetDatasourceTablesDatasourcesDatasourceIdTablesGetPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Response Get Datasource Tables Datasources  Datasource Id  Tables  Get
+ *
+ * Successful Response
+ */
+export const zGetDatasourceTablesDatasourcesDatasourceIdTablesGetResponse = z.array(z.string());
+
+export const zClearTableSessionDatasourcesDatasourceIdTablesTableNameSessionDeletePath = z.object({
+    table_name: z.string(),
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zClearTableSessionDatasourcesDatasourceIdTablesTableNameSessionDeleteResponse = zTableSessionClearedResponse;
+
+export const zGetTableSessionDatasourcesDatasourceIdTablesTableNameSessionGetPath = z.object({
+    table_name: z.string(),
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zGetTableSessionDatasourcesDatasourceIdTablesTableNameSessionGetResponse = zTableSessionResponse;
+
+/**
+ * Session Data
+ */
+export const zSaveTableSessionDatasourcesDatasourceIdTablesTableNameSessionPostBody = z.record(z.unknown());
+
+export const zSaveTableSessionDatasourcesDatasourceIdTablesTableNameSessionPostPath = z.object({
+    table_name: z.string(),
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zSaveTableSessionDatasourcesDatasourceIdTablesTableNameSessionPostResponse = zTableSessionSaveResponse;
+
+export const zGetDatasourceTableAggregateDatasourcesDatasourceIdTablesTableAggregateGetPath = z.object({
+    table: z.string(),
+    datasource_id: z.string()
+});
+
+export const zGetDatasourceTableAggregateDatasourcesDatasourceIdTablesTableAggregateGetQuery = z.object({
+    category: z.string(),
+    aggregation: z.string().optional().default('count'),
+    value: z.string().nullish(),
+    sort: z.string().optional().default('none'),
+    limit: z.number().int().optional().default(10),
+    filters: z.string().nullish(),
+    hidden_filters: z.string().nullish()
+});
+
+/**
+ * Successful Response
+ */
+export const zGetDatasourceTableAggregateDatasourcesDatasourceIdTablesTableAggregateGetResponse = zTableAggregateResponse;
+
+export const zGetDatasourceTableDataDatasourcesDatasourceIdTablesTableDataGetPath = z.object({
+    table: z.string(),
+    datasource_id: z.string()
+});
+
+export const zGetDatasourceTableDataDatasourcesDatasourceIdTablesTableDataGetQuery = z.object({
+    limit: z.number().int().optional().default(50),
+    offset: z.number().int().optional().default(0),
+    filters: z.string().nullish(),
+    sort: z.string().nullish(),
+    order: z.string().nullish().default('asc'),
+    search: z.string().nullish(),
+    search_cols: z.string().nullish(),
+    select: z.string().nullish()
+});
+
+/**
+ * Successful Response
+ */
+export const zGetDatasourceTableDataDatasourcesDatasourceIdTablesTableDataGetResponse = zTableDataResponse;
+
+export const zGetDistinctValuesDatasourcesDatasourceIdTablesTableDistinctColumnGetPath = z.object({
+    table: z.string(),
+    column: z.string(),
+    datasource_id: z.string()
+});
+
+export const zGetDistinctValuesDatasourcesDatasourceIdTablesTableDistinctColumnGetQuery = z.object({
+    limit: z.number().int().optional().default(100)
+});
+
+/**
+ * Successful Response
+ */
+export const zGetDistinctValuesDatasourcesDatasourceIdTablesTableDistinctColumnGetResponse = zDistinctValuesResponse;
+
+/**
+ * Body
+ */
+export const zCreateRecordDatasourcesDatasourceIdTablesTableRecordsPostBody = z.record(z.unknown());
+
+export const zCreateRecordDatasourcesDatasourceIdTablesTableRecordsPostPath = z.object({
+    table: z.string(),
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zCreateRecordDatasourcesDatasourceIdTablesTableRecordsPostResponse = zRecordMutationResponse;
+
+/**
+ * Body
+ */
+export const zUpdateRecordDatasourcesDatasourceIdTablesTableRecordsRecordIdPatchBody = z.record(z.unknown());
+
+export const zUpdateRecordDatasourcesDatasourceIdTablesTableRecordsRecordIdPatchPath = z.object({
+    table: z.string(),
+    record_id: z.string(),
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zUpdateRecordDatasourcesDatasourceIdTablesTableRecordsRecordIdPatchResponse = zRecordMutationResponse;
+
+export const zGetTableSchemaDatasourcesDatasourceIdTablesTableSchemaGetPath = z.object({
+    table: z.string(),
+    datasource_id: z.string()
+});
+
+export const zGetTableSchemaDatasourcesDatasourceIdTablesTableSchemaGetQuery = z.object({
+    refresh: z.boolean().optional().default(false)
+});
+
+/**
+ * Successful Response
+ */
+export const zGetTableSchemaDatasourcesDatasourceIdTablesTableSchemaGetResponse = zTableSchema;
+
+export const zTestDatasourceUpdateDatasourcesDatasourceIdTestUpdatePostBody = zDatasourceUpdate;
+
+export const zTestDatasourceUpdateDatasourcesDatasourceIdTestUpdatePostPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zTestDatasourceUpdateDatasourcesDatasourceIdTestUpdatePostResponse = zDatasourceTestResult;
+
+export const zTestDatasourceDatasourcesDatasourceIdTestPostPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zTestDatasourceDatasourcesDatasourceIdTestPostResponse = zDatasourceTestResult;
+
+export const zListDatasourceViewsDatasourcesDatasourceIdViewsGetPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Response List Datasource Views Datasources  Datasource Id  Views  Get
+ *
+ * Successful Response
+ */
+export const zListDatasourceViewsDatasourcesDatasourceIdViewsGetResponse = z.array(zDatasourceViewResponse);
+
+export const zCreateDatasourceViewDatasourcesDatasourceIdViewsPostBody = zDatasourceViewCreate;
+
+export const zCreateDatasourceViewDatasourcesDatasourceIdViewsPostPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zCreateDatasourceViewDatasourcesDatasourceIdViewsPostResponse = zDatasourceViewResponse;
+
+export const zGetWordpressDiscoveryDatasourcesDatasourceIdWordpressDiscoverGetPath = z.object({
+    datasource_id: z.string()
+});
+
+/**
+ * Response Get Wordpress Discovery Datasources  Datasource Id  Wordpress Discover  Get
+ *
+ * Successful Response
+ */
+export const zGetWordpressDiscoveryDatasourcesDatasourceIdWordpressDiscoverGetResponse = z.record(z.unknown());
+
+/**
+ * Successful Response
+ */
+export const zHealthHealthGetResponse = zSyncHealthResponse;
+
+/**
+ * Successful Response
+ */
+export const zGetRedisSettingsSettingsRedisGetResponse = zRedisSettingsResponse;
+
+export const zUpdateRedisSettingsSettingsRedisPutBody = zRedisSettingsUpdate;
+
+/**
+ * Successful Response
+ */
+export const zUpdateRedisSettingsSettingsRedisPutResponse = zRedisSettingsResponse;
+
+export const zTestRedisSettingsRedisTestPostBody = zRedisSettingsUpdate;
+
+/**
+ * Successful Response
+ */
+export const zTestRedisSettingsRedisTestPostResponse = zSyncRedisTestResult;
+
+export const zDeleteDatasourceViewViewsViewIdDeletePath = z.object({
+    view_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zDeleteDatasourceViewViewsViewIdDeleteResponse = z.void();
+
+export const zGetDatasourceViewViewsViewIdGetPath = z.object({
+    view_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zGetDatasourceViewViewsViewIdGetResponse = zDatasourceViewResponse;
+
+export const zUpdateDatasourceViewViewsViewIdPatchBody = zDatasourceViewUpdate;
+
+export const zUpdateDatasourceViewViewsViewIdPatchPath = z.object({
+    view_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zUpdateDatasourceViewViewsViewIdPatchResponse = zDatasourceViewResponse;
+
+export const zGetViewCountViewsViewIdCountGetPath = z.object({
+    view_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zGetViewCountViewsViewIdCountGetResponse = zViewCountResponse;
+
+/**
+ * Record
+ */
+export const zPatchViewRecordViewsViewIdRecordsPatchBody = z.record(z.unknown());
+
+export const zPatchViewRecordViewsViewIdRecordsPatchPath = z.object({
+    view_id: z.string()
+});
+
+export const zPatchViewRecordViewsViewIdRecordsPatchQuery = z.object({
+    key_column: z.string().optional().default('id')
+});
+
+/**
+ * Successful Response
+ */
+export const zPatchViewRecordViewsViewIdRecordsPatchResponse = zViewRecordMutationResponse;
+
+/**
+ * Record
+ */
+export const zCreateViewRecordViewsViewIdRecordsPostBody = z.record(z.unknown());
+
+export const zCreateViewRecordViewsViewIdRecordsPostPath = z.object({
+    view_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zCreateViewRecordViewsViewIdRecordsPostResponse = zViewRecordMutationResponse;
+
+export const zGetViewRecordsViewsViewIdRecordsGetPath = z.object({
+    view_id: z.string()
+});
+
+export const zGetViewRecordsViewsViewIdRecordsGetQuery = z.object({
+    page: z.number().int().optional().default(1),
+    limit: z.number().int().optional().default(10)
+});
+
+/**
+ * Successful Response
+ */
+export const zGetViewRecordsViewsViewIdRecordsGetResponse = zViewRecordsResponse;
+
+/**
+ * Payload
+ */
+export const zTriggerViewWebhookViewsViewIdTriggerPostBody = z.record(z.unknown());
+
+export const zTriggerViewWebhookViewsViewIdTriggerPostPath = z.object({
+    view_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zTriggerViewWebhookViewsViewIdTriggerPostResponse = zViewTriggerResponse;
+
+export const zStartImportWordpressImportPostBody = zWordPressImportRequest;
+
+/**
+ * Response Start Import Wordpress Import  Post
+ *
+ * Successful Response
+ */
+export const zStartImportWordpressImportPostResponse = z.record(z.string());
+
+export const zGetImportResultWordpressImportImportIdGetPath = z.object({
+    import_id: z.string()
+});
+
+/**
+ * Response Get Import Result Wordpress Import  Import Id   Get
+ *
+ * Successful Response
+ */
+export const zGetImportResultWordpressImportImportIdGetResponse = z.record(z.unknown());
+
+export const zImportProgressStreamWordpressImportImportIdProgressGetPath = z.object({
+    import_id: z.string()
+});
+
+/**
+ * Server-sent import progress events
+ */
+export const zImportProgressStreamWordpressImportImportIdProgressGetResponse = z.string();
 
 export const zTenantsCheckSlugPath = z.object({
     slug: z.string()

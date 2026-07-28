@@ -17,6 +17,7 @@ import * as Z from '../dist/compat/zod.gen.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = JSON.parse(readFileSync(join(here, '..', 'contracts', 'openapi.community.json'), 'utf8'));
+const METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options'];
 const deref = (node) => node?.$ref
     ? deref(spec.components.schemas[node.$ref.split('/').pop()])
     : node;
@@ -205,14 +206,21 @@ for (const [path, item] of Object.entries(spec.paths)) {
 const exercised = results.filter((item) => item.status === 'REJECTS_INVALID');
 const notApplicable = results.filter((item) => item.status === 'NOT_APPLICABLE');
 const caseCount = exercised.reduce((sum, item) => sum + item.cases, 0);
-if (results.length !== 286) failures.push(`operation ledger has ${results.length}, expected 286`);
+// Derived from the vendored contract, never a literal: a hand-written op count
+// silently rots the moment the contract widens (the /api/sync sub-app surface
+// added 48 ops and this line was the only thing that noticed — by breaking).
+const CONTRACT_OPS = Object.values(spec.paths)
+    .reduce((n, item) => n + Object.keys(item).filter((m) => METHODS.includes(m)).length, 0);
+if (results.length !== CONTRACT_OPS) {
+    failures.push(`operation ledger has ${results.length}, expected ${CONTRACT_OPS} (from the vendored contract)`);
+}
 if (failures.length) {
     console.error(`compat-negative: FAIL (${failures.length})`);
     for (const failure of failures) console.error(`  - ${failure}`);
     process.exit(1);
 }
 console.log(
-    `compat-negative: PASS — ${results.length}/286 audited, `
+    `compat-negative: PASS — ${results.length}/${CONTRACT_OPS} audited, `
     + `${exercised.length} operations rejected ${caseCount} generated invalid cases, `
     + `${notApplicable.length} had no falsifiable typed input`,
 );

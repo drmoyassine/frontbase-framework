@@ -242,14 +242,23 @@ for (const [path, item] of Object.entries(spec.paths)) {
     }
 }
 
-if (exercised !== 139) failures.push(`matrix exercised ${exercised} operations, expected 139`);
+// Derived from the contract, never a literal. The matrix covers every op whose
+// path carries an identifier ({param}); hardcoding that total meant the gate broke
+// rather than adapted when the contract widened (the /api/sync sub-app surface).
+const IDENTIFIER_BEARING = Object.entries(spec.paths)
+    .filter(([path]) => path.includes('{'))
+    .reduce((n, [, item]) => n + Object.keys(item)
+        .filter((m) => ['get', 'post', 'put', 'patch', 'delete', 'options'].includes(m)).length, 0);
+if (exercised !== IDENTIFIER_BEARING) {
+    failures.push(`matrix exercised ${exercised} operations, expected ${IDENTIFIER_BEARING} (identifier-bearing ops in the vendored contract)`);
+}
 if (failures.length) {
     console.error(`compat-tenant-matrix: FAIL (${failures.length})`);
     for (const failure of failures) console.error(`  - ${failure}`);
     process.exit(1);
 }
 console.log(
-    `compat-tenant-matrix: PASS — ${exercised}/139 identifier-bearing operations isolated; `
+    `compat-tenant-matrix: PASS — ${exercised}/${IDENTIFIER_BEARING} identifier-bearing operations isolated; `
     + `${tenantTables.length} tenant-scoped tables snapshotted per operation; `
     + `${capabilityCount} public capability/availability operations classified`,
 );
