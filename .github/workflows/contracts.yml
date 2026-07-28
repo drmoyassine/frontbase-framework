@@ -39,6 +39,25 @@ jobs:
         run: pnpm --filter @frontbase/example-cf-full smoke
       - name: Console artifact split guarantees
         run: node examples/cf-full/test/console-pin.mjs
+      # Gate 4: the console in a real browser against the real Worker on workerd.
+      # This catches what in-process gates structurally cannot — the console calls
+      # paths the contract does not declare verbatim, and only a browser sees that.
+      # Needs the console bundles, which posture B keeps out of the repo, so it is
+      # skipped here and runs locally / on the deploy job. See §6a.
+      - name: Console acceptance (browser)
+        if: hashFiles('examples/cf-full/console-dist/frontbase-admin/assets/*.js') != ''
+        run: |
+          npx playwright install --with-deps chromium
+          pnpm --filter @frontbase/example-cf-full e2e
+      - name: Upload acceptance failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failures
+          path: |
+            examples/cf-full/e2e/report
+            examples/cf-full/e2e/test-results
+          if-no-files-found: ignore
       - name: Spec staleness gate
         run: pnpm --filter @frontbase/backend run contracts:check
       - name: Contract drift gate (missing / divergent)

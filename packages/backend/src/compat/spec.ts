@@ -126,6 +126,44 @@ export function implementedOps(app: object): Set<OpKey> {
     return ops as Set<OpKey>;
 }
 
+/**
+ * CF-22 Gate 4 — does `path` match some operation in the vendored contract,
+ * treating `{param}` as one path segment?
+ *
+ * Used by the trailing-slash reconciliation below. Built lazily and cached: 286
+ * regexes are only ever tested on a request that already 404'd.
+ */
+let CONTRACT_MATCHERS: RegExp[] | null = null;
+export function matchesContractPath(path: string): boolean {
+    if (!CONTRACT_MATCHERS) {
+        CONTRACT_MATCHERS = Object.keys(productSpec().paths ?? {}).map((p) => new RegExp(
+            '^' + p.replace(/[.*+?^${}()|[\]\\]/g, (ch) => (ch === '{' || ch === '}' ? ch : '\\' + ch))
+                .replace(/\{[^}]+\}/g, '[^/]+') + '$',
+        ));
+    }
+    return CONTRACT_MATCHERS.some((re) => re.test(path));
+}
+
+/**
+ * The product's console calls some endpoints WITHOUT the trailing slash the
+ * contract declares (`/api/pages`, `/api/database/connections`). On FastAPI that
+ * works: Starlette's router defaults to `redirect_slashes=True` and answers with a
+ * 307 to the canonical form. The framework had no equivalent — P0 removed
+ * TrailingSlashMiddleware because it 307-looped on the 256 no-slash routes — so
+ * those calls 404'd in the browser while every in-process gate stayed green.
+ *
+ * This reconciles the two safely. It runs ONLY on a 404, toggles the trailing
+ * slash once, and redirects only when the toggled form matches a contract path.
+ * That target is registered (the drift gate holds 0 missing), so it routes rather
+ * than 404ing again — the loop the old middleware fell into is unrepresentable.
+ */
+export function canonicalSlashVariant(path: string): string | null {
+    if (matchesContractPath(path)) return null; // already canonical
+    const variant = path.endsWith('/') ? path.slice(0, -1) : path + '/';
+    if (!variant || variant === path) return null;
+    return matchesContractPath(variant) ? variant : null;
+}
+
 /** Convert OpenAPI path `/x/{id}/` → Hono route `/x/:id/`, preserving the exact
  *  trailing slash. The product client calls the EXACT OpenAPI path (with/without
  *  trailing slash as defined), so the stub must match it verbatim — only the

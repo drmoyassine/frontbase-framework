@@ -17,3 +17,6 @@ console-dist/*
 !console-dist/frontbase-admin/
 console-dist/frontbase-admin/*
 !console-dist/frontbase-admin/index.html
+e2e/report/
+e2e/test-results/
+test-results/

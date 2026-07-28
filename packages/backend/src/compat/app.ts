@@ -18,7 +18,7 @@ import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from '../mw
 import { opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
 import { contractRequestValidation } from './request-validation.js';
-import { routedOps, attachImplementedOps } from './spec.js';
+import { routedOps, attachImplementedOps, canonicalSlashVariant } from './spec.js';
 import { registerVariablesRoutes } from './routes/variables.js';
 import { registerMetaRoutes } from './routes/meta.js';
 import { registerSettingsRoutes } from './routes/settings.js';
@@ -103,6 +103,22 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
 
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
     app.onError(opaqueErrors);
+
+    // Trailing-slash reconciliation (Gate 4). The product console calls some
+    // endpoints without the slash the contract declares; FastAPI 307s those to the
+    // canonical form, so they work against the product and 404'd here. Runs
+    // post-hoc on 404 only — see canonicalSlashVariant() for why it cannot loop.
+    app.use('*', async (c, next) => {
+        await next();
+        if (c.res.status !== 404) return;
+        const url = new URL(c.req.url);
+        if (!url.pathname.startsWith('/api/') || url.pathname.startsWith('/api/console/')) return;
+        const variant = canonicalSlashVariant(url.pathname);
+        if (!variant) return;
+        url.pathname = variant;
+        // 307 preserves method and body, so a POST/PUT is not silently downgraded.
+        c.res = c.redirect(url.toString(), 307);
+    });
 
     // UNAUTHENTICATED routes — registered BEFORE default-deny:
     // 1. Meta (health/liveness)

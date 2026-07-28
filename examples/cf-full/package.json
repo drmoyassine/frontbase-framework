@@ -6,14 +6,18 @@
   "scripts": {
     "build": "node build.mjs",
     "smoke": "node build.mjs && node dist/smoke.mjs",
-    "test": "node test/console-pin.mjs"
+    "test": "node test/console-pin.mjs",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "e2e:report": "playwright show-report e2e/report"
   },
   "dependencies": {
-    "@frontbase/edge-core": "workspace:*",
-    "@frontbase/backend": "workspace:*",
-    "@frontbase/edge-infra": "workspace:*",
     "@frontbase/admin-console": "workspace:*",
+    "@frontbase/backend": "workspace:*",
+    "@frontbase/edge-core": "workspace:*",
+    "@frontbase/edge-infra": "workspace:*",
     "hono": "^4.12.28"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@playwright/test": "^1.62.0"
+  }
 }
