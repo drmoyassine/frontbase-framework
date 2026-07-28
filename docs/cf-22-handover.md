@@ -9,6 +9,9 @@
 - **Original handover:** 2026-07-27, at commit `0d26f9e`. Resumed locally through
   2026-07-28: Gates 1c, 2, and 3 are locally closed in one reproducible runner;
   remote CI awaits the next commit.
+- **Implementing what is left:** [`cf-22-closure-plan.md`](./cf-22-closure-plan.md) —
+  the 48 `/api/sync` ops, scheduled drift, `/api/console/*` retirement, deploy proof,
+  and the definition of done. That document supersedes §6 below.
 - **Scope constraint:** self-host / community edition **only**. Cloud services
   (billing, SuperTokens, provider-delivered signup/invite, agent quota) are out of
   scope; the compat layer now supplies local signup and one-time invite behavior.

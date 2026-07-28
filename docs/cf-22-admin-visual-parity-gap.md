@@ -6,8 +6,11 @@ Where any older note conflicts with this file, this file controls.
 
 > **Picking this up cold?** Read [`cf-22-handover.md`](./cf-22-handover.md) first — a
 > one-page map (commands, traps, next task) that points back here for the detail.
+>
+> **Implementing the rest?** [`cf-22-closure-plan.md`](./cf-22-closure-plan.md) is the
+> executable plan for everything still open, with the definition of done.
 
-- **Date:** 2026-07-14 (created) · **Updated:** 2026-07-28 (v12 — Gates 1c/2/3 closure)
+- **Date:** 2026-07-14 (created) · **Updated:** 2026-07-28 (v13 — /api/sync surface made visible; closure plan written)
 - **Status:** 🟡 **IN PROGRESS — NOT COMPLETE.** The contract pipeline, the derived
   spec, and response conformance are green and gated; the console is locally integrated.
   **Gates 1c, 2, and 3 are locally closed; real-deploy/browser/owner acceptance
@@ -29,23 +32,23 @@ Where any older note conflicts with this file, this file controls.
 | Phase | What it is | Honest status |
 |---|---|---|
 | **P0** | Product repo emits a committed, typed OpenAPI contract + generated client | ✅ **Green (Gate 0).** The "artifact lags source" reading was a CRLF false positive: `core.autocrlf` rewrote the generated JSON on checkout, so byte-comparing gates saw phantom edits (`--numstat` showed 0 changed lines). Fixed by pinning those paths to LF in `.gitattributes` (product `e79abee`). |
-| **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ✅ **Closed.** `x-implemented` is route-derived; all 286 responses validate; all 286 operations carry a runtime-derived, fingerprint-gated behavior status; all typed inputs are included in the negative sweep. |
-| **P2** | 286 operations implementing the community contract | ✅ **Closed for the recorded community scope.** `163 functional / 10 deliberate protocol/catalog shape-only / 113 explicit external-disabled / 0 stub`. API keys are hashed plus one-time encrypted reveal; password reset is expiring, single-use, mutates credentials, and invalidates sessions; 139/139 identifier-bearing operations pass the two-tenant matrix. External-provider operations remain excluded from the functional count until live credentials exist. |
+| **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ✅ **Closed.** `x-implemented` is route-derived; every response validates; all operations carry a runtime-derived, fingerprint-gated behavior status; all typed inputs are in the negative sweep. The gates now derive their op counts from the contract rather than hardcoding them. |
+| **P2** | 334 operations implementing the community contract | ⚠️ **286 implemented; 48 stubbed.** The `/api/sync` surface (§7a) is declared and auto-stubbed at 501 but NOT implemented. The previously-recorded closure was against a 286-op denominator that excluded it. `163 functional / 10 deliberate protocol/catalog shape-only / 113 explicit external-disabled / 0 stub`. API keys are hashed plus one-time encrypted reveal; password reset is expiring, single-use, mutates credentials, and invalidates sessions; 139/139 identifier-bearing operations pass the two-tenant matrix. External-provider operations remain excluded from the functional count until live credentials exist. |
 | **P3** | Serve the product console from the cf-full worker | ⚠️ **Deployed and browser-verified; one surface missing.** A live CF deploy plus a 15-case Playwright suite pass, but the console's `/api/sync/*` datasource API is unimplemented (§7a). Routing/auth/static-assets/setup-hardening are real and smoke-green (23 checks). Pins agree and are gated (Gate 0). **Still open:** owner sign-off, scheduled cross-repo drift, legacy `/api/console/*` retirement, and §7a. A field incident (two dashboards) was found and remediated. |
 
-**Current machine-verified facts (local 2026-07-28; remote CI pending the next commit):**
-- **Response conformance: `CONFORMS 286 / VIOLATES 0 / UNREACHABLE 0 / NO_SCHEMA 0 / EXTERNAL_DISABLED 0 / STUB 0`** — validated **286/286 (100%)**. CI's `compat-conformance.mjs --gate` requires `VIOLATES 0`, `UNREACHABLE 0`, and `NO_SCHEMA 0`.
-- Framework drift gate: **286 implemented / 0 stubbed / 0 missing / 0 divergent**. `GET /` is served as JSON under explicit content negotiation at the combined-worker boundary, preserving the eSSR page for browser requests.
+**Current machine-verified facts (2026-07-28, framework `40c2afa` / product `7fbc0b9`):**
+- **Response conformance: `CONFORMS 286 / VIOLATES 0 / UNREACHABLE 0 / NO_SCHEMA 0 / STUB 48`.** Every implemented op validates; the 48 are the unimplemented `/api/sync` surface.
+- Framework drift gate: **286 implemented / 48 stubbed / 0 missing / 0 divergent**. `GET /` is served as JSON under explicit content negotiation, preserving the eSSR page for browser requests.
+- **Browser acceptance: 15/15** (Playwright, Chromium, real Worker on workerd). It found two 404s every in-process gate had missed — the console calls paths without the trailing slash the contract declares, which FastAPI 307s and the framework did not.
 - Full runtime-derived behavior gate: **163 functional / 10 shape-only / 113 external-disabled / 0 stub** across all 286 operations, fingerprint-gated by `behavior.summary.json`. The focused auth/security artifact is **19 functional / 3 shape-only**.
-- Negative/fuzz gate: **286/286 audited**; 154 operations reject 157 generated
-  malformed path/query/JSON/multipart cases; 132 operations have no falsifiable typed input.
-- Tenant matrix: **139/139 identifier-bearing operations isolated**, snapshotting all 26 tenant-scoped tables per operation; two public capability/availability operations are classified separately.
-- Vendored community contract: **286 ops / 308 schemas / 31 tags** (the 286 includes 2 `OPTIONS` ops the early P1/P2 counts omitted; hence the historical 284). ⚠️ **This is not the whole product API:** the ~47-op `/api/sync/*` surface is a mounted FastAPI sub-app and is absent from the exported spec — see §7a.
+- Negative/fuzz gate: **334/334 audited**; 183 operations reject 187 generated malformed path/query/JSON/multipart cases; 151 have no falsifiable typed input.
+- Tenant matrix: **175/175 identifier-bearing operations isolated**, snapshotting all 26 tenant-scoped tables per operation.
+- Vendored community contract: **334 ops** — 286 main app + **48 from the `/api/sync` mounted sub-app**, which the exporter walked for the first time in product `7fbc0b9`. See §7a.
 - Framework backend suite (including response + auth/security behavior gates): green
   locally. Last cf-full smoke: **23/23 green**. Worker **238.3 KB gzip** (< 1 MB).
   Migrations are at **v14** (API-key ciphertext, password-reset capabilities,
   session generations, and immutable security audit events).
-- **Pins agree:** `PRODUCT_COMMIT` = `CONSOLE_PIN.commit` = `8eb642c…`, and disagreement is a hard gate error. Provenance is also verified by content now, not just by matching pin strings (see §9).
+- **Pins agree:** `PRODUCT_COMMIT` = `CONSOLE_PIN.commit` = `7fbc0b9…`. Disagreement is a hard gate error, and provenance is verified by CONTENT (`CONTRACT_SHA256` + a sync-time check against `git show <commit>:<path>`), not just by matching pin strings.
 - Last remote **CI green** (`30299868508` on `229d48b`), covering `pnpm -r build` unfiltered, the cf-full smoke suite, the console-split guarantees, and the pre-fixture conformance gate.
 
 **What is measured vs what is not** — the honest denominator:
@@ -57,12 +60,14 @@ Where any older note conflicts with this file, this file controls.
 | `UNREACHABLE` | 0 | Enabled in-scope compat ops with a documented response that the probe could not reach. Gated at zero. |
 | `NO_SCHEMA` | 0 | Every response now has a usable generated validator/schema or an explicit bodyless contract. Gated at zero. |
 | `EXTERNAL_DISABLED` | 0 | Community-local signup and one-time invite acceptance now have real persisted behavior. |
-| `STUB` | 0 | The combined worker content-negotiates the product JSON root without shadowing the eSSR homepage. |
+| `STUB` | 48 | Declared in the contract, auto-stubbed at 501, **not implemented** — the entire `/api/sync` surface (§7a). Pinned in `behavior.summary.json` so it cannot grow and must reach 0. |
 
 Conformance says nothing about **behaviour**: an op that returns a correctly-shaped
 constant and ignores its store counts as `CONFORMS`. That distinction is Gate 1c/3.
 
-The path to done is [§8 Recovery plan (Gates 0–4)](#8-recovery-plan--the-authoritative-worklist).
+The path to done is **[`cf-22-closure-plan.md`](./cf-22-closure-plan.md)** — the executable
+plan for everything still open, with the definition of done. §8 below remains the record
+of how each gate was closed.
 
 ---
 
@@ -160,7 +165,7 @@ part of contract determinism).
 
 **Closed by Gate 0:** the apparent regenerated-but-uncommitted delta was CRLF-only,
 not a source/artifact lag. `.gitattributes` now pins generated artifacts to LF, the
-contract and console both pin `8eb642c`, and disagreement is a hard gate failure.
+contract and console both pin `7fbc0b9`, and disagreement is a hard gate failure.
 
 *Deferred (not blocking):* the 18 remaining product-side `src/services/*` → generated-client migrations (product task #111).
 
@@ -248,7 +253,7 @@ per nav area and owner field-test sign-off.
   response shapes.
 - ❌ **No real-Cloudflare deploy proof** (a fresh `wrangler` deploy with browser
   login/render + secure-cookie/asset-cache verification).
-- ✅ **Pins agree:** console and contract both name `8eb642c…`; disagreement is gated, and provenance is verified by content.
+- ✅ **Pins agree:** console and contract both name `7fbc0b9…`; disagreement is gated, and provenance is verified by content.
 - ❌ **No scheduled cross-repo drift** (re-vendor from the product repo on a
   schedule; current CI only compares against the already-vendored snapshot).
 - ⚠️ **Legacy `/api/console/*` retirement** gated on an endpoint-consumer map + the
