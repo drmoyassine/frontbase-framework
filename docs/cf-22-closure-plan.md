@@ -29,18 +29,20 @@ Measured against that bar today — **171 of 334 operations (51%) are not functi
 |---|---|---|---|
 | **A** | Implement the 48 `/api/sync/*` operations | ~6–8 days | Yes — the Builder cannot bind to data |
 | **A2** | Make the 123 non-functional operations real | **~3–5 weeks** | Yes — this IS the parity bar |
+| **A3** | Differential parity harness + 4xx validation | ~1 week | **Yes — without it, parity is asserted, not measured** |
 | **B** | Scheduled cross-repo drift | ~0.5 day | Yes (Gate 4 exit) |
 | **C** | Legacy `/api/console/*` retirement | ~1 day | Yes (Gate 4 exit) |
 | **D** | Fresh Cloudflare deploy proof, automated | ~0.5 day | Yes (Gate 4 exit) |
 | **E** | Four recorded loose ends (§6) | ~1 day | Yes |
 | **F** | Owner sign-off | — | Yes |
 
-**Total: roughly 5–8 weeks.** That is the honest cost of 100% parity, and it is dominated
+**Total: roughly 6–9 weeks.** That is the honest cost of 100% parity, and it is dominated
 by A2 — which earlier CF-22 status reports counted as "closed" because they measured
 against a 286-op denominator and treated `external-disabled` as an acceptable outcome.
 
-**Do A first** (it unblocks the Builder), then A2 by tier. B, C, E run in parallel;
-D and F come last.
+**Do A first** (it unblocks the Builder), then **A3 before A2-Tier2** so the provider
+integrations are written against measured product behaviour rather than guessed. B, C, E
+run in parallel; D and F come last.
 
 ### 0.1 Implementation parity vs verification — the distinction that matters
 
@@ -334,6 +336,70 @@ constant while ignoring their store.
 - Every provider family has a live gate, and each has been run once for real, recorded in
   the source of truth with the date and what was exercised.
 
+---
+
+## 1b. Work A3 — prove parity, don't assert it (~1 week)
+
+**Read this before starting A or A2. It changes what "done" means for both.**
+
+Everything CF-22 gates today is measured against the *contract* or against the framework
+itself. Nothing has ever compared the framework to the **running product**. Three
+consequences, each verified against the code:
+
+### The three gaps
+
+**1. `functional` does not mean "at parity".** The classifier marks an operation
+`functional` when it executed at least one meaningful SQL statement
+(`compat-conformance.mjs` — "persisted state effect" / "tenant-scoped state read"). A
+handler that persists the *wrong thing*, applies different defaults, paginates
+differently, or orders results differently still scores `functional`. So the 163 already
+counted as functional are **unverified for parity**, and a definition of done that reads
+`functional: 334` would not prove parity either.
+
+**2. Error responses are never validated.** The conformance probe validates only the 2xx
+body (`responses.find(([c]) => c.startsWith('2'))`). **291 of 332 operations declare a 4xx
+in the contract and not one is checked.** The console branches on those shapes — whether
+a failure is `{detail}` or `{success:false, error}` decides whether it shows a message or
+a blank panel. Error-path divergence is invisible to every gate that exists.
+
+**3. Nothing compares framework output to product output.** Contract conformance proves
+the framework agrees with a *document*. Parity is a claim about agreeing with a *system*.
+
+### What to build
+
+**A differential parity harness.** The product runs locally — `fastapi-backend/main.py`
+with the pinned venv and `uvicorn 0.40` — so both systems can be driven side by side:
+
+1. Boot the product (`venv/Scripts/python.exe -m uvicorn main:app --port 8001`) against a
+   scratch DB, and the framework worker (`wrangler dev --port 8788`) against a scratch D1.
+2. Seed both identically: one admin, one tenant, the same fixtures.
+3. Replay a **scripted corpus** of request sequences — for every one of the 334 ops, at
+   minimum a success case and its documented failure case (bad id, missing field, wrong
+   type, cross-tenant).
+4. Diff **status code + normalised body**. Normalise only what is legitimately allowed to
+   differ — ids, timestamps, hostnames — via an explicit allow-list. **Every other
+   difference is a parity failure.**
+5. Record the corpus and its results as a committed artifact, like `behavior.summary.json`.
+
+Build it **before** A2-Tier2 so provider integrations are written against measured
+behaviour rather than guessed behaviour. Extend the corpus as each wave lands.
+
+### Also fix while you are here
+
+- **Extend the conformance gate to non-2xx.** Drive each documented 4xx and validate the
+  body against its schema. This is cheap and independent of the harness.
+- **Normalisation is where this goes wrong.** Too permissive and it proves nothing; too
+  strict and it fails on timestamps forever. Keep the allow-list small, explicit,
+  reviewed, and commented with *why* each entry may differ.
+
+### Exit
+
+- Differential corpus covers **334/334 ops**, success and failure paths
+- **0 unexplained diffs**; every normalisation rule justified in the file
+- 4xx bodies validated by the conformance gate
+- The corpus runs in CI (product boot is the slow part — a nightly job is acceptable if
+  PR-time is too slow, but it must be scheduled, not manual)
+
 ## 2. Work B — scheduled cross-repo drift (~0.5 day)
 
 CI compares the framework against the **already-vendored** snapshot, so a product change
@@ -411,18 +477,25 @@ All four are known and currently written down. "No leftovers" means closing them
 ## 6. Sequencing
 
 ```
-A1 → A2 → A3 → A4 → A5           Work A — the /api/sync datasource layer
+A1 → A2 → A3 → A4 → A5              Work A — the /api/sync datasource layer
                       ↘
-                       A2-Tier1 → A2-Tier2 → A2-Tier3    Work A2 — make the 123 real
-                          ↘ B, C, E in parallel — independent of A and A2
-                                                      ↘ D (needs A + A2 complete)
-                                                           ↘ F owner sign-off
+                       A2-Tier1                     no new credentials needed
+                          ↘
+                           A3 differential harness  ← build BEFORE Tier 2
+                              ↘
+                               A2-Tier2 → A2-Tier3  provider integrations
+                          ↘ B, C, E in parallel — independent of A/A2/A3
+                                                 ↘ D (needs A + A2 + A3 complete)
+                                                      ↘ F owner sign-off
 ```
 
 Two ordering rules:
 
 - **A before A2-Tier1.** They share the same introspection and identifier-validation
   code; doing A first means Tier 1 reuses it instead of duplicating it.
+- **A3 before A2-Tier2.** Tier 2 is ~80 provider integrations. Writing them against a
+  harness that shows exactly how the product responds is far cheaper than writing them
+  from the contract and discovering the difference at sign-off.
 - **D last.** A deploy proof of an incomplete surface proves nothing and will need
   repeating. Run it once, when everything else is done.
 
@@ -439,7 +512,10 @@ CF-22 closes when **every** box is true. No exceptions, no "follow-up" bucket.
       `external-disabled: 0`, `shape-only: 0`. **This is the parity bar.** Any non-zero
       in those three means an operation still does less than the product's.
 - [ ] Drift gate: `0 missing`, `0 divergent`, **`0 stubbed`**
-- [ ] Conformance: `VIOLATES 0`, `UNREACHABLE 0`, `NO_SCHEMA 0`
+- [ ] Conformance: `VIOLATES 0`, `UNREACHABLE 0`, `NO_SCHEMA 0` — **including 4xx bodies**
+- [ ] **Differential harness: 334/334 ops covered, success AND failure paths, 0
+      unexplained diffs against the running product.** `functional: 334` alone does NOT
+      prove parity — it only proves each handler touched the database.
 - [ ] Tenant matrix green across all identifier-bearing ops (it grows with A)
 - [ ] Negative/fuzz sweep audits 100% of ops
 - [ ] **A mutation gate proves a crafted `{table}`/`{column}` cannot inject SQL**

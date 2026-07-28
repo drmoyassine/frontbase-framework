@@ -73,8 +73,15 @@ whether an operation *does* anything:
 | `stub` | 48 | **Work item.** No handler at all. |
 
 **171 of 334 (51%) are not yet functional.** The plan and cost are in
-[`cf-22-closure-plan.md`](./cf-22-closure-plan.md) — roughly 5–8 weeks, dominated by the
-123 non-functional operations.
+[`cf-22-closure-plan.md`](./cf-22-closure-plan.md) — roughly 6–9 weeks.
+
+⚠️ **`functional` is not the same as "at parity".** The classifier marks an op functional
+when it executes at least one meaningful SQL statement. A handler that persists the wrong
+thing, defaults differently, or paginates differently still scores functional — so the
+163 already counted are unverified against the product. Nothing in CF-22 has ever compared
+the framework to the running product, and **291 of 332 ops declare a 4xx that no gate
+validates.** Closing that is Work A3 (closure plan §1b): a differential harness that
+drives both systems side by side and diffs them.
 
 Conformance says nothing about **behaviour**: an op that returns a correctly-shaped
 constant and ignores its store counts as `CONFORMS`. That distinction is Gate 1c/3.
