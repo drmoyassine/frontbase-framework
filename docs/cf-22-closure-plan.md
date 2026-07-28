@@ -10,20 +10,57 @@ leftovers**. Written to be executed by someone who has not been in the prior ses
 
 ---
 
-## 0. What is actually left
+## 0. The bar, and what is actually left
 
-Gates 0–3 are closed and gated. Gate 4 part 1 (browser acceptance) is done. What remains:
+**The bar is 100% functional parity between the product and the framework.**
+`external-disabled` and `shape-only` are **not** acceptable terminal states. An operation
+is done when it does what the product's operation does, given the same configuration.
+
+Measured against that bar today — **171 of 334 operations (51%) are not functional:**
+
+| Ledger status | Count | Meaning under this bar |
+|---|---:|---|
+| `functional` | 163 | Done |
+| `stub` | 48 | Declared, 501, no handler — the `/api/sync` surface (Work A) |
+| `external-disabled` | 113 | Handler exists but reports "not configured" — **must be implemented** (Work A2) |
+| `shape-only` | 10 | Returns a correct shape with no effect — **must be implemented** (Work A2) |
 
 | # | Work | Size | Blocking closure? |
 |---|---|---|---|
-| **A** | Implement the 48 `/api/sync/*` operations | ~5–8 days | **Yes** — the Builder cannot bind to data without it |
+| **A** | Implement the 48 `/api/sync/*` operations | ~6–8 days | Yes — the Builder cannot bind to data |
+| **A2** | Make the 123 non-functional operations real | **~3–5 weeks** | Yes — this IS the parity bar |
 | **B** | Scheduled cross-repo drift | ~0.5 day | Yes (Gate 4 exit) |
 | **C** | Legacy `/api/console/*` retirement | ~1 day | Yes (Gate 4 exit) |
 | **D** | Fresh Cloudflare deploy proof, automated | ~0.5 day | Yes (Gate 4 exit) |
-| **E** | Four recorded loose ends (§6) | ~1 day | Yes — "no leftovers" means these too |
+| **E** | Four recorded loose ends (§6) | ~1 day | Yes |
 | **F** | Owner sign-off | — | Yes |
 
-**Do A first.** B–E are small and independent; A determines the schedule.
+**Total: roughly 5–8 weeks.** That is the honest cost of 100% parity, and it is dominated
+by A2 — which earlier CF-22 status reports counted as "closed" because they measured
+against a 286-op denominator and treated `external-disabled` as an acceptable outcome.
+
+**Do A first** (it unblocks the Builder), then A2 by tier. B, C, E run in parallel;
+D and F come last.
+
+### 0.1 Implementation parity vs verification — the distinction that matters
+
+Every one of the 123 **can** be implemented. What varies is whether it can be *proved*
+without third-party credentials:
+
+- **Implementation parity** — the handler does the real thing when configured. Always
+  achievable, and always required.
+- **Verification** — proving it against a live provider needs real credentials
+  (Cloudflare, Turso, Upstash, Netlify, Vercel, Google, an LLM key, a WordPress site).
+
+This repo already has the pattern: **credential-gated live gates** (see the completed
+F4c/F5d work). A live gate skips with a loud notice when its credential is absent and
+runs for real when present.
+
+**Closure requires each provider family's live gate to have been run at least once
+against real credentials, with the run recorded.** A handler that has only ever been
+exercised against a mock is not proven, and "the credential wasn't available" is exactly
+the kind of leftover this plan exists to prevent. **The owner must supply one working
+credential per provider family** — that is a hard input, not a nice-to-have.
 
 ---
 
@@ -174,12 +211,12 @@ GET    /api/sync/datasources/{id}/wordpress/discover/             → object
 - `check-migration` / `apply-migration` are Supabase-specific. For non-Supabase kinds
   return `{applicable:false, reason:'Migration only applies to Supabase datasources'}` —
   that is the product's own behaviour, not a stub.
-- `wordpress/discover/` requires a live WordPress endpoint → `external-disabled`.
+- `wordpress/discover/` calls a live WordPress endpoint. **Implement it** and cover it with a credential-gated live gate — under the parity bar, `external-disabled` is not a terminal state.
 
 **Exit:** relationships CRUD by index; sessions round-trip; non-Supabase returns
 `applicable:false` rather than an error.
 
-#### Wave A5 — settings + WordPress import (6 ops) · ~0.5 day · mostly `external-disabled`
+#### Wave A5 — settings + WordPress import (6 ops) · ~2 days · needs live credentials
 
 ```
 GET  /api/sync/settings/redis/         → RedisSettingsResponse
@@ -190,15 +227,15 @@ GET  /api/sync/wordpress/import/{id}/  → object
 GET  /api/sync/wordpress/import/{id}/progress/  → text/event-stream
 ```
 
-- Redis settings: persist in `KeyValueStore` so the console's form round-trips.
-  `test/` returns `success:false` with a clear message (no Redis in a Worker) →
-  `external-disabled`.
-- WordPress import needs a live WP site → `external-disabled`. The SSE endpoint **must
+- Redis settings: persist in `KeyValueStore` so the console's form round-trips. `test/`
+  must **actually connect** — Upstash Redis over its REST API works from a Worker, so
+  this is implementable, not a dead end. Gate it on an Upstash credential.
+- WordPress import must really import against a live WP site. The SSE endpoint **must
   stream `text/event-stream`**, not JSON, or the conformance gate fails on media type.
 - ⚠️ **No `BaseHTTPMiddleware`-equivalent in the SSE path.** Recorded trap: middleware
   that buffers will break streaming.
 
-### 1.4 Sheets OAuth (3 ops) — decide before starting
+### 1.4 Sheets OAuth (3 ops) — implement
 
 ```
 POST /api/sync/datasources/sheets/connect/issue/     → SheetsConnectIssueResponse
@@ -206,9 +243,10 @@ POST /api/sync/datasources/sheets/connect/callback/  → SheetsConnectResult
 GET  /api/sync/datasources/sheets/connect/status/    → SheetsConnectStatus
 ```
 
-Google OAuth requires registered credentials. Either implement with owner-supplied
-credentials, or classify `external-disabled` with a truthful "not configured" response.
-**Record whichever in the source of truth** — an undocumented choice is a leftover.
+Google OAuth requires registered credentials. **The owner must supply a Google OAuth
+client** — under the parity bar there is no descope option; the product connects Sheets,
+so the framework must too. Store the refresh token encrypted (`secret-cipher.ts`), never
+return it, and cover the flow with a credential-gated live gate.
 
 ### 1.5 Constraints that apply to every handler
 
@@ -222,9 +260,10 @@ credentials, or classify `external-disabled` with a truthful "not configured" re
 5. **Shared shapes in one module** (`compat/routes/sync-shapes.ts`), mirroring
    `edge-shapes.ts`. Five tags drifted independently last time because each re-invented
    its own.
-6. **`external-disabled` must be earned.** The classifier reads the runtime's own
-   report, so an op that could work locally but returns "not configured" is
-   mis-tagged. Only use it where a real external credential is genuinely required.
+6. **`external-disabled` is a work item, never an answer.** The classifier reads the
+   runtime's own self-report, so an unwired handler that says "not configured" is
+   indistinguishable from one that genuinely cannot run. Under the parity bar every such
+   op must end `functional`; the only variable is whether proving it needs a credential.
 
 ### 1.6 How to verify each wave
 
@@ -240,6 +279,60 @@ After each wave, regenerate the behaviour ledger and commit it:
 **It can only shrink.** If it grows, something was un-implemented.
 
 ---
+
+---
+
+## 1a. Work A2 — make the 123 non-functional operations real
+
+`external-disabled` today mostly means **"the integration was never wired"**, not "this is
+impossible". Two of the three largest clusters map directly onto primitives that already
+exist in this repo. Get the current list any time with:
+
+```bash
+node packages/backend/test/compat-conformance.mjs --behavior --verbose
+```
+
+### Tier 1 — already have the primitive, just unwired (~30 ops, ~1 week)
+
+| Cluster | Ops | Wire it to |
+|---|---:|---|
+| `storage` — create-folder, move, move-cross, move-status, providers CRUD, public-url, signed-url, upload | 12 | `s3StorageProvider` in `packages/edge-infra/src/storage/providers.ts` (R2/S3, presigned URLs) + the existing `storage_buckets` / `storage_files` tables |
+| `database` — tables, table-schema, table-data, advanced-query, distinct-values | 5 | `datasourceRunner()` + `dialectOf()` — same introspection work as Work A2 wave A2 |
+| `database` — RLS policies (list/create/update/delete/toggle/batch/bulk-delete), supabase-tables, test-supabase | 11 | `datasourceRunner()` against a Postgres/Supabase datasource: `pg_policies`, `ALTER TABLE … ENABLE ROW LEVEL SECURITY`, `CREATE/DROP POLICY` |
+
+These need **no new third-party account** beyond a configured datasource, so they are the
+highest value per day. Do this tier first.
+
+⚠️ RLS and `advanced-query` interpolate identifiers. The **same SQL-injection rule as
+Work A wave A2 applies**: validate every table/column/policy name against introspected
+metadata, never a regex, and cover it with the mutation gate.
+
+### Tier 2 — real provider integrations (~80 ops, ~2–3 weeks)
+
+| Cluster | Ops | Needs | Foundation that exists |
+|---|---:|---|---|
+| `edge-engines` | 35 | Cloudflare API token | `cloudflareProvisioner` in `packages/edge-infra/src/provisioning/cloudflare.ts`; `deployCommand` in `packages/compiler/src/cli/deploy.ts` |
+| `edge-providers` | 13 | per-provider tokens (Turso, Upstash, CF) | same `Provisioner` interface |
+| `cloudflare` + `deno` | 8 | Cloudflare / Deno Deploy tokens | `cloudflareProvisioner` |
+| `edge-databases` / `-caches` / `-queues` / `-vectors` / `-gpu` | 13 | Turso, Upstash Redis/QStash, Vectorize | `Provisioner` + the existing runners |
+| `agent`, `agent-profiles`, `mcp-servers` | 14 | an LLM API key; an MCP server URL | the vendored agent contract |
+
+Each needs a **credential-gated live gate**. Follow the existing F4c/F5d pattern exactly:
+skip loudly without the credential, run for real with it.
+
+### Tier 3 — small and local (~13 ops, ~2 days)
+
+`auth` (2), `settings` (2), `variables` (1), `workflows` (1), `queue` (1), `actions` (1),
+plus the 10 currently `shape-only`. Review individually — most need a persisted effect
+rather than an integration. The `shape-only` ten are the ones returning a correct
+constant while ignoring their store.
+
+### Exit for Work A2
+
+- `behavior.summary.json`: **`external-disabled: 0`, `shape-only: 0`, `stub: 0`,
+  `functional: 334`**
+- Every provider family has a live gate, and each has been run once for real, recorded in
+  the source of truth with the date and what was exercised.
 
 ## 2. Work B — scheduled cross-repo drift (~0.5 day)
 
@@ -310,7 +403,7 @@ All four are known and currently written down. "No leftovers" means closing them
 |---|---|---|
 | E1 | `POST /api/actions/drafts/{id}/test-node/{node_id}` is labelled `external-disabled` but its evidence reads *"persisted state effect (1 SQL observation)"* — label and evidence disagree | Re-derive; correct the classifier or the op |
 | E2 | `behavior.summary.json` stores only counts + fingerprint, so the 113 `external-disabled` are auditable only by re-running `--verbose` | Persist the per-op ledger like `behavior.auth.json` already does |
-| E3 | The classifier trusts each handler's **self-report**. `database` (16) and `storage` (14) are `external-disabled` because the handler says "not configured", though community-local primitives exist | Audit those 30; implement locally where possible, or justify each in the doc |
+| E3 | The classifier trusts each handler's **self-report**. `database` (16) and `storage` (14) say "not configured" although the primitives exist | Folded into Work A2 Tier 1 — implement all 30 |
 | E4 | Gate 1c(3) negative sweep exists, but `132 → 151` ops have "no falsifiable typed input" | Confirm that is inherent (no typed body/params) and record it, or extend the generator |
 
 ---
@@ -318,14 +411,20 @@ All four are known and currently written down. "No leftovers" means closing them
 ## 6. Sequencing
 
 ```
-A1 → A2 → A3 → A4 → A5   (datasource layer; A2 is the critical one)
-      ↘ B, C, E in parallel — independent of A
-                                   ↘ D (needs A complete: the deploy must be final)
-                                        ↘ F owner sign-off
+A1 → A2 → A3 → A4 → A5           Work A — the /api/sync datasource layer
+                      ↘
+                       A2-Tier1 → A2-Tier2 → A2-Tier3    Work A2 — make the 123 real
+                          ↘ B, C, E in parallel — independent of A and A2
+                                                      ↘ D (needs A + A2 complete)
+                                                           ↘ F owner sign-off
 ```
 
-Do **not** run D before A is finished — a deploy proof of an incomplete surface proves
-nothing and will need repeating.
+Two ordering rules:
+
+- **A before A2-Tier1.** They share the same introspection and identifier-validation
+  code; doing A first means Tier 1 reuses it instead of duplicating it.
+- **D last.** A deploy proof of an incomplete surface proves nothing and will need
+  repeating. Run it once, when everything else is done.
 
 ---
 
@@ -336,7 +435,9 @@ CF-22 closes when **every** box is true. No exceptions, no "follow-up" bucket.
 **Machine-checkable:**
 
 - [ ] `pnpm --filter @frontbase/backend run gate:cf22` PASS
-- [ ] `behavior.summary.json` shows **`stub: 0`** — every contract op has a real handler
+- [ ] `behavior.summary.json` shows **`functional: 334`** — and `stub: 0`,
+      `external-disabled: 0`, `shape-only: 0`. **This is the parity bar.** Any non-zero
+      in those three means an operation still does less than the product's.
 - [ ] Drift gate: `0 missing`, `0 divergent`, **`0 stubbed`**
 - [ ] Conformance: `VIOLATES 0`, `UNREACHABLE 0`, `NO_SCHEMA 0`
 - [ ] Tenant matrix green across all identifier-bearing ops (it grows with A)
@@ -348,12 +449,29 @@ CF-22 closes when **every** box is true. No exceptions, no "follow-up" bucket.
 - [ ] Scheduled drift workflow green, and proven to fail on a real product change
 - [ ] Retired `/api/console/*` routes assert 404/410; setup + health still work
 
-**Judgement calls that must be *recorded*, not merely made:**
+**Live verification — one real run per provider family, recorded:**
 
-- [ ] Sheets OAuth: implemented, or `external-disabled` with the reason written down
-- [ ] WordPress import: `external-disabled` with the reason written down
-- [ ] Every remaining `external-disabled` op justified (E3)
+Implementation alone is not proof. Each of these must have been exercised **once against
+a real credential**, with the date and what was exercised written into the source of
+truth. The owner supplies the credentials; this is a hard input.
+
+- [ ] Cloudflare (engines, provisioning, deploy)
+- [ ] Turso / libsql (edge-databases)
+- [ ] Upstash Redis + QStash (edge-caches, edge-queues)
+- [ ] Vectorize (edge-vectors)
+- [ ] S3/R2 (storage upload, signed + public URLs, move)
+- [ ] Postgres or Supabase (database introspection, advanced-query, **RLS policies**)
+- [ ] An LLM provider (agent chat, agent profiles)
+- [ ] An MCP server (mcp-servers, agent tools)
+- [ ] Google OAuth (Sheets connect) — **implemented, not descoped**
+- [ ] A WordPress site (import + discover) — **implemented, not descoped**
+- [ ] Netlify + Vercel tokens (storage site targets)
+
+**Recorded, not merely decided:**
+
 - [ ] The consumer map for `/api/console/*` committed
+- [ ] Every live gate's skip-vs-run condition documented, so a future run can tell
+      "not configured" apart from "not implemented"
 
 **Human:**
 

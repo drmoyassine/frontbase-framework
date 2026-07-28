@@ -33,7 +33,7 @@ Where any older note conflicts with this file, this file controls.
 |---|---|---|
 | **P0** | Product repo emits a committed, typed OpenAPI contract + generated client | ✅ **Green (Gate 0).** The "artifact lags source" reading was a CRLF false positive: `core.autocrlf` rewrote the generated JSON on checkout, so byte-comparing gates saw phantom edits (`--numstat` showed 0 changed lines). Fixed by pinning those paths to LF in `.gitattributes` (product `e79abee`). |
 | **P1** | Framework emits its own spec + drift gate vs the vendored product contract | ✅ **Closed.** `x-implemented` is route-derived; every response validates; all operations carry a runtime-derived, fingerprint-gated behavior status; all typed inputs are in the negative sweep. The gates now derive their op counts from the contract rather than hardcoding them. |
-| **P2** | 334 operations implementing the community contract | ⚠️ **286 implemented; 48 stubbed.** The `/api/sync` surface (§7a) is declared and auto-stubbed at 501 but NOT implemented. The previously-recorded closure was against a 286-op denominator that excluded it. `163 functional / 10 deliberate protocol/catalog shape-only / 113 explicit external-disabled / 0 stub`. API keys are hashed plus one-time encrypted reveal; password reset is expiring, single-use, mutates credentials, and invalidates sessions; 139/139 identifier-bearing operations pass the two-tenant matrix. External-provider operations remain excluded from the functional count until live credentials exist. |
+| **P2** | 334 operations implementing the community contract | ⚠️ **163 functional; 171 not.** `48 stub / 113 external-disabled / 10 shape-only`. The owner's bar is **100% functional parity** — `external-disabled` is a work item, not an outcome. The earlier "closed" reading counted external-disabled as acceptable AND measured against a 286-op denominator that excluded `/api/sync` entirely. `163 functional / 10 deliberate protocol/catalog shape-only / 113 explicit external-disabled / 0 stub`. API keys are hashed plus one-time encrypted reveal; password reset is expiring, single-use, mutates credentials, and invalidates sessions; 139/139 identifier-bearing operations pass the two-tenant matrix. External-provider operations remain excluded from the functional count until live credentials exist. |
 | **P3** | Serve the product console from the cf-full worker | ⚠️ **Deployed and browser-verified; one surface missing.** A live CF deploy plus a 15-case Playwright suite pass, but the console's `/api/sync/*` datasource API is unimplemented (§7a). Routing/auth/static-assets/setup-hardening are real and smoke-green (23 checks). Pins agree and are gated (Gate 0). **Still open:** owner sign-off, scheduled cross-repo drift, legacy `/api/console/*` retirement, and §7a. A field incident (two dashboards) was found and remediated. |
 
 **Current machine-verified facts (2026-07-28, framework `40c2afa` / product `7fbc0b9`):**
@@ -60,7 +60,21 @@ Where any older note conflicts with this file, this file controls.
 | `UNREACHABLE` | 0 | Enabled in-scope compat ops with a documented response that the probe could not reach. Gated at zero. |
 | `NO_SCHEMA` | 0 | Every response now has a usable generated validator/schema or an explicit bodyless contract. Gated at zero. |
 | `EXTERNAL_DISABLED` | 0 | Community-local signup and one-time invite acceptance now have real persisted behavior. |
-| `STUB` | 48 | Declared in the contract, auto-stubbed at 501, **not implemented** — the entire `/api/sync` surface (§7a). Pinned in `behavior.summary.json` so it cannot grow and must reach 0. |
+| `STUB` | 48 | Declared, auto-stubbed at 501, **not implemented** — the `/api/sync` surface (§7a). Pinned in `behavior.summary.json` so it cannot grow and must reach 0. |
+
+**Behaviour ledger — the parity denominator.** Conformance measures shape; this measures
+whether an operation *does* anything:
+
+| Status | Count | Under the 100%-parity bar |
+|---|---:|---|
+| `functional` | 163 | Done |
+| `external-disabled` | 113 | **Work item.** Mostly unwired integrations, not impossible ones — storage maps onto the existing `s3StorageProvider`, database/RLS onto `datasourceRunner`. |
+| `shape-only` | 10 | **Work item.** Correct shape, no effect. |
+| `stub` | 48 | **Work item.** No handler at all. |
+
+**171 of 334 (51%) are not yet functional.** The plan and cost are in
+[`cf-22-closure-plan.md`](./cf-22-closure-plan.md) — roughly 5–8 weeks, dominated by the
+123 non-functional operations.
 
 Conformance says nothing about **behaviour**: an op that returns a correctly-shaped
 constant and ignores its store counts as `CONFORMS`. That distinction is Gate 1c/3.
