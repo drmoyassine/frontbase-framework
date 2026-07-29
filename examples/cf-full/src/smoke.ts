@@ -210,12 +210,16 @@ await check('GET /api/auth/me (compat) WITH session → 200 returns the owner', 
     return r.status === 200 && body.user?.email === ADMIN.email;
 });
 
-await check('POST /api/auth/login (compat) wrong password → 401 invalid_credentials', async () => {
+await check('POST /api/auth/login (compat) wrong password → 401 with the product detail', async () => {
     const r = await req('/api/auth/login', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email: ADMIN.email, password: 'wrong' }),
     });
-    return r.status === 401 && (await r.json() as { error?: string }).error === 'invalid_credentials';
+    // The product raises HTTPException(401, detail="Invalid email or password")
+    // (app/routers/auth.py:680), which FastAPI serializes as {"detail": ...}. The
+    // error-envelope middleware normalizes the framework's {error:'invalid_credentials'}
+    // to that same shape, so a wrong password now answers exactly as the product does.
+    return r.status === 401 && (await r.json() as { detail?: string }).detail === 'Invalid email or password';
 });
 
 // ---- compat API: pages CRUD round-trip ----
