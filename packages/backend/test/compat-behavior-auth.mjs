@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCompatApp } from '../dist/compat/app.js';
+import { KeyValueStore } from '../dist/compat/store.js';
 import {
     createResolvePrincipal,
     hashPassword,
@@ -408,6 +409,32 @@ for (const key of [...scopedOps].sort()) {
 const counts = {};
 for (const { status } of Object.values(operations)) counts[status] = (counts[status] ?? 0) + 1;
 const actual = { scope: 'authentication/security + closed root/invite producer', counts, operations };
+
+// Regression (CF-22 Audit Trail React #31): an older framework build persisted audit
+// `details` as a JSON object — the raw request payload. The product's AuditLog.details is
+// a Text column and SecuritySettingsForm renders `{log.details}` raw into the DOM, so a
+// stale object entry crashes the whole Settings → Security screen. Seed exactly that stale
+// shape straight into the store — bypassing the route's write coercion — and prove the
+// READ path normalises it to a string, so the live console cannot crash on old data.
+{
+    const h = await makeHarness();
+    const { cookie } = await h.login();
+    await new KeyValueStore(h.runner, '_default').setJson('auth_security_audit', [{
+        id: 'stale-object-details',
+        action: 'bot_protection_updated',
+        details: { enabled: true },
+        created_at: NOW,
+        user_id: null, ip_address: null, user_agent: null,
+    }], NOW);
+    const res = await h.request('GET', '/api/auth/security/audit-logs', undefined, cookie);
+    const body = await res.clone().json();
+    const stale = body.find((e) => e.id === 'stale-object-details');
+    assert.equal(res.status, 200, 'audit-logs read must succeed');
+    assert.ok(stale, 'seeded stale audit entry must be served');
+    assert.equal(typeof stale.details, 'string', 'stale object details must be coerced to a string on read');
+    assert.equal(stale.details, '{"enabled":true}', 'object details must be JSON-stringified on read');
+    console.log('  regression: stale object audit.details is coerced to string on read ✅');
+}
 
 console.log('\ncompat behavior — authentication/security wave\n');
 for (const status of ['functional', 'shape-only', 'external-disabled', 'stub']) {

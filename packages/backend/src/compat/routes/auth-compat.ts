@@ -332,20 +332,24 @@ export function registerAuthCompatAuthedRoutes(
         widget_size: 'normal',
         auto_ban_lockout_hours: 24,
     };
+    // The product's audit_logs.details is a Text column — always a string
+    // (app/models/auth.py:135; every caller passes an f-string). The Audit Trail renders
+    // `{log.details}` raw into the DOM (SecuritySettingsForm.tsx), so an object here
+    // crashes the whole Settings → Security screen with React #31 "object with keys
+    // {enabled}". Coerce on BOTH write and read: write keeps new entries clean, but the
+    // read coercion also neutralises entries an older framework build persisted as JSON
+    // objects before this fix shipped — those otherwise keep crashing the live console
+    // until the store is purged.
+    const detailsToText = (value: unknown): string =>
+        typeof value === 'string'
+            ? value
+            : value === null || value === undefined
+                ? ''
+                : JSON.stringify(value);
     const audit = async (tenant: string, action: string, details: unknown): Promise<void> => {
         const store = kvFor(tenant);
         const entries = await store.getJson<Record<string, unknown>[]>('auth_security_audit', []);
-        // The product's audit_logs.details is a Text column — always a string
-        // (app/models/auth.py:135; every caller passes an f-string). The Audit Trail
-        // renders `{log.details}` raw into the DOM, so an object here crashes the whole
-        // Settings → Security screen with React #31 "object with keys {enabled}".
-        // Callers in this layer pass the request payload; coerce it to a string so the
-        // stored and returned shape matches the product's contract.
-        const detailsText = typeof details === 'string'
-            ? details
-            : details === null || details === undefined
-                ? ''
-                : JSON.stringify(details);
+        const detailsText = detailsToText(details);
         entries.unshift({
             id: crypto.randomUUID(),
             action,
@@ -381,9 +385,13 @@ export function registerAuthCompatAuthedRoutes(
     });
     // GET /api/auth/security/audit-logs
     app.get('/api/auth/security/audit-logs', async (c) => {
-        const entries = await kvFor(c.get('tenant')).getJson<Record<string, unknown>[]>('auth_security_audit', []);
+        const raw = await kvFor(c.get('tenant')).getJson<Record<string, unknown>[]>('auth_security_audit', []);
         const limit = Math.max(0, Number(c.req.query('limit') ?? 50));
-        return c.json(entries.slice(0, limit));
+        const entries = raw.slice(0, limit).map((entry) => ({
+            ...entry,
+            details: detailsToText(entry.details),
+        }));
+        return c.json(entries);
     });
     // GET /api/auth/security/blocklist
     app.get('/api/auth/security/blocklist', async (c) =>
