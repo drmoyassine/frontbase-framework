@@ -103,7 +103,23 @@ async function create(path, body) {
 const draft = await create('/api/actions/drafts', { name: SENTINEL, nodes: [], edges: [] });
 const draftId = idOf(draft);
 const actionVersion = await create(`/api/actions/drafts/${draftId}/versions/`, { label: SENTINEL });
-const execution = await create(`/api/actions/drafts/${draftId}/test`, {});
+// Seeded rather than created through the API. POST .../test now answers the product's
+// 503 (a community deployment has no edge engine), so no execution can be minted here
+// — but the execution identifier family still has to be isolation-tested, and dropping
+// it would quietly shrink the matrix to whichever fixtures remain easy to build. The
+// row is what a real run would leave behind, sentinel included.
+const executionId = crypto.randomUUID();
+await runner.exec(
+    `INSERT INTO workflow_executions
+         (id, tenant_slug, workflow_id, status, trigger, result, error, started_at, ended_at)
+     VALUES (?,?,?,?,?,?,NULL,?,?)`,
+    [
+        executionId, 'tenant-a', draftId, 'completed', SENTINEL,
+        JSON.stringify({ note: SENTINEL }),
+        '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z',
+    ],
+);
+const execution = { id: executionId };
 const page = await create('/api/pages/', { name: SENTINEL, slug: 'tenant-a-private-page', title: SENTINEL });
 const pageId = idOf(page);
 const pageVersion = await create(`/api/pages/${pageId}/versions/`, { label: SENTINEL });

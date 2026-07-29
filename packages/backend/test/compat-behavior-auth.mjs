@@ -93,8 +93,16 @@ async function makeHarness() {
         const response = await request('POST', '/api/settings/invites', { email, role: 'admin' }, cookie);
         assert.equal(response.status, 200);
         const body = await response.clone().json();
-        assert.equal(typeof body.token, 'string');
-        return { response, body, cookie };
+        // The product answers `{success, message}` and nothing more
+        // (app/routers/settings.py:530) — the token is emailed, never echoed. Read it
+        // from the store so the scenarios below still drive a real invite rather than
+        // one the API conveniently handed back.
+        const rows = await runner.query(
+            "SELECT key FROM settings WHERE key LIKE 'community_invite:%' ORDER BY updated_at DESC LIMIT 1",
+        );
+        const token = String(rows[0]?.key ?? '').slice('community_invite:'.length);
+        assert.ok(token, 'invite must be persisted even though the response omits the token');
+        return { response, body: { ...body, token }, cookie };
     };
     return { runner, app, request, login, invite, passwordResetTokens };
 }

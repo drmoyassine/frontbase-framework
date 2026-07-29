@@ -217,10 +217,11 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         }
         return next();
     });
-    // Workflow callbacks use a separate service credential in the product.
-    // A console session must never authorize workflow email dispatch.
-    app.use('/api/workflows/*', async (c) =>
-        c.json({ detail: 'Authentication required' }, 401));
+    // /api/workflows/* is deliberately NOT blanket-denied. The product guards
+    // send-email with `require_tenant_context` — the same dependency every other
+    // authed route uses (app/routers/workflows.py:54) — not a separate service
+    // credential. Denying the whole prefix made the operation unreachable for every
+    // input, valid or not, so its 400s could never be observed.
     // Validate protected requests only after authentication, preserving default-
     // deny semantics (anonymous callers receive 401, not schema-oracle 422s).
     app.use('*', contractRequestValidation());
