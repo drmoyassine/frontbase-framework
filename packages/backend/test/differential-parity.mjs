@@ -70,10 +70,23 @@ for (const testCase of corpus.cases) {
     kinds.add(testCase.kind);
     coverage.set(testCase.operationId, kinds);
 }
+// An operation with no rejectable input cannot have a failure case. That is recorded
+// with a reason rather than fabricated: the previous generator appended a segment to
+// parameterless paths, which made both systems answer from their 404 handler and
+// measured their catch-alls instead of the operation.
+const excused = new Map();
+for (const entry of corpus.nonFalsifiable ?? []) {
+    assert.equal(typeof entry.reason, 'string', 'non-falsifiable entry needs a reason');
+    assert.ok(entry.reason.trim(), 'non-falsifiable reason may not be empty');
+    excused.set(entry.operationId, entry.reason);
+}
 for (const operationId of operations) {
     const kinds = coverage.get(operationId);
     assert.ok(kinds?.has('success'), `missing success case: ${operationId}`);
-    assert.ok(kinds?.has('failure'), `missing failure case: ${operationId}`);
+    assert.ok(
+        kinds?.has('failure') || excused.has(operationId),
+        `missing failure case: ${operationId} (and no recorded non-falsifiable reason)`,
+    );
 }
 
 function removePointer(value, pointer) {
@@ -180,6 +193,12 @@ async function authenticate(base, email, password) {
 
 async function snapshot(base, testCase, vars) {
     const path = interpolate(testCase.path, vars);
+    // An unbound variable must not be requested as a literal. Doing so asks for a
+    // path no route declares, and the 404 that comes back is indistinguishable from
+    // a genuinely missing route — a harness miss wearing a finding's clothes.
+    if (path.includes('{{')) {
+        return { status: 'unresolved-variable', mediaType: '', body: path };
+    }
     const payload = testCase.body === undefined ? undefined : interpolate(testCase.body, vars);
     const cookie = cookieHeader(base);
     // Bounded per request: the surface includes SSE streams that never close, and an
@@ -216,8 +235,11 @@ async function snapshot(base, testCase, vars) {
     // Capture BEFORE normalisation: ids are normalised away for comparison, but they
     // are exactly what later cases need in order to address the resource.
     for (const [name, pointer] of Object.entries(testCase.capture ?? {})) {
-        const captured = raw && typeof raw === 'object' ? readPointer(raw, pointer) : undefined;
-        if (captured !== undefined) vars[name] = captured;
+        const pointers = Array.isArray(pointer) ? pointer : [pointer];
+        for (const candidate of pointers) {
+            const captured = raw && typeof raw === 'object' ? readPointer(raw, candidate) : undefined;
+            if (captured !== undefined) { vars[name] = captured; break; }
+        }
     }
     return {
         status: response.status,
@@ -235,7 +257,54 @@ if (!adminEmail || !adminPassword) {
 await authenticate(productBase, adminEmail, adminPassword);
 await authenticate(frameworkBase, adminEmail, adminPassword);
 
+/**
+ * Locate the FIRST structural difference between two normalised bodies.
+ *
+ * Reported as a JSON pointer plus both sides, truncated. A whole-body dump per
+ * difference would bury the signal; the pointer is what a fix actually needs.
+ */
+function firstBodyDifference(product, framework, pointer = '') {
+    const kind = (value) => value === null ? 'null'
+        : Array.isArray(value) ? 'array' : typeof value;
+    if (kind(product) !== kind(framework)) return { pointer, product, framework };
+    if (Array.isArray(product)) {
+        if (product.length !== framework.length) {
+            return { pointer, product: `array(${product.length})`, framework: `array(${framework.length})` };
+        }
+        for (let index = 0; index < product.length; index++) {
+            const found = firstBodyDifference(product[index], framework[index], `${pointer}/${index}`);
+            if (found) return found;
+        }
+        return null;
+    }
+    if (product !== null && typeof product === 'object') {
+        const keys = [...new Set([...Object.keys(product), ...Object.keys(framework)])].sort();
+        for (const key of keys) {
+            if (!(key in product)) return { pointer: `${pointer}/${key}`, product: '<absent>', framework: framework[key] };
+            if (!(key in framework)) return { pointer: `${pointer}/${key}`, product: product[key], framework: '<absent>' };
+            const found = firstBodyDifference(product[key], framework[key], `${pointer}/${key}`);
+            if (found) return found;
+        }
+        return null;
+    }
+    return product === framework ? null : { pointer, product, framework };
+}
+
+const clip = (value) => {
+    const text = typeof value === 'string' ? value : JSON.stringify(value) ?? String(value);
+    return text.length > 160 ? `${text.slice(0, 157)}...` : text;
+};
+
+/**
+ * The run reports EVERY difference, then fails.
+ *
+ * Stopping at the first mismatch would satisfy the assertion contract while making
+ * the result useless: 668 cases would surface one defect per run, and the burn-down
+ * this gate exists to produce could never be written. Any difference is still a
+ * FAIL — the exit code does not soften.
+ */
 let compared = 0;
+const differences = [];
 const productVars = {};
 const frameworkVars = {};
 for (const testCase of corpus.cases) {
@@ -243,15 +312,58 @@ for (const testCase of corpus.cases) {
         snapshot(productBase, testCase, productVars),
         snapshot(frameworkBase, testCase, frameworkVars),
     ]);
-    assert.deepEqual(
-        framework,
-        product,
-        `${testCase.operationId} (${testCase.kind}) differs`,
-    );
     compared++;
+    const classes = [];
+    if (product.status !== framework.status) classes.push('status');
+    if (product.mediaType !== framework.mediaType) classes.push('media-type');
+    const bodyDiff = firstBodyDifference(product.body, framework.body);
+    if (bodyDiff) classes.push('body');
+    if (classes.length === 0) continue;
+    differences.push({
+        operationId: testCase.operationId,
+        kind: testCase.kind,
+        method: testCase.method,
+        path: testCase.path,
+        classes,
+        status: { product: product.status, framework: framework.status },
+        mediaType: { product: product.mediaType, framework: framework.mediaType },
+        body: bodyDiff && {
+            pointer: bodyDiff.pointer || '/',
+            product: clip(bodyDiff.product),
+            framework: clip(bodyDiff.framework),
+        },
+    });
 }
 
-console.log(
-    `CF-22 differential parity: PASS — ${compared} real product/framework cases, `
-    + `${operations.size}/${operations.size} operations with success + failure coverage`,
-);
+const reportPath = option('--report');
+if (reportPath) {
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(reportPath, `${JSON.stringify({
+        productBase, frameworkBase, corpus: corpusPath,
+        compared, differing: differences.length, differences,
+    }, null, 2)}\n`);
+}
+
+if (differences.length === 0) {
+    console.log(
+        `CF-22 differential parity: PASS — ${compared} real product/framework cases, `
+        + `${operations.size}/${operations.size} operations with success + failure coverage`,
+    );
+} else {
+    const byClass = new Map();
+    for (const difference of differences) {
+        for (const name of difference.classes) byClass.set(name, (byClass.get(name) ?? 0) + 1);
+    }
+    console.log(`CF-22 differential parity: FAIL — ${differences.length}/${compared} cases differ`);
+    console.log(`  by class: ${[...byClass].map(([k, v]) => `${k}=${v}`).join(', ')}`);
+    for (const difference of differences.slice(0, 60)) {
+        const status = difference.classes.includes('status')
+            ? ` status ${difference.status.product}≠${difference.status.framework}` : '';
+        const media = difference.classes.includes('media-type')
+            ? ` media ${difference.mediaType.product || '<none>'}≠${difference.mediaType.framework || '<none>'}` : '';
+        const body = difference.body ? ` body ${difference.body.pointer}` : '';
+        console.log(`  ${difference.method} ${difference.path} [${difference.kind}] ${difference.operationId}:${status}${media}${body}`);
+    }
+    if (differences.length > 60) console.log(`  ... ${differences.length - 60} more (see --report)`);
+    process.exitCode = 1;
+}

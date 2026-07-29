@@ -39,6 +39,554 @@
       "reason": "derived from generated ids embedded in the payload"
     }
   ],
+  "nonFalsifiable": [
+    {
+      "operationId": "meta_root",
+      "method": "GET",
+      "path": "/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "actions_list_drafts",
+      "method": "GET",
+      "path": "/api/actions/drafts",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "actions_get_execution_stats",
+      "method": "GET",
+      "path": "/api/actions/execution-stats",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "actions_list_all_executions",
+      "method": "GET",
+      "path": "/api/actions/executions",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "actions_export_executions_csv",
+      "method": "GET",
+      "path": "/api/actions/executions/export",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "agent_integrations_get_agent_catalogue",
+      "method": "GET",
+      "path": "/api/agent-catalogue",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "agent_integrations_list_skills",
+      "method": "GET",
+      "path": "/api/agent-skills",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "agent_agent_chat",
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "agent_agent_credits",
+      "method": "GET",
+      "path": "/api/agent/credits",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "agent_settings_get_agent_settings",
+      "method": "GET",
+      "path": "/api/agent/settings",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "agent_settings_update_agent_settings",
+      "method": "PUT",
+      "path": "/api/agent/settings",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "agent_settings_reset_agent_settings",
+      "method": "DELETE",
+      "path": "/api/agent/settings",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "auth_forms_list_auth_forms",
+      "method": "GET",
+      "path": "/api/auth-forms/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "auth_forms_get_primary_auth_form",
+      "method": "GET",
+      "path": "/api/auth-forms/primary/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "authentication_login_options",
+      "method": "OPTIONS",
+      "path": "/api/auth/login",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "authentication_logout",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "authentication_get_me",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "authentication_get_audit_logs",
+      "method": "GET",
+      "path": "/api/auth/security/audit-logs",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "authentication_get_blocklist",
+      "method": "GET",
+      "path": "/api/auth/security/blocklist",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "authentication_get_bot_protection_settings",
+      "method": "GET",
+      "path": "/api/auth/security/bot-protection",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "authentication_get_bot_protection_metrics",
+      "method": "GET",
+      "path": "/api/auth/security/bot-protection/metrics",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "authentication_get_waf_settings",
+      "method": "GET",
+      "path": "/api/auth/security/waf",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "authentication_signup_options",
+      "method": "OPTIONS",
+      "path": "/api/auth/signup",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "database_advanced_query",
+      "method": "POST",
+      "path": "/api/database/advanced-query/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "database_get_connections",
+      "method": "GET",
+      "path": "/api/database/connections/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "database_disconnect_supabase",
+      "method": "DELETE",
+      "path": "/api/database/disconnect-supabase/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "database_get_distinct_values",
+      "method": "POST",
+      "path": "/api/database/distinct-values/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "rls_get_all_rls_metadata",
+      "method": "GET",
+      "path": "/api/database/rls/metadata/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "rls_list_policies",
+      "method": "GET",
+      "path": "/api/database/rls/policies/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "rls_get_tables_rls_status",
+      "method": "GET",
+      "path": "/api/database/rls/tables/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "database_get_supabase_tables",
+      "method": "GET",
+      "path": "/api/database/supabase-tables/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "database_get_tables",
+      "method": "GET",
+      "path": "/api/database/tables/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_api_keys_list_api_keys",
+      "method": "GET",
+      "path": "/api/edge-api-keys",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_caches_list_edge_caches",
+      "method": "GET",
+      "path": "/api/edge-caches/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_databases_list_edge_databases",
+      "method": "GET",
+      "path": "/api/edge-databases/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_engines_list_engines",
+      "method": "GET",
+      "path": "/api/edge-engines/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_engines_get_bundle_hashes",
+      "method": "GET",
+      "path": "/api/edge-engines/bundle-hashes/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_gpu_list_gpu_models",
+      "method": "GET",
+      "path": "/api/edge-gpu/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_gpu_get_catalog",
+      "method": "GET",
+      "path": "/api/edge-gpu/catalog",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_gpu_get_schemas",
+      "method": "GET",
+      "path": "/api/edge-gpu/schemas",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_providers_list_providers",
+      "method": "GET",
+      "path": "/api/edge-providers/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_providers_get_workspace_agent_token",
+      "method": "GET",
+      "path": "/api/edge-providers/workspace-agent-token",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_queues_list_edge_queues",
+      "method": "GET",
+      "path": "/api/edge-queues/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "edge_vectors_list_edge_vectors",
+      "method": "GET",
+      "path": "/api/edge-vectors/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "agent_integrations_list_mcp_servers",
+      "method": "GET",
+      "path": "/api/mcp-servers",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "pages_get_pages",
+      "method": "GET",
+      "path": "/api/pages/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "pages_get_homepage",
+      "method": "GET",
+      "path": "/api/pages/homepage/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "project_get_project_endpoint",
+      "method": "GET",
+      "path": "/api/project/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "project_update_project_endpoint",
+      "method": "PUT",
+      "path": "/api/project/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "project_upload_branding_asset",
+      "method": "POST",
+      "path": "/api/project/assets/upload/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "meta_queue_health",
+      "method": "GET",
+      "path": "/api/queue/health",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "security_events_list_security_events",
+      "method": "GET",
+      "path": "/api/security-events/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "security_events_security_events_summary",
+      "method": "GET",
+      "path": "/api/security-events/summary",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "settings_get_general_settings",
+      "method": "GET",
+      "path": "/api/settings/general",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "settings_update_general_settings",
+      "method": "PUT",
+      "path": "/api/settings/general",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "settings_get_privacy_settings",
+      "method": "GET",
+      "path": "/api/settings/privacy/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "settings_update_privacy_settings",
+      "method": "PUT",
+      "path": "/api/settings/privacy/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "settings_get_redis_settings",
+      "method": "GET",
+      "path": "/api/settings/redis/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "settings_update_redis_settings",
+      "method": "PUT",
+      "path": "/api/settings/redis/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "settings_test_redis_connection",
+      "method": "POST",
+      "path": "/api/settings/redis/test/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "settings_get_security_settings",
+      "method": "GET",
+      "path": "/api/settings/security/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "settings_update_security_settings",
+      "method": "PUT",
+      "path": "/api/settings/security/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "storage_list_buckets",
+      "method": "GET",
+      "path": "/api/storage/buckets",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "storage_create_bucket",
+      "method": "POST",
+      "path": "/api/storage/buckets",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "storage_compute_size",
+      "method": "GET",
+      "path": "/api/storage/compute-size",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "storage_create_folder",
+      "method": "POST",
+      "path": "/api/storage/create-folder",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "storage_delete_files",
+      "method": "DELETE",
+      "path": "/api/storage/delete",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "storage_list_files",
+      "method": "GET",
+      "path": "/api/storage/list",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "storage_move_file",
+      "method": "POST",
+      "path": "/api/storage/move",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "storage_move_file_cross",
+      "method": "POST",
+      "path": "/api/storage/move-cross",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "storage_list_netlify_sites",
+      "method": "GET",
+      "path": "/api/storage/netlify-sites",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "storage_create_netlify_site",
+      "method": "POST",
+      "path": "/api/storage/netlify-sites",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "storage_list_storage_providers",
+      "method": "GET",
+      "path": "/api/storage/providers/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "storage_create_storage_provider",
+      "method": "POST",
+      "path": "/api/storage/providers/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "storage_get_public_url",
+      "method": "GET",
+      "path": "/api/storage/public-url",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "storage_get_signed_url",
+      "method": "GET",
+      "path": "/api/storage/signed-url",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "storage_upload_file",
+      "method": "POST",
+      "path": "/api/storage/upload",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "storage_list_vercel_projects",
+      "method": "GET",
+      "path": "/api/storage/vercel-projects",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "storage_create_vercel_project",
+      "method": "POST",
+      "path": "/api/storage/vercel-projects",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "list_datasources_datasources__get",
+      "method": "GET",
+      "path": "/api/sync/datasources/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "search_all_datasources_datasources_search_all__get",
+      "method": "GET",
+      "path": "/api/sync/datasources/search-all/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "sheets_connect_issue_datasources_sheets_connect_issue__post",
+      "method": "POST",
+      "path": "/api/sync/datasources/sheets/connect/issue/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "sheets_connect_status_datasources_sheets_connect_status__get",
+      "method": "GET",
+      "path": "/api/sync/datasources/sheets/connect/status/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "health_health__get",
+      "method": "GET",
+      "path": "/api/sync/health/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "get_redis_settings_settings_redis__get",
+      "method": "GET",
+      "path": "/api/sync/settings/redis/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "update_redis_settings_settings_redis__put",
+      "method": "PUT",
+      "path": "/api/sync/settings/redis/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "test_redis_settings_redis_test__post",
+      "method": "POST",
+      "path": "/api/sync/settings/redis/test/",
+      "reason": "no path parameter, and every required body property is an unconstrained string or open object"
+    },
+    {
+      "operationId": "themes_get_themes",
+      "method": "GET",
+      "path": "/api/themes/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "variables_get_variables",
+      "method": "GET",
+      "path": "/api/variables/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "variables_get_template_registry",
+      "method": "GET",
+      "path": "/api/variables/registry/",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    },
+    {
+      "operationId": "meta_health_check",
+      "method": "GET",
+      "path": "/health",
+      "reason": "no path parameter, no request body, and no constrained required query parameter"
+    }
+  ],
   "cases": [
     {
       "operationId": "pages_create_page_endpoint",
@@ -53,8 +601,10 @@
         "slug": "parity"
       },
       "capture": {
-        "page_id": "/id",
-        "page_id_data": "/data/id"
+        "page_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{page_id}} for /api/pages/* cases"
     },
@@ -70,8 +620,10 @@
         "name": "parity"
       },
       "capture": {
-        "draft_id": "/id",
-        "draft_id_data": "/data/id"
+        "draft_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{draft_id}} for /api/actions/drafts* cases"
     },
@@ -88,8 +640,10 @@
         "type": "parity"
       },
       "capture": {
-        "variable_id": "/id",
-        "variable_id_data": "/data/id"
+        "variable_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{variable_id}} for /api/variables/* cases"
     },
@@ -107,8 +661,10 @@
         "styles_data": {}
       },
       "capture": {
-        "theme_id": "/id",
-        "theme_id_data": "/data/id"
+        "theme_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{theme_id}} for /api/themes/* cases"
     },
@@ -125,8 +681,10 @@
         "type": "parity"
       },
       "capture": {
-        "form_id": "/id",
-        "form_id_data": "/data/id"
+        "form_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{form_id}} for /api/auth-forms/* cases"
     },
@@ -143,8 +701,10 @@
         "url": "parity"
       },
       "capture": {
-        "engine_id": "/id",
-        "engine_id_data": "/data/id"
+        "engine_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{engine_id}} for /api/edge-engines/* cases"
     },
@@ -161,8 +721,10 @@
         "provider": "parity"
       },
       "capture": {
-        "provider_id": "/id",
-        "provider_id_data": "/data/id"
+        "provider_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{provider_id}} for /api/edge-providers/* cases"
     },
@@ -180,8 +742,10 @@
         "db_url": "parity"
       },
       "capture": {
-        "db_id": "/id",
-        "db_id_data": "/data/id"
+        "db_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{db_id}} for /api/edge-databases/* cases"
     },
@@ -199,8 +763,10 @@
         "cache_url": "parity"
       },
       "capture": {
-        "cache_id": "/id",
-        "cache_id_data": "/data/id"
+        "cache_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{cache_id}} for /api/edge-caches/* cases"
     },
@@ -218,8 +784,10 @@
         "queue_url": "parity"
       },
       "capture": {
-        "queue_id": "/id",
-        "queue_id_data": "/data/id"
+        "queue_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{queue_id}} for /api/edge-queues/* cases"
     },
@@ -237,8 +805,10 @@
         "vector_url": "parity"
       },
       "capture": {
-        "vector_id": "/id",
-        "vector_id_data": "/data/id"
+        "vector_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{vector_id}} for /api/edge-vectors/* cases"
     },
@@ -255,8 +825,10 @@
         "type": "supabase"
       },
       "capture": {
-        "datasource_id": "/id",
-        "datasource_id_data": "/data/id"
+        "datasource_id": [
+          "/id",
+          "/data/id"
+        ]
       },
       "note": "seeds {{datasource_id}} for /api/sync/datasources/* cases"
     },
@@ -267,34 +839,24 @@
       "path": "/"
     },
     {
-      "operationId": "meta_root",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "actions_list_drafts",
       "kind": "success",
       "method": "GET",
       "path": "/api/actions/drafts"
     },
     {
-      "operationId": "actions_list_drafts",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "actions_create_draft",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000",
+      "path": "/api/actions/drafts",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity"
-      }
+        "name": []
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "actions_bulk_delete_drafts",
@@ -311,14 +873,16 @@
     {
       "operationId": "actions_bulk_delete_drafts",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/actions/drafts/bulk-delete/00000000-0000-4000-8000-000000000000",
+      "path": "/api/actions/drafts/bulk-delete",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "ids": []
-      }
+        "ids": "not-an-array"
+      },
+      "note": "required \"ids\" sent with the wrong declared type"
     },
     {
       "operationId": "actions_get_draft",
@@ -329,6 +893,7 @@
     {
       "operationId": "actions_get_draft",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000"
     },
@@ -345,6 +910,7 @@
     {
       "operationId": "actions_update_draft",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PATCH",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -361,6 +927,7 @@
     {
       "operationId": "actions_delete_draft",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000"
     },
@@ -379,6 +946,7 @@
     {
       "operationId": "actions_toggle_draft_active",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PATCH",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/active",
       "headers": {
@@ -397,6 +965,7 @@
     {
       "operationId": "actions_publish_draft",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/publish"
     },
@@ -415,6 +984,7 @@
     {
       "operationId": "actions_publish_draft_batch",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/publish-batch/",
       "headers": {
@@ -433,6 +1003,7 @@
     {
       "operationId": "actions_publish_draft_to_engine",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/publish/00000000-0000-4000-8000-000000000000/"
     },
@@ -451,6 +1022,7 @@
     {
       "operationId": "actions_toggle_target_active",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/publish/00000000-0000-4000-8000-000000000000/toggle",
       "headers": {
@@ -475,6 +1047,7 @@
     {
       "operationId": "actions_rollback_automation_to_version",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/rollback/",
       "headers": {
@@ -497,6 +1070,7 @@
     {
       "operationId": "actions_test_draft",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/test",
       "headers": {
@@ -517,6 +1091,7 @@
     {
       "operationId": "actions_test_node",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/test-node/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -533,6 +1108,7 @@
     {
       "operationId": "actions_list_automation_versions",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/versions/"
     },
@@ -549,6 +1125,7 @@
     {
       "operationId": "actions_create_manual_automation_version",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/versions/",
       "headers": {
@@ -565,6 +1142,7 @@
     {
       "operationId": "actions_get_automation_version_detail",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/actions/drafts/00000000-0000-4000-8000-000000000000/versions/00000000-0000-4000-8000-000000000000/"
     },
@@ -575,12 +1153,6 @@
       "path": "/api/actions/execution-stats"
     },
     {
-      "operationId": "actions_get_execution_stats",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/actions/execution-stats/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "actions_get_execution_result",
       "kind": "success",
       "method": "GET",
@@ -589,6 +1161,7 @@
     {
       "operationId": "actions_get_execution_result",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/actions/execution/00000000-0000-4000-8000-000000000000"
     },
@@ -599,12 +1172,6 @@
       "path": "/api/actions/executions"
     },
     {
-      "operationId": "actions_list_all_executions",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/actions/executions/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "actions_get_execution_detail",
       "kind": "success",
       "method": "GET",
@@ -613,6 +1180,7 @@
     {
       "operationId": "actions_get_execution_detail",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/actions/executions/detail/00000000-0000-4000-8000-000000000000"
     },
@@ -623,12 +1191,6 @@
       "path": "/api/actions/executions/export"
     },
     {
-      "operationId": "actions_export_executions_csv",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/actions/executions/export/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "actions_get_draft_executions",
       "kind": "success",
       "method": "GET",
@@ -637,6 +1199,7 @@
     {
       "operationId": "actions_get_draft_executions",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/actions/executions/00000000-0000-4000-8000-000000000000"
     },
@@ -649,6 +1212,7 @@
     {
       "operationId": "actions_get_production_executions",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/actions/executions/00000000-0000-4000-8000-000000000000/production/00000000-0000-4000-8000-000000000000"
     },
@@ -659,12 +1223,6 @@
       "path": "/api/agent-catalogue"
     },
     {
-      "operationId": "agent_integrations_get_agent_catalogue",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/agent-catalogue/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "agent_integrations_list_profile_skills",
       "kind": "success",
       "method": "GET",
@@ -673,6 +1231,7 @@
     {
       "operationId": "agent_integrations_list_profile_skills",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/agent-profiles/00000000-0000-4000-8000-000000000000/skills"
     },
@@ -691,6 +1250,7 @@
     {
       "operationId": "agent_integrations_install_skill",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/agent-profiles/00000000-0000-4000-8000-000000000000/skills",
       "headers": {
@@ -709,6 +1269,7 @@
     {
       "operationId": "agent_integrations_uninstall_skill",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/agent-profiles/00000000-0000-4000-8000-000000000000/skills/00000000-0000-4000-8000-000000000000"
     },
@@ -717,12 +1278,6 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/agent-skills"
-    },
-    {
-      "operationId": "agent_integrations_list_skills",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/agent-skills/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "agent_integrations_create_skill",
@@ -741,16 +1296,18 @@
     {
       "operationId": "agent_integrations_create_skill",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/agent-skills/00000000-0000-4000-8000-000000000000",
+      "path": "/api/agent-skills",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "slug": "parity",
+        "slug": [],
         "name": "parity",
         "tool_definitions": []
-      }
+      },
+      "note": "required \"slug\" sent with the wrong declared type"
     },
     {
       "operationId": "agent_integrations_update_skill",
@@ -765,6 +1322,7 @@
     {
       "operationId": "agent_integrations_update_skill",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/agent-skills/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -781,6 +1339,7 @@
     {
       "operationId": "agent_integrations_delete_skill",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/agent-skills/00000000-0000-4000-8000-000000000000"
     },
@@ -791,12 +1350,6 @@
       "path": "/api/agent/chat"
     },
     {
-      "operationId": "agent_agent_chat",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/agent/chat/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "agent_agent_chat_with_profile",
       "kind": "success",
       "method": "POST",
@@ -805,6 +1358,7 @@
     {
       "operationId": "agent_agent_chat_with_profile",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/agent/chat/00000000-0000-4000-8000-000000000000"
     },
@@ -815,12 +1369,6 @@
       "path": "/api/agent/credits"
     },
     {
-      "operationId": "agent_agent_credits",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/agent/credits/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "agent_mcp_mcp_root",
       "kind": "success",
       "method": "GET",
@@ -829,6 +1377,7 @@
     {
       "operationId": "agent_mcp_mcp_root",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000"
     },
@@ -841,6 +1390,7 @@
     {
       "operationId": "agent_mcp_get_prompt",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/prompts/get"
     },
@@ -853,6 +1403,7 @@
     {
       "operationId": "agent_mcp_list_prompts",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/prompts/list"
     },
@@ -865,6 +1416,7 @@
     {
       "operationId": "agent_mcp_list_resources",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/resources/list"
     },
@@ -877,6 +1429,7 @@
     {
       "operationId": "agent_mcp_call_tool",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/tools/call"
     },
@@ -889,6 +1442,7 @@
     {
       "operationId": "agent_mcp_list_tools",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/agent/mcp/00000000-0000-4000-8000-000000000000/tools/list"
     },
@@ -897,12 +1451,6 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/agent/settings"
-    },
-    {
-      "operationId": "agent_settings_get_agent_settings",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/agent/settings/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "agent_settings_update_agent_settings",
@@ -915,26 +1463,10 @@
       "body": {}
     },
     {
-      "operationId": "agent_settings_update_agent_settings",
-      "kind": "failure",
-      "method": "PUT",
-      "path": "/api/agent/settings/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "agent_settings_reset_agent_settings",
       "kind": "success",
       "method": "DELETE",
       "path": "/api/agent/settings"
-    },
-    {
-      "operationId": "agent_settings_reset_agent_settings",
-      "kind": "failure",
-      "method": "DELETE",
-      "path": "/api/agent/settings/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "auth_forms_list_auth_forms",
@@ -943,35 +1475,25 @@
       "path": "/api/auth-forms/"
     },
     {
-      "operationId": "auth_forms_list_auth_forms",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "auth_forms_create_auth_form",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000",
+      "path": "/api/auth-forms/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "type": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "auth_forms_get_primary_auth_form",
       "kind": "success",
       "method": "GET",
       "path": "/api/auth-forms/primary/"
-    },
-    {
-      "operationId": "auth_forms_get_primary_auth_form",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/auth-forms/primary/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "auth_forms_get_auth_form",
@@ -982,6 +1504,7 @@
     {
       "operationId": "auth_forms_get_auth_form",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/"
     },
@@ -998,6 +1521,7 @@
     {
       "operationId": "auth_forms_update_auth_form",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/",
       "headers": {
@@ -1014,6 +1538,7 @@
     {
       "operationId": "auth_forms_delete_auth_form",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/"
     },
@@ -1026,6 +1551,7 @@
     {
       "operationId": "auth_forms_set_primary_auth_form",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/set-primary/"
     },
@@ -1045,15 +1571,17 @@
     {
       "operationId": "authentication_accept_invite",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/auth/accept-invite/00000000-0000-4000-8000-000000000000",
+      "path": "/api/auth/accept-invite",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "token": "parity",
+        "token": [],
         "password": "parity"
-      }
+      },
+      "note": "required \"token\" sent with the wrong declared type"
     },
     {
       "operationId": "authentication_check_slug",
@@ -1064,6 +1592,7 @@
     {
       "operationId": "authentication_check_slug",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/auth/check-slug/00000000-0000-4000-8000-000000000000"
     },
@@ -1082,14 +1611,16 @@
     {
       "operationId": "authentication_forgot_password",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/auth/forgot-password/00000000-0000-4000-8000-000000000000",
+      "path": "/api/auth/forgot-password",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "email": "parity@example.com"
-      }
+        "email": []
+      },
+      "note": "required \"email\" sent with the wrong declared type"
     },
     {
       "operationId": "authentication_get_invite",
@@ -1100,6 +1631,7 @@
     {
       "operationId": "authentication_get_invite",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/auth/invite/00000000-0000-4000-8000-000000000000"
     },
@@ -1119,15 +1651,17 @@
     {
       "operationId": "authentication_login",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/auth/login/00000000-0000-4000-8000-000000000000",
+      "path": "/api/auth/login",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "email": "parity@example.com",
+        "email": [],
         "password": "parity"
-      }
+      },
+      "note": "required \"email\" sent with the wrong declared type"
     },
     {
       "operationId": "authentication_login_options",
@@ -1136,34 +1670,16 @@
       "path": "/api/auth/login"
     },
     {
-      "operationId": "authentication_login_options",
-      "kind": "failure",
-      "method": "OPTIONS",
-      "path": "/api/auth/login/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "authentication_logout",
       "kind": "success",
       "method": "POST",
       "path": "/api/auth/logout"
     },
     {
-      "operationId": "authentication_logout",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/auth/logout/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "authentication_get_me",
       "kind": "success",
       "method": "GET",
       "path": "/api/auth/me"
-    },
-    {
-      "operationId": "authentication_get_me",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/auth/me/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "authentication_reset_password",
@@ -1182,16 +1698,18 @@
     {
       "operationId": "authentication_reset_password",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/auth/reset-password/00000000-0000-4000-8000-000000000000",
+      "path": "/api/auth/reset-password",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "email": "parity@example.com",
+        "email": [],
         "token": "parity",
         "password": "parity"
-      }
+      },
+      "note": "required \"email\" sent with the wrong declared type"
     },
     {
       "operationId": "authentication_get_audit_logs",
@@ -1200,22 +1718,10 @@
       "path": "/api/auth/security/audit-logs"
     },
     {
-      "operationId": "authentication_get_audit_logs",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/auth/security/audit-logs/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "authentication_get_blocklist",
       "kind": "success",
       "method": "GET",
       "path": "/api/auth/security/blocklist"
-    },
-    {
-      "operationId": "authentication_get_blocklist",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/auth/security/blocklist/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "authentication_add_ip_ban",
@@ -1232,14 +1738,16 @@
     {
       "operationId": "authentication_add_ip_ban",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/auth/security/blocklist/00000000-0000-4000-8000-000000000000",
+      "path": "/api/auth/security/blocklist",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "ip_or_range": "parity"
-      }
+        "ip_or_range": []
+      },
+      "note": "required \"ip_or_range\" sent with the wrong declared type"
     },
     {
       "operationId": "authentication_delete_ip_ban",
@@ -1250,6 +1758,7 @@
     {
       "operationId": "authentication_delete_ip_ban",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/auth/security/blocklist/00000000-0000-4000-8000-000000000000"
     },
@@ -1258,12 +1767,6 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/auth/security/bot-protection"
-    },
-    {
-      "operationId": "authentication_get_bot_protection_settings",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/auth/security/bot-protection/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "authentication_update_bot_protection_settings",
@@ -1289,13 +1792,14 @@
     {
       "operationId": "authentication_update_bot_protection_settings",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/auth/security/bot-protection/00000000-0000-4000-8000-000000000000",
+      "path": "/api/auth/security/bot-protection",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "enabled": false,
+        "enabled": "maybe",
         "provider": "cloudflare",
         "site_key": "parity",
         "secret_key": "parity",
@@ -1305,7 +1809,8 @@
         "widget_theme": "light",
         "widget_size": "normal",
         "auto_ban_lockout_hours": 1
-      }
+      },
+      "note": "required \"enabled\" sent with the wrong declared type"
     },
     {
       "operationId": "authentication_get_bot_protection_metrics",
@@ -1314,22 +1819,10 @@
       "path": "/api/auth/security/bot-protection/metrics"
     },
     {
-      "operationId": "authentication_get_bot_protection_metrics",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/auth/security/bot-protection/metrics/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "authentication_get_waf_settings",
       "kind": "success",
       "method": "GET",
       "path": "/api/auth/security/waf"
-    },
-    {
-      "operationId": "authentication_get_waf_settings",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/auth/security/waf/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "authentication_update_waf_settings",
@@ -1346,14 +1839,16 @@
     {
       "operationId": "authentication_update_waf_settings",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/auth/security/waf/00000000-0000-4000-8000-000000000000",
+      "path": "/api/auth/security/waf",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "enabled": false
-      }
+        "enabled": "maybe"
+      },
+      "note": "required \"enabled\" sent with the wrong declared type"
     },
     {
       "operationId": "authentication_signup",
@@ -1373,29 +1868,25 @@
     {
       "operationId": "authentication_signup",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/auth/signup/00000000-0000-4000-8000-000000000000",
+      "path": "/api/auth/signup",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "email": "parity@example.com",
+        "email": [],
         "password": "parity",
         "workspace_name": "parity",
         "slug": "parity"
-      }
+      },
+      "note": "required \"email\" sent with the wrong declared type"
     },
     {
       "operationId": "authentication_signup_options",
       "kind": "success",
       "method": "OPTIONS",
       "path": "/api/auth/signup"
-    },
-    {
-      "operationId": "authentication_signup_options",
-      "kind": "failure",
-      "method": "OPTIONS",
-      "path": "/api/auth/signup/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "cloudflare_deploy_connect_cloudflare",
@@ -1412,14 +1903,16 @@
     {
       "operationId": "cloudflare_deploy_connect_cloudflare",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/cloudflare/connect/00000000-0000-4000-8000-000000000000",
+      "path": "/api/cloudflare/connect",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider_id": "parity"
-      }
+        "provider_id": []
+      },
+      "note": "required \"provider_id\" sent with the wrong declared type"
     },
     {
       "operationId": "cloudflare_deploy_deploy_to_cloudflare",
@@ -1436,14 +1929,16 @@
     {
       "operationId": "cloudflare_deploy_deploy_to_cloudflare",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/cloudflare/deploy/00000000-0000-4000-8000-000000000000",
+      "path": "/api/cloudflare/deploy",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider_id": "parity"
-      }
+        "provider_id": []
+      },
+      "note": "required \"provider_id\" sent with the wrong declared type"
     },
     {
       "operationId": "cloudflare_inspector_inspect_worker_content",
@@ -1461,15 +1956,17 @@
     {
       "operationId": "cloudflare_inspector_inspect_worker_content",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/cloudflare/inspect/content/00000000-0000-4000-8000-000000000000",
+      "path": "/api/cloudflare/inspect/content",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider_id": "parity",
+        "provider_id": [],
         "worker_name": "parity"
-      }
+      },
+      "note": "required \"provider_id\" sent with the wrong declared type"
     },
     {
       "operationId": "cloudflare_inspector_inspect_worker_secrets",
@@ -1487,15 +1984,17 @@
     {
       "operationId": "cloudflare_inspector_inspect_worker_secrets",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/cloudflare/inspect/secrets/00000000-0000-4000-8000-000000000000",
+      "path": "/api/cloudflare/inspect/secrets",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider_id": "parity",
+        "provider_id": [],
         "worker_name": "parity"
-      }
+      },
+      "note": "required \"provider_id\" sent with the wrong declared type"
     },
     {
       "operationId": "cloudflare_inspector_inspect_worker_settings",
@@ -1513,15 +2012,17 @@
     {
       "operationId": "cloudflare_inspector_inspect_worker_settings",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/cloudflare/inspect/settings/00000000-0000-4000-8000-000000000000",
+      "path": "/api/cloudflare/inspect/settings",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider_id": "parity",
+        "provider_id": [],
         "worker_name": "parity"
-      }
+      },
+      "note": "required \"provider_id\" sent with the wrong declared type"
     },
     {
       "operationId": "cloudflare_deploy_cloudflare_status",
@@ -1538,14 +2039,16 @@
     {
       "operationId": "cloudflare_deploy_cloudflare_status",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/cloudflare/status/00000000-0000-4000-8000-000000000000",
+      "path": "/api/cloudflare/status",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider_id": "parity"
-      }
+        "provider_id": []
+      },
+      "note": "required \"provider_id\" sent with the wrong declared type"
     },
     {
       "operationId": "cloudflare_deploy_teardown_cloudflare",
@@ -1562,30 +2065,22 @@
     {
       "operationId": "cloudflare_deploy_teardown_cloudflare",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/cloudflare/teardown/00000000-0000-4000-8000-000000000000",
+      "path": "/api/cloudflare/teardown",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider_id": "parity"
-      }
+        "provider_id": []
+      },
+      "note": "required \"provider_id\" sent with the wrong declared type"
     },
     {
       "operationId": "database_advanced_query",
       "kind": "success",
       "method": "POST",
       "path": "/api/database/advanced-query/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
-      "operationId": "database_advanced_query",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/database/advanced-query/00000000-0000-4000-8000-000000000000",
       "headers": {
         "content-type": "application/json"
       },
@@ -1607,15 +2102,17 @@
     {
       "operationId": "database_connect_supabase",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/database/connect-supabase/00000000-0000-4000-8000-000000000000",
+      "path": "/api/database/connect-supabase/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "url": "parity",
+        "url": [],
         "anonKey": "parity"
-      }
+      },
+      "note": "required \"url\" sent with the wrong declared type"
     },
     {
       "operationId": "database_get_connections",
@@ -1624,38 +2121,16 @@
       "path": "/api/database/connections/"
     },
     {
-      "operationId": "database_get_connections",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/database/connections/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "database_disconnect_supabase",
       "kind": "success",
       "method": "DELETE",
       "path": "/api/database/disconnect-supabase/"
     },
     {
-      "operationId": "database_disconnect_supabase",
-      "kind": "failure",
-      "method": "DELETE",
-      "path": "/api/database/disconnect-supabase/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "database_get_distinct_values",
       "kind": "success",
       "method": "POST",
       "path": "/api/database/distinct-values/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
-      "operationId": "database_get_distinct_values",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/database/distinct-values/00000000-0000-4000-8000-000000000000",
       "headers": {
         "content-type": "application/json"
       },
@@ -1677,15 +2152,17 @@
     {
       "operationId": "rls_create_batch_policies",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/database/rls/batch/00000000-0000-4000-8000-000000000000",
+      "path": "/api/database/rls/batch/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "policyBaseName": "parity",
+        "policyBaseName": [],
         "tableRules": []
-      }
+      },
+      "note": "required \"policyBaseName\" sent with the wrong declared type"
     },
     {
       "operationId": "rls_bulk_delete_policies",
@@ -1702,26 +2179,22 @@
     {
       "operationId": "rls_bulk_delete_policies",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/database/rls/bulk-delete/00000000-0000-4000-8000-000000000000",
+      "path": "/api/database/rls/bulk-delete/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "policies": []
-      }
+        "policies": "not-an-array"
+      },
+      "note": "required \"policies\" sent with the wrong declared type"
     },
     {
       "operationId": "rls_get_all_rls_metadata",
       "kind": "success",
       "method": "GET",
       "path": "/api/database/rls/metadata/"
-    },
-    {
-      "operationId": "rls_get_all_rls_metadata",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/database/rls/metadata/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "rls_save_rls_metadata",
@@ -1740,16 +2213,18 @@
     {
       "operationId": "rls_save_rls_metadata",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/database/rls/metadata/00000000-0000-4000-8000-000000000000",
+      "path": "/api/database/rls/metadata/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "tableName": "parity",
+        "tableName": [],
         "policyName": "parity",
         "formData": {}
-      }
+      },
+      "note": "required \"tableName\" sent with the wrong declared type"
     },
     {
       "operationId": "rls_verify_rls_metadata",
@@ -1767,15 +2242,17 @@
     {
       "operationId": "rls_verify_rls_metadata",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/database/rls/metadata/verify/00000000-0000-4000-8000-000000000000",
+      "path": "/api/database/rls/metadata/verify/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "tableName": "parity",
+        "tableName": [],
         "policyName": "parity"
-      }
+      },
+      "note": "required \"tableName\" sent with the wrong declared type"
     },
     {
       "operationId": "rls_get_rls_metadata",
@@ -1786,6 +2263,7 @@
     {
       "operationId": "rls_get_rls_metadata",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/database/rls/metadata/00000000-0000-4000-8000-000000000000/00000000-0000-4000-8000-000000000000"
     },
@@ -1798,6 +2276,7 @@
     {
       "operationId": "rls_delete_rls_metadata",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/database/rls/metadata/00000000-0000-4000-8000-000000000000/00000000-0000-4000-8000-000000000000"
     },
@@ -1806,12 +2285,6 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/database/rls/policies/"
-    },
-    {
-      "operationId": "rls_list_policies",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/database/rls/policies/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "rls_create_policy",
@@ -1830,16 +2303,18 @@
     {
       "operationId": "rls_create_policy",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/database/rls/policies/00000000-0000-4000-8000-000000000000",
+      "path": "/api/database/rls/policies/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "tableName": "parity",
+        "tableName": [],
         "policyName": "parity",
         "operation": "parity"
-      }
+      },
+      "note": "required \"tableName\" sent with the wrong declared type"
     },
     {
       "operationId": "rls_get_table_policies",
@@ -1850,6 +2325,7 @@
     {
       "operationId": "rls_get_table_policies",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/database/rls/policies/00000000-0000-4000-8000-000000000000"
     },
@@ -1868,6 +2344,7 @@
     {
       "operationId": "rls_update_policy",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/database/rls/policies/00000000-0000-4000-8000-000000000000/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -1886,6 +2363,7 @@
     {
       "operationId": "rls_delete_policy",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/database/rls/policies/00000000-0000-4000-8000-000000000000/00000000-0000-4000-8000-000000000000"
     },
@@ -1894,12 +2372,6 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/database/rls/tables/"
-    },
-    {
-      "operationId": "rls_get_tables_rls_status",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/database/rls/tables/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "rls_toggle_table_rls",
@@ -1916,6 +2388,7 @@
     {
       "operationId": "rls_toggle_table_rls",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/database/rls/tables/00000000-0000-4000-8000-000000000000/toggle/",
       "headers": {
@@ -1932,12 +2405,6 @@
       "path": "/api/database/supabase-tables/"
     },
     {
-      "operationId": "database_get_supabase_tables",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/database/supabase-tables/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "database_get_table_data",
       "kind": "success",
       "method": "GET",
@@ -1946,6 +2413,7 @@
     {
       "operationId": "database_get_table_data",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/database/table-data/00000000-0000-4000-8000-000000000000/"
     },
@@ -1958,6 +2426,7 @@
     {
       "operationId": "database_get_table_schema",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/database/table-schema/00000000-0000-4000-8000-000000000000/"
     },
@@ -1966,12 +2435,6 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/database/tables/"
-    },
-    {
-      "operationId": "database_get_tables",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/database/tables/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "database_test_supabase",
@@ -1989,15 +2452,17 @@
     {
       "operationId": "database_test_supabase",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/database/test-supabase/00000000-0000-4000-8000-000000000000",
+      "path": "/api/database/test-supabase/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "url": "parity",
+        "url": [],
         "anonKey": "parity"
-      }
+      },
+      "note": "required \"url\" sent with the wrong declared type"
     },
     {
       "operationId": "deno_deploy_connect_deno",
@@ -2014,26 +2479,22 @@
     {
       "operationId": "deno_deploy_connect_deno",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/deno/connect/00000000-0000-4000-8000-000000000000",
+      "path": "/api/deno/connect",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider_id": "parity"
-      }
+        "provider_id": []
+      },
+      "note": "required \"provider_id\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_api_keys_list_api_keys",
       "kind": "success",
       "method": "GET",
       "path": "/api/edge-api-keys"
-    },
-    {
-      "operationId": "edge_api_keys_list_api_keys",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "edge_api_keys_create_api_key",
@@ -2050,14 +2511,16 @@
     {
       "operationId": "edge_api_keys_create_api_key",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-api-keys",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity"
-      }
+        "name": []
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_api_keys_update_api_key",
@@ -2072,6 +2535,7 @@
     {
       "operationId": "edge_api_keys_update_api_key",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -2088,6 +2552,7 @@
     {
       "operationId": "edge_api_keys_delete_api_key",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000"
     },
@@ -2100,6 +2565,7 @@
     {
       "operationId": "edge_api_keys_reveal_api_key",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-api-keys/00000000-0000-4000-8000-000000000000/reveal"
     },
@@ -2110,24 +2576,20 @@
       "path": "/api/edge-caches/"
     },
     {
-      "operationId": "edge_caches_list_edge_caches",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-caches/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "edge_caches_create_edge_cache",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-caches/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-caches/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "provider": "parity",
         "cache_url": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_caches_batch_delete_caches",
@@ -2144,14 +2606,16 @@
     {
       "operationId": "edge_caches_batch_delete_caches",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-caches/batch/delete/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-caches/batch/delete",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "ids": []
-      }
+        "ids": "not-an-array"
+      },
+      "note": "required \"ids\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_caches_test_connection_inline",
@@ -2170,16 +2634,18 @@
     {
       "operationId": "edge_caches_test_connection_inline",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-caches/test-connection/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-caches/test-connection",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "provider": "parity",
         "cache_url": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_caches_update_edge_cache",
@@ -2194,6 +2660,7 @@
     {
       "operationId": "edge_caches_update_edge_cache",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/edge-caches/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -2210,6 +2677,7 @@
     {
       "operationId": "edge_caches_delete_edge_cache",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-caches/00000000-0000-4000-8000-000000000000"
     },
@@ -2222,6 +2690,7 @@
     {
       "operationId": "edge_caches_test_edge_cache",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-caches/00000000-0000-4000-8000-000000000000/test"
     },
@@ -2232,24 +2701,20 @@
       "path": "/api/edge-databases/"
     },
     {
-      "operationId": "edge_databases_list_edge_databases",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-databases/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "edge_databases_create_edge_database",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-databases/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-databases/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "provider": "parity",
         "db_url": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_databases_batch_delete_databases",
@@ -2266,14 +2731,16 @@
     {
       "operationId": "edge_databases_batch_delete_databases",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-databases/batch/delete/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-databases/batch/delete",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "ids": []
-      }
+        "ids": "not-an-array"
+      },
+      "note": "required \"ids\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_databases_create_schema",
@@ -2291,15 +2758,17 @@
     {
       "operationId": "edge_databases_create_schema",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-databases/create-schema/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-databases/create-schema",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "db_url": "parity",
+        "db_url": [],
         "suffix": "parity"
-      }
+      },
+      "note": "required \"db_url\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_databases_discover_schemas",
@@ -2316,14 +2785,16 @@
     {
       "operationId": "edge_databases_discover_schemas",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-databases/discover-schemas/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-databases/discover-schemas",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "db_url": "parity"
-      }
+        "db_url": []
+      },
+      "note": "required \"db_url\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_databases_reset_role_password",
@@ -2342,16 +2813,18 @@
     {
       "operationId": "edge_databases_reset_role_password",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-databases/reset-role-password/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-databases/reset-role-password",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "db_url": "parity",
+        "db_url": [],
         "schema_name": "parity",
         "provider_account_id": "parity"
-      }
+      },
+      "note": "required \"db_url\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_databases_test_connection_inline",
@@ -2370,16 +2843,18 @@
     {
       "operationId": "edge_databases_test_connection_inline",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-databases/test-connection/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-databases/test-connection",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "provider": "parity",
         "db_url": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_databases_update_edge_database",
@@ -2394,6 +2869,7 @@
     {
       "operationId": "edge_databases_update_edge_database",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/edge-databases/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -2410,6 +2886,7 @@
     {
       "operationId": "edge_databases_delete_edge_database",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-databases/00000000-0000-4000-8000-000000000000"
     },
@@ -2422,6 +2899,7 @@
     {
       "operationId": "edge_databases_test_edge_database",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-databases/00000000-0000-4000-8000-000000000000/test"
     },
@@ -2432,23 +2910,19 @@
       "path": "/api/edge-engines/"
     },
     {
-      "operationId": "edge_engines_list_engines",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "edge_engines_create_engine",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-engines/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "url": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_engines_list_active_engines_by_scope",
@@ -2459,6 +2933,7 @@
     {
       "operationId": "edge_engines_list_active_engines_by_scope",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/active/by-scope/00000000-0000-4000-8000-000000000000"
     },
@@ -2479,16 +2954,16 @@
     {
       "operationId": "edge_engines_batch_delete_engines",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-engines/batch/delete/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-engines/batch/delete",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "engine_ids": [
-          "parity"
-        ]
-      }
+        "engine_ids": "not-an-array"
+      },
+      "note": "required \"engine_ids\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_engines_batch_redeploy_engines",
@@ -2507,16 +2982,16 @@
     {
       "operationId": "edge_engines_batch_redeploy_engines",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-engines/batch/redeploy/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-engines/batch/redeploy",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "engine_ids": [
-          "parity"
-        ]
-      }
+        "engine_ids": "not-an-array"
+      },
+      "note": "required \"engine_ids\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_engines_batch_rotate_secrets_key",
@@ -2535,16 +3010,16 @@
     {
       "operationId": "edge_engines_batch_rotate_secrets_key",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-engines/batch/rotate-secrets-key/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-engines/batch/rotate-secrets-key",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "engine_ids": [
-          "parity"
-        ]
-      }
+        "engine_ids": "not-an-array"
+      },
+      "note": "required \"engine_ids\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_engines_batch_sync_check",
@@ -2563,16 +3038,16 @@
     {
       "operationId": "edge_engines_batch_sync_check",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-engines/batch/sync-check/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-engines/batch/sync-check",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "engine_ids": [
-          "parity"
-        ]
-      }
+        "engine_ids": "not-an-array"
+      },
+      "note": "required \"engine_ids\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_engines_batch_toggle_engines",
@@ -2592,29 +3067,23 @@
     {
       "operationId": "edge_engines_batch_toggle_engines",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-engines/batch/toggle/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-engines/batch/toggle",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "engine_ids": [
-          "parity"
-        ],
+        "engine_ids": "not-an-array",
         "is_active": false
-      }
+      },
+      "note": "required \"engine_ids\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_engines_get_bundle_hashes",
       "kind": "success",
       "method": "GET",
       "path": "/api/edge-engines/bundle-hashes/"
-    },
-    {
-      "operationId": "edge_engines_get_bundle_hashes",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-engines/bundle-hashes/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "edge_engines_deploy_engine",
@@ -2632,15 +3101,17 @@
     {
       "operationId": "edge_engines_deploy_engine",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-engines/deploy/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-engines/deploy",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider_id": "parity",
+        "provider_id": [],
         "worker_name": "parity"
-      }
+      },
+      "note": "required \"provider_id\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_engines_import_engine",
@@ -2658,15 +3129,17 @@
     {
       "operationId": "edge_engines_import_engine",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-engines/import/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-engines/import",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "bundle": "parity",
+        "bundle": [],
         "passphrase": "parity"
-      }
+      },
+      "note": "required \"bundle\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_engines_get_engine",
@@ -2677,6 +3150,7 @@
     {
       "operationId": "edge_engines_get_engine",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000"
     },
@@ -2693,6 +3167,7 @@
     {
       "operationId": "edge_engines_update_engine",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -2709,6 +3184,7 @@
     {
       "operationId": "edge_engines_delete_engine",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000"
     },
@@ -2721,6 +3197,7 @@
     {
       "operationId": "edge_agent_profiles_list_profiles",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/agent-profiles"
     },
@@ -2740,6 +3217,7 @@
     {
       "operationId": "edge_agent_profiles_create_profile",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/agent-profiles",
       "headers": {
@@ -2763,6 +3241,7 @@
     {
       "operationId": "edge_agent_profiles_update_profile",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/agent-profiles/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -2779,6 +3258,7 @@
     {
       "operationId": "edge_agent_profiles_delete_profile",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/agent-profiles/00000000-0000-4000-8000-000000000000"
     },
@@ -2791,6 +3271,7 @@
     {
       "operationId": "edge_engines_tenant_secrets_audit_logs",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/audit/tenant-secrets"
     },
@@ -2803,6 +3284,7 @@
     {
       "operationId": "edge_engines_cancel_move",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/cancel-move"
     },
@@ -2821,6 +3303,7 @@
     {
       "operationId": "edge_engines_export_engine",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/export",
       "headers": {
@@ -2845,6 +3328,7 @@
     {
       "operationId": "edge_engines_finalize_move",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/finalize-move",
       "headers": {
@@ -2863,6 +3347,7 @@
     {
       "operationId": "engine_inspector_health_check",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/health-check"
     },
@@ -2875,6 +3360,7 @@
     {
       "operationId": "engine_inspector_inspect_engine_domains",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/domains"
     },
@@ -2893,6 +3379,7 @@
     {
       "operationId": "engine_inspector_add_engine_domain",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/domains",
       "headers": {
@@ -2911,6 +3398,7 @@
     {
       "operationId": "engine_inspector_delete_engine_domain",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/domains/00000000-0000-4000-8000-000000000000"
     },
@@ -2923,6 +3411,7 @@
     {
       "operationId": "engine_inspector_verify_engine_domain",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/domains/00000000-0000-4000-8000-000000000000/verify"
     },
@@ -2935,6 +3424,7 @@
     {
       "operationId": "engine_inspector_inspect_engine_secrets",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/secrets"
     },
@@ -2947,6 +3437,7 @@
     {
       "operationId": "engine_inspector_inspect_engine_settings",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/settings"
     },
@@ -2959,6 +3450,7 @@
     {
       "operationId": "engine_inspector_inspect_engine_source",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/inspect/source"
     },
@@ -2971,6 +3463,7 @@
     {
       "operationId": "edge_engines_get_engine_logs",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/logs"
     },
@@ -2987,6 +3480,7 @@
     {
       "operationId": "edge_engines_update_log_config",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PATCH",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/logs/config",
       "headers": {
@@ -3003,6 +3497,7 @@
     {
       "operationId": "edge_engines_get_log_retention",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/logs/retention"
     },
@@ -3015,6 +3510,7 @@
     {
       "operationId": "edge_engines_sync_engine_logs",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/logs/sync"
     },
@@ -3033,6 +3529,7 @@
     {
       "operationId": "edge_engines_move_engine_to_project_endpoint",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/move-to-project",
       "headers": {
@@ -3055,6 +3552,7 @@
     {
       "operationId": "edge_engines_reconfigure_engine",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/reconfigure",
       "headers": {
@@ -3071,6 +3569,7 @@
     {
       "operationId": "edge_engines_redeploy_engine",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/redeploy"
     },
@@ -3089,6 +3588,7 @@
     {
       "operationId": "edge_engines_rollback_rotation",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/rollback-rotation",
       "headers": {
@@ -3111,6 +3611,7 @@
     {
       "operationId": "edge_engines_rotate_secrets_key",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/rotate-secrets-key",
       "headers": {
@@ -3127,6 +3628,7 @@
     {
       "operationId": "edge_engines_rotation_history",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/rotation-history"
     },
@@ -3139,6 +3641,7 @@
     {
       "operationId": "edge_engines_rotation_status",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/rotation-status"
     },
@@ -3151,6 +3654,7 @@
     {
       "operationId": "edge_engines_get_engine_source",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/source"
     },
@@ -3167,6 +3671,7 @@
     {
       "operationId": "edge_engines_update_engine_source",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/source",
       "headers": {
@@ -3183,6 +3688,7 @@
     {
       "operationId": "edge_engines_sync_manifest",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/sync-manifest"
     },
@@ -3195,6 +3701,7 @@
     {
       "operationId": "edge_engines_test_engine_connection",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/test"
     },
@@ -3203,12 +3710,6 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/edge-gpu/"
-    },
-    {
-      "operationId": "edge_gpu_list_gpu_models",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "edge_gpu_create_gpu_model",
@@ -3229,18 +3730,20 @@
     {
       "operationId": "edge_gpu_create_gpu_model",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-gpu/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "model_type": "parity",
         "provider": "parity",
         "model_id": "parity",
         "edge_engine_id": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_gpu_get_catalog",
@@ -3249,22 +3752,10 @@
       "path": "/api/edge-gpu/catalog"
     },
     {
-      "operationId": "edge_gpu_get_catalog",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-gpu/catalog/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "edge_gpu_get_schemas",
       "kind": "success",
       "method": "GET",
       "path": "/api/edge-gpu/schemas"
-    },
-    {
-      "operationId": "edge_gpu_get_schemas",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-gpu/schemas/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "edge_gpu_update_gpu_model",
@@ -3279,6 +3770,7 @@
     {
       "operationId": "edge_gpu_update_gpu_model",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -3295,6 +3787,7 @@
     {
       "operationId": "edge_gpu_delete_gpu_model",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000"
     },
@@ -3307,6 +3800,7 @@
     {
       "operationId": "edge_gpu_test_gpu_model",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-gpu/00000000-0000-4000-8000-000000000000/test"
     },
@@ -3317,23 +3811,19 @@
       "path": "/api/edge-providers/"
     },
     {
-      "operationId": "edge_providers_list_providers",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "edge_providers_create_provider",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-providers/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "provider": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_providers_list_account_tables",
@@ -3344,6 +3834,7 @@
     {
       "operationId": "edge_providers_list_account_tables",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-providers/accounts/00000000-0000-4000-8000-000000000000/tables"
     },
@@ -3363,6 +3854,7 @@
     {
       "operationId": "edge_providers_create_resource_by_account",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-providers/create-resource-by-account/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -3389,15 +3881,17 @@
     {
       "operationId": "edge_providers_discover_resources_endpoint",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-providers/discover/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-providers/discover",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider": "parity",
+        "provider": [],
         "credentials": {}
-      }
+      },
+      "note": "required \"provider\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_providers_discover_by_account",
@@ -3408,6 +3902,7 @@
     {
       "operationId": "edge_providers_discover_by_account",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-providers/discover-by-account/00000000-0000-4000-8000-000000000000"
     },
@@ -3420,6 +3915,7 @@
     {
       "operationId": "edge_providers_retest_provider",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-providers/retest/00000000-0000-4000-8000-000000000000"
     },
@@ -3439,27 +3935,23 @@
     {
       "operationId": "edge_providers_test_connection",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-providers/test-connection/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-providers/test-connection",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider": "parity",
+        "provider": [],
         "credentials": {}
-      }
+      },
+      "note": "required \"provider\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_providers_get_workspace_agent_token",
       "kind": "success",
       "method": "GET",
       "path": "/api/edge-providers/workspace-agent-token"
-    },
-    {
-      "operationId": "edge_providers_get_workspace_agent_token",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-providers/workspace-agent-token/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "edge_providers_set_workspace_agent_token",
@@ -3476,14 +3968,16 @@
     {
       "operationId": "edge_providers_set_workspace_agent_token",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-providers/workspace-agent-token/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-providers/workspace-agent-token",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider_id": "parity"
-      }
+        "provider_id": []
+      },
+      "note": "required \"provider_id\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_providers_list_engines_for_provider",
@@ -3494,6 +3988,7 @@
     {
       "operationId": "edge_providers_list_engines_for_provider",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/list-engines"
     },
@@ -3514,6 +4009,7 @@
     {
       "operationId": "edge_providers_add_turso_database",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/turso-databases",
       "headers": {
@@ -3534,6 +4030,7 @@
     {
       "operationId": "edge_providers_remove_turso_database",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/turso-databases/00000000-0000-4000-8000-000000000000"
     },
@@ -3546,6 +4043,7 @@
     {
       "operationId": "edge_providers_test_turso_database",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/turso-databases/00000000-0000-4000-8000-000000000000/test"
     },
@@ -3558,6 +4056,7 @@
     {
       "operationId": "edge_providers_get_provider",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000"
     },
@@ -3574,6 +4073,7 @@
     {
       "operationId": "edge_providers_update_provider",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -3590,6 +4090,7 @@
     {
       "operationId": "edge_providers_delete_provider",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000"
     },
@@ -3602,6 +4103,7 @@
     {
       "operationId": "edge_providers_get_credentials",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/edge-providers/00000000-0000-4000-8000-000000000000/credentials"
     },
@@ -3612,24 +4114,20 @@
       "path": "/api/edge-queues/"
     },
     {
-      "operationId": "edge_queues_list_edge_queues",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-queues/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "edge_queues_create_edge_queue",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-queues/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-queues/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "provider": "parity",
         "queue_url": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_queues_batch_delete_queues",
@@ -3646,14 +4144,16 @@
     {
       "operationId": "edge_queues_batch_delete_queues",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-queues/batch/delete/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-queues/batch/delete",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "ids": []
-      }
+        "ids": "not-an-array"
+      },
+      "note": "required \"ids\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_queues_test_connection_inline",
@@ -3671,15 +4171,17 @@
     {
       "operationId": "edge_queues_test_connection_inline",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-queues/test-connection/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-queues/test-connection",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider": "parity",
+        "provider": [],
         "queue_url": "parity"
-      }
+      },
+      "note": "required \"provider\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_queues_update_edge_queue",
@@ -3694,6 +4196,7 @@
     {
       "operationId": "edge_queues_update_edge_queue",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/edge-queues/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -3710,6 +4213,7 @@
     {
       "operationId": "edge_queues_delete_edge_queue",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-queues/00000000-0000-4000-8000-000000000000"
     },
@@ -3722,6 +4226,7 @@
     {
       "operationId": "edge_queues_test_edge_queue",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-queues/00000000-0000-4000-8000-000000000000/test/"
     },
@@ -3732,24 +4237,20 @@
       "path": "/api/edge-vectors/"
     },
     {
-      "operationId": "edge_vectors_list_edge_vectors",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/edge-vectors/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "edge_vectors_create_edge_vector",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-vectors/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-vectors/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "provider": "parity",
         "vector_url": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_vectors_batch_delete_vectors",
@@ -3766,14 +4267,16 @@
     {
       "operationId": "edge_vectors_batch_delete_vectors",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-vectors/batch/delete/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-vectors/batch/delete",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "ids": []
-      }
+        "ids": "not-an-array"
+      },
+      "note": "required \"ids\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_vectors_test_connection_inline",
@@ -3791,15 +4294,17 @@
     {
       "operationId": "edge_vectors_test_connection_inline",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/edge-vectors/test-connection/00000000-0000-4000-8000-000000000000",
+      "path": "/api/edge-vectors/test-connection",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "provider": "parity",
+        "provider": [],
         "vector_url": "parity"
-      }
+      },
+      "note": "required \"provider\" sent with the wrong declared type"
     },
     {
       "operationId": "edge_vectors_update_edge_vector",
@@ -3814,6 +4319,7 @@
     {
       "operationId": "edge_vectors_update_edge_vector",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/edge-vectors/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -3830,6 +4336,7 @@
     {
       "operationId": "edge_vectors_delete_edge_vector",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/edge-vectors/00000000-0000-4000-8000-000000000000"
     },
@@ -3842,6 +4349,7 @@
     {
       "operationId": "edge_vectors_test_edge_vector_connection",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/edge-vectors/00000000-0000-4000-8000-000000000000/test"
     },
@@ -3850,12 +4358,6 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/mcp-servers"
-    },
-    {
-      "operationId": "agent_integrations_list_mcp_servers",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "agent_integrations_create_mcp_server",
@@ -3874,16 +4376,18 @@
     {
       "operationId": "agent_integrations_create_mcp_server",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000",
+      "path": "/api/mcp-servers",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "slug": "parity",
         "url": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "agent_integrations_get_mcp_server",
@@ -3894,6 +4398,7 @@
     {
       "operationId": "agent_integrations_get_mcp_server",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000"
     },
@@ -3910,6 +4415,7 @@
     {
       "operationId": "agent_integrations_update_mcp_server",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -3926,6 +4432,7 @@
     {
       "operationId": "agent_integrations_delete_mcp_server",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000"
     },
@@ -3938,6 +4445,7 @@
     {
       "operationId": "agent_integrations_test_mcp_server",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000/test"
     },
@@ -3950,6 +4458,7 @@
     {
       "operationId": "agent_integrations_list_mcp_server_tools",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/mcp-servers/00000000-0000-4000-8000-000000000000/tools"
     },
@@ -3960,35 +4469,25 @@
       "path": "/api/pages/"
     },
     {
-      "operationId": "pages_get_pages",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/pages/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "pages_create_page_endpoint",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/pages/00000000-0000-4000-8000-000000000000",
+      "path": "/api/pages/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "slug": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "pages_get_homepage",
       "kind": "success",
       "method": "GET",
       "path": "/api/pages/homepage/"
-    },
-    {
-      "operationId": "pages_get_homepage",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/pages/homepage/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "pages_get_public_page",
@@ -3999,6 +4498,7 @@
     {
       "operationId": "pages_get_public_page",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/pages/public/00000000-0000-4000-8000-000000000000/"
     },
@@ -4011,6 +4511,7 @@
     {
       "operationId": "pages_get_page",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/"
     },
@@ -4027,6 +4528,7 @@
     {
       "operationId": "pages_update_page_endpoint",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/",
       "headers": {
@@ -4043,6 +4545,7 @@
     {
       "operationId": "pages_delete_page",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/"
     },
@@ -4059,6 +4562,7 @@
     {
       "operationId": "pages_update_page_layout",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/layout/",
       "headers": {
@@ -4075,6 +4579,7 @@
     {
       "operationId": "pages_permanent_delete_page",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/permanent/"
     },
@@ -4093,6 +4598,7 @@
     {
       "operationId": "pages_publish_to_targets_batch",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/publish-batch/",
       "headers": {
@@ -4111,6 +4617,7 @@
     {
       "operationId": "pages_publish_to_target",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/publish/00000000-0000-4000-8000-000000000000/"
     },
@@ -4123,6 +4630,7 @@
     {
       "operationId": "pages_restore_page",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/restore/"
     },
@@ -4141,6 +4649,7 @@
     {
       "operationId": "pages_rollback_to_version",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/rollback/",
       "headers": {
@@ -4159,6 +4668,7 @@
     {
       "operationId": "pages_unpublish_page_from_target",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/unpublish/00000000-0000-4000-8000-000000000000/"
     },
@@ -4171,6 +4681,7 @@
     {
       "operationId": "pages_list_versions",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/versions/"
     },
@@ -4187,6 +4698,7 @@
     {
       "operationId": "pages_create_manual_version",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/versions/",
       "headers": {
@@ -4203,6 +4715,7 @@
     {
       "operationId": "pages_get_version_detail",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/pages/00000000-0000-4000-8000-000000000000/versions/00000000-0000-4000-8000-000000000000/"
     },
@@ -4211,12 +4724,6 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/project/"
-    },
-    {
-      "operationId": "project_get_project_endpoint",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/project/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "project_update_project_endpoint",
@@ -4229,26 +4736,10 @@
       "body": {}
     },
     {
-      "operationId": "project_update_project_endpoint",
-      "kind": "failure",
-      "method": "PUT",
-      "path": "/api/project/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "project_upload_branding_asset",
       "kind": "success",
       "method": "POST",
       "path": "/api/project/assets/upload/"
-    },
-    {
-      "operationId": "project_upload_branding_asset",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/project/assets/upload/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "meta_queue_health",
@@ -4257,22 +4748,10 @@
       "path": "/api/queue/health"
     },
     {
-      "operationId": "meta_queue_health",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/queue/health/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "security_events_list_security_events",
       "kind": "success",
       "method": "GET",
       "path": "/api/security-events/"
-    },
-    {
-      "operationId": "security_events_list_security_events",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/security-events/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "security_events_security_events_summary",
@@ -4281,38 +4760,16 @@
       "path": "/api/security-events/summary"
     },
     {
-      "operationId": "security_events_security_events_summary",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/security-events/summary/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "settings_get_general_settings",
       "kind": "success",
       "method": "GET",
       "path": "/api/settings/general"
     },
     {
-      "operationId": "settings_get_general_settings",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/settings/general/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "settings_update_general_settings",
       "kind": "success",
       "method": "PUT",
       "path": "/api/settings/general",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
-      "operationId": "settings_update_general_settings",
-      "kind": "failure",
-      "method": "PUT",
-      "path": "/api/settings/general/00000000-0000-4000-8000-000000000000",
       "headers": {
         "content-type": "application/json"
       },
@@ -4333,26 +4790,22 @@
     {
       "operationId": "settings_send_admin_invite",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/settings/invites/00000000-0000-4000-8000-000000000000",
+      "path": "/api/settings/invites",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "email": "parity"
-      }
+        "email": []
+      },
+      "note": "required \"email\" sent with the wrong declared type"
     },
     {
       "operationId": "settings_get_privacy_settings",
       "kind": "success",
       "method": "GET",
       "path": "/api/settings/privacy/"
-    },
-    {
-      "operationId": "settings_get_privacy_settings",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/settings/privacy/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "settings_update_privacy_settings",
@@ -4365,42 +4818,16 @@
       "body": {}
     },
     {
-      "operationId": "settings_update_privacy_settings",
-      "kind": "failure",
-      "method": "PUT",
-      "path": "/api/settings/privacy/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "settings_get_redis_settings",
       "kind": "success",
       "method": "GET",
       "path": "/api/settings/redis/"
     },
     {
-      "operationId": "settings_get_redis_settings",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/settings/redis/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "settings_update_redis_settings",
       "kind": "success",
       "method": "PUT",
       "path": "/api/settings/redis/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
-      "operationId": "settings_update_redis_settings",
-      "kind": "failure",
-      "method": "PUT",
-      "path": "/api/settings/redis/00000000-0000-4000-8000-000000000000",
       "headers": {
         "content-type": "application/json"
       },
@@ -4417,42 +4844,16 @@
       "body": {}
     },
     {
-      "operationId": "settings_test_redis_connection",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/settings/redis/test/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "settings_get_security_settings",
       "kind": "success",
       "method": "GET",
       "path": "/api/settings/security/"
     },
     {
-      "operationId": "settings_get_security_settings",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/settings/security/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "settings_update_security_settings",
       "kind": "success",
       "method": "PUT",
       "path": "/api/settings/security/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
-      "operationId": "settings_update_security_settings",
-      "kind": "failure",
-      "method": "PUT",
-      "path": "/api/settings/security/00000000-0000-4000-8000-000000000000",
       "headers": {
         "content-type": "application/json"
       },
@@ -4479,20 +4880,22 @@
     {
       "operationId": "settings_collect_telemetry",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/settings/telemetry/00000000-0000-4000-8000-000000000000",
+      "path": "/api/settings/telemetry",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "install_id": "parity",
+        "install_id": [],
         "edition": "parity",
         "page_count": 1,
         "automation_count": 1,
         "data_sources": [],
         "storage_providers": [],
         "email_providers": []
-      }
+      },
+      "note": "required \"install_id\" sent with the wrong declared type"
     },
     {
       "operationId": "settings_validate_license",
@@ -4510,27 +4913,23 @@
     {
       "operationId": "settings_validate_license",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/settings/validate-license/00000000-0000-4000-8000-000000000000",
+      "path": "/api/settings/validate-license",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "license_key": "parity",
+        "license_key": [],
         "install_id": "parity"
-      }
+      },
+      "note": "required \"license_key\" sent with the wrong declared type"
     },
     {
       "operationId": "storage_list_buckets",
       "kind": "success",
       "method": "GET",
       "path": "/api/storage/buckets"
-    },
-    {
-      "operationId": "storage_list_buckets",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "storage_create_bucket",
@@ -4543,16 +4942,6 @@
       "body": {}
     },
     {
-      "operationId": "storage_create_bucket",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "storage_get_bucket",
       "kind": "success",
       "method": "GET",
@@ -4561,6 +4950,7 @@
     {
       "operationId": "storage_get_bucket",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000"
     },
@@ -4577,6 +4967,7 @@
     {
       "operationId": "storage_update_bucket",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -4593,6 +4984,7 @@
     {
       "operationId": "storage_delete_bucket",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000"
     },
@@ -4605,6 +4997,7 @@
     {
       "operationId": "storage_empty_bucket",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000/empty"
     },
@@ -4615,26 +5008,10 @@
       "path": "/api/storage/compute-size"
     },
     {
-      "operationId": "storage_compute_size",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/storage/compute-size/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "storage_create_folder",
       "kind": "success",
       "method": "POST",
       "path": "/api/storage/create-folder",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
-      "operationId": "storage_create_folder",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/storage/create-folder/00000000-0000-4000-8000-000000000000",
       "headers": {
         "content-type": "application/json"
       },
@@ -4651,42 +5028,16 @@
       "body": {}
     },
     {
-      "operationId": "storage_delete_files",
-      "kind": "failure",
-      "method": "DELETE",
-      "path": "/api/storage/delete/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "storage_list_files",
       "kind": "success",
       "method": "GET",
       "path": "/api/storage/list"
     },
     {
-      "operationId": "storage_list_files",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/storage/list/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "storage_move_file",
       "kind": "success",
       "method": "POST",
       "path": "/api/storage/move",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
-      "operationId": "storage_move_file",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/storage/move/00000000-0000-4000-8000-000000000000",
       "headers": {
         "content-type": "application/json"
       },
@@ -4703,16 +5054,6 @@
       "body": {}
     },
     {
-      "operationId": "storage_move_file_cross",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/storage/move-cross/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "storage_get_move_status",
       "kind": "success",
       "method": "GET",
@@ -4721,6 +5062,7 @@
     {
       "operationId": "storage_get_move_status",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/storage/move-status/00000000-0000-4000-8000-000000000000"
     },
@@ -4729,12 +5071,6 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/storage/netlify-sites"
-    },
-    {
-      "operationId": "storage_list_netlify_sites",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/storage/netlify-sites/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "storage_create_netlify_site",
@@ -4747,26 +5083,10 @@
       "body": {}
     },
     {
-      "operationId": "storage_create_netlify_site",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/storage/netlify-sites/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "storage_list_storage_providers",
       "kind": "success",
       "method": "GET",
       "path": "/api/storage/providers/"
-    },
-    {
-      "operationId": "storage_list_storage_providers",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/storage/providers/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "storage_create_storage_provider",
@@ -4779,16 +5099,6 @@
       "body": {}
     },
     {
-      "operationId": "storage_create_storage_provider",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/storage/providers/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "storage_delete_storage_provider",
       "kind": "success",
       "method": "DELETE",
@@ -4797,6 +5107,7 @@
     {
       "operationId": "storage_delete_storage_provider",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/storage/providers/00000000-0000-4000-8000-000000000000"
     },
@@ -4807,22 +5118,10 @@
       "path": "/api/storage/public-url"
     },
     {
-      "operationId": "storage_get_public_url",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/storage/public-url/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "storage_get_signed_url",
       "kind": "success",
       "method": "GET",
       "path": "/api/storage/signed-url"
-    },
-    {
-      "operationId": "storage_get_signed_url",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/storage/signed-url/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "storage_upload_file",
@@ -4831,22 +5130,10 @@
       "path": "/api/storage/upload"
     },
     {
-      "operationId": "storage_upload_file",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/storage/upload/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "storage_list_vercel_projects",
       "kind": "success",
       "method": "GET",
       "path": "/api/storage/vercel-projects"
-    },
-    {
-      "operationId": "storage_list_vercel_projects",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/storage/vercel-projects/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "storage_create_vercel_project",
@@ -4859,51 +5146,31 @@
       "body": {}
     },
     {
-      "operationId": "storage_create_vercel_project",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/storage/vercel-projects/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "list_datasources_datasources__get",
       "kind": "success",
       "method": "GET",
       "path": "/api/sync/datasources/"
     },
     {
-      "operationId": "list_datasources_datasources__get",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "create_datasource_datasources__post",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000",
+      "path": "/api/sync/datasources/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "type": "supabase"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "search_all_datasources_datasources_search_all__get",
       "kind": "success",
       "method": "GET",
       "path": "/api/sync/datasources/search-all/"
-    },
-    {
-      "operationId": "search_all_datasources_datasources_search_all__get",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/sync/datasources/search-all/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "sheets_connect_callback_datasources_sheets_connect_callback__post",
@@ -4923,17 +5190,19 @@
     {
       "operationId": "sheets_connect_callback_datasources_sheets_connect_callback__post",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/sync/datasources/sheets/connect/callback/00000000-0000-4000-8000-000000000000",
+      "path": "/api/sync/datasources/sheets/connect/callback/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "token": "parityxxxx",
+        "token": [],
         "spreadsheetId": "parity",
         "webAppUrl": "parityxxxx",
         "webAppSecret": "parityxx"
-      }
+      },
+      "note": "required \"token\" sent with the wrong declared type"
     },
     {
       "operationId": "sheets_connect_issue_datasources_sheets_connect_issue__post",
@@ -4946,26 +5215,10 @@
       "body": {}
     },
     {
-      "operationId": "sheets_connect_issue_datasources_sheets_connect_issue__post",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/sync/datasources/sheets/connect/issue/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "sheets_connect_status_datasources_sheets_connect_status__get",
       "kind": "success",
       "method": "GET",
       "path": "/api/sync/datasources/sheets/connect/status/"
-    },
-    {
-      "operationId": "sheets_connect_status_datasources_sheets_connect_status__get",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/sync/datasources/sheets/connect/status/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "test_new_datasource_datasources_test_raw__post",
@@ -4982,14 +5235,16 @@
     {
       "operationId": "test_new_datasource_datasources_test_raw__post",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/sync/datasources/test-raw/00000000-0000-4000-8000-000000000000",
+      "path": "/api/sync/datasources/test-raw/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "type": "supabase"
-      }
+        "type": "__invalid_enum_value__"
+      },
+      "note": "required \"type\" sent with the wrong declared type"
     },
     {
       "operationId": "get_datasource_datasources__datasource_id___get",
@@ -5000,6 +5255,7 @@
     {
       "operationId": "get_datasource_datasources__datasource_id___get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/"
     },
@@ -5016,6 +5272,7 @@
     {
       "operationId": "update_datasource_datasources__datasource_id___put",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/",
       "headers": {
@@ -5032,6 +5289,7 @@
     {
       "operationId": "delete_datasource_datasources__datasource_id___delete",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/"
     },
@@ -5044,6 +5302,7 @@
     {
       "operationId": "apply_datasource_migration_datasources__datasource_id__apply_migration_post",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/apply-migration"
     },
@@ -5056,6 +5315,7 @@
     {
       "operationId": "check_datasource_migration_datasources__datasource_id__check_migration_get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/check-migration"
     },
@@ -5068,6 +5328,7 @@
     {
       "operationId": "get_datasource_relationships_datasources__datasource_id__relationships__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/"
     },
@@ -5089,6 +5350,7 @@
     {
       "operationId": "create_user_relationship_datasources__datasource_id__relationships__post",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/",
       "headers": {
@@ -5110,6 +5372,7 @@
     {
       "operationId": "list_user_relationships_datasources__datasource_id__relationships_user_defined__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/user-defined/"
     },
@@ -5131,6 +5394,7 @@
     {
       "operationId": "update_relationship_datasources__datasource_id__relationships__index___put",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/00000000-0000-4000-8000-000000000000/",
       "headers": {
@@ -5152,6 +5416,7 @@
     {
       "operationId": "remove_relationship_datasources__datasource_id__relationships__index___delete",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/00000000-0000-4000-8000-000000000000/"
     },
@@ -5164,6 +5429,7 @@
     {
       "operationId": "search_datasource_tables_datasources__datasource_id__search_get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/search"
     },
@@ -5176,6 +5442,7 @@
     {
       "operationId": "get_datasource_tables_datasources__datasource_id__tables__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/"
     },
@@ -5188,6 +5455,7 @@
     {
       "operationId": "get_table_session_datasources__datasource_id__tables__table_name__session__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/session/"
     },
@@ -5204,6 +5472,7 @@
     {
       "operationId": "save_table_session_datasources__datasource_id__tables__table_name__session__post",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/session/",
       "headers": {
@@ -5220,6 +5489,7 @@
     {
       "operationId": "clear_table_session_datasources__datasource_id__tables__table_name__session__delete",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/session/"
     },
@@ -5232,6 +5502,7 @@
     {
       "operationId": "get_datasource_table_aggregate_datasources__datasource_id__tables__table__aggregate__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/aggregate/"
     },
@@ -5244,6 +5515,7 @@
     {
       "operationId": "get_datasource_table_data_datasources__datasource_id__tables__table__data__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/data/"
     },
@@ -5256,6 +5528,7 @@
     {
       "operationId": "get_distinct_values_datasources__datasource_id__tables__table__distinct__column___get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/distinct/00000000-0000-4000-8000-000000000000/"
     },
@@ -5272,6 +5545,7 @@
     {
       "operationId": "create_record_datasources__datasource_id__tables__table__records__post",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/records/",
       "headers": {
@@ -5292,6 +5566,7 @@
     {
       "operationId": "update_record_datasources__datasource_id__tables__table__records__record_id__patch",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PATCH",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/records/00000000-0000-4000-8000-000000000000",
       "headers": {
@@ -5308,6 +5583,7 @@
     {
       "operationId": "get_table_schema_datasources__datasource_id__tables__table__schema__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/schema/"
     },
@@ -5324,6 +5600,7 @@
     {
       "operationId": "test_datasource_update_datasources__datasource_id__test_update__post",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/test-update/",
       "headers": {
@@ -5340,6 +5617,7 @@
     {
       "operationId": "test_datasource_datasources__datasource_id__test__post",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/test/"
     },
@@ -5352,6 +5630,7 @@
     {
       "operationId": "list_datasource_views_datasources__datasource_id__views__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/views/"
     },
@@ -5371,6 +5650,7 @@
     {
       "operationId": "create_datasource_view_datasources__datasource_id__views__post",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/views/",
       "headers": {
@@ -5390,6 +5670,7 @@
     {
       "operationId": "get_wordpress_discovery_datasources__datasource_id__wordpress_discover__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/wordpress/discover/"
     },
@@ -5400,38 +5681,16 @@
       "path": "/api/sync/health/"
     },
     {
-      "operationId": "health_health__get",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/sync/health/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "get_redis_settings_settings_redis__get",
       "kind": "success",
       "method": "GET",
       "path": "/api/sync/settings/redis/"
     },
     {
-      "operationId": "get_redis_settings_settings_redis__get",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/sync/settings/redis/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "update_redis_settings_settings_redis__put",
       "kind": "success",
       "method": "PUT",
       "path": "/api/sync/settings/redis/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
-      "operationId": "update_redis_settings_settings_redis__put",
-      "kind": "failure",
-      "method": "PUT",
-      "path": "/api/sync/settings/redis/00000000-0000-4000-8000-000000000000",
       "headers": {
         "content-type": "application/json"
       },
@@ -5448,16 +5707,6 @@
       "body": {}
     },
     {
-      "operationId": "test_redis_settings_redis_test__post",
-      "kind": "failure",
-      "method": "POST",
-      "path": "/api/sync/settings/redis/test/00000000-0000-4000-8000-000000000000",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {}
-    },
-    {
       "operationId": "get_datasource_view_views__view_id___get",
       "kind": "success",
       "method": "GET",
@@ -5466,6 +5715,7 @@
     {
       "operationId": "get_datasource_view_views__view_id___get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/"
     },
@@ -5482,6 +5732,7 @@
     {
       "operationId": "update_datasource_view_views__view_id___patch",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PATCH",
       "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/",
       "headers": {
@@ -5498,6 +5749,7 @@
     {
       "operationId": "delete_datasource_view_views__view_id___delete",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/"
     },
@@ -5510,6 +5762,7 @@
     {
       "operationId": "get_view_count_views__view_id__count_get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/count"
     },
@@ -5526,6 +5779,7 @@
     {
       "operationId": "create_view_record_views__view_id__records_post",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records",
       "headers": {
@@ -5546,6 +5800,7 @@
     {
       "operationId": "patch_view_record_views__view_id__records_patch",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PATCH",
       "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records",
       "headers": {
@@ -5562,6 +5817,7 @@
     {
       "operationId": "get_view_records_views__view_id__records__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records/"
     },
@@ -5578,6 +5834,7 @@
     {
       "operationId": "trigger_view_webhook_views__view_id__trigger__post",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "POST",
       "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/trigger/",
       "headers": {
@@ -5600,14 +5857,16 @@
     {
       "operationId": "start_import_wordpress_import__post",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/sync/wordpress/import/00000000-0000-4000-8000-000000000000",
+      "path": "/api/sync/wordpress/import/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "datasource_id": "parity"
-      }
+        "datasource_id": []
+      },
+      "note": "required \"datasource_id\" sent with the wrong declared type"
     },
     {
       "operationId": "get_import_result_wordpress_import__import_id___get",
@@ -5618,6 +5877,7 @@
     {
       "operationId": "get_import_result_wordpress_import__import_id___get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/wordpress/import/00000000-0000-4000-8000-000000000000/"
     },
@@ -5630,6 +5890,7 @@
     {
       "operationId": "import_progress_stream_wordpress_import__import_id__progress__get",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/sync/wordpress/import/00000000-0000-4000-8000-000000000000/progress/"
     },
@@ -5640,24 +5901,20 @@
       "path": "/api/themes/"
     },
     {
-      "operationId": "themes_get_themes",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/themes/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "themes_create_theme",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/themes/00000000-0000-4000-8000-000000000000",
+      "path": "/api/themes/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "component_type": "parity",
         "styles_data": {}
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "themes_delete_theme",
@@ -5668,6 +5925,7 @@
     {
       "operationId": "themes_delete_theme",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/themes/00000000-0000-4000-8000-000000000000"
     },
@@ -5678,35 +5936,25 @@
       "path": "/api/variables/"
     },
     {
-      "operationId": "variables_get_variables",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/variables/00000000-0000-4000-8000-000000000000"
-    },
-    {
       "operationId": "variables_create_variable_endpoint",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/variables/00000000-0000-4000-8000-000000000000",
+      "path": "/api/variables/",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "name": "parity",
+        "name": [],
         "type": "parity"
-      }
+      },
+      "note": "required \"name\" sent with the wrong declared type"
     },
     {
       "operationId": "variables_get_template_registry",
       "kind": "success",
       "method": "GET",
       "path": "/api/variables/registry/"
-    },
-    {
-      "operationId": "variables_get_template_registry",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/api/variables/registry/00000000-0000-4000-8000-000000000000"
     },
     {
       "operationId": "variables_get_variable",
@@ -5717,6 +5965,7 @@
     {
       "operationId": "variables_get_variable",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "GET",
       "path": "/api/variables/00000000-0000-4000-8000-000000000000"
     },
@@ -5733,6 +5982,7 @@
     {
       "operationId": "variables_update_variable_endpoint",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "PUT",
       "path": "/api/variables/00000000-0000-4000-8000-000000000000/",
       "headers": {
@@ -5749,6 +5999,7 @@
     {
       "operationId": "variables_delete_variable",
       "kind": "failure",
+      "strategy": "absent-path-id",
       "method": "DELETE",
       "path": "/api/variables/00000000-0000-4000-8000-000000000000/"
     },
@@ -5769,28 +6020,24 @@
     {
       "operationId": "workflows_send_workflow_email",
       "kind": "failure",
+      "strategy": "invalid-body",
       "method": "POST",
-      "path": "/api/workflows/send-email/00000000-0000-4000-8000-000000000000",
+      "path": "/api/workflows/send-email",
       "headers": {
         "content-type": "application/json"
       },
       "body": {
-        "to": [],
+        "to": "not-an-array",
         "subject": "parity",
         "html": "parity"
-      }
+      },
+      "note": "required \"to\" sent with the wrong declared type"
     },
     {
       "operationId": "meta_health_check",
       "kind": "success",
       "method": "GET",
       "path": "/health"
-    },
-    {
-      "operationId": "meta_health_check",
-      "kind": "failure",
-      "method": "GET",
-      "path": "/health/00000000-0000-4000-8000-000000000000"
     }
   ]
 }

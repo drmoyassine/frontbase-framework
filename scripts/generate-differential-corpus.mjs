@@ -84,6 +84,52 @@ const SEEDS = [
 /** A syntactically valid identifier that will never exist — drives the failure case. */
 const ABSENT = '00000000-0000-4000-8000-000000000000';
 
+/**
+ * A value that violates a declared type without being unparseable JSON.
+ *
+ * Type violation rather than a bad format: every validator on both sides enforces
+ * types, while `format` support varies (pydantic checks `email`, Zod may not), so a
+ * format violation would measure the validators' disagreement instead of the
+ * operation's.
+ */
+const INVALID_FOR_TYPE = {
+    string: [],
+    integer: 'not-a-number',
+    number: 'not-a-number',
+    boolean: 'maybe',
+    array: 'not-an-array',
+    object: 'not-an-object',
+};
+
+/** The first required property whose declared type can actually be violated. */
+function falsifiableField(schema) {
+    const s = deref(schema);
+    if (!s || s.type !== 'object' || !s.required?.length) return null;
+    for (const key of s.required) {
+        const property = deref(s.properties?.[key]);
+        if (!property) continue;
+        if (property.enum) return { key, value: '__invalid_enum_value__' };
+        if (property.type in INVALID_FOR_TYPE) {
+            return { key, value: INVALID_FOR_TYPE[property.type] };
+        }
+    }
+    return null;
+}
+
+/** The first required query parameter whose declared type can be violated. */
+function falsifiableQuery(op) {
+    for (const parameter of op.parameters ?? []) {
+        const p = deref(parameter);
+        if (p.in !== 'query' || !p.required) continue;
+        const schema = deref(p.schema);
+        if (schema?.enum) return { key: p.name, value: '__invalid_enum_value__' };
+        if (schema?.type === 'integer' || schema?.type === 'number') {
+            return { key: p.name, value: 'not-a-number' };
+        }
+    }
+    return null;
+}
+
 function seedFor(path) {
     return SEEDS.find((seed) => path.startsWith(seed.prefix) && path !== seed.path);
 }
@@ -102,6 +148,8 @@ function fillParams(path, { absent }) {
 }
 
 const cases = [];
+/** Operations with no input a validator can reject — recorded, never fabricated. */
+const nonFalsifiable = [];
 let seededPrefixes = new Set();
 
 // Seed cases first, in SEEDS order, so their variables exist for everything after.
@@ -116,7 +164,12 @@ for (const seed of SEEDS) {
         path: seed.path,
         headers: { 'content-type': 'application/json' },
         body: synth(post.requestBody?.content?.['application/json']?.schema),
-        capture: { [seed.variable]: '/id', [`${seed.variable}_data`]: '/data/id' },
+        // Tried in order. The two systems do not agree on the create envelope — one
+        // answers `{id}`, the other `{data:{id}}` — and a single pointer silently
+        // fails to bind on whichever shape it does not match. The unbound variable
+        // then travels into the path as the literal `{{engine_id}}`, and the 404 that
+        // follows looks like a missing route instead of a harness miss.
+        capture: { [seed.variable]: ['/id', '/data/id'] },
         note: `seeds {{${seed.variable}}} for ${seed.prefix}* cases`,
     });
     seededPrefixes.add(`${post.operationId}:success`);
@@ -141,20 +194,61 @@ for (const [path, item] of Object.entries(spec.paths)) {
             });
         }
 
-        // Failure: address something that cannot exist. For param-less operations the
-        // only portable failure is an unparseable body, so send one where a body is
-        // accepted; otherwise re-target the path at an absent id.
-        const failurePath = path.includes('{')
-            ? fillParams(path, { absent: true })
-            : `${path}${path.endsWith('/') ? '' : '/'}${ABSENT}`;
-        cases.push({
-            operationId: op.operationId,
-            kind: 'failure',
-            method: method.toUpperCase(),
-            path: failurePath,
-            ...(headers ? { headers } : {}),
-            ...(body === undefined ? {} : { body }),
-        });
+        // Failure: make THIS operation reject THIS request.
+        //
+        // The rejection must come from the operation itself. Appending a segment to a
+        // parameterless path does not do that — it addresses a route the operation does
+        // not own, so both systems answer from their 404 handler and the case measures
+        // their catch-alls instead. Strategies, in order of preference:
+        //   absent-path-id — a well-formed id the store cannot contain
+        //   invalid-body   — a required property sent with the wrong declared type
+        //   invalid-query  — a required query parameter with the wrong declared type
+        // When none applies the operation is not falsifiable by input, and that is
+        // recorded rather than faked.
+        const invalidField = jsonSchema ? falsifiableField(jsonSchema) : null;
+        const invalidParam = falsifiableQuery(op);
+        if (path.includes('{')) {
+            cases.push({
+                operationId: op.operationId,
+                kind: 'failure',
+                strategy: 'absent-path-id',
+                method: method.toUpperCase(),
+                path: fillParams(path, { absent: true }),
+                ...(headers ? { headers } : {}),
+                ...(body === undefined ? {} : { body }),
+            });
+        } else if (invalidField) {
+            cases.push({
+                operationId: op.operationId,
+                kind: 'failure',
+                strategy: 'invalid-body',
+                method: method.toUpperCase(),
+                path,
+                headers: { 'content-type': 'application/json' },
+                body: { ...body, [invalidField.key]: invalidField.value },
+                note: `required "${invalidField.key}" sent with the wrong declared type`,
+            });
+        } else if (invalidParam) {
+            cases.push({
+                operationId: op.operationId,
+                kind: 'failure',
+                strategy: 'invalid-query',
+                method: method.toUpperCase(),
+                path: `${path}?${invalidParam.key}=${encodeURIComponent(invalidParam.value)}`,
+                ...(headers ? { headers } : {}),
+                ...(body === undefined ? {} : { body }),
+                note: `required query "${invalidParam.key}" sent with the wrong declared type`,
+            });
+        } else {
+            nonFalsifiable.push({
+                operationId: op.operationId,
+                method: method.toUpperCase(),
+                path,
+                reason: jsonSchema
+                    ? 'no path parameter, and every required body property is an unconstrained string or open object'
+                    : 'no path parameter, no request body, and no constrained required query parameter',
+            });
+        }
     }
 }
 
@@ -179,6 +273,7 @@ const corpus = {
         { field: 'expires_at', reason: 'derived from generation time' },
         { field: 'contentHash', reason: 'derived from generated ids embedded in the payload' },
     ],
+    nonFalsifiable,
     cases,
 };
 
@@ -186,4 +281,11 @@ mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, JSON.stringify(corpus, null, 2) + '\n');
 
 const ops = new Set(cases.map((c) => c.operationId));
+const byStrategy = new Map();
+for (const testCase of cases) {
+    if (testCase.kind !== 'failure') continue;
+    byStrategy.set(testCase.strategy, (byStrategy.get(testCase.strategy) ?? 0) + 1);
+}
 console.log(`corpus written: ${cases.length} cases across ${ops.size} operations → ${OUT}`);
+console.log(`  failure strategies: ${[...byStrategy].map(([k, v]) => `${k}=${v}`).join(', ')}`);
+console.log(`  non-falsifiable by input: ${nonFalsifiable.length} (recorded with a reason, not fabricated)`);
