@@ -13,7 +13,10 @@ const app = await createCompatApp({
     makeRunner: async () => runner,
     resolvePrincipal: async (request) => {
         const tenant = request.headers.get('x-test-tenant') ?? 'tenant-a';
-        return { user: { id: `owner-${tenant}`, role: 'owner' }, tenant };
+        return {
+            user: { id: `owner-${tenant}`, role: request.headers.get('x-test-role') ?? 'owner' },
+            tenant,
+        };
     },
     sessionSecret: 'compat-security-secret-012345678901234567890',
     userStoreFor: (tenant) => new UserStore(runner, tenant),
@@ -27,6 +30,17 @@ const req = (tenant, method, path, body) => app.fetch(new Request('http://securi
     },
     body: body === undefined ? undefined : JSON.stringify(body),
 }));
+
+const memberAttempt = await app.fetch(new Request('http://security.local/api/edge-providers/', {
+    method: 'POST',
+    headers: {
+        'content-type': 'application/json',
+        'x-test-tenant': 'tenant-a',
+        'x-test-role': 'member',
+    },
+    body: JSON.stringify({ name: 'Forbidden provider', provider: 'cloudflare' }),
+}));
+assert.equal(memberAttempt.status, 403, 'ordinary members cannot mutate provider credentials');
 
 const createdResponse = await req('tenant-a', 'POST', '/api/edge-api-keys', {
     name: 'Production',
@@ -78,5 +92,88 @@ assert.equal((await req('tenant-a', 'POST', '/api/edge-api-keys', {
     name: 'Invalid',
     scope: 'root',
 })).status, 400);
+
+// Universal provider-secret encryption. Every provider surface persists its
+// credential-bearing configuration as ciphertext and never echoes the marker.
+const secretCases = [
+    ['/api/edge-engines/', {
+        name: 'Secret engine',
+        url: 'https://engine.example',
+        engine_config: { api_token: 'secret-engine-marker' },
+    }],
+    ['/api/edge-providers/', {
+        name: 'Secret provider',
+        provider: 'cloudflare',
+        provider_credentials: { token: 'secret-provider-marker' },
+    }],
+    ['/api/edge-databases/', {
+        name: 'Secret database',
+        provider: 'turso',
+        db_url: 'https://database.example',
+        db_token: 'secret-database-marker',
+    }],
+    ['/api/edge-caches/', {
+        name: 'Secret cache',
+        provider: 'upstash',
+        cache_url: 'https://cache.example',
+        cache_token: 'secret-cache-marker',
+    }],
+    ['/api/edge-queues/', {
+        name: 'Secret queue',
+        provider: 'qstash',
+        queue_url: 'https://queue.example',
+        queue_token: 'secret-queue-marker',
+        signing_key: 'secret-signing-marker',
+    }],
+    ['/api/edge-vectors/', {
+        name: 'Secret vector',
+        provider: 'vectorize',
+        vector_url: 'https://vector.example',
+        vector_token: 'secret-vector-marker',
+    }],
+];
+for (const [path, body] of secretCases) {
+    const response = await req('tenant-a', 'POST', path, body);
+    assert.ok(response.ok, `${path} create must succeed`);
+    const text = await response.text();
+    assert.ok(!text.includes('secret-'), `${path} response must redact credentials`);
+}
+
+const edgeConfigs = await runner.query(
+    'SELECT config FROM edge_resources WHERE tenant_slug = ? AND config IS NOT NULL',
+    ['tenant-a'],
+);
+assert.equal(edgeConfigs.length, secretCases.length);
+for (const row of edgeConfigs) {
+    assert.ok(String(row.config).startsWith('enc:'), 'edge configuration must be encrypted');
+    assert.ok(!String(row.config).includes('secret-'), 'edge ciphertext must not contain plaintext markers');
+}
+
+const mcp = await req('tenant-a', 'POST', '/api/mcp-servers', {
+    name: 'Secret MCP',
+    slug: 'secret-mcp',
+    url: 'https://mcp.example',
+    transport: 'http',
+    config: { token: 'secret-mcp-marker' },
+});
+assert.ok(mcp.ok);
+assert.ok(!(await mcp.text()).includes('secret-mcp-marker'));
+const mcpRows = await runner.query('SELECT config FROM mcp_servers WHERE tenant_slug = ?', ['tenant-a']);
+assert.ok(String(mcpRows[0].config).startsWith('enc:'));
+assert.ok(!String(mcpRows[0].config).includes('secret-mcp-marker'));
+
+const providerRow = await runner.query(
+    "SELECT id FROM edge_resources WHERE tenant_slug = ? AND kind = 'provider' LIMIT 1",
+    ['tenant-a'],
+);
+assert.ok((await req('tenant-a', 'POST', '/api/edge-providers/workspace-agent-token', {
+    provider_id: providerRow[0].id,
+})).ok);
+const workspaceToken = await runner.query(
+    'SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',
+    ['tenant-a', 'workspace_agent_token'],
+);
+assert.ok(String(workspaceToken[0].value).includes('enc:'));
+assert.ok(!String(workspaceToken[0].value).includes('token_'));
 
 console.log('compat-security: PASS ✅');

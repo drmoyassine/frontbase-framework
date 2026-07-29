@@ -16,9 +16,8 @@ GET  /setup                first-admin setup only; initialized apps redirect to 
 POST /api/auth/login       product-compatible login → fb_session cookie
 GET  /api/auth/me          product-compatible current user
 GET  /api/console/health   public
-POST /api/console/login    email + password → fb_session cookie
-GET  /api/console/me        401 without the cookie (default-deny)
-POST /api/console/publish/:slug  … the rest of the console (login-gated)
+GET  /api/console/setup/*  retained first-run initialization surface
+ANY  /api/console/*        410 Gone for every other legacy route
 ```
 
 ## What deploys
@@ -99,7 +98,7 @@ pnpm run deploy:cf-full -- --app-name my-app \
 Then log in:
 
 ```bash
-curl -i https://<your-worker>.workers.dev/api/console/login \
+curl -i https://<your-worker>.workers.dev/api/auth/login \
   -H 'content-type: application/json' \
   -d '{"email":"you@example.com","password":"…"}'
 # → 200 + Set-Cookie: fb_session=…

@@ -17,6 +17,7 @@ let clock = 0;
 const app = await createConsole({
     makeRunner: async () => runner,
     resolvePrincipal: async () => ({ user: { id: 'u1' }, tenant: 'tenant-A' }),
+    sessionSecret: 'frontbase-test-session-secret',
     now: () => `2026-07-13T00:00:${String(clock++).padStart(2, '0')}Z`,
     storageProvider: storage,
 });
@@ -49,9 +50,12 @@ const list = await (await jreq('GET', '/storage/buckets/b1/files')).json();
 check('multipart created a metadata row', list.files.length === 1 && list.files[0].name === 'u.txt');
 
 // ---- 3. upload-url without a provider → 501 (proves the guard) ----
+const noProvRunner = sqliteRunner(':memory:');
+await migrateUp(noProvRunner);
 const noProvApp = await createConsole({
-    makeRunner: async () => sqliteRunner(':memory:'),
+    makeRunner: async () => noProvRunner,
     resolvePrincipal: async () => ({ user: { id: 'u1' }, tenant: 'tenant-B' }),
+    sessionSecret: 'frontbase-test-session-secret',
     now: () => '2026-07-13T00:00:00Z',
 });
 const noProv = await noProvApp.fetch(new Request('http://x/storage/buckets/b1/upload-url', {

@@ -1,0 +1,94 @@
+name: CF-22 fresh Cloudflare deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cf22-fresh-deploy-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  fresh-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF22_ADMIN_EMAIL: ${{ secrets.CF22_ADMIN_EMAIL }}
+      CF22_ADMIN_PASSWORD: ${{ secrets.CF22_ADMIN_PASSWORD }}
+      APP_NAME: cf22-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require live-gate credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CF22_ADMIN_EMAIL"
+          test -n "$CF22_ADMIN_PASSWORD"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Check out the pinned product console source
+        uses: actions/checkout@v4
+        with:
+          repository: drmoyassine/frontbase-dbsync
+          token: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          path: .product
+          ref: 7fbc0b9b6183ab8d02dca4216f37840cdb948df3
+
+      - name: Install framework and product dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          npm ci --prefix .product
+
+      - name: Build the pinned console artifact
+        run: pnpm run fetch:console -- --product-dir .product
+
+      - name: Build and deploy an unused Worker and D1 database
+        id: deploy
+        run: |
+          set -o pipefail
+          pnpm run deploy:cf-full -- \
+            --app-name "$APP_NAME" \
+            --admin-email "$CF22_ADMIN_EMAIL" \
+            --admin-password "$CF22_ADMIN_PASSWORD" \
+            --session-secret "$(openssl rand -hex 32)" | tee deploy.log
+          worker_url="$(grep -Eo 'https://[A-Za-z0-9.-]+\.workers\.dev' deploy.log | tail -1)"
+          test -n "$worker_url"
+          echo "worker_url=$worker_url" >> "$GITHUB_OUTPUT"
+
+      - name: Run browser acceptance against the deployed artifact
+        env:
+          E2E_BASE_URL: ${{ steps.deploy.outputs.worker_url }}
+          E2E_ADMIN_EMAIL: ${{ secrets.CF22_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.CF22_ADMIN_PASSWORD }}
+        run: pnpm --filter @frontbase/example-cf-full e2e
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cf22-fresh-deploy-${{ github.run_id }}
+          path: |
+            deploy.log
+            examples/cf-full/e2e/report
+            examples/cf-full/test-results
+          if-no-files-found: ignore
+
+      - name: Delete scratch Worker and D1 database
+        if: always()
+        working-directory: examples/cf-full
+        run: |
+          pnpm exec wrangler delete "$APP_NAME" --force || true
+          pnpm exec wrangler d1 delete "$APP_NAME" --skip-confirmation || true

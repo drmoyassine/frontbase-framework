@@ -57,6 +57,17 @@ function validator(name: string): { safeParse(value: unknown): { success: boolea
     return (Z as Record<string, any>)[name];
 }
 
+function validationError(location: 'path' | 'query' | 'body') {
+    return {
+        detail: [{
+            type: 'value_error',
+            loc: [location],
+            msg: 'Validation failed',
+            input: null,
+        }],
+    };
+}
+
 export function contractRequestValidation(): MiddlewareHandler<{ Variables: ConsoleAuthVars }> {
     return async (c, next) => {
         const path = new URL(c.req.url).pathname;
@@ -83,7 +94,7 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
                 }
             }
             if (!pathValidator.safeParse(values).success) {
-                return c.json({ detail: 'validation_failed' }, 422);
+                return c.json(validationError('path'), 422);
             }
         }
 
@@ -99,7 +110,7 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
                     : primitive(all[all.length - 1] ?? '', parameter.schema);
             }
             if (!queryValidator.safeParse(values).success) {
-                return c.json({ detail: 'validation_failed' }, 422);
+                return c.json(validationError('query'), 422);
             }
         }
 
@@ -108,16 +119,16 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
         if (bodyValidator && jsonSchema) {
             const body = await c.req.json().catch(() => undefined);
             if (!bodyValidator.safeParse(body).success) {
-                return c.json({ detail: 'validation_failed' }, 422);
+                return c.json(validationError('body'), 422);
             }
         }
         const multipartSchema = operation.requestBody?.content?.['multipart/form-data']?.schema;
         if (bodyValidator && multipartSchema) {
             if (!(c.req.header('content-type') ?? '').toLowerCase().includes('multipart/form-data')) {
-                return c.json({ detail: 'validation_failed' }, 422);
+                return c.json(validationError('body'), 422);
             }
             const form = await c.req.raw.clone().formData().catch(() => null);
-            if (!form) return c.json({ detail: 'validation_failed' }, 422);
+            if (!form) return c.json(validationError('body'), 422);
             const body: Record<string, unknown> = {};
             for (const key of new Set(form.keys())) {
                 const values = form.getAll(key).map((value) =>
@@ -125,7 +136,7 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
                 body[key] = values.length === 1 ? values[0] : values;
             }
             if (!bodyValidator.safeParse(body).success) {
-                return c.json({ detail: 'validation_failed' }, 422);
+                return c.json(validationError('body'), 422);
             }
         }
         return next();

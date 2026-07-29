@@ -130,7 +130,11 @@ export function phase2Routes(
     app.get('/edge-resources', async (c) => {
         const store = storeFor(c.get('tenant'));
         const kind = c.req.query('kind');
-        return c.json({ resources: await store.listEdgeResources(kind) });
+        const resources = (await store.listEdgeResources(kind)).map(({ config, ...resource }) => ({
+            ...resource,
+            hasConfig: config !== null && config !== undefined && config !== '',
+        }));
+        return c.json({ resources });
     });
 
     app.put('/edge-resources/:id', async (c) => {
@@ -173,12 +177,12 @@ export function phase2Routes(
         // De-provision the real resource BEFORE dropping the row (mirror of BUG-1 fix —
         // previously provisioned D1/KV/Queues/Vectors leaked on delete). Best-effort.
         if (provisioner) {
-            const list = await store.listEdgeResources();
-            const res = list.find((r) => String(r.id) === c.req.param('id'));
-            if (res?.config) {
+            const resourceId = c.req.param('id');
+            const res = await store.getEdgeResource(resourceId);
+            if (res) {
                 try {
-                    const cfg = JSON.parse(String(res.config));
-                    if (cfg.remoteId && provisioner.handles(String(res.kind))) {
+                    const cfg = await store.getEdgeResourceConfig(resourceId);
+                    if (cfg?.remoteId && provisioner.handles(String(res.kind))) {
                         await provisioner.remove(String(res.kind), String(cfg.remoteId));
                     }
                 } catch { /* best-effort: row delete proceeds regardless */ }
@@ -192,7 +196,11 @@ export function phase2Routes(
 
     app.get('/storage/buckets', async (c) => {
         const store = storeFor(c.get('tenant'));
-        return c.json({ buckets: await store.listBuckets() });
+        const buckets = (await store.listBuckets()).map(({ config, ...bucket }) => ({
+            ...bucket,
+            hasConfig: config !== null && config !== undefined && config !== '',
+        }));
+        return c.json({ buckets });
     });
 
     app.put('/storage/buckets/:id', async (c) => {
@@ -437,4 +445,3 @@ export async function recoverStuckExecutions(
     }
     return { recovered, failed };
 }
-

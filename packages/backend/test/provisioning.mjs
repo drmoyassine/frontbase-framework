@@ -33,6 +33,7 @@ let clock = 0;
 const app = await createConsole({
     makeRunner: async () => runner,
     resolvePrincipal: async () => ({ user: { id: 'u1' }, tenant: 'tenant-A' }),
+    sessionSecret: 'frontbase-test-session-secret',
     now: () => `2026-07-13T00:00:${String(clock++).padStart(2, '0')}Z`,
     provisioner: mockProvisioner,
 });
@@ -63,8 +64,12 @@ const list = await req('GET', '/edge-resources');
 const listBody = await list.json();
 check('resource recorded', listBody.resources.length === 1);
 check('resource status = provisioned', listBody.resources[0].status === 'provisioned');
-const cfg = JSON.parse(listBody.resources[0].config || '{}');
-check('config carries the remoteId', typeof cfg.remoteId === 'string');
+check('resource config is redacted from the API', !('config' in listBody.resources[0]));
+const stored = await runner.query(
+    'SELECT config FROM edge_resources WHERE id = ? AND tenant_slug = ?',
+    ['res1', 'tenant-A'],
+);
+check('resource config is encrypted at rest', String(stored[0]?.config ?? '').startsWith('enc:'));
 
 // ---- 4. vector kind provisions (F5b) ----
 const vput = await req('PUT', '/edge-resources/vec1', { kind: 'vector', name: 'embeddings' });

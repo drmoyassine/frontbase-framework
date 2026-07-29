@@ -45,7 +45,16 @@ export async function withSourceMutation(label, file, find, replace, fn) {
 
 /** Rebuild a package (tsc). Returns true on success. */
 export function buildPackage(pkg) {
-    const r = spawnSync('pnpm', ['--filter', pkg, 'build'], { cwd: FW, shell: true });
+    const pnpmCli = process.env.npm_execpath;
+    const executable = process.platform === 'win32' && pnpmCli ? process.execPath : 'pnpm';
+    const args = process.platform === 'win32' && pnpmCli
+        ? [pnpmCli, '--filter', pkg, 'build']
+        : ['--filter', pkg, 'build'];
+    const r = spawnSync(executable, args, { cwd: FW, encoding: 'utf8' });
+    if (r.status !== 0) {
+        const detail = r.error?.message || r.stderr || r.stdout || `exit ${String(r.status)}`;
+        console.error(`build failed for ${pkg}: ${String(detail).trim()}`);
+    }
     return r.status === 0;
 }
 

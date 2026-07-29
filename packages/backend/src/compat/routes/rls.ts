@@ -1,51 +1,277 @@
-/**
- * CF-22 P2 Wave 1b — the `rls` tag (14 ops): row-level-security policy +
- * metadata management. RLS is a Supabase/Postgres feature; the community default
- * has no datasource, so policy ops return the product's graceful acks (can't
- * manage policies without a connected database). Metadata (the form-state the
- * console stores to re-open the policy editor) is persisted locally in the
- * KeyValueStore so the console's RLS UI round-trips. Shapes match the vendored
- * RlsListEnvelope / RlsMessageEnvelope / RlsDataEnvelope / RlsVerifyEnvelope.
+/** Supabase RLS compatibility surface.
+ *
+ * Policy operations execute the same management RPCs as the product. Only the
+ * UI metadata remains local tenant-scoped state. Raw policy expressions are
+ * never interpolated by this service; they are JSON parameters to audited
+ * Supabase RPC functions.
  */
 import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { KeyValueStore } from '../store.js';
+import type { SyncStore } from '../sync-store.js';
+import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
-export function registerRlsRoutes(app: App, kvFor: (t: string) => KeyValueStore): void {
-    // ---- policies (graceful: no datasource) ----
-    app.get('/api/database/rls/policies/', (c) => c.json({ success: false, data: [], error: 'No datasource configured' }));
-    app.get('/api/database/rls/tables/', (c) => c.json({ success: false, data: [], error: 'No datasource configured' }));
-    app.get('/api/database/rls/policies/:table_name', (c) => c.json({ success: false, data: [], error: 'No datasource configured' }));
-    app.post('/api/database/rls/policies/', (c) => c.json({ success: false, message: 'No datasource configured', error: null }));
-    app.put('/api/database/rls/policies/:table_name/:policy_name', (c) => c.json({ success: false, message: 'No datasource configured', error: null }));
-    app.delete('/api/database/rls/policies/:table_name/:policy_name', (c) => c.json({ success: false, message: 'No datasource configured', error: null }));
-    app.post('/api/database/rls/tables/:table_name/toggle/', (c) => c.json({ success: false, message: 'No datasource configured', error: null }));
-    app.post('/api/database/rls/batch/', (c) => c.json({ success: false, message: 'Batch creation completed (no datasource)', error: null }));
-    app.post('/api/database/rls/bulk-delete/', (c) => c.json({ success: false, message: 'No datasource configured', error: null }));
+export function registerRlsRoutes(
+    app: App,
+    kvFor: (tenant: string) => KeyValueStore,
+    syncStoreFor: (tenant: string) => SyncStore,
+    externalFetch: CompatFetch,
+): void {
+    const callRpc = async (tenant: string, functionName: string, params: Record<string, unknown>): Promise<unknown> => {
+        const datasource = (await syncStoreFor(tenant).listDatasources())
+            .find((item) => item.kind === 'supabase');
+        if (!datasource) throw new Error('supabase_not_configured');
+        const url = String(datasource.config.url ?? datasource.config.supabaseUrl ?? '').replace(/\/+$/, '');
+        const key = String(
+            datasource.config.serviceKey
+            ?? datasource.config.service_key
+            ?? '',
+        );
+        // Policy DDL is privileged administration. Never fall back to an anon
+        // or user JWT key just because it happens to be present in the record.
+        if (!url || !key) throw new Error('supabase_service_credentials_missing');
+        const response = await guardedExternalFetch(externalFetch, `${url}/rest/v1/rpc/${functionName}`, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                apikey: key,
+                Authorization: `Bearer ${key}`,
+            },
+            body: JSON.stringify(params),
+        });
+        if (!response.ok) throw new Error(`rls_rpc_${response.status}`);
+        return response.json();
+    };
 
-    // ---- metadata (local form-state; round-trips in the console) ----
-    app.get('/api/database/rls/metadata/', async (c) => c.json({ success: true, data: await kvFor(c.get('tenant')).getJson('rls_metadata', []), error: null }));
+    const failed = (c: any, error: unknown) => c.json({
+        success: false,
+        error: (error as Error).message,
+    }, 502, (error as Error).message.includes('not_configured')
+        ? { 'X-Frontbase-External-Disabled': 'supabase' }
+        : undefined);
+
+    app.get('/api/database/rls/policies/', async (c) => {
+        try {
+            const data = await callRpc(c.get('tenant'), 'frontbase_list_rls_policies', {
+                p_schema_name: c.req.query('schema') ?? 'public',
+            });
+            return c.json({ success: true, data: Array.isArray(data) ? data : [], error: null });
+        } catch (error) { return failed(c, error); }
+    });
+
+    app.get('/api/database/rls/tables/', async (c) => {
+        try {
+            const data = await callRpc(c.get('tenant'), 'frontbase_get_rls_status', {
+                p_schema_name: c.req.query('schema') ?? 'public',
+            });
+            return c.json({ success: true, data: Array.isArray(data) ? data : [], error: null });
+        } catch (error) { return failed(c, error); }
+    });
+
+    app.get('/api/database/rls/policies/:table_name', async (c) => {
+        try {
+            const data = await callRpc(c.get('tenant'), 'frontbase_list_rls_policies', {
+                p_schema_name: c.req.query('schema') ?? 'public',
+            });
+            const policies = Array.isArray(data) ? data as Array<Record<string, unknown>> : [];
+            return c.json({
+                success: true,
+                data: policies.filter((policy) => policy.table_name === c.req.param('table_name')),
+                error: null,
+            });
+        } catch (error) { return failed(c, error); }
+    });
+
+    app.post('/api/database/rls/policies/', async (c) => {
+        const body = await c.req.json().catch(() => ({})) as {
+            tableName?: string;
+            policyName?: string;
+            operation?: string;
+            usingExpression?: string | null;
+            checkExpression?: string | null;
+            roles?: string[];
+            permissive?: boolean;
+            propagateTo?: Array<Record<string, unknown>>;
+        };
+        try {
+            const result = await callRpc(c.get('tenant'), 'frontbase_create_rls_policy', {
+                p_table_name: body.tableName,
+                p_policy_name: body.policyName,
+                p_operation: String(body.operation ?? '').toUpperCase(),
+                p_using_expr: body.usingExpression ?? null,
+                p_check_expr: body.checkExpression ?? null,
+                p_roles: body.roles ?? ['authenticated'],
+                p_permissive: body.permissive ?? true,
+            }) as Record<string, unknown>;
+            const propagatedTo: string[] = [];
+            for (const target of body.propagateTo ?? []) {
+                const targetTable = String(target.tableName ?? '');
+                if (!targetTable) continue;
+                await callRpc(c.get('tenant'), 'frontbase_create_rls_policy', {
+                    p_table_name: targetTable,
+                    p_policy_name: `${body.policyName}_on_${targetTable}`,
+                    p_operation: String(body.operation ?? '').toUpperCase(),
+                    p_using_expr: body.usingExpression ?? null,
+                    p_check_expr: body.checkExpression ?? null,
+                    p_roles: body.roles ?? ['authenticated'],
+                    p_permissive: body.permissive ?? true,
+                });
+                propagatedTo.push(targetTable);
+            }
+            return c.json({
+                success: result.success !== false,
+                message: String(result.message ?? 'Policy created successfully'),
+                sql: result.sql ?? null,
+                propagatedTo,
+                error: null,
+            }, 201);
+        } catch (error) { return failed(c, error); }
+    });
+
+    app.put('/api/database/rls/policies/:table_name/:policy_name', async (c) => {
+        const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+        try {
+            const result = await callRpc(c.get('tenant'), 'frontbase_update_rls_policy', {
+                p_table_name: c.req.param('table_name'),
+                p_old_policy_name: c.req.param('policy_name'),
+                p_new_policy_name: body.newPolicyName ?? c.req.param('policy_name'),
+                p_operation: String(body.operation ?? '').toUpperCase(),
+                p_using_expr: body.usingExpression ?? null,
+                p_check_expr: body.checkExpression ?? null,
+                p_roles: body.roles ?? ['authenticated'],
+                p_permissive: body.permissive ?? true,
+            }) as Record<string, unknown>;
+            return c.json({
+                success: result.success !== false,
+                message: String(result.message ?? 'Policy updated'),
+                error: null,
+            });
+        } catch (error) { return failed(c, error); }
+    });
+
+    app.delete('/api/database/rls/policies/:table_name/:policy_name', async (c) => {
+        try {
+            const result = await callRpc(c.get('tenant'), 'frontbase_drop_rls_policy', {
+                p_table_name: c.req.param('table_name'),
+                p_policy_name: c.req.param('policy_name'),
+            }) as Record<string, unknown>;
+            return c.json({
+                success: result.success !== false,
+                message: String(result.message ?? 'Policy deleted'),
+                error: null,
+            });
+        } catch (error) { return failed(c, error); }
+    });
+
+    app.post('/api/database/rls/tables/:table_name/toggle/', async (c) => {
+        const body = await c.req.json().catch(() => ({})) as { enable?: boolean };
+        try {
+            const result = await callRpc(c.get('tenant'), 'frontbase_toggle_table_rls', {
+                p_table_name: c.req.param('table_name'),
+                p_enable: body.enable ?? false,
+            }) as Record<string, unknown>;
+            return c.json({
+                success: result.success !== false,
+                message: String(result.message ?? `RLS ${body.enable ? 'enabled' : 'disabled'}`),
+                error: null,
+            });
+        } catch (error) { return failed(c, error); }
+    });
+
+    app.post('/api/database/rls/batch/', async (c) => {
+        const body = await c.req.json().catch(() => ({})) as {
+            policyBaseName?: string;
+            tableRules?: Array<Record<string, unknown>>;
+            roles?: string[];
+            permissive?: boolean;
+        };
+        const policies = (body.tableRules ?? []).map((rule) => ({
+            table_name: rule.tableName,
+            policy_name: `${body.policyBaseName}_${String(rule.tableName ?? '')}`,
+            operation: String(rule.operation ?? '').toUpperCase(),
+            using_expr: rule.usingExpression,
+            check_expr: rule.checkExpression ?? null,
+            roles: body.roles ?? ['authenticated'],
+            permissive: body.permissive ?? true,
+        }));
+        try {
+            const result = await callRpc(c.get('tenant'), 'frontbase_create_rls_policies_batch', {
+                p_policies: policies,
+            }) as Record<string, unknown>;
+            return c.json({
+                success: result.success !== false,
+                message: String(result.message ?? 'Batch creation completed'),
+                policies: result.policies ?? [],
+                successCount: result.success_count ?? policies.length,
+                errorCount: result.error_count ?? 0,
+                error: null,
+            });
+        } catch (error) { return failed(c, error); }
+    });
+
+    app.post('/api/database/rls/bulk-delete/', async (c) => {
+        const body = await c.req.json().catch(() => ({})) as {
+            policies?: Array<{ tableName?: string; policyName?: string }>;
+        };
+        const results = [];
+        try {
+            for (const policy of body.policies ?? []) {
+                const result = await callRpc(c.get('tenant'), 'frontbase_drop_rls_policy', {
+                    p_table_name: policy.tableName,
+                    p_policy_name: policy.policyName,
+                }) as Record<string, unknown>;
+                results.push({
+                    tableName: policy.tableName,
+                    policyName: policy.policyName,
+                    success: result.success !== false,
+                });
+            }
+            const successCount = results.filter((result) => result.success).length;
+            return c.json({
+                success: successCount === results.length,
+                message: `Deleted ${successCount} policies`,
+                results,
+                successCount,
+                errorCount: results.length - successCount,
+                error: null,
+            });
+        } catch (error) { return failed(c, error); }
+    });
+
+    // Metadata is Builder form state, not provider state.
+    app.get('/api/database/rls/metadata/', async (c) =>
+        c.json({ success: true, data: await kvFor(c.get('tenant')).getJson('rls_metadata', []), error: null }));
+
     app.get('/api/database/rls/metadata/:table_name/:policy_name', async (c) => {
         const all = await kvFor(c.get('tenant')).getJson<Array<{ tableName: string; policyName: string }>>('rls_metadata', []);
-        const found = all.find((m) => m.tableName === c.req.param('table_name') && m.policyName === c.req.param('policy_name'));
+        const found = all.find((item) =>
+            item.tableName === c.req.param('table_name') && item.policyName === c.req.param('policy_name'));
         return c.json({ success: true, data: found ?? null, error: null });
     });
+
     app.post('/api/database/rls/metadata/', async (c) => {
         const body = await c.req.json().catch(() => ({})) as { tableName?: string; policyName?: string };
-        const all = await kvFor(c.get('tenant')).getJson<Array<Record<string, unknown>>>('rls_metadata', []);
-        const idx = all.findIndex((m) => (m as { tableName?: string }).tableName === body.tableName && (m as { policyName?: string }).policyName === body.policyName);
+        const kv = kvFor(c.get('tenant'));
+        const all = await kv.getJson<Array<Record<string, unknown>>>('rls_metadata', []);
+        const index = all.findIndex((item) =>
+            item.tableName === body.tableName && item.policyName === body.policyName);
         const entry = { ...body, tableName: body.tableName, policyName: body.policyName };
-        if (idx >= 0) all[idx] = entry; else all.push(entry);
-        await kvFor(c.get('tenant')).setJson('rls_metadata', all, '');
+        if (index >= 0) all[index] = entry;
+        else all.push(entry);
+        await kv.setJson('rls_metadata', all, '');
         return c.json({ success: true, data: { tableName: body.tableName, policyName: body.policyName }, error: null });
     });
+
     app.delete('/api/database/rls/metadata/:table_name/:policy_name', async (c) => {
-        const all = await kvFor(c.get('tenant')).getJson<Array<{ tableName: string; policyName: string }>>('rls_metadata', []);
-        await kvFor(c.get('tenant')).setJson('rls_metadata', all.filter((m) => !(m.tableName === c.req.param('table_name') && m.policyName === c.req.param('policy_name'))), '');
+        const kv = kvFor(c.get('tenant'));
+        const all = await kv.getJson<Array<{ tableName: string; policyName: string }>>('rls_metadata', []);
+        await kv.setJson('rls_metadata', all.filter((item) =>
+            !(item.tableName === c.req.param('table_name') && item.policyName === c.req.param('policy_name'))), '');
         return c.json({ success: true, message: 'Metadata deleted', error: null });
     });
+
     app.post('/api/database/rls/metadata/verify/', async (c) => {
         const body = await c.req.json().catch(() => ({})) as { tableName?: string; policyName?: string };
         const all = await kvFor(c.get('tenant')).getJson<Array<{ tableName?: string; policyName?: string }>>('rls_metadata', []);

@@ -176,13 +176,50 @@ export class Phase2Store {
         return rows[0] ?? null;
     }
 
+    /** Decrypted edge-resource configuration for server-side provider execution.
+     * Never expose this object from an API response: it can contain account tokens,
+     * connection strings, signing keys, and provider-specific credentials. */
+    async getEdgeResourceConfig(id: string): Promise<Record<string, unknown> | null> {
+        const rows = await this.runner.query(
+            'SELECT config FROM edge_resources WHERE id = ? AND tenant_slug = ?',
+            [id, this.tenant],
+        );
+        const raw = rows[0]?.config;
+        if (raw === null || raw === undefined || raw === '') return {};
+        if (!this.cipher.isEncrypted(String(raw))) throw new Error('secret_not_encrypted');
+        const decrypted = await this.cipher.decrypt(String(raw));
+        try {
+            const parsed = JSON.parse(decrypted) as unknown;
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+                ? parsed as Record<string, unknown>
+                : {};
+        } catch {
+            throw new Error('invalid_edge_resource_config');
+        }
+    }
+
     async upsertEdgeResource(input: EdgeResourceInput, now: string): Promise<void> {
+        const currentRows = await this.runner.query(
+            'SELECT provider, config, status FROM edge_resources WHERE id = ? AND tenant_slug = ?',
+            [input.id, this.tenant],
+        );
+        const current = currentRows[0];
+        let storedConfig = input.config ?? null;
+        if (storedConfig !== null && !this.cipher.isEncrypted(storedConfig)) {
+            storedConfig = await this.cipher.encrypt(storedConfig);
+            if (!this.cipher.isEncrypted(storedConfig)) {
+                throw new Error('secret_cipher_unavailable');
+            }
+        }
+        if (storedConfig === null && current?.config !== undefined && current.config !== null) storedConfig = String(current.config);
+        const provider = input.provider ?? (current?.provider === null || current?.provider === undefined ? null : String(current.provider));
+        const status = input.status ?? (current?.status === null || current?.status === undefined ? 'active' : String(current.status));
         await this.runner.exec(
             `INSERT INTO edge_resources (id, tenant_slug, kind, name, provider, config, status, created_at, updated_at)
              VALUES (?,?,?,?,?,?,?,?,?)
              ON CONFLICT(id, tenant_slug) DO UPDATE SET kind=excluded.kind, name=excluded.name,
              provider=excluded.provider, config=excluded.config, status=excluded.status, updated_at=excluded.updated_at`,
-            [input.id, this.tenant, input.kind, input.name, input.provider ?? null, input.config ?? null, input.status ?? 'active', now, now],
+            [input.id, this.tenant, input.kind, input.name, provider, storedConfig, status, now, now],
         );
     }
 
@@ -200,11 +237,26 @@ export class Phase2Store {
     }
 
     async upsertBucket(input: BucketInput, now: string): Promise<void> {
+        const currentRows = await this.runner.query(
+            'SELECT provider, config FROM storage_buckets WHERE id = ? AND tenant_slug = ?',
+            [input.id, this.tenant],
+        );
+        const current = currentRows[0];
+        let storedConfig = input.config ?? null;
+        if (storedConfig !== null && !this.cipher.isEncrypted(storedConfig)) {
+            storedConfig = await this.cipher.encrypt(storedConfig);
+            if (!this.cipher.isEncrypted(storedConfig)) throw new Error('secret_cipher_unavailable');
+        }
+        if (storedConfig === null && current?.config !== undefined && current.config !== null) {
+            storedConfig = String(current.config);
+        }
+        const provider = input.provider
+            ?? (current?.provider === null || current?.provider === undefined ? 'local' : String(current.provider));
         await this.runner.exec(
             `INSERT INTO storage_buckets (id, tenant_slug, name, provider, config, created_at)
              VALUES (?,?,?,?,?,?)
              ON CONFLICT(id, tenant_slug) DO UPDATE SET name=excluded.name, provider=excluded.provider, config=excluded.config`,
-            [input.id, this.tenant, input.name, input.provider ?? 'local', input.config ?? null, now],
+            [input.id, this.tenant, input.name, provider, storedConfig, now],
         );
     }
 
@@ -277,7 +329,9 @@ export class Phase2Store {
         const row = rows[0];
         if (!row) return null;
         const value = String(row.value);
-        // Decrypt only if it's a secret (or already-encrypted legacy). Idempotent.
+        if (Number(row.is_secret) !== 0 && !this.cipher.isEncrypted(value)) {
+            throw new Error('secret_not_encrypted');
+        }
         return this.cipher.decrypt(value);
     }
 
@@ -306,6 +360,7 @@ export class Phase2Store {
         const rows = await this.runner.query('SELECT name, kind, config FROM datasources WHERE id = ? AND tenant_slug = ?', [id, this.tenant]);
         const row = rows[0];
         if (!row) return null;
+        if (!this.cipher.isEncrypted(String(row.config))) throw new Error('secret_not_encrypted');
         const decrypted = await this.cipher.decrypt(String(row.config));
         return { kind: String(row.kind), name: String(row.name), config: JSON.parse(decrypted) };
     }
@@ -313,6 +368,7 @@ export class Phase2Store {
     async upsertDatasource(id: string, name: string, kind: string, config: Record<string, unknown>, now: string): Promise<void> {
         // Encrypt the connection config (holds credentials — F6).
         const stored = await this.cipher.encrypt(JSON.stringify(config));
+        if (!this.cipher.isEncrypted(stored)) throw new Error('secret_cipher_unavailable');
         await this.runner.exec(
             `INSERT INTO datasources (id, tenant_slug, name, kind, config, created_at, updated_at) VALUES (?,?,?,?,?,?,?)
              ON CONFLICT(id, tenant_slug) DO UPDATE SET name=excluded.name, kind=excluded.kind, config=excluded.config, updated_at=excluded.updated_at`,

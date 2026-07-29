@@ -17,7 +17,8 @@ async function makeApp() {
     await migrateUp(runner);
     return createCompatApp({
         makeRunner: async () => runner,
-        resolvePrincipal: async () => ({ user: { id: 'owner' }, tenant: '_default' }),
+        resolvePrincipal: async () => ({ user: { id: 'owner', role: 'owner' }, tenant: '_default' }),
+        sessionSecret: 'frontbase-test-session-secret',
         now: () => '2026-07-15T00:00:00Z',
     });
 }
@@ -97,9 +98,11 @@ test('database: connections + graceful empty introspection', async () => {
 });
 
 // ---- rls ----
-test('rls: policies/tables empty; metadata round-trips', async () => {
+test('rls: provider calls fail closed; metadata round-trips locally', async () => {
     const app = await makeApp();
-    assert.deepEqual((await (await req(app, 'GET', '/api/database/rls/policies/')).json()).data, []);
+    const policies = await req(app, 'GET', '/api/database/rls/policies/');
+    assert.equal(policies.status, 502);
+    assert.equal((await policies.json()).error, 'supabase_not_configured');
     const saved = await (await req(app, 'POST', '/api/database/rls/metadata/', { tableName: 'users', policyName: 'p1', formData: {} })).json();
     assert.equal(saved.data.tableName, 'users');
     const got = await (await req(app, 'GET', '/api/database/rls/metadata/users/p1')).json();

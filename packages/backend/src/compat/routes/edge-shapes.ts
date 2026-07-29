@@ -23,7 +23,12 @@ export function testResult(success: boolean, message: string, latencyMs: number 
 }
 
 function parseConfig(raw: unknown): Record<string, unknown> {
-    try { return typeof raw === 'string' ? JSON.parse(raw) as Record<string, unknown> : (raw ?? {}) as Record<string, unknown>; }
+    try {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) as unknown : raw;
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? parsed as Record<string, unknown>
+            : {};
+    }
     catch { return {}; }
 }
 

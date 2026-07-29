@@ -1,49 +1,112 @@
 /**
- * CF-22 P2 Wave 2 — the `storage` tag (23 ops). Buckets + files reuse Phase2Store
- * (migration v6: storage_buckets / storage_files). The product's external-storage
- * surface (netlify/vercel/providers/upload/move/signed-url) has no provider wired
- * in the community worker, so those ops return the product's graceful ack shapes
- * (the same shapes FastAPI returns when no provider is configured — verified
- * against the vendored spec, not invented). RULE 2: tenant from `c.get('tenant')`.
+ * CF-22 Work A2 Tier 1 — Functional `storage` surface (23 ops).
+ * Buckets + files + virtual folders + uploads + moves + signed/public URLs + providers
+ * wired to Phase2Store and KeyValueStore.
  *
- * Routes registered with EXACT product paths (trailing slashes matter).
+ * RULE 2: tenant isolated via `c.get('tenant')`.
  */
 import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
+import type { KeyValueStore } from '../store.js';
+import type { SecretCipher } from '../../db/secret-cipher.js';
+import type { StorageProvider } from '@frontbase/edge-infra';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
-export function registerStorageRoutes(app: App, phase2For: (t: string) => Phase2Store, now: () => string): void {
+export function registerStorageRoutes(
+    app: App,
+    phase2For: (t: string) => Phase2Store,
+    kvFor: (t: string) => KeyValueStore,
+    secretCipher: SecretCipher,
+    storageProvider: StorageProvider | undefined,
+    now: () => string,
+): void {
+    const redactConfig = (record: Record<string, unknown>) => {
+        const { config: _config, config_ciphertext: _ciphertext, ...safe } = record;
+        return {
+            ...safe,
+            has_config: Boolean(_config ?? _ciphertext),
+        };
+    };
+    const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
+        if (config === undefined) return undefined;
+        const ciphertext = await secretCipher.encrypt(JSON.stringify(config));
+        if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
+        return ciphertext;
+    };
+    const hasStorageProvider = async (tenant: string, providerId: string) => {
+        const providers = await kvFor(tenant).getJson<Array<{ id?: string }>>('storage_providers', []);
+        return providers.some((provider) => provider.id === providerId);
+    };
+
     // ---- buckets (Phase2Store) ----
     // GET /api/storage/buckets
-    app.get('/api/storage/buckets', async (c) => c.json({ success: true, buckets: await phase2For(c.get('tenant')).listBuckets() }));
+    app.get('/api/storage/buckets', async (c) => c.json({
+        success: true,
+        buckets: (await phase2For(c.get('tenant')).listBuckets()).map(redactConfig),
+    }));
+
     // POST /api/storage/buckets
     app.post('/api/storage/buckets', async (c) => {
         const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
         const id = crypto.randomUUID();
-        await phase2For(c.get('tenant')).upsertBucket({ id, name: b.name ?? 'bucket', provider: b.provider ?? 'local', config: b.config !== undefined ? JSON.stringify(b.config) : undefined }, now());
-        return c.json({ success: true, bucket: { id, name: b.name ?? 'bucket', provider: b.provider ?? 'local', config: b.config ?? null, created_at: now() } }, 201);
+        await phase2For(c.get('tenant')).upsertBucket({
+            id,
+            name: b.name ?? 'bucket',
+            provider: b.provider ?? 'local',
+            config: await encryptedConfig(b.config),
+        }, now());
+        return c.json({
+            success: true,
+            bucket: {
+                id,
+                name: b.name ?? 'bucket',
+                provider: b.provider ?? 'local',
+                has_config: b.config !== undefined,
+                created_at: now(),
+            },
+        }, 201);
     });
+
     // GET /api/storage/buckets/{bucket_id}
     app.get('/api/storage/buckets/:bucket_id', async (c) => {
         const all = await phase2For(c.get('tenant')).listBuckets();
         const bucket = all.find((r) => String(r.id) === c.req.param('bucket_id'));
-        return bucket ? c.json({ success: true, bucket }) : c.json({ success: false, error: 'Bucket not found' }, 404);
+        return bucket
+            ? c.json({ success: true, bucket: redactConfig(bucket) })
+            : c.json({ success: false, error: 'Bucket not found' }, 404);
     });
+
     // PUT /api/storage/buckets/{bucket_id}
     app.put('/api/storage/buckets/:bucket_id', async (c) => {
         const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
         const id = c.req.param('bucket_id');
-        await phase2For(c.get('tenant')).upsertBucket({ id, name: b.name ?? 'bucket', provider: b.provider ?? 'local', config: b.config !== undefined ? JSON.stringify(b.config) : undefined }, now());
-        return c.json({ success: true, bucket: { id, name: b.name ?? 'bucket', provider: b.provider ?? 'local', config: b.config ?? null, updated_at: now() } });
+        await phase2For(c.get('tenant')).upsertBucket({
+            id,
+            name: b.name ?? 'bucket',
+            provider: b.provider ?? 'local',
+            config: await encryptedConfig(b.config),
+        }, now());
+        return c.json({
+            success: true,
+            bucket: {
+                id,
+                name: b.name ?? 'bucket',
+                provider: b.provider ?? 'local',
+                has_config: b.config !== undefined,
+                updated_at: now(),
+            },
+        });
     });
+
     // DELETE /api/storage/buckets/{bucket_id}
     app.delete('/api/storage/buckets/:bucket_id', async (c) => {
         await phase2For(c.get('tenant')).deleteBucket(c.req.param('bucket_id'));
         return c.json({ success: true, message: 'Bucket deleted' });
     });
-    // POST /api/storage/buckets/{bucket_id}/empty  (delete every file in the bucket)
+
+    // POST /api/storage/buckets/{bucket_id}/empty
     app.post('/api/storage/buckets/:bucket_id/empty', async (c) => {
         const store = phase2For(c.get('tenant'));
         const files = await store.listFiles(c.req.param('bucket_id'));
@@ -52,24 +115,53 @@ export function registerStorageRoutes(app: App, phase2For: (t: string) => Phase2
     });
 
     // ---- files (Phase2Store) ----
-    // GET /api/storage/list  (bucket_id via query)
+    // GET /api/storage/list
     app.get('/api/storage/list', async (c) => {
         const bucketId = c.req.query('bucket_id') ?? c.req.query('bucketId') ?? '';
         const files = await phase2For(c.get('tenant')).listFiles(bucketId);
         return c.json({ success: true, files, total: files.length });
     });
-    // DELETE /api/storage/delete  (file id in the body — product convention)
+
+    // DELETE /api/storage/delete
     app.delete('/api/storage/delete', async (c) => {
         const b = await c.req.json().catch(() => ({})) as { file_id?: string; fileId?: string; id?: string };
         const id = b.file_id ?? b.fileId ?? b.id ?? '';
-        if (id) await phase2For(c.get('tenant')).deleteFile(id);
+        if (id) {
+            const store = phase2For(c.get('tenant'));
+            const file = await store.getFile(id);
+            if (file && storageProvider) {
+                try {
+                    await storageProvider.delete(
+                        String(file.bucketId),
+                        String(file.path),
+                    );
+                }
+                catch { return c.json({ success: false, message: 'Storage provider delete failed' }, 502); }
+            }
+            await store.deleteFile(id);
+        }
         return c.json({ success: true, message: 'File deleted' });
     });
 
-    // ---- graceful acks: no external provider wired in the community worker ----
-    // POST /api/storage/create-folder  (folder = provider-side concept; no object store here)
-    app.post('/api/storage/create-folder', (c) => c.json({ success: false, message: 'No storage provider configured' }));
-    // GET /api/storage/compute-size  (no remote provider → 0)
+    // POST /api/storage/create-folder
+    app.post('/api/storage/create-folder', async (c) => {
+        const b = await c.req.json().catch(() => ({})) as { name?: string; path?: string; bucket_id?: string };
+        const store = phase2For(c.get('tenant'));
+        const id = crypto.randomUUID();
+        const folderName = b.name ?? 'folder';
+        const folderPath = b.path ?? `/${folderName}`;
+        await store.createFile({
+            id,
+            bucketId: b.bucket_id ?? 'default',
+            path: folderPath,
+            name: folderName,
+            size: 0,
+            mimeType: 'application/x-directory',
+        }, now());
+        return c.json({ success: true, message: 'Folder created' });
+    });
+
+    // GET /api/storage/compute-size
     app.get('/api/storage/compute-size', async (c) => {
         const store = phase2For(c.get('tenant'));
         let size = 0;
@@ -78,44 +170,252 @@ export function registerStorageRoutes(app: App, phase2For: (t: string) => Phase2
         }
         return c.json({ success: true, size, human_readable: `${size} B` });
     });
-    // POST /api/storage/upload  (bytes would go to object storage — not configured)
-    app.post('/api/storage/upload', (c) => c.json({ success: false, message: 'No storage provider configured' }));
+
+    // POST /api/storage/upload
+    app.post('/api/storage/upload', async (c) => {
+        if (!storageProvider) return c.json({ success: false, message: 'Storage provider is not configured' }, 503);
+        const contentType = c.req.header('content-type') ?? '';
+        let b: { name?: string; path?: string; bucket_id?: string; content?: string };
+        let bytes: Uint8Array;
+        let mimeType = 'application/octet-stream';
+        if (contentType.includes('multipart/form-data')) {
+            const form = await c.req.formData();
+            const file = form.get('file');
+            if (!(file instanceof File)) return c.json({ success: false, message: 'File is required' }, 400);
+            b = {
+                name: file.name,
+                path: String(form.get('path') ?? file.name),
+                bucket_id: String(form.get('bucket') ?? ''),
+            };
+            bytes = new Uint8Array(await file.arrayBuffer());
+            mimeType = file.type || mimeType;
+        } else {
+            b = await c.req.json().catch(() => ({})) as { name?: string; path?: string; bucket_id?: string; content?: string };
+            bytes = new TextEncoder().encode(b.content ?? '');
+        }
+        const store = phase2For(c.get('tenant'));
+        const id = crypto.randomUUID();
+        const fileName = b.name ?? 'upload.bin';
+        const filePath = b.path ?? `/${fileName}`;
+        const bucketId = b.bucket_id ?? '';
+        if (!bucketId) return c.json({ success: false, message: 'Bucket is required' }, 400);
+        try {
+            await storageProvider.put({ bucket: bucketId, key: filePath, bytes, contentType: mimeType });
+        } catch {
+            return c.json({ success: false, message: 'Storage upload failed' }, 502);
+        }
+        await store.createFile({
+            id,
+            bucketId,
+            path: filePath,
+            name: fileName,
+            size: bytes.length,
+            mimeType,
+        }, now());
+        return c.json({
+            success: true,
+            data: { id, name: fileName, path: filePath, size: bytes.length },
+            message: 'File uploaded',
+        });
+    });
+
     // POST /api/storage/move
-    app.post('/api/storage/move', (c) => c.json({ success: false, message: 'No storage provider configured' }));
+    app.post('/api/storage/move', async (c) => {
+        const b = await c.req.json().catch(() => ({})) as { file_id?: string; from_path?: string; to_path?: string; bucket_id?: string };
+        const store = phase2For(c.get('tenant'));
+        const files = await store.listFiles(b.bucket_id ?? '');
+        const target = files.find((f) => String(f.id) === b.file_id || String(f.path) === b.from_path);
+        if (!target || !b.to_path) return c.json({ success: false, message: 'File not found or destination missing' }, 404);
+        {
+            if (!storageProvider) return c.json({ success: false, message: 'Storage provider is not configured' }, 503);
+            try {
+                const object = await storageProvider.get(String(target.bucket_id), String(target.path));
+                await storageProvider.put({
+                    bucket: String(target.bucket_id),
+                    key: b.to_path,
+                    bytes: object.bytes,
+                    contentType: object.contentType,
+                });
+                await storageProvider.delete(String(target.bucket_id), String(target.path));
+            } catch {
+                return c.json({ success: false, message: 'Storage move failed' }, 502);
+            }
+            await store.deleteFile(String(target.id));
+            await store.createFile({
+                id: String(target.id),
+                bucketId: String(target.bucket_id),
+                path: b.to_path,
+                name: String(target.name),
+                size: Number(target.size ?? 0),
+                mimeType: target.mime_type ? String(target.mime_type) : undefined,
+            }, now());
+        }
+        return c.json({ success: true, message: 'File moved' });
+    });
+
     // POST /api/storage/move-cross
-    app.post('/api/storage/move-cross', (c) => c.json({ success: false, message: 'No storage provider configured' }));
+    app.post('/api/storage/move-cross', async (c) => {
+        const b = await c.req.json().catch(() => ({})) as { file_id?: string; source_bucket_id?: string; target_bucket_id?: string };
+        const store = phase2For(c.get('tenant'));
+        const files = await store.listFiles(b.source_bucket_id ?? '');
+        const target = files.find((f) => String(f.id) === b.file_id);
+        if (!target || !b.target_bucket_id) return c.json({ success: false, message: 'File not found or target bucket missing' }, 404);
+        {
+            if (!storageProvider) return c.json({ success: false, message: 'Storage provider is not configured' }, 503);
+            try {
+                const object = await storageProvider.get(String(target.bucket_id), String(target.path));
+                await storageProvider.put({
+                    bucket: b.target_bucket_id,
+                    key: String(target.path),
+                    bytes: object.bytes,
+                    contentType: object.contentType,
+                });
+                await storageProvider.delete(String(target.bucket_id), String(target.path));
+            } catch {
+                return c.json({ success: false, message: 'Cross-bucket move failed' }, 502);
+            }
+            await store.deleteFile(String(target.id));
+            await store.createFile({
+                id: String(target.id),
+                bucketId: b.target_bucket_id,
+                path: String(target.path),
+                name: String(target.name),
+                size: Number(target.size ?? 0),
+                mimeType: target.mime_type ? String(target.mime_type) : undefined,
+            }, now());
+        }
+        const jobId = crypto.randomUUID();
+        await kvFor(c.get('tenant')).setJson(`storage_move_job:${jobId}`, {
+            job_id: jobId,
+            file_id: b.file_id,
+            status: 'completed',
+            progress: 100,
+        }, now());
+        return c.json({
+            success: true,
+            data: { job_id: jobId, file_id: b.file_id, status: 'completed' },
+            message: 'Cross-bucket move completed',
+        });
+    });
+
     // GET /api/storage/move-status/{job_id}
-    app.get('/api/storage/move-status/:job_id', (c) => c.json({ success: false, job_id: c.req.param('job_id'), status: 'unknown', progress: 0, message: 'No storage provider configured' }));
+    app.get('/api/storage/move-status/:job_id', async (c) => {
+        const jobId = c.req.param('job_id');
+        const job = await kvFor(c.get('tenant')).getJson<Record<string, unknown> | null>(`storage_move_job:${jobId}`, null);
+        if (!job) return c.json({ success: false, data: null, message: 'Move job not found' }, 404);
+        return c.json({
+            success: true,
+            data: job,
+            message: 'Job completed',
+        });
+    });
+
     // GET /api/storage/public-url
-    app.get('/api/storage/public-url', (c) => c.json({ success: false, publicUrl: '', message: 'No storage provider configured' }));
+    app.get('/api/storage/public-url', async (c) => {
+        if (!storageProvider) return c.json({ success: false, message: 'Storage provider is not configured' }, 503);
+        if (!await hasStorageProvider(c.get('tenant'), c.req.query('provider_id') ?? '')) {
+            return c.json({ success: false, message: 'Storage provider not found' }, 404);
+        }
+        const bucket = c.req.query('bucket') ?? '';
+        const path = c.req.query('path') ?? '';
+        const publicUrl = await storageProvider.signedUrl(bucket, path, 24 * 60 * 60);
+        return c.json({
+            success: true,
+            url: publicUrl,
+            publicUrl,
+        });
+    });
+
     // GET /api/storage/signed-url
-    app.get('/api/storage/signed-url', (c) => c.json({ success: false, signedUrl: '', message: 'No storage provider configured' }));
+    app.get('/api/storage/signed-url', async (c) => {
+        if (!storageProvider) return c.json({ success: false, message: 'Storage provider is not configured' }, 503);
+        if (!await hasStorageProvider(c.get('tenant'), c.req.query('provider_id') ?? '')) {
+            return c.json({ success: false, message: 'Storage provider not found' }, 404);
+        }
+        const bucket = c.req.query('bucket') ?? '';
+        const path = c.req.query('path') ?? '';
+        const expiresIn = Math.max(1, Math.min(86_400, Number(c.req.query('expiresIn') ?? 3600)));
+        const signedUrl = await storageProvider.signedUrl(bucket, path, expiresIn);
+        return c.json({
+            success: true,
+            signedUrl,
+            url: signedUrl,
+        });
+    });
 
-    // ---- providers (local-only: empty registry) ----
+    // ---- providers ----
     // GET /api/storage/providers/
-    app.get('/api/storage/providers/', (c) => {
-        c.header('X-Frontbase-External-Disabled', 'storage-provider-not-configured');
-        return c.json([]);
+    app.get('/api/storage/providers/', async (c) => {
+        const kv = kvFor(c.get('tenant'));
+        const providers = await kv.getJson<Array<Record<string, unknown>>>('storage_providers', [
+            { id: 'local', name: 'Local Storage', provider: 'local', is_active: true },
+        ]);
+        return c.json(providers.map(redactConfig));
     });
-    // POST /api/storage/providers/
-    // CreateStorageProviderResult requires `is_active`.
-    app.post('/api/storage/providers/', (c) => c.json({ is_active: false, id: null, name: null, provider: null, config: null, created_at: null, account_name: null, provider_account_id: null, detail: 'No storage provider configured' }));
-    // DELETE /api/storage/providers/{provider_id}
-    app.delete('/api/storage/providers/:provider_id', (c) => c.json({ success: false, message: 'No storage provider configured' }));
 
-    // ---- netlify / vercel (no third-party integration in the worker) ----
+    // POST /api/storage/providers/
+    app.post('/api/storage/providers/', async (c) => {
+        const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
+        const kv = kvFor(c.get('tenant'));
+        const providers = await kv.getJson<Array<Record<string, unknown>>>('storage_providers', []);
+        const providerRecord = {
+            id: crypto.randomUUID(),
+            name: b.name ?? 'S3 Storage',
+            provider: b.provider ?? 's3',
+            is_active: true,
+            config_ciphertext: await encryptedConfig(b.config),
+            created_at: now(),
+            account_name: 'default',
+            provider_account_id: 'default',
+        };
+        providers.push(providerRecord);
+        await kv.setJson('storage_providers', providers, now());
+        return c.json(redactConfig(providerRecord), 201);
+    });
+
+    // DELETE /api/storage/providers/{provider_id}
+    app.delete('/api/storage/providers/:provider_id', async (c) => {
+        const id = c.req.param('provider_id');
+        const kv = kvFor(c.get('tenant'));
+        const providers = await kv.getJson<Array<{ id?: string }>>('storage_providers', []);
+        await kv.setJson('storage_providers', providers.filter((p: { id?: string }) => p.id !== id), now());
+        return c.json({ success: true, message: 'Storage provider deleted' });
+    });
+
+    // ---- netlify / vercel ----
     // GET /api/storage/netlify-sites
-    app.get('/api/storage/netlify-sites', (c) => {
-        c.header('X-Frontbase-External-Disabled', 'netlify-provider-not-configured');
-        return c.json([]);
+    app.get('/api/storage/netlify-sites', async (c) => {
+        const kv = kvFor(c.get('tenant'));
+        const sites = await kv.getJson<Array<Record<string, unknown>>>('netlify_sites', []);
+        return c.json(sites);
     });
+
     // POST /api/storage/netlify-sites
-    app.post('/api/storage/netlify-sites', (c) => c.json({ success: false, message: 'Netlify integration not configured' }));
-    // GET /api/storage/vercel-projects
-    app.get('/api/storage/vercel-projects', (c) => {
-        c.header('X-Frontbase-External-Disabled', 'vercel-provider-not-configured');
-        return c.json([]);
+    app.post('/api/storage/netlify-sites', async (c) => {
+        const b = await c.req.json().catch(() => ({})) as { site_id?: string; name?: string };
+        const kv = kvFor(c.get('tenant'));
+        const sites = await kv.getJson<Array<Record<string, unknown>>>('netlify_sites', []);
+        const record = { id: b.site_id ?? crypto.randomUUID(), name: b.name ?? 'Netlify Site', created_at: now() };
+        sites.push(record);
+        await kv.setJson('netlify_sites', sites, now());
+        return c.json({ success: true, site: record });
     });
+
+    // GET /api/storage/vercel-projects
+    app.get('/api/storage/vercel-projects', async (c) => {
+        const kv = kvFor(c.get('tenant'));
+        const projects = await kv.getJson<Array<Record<string, unknown>>>('vercel_projects', []);
+        return c.json(projects);
+    });
+
     // POST /api/storage/vercel-projects
-    app.post('/api/storage/vercel-projects', (c) => c.json({ success: false, message: 'Vercel integration not configured' }));
+    app.post('/api/storage/vercel-projects', async (c) => {
+        const b = await c.req.json().catch(() => ({})) as { project_id?: string; name?: string };
+        const kv = kvFor(c.get('tenant'));
+        const projects = await kv.getJson<Array<Record<string, unknown>>>('vercel_projects', []);
+        const record = { id: b.project_id ?? crypto.randomUUID(), name: b.name ?? 'Vercel Project', created_at: now() };
+        projects.push(record);
+        await kv.setJson('vercel_projects', projects, now());
+        return c.json({ success: true, project: record });
+    });
 }

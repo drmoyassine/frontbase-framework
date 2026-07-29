@@ -115,11 +115,13 @@ const { register, handleSubmit } = useForm({
 ```typescript
 // Priority-mounted unified router (@frontbase/edge-core):
 // 1. /sw.js + /assets/*      → engine bundle + static assets
-// 2. /app/*                  → builder/console SPA shell (React)
-// 3. /api/console/*          → console API (@frontbase/backend)
-// 4. /api/data/:queryId      → Edge Data Proxy (registered queries)
-// 5. /workflows/*            → workflow triggers & queue consumers
-// 6. *                       → published pages (eSSR catch-all)
+// 2. /frontbase-admin/*      → pinned product console static assets
+// 3. /api/*                  → product-compatible, tenant-scoped backend
+// 4. /api/console/health     → retained liveness
+// 5. /api/console/setup/*    → retained first-admin bootstrap
+// 6. other /api/console/*    → 410 Gone
+// 7. /api/data/:queryId      → Edge Data Proxy (registered queries)
+// 8. *                       → published pages (eSSR catch-all)
 
 // Development adds file-system routes (dev-only):
 src/dev-routes/dashboard.tsx → /dev/dashboard
@@ -263,7 +265,7 @@ frontbase/
 │   ├── @frontbase/ui-components/  # THE single set of isomorphic page components + auth primitives (no React)
 │   ├── @frontbase/builder/        # React shell, SQLite WASM draft DB, canvas↔SW preview bridge, visual editors
 │   ├── @frontbase/edge-infra/     # Data providers, Edge Data Proxy, caches, queues, vault, auth gates, sync
-│   └── @frontbase/backend/        # Console API Hono sub-router (in-worker) + Drizzle schemas & migrations
+│   └── @frontbase/backend/        # Product-compatible API + retained setup/health + Drizzle
 ```
 
 ### Package Manager
@@ -353,7 +355,7 @@ test('user can create page', async ({ page }) => {
 
 ## Deployment Targets
 
-**Principle #1: the entire CMS deploys as ONE edge worker.** `npx @frontbase/compiler deploy` packages engine + console API + data proxy + builder assets into a single deployment.
+**Principle #1: the entire CMS deploys as ONE edge worker.** `npx @frontbase/compiler deploy` packages the engine, product-compatible API, data proxy, and static assets into a single deployment.
 
 ### Edge Platforms (Single-Worker)
 

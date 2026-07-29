@@ -7,10 +7,20 @@ import { spawnSync } from 'node:child_process';
 const gates = [
     ['contract drift', 'contract-diff.mjs', []],
     ['route registration', 'routed-ops.mjs', []],
-    ['response + behavior', 'compat-conformance.mjs', ['--gate', '--behavior', '--behavior-gate']],
+    ['Work E Tier-1 semantics', 'compat-work-e.mjs', []],
+    ['response + behavior', 'compat-conformance.mjs', [
+        '--gate',
+        '--behavior',
+        '--behavior-gate',
+        '--require-functional',
+    ]],
     ['negative/fuzz', 'compat-negative.mjs', []],
     ['tenant isolation', 'compat-tenant-matrix.mjs', []],
     ['API-key security', 'compat-security.mjs', []],
+    ['database isolation', 'compat-database-security.mjs', []],
+    ['sync semantics', 'compat-sync-functional.mjs', []],
+    ['provider HTTP security', 'external-http-security.mjs', []],
+    ['legacy console retirement', 'console-retirement.mjs', []],
     ['auth/reset behavior', 'compat-behavior-auth.mjs', ['--gate']],
     ['mutation proof', 'mutation.mjs', []],
 ];

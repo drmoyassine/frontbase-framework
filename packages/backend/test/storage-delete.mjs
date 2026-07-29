@@ -19,6 +19,7 @@ let clock = 0;
 const app = await createConsole({
     makeRunner: async () => runner,
     resolvePrincipal: async () => ({ user: { id: 'u1' }, tenant: 'tenant-A' }),
+    sessionSecret: 'frontbase-test-session-secret',
     now: () => `2026-07-13T00:00:${String(clock++).padStart(2, '0')}Z`,
     storageProvider: storage, // P0-PRE injection seam
 });

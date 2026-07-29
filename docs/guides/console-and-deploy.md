@@ -1,28 +1,31 @@
-# Console API & Single-Worker Deploy
+# Product Console & Single-Worker Deploy
 
-## Console API (`@frontbase/backend`)
+## Production API (`@frontbase/backend`)
 
-Mounted at `/api/console` via `createEngine({ console })`. **Default-DENY**: every
-route except `/health` requires an authenticated principal (RULE 2). Drizzle is
-the single persistence source of truth (A-13); every tenant table has a
-`tenant` column and composite PK; all CRUD is tenant-scoped. Errors are opaque
-(RULE 4).
+The product community console is served at `/frontbase-admin` and calls the
+product-compatible `/api/*` surface from `createCompatApp()`. Protected routes
+are **default-DENY** and tenant-scoped. Drizzle remains the single persistence
+source of truth and errors remain opaque.
+
+Production still mounts a small router at `/api/console`, created with
+`retireLegacyApi: true`. It retains `GET /health` for liveness and `/setup`
+plus `/setup/*` for first-admin bootstrap. Every other path and method returns
+`410 Gone`.
 
 ```ts
 import { createConsole } from '@frontbase/backend';
-import { createResolvePrincipal } from '@frontbase/edge-infra';
-const console = createConsole({
-    resolvePrincipal: createResolvePrincipal({ jwtSecret: process.env.JWT_SECRET }),
-    dbUrl: process.env.DB_URL,
-    queries,
+const console = await createConsole({
+    makeRunner,
+    sessionSecret,
+    setupToken,
+    retireLegacyApi: true,
 });
 const engine = createEngine({ manifest, data, environment: 'edge', console });
 ```
 
-Routes: `GET /pages`, `GET/PUT /drafts/:slug`, `POST /publish/:slug`, `DELETE /pages/:slug`,
-`GET /health`. **Publish** validates the draft → assembles the `SiteManifest`
-(reusing `@frontbase/compiler`) → emits the **execute-stripped browser
-projection** (RULE 1) → bumps the content-hash version → purges the cache.
+The non-retired `createConsole()` mode remains available to backend package
+tests and older embedders for backward compatibility. The deployable
+`examples/cf-full` target does not enable it.
 
 ## Builder (`@frontbase/builder`)
 

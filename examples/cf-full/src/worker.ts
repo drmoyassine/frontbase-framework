@@ -3,12 +3,11 @@
  * (@frontbase/edge-core) + the login-gated admin console (@frontbase/backend),
  * over a Cloudflare D1 binding (@frontbase/edge-infra).
  *
- * CF-22 P3: the product's REAL community console SPA is now served from
- * console-dist/ (built by scripts/fetch-console.mjs). The old inline
- * @frontbase/admin-console SPA is retained at /console as a fallback during the
- * cutover period (parallel run). The compat /api surface (createCompatApp)
- * serves 285 product-compatible operations; the vendored GET / operation is
- * intentionally owned by the eSSR engine.
+ * CF-22: the product's community console SPA is served from console-dist/
+ * (built by scripts/fetch-console.mjs). The framework SPA is setup-only at
+ * /setup, /console redirects to the product console, and the legacy
+ * /api/console surface is retired except for health and first-run setup.
+ * The vendored GET / operation remains owned by the eSSR engine.
  *
  * Deploy secrets (wrangler secret put — never in wrangler.toml, never in git):
  *   SESSION_SECRET  (required) HS256 key for the fb_session JWT cookie
@@ -21,7 +20,7 @@
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore } from '@frontbase/backend';
-import { d1RunnerFromBinding, type DbRunner } from '@frontbase/edge-infra';
+import { d1RunnerFromBinding, s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
 import { manifest } from './manifest.js';
 import SW_BUNDLE from 'virtual:sw-bundle';
 import CONSOLE_INDEX from './console-shell.js';
@@ -40,6 +39,10 @@ export interface CmsEnv {
     ADMIN_EMAIL?: string;
     ADMIN_PASSWORD?: string;
     ADMIN_ROLE?: string;
+    STORAGE_ACCESS_KEY_ID?: string;
+    STORAGE_SECRET_ACCESS_KEY?: string;
+    STORAGE_ENDPOINT?: string;
+    STORAGE_REGION?: string;
 }
 
 export interface CmsEngineOptions {
@@ -53,17 +56,18 @@ export interface CmsEngineOptions {
     dispatcher?: (work: () => Promise<void>) => void;
     /** Wrangler Static Assets binding. Omitted by the in-process smoke. */
     assets?: { fetch(request: Request): Promise<Response> };
+    storageProvider?: StorageProvider;
 }
 
 /**
  * Assemble the full CMS engine. The routing order is:
  *   1. /api/auth/login, /api/auth/logout, /api/auth/signup, etc. (UNAUTHENTICATED compat)
- *   2. /api/* — the compat surface (285 ops) + /api/console/* (existing console)
- *      → ALL behind defaultDenyAuth (except the unauth auth routes above)
+ *   2. /api/* — the 334-operation product-compatible surface
+ *      → behind defaultDenyAuth (except documented unauth auth/callback routes)
  *   3. /frontbase-admin assets + shell (Static Assets binding in production;
  *      validated inline fallback in the Node smoke)
  *   4. /console → 301 to /frontbase-admin (continuity redirect)
- *   5. /setup — existing first-run setup SPA during stabilization
+ *   5. /setup — first-run setup-only SPA
  *   6. Engine catch-all (published pages, /sw.js)
  */
 export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
@@ -84,7 +88,8 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         (await new UserStore(opts.runner, '_default').countUsers()) === 0
         && (await new UserStore(opts.runner, '_root').countUsers()) === 0;
 
-    // The existing /api/console/* surface (keep during parallel run).
+    // CF-22 Work C: retain health + first-run setup, explicitly retire every
+    // other /api/console/* route with 410 Gone.
     const consoleApp = await createConsole({
         makeRunner: () => opts.runner,
         sessionSecret: opts.sessionSecret,
@@ -93,6 +98,8 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         seedRole: opts.admin?.role ?? 'master_admin',
         now,
         dispatcher: opts.dispatcher,
+        retireLegacyApi: true,
+        storageProvider: opts.storageProvider,
     });
 
     // CF-22 P3: the compat /api/* surface (the eSSR engine owns vendored GET /).
@@ -107,6 +114,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         sessionSecret: opts.sessionSecret,
         userStoreFor: (t: string) => new UserStore(opts.runner, t),
         now,
+        storageProvider: opts.storageProvider,
     });
 
     const engine = createEngine({
@@ -163,7 +171,8 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     app.get('/frontbase-setup/spa.js', async (c) =>
         (await assetResponse(c.req.raw, 'no-cache')) ?? c.text('not_found', 404));
 
-    // 3. Engine (published pages, /sw.js, /api/console/* via the console mount).
+    // 3. Engine (published pages, /sw.js, retained console health/setup, and
+    //    explicit 410 responses for every other /api/console/* path).
     //    Mounted BEFORE compat so the engine's specific routes (/, /sw.js,
     //    /api/console/*) take precedence. The engine's page catch-all /* also
     //    catches unknown paths — compat routes under /api/* that the engine
@@ -217,6 +226,14 @@ export default {
                     admin: { email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD, role: env.ADMIN_ROLE },
                     assets: env.ASSETS,
                     dispatcher: (work) => { if (currentCtx) currentCtx.waitUntil(work()); else void work(); },
+                    storageProvider: env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_KEY
+                        ? s3StorageProvider({
+                            accessKeyId: env.STORAGE_ACCESS_KEY_ID,
+                            secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY,
+                            endpoint: env.STORAGE_ENDPOINT,
+                            region: env.STORAGE_REGION,
+                        })
+                        : undefined,
                 }).catch((e) => { enginePromise = null; throw e; });
             }
             const engine = await enginePromise;

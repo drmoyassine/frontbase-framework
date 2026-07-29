@@ -155,17 +155,25 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
     // POST /api/actions/drafts/{draft_id}/test-node/{node_id}  (no live node runtime in the worker)
     app.post('/api/actions/drafts/:draft_id/test-node/:node_id', async (c) => {
         const execId = crypto.randomUUID();
-        await phase2For(c.get('tenant')).createExecution(
+        const store = phase2For(c.get('tenant'));
+        await store.createExecution(
             execId,
             c.req.param('draft_id'),
             'manual',
             now(),
             { source: 'test-node', nodeId: c.req.param('node_id') },
         );
+        await store.completeExecution(
+            execId,
+            'error',
+            null,
+            'node_runtime_not_configured',
+            now(),
+        );
         return c.json({
             execution_id: execId,
-            status: 'completed',
-            message: `Node ${c.req.param('node_id')} test recorded; no live node runtime is configured`,
+            status: 'error',
+            message: `Node ${c.req.param('node_id')} was not executed; no live node runtime is configured`,
         });
     });
 

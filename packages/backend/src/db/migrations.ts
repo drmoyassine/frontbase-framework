@@ -206,6 +206,27 @@ export const MIGRATIONS: Migration[] = [
             `DROP TABLE IF EXISTS edge_api_key_secrets`,
         ],
     },
+    {
+        // Work A Wave A3: datasource_views table for /api/sync/views/*
+        version: 15,
+        name: 'datasource_views',
+        up: [
+            `CREATE TABLE IF NOT EXISTS datasource_views (id TEXT NOT NULL, tenant_slug TEXT NOT NULL, datasource_id TEXT NOT NULL, name TEXT NOT NULL, target_table TEXT NOT NULL, visible_columns TEXT, column_order TEXT, pinned_columns TEXT, filters TEXT, field_mappings TEXT, webhooks TEXT, linked_views TEXT, description TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (id, tenant_slug))`,
+        ],
+        down: [`DROP TABLE IF EXISTS datasource_views`],
+    },
+    {
+        // Work A Sheets callback: only a hash of the bearer capability is stored.
+        // The row carries the tenant scope because the add-on callback is
+        // intentionally unauthenticated; an atomic consumed_at claim makes it
+        // single-use across Worker isolates.
+        version: 16,
+        name: 'sheets_connect_tokens',
+        up: [
+            `CREATE TABLE IF NOT EXISTS sheets_connect_tokens (token_hash TEXT PRIMARY KEY, tenant_slug TEXT NOT NULL, datasource_id TEXT, expires_at TEXT NOT NULL, consumed_at TEXT, result TEXT, created_at TEXT NOT NULL)`,
+        ],
+        down: [`DROP TABLE IF EXISTS sheets_connect_tokens`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

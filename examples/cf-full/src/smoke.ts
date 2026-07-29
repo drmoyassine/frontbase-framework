@@ -1,9 +1,8 @@
 /**
  * Pre-deploy smoke — boots the SAME full-CMS worker in-process over an in-memory
  * SQLite runner and exercises every route class: public eSSR, the SW handover,
- * the OLD console health + login gate (default-deny → login → /me), the NEW
- * compat surface (product /api/auth/login → /api/auth/me → /api/pages CRUD),
- * and the /frontbase-admin SPA shell.
+ * retained console health/setup, explicit legacy-console retirement, the
+ * product-compatible surface, and the /frontbase-admin SPA shell.
  */
 import { sqliteRunner } from '@frontbase/edge-infra';
 import { createCmsEngine } from './worker.js';
@@ -157,11 +156,30 @@ await check('secure setup link → HttpOnly claim → first master admin', async
     return setup.status === 200 && body.user?.role === 'master_admin';
 });
 
-// ---- OLD console API (still live during parallel run) ----
+// ---- Retained setup/health and retired legacy console API ----
 await check('GET /api/console/health is public → 200', async () =>
     (await req('/api/console/health')).status === 200);
-await check('GET /api/console/me WITHOUT session → 401', async () =>
-    (await req('/api/console/me')).status === 401);
+await check('GET /api/console/setup/status remains available → 200', async () =>
+    (await req('/api/console/setup/status')).status === 200);
+await check('legacy /api/console routes and methods are explicitly retired → 410', async () => {
+    const retiredRequests: Array<[string, RequestInit | undefined]> = [
+        ['/api/console', undefined],
+        ['/api/console/', undefined],
+        ['/api/console/me', undefined],
+        ['/api/console/login', { method: 'POST', body: '{}' }],
+        ['/api/console/pages', undefined],
+        ['/api/console/drafts/home', { method: 'PUT', body: '{}' }],
+        ['/api/console/projects/project-1', { method: 'DELETE' }],
+        ['/api/console/not-a-route', { method: 'PATCH', body: '{}' }],
+    ];
+    for (const [path, init] of retiredRequests) {
+        const response = await req(path, init);
+        if (response.status !== 410) return false;
+        const body = await response.json() as { detail?: string };
+        if (!body.detail?.includes('retired')) return false;
+    }
+    return true;
+});
 
 // ---- compat API: Meta health (unauthenticated) ----
 await check('GET /health (compat Meta) → 200', async () =>

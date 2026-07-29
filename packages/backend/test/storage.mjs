@@ -17,6 +17,7 @@ let clock = 0;
 const app = await createConsole({
     makeRunner: async () => runner,
     resolvePrincipal: async () => ({ user: { id: 'u1' }, tenant: 'tenant-A' }),
+    sessionSecret: 'frontbase-test-session-secret',
     now: () => `2026-07-12T00:00:${String(clock++).padStart(2, '0')}Z`,
     storage: { accessKeyId: 'mem', secretAccessKey: 'mem' }, // any non-null → provider built
 });

@@ -18,12 +18,14 @@ import {
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
 
-async function makeApp() {
+async function makeApp({ externalFetch } = {}) {
     const runner = sqliteRunner(':memory:');
     await migrateUp(runner);
     return createCompatApp({
         makeRunner: async () => runner,
-        resolvePrincipal: async () => ({ user: { id: 'owner' }, tenant: '_default' }),
+        resolvePrincipal: async () => ({ user: { id: 'owner', role: 'owner' }, tenant: '_default' }),
+        sessionSecret: 'frontbase-test-session-secret',
+        externalFetch,
         now: () => '2026-07-15T00:00:00Z',
         includeProductRoot: true,
     });
@@ -64,8 +66,27 @@ test('settings: PUT general round-trips conformantly', async () => {
 });
 
 test('settings: action endpoints return conformant acks', async () => {
-    const app = await makeApp();
-    zRedisTestResult.parse(await (await req(app, 'POST', '/api/settings/redis/test/', {})).json());
+    let authorization = '';
+    const app = await makeApp({
+        externalFetch: async (_input, init) => {
+            authorization = String(new Headers(init?.headers).get('authorization') ?? '');
+            return Response.json({ result: 'PONG' });
+        },
+    });
+    const redisPut = await req(app, 'PUT', '/api/settings/redis/', {
+        redis_url: 'https://example.upstash.io',
+        redis_token: 'upstash-secret',
+        redis_type: 'upstash',
+        redis_enabled: true,
+        cache_ttl_data: 300,
+        cache_ttl_count: 300,
+    });
+    assert.equal(redisPut.status, 200);
+    assert.equal((await redisPut.json()).redis_token, '');
+    const redis = await req(app, 'POST', '/api/settings/redis/test/', {});
+    assert.equal(redis.status, 200);
+    zRedisTestResult.parse(await redis.json());
+    assert.equal(authorization, 'Bearer upstash-secret');
     zTelemetryAck.parse(await (await req(app, 'POST', '/api/settings/telemetry', {
         install_id: 'compat-wave1',
         edition: 'community',

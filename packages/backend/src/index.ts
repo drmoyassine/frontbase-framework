@@ -83,6 +83,9 @@ export interface CreateConsoleDeps {
      *  async (fire-and-track). On CF, wire to ctx.waitUntil; in-process tests can
      *  use queueMicrotask. Default: synchronous. */
     dispatcher?: (work: () => Promise<void>) => void;
+    /** CF-22 production cutover: retain only health + first-run setup under
+     * /api/console and return 410 for every legacy console API route. */
+    retireLegacyApi?: boolean;
 }
 
 export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Variables: ConsoleAuthVars }>> {
@@ -127,7 +130,7 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     // Secret variables are encrypted at rest (F6) — the cipher is built once from the
     // session secret (or a dedicated SECRETS_KEY if provided).
     const secretCipher: SecretCipher = deps.sessionSecret
-        ? await createSecretCipher(deps.sessionSecret).catch(() => noopCipher)
+        ? await createSecretCipher(deps.sessionSecret)
         : noopCipher;
     const phase2Stores = new Map<string, Phase2Store>();
     const phase2StoreFor = (tenant: string): Phase2Store => {
@@ -156,6 +159,20 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
         },
         now,
     }));
+    if (deps.retireLegacyApi) {
+        app.all('*', async (c) => {
+            // Workerd requires request bodies to be consumed before a response is
+            // returned. Leaving a retired POST/PUT body unread can poison the
+            // keep-alive connection and make the caller's next request hang.
+            if (c.req.raw.body) {
+                try { await c.req.raw.arrayBuffer(); } catch { /* already consumed */ }
+            }
+            return c.json({
+                detail: 'Legacy /api/console API retired; use the product-compatible /api surface.',
+            }, 410);
+        });
+        return app;
+    }
     if (deps.sessionSecret) {
         app.route('/', authRoutes({ userStoreFor, sessionSecret: deps.sessionSecret }));
     }

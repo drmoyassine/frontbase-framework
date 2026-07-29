@@ -19,14 +19,15 @@ export async function makeConsole({ tenant, dbUrl = ':memory:', queries = {}, pr
     const runner = sqliteRunner(dbUrl);
     await migrateUp(runner);
     let clock = 0;
-    return {
-        app: await createConsole({
-            makeRunner: async () => runner,
-            resolvePrincipal: principal ? async () => principal : principalFor(tenant),
-            queries,
-            now: () => `2026-07-10T00:00:${String(clock++).padStart(2, '0')}Z`,
-        }),
-    };
+    const app = await createConsole({
+        makeRunner: async () => runner,
+        resolvePrincipal: principal ? async () => principal : principalFor(tenant),
+        queries,
+        sessionSecret: 'frontbase-test-session-secret',
+        now: () => `2026-07-10T00:00:${String(clock++).padStart(2, '0')}Z`,
+    });
+
+    return { app };
 }
 
 export async function req(app, method, path, { body, headers } = {}) {

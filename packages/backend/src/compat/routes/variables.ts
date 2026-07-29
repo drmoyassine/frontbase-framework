@@ -43,7 +43,10 @@ export function registerVariablesRoutes(
     });
 
     // GET /api/variables/registry/  (registered before the :param route).
-    app.get('/api/variables/registry/', async (c) => c.json(REGISTRY));
+    app.get('/api/variables/registry/', async (c) => {
+        await storeFor(c.get('tenant')).list();
+        return c.json(REGISTRY);
+    });
 
     // GET /api/variables/{variable_id}  (no trailing slash in the product path)
     app.get('/api/variables/:variable_id', async (c) => {

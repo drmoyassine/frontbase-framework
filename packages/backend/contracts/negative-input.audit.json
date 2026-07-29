@@ -1,0 +1,2385 @@
+{
+  "schemaVersion": 1,
+  "scope": "all 334 community operations with no generated falsifiable input",
+  "corpus": {
+    "invalidScalars": [
+      "__definitely_invalid__",
+      "not-a-number",
+      "-1",
+      "1.5",
+      "not-a-uuid",
+      "not-an-email"
+    ],
+    "invalidBodies": [
+      null,
+      [],
+      {},
+      "",
+      0,
+      false,
+      "__definitely_invalid__",
+      {
+        "unexpected": true
+      }
+    ]
+  },
+  "operations": {
+    "GET /": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/actions/drafts/{draft_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/actions/drafts/{draft_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/actions/drafts/{draft_id}/publish": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/actions/drafts/{draft_id}/publish/{engine_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/actions/drafts/{draft_id}/versions/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/actions/drafts/{draft_id}/versions/{version_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/actions/execution-stats": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/actions/execution/{execution_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "execution_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/actions/executions/detail/{execution_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "execution_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [
+          {
+            "name": "engine_url",
+            "required": false,
+            "schema": {}
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "GET /api/actions/executions/export": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [],
+        "query": [
+          {
+            "name": "engine_ids",
+            "required": false,
+            "schema": {}
+          },
+          {
+            "name": "workflow_ids",
+            "required": false,
+            "schema": {}
+          },
+          {
+            "name": "statuses",
+            "required": false,
+            "schema": {}
+          },
+          {
+            "name": "date_from",
+            "required": false,
+            "schema": {}
+          },
+          {
+            "name": "date_to",
+            "required": false,
+            "schema": {}
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "GET /api/agent-catalogue": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [],
+        "query": [
+          {
+            "name": "profile_slug",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "GET /api/agent-profiles/{profile_id}/skills": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/agent-profiles/{profile_id}/skills/{install_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "install_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/agent-skills": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [],
+        "query": [
+          {
+            "name": "profile_slug",
+            "required": false,
+            "schema": {}
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "DELETE /api/agent-skills/{skill_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/agent/chat": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/agent/chat/{profile_slug}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/agent/credits": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/agent/mcp/{profile_slug}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/agent/mcp/{profile_slug}/prompts/get": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/agent/mcp/{profile_slug}/prompts/list": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/agent/mcp/{profile_slug}/resources/list": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/agent/mcp/{profile_slug}/tools/call": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/agent/mcp/{profile_slug}/tools/list": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "profile_slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/agent/settings": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [],
+        "query": [
+          {
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "GET /api/agent/settings": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/auth-forms/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/auth-forms/primary/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/auth-forms/{form_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/auth-forms/{form_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "PUT /api/auth-forms/{form_id}/set-primary/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "form_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/auth/check-slug/{slug}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/auth/invite/{token}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "OPTIONS /api/auth/login": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/auth/logout": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/auth/me": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/auth/security/blocklist": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/auth/security/blocklist/{ban_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "ban_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/auth/security/bot-protection": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/auth/security/bot-protection/metrics": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/auth/security/waf": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "OPTIONS /api/auth/signup": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/database/connections/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/database/disconnect-supabase/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/database/rls/metadata/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/database/rls/metadata/{table_name}/{policy_name}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "policy_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/database/rls/metadata/{table_name}/{policy_name}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "policy_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/database/rls/policies/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [],
+        "query": [
+          {
+            "name": "schema",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "GET /api/database/rls/policies/{table_name}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [
+          {
+            "name": "schema",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "DELETE /api/database/rls/policies/{table_name}/{policy_name}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "policy_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/database/rls/tables/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [],
+        "query": [
+          {
+            "name": "schema",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "GET /api/database/supabase-tables/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/database/table-schema/{table_name}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/database/tables/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-api-keys": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [],
+        "query": [
+          {
+            "name": "engine_id",
+            "required": false,
+            "schema": {}
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "DELETE /api/edge-api-keys/{key_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-api-keys/{key_id}/reveal": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-caches/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-caches/{cache_id}/test": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "cache_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-databases/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-databases/{db_id}/test": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "db_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/bundle-hashes/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}/agent-profiles": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/edge-engines/{engine_id}/agent-profiles/{profile_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-engines/{engine_id}/cancel-move": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}/health-check": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}/inspect/domains": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/edge-engines/{engine_id}/inspect/domains/{domain_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-engines/{engine_id}/inspect/domains/{domain_id}/verify": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "domain_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}/inspect/secrets": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}/inspect/settings": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}/inspect/source": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}/logs/retention": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-engines/{engine_id}/logs/sync": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-engines/{engine_id}/redeploy": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}/rotation-history": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}/rotation-status": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-engines/{engine_id}/source": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-engines/{engine_id}/sync-manifest": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-engines/{engine_id}/test": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-gpu/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-gpu/schemas": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-gpu/{model_id}/test": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-providers/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-providers/accounts/{account_id}/tables": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-providers/discover-by-account/{account_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-providers/retest/{provider_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-providers/workspace-agent-token": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-providers/{account_id}/list-engines": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/edge-providers/{account_id}/turso-databases/{db_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "db_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-providers/{account_id}/turso-databases/{db_id}/test": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "db_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/edge-providers/{provider_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-providers/{provider_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-providers/{provider_id}/credentials": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-queues/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-queues/{queue_id}/test/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "queue_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/edge-vectors/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/edge-vectors/{vector_id}/test": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "vector_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/mcp-servers": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [],
+        "query": [
+          {
+            "name": "profile_slug",
+            "required": false,
+            "schema": {}
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "DELETE /api/mcp-servers/{server_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/mcp-servers/{server_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/mcp-servers/{server_id}/test": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/mcp-servers/{server_id}/tools": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/pages/homepage/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/pages/public/{slug}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/pages/{page_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/pages/{page_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/pages/{page_id}/permanent/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/pages/{page_id}/publish/{engine_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/pages/{page_id}/restore/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/pages/{page_id}/unpublish/{engine_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/pages/{page_id}/versions/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/pages/{page_id}/versions/{version_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/project/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/queue/health": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/security-events/summary": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/settings/general": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/settings/privacy/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/settings/redis/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/settings/security/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/storage/move-status/{job_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/storage/providers/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/storage/providers/{provider_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/datasources/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/sync/datasources/{datasource_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/datasources/{datasource_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/sync/datasources/{datasource_id}/apply-migration": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/datasources/{datasource_id}/check-migration": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/datasources/{datasource_id}/relationships/user-defined/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/datasources/{datasource_id}/tables/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/sync/datasources/{datasource_id}/tables/{table_name}/session/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/datasources/{datasource_id}/tables/{table_name}/session/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "POST /api/sync/datasources/{datasource_id}/test/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/datasources/{datasource_id}/views/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/datasources/{datasource_id}/wordpress/discover/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "datasource_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/health/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/settings/redis/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/sync/views/{view_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/views/{view_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/views/{view_id}/count": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "view_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/wordpress/import/{import_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "import_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/sync/wordpress/import/{import_id}/progress/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "import_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/themes/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [],
+        "query": [
+          {
+            "name": "component_type",
+            "required": false,
+            "schema": {}
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "DELETE /api/themes/{theme_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "theme_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/variables/": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /api/variables/registry/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [],
+        "query": [
+          {
+            "name": "page_id",
+            "required": false,
+            "schema": {}
+          }
+        ],
+        "bodies": []
+      }
+    },
+    "GET /api/variables/{variable_id}": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "variable_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "DELETE /api/variables/{variable_id}/": {
+      "reasonCode": "NO_FALSIFIABLE_CONSTRAINT",
+      "reason": "declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus",
+      "input": {
+        "path": [
+          {
+            "name": "variable_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "query": [],
+        "bodies": []
+      }
+    },
+    "GET /health": {
+      "reasonCode": "NO_DECLARED_INPUT",
+      "reason": "operation declares no path, query, or request-body input",
+      "input": {
+        "path": [],
+        "query": [],
+        "bodies": []
+      }
+    }
+  }
+}

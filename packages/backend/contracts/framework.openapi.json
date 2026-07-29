@@ -25968,7 +25968,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Register a new datasource.",
@@ -26009,7 +26009,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/": {
@@ -26046,7 +26046,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Get a specific datasource by ID.",
@@ -26088,7 +26088,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update a datasource.",
@@ -26140,7 +26140,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/apply-migration": {
@@ -26184,7 +26184,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/check-migration": {
@@ -26228,7 +26228,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/relationships/": {
@@ -26282,7 +26282,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Add a user-defined relationship to the datasource (stored in extra_config).",
@@ -26334,7 +26334,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/relationships/{index}/": {
@@ -26387,7 +26387,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Replace the user-defined relationship at `index`.",
@@ -26448,7 +26448,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/relationships/user-defined/": {
@@ -26492,7 +26492,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/search": {
@@ -26565,7 +26565,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/tables/": {
@@ -26613,7 +26613,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/tables/{table_name}/session/": {
@@ -26666,7 +26666,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Retrieve draft layout/config from Redis session.",
@@ -26717,7 +26717,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Save draft layout/config to Redis session (optional - gracefully degrades if Redis unavailable).",
@@ -26780,7 +26780,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/tables/{table}/aggregate/": {
@@ -26920,7 +26920,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/tables/{table}/data/": {
@@ -27090,7 +27090,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/tables/{table}/distinct/{column}/": {
@@ -27162,7 +27162,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/tables/{table}/records/": {
@@ -27227,7 +27227,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/tables/{table}/records/{record_id}": {
@@ -27301,7 +27301,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/tables/{table}/schema/": {
@@ -27364,7 +27364,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/test-update/": {
@@ -27417,7 +27417,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/test/": {
@@ -27461,7 +27461,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/views/": {
@@ -27509,7 +27509,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new view for a datasource.",
@@ -27561,7 +27561,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/{datasource_id}/wordpress/discover/": {
@@ -27607,7 +27607,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/search-all/": {
@@ -27671,7 +27671,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/sheets/connect/callback/": {
@@ -27724,7 +27724,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/sheets/connect/issue/": {
@@ -27774,7 +27774,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/sheets/connect/status/": {
@@ -27818,7 +27818,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/datasources/test-raw/": {
@@ -27861,7 +27861,7 @@
         "tags": [
           "Datasources"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/health/": {
@@ -27884,7 +27884,7 @@
         "tags": [
           "Service"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/settings/redis/": {
@@ -27907,7 +27907,7 @@
         "tags": [
           "Settings"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "put": {
         "description": "Update Redis settings.",
@@ -27948,7 +27948,7 @@
         "tags": [
           "Settings"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/settings/redis/test/": {
@@ -27991,7 +27991,7 @@
         "tags": [
           "Settings"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/views/{view_id}/": {
@@ -28028,7 +28028,7 @@
         "tags": [
           "Views"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "get": {
         "description": "Get a specific datasource view.",
@@ -28070,7 +28070,7 @@
         "tags": [
           "Views"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "patch": {
         "description": "Update an existing datasource view.",
@@ -28122,7 +28122,7 @@
         "tags": [
           "Views"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/views/{view_id}/count": {
@@ -28166,7 +28166,7 @@
         "tags": [
           "Views"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/views/{view_id}/records": {
@@ -28232,7 +28232,7 @@
         "tags": [
           "Views"
         ],
-        "x-implemented": false
+        "x-implemented": true
       },
       "post": {
         "description": "Create a new record in the table associated with this view.",
@@ -28286,7 +28286,7 @@
         "tags": [
           "Views"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/views/{view_id}/records/": {
@@ -28350,7 +28350,7 @@
         "tags": [
           "Views"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/views/{view_id}/trigger/": {
@@ -28406,7 +28406,7 @@
         "tags": [
           "Views"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/wordpress/import/": {
@@ -28453,7 +28453,7 @@
         "tags": [
           "WordPress Import"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/wordpress/import/{import_id}/": {
@@ -28499,7 +28499,7 @@
         "tags": [
           "WordPress Import"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/sync/wordpress/import/{import_id}/progress/": {
@@ -28543,7 +28543,7 @@
         "tags": [
           "WordPress Import"
         ],
-        "x-implemented": false
+        "x-implemented": true
       }
     },
     "/api/themes/": {

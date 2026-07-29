@@ -9,7 +9,7 @@
  * clear message if it's missing.
  *
  * Usage:
- *   node scripts/fetch-console.mjs [--product-dir <path>]
+ *   node scripts/fetch-console.mjs [--product-dir <path>] [--skip-build]
  *
  * Env:
  *   FRONTBASE_PRODUCT_DIR  path to the product repo (default: ../Frontbase-)
@@ -24,7 +24,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
     const a = process.argv[i];
-    if (a.startsWith('--')) args[a.slice(2)] = process.argv[i + 1];
+    if (a === '--skip-build') args['skip-build'] = true;
+    else if (a.startsWith('--')) args[a.slice(2)] = process.argv[++i];
 }
 
 const productDir = resolve(args['product-dir'] ?? process.env.FRONTBASE_PRODUCT_DIR ?? '../Frontbase-');
@@ -32,10 +33,14 @@ const cfFullDir = resolve(__dirname, '..', 'examples', 'cf-full');
 const consoleDist = join(cfFullDir, 'console-dist');
 const consoleRoot = join(consoleDist, 'frontbase-admin');
 
-console.log(`→ building community SPA from: ${productDir}`);
 // Use the product-owned build entrypoint. It carries the edition/base-path
 // contract; bypassing it with a direct Vite invocation can silently omit setup.
-execSync('npm run build:community', { cwd: productDir, stdio: 'inherit', env: { ...process.env, VITE_DEPLOYMENT_MODE: 'self-host' } });
+if (!args['skip-build']) {
+    console.log(`→ building community SPA from: ${productDir}`);
+    execSync('npm run build:community', { cwd: productDir, stdio: 'inherit', env: { ...process.env, VITE_DEPLOYMENT_MODE: 'self-host' } });
+} else {
+    console.log(`→ staging previously rebuilt community SPA from: ${productDir}`);
+}
 
 const srcDist = join(productDir, 'dist');
 const srcIndex = join(srcDist, 'index.html');

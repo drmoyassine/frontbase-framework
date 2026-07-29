@@ -1,5 +1,5 @@
 /**
- * admin-console no-leak gate (RULE 1). The console is a browser SPA; its bundle
+ * admin-console no-leak gate (RULE 1). The setup app is a browser SPA; its bundle
  * must contain NO @frontbase/edge-infra or @frontbase/backend server module (no
  * drivers, no secrets). We (1) scan the source for any forbidden import, and
  * (2) bundle the real entry (src/main.tsx) for the browser with a fake server
@@ -41,6 +41,12 @@ function walk(dir, out = []) {
 }
 const offenders = walk(srcDir).filter((f) => importRe.test(readFileSync(f, 'utf8')));
 check('no source imports @frontbase/edge-infra or @frontbase/backend', offenders.length === 0);
+const consoleRefs = walk(srcDir).flatMap((f) =>
+    readFileSync(f, 'utf8').match(/\/api\/console[^'"`\s)]*/g) ?? []);
+check(
+    'setup source references only the retained /api/console/setup surface',
+    consoleRefs.length > 0 && consoleRefs.every((ref) => ref.startsWith('/api/console/setup')),
+);
 if (offenders.length) offenders.forEach((f) => console.log(`     · ${f}`));
 
 // 2. Bundle the real entry with a fake server module; assert the canary/drivers

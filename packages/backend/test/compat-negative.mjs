@@ -6,7 +6,7 @@
  * the boundary. Operations without a falsifiable input contract are recorded
  * as intentionally non-applicable rather than silently skipped.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCompatApp } from '../dist/compat/app.js';
@@ -79,6 +79,7 @@ const invalidBodies = [null, [], {}, '', 0, false, '__definitely_invalid__', { u
 const acceptedErrorStatuses = new Set([400, 422]);
 const results = [];
 const failures = [];
+const notApplicableAudit = {};
 
 function requestValidator(operation, suffix) {
     return Z[`z${pascalCase(operation.operationId)}${suffix}`];
@@ -125,6 +126,92 @@ function invalidMultipartCase(operation) {
     if (!operation.requestBody?.content?.['multipart/form-data']?.schema) return false;
     const validator = requestValidator(operation, 'Body');
     return Boolean(validator && !validator.safeParse({}).success);
+}
+
+function schemaSummary(schema) {
+    if (!schema) return null;
+    const resolved = deref(schema) ?? {};
+    const summary = {};
+    if (schema.$ref) summary.ref = schema.$ref;
+    for (const key of [
+        'type',
+        'format',
+        'pattern',
+        'minLength',
+        'maxLength',
+        'minimum',
+        'maximum',
+        'minItems',
+        'maxItems',
+        'additionalProperties',
+    ]) {
+        if (resolved[key] !== undefined) summary[key] = resolved[key];
+    }
+    if (resolved.enum) summary.enum = resolved.enum;
+    if (resolved.required) summary.required = resolved.required;
+    if (resolved.properties) summary.properties = Object.keys(resolved.properties).sort();
+    return summary;
+}
+
+function hasFalsifiableConstraint(schema, location) {
+    const resolved = deref(schema);
+    if (!resolved) return false;
+    if (resolved.enum || resolved.const !== undefined) {
+        return true;
+    }
+    if (resolved.anyOf || resolved.oneOf || resolved.allOf) {
+        return (resolved.anyOf ?? resolved.oneOf ?? resolved.allOf)
+            .some((branch) => hasFalsifiableConstraint(branch, location));
+    }
+    if (resolved.type === 'null') return false;
+    if (location === 'body') {
+        if (!resolved.type) return false;
+        if (
+            resolved.type === 'object'
+            && !resolved.required?.length
+            && !Object.keys(resolved.properties ?? {}).length
+            && resolved.additionalProperties === true
+        ) {
+            return false;
+        }
+        return true;
+    }
+    if (resolved.type === 'string') {
+        return Boolean(
+            resolved.format
+            || resolved.pattern
+            || resolved.minLength !== undefined
+            || resolved.maxLength !== undefined,
+        );
+    }
+    return Boolean(resolved.type);
+}
+
+function auditDeclaredInput(operation) {
+    const parameters = operation.parameters ?? [];
+    const summarizeParameters = (location) => parameters
+        .filter((parameter) => parameter.in === location)
+        .map((parameter) => ({
+            name: parameter.name,
+            required: Boolean(parameter.required),
+            schema: schemaSummary(parameter.schema),
+        }));
+    const path = summarizeParameters('path');
+    const query = summarizeParameters('query');
+    const bodies = Object.entries(operation.requestBody?.content ?? {})
+        .filter(([, media]) => media?.schema)
+        .map(([mediaType, media]) => ({
+            mediaType,
+            required: Boolean(operation.requestBody?.required),
+            schema: schemaSummary(media.schema),
+        }));
+    const constrained = [
+        ...parameters.map((parameter) => hasFalsifiableConstraint(parameter.schema, 'parameter')),
+        ...Object.values(operation.requestBody?.content ?? {})
+            .filter((media) => media?.schema)
+            .map((media) => hasFalsifiableConstraint(media.schema, 'body')),
+    ].some(Boolean);
+    return { path, query, bodies, constrained };
 }
 
 function pathFor(template, values) {
@@ -190,13 +277,46 @@ for (const [path, item] of Object.entries(spec.paths)) {
 
         const label = `${method.toUpperCase()} ${path}`;
         if (cases.length === 0) {
-            results.push({ label, status: 'NOT_APPLICABLE', reason: 'no falsifiable typed input' });
+            const declared = auditDeclaredInput(operation);
+            const hasDeclaredInput = declared.path.length > 0
+                || declared.query.length > 0
+                || declared.bodies.length > 0;
+            if (declared.constrained) {
+                results.push({
+                    label,
+                    status: 'AUDIT_GAP',
+                    reason: 'declared constraints were not falsified by the generated corpus',
+                });
+                failures.push(`${label} declares a typed constraint but generated no invalid case`);
+                continue;
+            }
+            const reasonCode = hasDeclaredInput
+                ? 'NO_FALSIFIABLE_CONSTRAINT'
+                : 'NO_DECLARED_INPUT';
+            const reason = hasDeclaredInput
+                ? 'declared inputs are unconstrained strings or open objects, so the contract accepts the generated invalid corpus'
+                : 'operation declares no path, query, or request-body input';
+            const { constrained: _constrained, ...input } = declared;
+            notApplicableAudit[label] = { reasonCode, reason, input };
+            results.push({ label, status: 'NOT_APPLICABLE', reason });
             continue;
         }
         for (const mutation of cases) {
             const response = await execute(entry, mutation);
             if (!acceptedErrorStatuses.has(response.status)) {
                 failures.push(`${label} (${mutation.location}) returned ${response.status}`);
+                continue;
+            }
+            const mediaType = (response.headers.get('content-type') ?? '').split(';')[0].trim();
+            if (mediaType !== 'application/json') {
+                failures.push(`${label} (${mutation.location}) error content-type was ${mediaType || 'missing'}`);
+                continue;
+            }
+            if (response.status === 422) {
+                const errorBody = await response.clone().json().catch(() => null);
+                if (!Z.zHttpValidationError.safeParse(errorBody).success) {
+                    failures.push(`${label} (${mutation.location}) returned a non-contract 422 body`);
+                }
             }
         }
         results.push({ label, status: 'REJECTS_INVALID', cases: cases.length });
@@ -205,6 +325,7 @@ for (const [path, item] of Object.entries(spec.paths)) {
 
 const exercised = results.filter((item) => item.status === 'REJECTS_INVALID');
 const notApplicable = results.filter((item) => item.status === 'NOT_APPLICABLE');
+const auditGaps = results.filter((item) => item.status === 'AUDIT_GAP');
 const caseCount = exercised.reduce((sum, item) => sum + item.cases, 0);
 // Derived from the vendored contract, never a literal: a hand-written op count
 // silently rots the moment the contract widens (the /api/sync sub-app surface
@@ -214,6 +335,33 @@ const CONTRACT_OPS = Object.values(spec.paths)
 if (results.length !== CONTRACT_OPS) {
     failures.push(`operation ledger has ${results.length}, expected ${CONTRACT_OPS} (from the vendored contract)`);
 }
+
+const negativeAudit = {
+    schemaVersion: 1,
+    scope: `all ${CONTRACT_OPS} community operations with no generated falsifiable input`,
+    corpus: {
+        invalidScalars,
+        invalidBodies,
+    },
+    operations: notApplicableAudit,
+};
+const auditPath = join(here, '..', 'contracts', 'negative-input.audit.json');
+if (process.argv.includes('--dump-audit')) {
+    writeFileSync(auditPath, `${JSON.stringify(negativeAudit, null, 2)}\n`);
+    console.log(`compat-negative: wrote ${Object.keys(notApplicableAudit).length} per-operation rationales`);
+} else {
+    try {
+        const expectedAudit = JSON.parse(readFileSync(auditPath, 'utf8'));
+        if (JSON.stringify(expectedAudit) !== JSON.stringify(negativeAudit)) {
+            failures.push(
+                'negative-input audit drifted; inspect the changed per-operation rationale '
+                + 'and regenerate with --dump-audit',
+            );
+        }
+    } catch (error) {
+        failures.push(`negative-input audit is unavailable: ${error.message}`);
+    }
+}
 if (failures.length) {
     console.error(`compat-negative: FAIL (${failures.length})`);
     for (const failure of failures) console.error(`  - ${failure}`);
@@ -222,5 +370,6 @@ if (failures.length) {
 console.log(
     `compat-negative: PASS — ${results.length}/${CONTRACT_OPS} audited, `
     + `${exercised.length} operations rejected ${caseCount} generated invalid cases, `
-    + `${notApplicable.length} had no falsifiable typed input`,
+    + `${notApplicable.length} had audited inherent non-applicability, `
+    + `${auditGaps.length} generator gaps`,
 );

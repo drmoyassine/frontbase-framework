@@ -98,9 +98,9 @@ Full deviations/follow-ups ledger — what shipped, what's deferred, and why: [d
 | [`@frontbase/compiler`](packages/compiler) | Zod schema extraction → manifests/types, query registrar, SW bundle emitter, CLI (`init`/`check`/`lint`/`simulate`/`deploy`) |
 | [`@frontbase/ui-components`](packages/ui-components) | The single set of isomorphic page components (no React on published pages) |
 | [`@frontbase/edge-infra`](packages/edge-infra) | Concrete DataProviders (SQLite/D1/Turso/Supabase/Postgres), Edge Data Proxy auth, cache/queue/vault, CF + Supabase resource provisioning. Server-only |
-| [`@frontbase/backend`](packages/backend) | The in-worker console API — pages/drafts/publish, automations, datasources, storage, edge resources, plans, users, tenants. Default-deny auth, Drizzle persistence. Server-only |
+| [`@frontbase/backend`](packages/backend) | The in-worker product-compatible `/api/*` backend plus retained first-run setup/health routes. The legacy `/api/console/*` application is reusable for package tests but retired in production. Server-only |
 | [`@frontbase/builder`](packages/builder) | The visual canvas primitives — drag/drop model, preview↔published parity. Browser-only; never imports server code |
-| [`@frontbase/admin-console`](packages/admin-console) | The React SPA served at `/console` — WYSIWYG page builder, React Flow automations editor, Data Studio, storage, edge resources, plans, users, tenants. Browser-only |
+| [`@frontbase/admin-console`](packages/admin-console) | The setup-only React SPA served at `/setup`; the separately pinned product console is served at `/frontbase-admin`. Browser-only |
 
 ## Architecture
 

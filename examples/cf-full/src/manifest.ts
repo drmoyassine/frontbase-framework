@@ -1,8 +1,8 @@
 /**
  * Demo site manifest for the FULL-CMS example. Self-contained (no cross-repo /
  * golden imports) so the artifact bundles standalone. The published pages here
- * are the PUBLIC face; the login-gated admin lives under /api/console/* (mounted
- * by createConsole in worker.ts).
+ * are the PUBLIC face; the product admin uses the product-compatible /api/*
+ * surface. Only legacy console health/setup remain mounted.
  */
 import type { SiteManifest } from '@frontbase/edge-core';
 
@@ -17,7 +17,7 @@ export const manifest: SiteManifest = {
                 root: {},
                 content: [
                     { id: 'h', type: 'Heading', props: { content: 'A whole CMS in one Cloudflare Worker', level: 'h1' } },
-                    { id: 't', type: 'Text', props: { content: 'This page is server-rendered by @frontbase/edge-core on {{ app.environment }}. The admin console — login, tenants, pages, publish — is mounted at /api/console and is login-gated (default-deny).' } },
+                    { id: 't', type: 'Text', props: { content: 'This page is server-rendered by @frontbase/edge-core on {{ app.environment }}. The product admin uses the tenant-isolated /api surface; the legacy /api/console surface is retired except for health and first-run setup.' } },
                     { id: 'l1', type: 'Link', props: { text: 'Console health (public) →', href: '/api/console/health', color: '#4338ca', underline: true } },
                     { id: 'l2', type: 'Link', props: { text: 'About this build →', href: '/about', color: '#4338ca', underline: true } },
                 ],

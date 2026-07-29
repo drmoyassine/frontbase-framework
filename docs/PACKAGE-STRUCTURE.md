@@ -51,7 +51,7 @@ graph TD
 **Description**: The single isomorphic runtime that renders every Frontbase page in all three environments (cloud edge worker, browser service worker, builder canvas). Pure runtime — zero dev tooling, zero concrete persistence.
 
 **Includes**:
-- **Unified Hono Router**: priority-mounted single-worker routing (assets → SPA shell → console API → data proxy → workflows → eSSR catch-all) with adapters for Cloudflare Workers and Deno Deploy.
+- **Unified Hono Router**: priority-mounted single-worker routing (assets → product console shell → product-compatible API → retained setup/health → data proxy → workflows → eSSR catch-all) with adapters for Cloudflare Workers and Deno Deploy.
 - **eSSR Renderer**: isomorphic JSX → HTML string rendering with LiquidJS filter integration. Seeded from the existing `services/edge/src/ssr/` string renderers.
 - **Data Provider Contract (DI)**: `DataProvider` interface + built-in `proxyProvider` (registered-query fetch). Concrete `directProvider`/`localDraftProvider` implementations live in edge-infra/builder.
 - **Workflow Execution Engine**: stateless runner, node executors, checkpoint/rate-limit/queue **interfaces** with in-memory defaults; durable adapters injected from `@frontbase/edge-infra`.
@@ -138,10 +138,17 @@ graph TD
 
 ### 6. `@frontbase/backend`
 
-**Description**: The CMS console API — a **TypeScript/Hono sub-router mounted at `/api/console` inside the same worker** as the engine (Principle #1). There is no separate backend deployment.
+**Description**: The CMS backend inside the same worker as the engine
+(Principle #1). It serves the product-compatible `/api/*` surface. Production
+retains only health and first-run setup under `/api/console`; all other legacy
+console paths return `410 Gone`. There is no separate backend deployment.
 
 **Includes**:
-- **Console Sub-Router**: pages & drafts CRUD, publish pipeline (manifest + registered-query emission), project/tenant management, tokens, user administration.
+- **Product-Compatible API**: tenant-scoped pages, sync, auth, storage, workflow,
+  project, and administration operations consumed by the pinned product console.
+- **Bootstrap Sub-Router**: health plus capability-gated first-admin setup under
+  `/api/console`; legacy routes can be enabled only for backward-compatible
+  package/library use.
 - **Drizzle Schemas & Migrations**: the single source of truth for CMS persistence, executed against the edge-infra database adapters.
 - **Publish Pipeline**: layout validation → manifest versioning → SW bundle version bump → cache invalidation.
 

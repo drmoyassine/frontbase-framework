@@ -363,6 +363,17 @@ async function prepareFixture(path, method, op) {
                 ['_default', 'storage_providers', JSON.stringify([{ id: 'probe', name: 'Probe' }]), '2026-01-01T00:00:00.000Z'],
             );
         }
+        if (path === '/api/storage/compute-size') {
+            const bucketId = nextFixture('size-bucket');
+            await runner.exec(
+                'INSERT INTO storage_buckets (id, tenant_slug, name, provider, created_at) VALUES (?,?,?,?,?)',
+                [bucketId, '_default', 'Size fixture', 'local', '2026-01-01T00:00:00.000Z'],
+            );
+            await runner.exec(
+                'INSERT INTO storage_files (id, tenant_slug, bucket_id, path, name, size, mime_type, created_at) VALUES (?,?,?,?,?,?,?,?)',
+                [crypto.randomUUID(), '_default', bucketId, '/sized.txt', 'sized.txt', 42, 'text/plain', '2026-01-01T00:00:00.000Z'],
+            );
+        }
     }
 
     if (path === '/api/storage/move' || path === '/api/storage/move-cross' || path.includes('/api/storage/move-status/')) {
@@ -601,13 +612,17 @@ async function prepareFixture(path, method, op) {
 
     if (path.startsWith('/api/database/') && !path.startsWith('/api/database/rls/')) {
         await runner.exec('DELETE FROM datasources WHERE tenant_slug = ?', ['_default']);
-        if (path === '/api/database/advanced-query/') {
+        if (
+            path === '/api/database/advanced-query/'
+            || path === '/api/database/connections/'
+        ) {
             await createFixture('/api/sync/datasources/', {
                 name: nextFixture('database-supabase'),
                 type: 'supabase',
                 config: {
                     url: 'https://probe.example',
                     anonKey: 'probe-anon-key',
+                    serviceKey: 'probe-service-key',
                 },
             });
         } else {
@@ -643,6 +658,13 @@ async function prepareFixture(path, method, op) {
                 serviceKey: 'probe-service-key',
             },
         });
+        if (path === '/api/database/rls/metadata/{table_name}/{policy_name}') {
+            await createFixture('/api/database/rls/metadata/', {
+                tableName: 'published_pages',
+                policyName: 'policy_default',
+                formData: {},
+            });
+        }
         if (path === '/api/database/rls/bulk-delete/') {
             body = { policies: [{ tableName: 'published_pages', policyName: 'policy_default' }] };
         }

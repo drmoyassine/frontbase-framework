@@ -21,27 +21,6 @@ import { ADMIN } from './playwright.config';
 
 const CONSOLE = '/frontbase-admin';
 
-/**
- * KNOWN GAP — not "expected behaviour".
- *
- * `/api/sync/*` is a real, served product API: a ~47-operation Datasources/Views/
- * Settings surface on a FastAPI sub-app mounted at /api/sync. Because it is a
- * MOUNTED SUB-APP, it never appears in the main app's exported OpenAPI, so the
- * vendored 286-op contract does not describe it and the framework does not
- * implement it. 22 console files depend on it — the Builder's data-binding, data
- * tables, form fields and datasource selector.
- *
- * As of product 7fbc0b9 the exporter walks mounted sub-apps, so these 48 operations
- * ARE now in the contract — and the framework auto-registers 501 stubs for them.
- * They therefore answer 501 ("declared, not implemented") rather than 404 ("no such
- * route"), which is the honest state and what the drift-gate burn-down reflects.
- *
- * Tolerated here so the rest of the suite can run, NOT because it is acceptable.
- * Test 15 asserts the gap explicitly, so it is visible in every report and fails
- * the day the surface is implemented. Any OTHER failing /api/ call still fails.
- */
-const KNOWN_GAP_SYNC_API = ['/api/sync/'];
-
 type Failure = { url: string; status: number };
 
 /** Collect page errors and failed API calls for the duration of one navigation. */
@@ -53,7 +32,6 @@ function watch(page: Page): { errors: string[]; apiFailures: Failure[] } {
         const url = new URL(res.url());
         if (!url.pathname.startsWith('/api/')) return;
         if (res.status() < 400) return;
-        if (KNOWN_GAP_SYNC_API.some((p) => url.pathname.startsWith(p))) return;
         apiFailures.push({ url: url.pathname + url.search, status: res.status() });
     });
     return { errors, apiFailures };
@@ -179,25 +157,6 @@ test.describe('CF-22 Gate 4 — console acceptance', () => {
         expect(res?.headers()['cache-control'] ?? '').toContain('immutable');
     });
 
-    // Documents the gap rather than hiding it: this test FAILS the day /api/sync
-    // is implemented, forcing KNOWN_GAP_SYNC_API to be revisited instead of quietly
-    // masking a surface that has since started working.
-    test('15. KNOWN GAP — the /api/sync datasources API is declared but not implemented', async ({ page }) => {
-        await login(page);
-        const status = await page.evaluate(async () => {
-            const r = await fetch('/api/sync/datasources/', { credentials: 'include' });
-            return r.status;
-        });
-        // 501 = in the contract, auto-stubbed, no handler. 404 would mean the
-        // contract regressed to omitting the mounted sub-app again.
-        expect(
-            status,
-            'Expected 501 (declared, unimplemented). A 2xx means /api/sync now works — ' +
-            'remove it from KNOWN_GAP_SYNC_API so real regressions are caught. A 404 means ' +
-            'the exporter stopped walking mounted sub-apps.',
-        ).toBe(501);
-    });
-
     test('14. logging out revokes access to the console', async ({ page }) => {
         await login(page);
         await page.getByRole('button', { name: /log out/i }).click();
@@ -208,5 +167,20 @@ test.describe('CF-22 Gate 4 — console acceptance', () => {
             return r.status;
         });
         expect(status).toBe(401);
+    });
+
+    test('15. legacy console API is gone while setup and health remain', async ({ request }) => {
+        expect((await request.get('/api/console/health')).status()).toBe(200);
+        expect((await request.get('/api/console/setup/status')).status()).toBe(200);
+
+        const assertRetired = async (response: Awaited<ReturnType<typeof request.get>>) => {
+            expect(response.status()).toBe(410);
+            expect((await response.json()).detail).toContain('retired');
+        };
+        await assertRetired(await request.get('/api/console'));
+        await assertRetired(await request.get('/api/console/me'));
+        await assertRetired(await request.post('/api/console/login', { data: {} }));
+        await assertRetired(await request.get('/api/console/pages'));
+        await assertRetired(await request.patch('/api/console/not-a-route', { data: {} }));
     });
 });

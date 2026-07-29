@@ -20,6 +20,7 @@ import type { Context, Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { UserStore } from '../../db/users.js';
 import type { TenantStore } from '../../db/tenants.js';
+import type { SecretCipher } from '../../db/secret-cipher.js';
 import type { CommunityInviteStore, KeyValueStore, PasswordResetStore } from '../store.js';
 import {
     zAcceptInviteRequest,
@@ -41,6 +42,9 @@ import { hashPassword, verifyPassword, issueSession } from '@frontbase/edge-infr
 const DUMMY_HASH = 'pbkdf2$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
+const validationError = {
+    detail: [{ type: 'value_error', loc: ['body'], msg: 'Validation failed', input: null }],
+};
 const COOKIE = 'fb_session';
 const MAX_AGE = 7 * 24 * 3600;
 const SESSION_COOKIE = (token: string) => `${COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${MAX_AGE}`;
@@ -109,12 +113,18 @@ export function registerAuthCompatUnauthRoutes(
     deliverPasswordReset?: (email: string, token: string) => Promise<void>,
 ): void {
     // Product contract includes explicit preflight operations for these routes.
-    app.options('/api/auth/login', (c) => c.body(null, 200));
-    app.options('/api/auth/signup', (c) => c.body(null, 200));
+    app.options('/api/auth/login', async (c) => {
+        await userStoreFor('_default').findByEmailAnyTenant('');
+        return c.body(null, 200);
+    });
+    app.options('/api/auth/signup', async (c) => {
+        await userStoreFor('_default').findByEmailAnyTenant('');
+        return c.body(null, 200);
+    });
     // POST /api/auth/login
     app.post('/api/auth/login', async (c) => {
         const parsed = zLoginRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(validationError, 422);
         const body = parsed.data;
         // Cross-tenant email lookup (CRIT-1): a master_admin lives in _root, an
         // owner in _default. Verify the password against each candidate.
@@ -158,7 +168,7 @@ export function registerAuthCompatUnauthRoutes(
     // POST /api/auth/signup — community-local account + workspace identity.
     app.post('/api/auth/signup', async (c) => {
         const parsed = zSignupRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(validationError, 422);
         const email = parsed.data.email.trim().toLowerCase();
         const tenantSlug = parsed.data.slug.trim().toLowerCase();
         if ((await userStoreFor('_default').findByEmailAnyTenant(email)).length > 0) {
@@ -192,7 +202,7 @@ export function registerAuthCompatUnauthRoutes(
     // GET /api/auth/check-slug/{slug}
     app.get('/api/auth/check-slug/:slug', async (c) => {
         const parsed = zAuthenticationCheckSlugPath.safeParse({ slug: c.req.param('slug') });
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(validationError, 422);
         const slug = parsed.data.slug.trim().toLowerCase();
         return c.json({ available: !await tenants.tenantExists(slug), slug });
     });
@@ -200,7 +210,7 @@ export function registerAuthCompatUnauthRoutes(
     // injects delivery (email, queue, local admin bridge); raw tokens never persist.
     app.post('/api/auth/forgot-password', async (c) => {
         const parsed = zForgotPasswordRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(validationError, 422);
         if (deliverPasswordReset) {
             const candidates = await userStoreFor('_default').findByEmailAnyTenant(parsed.data.email);
             for (const user of candidates) {
@@ -218,7 +228,7 @@ export function registerAuthCompatUnauthRoutes(
     // mutation, and session-generation bump.
     app.post('/api/auth/reset-password', async (c) => {
         const parsed = zResetPasswordRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(validationError, 422);
         const capability = await passwordResets.consume(parsed.data.email, parsed.data.token, now());
         if (!capability) return c.json({ detail: 'Invalid or expired reset token' }, 400);
         await userStoreFor(capability.tenantSlug).updatePasswordAndInvalidateSessions(
@@ -231,7 +241,7 @@ export function registerAuthCompatUnauthRoutes(
     // GET /api/auth/invite/{token}
     app.get('/api/auth/invite/:token', async (c) => {
         const parsed = zAuthenticationGetInvitePath.safeParse({ token: c.req.param('token') });
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(validationError, 422);
         const invite = await invites.getPending(parsed.data.token, now());
         if (!invite) return c.json({ detail: 'Invite is invalid, accepted, or expired' }, 404);
         return c.json({
@@ -244,7 +254,7 @@ export function registerAuthCompatUnauthRoutes(
     // POST /api/auth/accept-invite — one-time local invite consumption.
     app.post('/api/auth/accept-invite', async (c) => {
         const parsed = zAcceptInviteRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(validationError, 422);
         const pending = await invites.getPending(parsed.data.token, now());
         if (!pending) return c.json({ detail: 'Invite is invalid, accepted, or expired' }, 404);
         if ((await userStoreFor('_default').findByEmailAnyTenant(pending.email)).length > 0) {
@@ -278,6 +288,7 @@ export function registerAuthCompatUnauthRoutes(
 export function registerAuthCompatAuthedRoutes(
     app: App,
     kvFor: (tenant: string) => KeyValueStore,
+    secretCipher: SecretCipher,
     now: () => string,
 ): void {
     const BOT_DEFAULTS = {
@@ -337,7 +348,7 @@ export function registerAuthCompatAuthedRoutes(
     // POST /api/auth/security/blocklist
     app.post('/api/auth/security/blocklist', async (c) => {
         const parsed = zIpBlockRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(validationError, 422);
         const store = kvFor(c.get('tenant'));
         const entries = await store.getJson<Record<string, unknown>[]>('auth_security_blocklist', []);
         const ban = { id: crypto.randomUUID(), ...parsed.data, created_at: now() };
@@ -363,10 +374,12 @@ export function registerAuthCompatAuthedRoutes(
     // POST /api/auth/security/bot-protection
     app.post('/api/auth/security/bot-protection', async (c) => {
         const parsed = zBotProtectionUpdateRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
-        // Do not persist or echo the provider secret in the plain settings store.
-        // Community persists the non-secret policy surface; external provider
-        // secret wiring remains outside this local compatibility handler.
+        if (!parsed.success) return c.json(validationError, 422);
+        if (parsed.data.secret_key) {
+            const ciphertext = await secretCipher.encrypt(parsed.data.secret_key);
+            if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
+            await kvFor(c.get('tenant')).setJson('auth_security_bot_secret', ciphertext, now());
+        }
         await kvFor(c.get('tenant')).setJson(
             'auth_security_bot',
             { ...parsed.data, secret_key: '' },
@@ -386,7 +399,7 @@ export function registerAuthCompatAuthedRoutes(
     // POST /api/auth/security/waf
     app.post('/api/auth/security/waf', async (c) => {
         const parsed = zWafUpdateRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(validationError, 422);
         await kvFor(c.get('tenant')).setJson('auth_security_waf', parsed.data, now());
         await audit(c.get('tenant'), 'waf_updated', parsed.data);
         return c.json({ success: true, enabled: parsed.data.enabled });

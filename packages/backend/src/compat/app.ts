@@ -13,7 +13,7 @@
  * with createConsole.
  */
 import { Hono } from 'hono';
-import type { DbRunner } from '@frontbase/edge-infra';
+import type { DbRunner, StorageProvider } from '@frontbase/edge-infra';
 import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from '../mw/auth.js';
 import { opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
@@ -39,12 +39,15 @@ import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
 import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
 import { registerEdgeMiscRoutes } from './routes/edge-misc.js';
 import { registerAgentCompatRoutes } from './routes/agent-compat.js';
+import { registerSyncRoutes } from './routes/sync.js';
+import { SyncStore } from './sync-store.js';
 import { CommunityInviteStore, PasswordResetStore, TemplateVariableStore, KeyValueStore, ThemesStore, SecurityEventsStore } from './store.js';
 import { PagesStore } from './pages-store.js';
 import { Phase2Store } from '../db/phase2-store.js';
 import { createSecretCipher, noopCipher } from '../db/secret-cipher.js';
 import type { UserStore } from '../db/users.js';
 import { TenantStore } from '../db/tenants.js';
+import type { CompatFetch } from './external-http.js';
 
 export interface CreateCompatAppDeps {
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */
@@ -64,6 +67,11 @@ export interface CreateCompatAppDeps {
     /** Deliver a raw reset capability out-of-band. The public response remains
      * identical for existing and unknown email addresses. */
     passwordResetDelivery?: (email: string, token: string) => Promise<void>;
+    /** Guarded provider HTTP seam. Production defaults to global fetch; tests can
+     * inject a deterministic provider double without replacing route logic. */
+    externalFetch?: CompatFetch;
+    /** Object storage executor for compat upload/move/delete/signed-url routes. */
+    storageProvider?: StorageProvider;
 }
 
 /** Build a per-tenant store cache. */
@@ -79,6 +87,7 @@ function storeCache<T>(build: (tenant: string) => T): (tenant: string) => T {
 export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{ Variables: ConsoleAuthVars }>> {
     const now = deps.now ?? (() => new Date().toISOString());
     const runner = await deps.makeRunner();
+    const externalFetch: CompatFetch = deps.externalFetch ?? ((input, init) => globalThis.fetch(input, init));
 
     // Per-tenant stores. Single-tenant in practice (community edition); the
     // tenant comes from the auth context (defaultDenyAuth).
@@ -88,9 +97,10 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     const secEventsFor = storeCache((t: string) => new SecurityEventsStore(runner, t));
     const pagesFor = storeCache((t: string) => new PagesStore(runner, t));
     const secretCipher = deps.sessionSecret
-        ? await createSecretCipher(deps.sessionSecret).catch(() => noopCipher)
+        ? await createSecretCipher(deps.sessionSecret)
         : noopCipher;
     const phase2For = storeCache((t: string) => new Phase2Store(runner, t, secretCipher));
+    const syncStoreFor = storeCache((t: string) => new SyncStore(runner, t, secretCipher));
     const invites = new CommunityInviteStore(runner);
     const passwordResets = new PasswordResetStore(runner);
     const tenants = new TenantStore(runner);
@@ -103,6 +113,8 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
 
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
     app.onError(opaqueErrors);
+    const isConsolePath = (path: string) =>
+        path === '/api/console' || path.startsWith('/api/console/');
 
     // Trailing-slash reconciliation (Gate 4). The product console calls some
     // endpoints without the slash the contract declares; FastAPI 307s those to the
@@ -117,7 +129,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // request state is left half-consumed.
     app.use('*', async (c, next) => {
         const url = new URL(c.req.url);
-        if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/console/')) {
+        if (url.pathname.startsWith('/api/') && !isConsolePath(url.pathname)) {
             // Returns null when the path is already canonical, so valid requests
             // fall straight through.
             const variant = canonicalSlashVariant(url.pathname);
@@ -140,7 +152,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
 
     // UNAUTHENTICATED routes — registered BEFORE default-deny:
     // 1. Meta (health/liveness)
-    registerMetaRoutes(app, deps.includeProductRoot);
+    registerMetaRoutes(app, runner, deps.includeProductRoot);
     // 2. UNAUTHENTICATED auth ops only (login/logout/signup/forgot/reset/invite/
     //    accept/check-slug) — a user can't present a session to log in. The
     //    AUTHENTICATED auth ops (me + security console) are registered AFTER the
@@ -165,10 +177,39 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // /api/console/* sub-router.
     app.use('*', async (c, next) => {
         const path = new URL(c.req.url).pathname;
-        if (!path.startsWith('/api/') || path.startsWith('/api/console/')) {
+        if (!path.startsWith('/api/') || isConsolePath(path)) {
             return next(); // Not a compat path — let the next mounted app handle it
         }
+        // The Sheets add-on has no browser session. A short-lived, hashed,
+        // single-use capability authorizes this one callback.
+        if (path === '/api/sync/datasources/sheets/connect/callback/') return next();
         return defaultDenyAuth(resolvePrincipal as (req: Request) => Promise<any>)(c, next);
+    });
+    // Provider credentials, infrastructure lifecycle, security administration,
+    // and RLS policy management are privileged tenant-admin surfaces. Default
+    // authentication alone is not sufficient: ordinary members must not be able
+    // to enumerate secret metadata or mutate external infrastructure.
+    app.use('*', async (c, next) => {
+        const path = new URL(c.req.url).pathname;
+        if (path === '/api/sync/datasources/sheets/connect/callback/') return next();
+        const privileged = [
+            '/api/edge-',
+            '/api/cloudflare/',
+            '/api/deno/',
+            '/api/database/rls/',
+            '/api/storage/providers/',
+            '/api/auth/security/',
+            '/api/settings/invites',
+            '/api/mcp-servers',
+            '/api/sync/',
+        ].some((prefix) => path.startsWith(prefix));
+        if (!privileged) return next();
+        const principal = c.get('principal');
+        const role = (principal.user as { role?: string } | null)?.role;
+        if (!role || !['master_admin', 'owner', 'tenant_admin', 'admin'].includes(role)) {
+            return c.json({ detail: 'Forbidden' }, 403);
+        }
+        return next();
     });
     // Validate protected requests only after authentication, preserving default-
     // deny semantics (anonymous callers receive 401, not schema-oracle 422s).
@@ -176,33 +217,35 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
 
     // AUTHENTICATED auth ops (me + security) — behind the guard (RULE 2).
     if (deps.sessionSecret && deps.userStoreFor) {
-        registerAuthCompatAuthedRoutes(app, kvFor, now);
+        registerAuthCompatAuthedRoutes(app, kvFor, secretCipher, now);
     }
 
     // Real handlers for implemented ops, registered with the exact product paths
     // on the main app (no sub-app mount — that mismatches trailing slashes).
     registerVariablesRoutes(app, varStoreFor, now);
-    registerSettingsRoutes(app, kvFor, invites, now);
+    registerSettingsRoutes(app, kvFor, invites, secretCipher, externalFetch, now);
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
     registerSecurityEventsRoutes(app, secEventsFor);
     registerPagesRoutes(app, pagesFor, now);
-    registerDatabaseRoutes(app, kvFor, now);
-    registerRlsRoutes(app, kvFor);
+    registerDatabaseRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now);
+    registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
-    registerStorageRoutes(app, phase2For, now);
-    registerEdgeDatabasesRoutes(app, phase2For, now);
+    registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now);
+    registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now);
     registerAuthFormsRoutes(app, runner, now);
-    registerWorkflowsRoutes(app);
+    registerWorkflowsRoutes(app, phase2For);
     // Wave 3
     registerActionsRoutes(app, phase2For, now);
     // Wave 4 — edge domain (engines + providers + caches/queues/vectors + inspector + api-keys + gpu + deploy)
-    registerEdgeEnginesRoutes(app, phase2For, now);
-    registerEdgeProvidersRoutes(app, phase2For, now);
-    registerEdgeGenericRoutes(app, phase2For, now);
+    registerEdgeEnginesRoutes(app, phase2For, kvFor, secretCipher, now);
+    registerEdgeProvidersRoutes(app, phase2For, kvFor, secretCipher, externalFetch, now);
+    registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now);
     registerEdgeMiscRoutes(app, runner, phase2For, secretCipher, now);
     // Wave 5 — workspace agent
-    registerAgentCompatRoutes(app, runner, kvFor);
+    registerAgentCompatRoutes(app, runner, kvFor, secretCipher, externalFetch);
+    // Work A — DB-Synchronizer (/api/sync/*)
+    registerSyncRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now);
 
     // Derive what is implemented from the routes just registered, rather than
     // from a parallel hand-maintained list. Everything else in the contract gets a
