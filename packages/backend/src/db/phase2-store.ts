@@ -52,14 +52,14 @@ export class Phase2Store {
 
     async listWorkflows(): Promise<Record<string, unknown>[]> {
         return this.runner.query(
-            'SELECT id, name, nodes, edges, is_active, version, created_at, updated_at FROM workflows WHERE tenant_slug = ? ORDER BY updated_at DESC',
+            'SELECT id, name, nodes, edges, is_active, is_published, version, created_at, updated_at FROM workflows WHERE tenant_slug = ? ORDER BY updated_at DESC',
             [this.tenant],
         );
     }
 
     async getWorkflow(id: string): Promise<Record<string, unknown> | null> {
         const rows = await this.runner.query(
-            'SELECT id, name, nodes, edges, is_active, version, created_at, updated_at FROM workflows WHERE id = ? AND tenant_slug = ?',
+            'SELECT id, name, nodes, edges, is_active, is_published, version, created_at, updated_at FROM workflows WHERE id = ? AND tenant_slug = ?',
             [id, this.tenant],
         );
         return rows[0] ?? null;
@@ -92,6 +92,15 @@ export class Phase2Store {
         await this.runner.exec(
             'UPDATE workflows SET is_active = ?, updated_at = ? WHERE id = ? AND tenant_slug = ?',
             [isActive ? 1 : 0, now, id, this.tenant],
+        );
+    }
+
+    /** Mark a workflow published (and active). Distinct from toggleWorkflow so the
+     *  active on/off toggle never clears the "has been published" state. */
+    async markWorkflowPublished(id: string, now: string): Promise<void> {
+        await this.runner.exec(
+            'UPDATE workflows SET is_published = 1, is_active = 1, updated_at = ? WHERE id = ? AND tenant_slug = ?',
+            [now, id, this.tenant],
         );
     }
 

@@ -418,6 +418,42 @@ test('system edge: self-aware Cloudflare engine is the default publish target fo
     assert.equal((await request(app, 'POST', `/api/actions/drafts/${draftId}/publish/does-not-exist/`)).status, 404);
 });
 
+test('page layout persists across save + reload (PUT /api/pages/{id}/ carries layoutData)', async () => {
+    const { app } = await harness();
+    const created = await (await request(app, 'POST', '/api/pages/', {
+        name: 'Layout persist', slug: 'layout-persist', title: 'L',
+    })).json();
+    const pageId = created.data.id;
+    // The product Save PUTs the FULL page (incl. layoutData) to /api/pages/{id}/.
+    // update() used to merge only metadata and silently drop layout_data, so a
+    // refresh re-fetched an empty canvas.
+    const layoutData = { content: [{ type: 'heading', props: { text: 'Hello' } }], root: {} };
+    const saved = await request(app, 'PUT', `/api/pages/${pageId}/`, {
+        name: 'Layout persist', slug: 'layout-persist', layoutData,
+    });
+    assert.equal(saved.status, 200, await saved.clone().text());
+    const reloaded = await (await request(app, 'GET', `/api/pages/${pageId}/`)).json();
+    assert.deepEqual(reloaded.data.layoutData, layoutData, 'layout must survive a save + reload');
+});
+
+test('workflow flips to published after publish (is_published tracks publish, not just active)', async () => {
+    const { app } = await harness();
+    const draft = await (await request(app, 'POST', '/api/actions/drafts', {
+        name: 'Publish-state workflow', nodes: [], edges: [],
+    })).json();
+    const draftId = draft.id ?? draft.data?.id;
+    // A fresh draft is NOT published.
+    const before = await (await request(app, 'GET', `/api/actions/drafts/${draftId}`)).json();
+    assert.equal(before.is_published, false);
+    // Publish to the system edge.
+    const pub = await request(app, 'POST', `/api/actions/drafts/${draftId}/publish/local-edge/`);
+    assert.equal(pub.status, 200, await pub.clone().text());
+    // After publish the draft is published — the badge shows Active, not Draft.
+    const after = await (await request(app, 'GET', `/api/actions/drafts/${draftId}`)).json();
+    assert.equal(after.is_published, true);
+    assert.equal(after.is_active, true);
+});
+
 let failures = 0;for (const [name, fn] of tests) {
     try {
         await fn();

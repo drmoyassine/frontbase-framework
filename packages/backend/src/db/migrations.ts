@@ -227,6 +227,18 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [`DROP TABLE IF EXISTS sheets_connect_tokens`],
     },
+    {
+        // CF-22: track whether a workflow has been published, separately from
+        // is_active (running). asDraft had hardcoded is_published:false, so every
+        // workflow showed "Draft" even after a successful publish. Existing rows
+        // default to 0 (unpublished) — none were publishable before the system edge,
+        // so none were ever published. down is empty: SQLite can't drop a column
+        // without rebuilding the table, and a nullable extra column is harmless.
+        version: 17,
+        name: 'workflows_is_published',
+        up: [`ALTER TABLE workflows ADD COLUMN is_published INTEGER DEFAULT 0`],
+        down: [],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

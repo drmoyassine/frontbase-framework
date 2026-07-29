@@ -46,12 +46,12 @@ function asDraft(row: Record<string, unknown>, contentHash: string | null = null
         nodes: parse(row.nodes),
         edges: parse(row.edges),
         is_active: Boolean(row.is_active),
-        is_published: false,
+        is_published: Boolean(row.is_published),
         trigger_type: String(row.trigger_type ?? 'manual'),
         trigger_config: null,
         description: null,
         settings: null,
-        published_version: null,
+        published_version: row.is_published ? Number(row.version ?? 1) : null,
         deployed_engines: {},
         content_hash: contentHash,
         created_by: null,
@@ -164,7 +164,7 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
                 return c.json({ detail: `Engine not found: ${engineId}` }, 404);
             }
         }
-        await store.toggleWorkflow(c.req.param('draft_id'), true, now());
+        await store.markWorkflowPublished(c.req.param('draft_id'), now());
         return c.json({ success: true, message: 'Published', workflow_id: c.req.param('draft_id'), version: Number(existing.version ?? 1) + 1 });
     });
     // POST /api/actions/drafts/{draft_id}/publish-batch/
@@ -183,7 +183,7 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
         }));
         const valid = ids.filter((_, i) => resolved[i]);
         if (valid.length === 0) return c.json({ detail: 'No engines found' }, 404);
-        await store.toggleWorkflow(c.req.param('draft_id'), true, now());
+        await store.markWorkflowPublished(c.req.param('draft_id'), now());
         return c.json({
             success: true,
             message: 'Published',

@@ -79,7 +79,7 @@ export class PagesStore {
         return { id, name: input.name, slug: input.slug, title: input.title ?? null, description: input.description ?? null, keywords: null, is_public: 1, is_homepage: 0, layout_data: layout, seo_data: null, deleted_at: null, content_hash: ch, created_at: now, updated_at: now };
     }
 
-    async update(id: string, patch: { name?: string; title?: string | null; description?: string | null; slug?: string; keywords?: string | null; isPublic?: boolean; isHomepage?: boolean }, now: string): Promise<CompatPageRow | null> {
+    async update(id: string, patch: { name?: string; title?: string | null; description?: string | null; slug?: string; keywords?: string | null; isPublic?: boolean; isHomepage?: boolean; layoutData?: unknown; layout_data?: unknown }, now: string): Promise<CompatPageRow | null> {
         const existing = await this.get(id);
         if (!existing) return null;
         const merged = {
@@ -90,11 +90,22 @@ export class PagesStore {
             is_public: patch.isPublic !== undefined ? (patch.isPublic ? 1 : 0) : existing.is_public,
             is_homepage: patch.isHomepage !== undefined ? (patch.isHomepage ? 1 : 0) : existing.is_homepage,
         };
+        // The product's Save sends the FULL page via PUT /api/pages/{id}/, including
+        // layoutData. Without this, update() persisted only metadata and silently
+        // dropped the canvas — so a refresh re-fetched an empty layout (CF-22 bug).
+        // The dedicated /layout/ route still calls setLayout directly.
+        const layoutSource = patch.layoutData ?? patch.layout_data;
+        let layout_data = existing.layout_data;
+        let content_hash = existing.content_hash;
+        if (layoutSource !== undefined) {
+            layout_data = typeof layoutSource === 'string' ? layoutSource : JSON.stringify(layoutSource);
+            content_hash = await hash(layout_data);
+        }
         await this.runner.exec(
-            'UPDATE compat_pages SET name=?, slug=?, title=?, description=?, keywords=?, is_public=?, is_homepage=?, updated_at=? WHERE tenant_slug=? AND id=?',
-            [merged.name, merged.slug, merged.title, merged.description, merged.keywords, merged.is_public, merged.is_homepage, now, this.tenant, id],
+            'UPDATE compat_pages SET name=?, slug=?, title=?, description=?, keywords=?, is_public=?, is_homepage=?, layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=?',
+            [merged.name, merged.slug, merged.title, merged.description, merged.keywords, merged.is_public, merged.is_homepage, layout_data, content_hash, now, this.tenant, id],
         );
-        return { ...existing, ...merged } as CompatPageRow;
+        return { ...existing, ...merged, layout_data, content_hash, updated_at: now } as CompatPageRow;
     }
 
     async setLayout(id: string, layoutData: unknown, now: string): Promise<CompatPageRow | null> {
