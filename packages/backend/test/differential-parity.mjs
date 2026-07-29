@@ -248,6 +248,43 @@ async function snapshot(base, testCase, vars) {
     };
 }
 
+/**
+ * Create a fresh fixture for one variable, against ONE target, and bind it.
+ *
+ * The response is deliberately not compared. This is setup: its only job is to make
+ * the case that follows independent of every case before it. `seq` is allocated by
+ * the caller and shared across both targets so the two create requests stay
+ * byte-identical while each seeding is distinct.
+ *
+ * A seed that fails to bind CLEARS the variable rather than leaving the previous
+ * one in place. Silently reusing a stale id is precisely the failure this function
+ * exists to remove, and it would be invisible — the case would pass or fail for
+ * reasons unrelated to the operation under test.
+ */
+async function reseed(base, names, vars, seq, failures) {
+    for (const name of names) {
+        const recipe = corpus.seeds?.[name];
+        if (!recipe) continue;
+        delete vars[name];
+        try {
+            const cookie = cookieHeader(base);
+            const response = await fetch(new URL(recipe.path, base), {
+                method: recipe.method,
+                headers: { ...(recipe.headers ?? {}), ...(cookie ? { cookie } : {}) },
+                body: JSON.stringify(interpolate(recipe.body, { seq })),
+                signal: AbortSignal.timeout(Number(process.env.CF22_CASE_TIMEOUT_MS ?? 20000)),
+            });
+            storeCookies(base, response);
+            const raw = await response.json();
+            for (const pointer of [recipe.capture].flat()) {
+                const captured = readPointer(raw, pointer);
+                if (captured !== undefined) { vars[name] = captured; break; }
+            }
+        } catch { /* left unbound — reported below */ }
+        if (!(name in vars)) failures.push({ base, name });
+    }
+}
+
 const adminEmail = option('--admin-email') ?? process.env.CF22_ADMIN_EMAIL;
 const adminPassword = option('--admin-password') ?? process.env.CF22_ADMIN_PASSWORD;
 if (!adminEmail || !adminPassword) {
@@ -307,7 +344,16 @@ let compared = 0;
 const differences = [];
 const productVars = {};
 const frameworkVars = {};
+const seedFailures = [];
+let seq = 0;
 for (const testCase of corpus.cases) {
+    if (testCase.requires?.length) {
+        seq++;
+        await Promise.all([
+            reseed(productBase, testCase.requires, productVars, seq, seedFailures),
+            reseed(frameworkBase, testCase.requires, frameworkVars, seq, seedFailures),
+        ]);
+    }
     const [product, framework] = await Promise.all([
         snapshot(productBase, testCase, productVars),
         snapshot(frameworkBase, testCase, frameworkVars),
@@ -340,8 +386,23 @@ if (reportPath) {
     const { writeFileSync } = await import('node:fs');
     writeFileSync(reportPath, `${JSON.stringify({
         productBase, frameworkBase, corpus: corpusPath,
-        compared, differing: differences.length, differences,
+        compared, differing: differences.length, seedFailures, differences,
     }, null, 2)}\n`);
+}
+
+// A target that could not create its own fixture leaves the dependent cases unable to
+// address anything, so they report unresolved-variable. Surfaced separately: that is a
+// defect in the create operation, not in the case that tripped over it.
+if (seedFailures.length > 0) {
+    const byTarget = new Map();
+    for (const failure of seedFailures) {
+        const key = `${failure.base} ${failure.name}`;
+        byTarget.set(key, (byTarget.get(key) ?? 0) + 1);
+    }
+    console.log(`seed failures: ${seedFailures.length} — a target could not create its own fixture`);
+    for (const [key, count] of [...byTarget].sort((a, b) => b[1] - a[1]).slice(0, 12)) {
+        console.log(`  ${key} × ${count}`);
+    }
 }
 
 if (differences.length === 0) {

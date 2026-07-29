@@ -3,250 +3,26 @@
   "frameworkBase": "http://127.0.0.1:8788",
   "corpus": "test/fixtures/cf22-differential-corpus.json",
   "compared": 577,
-  "differing": 496,
+  "differing": 502,
+  "seedFailures": [
+    {
+      "base": "http://127.0.0.1:8001",
+      "name": "form_id"
+    },
+    {
+      "base": "http://127.0.0.1:8001",
+      "name": "form_id"
+    },
+    {
+      "base": "http://127.0.0.1:8001",
+      "name": "form_id"
+    },
+    {
+      "base": "http://127.0.0.1:8001",
+      "name": "form_id"
+    }
+  ],
   "differences": [
-    {
-      "operationId": "pages_create_page_endpoint",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/pages/",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 201,
-        "framework": 201
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/data/hasUnpublishedChanges",
-        "product": "true",
-        "framework": "false"
-      }
-    },
-    {
-      "operationId": "actions_create_draft",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/actions/drafts",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 201,
-        "framework": 201
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/content_hash",
-        "product": "null",
-        "framework": "<absent>"
-      }
-    },
-    {
-      "operationId": "variables_create_variable_endpoint",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/variables/",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 422,
-        "framework": 422
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/detail/0/ctx",
-        "product": "{\"pattern\":\"^(variable|calculated)$\"}",
-        "framework": "<absent>"
-      }
-    },
-    {
-      "operationId": "auth_forms_create_auth_form",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/auth-forms/",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 201,
-        "framework": 201
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/data",
-        "product": "null",
-        "framework": "{\"name\":\"parity\",\"type\":\"parity\",\"is_primary\":false}"
-      }
-    },
-    {
-      "operationId": "edge_engines_create_engine",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-engines/",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 201,
-        "framework": 201
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/adapter_type",
-        "product": "full",
-        "framework": "cloudflare"
-      }
-    },
-    {
-      "operationId": "edge_providers_create_provider",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-providers/",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 201,
-        "framework": 201
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/has_credentials",
-        "product": "false",
-        "framework": "true"
-      }
-    },
-    {
-      "operationId": "edge_databases_create_edge_database",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-databases/",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 201,
-        "framework": 201
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/db_url",
-        "product": "parity",
-        "framework": ""
-      }
-    },
-    {
-      "operationId": "edge_caches_create_edge_cache",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-caches/",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 201,
-        "framework": 201
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/cache_url",
-        "product": "parity",
-        "framework": ""
-      }
-    },
-    {
-      "operationId": "edge_queues_create_edge_queue",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-queues/",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 201,
-        "framework": 201
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/queue_url",
-        "product": "parity",
-        "framework": ""
-      }
-    },
-    {
-      "operationId": "edge_vectors_create_edge_vector",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-vectors/",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 201,
-        "framework": 201
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/provider_config",
-        "product": "null",
-        "framework": "<absent>"
-      }
-    },
-    {
-      "operationId": "create_datasource_datasources__post",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/sync/datasources/",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 201,
-        "framework": 201
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/api_url",
-        "product": "null",
-        "framework": "<absent>"
-      }
-    },
     {
       "operationId": "meta_root",
       "kind": "success",
@@ -271,23 +47,23 @@
       }
     },
     {
-      "operationId": "actions_list_drafts",
+      "operationId": "actions_create_draft",
       "kind": "success",
-      "method": "GET",
+      "method": "POST",
       "path": "/api/actions/drafts",
       "classes": [
         "body"
       ],
       "status": {
-        "product": 200,
-        "framework": 200
+        "product": 201,
+        "framework": 201
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/drafts/0/content_hash",
+        "pointer": "/content_hash",
         "product": "null",
         "framework": "<absent>"
       }
@@ -398,7 +174,7 @@
       },
       "body": {
         "pointer": "/content_hash",
-        "product": "b989af068578d5c1",
+        "product": "f2c165917c397df7",
         "framework": "<absent>"
       }
     },
@@ -450,16 +226,39 @@
       }
     },
     {
+      "operationId": "actions_toggle_draft_active",
+      "kind": "success",
+      "method": "PATCH",
+      "path": "/api/actions/drafts/{{draft_id}}/active",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/success",
+        "product": "<absent>",
+        "framework": "true"
+      }
+    },
+    {
       "operationId": "actions_publish_draft",
       "kind": "success",
       "method": "POST",
       "path": "/api/actions/drafts/{{draft_id}}/publish",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 503,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -467,7 +266,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Draft not found",
+        "product": "Edge service is not running. Start it with: cd services/edge && npm run dev",
         "framework": "<absent>"
       }
     },
@@ -499,11 +298,12 @@
       "method": "POST",
       "path": "/api/actions/drafts/{{draft_id}}/publish-batch/",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
         "product": 404,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -511,7 +311,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Draft not found",
+        "product": "No engines found",
         "framework": "<absent>"
       }
     },
@@ -543,11 +343,12 @@
       "method": "POST",
       "path": "/api/actions/drafts/{{draft_id}}/publish/00000000-0000-4000-8000-000000000000/",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
         "product": 404,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -555,7 +356,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Draft not found",
+        "product": "Engine not found: 00000000-0000-4000-8000-000000000000",
         "framework": "<absent>"
       }
     },
@@ -587,11 +388,12 @@
       "method": "POST",
       "path": "/api/actions/drafts/{{draft_id}}/publish/00000000-0000-4000-8000-000000000000/toggle",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
         "product": 404,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -599,7 +401,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Workflow draft not found",
+        "product": "Deployment target not found",
         "framework": "<absent>"
       }
     },
@@ -631,11 +433,12 @@
       "method": "POST",
       "path": "/api/actions/drafts/{{draft_id}}/rollback/",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
         "product": 404,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -643,7 +446,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Workflow draft not found",
+        "product": "Target version not found",
         "framework": "<absent>"
       }
     },
@@ -679,7 +482,7 @@
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 503,
         "framework": 200
       },
       "mediaType": {
@@ -688,7 +491,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Draft not found",
+        "product": "Edge Engine is not running. Start it with: cd services/edge && npm run dev",
         "framework": "<absent>"
       }
     },
@@ -725,7 +528,7 @@
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 503,
         "framework": 200
       },
       "mediaType": {
@@ -734,7 +537,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Draft not found",
+        "product": "Edge Engine connection lost during node execution",
         "framework": "<absent>"
       }
     },
@@ -778,9 +581,9 @@
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/message",
-        "product": "null",
-        "framework": "<absent>"
+        "pointer": "/data",
+        "product": "array(0)",
+        "framework": "array(1)"
       }
     },
     {
@@ -814,16 +617,16 @@
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 200,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Workflow draft not found",
+        "pointer": "/data",
+        "product": "{\"automationId\":\"7104aa5b-7d51-4947-b619-c29f94b730a1\",\"versionNumber\":1,\"name\":\"parity-13\",\"description\":null,\"triggerType\":\"manual\",\"label\":null,\"createdBy...",
         "framework": "<absent>"
       }
     },
@@ -1004,7 +807,7 @@
       "body": {
         "pointer": "/",
         "product": "Execution ID,Workflow Name,Workflow ID,Trigger,Status,Edge Name,Started,Ended,Duration (s),Error\r\n",
-        "framework": "execution_id,workflow_id,status,trigger,started_at,ended_at\n\"a843d3f3-fa5a-4c26-9290-90dff5fb9980\",\"00000000-0000-4000-8000-000000000000\",\"error\",\"manual\",\"2..."
+        "framework": "execution_id,workflow_id,status,trigger,started_at,ended_at\n\"bd7b1b0d-1403-4a38-813f-f245382daedd\",\"00000000-0000-4000-8000-000000000000\",\"error\",\"manual\",\"2..."
       }
     },
     {
@@ -1827,7 +1630,29 @@
       "body": {
         "pointer": "/data",
         "product": "null",
-        "framework": "[{\"tenant_slug\":\"_root\",\"name\":\"parity\",\"type\":\"parity\",\"config\":null,\"is_primary\":0}]"
+        "framework": "[]"
+      }
+    },
+    {
+      "operationId": "auth_forms_create_auth_form",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth-forms/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/data",
+        "product": "null",
+        "framework": "{\"name\":\"parity\",\"type\":\"parity\",\"is_primary\":false}"
       }
     },
     {
@@ -1896,7 +1721,7 @@
       "body": {
         "pointer": "/",
         "product": "/api/auth-forms/{{form_id}}/",
-        "framework": "{\"success\":true,\"data\":{\"tenant_slug\":\"_root\",\"name\":\"parity\",\"type\":\"parity\",\"config\":null,\"is_primary\":0},\"error\":null}"
+        "framework": "{\"success\":true,\"data\":{\"tenant_slug\":\"_root\",\"name\":\"parity-15\",\"type\":\"parity\",\"config\":null,\"is_primary\":0},\"error\":null}"
       }
     },
     {
@@ -4010,8 +3835,30 @@
       },
       "body": {
         "pointer": "/",
-        "product": "array(2)",
+        "product": "array(1)",
         "framework": "array(0)"
+      }
+    },
+    {
+      "operationId": "edge_caches_create_edge_cache",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-caches/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/cache_url",
+        "product": "parity",
+        "framework": ""
       }
     },
     {
@@ -4108,21 +3955,20 @@
       "method": "PUT",
       "path": "/api/edge-caches/{{cache_id}}",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/account_name",
-        "product": "null",
-        "framework": "<absent>"
+        "pointer": "/cache_url",
+        "product": "parity-19",
+        "framework": ""
       }
     },
     {
@@ -4165,7 +4011,7 @@
       },
       "body": {
         "pointer": "/message",
-        "product": "Edge cache 'parity' deleted",
+        "product": "Edge cache 'parity-20' deleted",
         "framework": "<absent>"
       }
     },
@@ -4198,11 +4044,10 @@
       "method": "POST",
       "path": "/api/edge-caches/{{cache_id}}/test",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 200,
         "framework": 200
       },
       "mediaType": {
@@ -4210,9 +4055,9 @@
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Edge cache 'a5dc761b-693b-4870-b4f3-6f3922248b7c' not found",
-        "framework": "<absent>"
+        "pointer": "/latency_ms",
+        "product": "null",
+        "framework": "1"
       }
     },
     {
@@ -4256,8 +4101,30 @@
       },
       "body": {
         "pointer": "/",
-        "product": "array(2)",
+        "product": "array(1)",
         "framework": "array(0)"
+      }
+    },
+    {
+      "operationId": "edge_databases_create_edge_database",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-databases/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/db_url",
+        "product": "parity",
+        "framework": ""
       }
     },
     {
@@ -4486,21 +4353,20 @@
       "method": "PUT",
       "path": "/api/edge-databases/{{db_id}}",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/account_name",
-        "product": "null",
-        "framework": "<absent>"
+        "pointer": "/db_url",
+        "product": "parity-22",
+        "framework": ""
       }
     },
     {
@@ -4576,11 +4442,10 @@
       "method": "POST",
       "path": "/api/edge-databases/{{db_id}}/test",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 200,
         "framework": 200
       },
       "mediaType": {
@@ -4588,9 +4453,9 @@
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Edge database '98b68304-9135-4a53-ba19-dad7233067a6' not found",
-        "framework": "<absent>"
+        "pointer": "/latency_ms",
+        "product": "null",
+        "framework": "1"
       }
     },
     {
@@ -4634,8 +4499,30 @@
       },
       "body": {
         "pointer": "/",
-        "product": "array(2)",
+        "product": "array(1)",
         "framework": "array(0)"
+      }
+    },
+    {
+      "operationId": "edge_engines_create_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/adapter_type",
+        "product": "full",
+        "framework": "cloudflare"
       }
     },
     {
@@ -4941,9 +4828,9 @@
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/full",
-        "product": "0593f9aa8f66",
-        "framework": "<absent>"
+        "pointer": "/f5031d9e-17a2-469d-bf2e-3fc31423d715",
+        "product": "<absent>",
+        "framework": "null"
       }
     },
     {
@@ -5042,12 +4929,11 @@
       "method": "GET",
       "path": "/api/edge-engines/{{engine_id}}",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5056,7 +4942,7 @@
       "body": {
         "pointer": "/adapter_type",
         "product": "full",
-        "framework": "<absent>"
+        "framework": "cloudflare"
       }
     },
     {
@@ -5087,12 +4973,11 @@
       "method": "PUT",
       "path": "/api/edge-engines/{{engine_id}}",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5101,7 +4986,7 @@
       "body": {
         "pointer": "/adapter_type",
         "product": "full",
-        "framework": "<absent>"
+        "framework": "cloudflare"
       }
     },
     {
@@ -5175,29 +5060,6 @@
     },
     {
       "operationId": "edge_agent_profiles_list_profiles",
-      "kind": "success",
-      "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/agent-profiles",
-      "classes": [
-        "status",
-        "body"
-      ],
-      "status": {
-        "product": 404,
-        "framework": 200
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "<absent>"
-      }
-    },
-    {
-      "operationId": "edge_agent_profiles_list_profiles",
       "kind": "failure",
       "method": "GET",
       "path": "/api/edge-engines/00000000-0000-4000-8000-000000000000/agent-profiles",
@@ -5229,7 +5091,7 @@
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 500,
         "framework": 201
       },
       "mediaType": {
@@ -5238,7 +5100,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
+        "product": "Internal error: Expecting value: line 1 column 1 (char 0)",
         "framework": "<absent>"
       }
     },
@@ -5284,7 +5146,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
+        "product": "Agent profile not found",
         "framework": "<absent>"
       }
     },
@@ -5331,7 +5193,7 @@
       },
       "body": {
         "pointer": "/",
-        "product": "{\"detail\":\"Edge engine not found\"}",
+        "product": "{\"detail\":\"Agent profile not found\"}",
         "framework": ""
       }
     },
@@ -5368,17 +5230,17 @@
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 200,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Engine '074bce33-f18c-4606-983b-3fc23f65d7a6' not found",
-        "framework": "Not found"
+        "pointer": "/engine_id",
+        "product": "a0cb2c2c-00b7-4668-b8aa-114468fd25b9",
+        "framework": "<absent>"
       }
     },
     {
@@ -5409,20 +5271,21 @@
       "method": "POST",
       "path": "/api/edge-engines/{{engine_id}}/cancel-move",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 409,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Engine '074bce33-f18c-4606-983b-3fc23f65d7a6' not found",
-        "framework": "Not found"
+        "pointer": "/cancelled",
+        "product": "<absent>",
+        "framework": "true"
       }
     },
     {
@@ -5456,17 +5319,17 @@
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 200,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Engine '074bce33-f18c-4606-983b-3fc23f65d7a6' not found",
-        "framework": "Not found"
+        "pointer": "/bundle",
+        "product": "FBENG1.eyJoIjp7InYiOjEsIm1vZGUiOiJzZWFsZWQiLCJzYWx0IjoiMXdobHdxVkZPUk1OMVQtWFkwMEZ3UT09Iiwid3JhcHBlZF9rZXkiOiJnQUFBQUFCcWFWcFhmemhWclh0YWdHU1lRUkdpd1VxdmYxTU...",
+        "framework": "<absent>"
       }
     },
     {
@@ -5497,11 +5360,12 @@
       "method": "POST",
       "path": "/api/edge-engines/{{engine_id}}/finalize-move",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 409,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5509,8 +5373,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Engine '074bce33-f18c-4606-983b-3fc23f65d7a6' not found",
-        "framework": "Not found"
+        "product": "Engine is not pending a move.",
+        "framework": "<absent>"
       }
     },
     {
@@ -5541,11 +5405,10 @@
       "method": "GET",
       "path": "/api/edge-engines/{{engine_id}}/health-check",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 200,
         "framework": 200
       },
       "mediaType": {
@@ -5553,8 +5416,8 @@
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Edge engine not found",
+        "pointer": "/error",
+        "product": "Could not connect to engine",
         "framework": "<absent>"
       }
     },
@@ -5587,11 +5450,12 @@
       "method": "GET",
       "path": "/api/edge-engines/{{engine_id}}/inspect/domains",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5599,8 +5463,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "product": "Engine has no connected provider account",
+        "framework": "<absent>"
       }
     },
     {
@@ -5631,11 +5495,12 @@
       "method": "POST",
       "path": "/api/edge-engines/{{engine_id}}/inspect/domains",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5643,8 +5508,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "product": "Engine has no connected provider account",
+        "framework": "<absent>"
       }
     },
     {
@@ -5675,11 +5540,12 @@
       "method": "DELETE",
       "path": "/api/edge-engines/{{engine_id}}/inspect/domains/00000000-0000-4000-8000-000000000000",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5687,8 +5553,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "product": "Engine has no connected provider account",
+        "framework": "<absent>"
       }
     },
     {
@@ -5719,11 +5585,12 @@
       "method": "POST",
       "path": "/api/edge-engines/{{engine_id}}/inspect/domains/00000000-0000-4000-8000-000000000000/verify",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5731,8 +5598,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "product": "Engine has no connected provider account",
+        "framework": "<absent>"
       }
     },
     {
@@ -5763,11 +5630,12 @@
       "method": "GET",
       "path": "/api/edge-engines/{{engine_id}}/inspect/secrets",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5775,8 +5643,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "product": "Engine has no connected provider account",
+        "framework": "<absent>"
       }
     },
     {
@@ -5807,11 +5675,12 @@
       "method": "GET",
       "path": "/api/edge-engines/{{engine_id}}/inspect/settings",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5819,8 +5688,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "product": "Engine has no connected provider account",
+        "framework": "<absent>"
       }
     },
     {
@@ -5851,11 +5720,12 @@
       "method": "GET",
       "path": "/api/edge-engines/{{engine_id}}/inspect/source",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5863,8 +5733,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "product": "Engine has no connected provider account",
+        "framework": "<absent>"
       }
     },
     {
@@ -5895,11 +5765,12 @@
       "method": "GET",
       "path": "/api/edge-engines/{{engine_id}}/logs",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5907,8 +5778,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "product": "Engine has no linked provider account",
+        "framework": "<absent>"
       }
     },
     {
@@ -5942,17 +5813,17 @@
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 200,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "pointer": "/log_persistence",
+        "product": "{}",
+        "framework": "<absent>"
       }
     },
     {
@@ -5983,11 +5854,12 @@
       "method": "GET",
       "path": "/api/edge-engines/{{engine_id}}/logs/retention",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -5995,8 +5867,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "product": "Engine has no linked provider account",
+        "framework": "<absent>"
       }
     },
     {
@@ -6027,11 +5899,12 @@
       "method": "POST",
       "path": "/api/edge-engines/{{engine_id}}/logs/sync",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -6039,8 +5912,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "product": "Engine has no linked provider account",
+        "framework": "<absent>"
       }
     },
     {
@@ -6071,11 +5944,12 @@
       "method": "POST",
       "path": "/api/edge-engines/{{engine_id}}/move-to-project",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
         "product": 404,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -6083,8 +5957,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Engine '074bce33-f18c-4606-983b-3fc23f65d7a6' not found",
-        "framework": "Not found"
+        "product": "Target project not found",
+        "framework": "<absent>"
       }
     },
     {
@@ -6119,7 +5993,7 @@
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 500,
         "framework": 200
       },
       "mediaType": {
@@ -6128,7 +6002,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
+        "product": "Internal error: 'charmap' codec can't encode character '\\u2192' in position 130: character maps to <undefined>",
         "framework": "<absent>"
       }
     },
@@ -6165,7 +6039,7 @@
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 400,
         "framework": 200
       },
       "mediaType": {
@@ -6174,7 +6048,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Edge engine not found",
+        "product": "Unknown provider/adapter_type: docker-full",
         "framework": "<absent>"
       }
     },
@@ -6207,11 +6081,12 @@
       "method": "POST",
       "path": "/api/edge-engines/{{engine_id}}/rollback-rotation",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -6219,8 +6094,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Engine '074bce33-f18c-4606-983b-3fc23f65d7a6' not found",
-        "framework": "Not found"
+        "product": "Rollback only applies to shared/community engines.",
+        "framework": "<absent>"
       }
     },
     {
@@ -6251,11 +6126,12 @@
       "method": "POST",
       "path": "/api/edge-engines/{{engine_id}}/rotate-secrets-key",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -6263,8 +6139,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Engine '074bce33-f18c-4606-983b-3fc23f65d7a6' not found",
-        "framework": "Not found"
+        "product": "Key rotation only applies to shared/community engines. Dedicated/self-host engines bake secrets into env directly.",
+        "framework": "<absent>"
       }
     },
     {
@@ -6286,28 +6162,6 @@
       "body": {
         "pointer": "/detail",
         "product": "Engine '00000000-0000-4000-8000-000000000000' not found",
-        "framework": "Not found"
-      }
-    },
-    {
-      "operationId": "edge_engines_rotation_history",
-      "kind": "success",
-      "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/rotation-history",
-      "classes": [
-        "body"
-      ],
-      "status": {
-        "product": 404,
-        "framework": 404
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/detail",
-        "product": "Engine '074bce33-f18c-4606-983b-3fc23f65d7a6' not found",
         "framework": "Not found"
       }
     },
@@ -6342,17 +6196,17 @@
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 200,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Engine '074bce33-f18c-4606-983b-3fc23f65d7a6' not found",
-        "framework": "Not found"
+        "pointer": "/key_version",
+        "product": "1",
+        "framework": "<absent>"
       }
     },
     {
@@ -6383,11 +6237,12 @@
       "method": "GET",
       "path": "/api/edge-engines/{{engine_id}}/source",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
         "product": 404,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -6395,8 +6250,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Engine not found",
-        "framework": "Not found"
+        "product": "No source snapshot — engine may not have been deployed yet",
+        "framework": "<absent>"
       }
     },
     {
@@ -6427,11 +6282,12 @@
       "method": "PUT",
       "path": "/api/edge-engines/{{engine_id}}/source",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 400,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -6439,8 +6295,8 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Engine not found",
-        "framework": "Not found"
+        "product": "No files to update",
+        "framework": "<absent>"
       }
     },
     {
@@ -6474,17 +6330,17 @@
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 200,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Edge engine not found",
-        "framework": "Not found"
+        "pointer": "/message",
+        "product": "<absent>",
+        "framework": "Manifest synced"
       }
     },
     {
@@ -6515,11 +6371,10 @@
       "method": "POST",
       "path": "/api/edge-engines/{{engine_id}}/test",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 200,
         "framework": 200
       },
       "mediaType": {
@@ -6527,9 +6382,9 @@
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Engine '074bce33-f18c-4606-983b-3fc23f65d7a6' not found",
-        "framework": "<absent>"
+        "pointer": "/message",
+        "product": "Connection failed: Request URL is missing an 'http://' or 'https://' protocol.",
+        "framework": "Engine reachable"
       }
     },
     {
@@ -6781,25 +6636,25 @@
       }
     },
     {
-      "operationId": "edge_providers_list_providers",
+      "operationId": "edge_providers_create_provider",
       "kind": "success",
-      "method": "GET",
+      "method": "POST",
       "path": "/api/edge-providers/",
       "classes": [
         "body"
       ],
       "status": {
-        "product": 200,
-        "framework": 200
+        "product": 201,
+        "framework": 201
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/",
-        "product": "array(1)",
-        "framework": "array(0)"
+        "pointer": "/has_credentials",
+        "product": "false",
+        "framework": "true"
       }
     },
     {
@@ -7327,21 +7182,20 @@
       "method": "GET",
       "path": "/api/edge-providers/{{provider_id}}",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "<absent>",
-        "framework": "Not found"
+        "pointer": "/has_credentials",
+        "product": "false",
+        "framework": "true"
       }
     },
     {
@@ -7372,21 +7226,20 @@
       "method": "PUT",
       "path": "/api/edge-providers/{{provider_id}}",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "<absent>",
-        "framework": "Not found"
+        "pointer": "/has_credentials",
+        "product": "false",
+        "framework": "true"
       }
     },
     {
@@ -7477,7 +7330,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Provider account not found",
+        "product": "No credentials stored for this provider",
         "framework": "<absent>"
       }
     },
@@ -7522,8 +7375,30 @@
       },
       "body": {
         "pointer": "/",
-        "product": "array(2)",
+        "product": "array(1)",
         "framework": "array(0)"
+      }
+    },
+    {
+      "operationId": "edge_queues_create_edge_queue",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-queues/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/queue_url",
+        "product": "parity",
+        "framework": ""
       }
     },
     {
@@ -7620,21 +7495,20 @@
       "method": "PUT",
       "path": "/api/edge-queues/{{queue_id}}",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/account_name",
-        "product": "null",
-        "framework": "<absent>"
+        "pointer": "/queue_url",
+        "product": "parity-64",
+        "framework": ""
       }
     },
     {
@@ -7677,7 +7551,7 @@
       },
       "body": {
         "pointer": "/message",
-        "product": "Edge queue 'parity' deleted",
+        "product": "Edge queue 'parity-65' deleted",
         "framework": "<absent>"
       }
     },
@@ -7710,11 +7584,10 @@
       "method": "POST",
       "path": "/api/edge-queues/{{queue_id}}/test/",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 200,
         "framework": 200
       },
       "mediaType": {
@@ -7722,9 +7595,9 @@
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Edge queue 'c70a3156-0cc7-425d-9418-3d258ada2ab5' not found",
-        "framework": "<absent>"
+        "pointer": "/latency_ms",
+        "product": "null",
+        "framework": "1"
       }
     },
     {
@@ -7768,8 +7641,30 @@
       },
       "body": {
         "pointer": "/",
-        "product": "array(2)",
+        "product": "array(1)",
         "framework": "array(0)"
+      }
+    },
+    {
+      "operationId": "edge_vectors_create_edge_vector",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-vectors/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/provider_config",
+        "product": "null",
+        "framework": "<absent>"
       }
     },
     {
@@ -7866,19 +7761,18 @@
       "method": "PUT",
       "path": "/api/edge-vectors/{{vector_id}}",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/account_name",
+        "pointer": "/provider_config",
         "product": "null",
         "framework": "<absent>"
       }
@@ -7923,7 +7817,7 @@
       },
       "body": {
         "pointer": "/message",
-        "product": "Vector store 'parity' deleted",
+        "product": "Vector store 'parity-68' deleted",
         "framework": "<absent>"
       }
     },
@@ -7956,11 +7850,10 @@
       "method": "POST",
       "path": "/api/edge-vectors/{{vector_id}}/test",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 200,
         "framework": 200
       },
       "mediaType": {
@@ -7968,8 +7861,8 @@
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Vector store not found",
+        "pointer": "/error_code",
+        "product": "INVALID_URL",
         "framework": "<absent>"
       }
     },
@@ -8292,25 +8185,25 @@
       }
     },
     {
-      "operationId": "pages_get_pages",
+      "operationId": "pages_create_page_endpoint",
       "kind": "success",
-      "method": "GET",
+      "method": "POST",
       "path": "/api/pages/",
       "classes": [
         "body"
       ],
       "status": {
-        "product": 200,
-        "framework": 200
+        "product": 201,
+        "framework": 201
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/data",
-        "product": "array(1)",
-        "framework": "array(0)"
+        "pointer": "/data/hasUnpublishedChanges",
+        "product": "true",
+        "framework": "false"
       }
     },
     {
@@ -8407,21 +8300,20 @@
       "method": "GET",
       "path": "/api/pages/{{page_id}}/",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/data",
-        "product": "{\"name\":\"parity\",\"slug\":\"parity\",\"title\":null,\"description\":null,\"keywords\":null,\"isPublic\":true,\"isHomepage\":false,\"layoutData\":{\"content\":[],\"root\":{}},\"de...",
-        "framework": "<absent>"
+        "pointer": "/data/hasUnpublishedChanges",
+        "product": "true",
+        "framework": "false"
       }
     },
     {
@@ -8452,21 +8344,20 @@
       "method": "PUT",
       "path": "/api/pages/{{page_id}}/",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/data",
-        "product": "{\"name\":\"parity\",\"slug\":\"parity\",\"title\":null,\"description\":null,\"keywords\":null,\"isPublic\":true,\"isHomepage\":false,\"layoutData\":{\"content\":[],\"root\":{}},\"de...",
-        "framework": "<absent>"
+        "pointer": "/data/hasUnpublishedChanges",
+        "product": "true",
+        "framework": "false"
       }
     },
     {
@@ -8497,12 +8388,11 @@
       "method": "DELETE",
       "path": "/api/pages/{{page_id}}/",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -8547,16 +8437,16 @@
       ],
       "status": {
         "product": 400,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "layoutData is required",
-        "framework": "<absent>"
+        "pointer": "/data",
+        "product": "<absent>",
+        "framework": "{\"name\":\"parity-73\",\"slug\":\"parity-73\",\"title\":null,\"description\":null,\"keywords\":null,\"isPublic\":true,\"isHomepage\":false,\"layoutData\":{},\"deletedAt\":null,\"h..."
       }
     },
     {
@@ -8588,12 +8478,11 @@
       "method": "DELETE",
       "path": "/api/pages/{{page_id}}/permanent/",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -8646,7 +8535,7 @@
       "body": {
         "pointer": "/message",
         "product": "null",
-        "framework": "Publish failed"
+        "framework": "Published to this deployment"
       }
     },
     {
@@ -8677,11 +8566,12 @@
       "method": "POST",
       "path": "/api/pages/{{page_id}}/publish/00000000-0000-4000-8000-000000000000/",
       "classes": [
+        "status",
         "body"
       ],
       "status": {
         "product": 404,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -8689,7 +8579,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Page not found: 89663e7f-b026-44b5-a669-e36a525f8ad2",
+        "product": "Engine not found: 00000000-0000-4000-8000-000000000000",
         "framework": "<absent>"
       }
     },
@@ -8724,17 +8614,17 @@
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 200,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Page not found",
-        "framework": "<absent>"
+        "pointer": "/data/hasUnpublishedChanges",
+        "product": "true",
+        "framework": "false"
       }
     },
     {
@@ -8777,7 +8667,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Page not found",
+        "product": "Target version not found",
         "framework": "<absent>"
       }
     },
@@ -8812,16 +8702,16 @@
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 200,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Page not found",
+        "pointer": "/data",
+        "product": "null",
         "framework": "<absent>"
       }
     },
@@ -8845,29 +8735,6 @@
         "pointer": "/detail",
         "product": "Page not found",
         "framework": "<absent>"
-      }
-    },
-    {
-      "operationId": "pages_list_versions",
-      "kind": "success",
-      "method": "GET",
-      "path": "/api/pages/{{page_id}}/versions/",
-      "classes": [
-        "status",
-        "body"
-      ],
-      "status": {
-        "product": 404,
-        "framework": 200
-      },
-      "mediaType": {
-        "product": "application/json",
-        "framework": "application/json"
-      },
-      "body": {
-        "pointer": "/data",
-        "product": "<absent>",
-        "framework": "[]"
       }
     },
     {
@@ -8902,16 +8769,16 @@
         "body"
       ],
       "status": {
-        "product": 404,
-        "framework": 404
+        "product": 200,
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "Page not found",
+        "pointer": "/data/layoutData",
+        "product": "null",
         "framework": "<absent>"
       }
     },
@@ -9176,7 +9043,7 @@
       "body": {
         "pointer": "/invite_url",
         "product": "<absent>",
-        "framework": "/accept-invite?token=91593a7f-f4c5-4266-b9a5-01959e933f38"
+        "framework": "/accept-invite?token=cb8a7791-1489-49a9-91e0-082a689bb2d6"
       }
     },
     {
@@ -10051,25 +9918,25 @@
       }
     },
     {
-      "operationId": "list_datasources_datasources__get",
+      "operationId": "create_datasource_datasources__post",
       "kind": "success",
-      "method": "GET",
+      "method": "POST",
       "path": "/api/sync/datasources/",
       "classes": [
         "body"
       ],
       "status": {
-        "product": 200,
-        "framework": 200
+        "product": 201,
+        "framework": 201
       },
       "mediaType": {
         "product": "application/json",
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/",
-        "product": "array(1)",
-        "framework": "array(0)"
+        "pointer": "/api_url",
+        "product": "null",
+        "framework": "<absent>"
       }
     },
     {
@@ -10258,12 +10125,11 @@
       "method": "GET",
       "path": "/api/sync/datasources/{{datasource_id}}/",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -10281,12 +10147,11 @@
       "method": "PUT",
       "path": "/api/sync/datasources/{{datasource_id}}/",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
         "product": 200,
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "application/json",
@@ -10304,21 +10169,21 @@
       "method": "DELETE",
       "path": "/api/sync/datasources/{{datasource_id}}/",
       "classes": [
-        "status",
+        "media-type",
         "body"
       ],
       "status": {
         "product": 204,
-        "framework": 404
+        "framework": 204
       },
       "mediaType": {
         "product": "application/json",
-        "framework": "application/json"
+        "framework": ""
       },
       "body": {
-        "pointer": "/__unparseable_json__",
-        "product": "",
-        "framework": "<absent>"
+        "pointer": "/",
+        "product": "{\"__unparseable_json__\":\"\"}",
+        "framework": ""
       }
     },
     {
@@ -10333,7 +10198,7 @@
       ],
       "status": {
         "product": "timeout-or-network-error",
-        "framework": 404
+        "framework": 503
       },
       "mediaType": {
         "product": "",
@@ -10342,7 +10207,7 @@
       "body": {
         "pointer": "/",
         "product": "TypeError",
-        "framework": "{\"detail\":\"Datasource not found\"}"
+        "framework": "{\"applicable\":true,\"applied\":false,\"error\":\"Supabase URL, service key, and migration SQL are required\"}"
       }
     },
     {
@@ -10381,7 +10246,7 @@
       ],
       "status": {
         "product": "timeout-or-network-error",
-        "framework": 404
+        "framework": 200
       },
       "mediaType": {
         "product": "",
@@ -10390,7 +10255,7 @@
       "body": {
         "pointer": "/",
         "product": "TypeError",
-        "framework": "{\"detail\":\"Datasource not found\"}"
+        "framework": "{\"applicable\":true,\"applied\":false,\"error\":\"Supabase URL and service key are required\"}"
       }
     },
     {
@@ -10418,16 +10283,61 @@
       }
     },
     {
-      "operationId": "update_relationship_datasources__datasource_id__relationships__index___put",
+      "operationId": "get_datasource_relationships_datasources__datasource_id__relationships__get",
       "kind": "success",
-      "method": "PUT",
-      "path": "/api/sync/datasources/{{datasource_id}}/relationships/00000000-0000-4000-8000-000000000000/",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/",
       "classes": [
         "status",
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 500,
+        "framework": 502
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Failed to fetch relationships: Supabase requires API URL and API Key",
+        "framework": "Failed to fetch relationships: Invalid URL string."
+      }
+    },
+    {
+      "operationId": "create_user_relationship_datasources__datasource_id__relationships__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "update_relationship_datasources__datasource_id__relationships__index___put",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/00000000-0000-4000-8000-000000000000/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 422,
         "framework": 422
       },
       "mediaType": {
@@ -10436,7 +10346,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Datasource not found",
+        "product": "<absent>",
         "framework": "[{\"type\":\"value_error\",\"loc\":[\"path\"],\"msg\":\"Validation failed\",\"input\":null}]"
       }
     },
@@ -10470,11 +10380,10 @@
       "method": "DELETE",
       "path": "/api/sync/datasources/{{datasource_id}}/relationships/00000000-0000-4000-8000-000000000000/",
       "classes": [
-        "status",
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 422,
         "framework": 422
       },
       "mediaType": {
@@ -10483,7 +10392,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Datasource not found",
+        "product": "<absent>",
         "framework": "[{\"type\":\"value_error\",\"loc\":[\"path\"],\"msg\":\"Validation failed\",\"input\":null}]"
       }
     },
@@ -10559,16 +10468,107 @@
       }
     },
     {
-      "operationId": "get_datasource_table_aggregate_datasources__datasource_id__tables__table__aggregate__get",
+      "operationId": "get_datasource_tables_datasources__datasource_id__tables__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/aggregate/",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/",
       "classes": [
         "status",
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 500,
+        "framework": 502
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Failed to fetch tables: Supabase requires API URL and API Key",
+        "framework": "Failed to list tables: Invalid URL string."
+      }
+    },
+    {
+      "operationId": "get_table_session_datasources__datasource_id__tables__table_name__session__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "save_table_session_datasources__datasource_id__tables__table_name__session__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "clear_table_session_datasources__datasource_id__tables__table_name__session__delete",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "get_datasource_table_aggregate_datasources__datasource_id__tables__table__aggregate__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/aggregate/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 422,
         "framework": 422
       },
       "mediaType": {
@@ -10577,7 +10577,7 @@
       },
       "body": {
         "pointer": "/detail",
-        "product": "Datasource not found",
+        "product": "<absent>",
         "framework": "[{\"type\":\"value_error\",\"loc\":[\"query\"],\"msg\":\"Validation failed\",\"input\":null}]"
       }
     },
@@ -10605,6 +10605,74 @@
       }
     },
     {
+      "operationId": "get_datasource_table_data_datasources__datasource_id__tables__table__data__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/data/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 500,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Failed to fetch sample data: Supabase requires API URL and API Key",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "get_distinct_values_datasources__datasource_id__tables__table__distinct__column___get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/distinct/parity_table/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 500,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Failed to fetch distinct values: Supabase requires API URL and API Key",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "create_record_datasources__datasource_id__tables__table__records__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/records/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 400,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "No data provided",
+        "framework": "<absent>"
+      }
+    },
+    {
       "operationId": "update_record_datasources__datasource_id__tables__table__records__record_id__patch",
       "kind": "success",
       "method": "PATCH",
@@ -10616,7 +10684,7 @@
       ],
       "status": {
         "product": "timeout-or-network-error",
-        "framework": 404
+        "framework": 400
       },
       "mediaType": {
         "product": "",
@@ -10625,7 +10693,7 @@
       "body": {
         "pointer": "/",
         "product": "TypeError",
-        "framework": "{\"detail\":\"Datasource not found\"}"
+        "framework": "{\"success\":false,\"message\":\"Invalid URL string.\"}"
       }
     },
     {
@@ -10653,16 +10721,38 @@
       }
     },
     {
-      "operationId": "list_datasource_views_datasources__datasource_id__views__get",
+      "operationId": "get_table_schema_datasources__datasource_id__tables__table__schema__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/views/",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/schema/",
       "classes": [
         "status",
         "body"
       ],
       "status": {
-        "product": 404,
+        "product": 500,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Failed to fetch schema: Supabase requires API URL and API Key",
+        "framework": "Failed to fetch schema: Invalid URL string."
+      }
+    },
+    {
+      "operationId": "test_datasource_update_datasources__datasource_id__test_update__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/test-update/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
         "framework": 200
       },
       "mediaType": {
@@ -10670,9 +10760,31 @@
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/",
-        "product": "{\"detail\":\"Datasource not found\"}",
-        "framework": "[]"
+        "pointer": "/error",
+        "product": "Supabase requires API URL and API Key",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "test_datasource_datasources__datasource_id__test__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/test/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/error",
+        "product": "Supabase requires API URL and API Key",
+        "framework": "Invalid URL string."
       }
     },
     {
@@ -10696,6 +10808,51 @@
         "pointer": "/",
         "product": "{\"detail\":\"Datasource not found\"}",
         "framework": "[]"
+      }
+    },
+    {
+      "operationId": "create_datasource_view_datasources__datasource_id__views__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/views/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/column_order",
+        "product": "[]",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "get_wordpress_discovery_datasources__datasource_id__wordpress_discover__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/wordpress/discover/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 400,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Datasource 'parity-108' is of type supabase, not wordpress_plugin.",
+        "framework": "Datasource 'parity-108' is not wordpress_plugin"
       }
     },
     {
@@ -10992,7 +11149,7 @@
       },
       "body": {
         "pointer": "/",
-        "product": "array(3)",
+        "product": "array(2)",
         "framework": "array(0)"
       }
     },
@@ -11082,9 +11239,9 @@
         "framework": "application/json"
       },
       "body": {
-        "pointer": "/detail",
-        "product": "array(2)",
-        "framework": "array(1)"
+        "pointer": "/detail/0/input",
+        "product": "[]",
+        "framework": "null"
       }
     },
     {

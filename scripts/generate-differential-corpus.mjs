@@ -42,6 +42,12 @@ function synth(schema, depth = 0) {
     }
     switch (s.type) {
         case 'string': {
+            // A declared alternation IS the enum, spelled differently. The product
+            // rejects `type: "parity"` against `^(variable|calculated)$`, and a
+            // generator that ignores `pattern` produces a body no system can accept —
+            // which then reads as a parity difference instead of a synthesis miss.
+            const alternation = /^\^\(([^)]+)\)\$$/.exec(s.pattern ?? '');
+            if (alternation) return alternation[1].split('|')[0];
             const value = s.format === 'date-time' ? '2026-01-01T00:00:00Z'
                 : s.format === 'email' ? 'parity@example.com'
                     : s.format === 'uuid' ? '11111111-1111-4111-8111-111111111111'
@@ -150,29 +156,56 @@ function fillParams(path, { absent }) {
 const cases = [];
 /** Operations with no input a validator can reject — recorded, never fabricated. */
 const nonFalsifiable = [];
-let seededPrefixes = new Set();
 
-// Seed cases first, in SEEDS order, so their variables exist for everything after.
+/**
+ * Give a seed body values nothing else will collide with.
+ *
+ * A re-seed reuses the same create, and the product enforces uniqueness on slug
+ * (`A page with this slug already exists`), so a fixed "parity" would succeed once
+ * and 400 forever after. `{{seq}}` is substituted by the runner with a counter that
+ * is allocated ONCE per seeding and used for both targets, so the two requests stay
+ * byte-identical while every seeding is distinct.
+ */
+function uniqueSeedBody(body) {
+    if (!body || typeof body !== 'object') return body;
+    const out = { ...body };
+    for (const [key, value] of Object.entries(out)) {
+        // Uniqueness is enforced on identity AND on endpoint URLs — the product answers
+        // "A cache with this URL already exists ('parity')" — so both have to vary.
+        if (typeof value !== 'string') continue;
+        if (!/^(name|slug|title)$/.test(key) && !/(^|_)url$/.test(key)) continue;
+        out[key] = `${value}-{{seq}}`;
+    }
+    return out;
+}
+
+/**
+ * Setup recipes, keyed by the variable they bind. These are NOT comparison cases —
+ * the runner replays one before every case that needs it, and discards the response.
+ *
+ * This is what makes a case independent of everything that ran before it. Previously
+ * one create ran up front and 112 cases shared the resource, so any destructive case
+ * in between removed it; the read that followed then diverged for reasons that had
+ * nothing to do with the read. Measured, not theorised: GET /api/edge-engines/{id}
+ * was product 200 / framework 404 in the full corpus and 200 on both in isolation.
+ */
+const seedRecipes = {};
 for (const seed of SEEDS) {
-    const item = spec.paths[seed.path];
-    const post = item?.post;
+    const post = spec.paths[seed.path]?.post;
     if (!post) continue;
-    cases.push({
+    seedRecipes[seed.variable] = {
         operationId: post.operationId,
-        kind: 'success',
         method: 'POST',
         path: seed.path,
         headers: { 'content-type': 'application/json' },
-        body: synth(post.requestBody?.content?.['application/json']?.schema),
+        body: uniqueSeedBody(synth(post.requestBody?.content?.['application/json']?.schema)),
         // Tried in order. The two systems do not agree on the create envelope — one
         // answers `{id}`, the other `{data:{id}}` — and a single pointer silently
         // fails to bind on whichever shape it does not match. The unbound variable
         // then travels into the path as the literal `{{engine_id}}`, and the 404 that
         // follows looks like a missing route instead of a harness miss.
-        capture: { [seed.variable]: ['/id', '/data/id'] },
-        note: `seeds {{${seed.variable}}} for ${seed.prefix}* cases`,
-    });
-    seededPrefixes.add(`${post.operationId}:success`);
+        capture: ['/id', '/data/id'],
+    };
 }
 
 for (const [path, item] of Object.entries(spec.paths)) {
@@ -183,16 +216,20 @@ for (const [path, item] of Object.entries(spec.paths)) {
         const body = jsonSchema ? synth(jsonSchema) : undefined;
         const headers = body === undefined ? undefined : { 'content-type': 'application/json' };
 
-        if (!seededPrefixes.has(`${op.operationId}:success`)) {
-            cases.push({
-                operationId: op.operationId,
-                kind: 'success',
-                method: method.toUpperCase(),
-                path: fillParams(path, { absent: false }),
-                ...(headers ? { headers } : {}),
-                ...(body === undefined ? {} : { body }),
-            });
-        }
+        const successPath = fillParams(path, { absent: false });
+        // Whatever this case interpolates, it gets freshly created first.
+        const requires = [...new Set(
+            [...successPath.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]),
+        )].filter((name) => name in seedRecipes);
+        cases.push({
+            operationId: op.operationId,
+            kind: 'success',
+            method: method.toUpperCase(),
+            path: successPath,
+            ...(headers ? { headers } : {}),
+            ...(body === undefined ? {} : { body }),
+            ...(requires.length ? { requires } : {}),
+        });
 
         // Failure: make THIS operation reject THIS request.
         //
@@ -273,6 +310,7 @@ const corpus = {
         { field: 'expires_at', reason: 'derived from generation time' },
         { field: 'contentHash', reason: 'derived from generated ids embedded in the payload' },
     ],
+    seeds: seedRecipes,
     nonFalsifiable,
     cases,
 };
@@ -289,3 +327,5 @@ for (const testCase of cases) {
 console.log(`corpus written: ${cases.length} cases across ${ops.size} operations → ${OUT}`);
 console.log(`  failure strategies: ${[...byStrategy].map(([k, v]) => `${k}=${v}`).join(', ')}`);
 console.log(`  non-falsifiable by input: ${nonFalsifiable.length} (recorded with a reason, not fabricated)`);
+console.log(`  seed recipes: ${Object.keys(seedRecipes).length}; cases re-seeded before they run: `
+    + `${cases.filter((testCase) => testCase.requires).length}`);

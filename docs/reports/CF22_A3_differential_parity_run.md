@@ -6,7 +6,11 @@
 
 ## Verdict
 
-**FAIL — 496 of 577 cases differ. 81 match.**
+**FAIL — 502 of 577 cases differ. 75 match. 306 of 334 operations diverge.**
+
+Numbers are from the run after the corpus was made order-independent (see
+*Ordering*, below). The pre-fix run reported 496/577; that figure mixed real
+differences with ordering artifacts in both directions and should not be quoted.
 
 This is the first time the product and the framework have been executed side by side
 and compared. Every prior CF-22 gate compared the framework to a *document*; this one
@@ -19,7 +23,7 @@ at the same commit:
 |---|---|
 | Contract conformance | 334/334 conformant |
 | Runtime behaviour ledger | 309 functional / 17 shape-only / 8 external-disabled |
-| **Differential parity** | **81/577 cases identical** |
+| **Differential parity** | **75/577 cases identical; 306/334 operations diverge** |
 
 Those are not in conflict — they measure different things. Conformance asks whether a
 response validates against the schema; the ledger asks whether a handler touched state.
@@ -40,7 +44,8 @@ node packages/backend/test/differential-parity.mjs \
 - **Product:** `uvicorn main:app` on :8001, `DEPLOYMENT_MODE=self-host`, FastAPI 0.139.0.
 - **Framework:** `wrangler dev --local` on :8788, the built cf-full worker (280.9 KB gzip).
 - **Corpus:** 577 cases across all 334 community operations — 334 success, 243 failure,
-  91 operations recorded as non-falsifiable by input.
+  91 operations recorded as non-falsifiable by input, 12 seed recipes replayed before
+  the 112 cases that depend on them.
 
 ### Establishing one identity
 
@@ -67,21 +72,21 @@ verified afterwards (60 tables, 21 populated). The framework's `.wrangler/state`
 cleared for the same reason: a differential between a populated system and an empty one
 measures the data, not the code.
 
-## Findings, by confidence
+## Findings
 
-Counts marked *order-independent* address a fixed path (no `{{variable}}`) and are
-unaffected by the ordering limitation described below.
+Every case now creates its own fixture immediately before it runs, so these counts do
+not depend on execution order.
 
-### 1. The framework fabricates success for resources that do not exist — 101 cases (84 order-independent)
+### 1. The framework fabricates success for resources that do not exist — 94 cases
 
 The largest and most serious class. Where the product reports a missing resource, the
 framework reports success:
 
 | | count |
 |---|---|
-| product `404` → framework `200` | 86 |
+| product `404` → framework `200` | 80 |
 | product `404` → framework `204` | 12 |
-| product `404` → framework `201` | 3 |
+| product `404` → framework `201` | 2 |
 
 Representative:
 
@@ -96,19 +101,22 @@ same defect class the behaviour ledger's starve-reads fix was built to catch, on
 up: the ledger asks whether a *read* was discarded, not whether an *existence check*
 was ever performed.
 
-### 2. The product's error envelope is missing — 130 occurrences (102 order-independent)
+### 2. The product's error envelope is missing — 135 occurrences
 
 `detail` is the single most frequently absent field in framework responses. FastAPI
 returns `{"detail": ...}` for every 4xx; the framework's error bodies do not carry it.
 Any console code branching on `detail` sees `undefined`.
 
-### 3. The framework accepts input the product rejects — 12 cases (all order-independent)
+### 3. The framework accepts input the product rejects — 27 cases
 
 Product `400`/`422` → framework `2xx`, including
 `POST /api/auth/signup`, `POST /api/agent/chat`, `POST /api/storage/create-folder`,
 `DELETE /api/storage/delete`. Request validation is absent or weaker on these paths.
 
-### 4. `/api/database/rls/*` returns 502 — 12 cases
+This count rose from 12 once the corpus stopped reusing one fixture: many of these are
+create/update paths that were previously never reached with a live parent.
+
+### 4. `/api/database/rls/*` and `/api/sync/datasources/*` return 502 — 14 cases
 
 Every RLS operation errors at the worker level where the product answers:
 
@@ -122,14 +130,14 @@ Note the tension with the B/C/E report, which records all 47 `/api/database/*` a
 `/api/storage/*` ledger operations as functional. Under a live worker these twelve are
 not.
 
-### 5. Body-shape differences — 297 cases where status and media type agree
+### 5. Body-shape differences — 296 cases where status and media type agree
 
 Field-level divergence on otherwise-successful responses: `hasUnpublishedChanges`,
 `content_hash`, `adapter_type`, `has_credentials`, `provider_config`, `api_url`,
-`allowedContactTypes`, `coreTools`. 187 fields present in the product are missing from
-the framework; 32 exist only in the framework.
+`allowedContactTypes`, `coreTools`. 190 fields present in the product are missing from
+the framework, 41 exist only in the framework, and 271 hold different values.
 
-### 6. Media-type divergence — 44 cases
+### 6. Media-type divergence — 45 cases
 
 Chiefly `application/json` vs `text/plain` on error paths, and
 `GET /` answering `text/html` where the product answers `application/json`.
@@ -160,40 +168,80 @@ An unbound variable is now reported as `unresolved-variable` rather than being r
 as a literal. Four cases surfaced immediately — all on the product side, where a create
 returned neither `/id` nor `/data/id`.
 
-## Known limitation — the corpus is not dependency-aware
+## Ordering — was a limitation, now fixed
 
-Cases run in contract order against shared state, so a destructive case can remove a
-seeded resource before a later read addresses it. When the two systems disagree about
-whether that delete succeeded, the read diverges for reasons that have nothing to do
-with the read.
-
-This was measured, not assumed. Re-running the seed and read in isolation:
+The first version of the corpus created each seeded resource once, up front, and 112
+cases shared it. Any destructive case in between removed it, and the read that followed
+diverged for reasons unrelated to the read. Measured, not assumed:
 
 ```
-GET /api/edge-engines/{{engine_id}}   full corpus: product 200 / framework 404
-                                      isolated:    product 200 / framework 200 (body differs only)
+GET /api/edge-engines/{{engine_id}}   shared fixture: product 200 / framework 404
+                                      isolated:       product 200 / framework 200
 ```
 
-**All 18 "framework 404 where product 200" cases are attributed to this and are NOT
-counted as framework defects.** Closing it requires per-resource isolation or a
-dependency-ordered corpus.
+**Fixed.** Seeds are now setup *recipes* (`corpus.seeds`) rather than cases. Every case
+that interpolates a variable declares `requires`, and the runner replays that recipe
+against each target immediately before the case runs, discarding the response. Each
+case is therefore independent of everything before it.
+
+Two supporting changes were needed to make re-seeding actually work:
+
+- **Unique fixtures.** The product enforces uniqueness on `slug` *and* on endpoint URLs
+  (`A cache with this URL already exists ('parity')`), so a fixed value succeeds once
+  and 400s forever after. Seed bodies carry `{{seq}}` in `name`/`slug`/`title`/`*_url`,
+  substituted with a counter allocated once per seeding and shared by both targets, so
+  the two requests stay byte-identical while each seeding is distinct.
+- **`pattern` is an enum.** `synth()` ignored `pattern`, so it sent `type: "parity"`
+  against `^(variable|calculated)$` and the product rejected every variable fixture. A
+  declared alternation now yields its first branch.
+
+Effect, same two targets, same commit:
+
+| | before | after |
+|---|---|---|
+| "framework 404 where product 200" | 18 | **4** (all genuine) |
+| seed failures | — | **4** |
+| unresolved variables | 13 | **4** |
+
+A seed that fails now *clears* its variable rather than leaving a stale one bound, and
+is reported separately — silently reusing a stale id is the exact failure the re-seed
+exists to remove, and it would otherwise be invisible.
+
+### The 4 remaining seed failures are a product-environment gap, not a corpus one
+
+All four are `form_id` against the product:
+
+```
+POST /api/auth-forms/  →  (sqlite3.OperationalError) no such table: auth_forms
+```
+
+On a freshly created database the product's `auth_forms` table is not provisioned —
+`create_all` and Alembic disagree about who owns it. Anyone re-running this should
+either apply the product's migrations to the fresh database first, or read the four
+`auth-forms` cases as unmeasured rather than as parity findings.
 
 ## What this means for CF-22
 
 The milestone cannot be called closed. The differential is the gate that answers the
-original question, and it is red by a wide margin — 496 differing cases, of which the
-101 fabricated-success and 12 validation-gap findings are correctness defects rather
-than cosmetic drift.
+original question, and it is red by a wide margin — 502 differing cases across 306 of
+334 operations, of which the 94 fabricated-success and 27 validation-gap findings are
+correctness defects rather than cosmetic drift.
+
+Note the scope this implies. The behaviour ledger flags 25 operations as less than
+functional; the differential finds 306 diverging, and **266 of them the ledger calls
+`functional`**. The ledger is not wrong — it answers a weaker question ("did a handler
+touch state") — but Work A2 sized against it understates the work by an order of
+magnitude.
 
 Recommended order of attack, by ratio of cases fixed to work required:
 
-1. **Error envelope** (~130 occurrences) — largely mechanical; one shared error helper.
-2. **Existence checks before success** (101) — a real correctness fix, and the one most
+1. **Error envelope** (135 occurrences) — largely mechanical; one shared error helper.
+2. **Existence checks before success** (94) — a real correctness fix, and the one most
    likely to be masking further differences behind a premature 200.
-3. **Request validation** (12) — the schemas already exist in the vendored contract.
-4. **`/api/database/rls/*` 502s** (12) — a live-worker failure the in-process gates miss.
-5. **Body shape** (297) — the long tail; needs field-by-field reconciliation.
-6. **Corpus ordering** — do this before trusting any re-run's stateful cases.
+3. **Request validation** (27) — the schemas already exist in the vendored contract.
+4. **502s** (14, `/api/database/rls/*` and `/api/sync/datasources/*`) — a live-worker
+   failure the in-process gates miss.
+5. **Body shape** (296) — the long tail; needs field-by-field reconciliation.
 
 ## Reproducing
 

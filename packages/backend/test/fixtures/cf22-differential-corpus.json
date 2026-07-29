@@ -39,6 +39,204 @@
       "reason": "derived from generated ids embedded in the payload"
     }
   ],
+  "seeds": {
+    "page_id": {
+      "operationId": "pages_create_page_endpoint",
+      "method": "POST",
+      "path": "/api/pages/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "slug": "parity-{{seq}}"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "draft_id": {
+      "operationId": "actions_create_draft",
+      "method": "POST",
+      "path": "/api/actions/drafts",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "variable_id": {
+      "operationId": "variables_create_variable_endpoint",
+      "method": "POST",
+      "path": "/api/variables/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "type": "variable"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "theme_id": {
+      "operationId": "themes_create_theme",
+      "method": "POST",
+      "path": "/api/themes/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "component_type": "parity",
+        "styles_data": {}
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "form_id": {
+      "operationId": "auth_forms_create_auth_form",
+      "method": "POST",
+      "path": "/api/auth-forms/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "type": "parity"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "engine_id": {
+      "operationId": "edge_engines_create_engine",
+      "method": "POST",
+      "path": "/api/edge-engines/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "url": "parity-{{seq}}"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "provider_id": {
+      "operationId": "edge_providers_create_provider",
+      "method": "POST",
+      "path": "/api/edge-providers/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "provider": "parity"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "db_id": {
+      "operationId": "edge_databases_create_edge_database",
+      "method": "POST",
+      "path": "/api/edge-databases/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "provider": "parity",
+        "db_url": "parity-{{seq}}"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "cache_id": {
+      "operationId": "edge_caches_create_edge_cache",
+      "method": "POST",
+      "path": "/api/edge-caches/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "provider": "parity",
+        "cache_url": "parity-{{seq}}"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "queue_id": {
+      "operationId": "edge_queues_create_edge_queue",
+      "method": "POST",
+      "path": "/api/edge-queues/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "provider": "parity",
+        "queue_url": "parity-{{seq}}"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "vector_id": {
+      "operationId": "edge_vectors_create_edge_vector",
+      "method": "POST",
+      "path": "/api/edge-vectors/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "provider": "parity",
+        "vector_url": "parity-{{seq}}"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    },
+    "datasource_id": {
+      "operationId": "create_datasource_datasources__post",
+      "method": "POST",
+      "path": "/api/sync/datasources/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity-{{seq}}",
+        "type": "supabase"
+      },
+      "capture": [
+        "/id",
+        "/data/id"
+      ]
+    }
+  },
   "nonFalsifiable": [
     {
       "operationId": "meta_root",
@@ -589,24 +787,16 @@
   ],
   "cases": [
     {
-      "operationId": "pages_create_page_endpoint",
+      "operationId": "meta_root",
       "kind": "success",
-      "method": "POST",
-      "path": "/api/pages/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "slug": "parity"
-      },
-      "capture": {
-        "page_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{page_id}} for /api/pages/* cases"
+      "method": "GET",
+      "path": "/"
+    },
+    {
+      "operationId": "actions_list_drafts",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/drafts"
     },
     {
       "operationId": "actions_create_draft",
@@ -618,231 +808,7 @@
       },
       "body": {
         "name": "parity"
-      },
-      "capture": {
-        "draft_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{draft_id}} for /api/actions/drafts* cases"
-    },
-    {
-      "operationId": "variables_create_variable_endpoint",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/variables/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "type": "parity"
-      },
-      "capture": {
-        "variable_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{variable_id}} for /api/variables/* cases"
-    },
-    {
-      "operationId": "themes_create_theme",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/themes/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "component_type": "parity",
-        "styles_data": {}
-      },
-      "capture": {
-        "theme_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{theme_id}} for /api/themes/* cases"
-    },
-    {
-      "operationId": "auth_forms_create_auth_form",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/auth-forms/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "type": "parity"
-      },
-      "capture": {
-        "form_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{form_id}} for /api/auth-forms/* cases"
-    },
-    {
-      "operationId": "edge_engines_create_engine",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-engines/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "url": "parity"
-      },
-      "capture": {
-        "engine_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{engine_id}} for /api/edge-engines/* cases"
-    },
-    {
-      "operationId": "edge_providers_create_provider",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-providers/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "provider": "parity"
-      },
-      "capture": {
-        "provider_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{provider_id}} for /api/edge-providers/* cases"
-    },
-    {
-      "operationId": "edge_databases_create_edge_database",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-databases/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "provider": "parity",
-        "db_url": "parity"
-      },
-      "capture": {
-        "db_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{db_id}} for /api/edge-databases/* cases"
-    },
-    {
-      "operationId": "edge_caches_create_edge_cache",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-caches/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "provider": "parity",
-        "cache_url": "parity"
-      },
-      "capture": {
-        "cache_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{cache_id}} for /api/edge-caches/* cases"
-    },
-    {
-      "operationId": "edge_queues_create_edge_queue",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-queues/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "provider": "parity",
-        "queue_url": "parity"
-      },
-      "capture": {
-        "queue_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{queue_id}} for /api/edge-queues/* cases"
-    },
-    {
-      "operationId": "edge_vectors_create_edge_vector",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/edge-vectors/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "provider": "parity",
-        "vector_url": "parity"
-      },
-      "capture": {
-        "vector_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{vector_id}} for /api/edge-vectors/* cases"
-    },
-    {
-      "operationId": "create_datasource_datasources__post",
-      "kind": "success",
-      "method": "POST",
-      "path": "/api/sync/datasources/",
-      "headers": {
-        "content-type": "application/json"
-      },
-      "body": {
-        "name": "parity",
-        "type": "supabase"
-      },
-      "capture": {
-        "datasource_id": [
-          "/id",
-          "/data/id"
-        ]
-      },
-      "note": "seeds {{datasource_id}} for /api/sync/datasources/* cases"
-    },
-    {
-      "operationId": "meta_root",
-      "kind": "success",
-      "method": "GET",
-      "path": "/"
-    },
-    {
-      "operationId": "actions_list_drafts",
-      "kind": "success",
-      "method": "GET",
-      "path": "/api/actions/drafts"
+      }
     },
     {
       "operationId": "actions_create_draft",
@@ -888,7 +854,10 @@
       "operationId": "actions_get_draft",
       "kind": "success",
       "method": "GET",
-      "path": "/api/actions/drafts/{{draft_id}}"
+      "path": "/api/actions/drafts/{{draft_id}}",
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_get_draft",
@@ -905,7 +874,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_update_draft",
@@ -922,7 +894,10 @@
       "operationId": "actions_delete_draft",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/actions/drafts/{{draft_id}}"
+      "path": "/api/actions/drafts/{{draft_id}}",
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_delete_draft",
@@ -941,7 +916,10 @@
       },
       "body": {
         "is_active": false
-      }
+      },
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_toggle_draft_active",
@@ -960,7 +938,10 @@
       "operationId": "actions_publish_draft",
       "kind": "success",
       "method": "POST",
-      "path": "/api/actions/drafts/{{draft_id}}/publish"
+      "path": "/api/actions/drafts/{{draft_id}}/publish",
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_publish_draft",
@@ -979,7 +960,10 @@
       },
       "body": {
         "engine_ids": []
-      }
+      },
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_publish_draft_batch",
@@ -998,7 +982,10 @@
       "operationId": "actions_publish_draft_to_engine",
       "kind": "success",
       "method": "POST",
-      "path": "/api/actions/drafts/{{draft_id}}/publish/00000000-0000-4000-8000-000000000000/"
+      "path": "/api/actions/drafts/{{draft_id}}/publish/00000000-0000-4000-8000-000000000000/",
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_publish_draft_to_engine",
@@ -1017,7 +1004,10 @@
       },
       "body": {
         "is_active": false
-      }
+      },
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_toggle_target_active",
@@ -1042,7 +1032,10 @@
       },
       "body": {
         "version_id": "parity"
-      }
+      },
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_rollback_automation_to_version",
@@ -1065,7 +1058,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_test_draft",
@@ -1086,7 +1082,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_test_node",
@@ -1103,7 +1102,10 @@
       "operationId": "actions_list_automation_versions",
       "kind": "success",
       "method": "GET",
-      "path": "/api/actions/drafts/{{draft_id}}/versions/"
+      "path": "/api/actions/drafts/{{draft_id}}/versions/",
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_list_automation_versions",
@@ -1120,7 +1122,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_create_manual_automation_version",
@@ -1137,7 +1142,10 @@
       "operationId": "actions_get_automation_version_detail",
       "kind": "success",
       "method": "GET",
-      "path": "/api/actions/drafts/{{draft_id}}/versions/00000000-0000-4000-8000-000000000000/"
+      "path": "/api/actions/drafts/{{draft_id}}/versions/00000000-0000-4000-8000-000000000000/",
+      "requires": [
+        "draft_id"
+      ]
     },
     {
       "operationId": "actions_get_automation_version_detail",
@@ -1476,6 +1484,19 @@
     },
     {
       "operationId": "auth_forms_create_auth_form",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth-forms/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "type": "parity"
+      }
+    },
+    {
+      "operationId": "auth_forms_create_auth_form",
       "kind": "failure",
       "strategy": "invalid-body",
       "method": "POST",
@@ -1499,7 +1520,10 @@
       "operationId": "auth_forms_get_auth_form",
       "kind": "success",
       "method": "GET",
-      "path": "/api/auth-forms/{{form_id}}/"
+      "path": "/api/auth-forms/{{form_id}}/",
+      "requires": [
+        "form_id"
+      ]
     },
     {
       "operationId": "auth_forms_get_auth_form",
@@ -1516,7 +1540,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "form_id"
+      ]
     },
     {
       "operationId": "auth_forms_update_auth_form",
@@ -1533,7 +1560,10 @@
       "operationId": "auth_forms_delete_auth_form",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/auth-forms/{{form_id}}/"
+      "path": "/api/auth-forms/{{form_id}}/",
+      "requires": [
+        "form_id"
+      ]
     },
     {
       "operationId": "auth_forms_delete_auth_form",
@@ -1546,7 +1576,10 @@
       "operationId": "auth_forms_set_primary_auth_form",
       "kind": "success",
       "method": "PUT",
-      "path": "/api/auth-forms/{{form_id}}/set-primary/"
+      "path": "/api/auth-forms/{{form_id}}/set-primary/",
+      "requires": [
+        "form_id"
+      ]
     },
     {
       "operationId": "auth_forms_set_primary_auth_form",
@@ -2577,6 +2610,20 @@
     },
     {
       "operationId": "edge_caches_create_edge_cache",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-caches/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "cache_url": "parity"
+      }
+    },
+    {
+      "operationId": "edge_caches_create_edge_cache",
       "kind": "failure",
       "strategy": "invalid-body",
       "method": "POST",
@@ -2655,7 +2702,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "cache_id"
+      ]
     },
     {
       "operationId": "edge_caches_update_edge_cache",
@@ -2672,7 +2722,10 @@
       "operationId": "edge_caches_delete_edge_cache",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/edge-caches/{{cache_id}}"
+      "path": "/api/edge-caches/{{cache_id}}",
+      "requires": [
+        "cache_id"
+      ]
     },
     {
       "operationId": "edge_caches_delete_edge_cache",
@@ -2685,7 +2738,10 @@
       "operationId": "edge_caches_test_edge_cache",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-caches/{{cache_id}}/test"
+      "path": "/api/edge-caches/{{cache_id}}/test",
+      "requires": [
+        "cache_id"
+      ]
     },
     {
       "operationId": "edge_caches_test_edge_cache",
@@ -2699,6 +2755,20 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/edge-databases/"
+    },
+    {
+      "operationId": "edge_databases_create_edge_database",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-databases/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "db_url": "parity"
+      }
     },
     {
       "operationId": "edge_databases_create_edge_database",
@@ -2864,7 +2934,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "db_id"
+      ]
     },
     {
       "operationId": "edge_databases_update_edge_database",
@@ -2881,7 +2954,10 @@
       "operationId": "edge_databases_delete_edge_database",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/edge-databases/{{db_id}}"
+      "path": "/api/edge-databases/{{db_id}}",
+      "requires": [
+        "db_id"
+      ]
     },
     {
       "operationId": "edge_databases_delete_edge_database",
@@ -2894,7 +2970,10 @@
       "operationId": "edge_databases_test_edge_database",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-databases/{{db_id}}/test"
+      "path": "/api/edge-databases/{{db_id}}/test",
+      "requires": [
+        "db_id"
+      ]
     },
     {
       "operationId": "edge_databases_test_edge_database",
@@ -2908,6 +2987,19 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/edge-engines/"
+    },
+    {
+      "operationId": "edge_engines_create_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "url": "parity"
+      }
     },
     {
       "operationId": "edge_engines_create_engine",
@@ -3145,7 +3237,10 @@
       "operationId": "edge_engines_get_engine",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}"
+      "path": "/api/edge-engines/{{engine_id}}",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_get_engine",
@@ -3162,7 +3257,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_update_engine",
@@ -3179,7 +3277,10 @@
       "operationId": "edge_engines_delete_engine",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/edge-engines/{{engine_id}}"
+      "path": "/api/edge-engines/{{engine_id}}",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_delete_engine",
@@ -3192,7 +3293,10 @@
       "operationId": "edge_agent_profiles_list_profiles",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/agent-profiles"
+      "path": "/api/edge-engines/{{engine_id}}/agent-profiles",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_agent_profiles_list_profiles",
@@ -3212,7 +3316,10 @@
       "body": {
         "name": "parity",
         "slug": "parity"
-      }
+      },
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_agent_profiles_create_profile",
@@ -3236,7 +3343,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_agent_profiles_update_profile",
@@ -3253,7 +3363,10 @@
       "operationId": "edge_agent_profiles_delete_profile",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/edge-engines/{{engine_id}}/agent-profiles/00000000-0000-4000-8000-000000000000"
+      "path": "/api/edge-engines/{{engine_id}}/agent-profiles/00000000-0000-4000-8000-000000000000",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_agent_profiles_delete_profile",
@@ -3266,7 +3379,10 @@
       "operationId": "edge_engines_tenant_secrets_audit_logs",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/audit/tenant-secrets"
+      "path": "/api/edge-engines/{{engine_id}}/audit/tenant-secrets",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_tenant_secrets_audit_logs",
@@ -3279,7 +3395,10 @@
       "operationId": "edge_engines_cancel_move",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-engines/{{engine_id}}/cancel-move"
+      "path": "/api/edge-engines/{{engine_id}}/cancel-move",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_cancel_move",
@@ -3298,7 +3417,10 @@
       },
       "body": {
         "passphrase": "parityxx"
-      }
+      },
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_export_engine",
@@ -3323,7 +3445,10 @@
       },
       "body": {
         "confirm_secret": "parity"
-      }
+      },
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_finalize_move",
@@ -3342,7 +3467,10 @@
       "operationId": "engine_inspector_health_check",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/health-check"
+      "path": "/api/edge-engines/{{engine_id}}/health-check",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "engine_inspector_health_check",
@@ -3355,7 +3483,10 @@
       "operationId": "engine_inspector_inspect_engine_domains",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/inspect/domains"
+      "path": "/api/edge-engines/{{engine_id}}/inspect/domains",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "engine_inspector_inspect_engine_domains",
@@ -3374,7 +3505,10 @@
       },
       "body": {
         "domain": "parity"
-      }
+      },
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "engine_inspector_add_engine_domain",
@@ -3393,7 +3527,10 @@
       "operationId": "engine_inspector_delete_engine_domain",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/edge-engines/{{engine_id}}/inspect/domains/00000000-0000-4000-8000-000000000000"
+      "path": "/api/edge-engines/{{engine_id}}/inspect/domains/00000000-0000-4000-8000-000000000000",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "engine_inspector_delete_engine_domain",
@@ -3406,7 +3543,10 @@
       "operationId": "engine_inspector_verify_engine_domain",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-engines/{{engine_id}}/inspect/domains/00000000-0000-4000-8000-000000000000/verify"
+      "path": "/api/edge-engines/{{engine_id}}/inspect/domains/00000000-0000-4000-8000-000000000000/verify",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "engine_inspector_verify_engine_domain",
@@ -3419,7 +3559,10 @@
       "operationId": "engine_inspector_inspect_engine_secrets",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/inspect/secrets"
+      "path": "/api/edge-engines/{{engine_id}}/inspect/secrets",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "engine_inspector_inspect_engine_secrets",
@@ -3432,7 +3575,10 @@
       "operationId": "engine_inspector_inspect_engine_settings",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/inspect/settings"
+      "path": "/api/edge-engines/{{engine_id}}/inspect/settings",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "engine_inspector_inspect_engine_settings",
@@ -3445,7 +3591,10 @@
       "operationId": "engine_inspector_inspect_engine_source",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/inspect/source"
+      "path": "/api/edge-engines/{{engine_id}}/inspect/source",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "engine_inspector_inspect_engine_source",
@@ -3458,7 +3607,10 @@
       "operationId": "edge_engines_get_engine_logs",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/logs"
+      "path": "/api/edge-engines/{{engine_id}}/logs",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_get_engine_logs",
@@ -3475,7 +3627,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_update_log_config",
@@ -3492,7 +3647,10 @@
       "operationId": "edge_engines_get_log_retention",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/logs/retention"
+      "path": "/api/edge-engines/{{engine_id}}/logs/retention",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_get_log_retention",
@@ -3505,7 +3663,10 @@
       "operationId": "edge_engines_sync_engine_logs",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-engines/{{engine_id}}/logs/sync"
+      "path": "/api/edge-engines/{{engine_id}}/logs/sync",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_sync_engine_logs",
@@ -3524,7 +3685,10 @@
       },
       "body": {
         "target_project_id": "parity"
-      }
+      },
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_move_engine_to_project_endpoint",
@@ -3547,7 +3711,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_reconfigure_engine",
@@ -3564,7 +3731,10 @@
       "operationId": "edge_engines_redeploy_engine",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-engines/{{engine_id}}/redeploy"
+      "path": "/api/edge-engines/{{engine_id}}/redeploy",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_redeploy_engine",
@@ -3583,7 +3753,10 @@
       },
       "body": {
         "rotation_id": "parity"
-      }
+      },
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_rollback_rotation",
@@ -3606,7 +3779,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_rotate_secrets_key",
@@ -3623,7 +3799,10 @@
       "operationId": "edge_engines_rotation_history",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/rotation-history"
+      "path": "/api/edge-engines/{{engine_id}}/rotation-history",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_rotation_history",
@@ -3636,7 +3815,10 @@
       "operationId": "edge_engines_rotation_status",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/rotation-status"
+      "path": "/api/edge-engines/{{engine_id}}/rotation-status",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_rotation_status",
@@ -3649,7 +3831,10 @@
       "operationId": "edge_engines_get_engine_source",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-engines/{{engine_id}}/source"
+      "path": "/api/edge-engines/{{engine_id}}/source",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_get_engine_source",
@@ -3666,7 +3851,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_update_engine_source",
@@ -3683,7 +3871,10 @@
       "operationId": "edge_engines_sync_manifest",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-engines/{{engine_id}}/sync-manifest"
+      "path": "/api/edge-engines/{{engine_id}}/sync-manifest",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_sync_manifest",
@@ -3696,7 +3887,10 @@
       "operationId": "edge_engines_test_engine_connection",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-engines/{{engine_id}}/test"
+      "path": "/api/edge-engines/{{engine_id}}/test",
+      "requires": [
+        "engine_id"
+      ]
     },
     {
       "operationId": "edge_engines_test_engine_connection",
@@ -3812,6 +4006,19 @@
     },
     {
       "operationId": "edge_providers_create_provider",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-providers/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity"
+      }
+    },
+    {
+      "operationId": "edge_providers_create_provider",
       "kind": "failure",
       "strategy": "invalid-body",
       "method": "POST",
@@ -3910,7 +4117,10 @@
       "operationId": "edge_providers_retest_provider",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-providers/retest/{{provider_id}}"
+      "path": "/api/edge-providers/retest/{{provider_id}}",
+      "requires": [
+        "provider_id"
+      ]
     },
     {
       "operationId": "edge_providers_retest_provider",
@@ -4051,7 +4261,10 @@
       "operationId": "edge_providers_get_provider",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-providers/{{provider_id}}"
+      "path": "/api/edge-providers/{{provider_id}}",
+      "requires": [
+        "provider_id"
+      ]
     },
     {
       "operationId": "edge_providers_get_provider",
@@ -4068,7 +4281,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "provider_id"
+      ]
     },
     {
       "operationId": "edge_providers_update_provider",
@@ -4085,7 +4301,10 @@
       "operationId": "edge_providers_delete_provider",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/edge-providers/{{provider_id}}"
+      "path": "/api/edge-providers/{{provider_id}}",
+      "requires": [
+        "provider_id"
+      ]
     },
     {
       "operationId": "edge_providers_delete_provider",
@@ -4098,7 +4317,10 @@
       "operationId": "edge_providers_get_credentials",
       "kind": "success",
       "method": "GET",
-      "path": "/api/edge-providers/{{provider_id}}/credentials"
+      "path": "/api/edge-providers/{{provider_id}}/credentials",
+      "requires": [
+        "provider_id"
+      ]
     },
     {
       "operationId": "edge_providers_get_credentials",
@@ -4112,6 +4334,20 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/edge-queues/"
+    },
+    {
+      "operationId": "edge_queues_create_edge_queue",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-queues/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "queue_url": "parity"
+      }
     },
     {
       "operationId": "edge_queues_create_edge_queue",
@@ -4191,7 +4427,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "queue_id"
+      ]
     },
     {
       "operationId": "edge_queues_update_edge_queue",
@@ -4208,7 +4447,10 @@
       "operationId": "edge_queues_delete_edge_queue",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/edge-queues/{{queue_id}}"
+      "path": "/api/edge-queues/{{queue_id}}",
+      "requires": [
+        "queue_id"
+      ]
     },
     {
       "operationId": "edge_queues_delete_edge_queue",
@@ -4221,7 +4463,10 @@
       "operationId": "edge_queues_test_edge_queue",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-queues/{{queue_id}}/test/"
+      "path": "/api/edge-queues/{{queue_id}}/test/",
+      "requires": [
+        "queue_id"
+      ]
     },
     {
       "operationId": "edge_queues_test_edge_queue",
@@ -4235,6 +4480,20 @@
       "kind": "success",
       "method": "GET",
       "path": "/api/edge-vectors/"
+    },
+    {
+      "operationId": "edge_vectors_create_edge_vector",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-vectors/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "provider": "parity",
+        "vector_url": "parity"
+      }
     },
     {
       "operationId": "edge_vectors_create_edge_vector",
@@ -4314,7 +4573,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "vector_id"
+      ]
     },
     {
       "operationId": "edge_vectors_update_edge_vector",
@@ -4331,7 +4593,10 @@
       "operationId": "edge_vectors_delete_edge_vector",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/edge-vectors/{{vector_id}}"
+      "path": "/api/edge-vectors/{{vector_id}}",
+      "requires": [
+        "vector_id"
+      ]
     },
     {
       "operationId": "edge_vectors_delete_edge_vector",
@@ -4344,7 +4609,10 @@
       "operationId": "edge_vectors_test_edge_vector_connection",
       "kind": "success",
       "method": "POST",
-      "path": "/api/edge-vectors/{{vector_id}}/test"
+      "path": "/api/edge-vectors/{{vector_id}}/test",
+      "requires": [
+        "vector_id"
+      ]
     },
     {
       "operationId": "edge_vectors_test_edge_vector_connection",
@@ -4470,6 +4738,19 @@
     },
     {
       "operationId": "pages_create_page_endpoint",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/pages/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "slug": "parity"
+      }
+    },
+    {
+      "operationId": "pages_create_page_endpoint",
       "kind": "failure",
       "strategy": "invalid-body",
       "method": "POST",
@@ -4506,7 +4787,10 @@
       "operationId": "pages_get_page",
       "kind": "success",
       "method": "GET",
-      "path": "/api/pages/{{page_id}}/"
+      "path": "/api/pages/{{page_id}}/",
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_get_page",
@@ -4523,7 +4807,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_update_page_endpoint",
@@ -4540,7 +4827,10 @@
       "operationId": "pages_delete_page",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/pages/{{page_id}}/"
+      "path": "/api/pages/{{page_id}}/",
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_delete_page",
@@ -4557,7 +4847,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_update_page_layout",
@@ -4574,7 +4867,10 @@
       "operationId": "pages_permanent_delete_page",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/pages/{{page_id}}/permanent/"
+      "path": "/api/pages/{{page_id}}/permanent/",
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_permanent_delete_page",
@@ -4593,7 +4889,10 @@
       },
       "body": {
         "engine_ids": []
-      }
+      },
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_publish_to_targets_batch",
@@ -4612,7 +4911,10 @@
       "operationId": "pages_publish_to_target",
       "kind": "success",
       "method": "POST",
-      "path": "/api/pages/{{page_id}}/publish/00000000-0000-4000-8000-000000000000/"
+      "path": "/api/pages/{{page_id}}/publish/00000000-0000-4000-8000-000000000000/",
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_publish_to_target",
@@ -4625,7 +4927,10 @@
       "operationId": "pages_restore_page",
       "kind": "success",
       "method": "POST",
-      "path": "/api/pages/{{page_id}}/restore/"
+      "path": "/api/pages/{{page_id}}/restore/",
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_restore_page",
@@ -4644,7 +4949,10 @@
       },
       "body": {
         "version_id": "parity"
-      }
+      },
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_rollback_to_version",
@@ -4663,7 +4971,10 @@
       "operationId": "pages_unpublish_page_from_target",
       "kind": "success",
       "method": "POST",
-      "path": "/api/pages/{{page_id}}/unpublish/00000000-0000-4000-8000-000000000000/"
+      "path": "/api/pages/{{page_id}}/unpublish/00000000-0000-4000-8000-000000000000/",
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_unpublish_page_from_target",
@@ -4676,7 +4987,10 @@
       "operationId": "pages_list_versions",
       "kind": "success",
       "method": "GET",
-      "path": "/api/pages/{{page_id}}/versions/"
+      "path": "/api/pages/{{page_id}}/versions/",
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_list_versions",
@@ -4693,7 +5007,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_create_manual_version",
@@ -4710,7 +5027,10 @@
       "operationId": "pages_get_version_detail",
       "kind": "success",
       "method": "GET",
-      "path": "/api/pages/{{page_id}}/versions/00000000-0000-4000-8000-000000000000/"
+      "path": "/api/pages/{{page_id}}/versions/00000000-0000-4000-8000-000000000000/",
+      "requires": [
+        "page_id"
+      ]
     },
     {
       "operationId": "pages_get_version_detail",
@@ -5153,6 +5473,19 @@
     },
     {
       "operationId": "create_datasource_datasources__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "type": "supabase"
+      }
+    },
+    {
+      "operationId": "create_datasource_datasources__post",
       "kind": "failure",
       "strategy": "invalid-body",
       "method": "POST",
@@ -5250,7 +5583,10 @@
       "operationId": "get_datasource_datasources__datasource_id___get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/"
+      "path": "/api/sync/datasources/{{datasource_id}}/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "get_datasource_datasources__datasource_id___get",
@@ -5267,7 +5603,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "update_datasource_datasources__datasource_id___put",
@@ -5284,7 +5623,10 @@
       "operationId": "delete_datasource_datasources__datasource_id___delete",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/sync/datasources/{{datasource_id}}/"
+      "path": "/api/sync/datasources/{{datasource_id}}/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "delete_datasource_datasources__datasource_id___delete",
@@ -5297,7 +5639,10 @@
       "operationId": "apply_datasource_migration_datasources__datasource_id__apply_migration_post",
       "kind": "success",
       "method": "POST",
-      "path": "/api/sync/datasources/{{datasource_id}}/apply-migration"
+      "path": "/api/sync/datasources/{{datasource_id}}/apply-migration",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "apply_datasource_migration_datasources__datasource_id__apply_migration_post",
@@ -5310,7 +5655,10 @@
       "operationId": "check_datasource_migration_datasources__datasource_id__check_migration_get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/check-migration"
+      "path": "/api/sync/datasources/{{datasource_id}}/check-migration",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "check_datasource_migration_datasources__datasource_id__check_migration_get",
@@ -5323,7 +5671,10 @@
       "operationId": "get_datasource_relationships_datasources__datasource_id__relationships__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/relationships/"
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "get_datasource_relationships_datasources__datasource_id__relationships__get",
@@ -5345,7 +5696,10 @@
         "from_column": "parity",
         "to_table": "parity",
         "to_column": "parity"
-      }
+      },
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "create_user_relationship_datasources__datasource_id__relationships__post",
@@ -5367,7 +5721,10 @@
       "operationId": "list_user_relationships_datasources__datasource_id__relationships_user_defined__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/relationships/user-defined/"
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/user-defined/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "list_user_relationships_datasources__datasource_id__relationships_user_defined__get",
@@ -5389,7 +5746,10 @@
         "from_column": "parity",
         "to_table": "parity",
         "to_column": "parity"
-      }
+      },
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "update_relationship_datasources__datasource_id__relationships__index___put",
@@ -5411,7 +5771,10 @@
       "operationId": "remove_relationship_datasources__datasource_id__relationships__index___delete",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/sync/datasources/{{datasource_id}}/relationships/00000000-0000-4000-8000-000000000000/"
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/00000000-0000-4000-8000-000000000000/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "remove_relationship_datasources__datasource_id__relationships__index___delete",
@@ -5424,7 +5787,10 @@
       "operationId": "search_datasource_tables_datasources__datasource_id__search_get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/search"
+      "path": "/api/sync/datasources/{{datasource_id}}/search",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "search_datasource_tables_datasources__datasource_id__search_get",
@@ -5437,7 +5803,10 @@
       "operationId": "get_datasource_tables_datasources__datasource_id__tables__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/tables/"
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "get_datasource_tables_datasources__datasource_id__tables__get",
@@ -5450,7 +5819,10 @@
       "operationId": "get_table_session_datasources__datasource_id__tables__table_name__session__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/"
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "get_table_session_datasources__datasource_id__tables__table_name__session__get",
@@ -5467,7 +5839,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "save_table_session_datasources__datasource_id__tables__table_name__session__post",
@@ -5484,7 +5859,10 @@
       "operationId": "clear_table_session_datasources__datasource_id__tables__table_name__session__delete",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/"
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "clear_table_session_datasources__datasource_id__tables__table_name__session__delete",
@@ -5497,7 +5875,10 @@
       "operationId": "get_datasource_table_aggregate_datasources__datasource_id__tables__table__aggregate__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/aggregate/"
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/aggregate/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "get_datasource_table_aggregate_datasources__datasource_id__tables__table__aggregate__get",
@@ -5510,7 +5891,10 @@
       "operationId": "get_datasource_table_data_datasources__datasource_id__tables__table__data__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/data/"
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/data/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "get_datasource_table_data_datasources__datasource_id__tables__table__data__get",
@@ -5523,7 +5907,10 @@
       "operationId": "get_distinct_values_datasources__datasource_id__tables__table__distinct__column___get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/distinct/parity_table/"
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/distinct/parity_table/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "get_distinct_values_datasources__datasource_id__tables__table__distinct__column___get",
@@ -5540,7 +5927,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "create_record_datasources__datasource_id__tables__table__records__post",
@@ -5561,7 +5951,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "update_record_datasources__datasource_id__tables__table__records__record_id__patch",
@@ -5578,7 +5971,10 @@
       "operationId": "get_table_schema_datasources__datasource_id__tables__table__schema__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/schema/"
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/schema/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "get_table_schema_datasources__datasource_id__tables__table__schema__get",
@@ -5595,7 +5991,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "test_datasource_update_datasources__datasource_id__test_update__post",
@@ -5612,7 +6011,10 @@
       "operationId": "test_datasource_datasources__datasource_id__test__post",
       "kind": "success",
       "method": "POST",
-      "path": "/api/sync/datasources/{{datasource_id}}/test/"
+      "path": "/api/sync/datasources/{{datasource_id}}/test/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "test_datasource_datasources__datasource_id__test__post",
@@ -5625,7 +6027,10 @@
       "operationId": "list_datasource_views_datasources__datasource_id__views__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/views/"
+      "path": "/api/sync/datasources/{{datasource_id}}/views/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "list_datasource_views_datasources__datasource_id__views__get",
@@ -5645,7 +6050,10 @@
       "body": {
         "name": "parity",
         "target_table": "parity"
-      }
+      },
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "create_datasource_view_datasources__datasource_id__views__post",
@@ -5665,7 +6073,10 @@
       "operationId": "get_wordpress_discovery_datasources__datasource_id__wordpress_discover__get",
       "kind": "success",
       "method": "GET",
-      "path": "/api/sync/datasources/{{datasource_id}}/wordpress/discover/"
+      "path": "/api/sync/datasources/{{datasource_id}}/wordpress/discover/",
+      "requires": [
+        "datasource_id"
+      ]
     },
     {
       "operationId": "get_wordpress_discovery_datasources__datasource_id__wordpress_discover__get",
@@ -5902,6 +6313,20 @@
     },
     {
       "operationId": "themes_create_theme",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/themes/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "component_type": "parity",
+        "styles_data": {}
+      }
+    },
+    {
+      "operationId": "themes_create_theme",
       "kind": "failure",
       "strategy": "invalid-body",
       "method": "POST",
@@ -5920,7 +6345,10 @@
       "operationId": "themes_delete_theme",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/themes/{{theme_id}}"
+      "path": "/api/themes/{{theme_id}}",
+      "requires": [
+        "theme_id"
+      ]
     },
     {
       "operationId": "themes_delete_theme",
@@ -5937,6 +6365,19 @@
     },
     {
       "operationId": "variables_create_variable_endpoint",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/variables/",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": {
+        "name": "parity",
+        "type": "variable"
+      }
+    },
+    {
+      "operationId": "variables_create_variable_endpoint",
       "kind": "failure",
       "strategy": "invalid-body",
       "method": "POST",
@@ -5946,7 +6387,7 @@
       },
       "body": {
         "name": [],
-        "type": "parity"
+        "type": "variable"
       },
       "note": "required \"name\" sent with the wrong declared type"
     },
@@ -5960,7 +6401,10 @@
       "operationId": "variables_get_variable",
       "kind": "success",
       "method": "GET",
-      "path": "/api/variables/{{variable_id}}"
+      "path": "/api/variables/{{variable_id}}",
+      "requires": [
+        "variable_id"
+      ]
     },
     {
       "operationId": "variables_get_variable",
@@ -5977,7 +6421,10 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": {}
+      "body": {},
+      "requires": [
+        "variable_id"
+      ]
     },
     {
       "operationId": "variables_update_variable_endpoint",
@@ -5994,7 +6441,10 @@
       "operationId": "variables_delete_variable",
       "kind": "success",
       "method": "DELETE",
-      "path": "/api/variables/{{variable_id}}/"
+      "path": "/api/variables/{{variable_id}}/",
+      "requires": [
+        "variable_id"
+      ]
     },
     {
       "operationId": "variables_delete_variable",
