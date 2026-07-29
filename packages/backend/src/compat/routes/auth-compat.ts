@@ -335,10 +335,21 @@ export function registerAuthCompatAuthedRoutes(
     const audit = async (tenant: string, action: string, details: unknown): Promise<void> => {
         const store = kvFor(tenant);
         const entries = await store.getJson<Record<string, unknown>[]>('auth_security_audit', []);
+        // The product's audit_logs.details is a Text column — always a string
+        // (app/models/auth.py:135; every caller passes an f-string). The Audit Trail
+        // renders `{log.details}` raw into the DOM, so an object here crashes the whole
+        // Settings → Security screen with React #31 "object with keys {enabled}".
+        // Callers in this layer pass the request payload; coerce it to a string so the
+        // stored and returned shape matches the product's contract.
+        const detailsText = typeof details === 'string'
+            ? details
+            : details === null || details === undefined
+                ? ''
+                : JSON.stringify(details);
         entries.unshift({
             id: crypto.randomUUID(),
             action,
-            details,
+            details: detailsText,
             created_at: now(),
             user_id: null,
             ip_address: null,

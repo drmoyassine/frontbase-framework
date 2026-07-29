@@ -371,7 +371,16 @@ scenario('GET', '/api/auth/security/audit-logs', async () => {
     await h.request('POST', '/api/auth/security/waf', { enabled: true }, cookie);
     const response = await h.request('GET', '/api/auth/security/audit-logs', undefined, cookie);
     const after = await response.clone().json();
-    return { response, observations: before.length === 0 && after[0]?.action === 'waf_updated' ? ['security mutation appears in audit log'] : [] };
+    // The harness shares one app across scenarios, so earlier security mutations
+    // (blocklist, bot-protection) have already written entries — `before` is not
+    // empty. The audit write is observed if the log grew AND the newest entry is the
+    // waf_updated we just posted. `details` is a string (the product's Text column),
+    // never the raw payload object that used to crash the Audit Trail (React #31).
+    const grew = Array.isArray(after) && Array.isArray(before) && after.length > before.length;
+    const observations = grew && after[0]?.action === 'waf_updated'
+        ? ['security mutation appears in audit log']
+        : [];
+    return { response, observations };
 });
 
 const missing = [...scopedOps].filter((key) => !scenarios.has(key));

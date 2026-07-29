@@ -1,8 +1,8 @@
 {
   "scope": "authentication/security + closed root/invite producer",
   "counts": {
-    "shape-only": 3,
-    "functional": 19
+    "functional": 19,
+    "shape-only": 3
   },
   "operations": {
     "DELETE /api/auth/security/blocklist/{ban_id}": {
