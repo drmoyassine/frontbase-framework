@@ -69,11 +69,11 @@ test('login with valid creds bypasses the guard, issues a session cookie', async
     assert.equal((await r.json()).user.email, 'admin@test.com');
 });
 
-test('login with wrong creds returns 401 invalid_credentials (not a guard block)', async () => {
+test('login with wrong creds returns the product HTTPException envelope (not a guard block)', async () => {
     const app = await anonApp();
     const r = await req(app, 'POST', '/api/auth/login', { email: 'admin@test.com', password: 'wrong' });
     assert.equal(r.status, 401);
-    assert.equal((await r.json()).error, 'invalid_credentials');
+    assert.deepEqual(await r.json(), { detail: 'Invalid email or password' });
 });
 
 let failed = 0;

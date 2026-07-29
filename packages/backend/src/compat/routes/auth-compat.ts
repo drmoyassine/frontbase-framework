@@ -35,6 +35,7 @@ import {
     zWafUpdateRequest,
 } from '../zod.gen.js';
 import { hashPassword, verifyPassword, issueSession } from '@frontbase/edge-infra';
+import { fastApiValidationError } from '../request-validation.js';
 
 // A well-formed PBKDF2 hash of a random value — verified against on unknown-email
 // logins so response time doesn't reveal whether the email exists (MED-5). Iters
@@ -42,9 +43,6 @@ import { hashPassword, verifyPassword, issueSession } from '@frontbase/edge-infr
 const DUMMY_HASH = 'pbkdf2$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
-const validationError = {
-    detail: [{ type: 'value_error', loc: ['body'], msg: 'Validation failed', input: null }],
-};
 const COOKIE = 'fb_session';
 const MAX_AGE = 7 * 24 * 3600;
 const SESSION_COOKIE = (token: string) => `${COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${MAX_AGE}`;
@@ -66,7 +64,7 @@ function userPayload(
         user: {
             id: user.id,
             email: user.email,
-            role: user.role,
+            role: user.role === 'master_admin' ? 'master' : user.role,
             is_master: user.role === 'master_admin',
             created_at: now,
             updated_at: now,
@@ -74,6 +72,7 @@ function userPayload(
             tenant_slug: user.tenantSlug,
         },
         message,
+        tenant: null,
     };
 }
 
@@ -108,9 +107,11 @@ export function registerAuthCompatUnauthRoutes(
     tenants: TenantStore,
     invites: CommunityInviteStore,
     passwordResets: PasswordResetStore,
+    kvFor: (tenant: string) => KeyValueStore,
     sessionSecret: string,
     now: () => string,
     deliverPasswordReset?: (email: string, token: string) => Promise<void>,
+    cloudMode = false,
 ): void {
     // Product contract includes explicit preflight operations for these routes.
     app.options('/api/auth/login', async (c) => {
@@ -123,8 +124,9 @@ export function registerAuthCompatUnauthRoutes(
     });
     // POST /api/auth/login
     app.post('/api/auth/login', async (c) => {
-        const parsed = zLoginRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json(validationError, 422);
+        const input = await c.req.json().catch(() => null);
+        const parsed = zLoginRequest.safeParse(input);
+        if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
         const body = parsed.data;
         // Cross-tenant email lookup (CRIT-1): a master_admin lives in _root, an
         // owner in _default. Verify the password against each candidate.
@@ -146,11 +148,25 @@ export function registerAuthCompatUnauthRoutes(
             sessionSecret,
             await userStoreFor(matched.tenantSlug).getSessionVersion(matched.id),
         );
+        const auditStore = kvFor(matched.tenantSlug);
+        const audit = await auditStore.getJson<Record<string, unknown>[]>('auth_security_audit', []);
+        audit.unshift({
+            id: crypto.randomUUID(),
+            user_id: matched.role === 'master_admin' ? 'admin-1' : matched.id,
+            action: 'LOGIN_SUCCESS',
+            ip_address: '127.0.0.1',
+            user_agent: c.req.header('user-agent') ?? 'node',
+            details: matched.role === 'master_admin'
+                ? `Master admin login: ${matched.email}`
+                : `User login: ${matched.email}`,
+            created_at: now(),
+        });
+        await auditStore.setJson('auth_security_audit', audit.slice(0, 100), now());
         return c.json({
             user: {
                 id: matched.id,
                 email: matched.email,
-                role: matched.role,
+                role: matched.role === 'master_admin' ? 'master' : matched.role,
                 is_master: matched.role === 'master_admin',
                 created_at: matched.createdAt,
                 updated_at: matched.createdAt,
@@ -167,8 +183,10 @@ export function registerAuthCompatUnauthRoutes(
     });
     // POST /api/auth/signup — community-local account + workspace identity.
     app.post('/api/auth/signup', async (c) => {
-        const parsed = zSignupRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json(validationError, 422);
+        const input = await c.req.json().catch(() => null);
+        const parsed = zSignupRequest.safeParse(input);
+        if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
+        if (!cloudMode) return c.json({ detail: 'Signup only available in cloud mode' }, 400);
         const email = parsed.data.email.trim().toLowerCase();
         const tenantSlug = parsed.data.slug.trim().toLowerCase();
         if ((await userStoreFor('_default').findByEmailAnyTenant(email)).length > 0) {
@@ -202,15 +220,17 @@ export function registerAuthCompatUnauthRoutes(
     // GET /api/auth/check-slug/{slug}
     app.get('/api/auth/check-slug/:slug', async (c) => {
         const parsed = zAuthenticationCheckSlugPath.safeParse({ slug: c.req.param('slug') });
-        if (!parsed.success) return c.json(validationError, 422);
+        if (!parsed.success) return c.json(fastApiValidationError('path', { slug: c.req.param('slug') }, parsed.error.issues), 422);
+        if (!cloudMode) return c.json({ detail: 'Not available in self-host mode' }, 400);
         const slug = parsed.data.slug.trim().toLowerCase();
         return c.json({ available: !await tenants.tenantExists(slug), slug });
     });
     // POST /api/auth/forgot-password — opaque/non-enumerating response. A host
     // injects delivery (email, queue, local admin bridge); raw tokens never persist.
     app.post('/api/auth/forgot-password', async (c) => {
-        const parsed = zForgotPasswordRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json(validationError, 422);
+        const input = await c.req.json().catch(() => null);
+        const parsed = zForgotPasswordRequest.safeParse(input);
+        if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
         if (deliverPasswordReset) {
             const candidates = await userStoreFor('_default').findByEmailAnyTenant(parsed.data.email);
             for (const user of candidates) {
@@ -222,15 +242,21 @@ export function registerAuthCompatUnauthRoutes(
                 }
             }
         }
-        return c.json({ success: true, message: 'If the email is registered, a password reset link has been sent.' });
+        return c.json({
+            success: true,
+            message: 'If the email is registered, a password reset link has been sent.',
+            dev_link: null,
+            error_code: null,
+        });
     });
     // POST /api/auth/reset-password — hashed token, expiry, single-use credential
     // mutation, and session-generation bump.
     app.post('/api/auth/reset-password', async (c) => {
-        const parsed = zResetPasswordRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json(validationError, 422);
+        const input = await c.req.json().catch(() => null);
+        const parsed = zResetPasswordRequest.safeParse(input);
+        if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
         const capability = await passwordResets.consume(parsed.data.email, parsed.data.token, now());
-        if (!capability) return c.json({ detail: 'Invalid or expired reset token' }, 400);
+        if (!capability) return c.json({ detail: 'Invalid email or token.' }, 400);
         await userStoreFor(capability.tenantSlug).updatePasswordAndInvalidateSessions(
             capability.userId,
             await hashPassword(parsed.data.password),
@@ -241,7 +267,8 @@ export function registerAuthCompatUnauthRoutes(
     // GET /api/auth/invite/{token}
     app.get('/api/auth/invite/:token', async (c) => {
         const parsed = zAuthenticationGetInvitePath.safeParse({ token: c.req.param('token') });
-        if (!parsed.success) return c.json(validationError, 422);
+        if (!parsed.success) return c.json(fastApiValidationError('path', { token: c.req.param('token') }, parsed.error.issues), 422);
+        if (!cloudMode) return c.json({ detail: 'Invites only available in cloud mode' }, 400);
         const invite = await invites.getPending(parsed.data.token, now());
         if (!invite) return c.json({ detail: 'Invite is invalid, accepted, or expired' }, 404);
         return c.json({
@@ -253,8 +280,10 @@ export function registerAuthCompatUnauthRoutes(
     });
     // POST /api/auth/accept-invite — one-time local invite consumption.
     app.post('/api/auth/accept-invite', async (c) => {
-        const parsed = zAcceptInviteRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json(validationError, 422);
+        const input = await c.req.json().catch(() => null);
+        const parsed = zAcceptInviteRequest.safeParse(input);
+        if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
+        if (!cloudMode) return c.json({ detail: 'Invites only available in cloud mode' }, 400);
         const pending = await invites.getPending(parsed.data.token, now());
         if (!pending) return c.json({ detail: 'Invite is invalid, accepted, or expired' }, 404);
         if ((await userStoreFor('_default').findByEmailAnyTenant(pending.email)).length > 0) {
@@ -322,18 +351,21 @@ export function registerAuthCompatAuthedRoutes(
         const principal = c.get('principal');
         const u = principal?.user as { id?: string; email?: string; role?: string } | null;
         const tenantSlug = principal?.tenant ?? null;
-        if (!u) return c.json({ user: null });
+        if (!u) return c.json({ user: null, message: null, tenant: null });
         return c.json({
             user: {
                 id: u.id,
                 email: u.email,
-                role: u.role,
+                role: u.role === 'master_admin' ? 'master' : u.role,
                 is_master: u.role === 'master_admin',
+                username: null,
                 created_at: '',
                 updated_at: '',
-                tenant_id: tenantSlug,
-                tenant_slug: tenantSlug,
+                tenant_id: null,
+                tenant_slug: null,
             },
+            message: null,
+            tenant: null,
         });
     });
     // GET /api/auth/security/audit-logs
@@ -347,8 +379,23 @@ export function registerAuthCompatAuthedRoutes(
         c.json(await kvFor(c.get('tenant')).getJson<Record<string, unknown>[]>('auth_security_blocklist', [])));
     // POST /api/auth/security/blocklist
     app.post('/api/auth/security/blocklist', async (c) => {
-        const parsed = zIpBlockRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json(validationError, 422);
+        const input = await c.req.json().catch(() => null);
+        const parsed = zIpBlockRequest.safeParse(input);
+        if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
+        const candidate = parsed.data.ip_or_range;
+        const [address, prefix] = candidate.split('/', 2);
+        const ipv4 = address?.split('.');
+        const validIpv4 = ipv4?.length === 4
+            && ipv4.every((part) => /^\d{1,3}$/.test(part) && Number(part) <= 255)
+            && (prefix === undefined || (/^\d{1,2}$/.test(prefix) && Number(prefix) <= 32));
+        const validIpv6 = Boolean(address?.includes(':'))
+            && /^[0-9a-f:]+$/i.test(address ?? '')
+            && (prefix === undefined || (/^\d{1,3}$/.test(prefix) && Number(prefix) <= 128));
+        if (!validIpv4 && !validIpv6) {
+            return c.json({
+                detail: `Invalid IP address or CIDR range format: '${candidate}' does not appear to be an IPv4 or IPv6 address`,
+            }, 400);
+        }
         const store = kvFor(c.get('tenant'));
         const entries = await store.getJson<Record<string, unknown>[]>('auth_security_blocklist', []);
         const ban = { id: crypto.randomUUID(), ...parsed.data, created_at: now() };
@@ -363,7 +410,7 @@ export function registerAuthCompatAuthedRoutes(
         const entries = await store.getJson<Record<string, unknown>[]>('auth_security_blocklist', []);
         const banId = c.req.param('ban_id');
         const kept = entries.filter((entry) => entry.id !== banId);
-        if (kept.length === entries.length) return c.json({ detail: 'Ban not found' }, 404);
+        if (kept.length === entries.length) return c.json({ detail: 'IP block record not found.' }, 404);
         await store.setJson('auth_security_blocklist', kept, now());
         await audit(c.get('tenant'), 'ip_unblocked', { id: banId });
         return c.json({ success: true, message: 'IP unblocked' });
@@ -373,8 +420,9 @@ export function registerAuthCompatAuthedRoutes(
         c.json(await kvFor(c.get('tenant')).getJson('auth_security_bot', BOT_DEFAULTS)));
     // POST /api/auth/security/bot-protection
     app.post('/api/auth/security/bot-protection', async (c) => {
-        const parsed = zBotProtectionUpdateRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json(validationError, 422);
+        const input = await c.req.json().catch(() => null);
+        const parsed = zBotProtectionUpdateRequest.safeParse(input);
+        if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
         if (parsed.data.secret_key) {
             const ciphertext = await secretCipher.encrypt(parsed.data.secret_key);
             if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
@@ -398,8 +446,9 @@ export function registerAuthCompatAuthedRoutes(
         c.json(await kvFor(c.get('tenant')).getJson('auth_security_waf', { enabled: false })));
     // POST /api/auth/security/waf
     app.post('/api/auth/security/waf', async (c) => {
-        const parsed = zWafUpdateRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json(validationError, 422);
+        const input = await c.req.json().catch(() => null);
+        const parsed = zWafUpdateRequest.safeParse(input);
+        if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
         await kvFor(c.get('tenant')).setJson('auth_security_waf', parsed.data, now());
         await audit(c.get('tenant'), 'waf_updated', parsed.data);
         return c.json({ success: true, enabled: parsed.data.enabled });

@@ -5,7 +5,7 @@
  *
  * RULE 2: tenant isolated via `c.get('tenant')`.
  */
-import type { Hono } from 'hono';
+import type { Context, Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { KeyValueStore } from '../store.js';
@@ -23,7 +23,15 @@ function asProvider(row: Record<string, unknown>): Record<string, unknown> {
         name: base.name,
         provider: base.provider ?? 'local',
         is_active: String(row.status ?? 'active') === 'active',
-        has_credentials: Boolean(row.config),
+        has_credentials: Object.entries(
+            row.config && typeof row.config === 'object' && !Array.isArray(row.config)
+                ? row.config as Record<string, unknown>
+                : {},
+        ).some(([key, value]) =>
+            /token|secret|password|key|credential/i.test(key)
+            && value !== null
+            && value !== undefined
+            && value !== ''),
         provider_metadata: null,
         created_at: base.created_at,
         updated_at: base.updated_at,
@@ -44,6 +52,19 @@ export function registerEdgeProvidersRoutes(
         if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
         return ciphertext;
     };
+    const providerFor = async (tenant: string, providerId: string) => {
+        const provider = await p2(tenant).getEdgeResource(providerId);
+        return provider?.kind === 'provider' ? provider : null;
+    };
+    const providerNotFound = (c: Context<{ Variables: ConsoleAuthVars }>) =>
+        c.json({ detail: 'Provider account not found' }, 404);
+    const providerView = async (
+        store: Phase2Store,
+        row: Record<string, unknown>,
+    ): Promise<Record<string, unknown>> => asProvider({
+        ...row,
+        config: await store.getEdgeResourceConfig(String(row.id)) ?? {},
+    });
     const testProvider = async (provider: string, credentials: Record<string, unknown>) => {
         const token = String(credentials.apiToken ?? credentials.api_token ?? credentials.token ?? credentials.accessToken ?? '');
         const endpoints: Record<string, string> = {
@@ -55,7 +76,8 @@ export function registerEdgeProvidersRoutes(
             upstash: 'https://api.upstash.com/v2/redis/databases',
         };
         const endpoint = endpoints[provider];
-        if (!endpoint || !token) return { success: false, message: 'Provider credentials are incomplete' };
+        if (!token) return { success: false, detail: 'No credentials stored for this provider' };
+        if (!endpoint) return { success: false, detail: `Unsupported provider: ${provider}` };
         try {
             const response = await guardedExternalFetch(externalFetch, endpoint, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -69,9 +91,12 @@ export function registerEdgeProvidersRoutes(
         }
     };
     // GET /api/edge-providers/
-    app.get('/api/edge-providers/', async (c) => c.json(
-        (await p2(c.get('tenant')).listEdgeResources('provider')).map(asProvider),
-    ));
+    app.get('/api/edge-providers/', async (c) => {
+        const store = p2(c.get('tenant'));
+        return c.json(await Promise.all(
+            (await store.listEdgeResources('provider')).map((row) => providerView(store, row)),
+        ));
+    });
 
     // POST /api/edge-providers/
     app.post('/api/edge-providers/', async (c) => {
@@ -87,7 +112,13 @@ export function registerEdgeProvidersRoutes(
             provider: b.provider ?? 'local',
             config: await encryptedConfig(b.config ?? b.provider_credentials ?? {}),
         }, now());
-        return c.json(asProvider(await store.getEdgeResource(id) ?? { id, name: b.name ?? 'Provider', provider: b.provider ?? 'local', created_at: now(), updated_at: now() }), 201);
+        return c.json(await providerView(store, await store.getEdgeResource(id) ?? {
+            id,
+            name: b.name ?? 'Provider',
+            provider: b.provider ?? 'local',
+            created_at: now(),
+            updated_at: now(),
+        }), 201);
     });
 
     // GET /api/edge-providers/workspace-agent-token
@@ -95,15 +126,16 @@ export function registerEdgeProvidersRoutes(
         const kv = kvFor(c.get('tenant'));
         const token = await kv.getJson<string | null>('workspace_agent_token', null);
         const providerId = await kv.getJson<string | null>('workspace_agent_provider_id', null);
-        return c.json({ success: true, token: null, has_token: Boolean(token), provider_id: providerId });
+        if (!providerId) return c.json({ token: token ? '••••••••' : null });
+        return c.json({ token: token ? '••••••••' : null, provider_id: providerId });
     });
 
     // POST /api/edge-providers/workspace-agent-token
     app.post('/api/edge-providers/workspace-agent-token', async (c) => {
         const body = await c.req.json().catch(() => ({})) as { provider_id?: string };
         const providerId = body.provider_id ?? '';
-        const provider = await p2(c.get('tenant')).getEdgeResource(providerId);
-        if (!provider || provider.kind !== 'provider') return c.json({ detail: 'Provider not found' }, 404);
+        const provider = await providerFor(c.get('tenant'), providerId);
+        if (!provider) return c.json({ detail: 'Provider not found' }, 404);
         const kv = kvFor(c.get('tenant'));
         const token = `token_${crypto.randomUUID()}`;
         const ciphertext = await secretCipher.encrypt(token);
@@ -115,8 +147,9 @@ export function registerEdgeProvidersRoutes(
 
     // GET /api/edge-providers/{provider_id}
     app.get('/api/edge-providers/:provider_id', async (c) => {
-        const p = await p2(c.get('tenant')).getEdgeResource(c.req.param('provider_id'));
-        return p ? c.json(asProvider(p)) : c.json({ detail: 'Not found' }, 404);
+        const store = p2(c.get('tenant'));
+        const provider = await providerFor(c.get('tenant'), c.req.param('provider_id'));
+        return provider ? c.json(await providerView(store, provider)) : providerNotFound(c);
     });
 
     // PUT /api/edge-providers/{provider_id}
@@ -126,8 +159,8 @@ export function registerEdgeProvidersRoutes(
         };
         const id = c.req.param('provider_id');
         const store = p2(c.get('tenant'));
-        const existing = await store.getEdgeResource(id);
-        if (!existing) return c.json({ detail: 'Not found' }, 404);
+        const existing = await providerFor(c.get('tenant'), id);
+        if (!existing) return providerNotFound(c);
         await store.upsertEdgeResource({
             id,
             kind: 'provider',
@@ -137,27 +170,36 @@ export function registerEdgeProvidersRoutes(
                 ? await encryptedConfig(b.config ?? b.provider_credentials)
                 : existing.config as string | undefined,
         }, now());
-        return c.json(asProvider(await store.getEdgeResource(id) ?? existing));
+        return c.json(await providerView(store, await store.getEdgeResource(id) ?? existing));
     });
 
     // DELETE /api/edge-providers/{provider_id}
     app.delete('/api/edge-providers/:provider_id', async (c) => {
-        await p2(c.get('tenant')).deleteEdgeResource(c.req.param('provider_id'));
+        const id = c.req.param('provider_id');
+        if (!await providerFor(c.get('tenant'), id)) return providerNotFound(c);
+        await p2(c.get('tenant')).deleteEdgeResource(id);
+        c.header('content-type', 'application/json');
         return c.body(null, 204);
     });
 
     // GET /api/edge-providers/{provider_id}/credentials
     app.get('/api/edge-providers/:provider_id/credentials', async (c) => {
-        const p = await p2(c.get('tenant')).getEdgeResource(c.req.param('provider_id'));
-        return c.json({ success: true, has_credentials: Boolean(p?.config) });
+        const store = p2(c.get('tenant'));
+        const provider = await providerFor(c.get('tenant'), c.req.param('provider_id'));
+        if (!provider) return providerNotFound(c);
+        const view = await providerView(store, provider);
+        if (!view.has_credentials) {
+            return c.json({ detail: 'No credentials stored for this provider' }, 404);
+        }
+        return c.json({ success: true, has_credentials: view.has_credentials });
     });
 
     // POST /api/edge-providers/retest/{provider_id}
     app.post('/api/edge-providers/retest/:provider_id', async (c) => {
         const store = p2(c.get('tenant'));
-        const p = await store.getEdgeResource(c.req.param('provider_id'));
-        if (!p) return c.json({ success: false, message: 'Provider not found' });
-        return c.json(await testProvider(String(p.provider ?? ''), await store.getEdgeResourceConfig(c.req.param('provider_id')) ?? {}));
+        const provider = await providerFor(c.get('tenant'), c.req.param('provider_id'));
+        if (!provider) return providerNotFound(c);
+        return c.json(await testProvider(String(provider.provider ?? ''), await store.getEdgeResourceConfig(c.req.param('provider_id')) ?? {}));
     });
 
     // POST /api/edge-providers/test-connection
@@ -165,23 +207,38 @@ export function registerEdgeProvidersRoutes(
         const b = await c.req.json().catch(() => ({})) as {
             provider?: string; credentials?: Record<string, unknown>;
         };
+        const known = ['cloudflare', 'supabase', 'vercel', 'netlify', 'deno', 'upstash'];
+        if (!known.includes(String(b.provider ?? ''))) {
+            return c.json({ success: false, detail: `Unsupported provider: ${String(b.provider ?? '')}` });
+        }
         return c.json(await testProvider(String(b.provider ?? ''), b.credentials ?? {}));
     });
 
     // POST /api/edge-providers/discover
     app.post('/api/edge-providers/discover', async (c) => {
-        const providers = await p2(c.get('tenant')).listEdgeResources('provider');
-        return c.json({ success: true, resources: providers.map(asProvider) });
+        const body = await c.req.json().catch(() => ({})) as { provider?: string };
+        return c.json({ success: false, detail: `Discovery not supported for provider: ${String(body.provider ?? '')}` });
     });
 
     // POST /api/edge-providers/discover-by-account/{account_id}
     app.post('/api/edge-providers/discover-by-account/:account_id', async (c) => {
-        const providers = await p2(c.get('tenant')).listEdgeResources('provider');
-        return c.json({ success: true, resources: providers.map(asProvider) });
+        if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
+            return providerNotFound(c);
+        }
+        const store = p2(c.get('tenant'));
+        return c.json({
+            success: true,
+            resources: await Promise.all(
+                (await store.listEdgeResources('provider')).map((row) => providerView(store, row)),
+            ),
+        });
     });
 
     // POST /api/edge-providers/create-resource-by-account/{account_id}
     app.post('/api/edge-providers/create-resource-by-account/:account_id', async (c) => {
+        if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
+            return providerNotFound(c);
+        }
         const store = p2(c.get('tenant'));
         const id = crypto.randomUUID();
         await store.upsertEdgeResource({ id, kind: 'provider', name: 'Account Resource', provider: 'account' }, now());
@@ -191,8 +248,8 @@ export function registerEdgeProvidersRoutes(
     // GET /api/edge-providers/accounts/{account_id}/tables
     app.get('/api/edge-providers/accounts/:account_id/tables', async (c) => {
         const store = p2(c.get('tenant'));
-        const account = await store.getEdgeResource(c.req.param('account_id'));
-        if (!account) return c.json({ detail: 'Not found' }, 404);
+        const account = await providerFor(c.get('tenant'), c.req.param('account_id'));
+        if (!account) return providerNotFound(c);
         const config = await store.getEdgeResourceConfig(c.req.param('account_id')) ?? {};
         const url = String(config.url ?? config.supabaseUrl ?? '').replace(/\/+$/, '');
         const token = String(config.serviceKey ?? config.anonKey ?? config.token ?? '');
@@ -211,12 +268,18 @@ export function registerEdgeProvidersRoutes(
 
     // POST /api/edge-providers/{account_id}/list-engines
     app.post('/api/edge-providers/:account_id/list-engines', async (c) => {
+        if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
+            return providerNotFound(c);
+        }
         const engines = await p2(c.get('tenant')).listEdgeResources('engine');
         return c.json({ success: true, engines: engines.map((e) => ({ id: e.id, name: e.name })) });
     });
 
     // POST /api/edge-providers/{account_id}/turso-databases
     app.post('/api/edge-providers/:account_id/turso-databases', async (c) => {
+        if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
+            return providerNotFound(c);
+        }
         const b = await c.req.json().catch(() => ({})) as { name?: string };
         const id = crypto.randomUUID();
         const store = p2(c.get('tenant'));
@@ -226,13 +289,27 @@ export function registerEdgeProvidersRoutes(
 
     // DELETE /api/edge-providers/{account_id}/turso-databases/{db_id}
     app.delete('/api/edge-providers/:account_id/turso-databases/:db_id', async (c) => {
-        await p2(c.get('tenant')).deleteEdgeResource(c.req.param('db_id'));
+        if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
+            return providerNotFound(c);
+        }
+        const store = p2(c.get('tenant'));
+        const database = await store.getEdgeResource(c.req.param('db_id'));
+        if (!database || database.kind !== 'database') {
+            return c.json({ detail: 'Turso database not found' }, 404);
+        }
+        await store.deleteEdgeResource(c.req.param('db_id'));
         return c.json({ success: true, detail: 'Turso database deleted' });
     });
 
     // POST /api/edge-providers/{account_id}/turso-databases/{db_id}/test
     app.post('/api/edge-providers/:account_id/turso-databases/:db_id/test', async (c) => {
-        const db = await p2(c.get('tenant')).getEdgeResource(c.req.param('db_id'));
-        return c.json({ success: Boolean(db), message: db ? 'Turso database reachable' : 'Database not found' });
+        if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
+            return providerNotFound(c);
+        }
+        const database = await p2(c.get('tenant')).getEdgeResource(c.req.param('db_id'));
+        if (!database || database.kind !== 'database') {
+            return c.json({ detail: 'Turso database not found' }, 404);
+        }
+        return c.json({ success: true, message: 'Turso database reachable' });
     });
 }

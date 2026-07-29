@@ -124,7 +124,10 @@ export function registerStorageRoutes(
 
     // DELETE /api/storage/delete
     app.delete('/api/storage/delete', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { file_id?: string; fileId?: string; id?: string };
+        const b = await c.req.json().catch(() => ({})) as {
+            provider_id?: string; file_id?: string; fileId?: string; id?: string;
+        };
+        if (!b.provider_id) return c.json({ detail: 'provider_id is required' }, 400);
         const id = b.file_id ?? b.fileId ?? b.id ?? '';
         if (id) {
             const store = phase2For(c.get('tenant'));
@@ -145,7 +148,10 @@ export function registerStorageRoutes(
 
     // POST /api/storage/create-folder
     app.post('/api/storage/create-folder', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { name?: string; path?: string; bucket_id?: string };
+        const b = await c.req.json().catch(() => ({})) as {
+            provider_id?: string; name?: string; path?: string; bucket_id?: string;
+        };
+        if (!b.provider_id) return c.json({ detail: 'provider_id is required' }, 400);
         const store = phase2For(c.get('tenant'));
         const id = crypto.randomUUID();
         const folderName = b.name ?? 'folder';
@@ -221,7 +227,10 @@ export function registerStorageRoutes(
 
     // POST /api/storage/move
     app.post('/api/storage/move', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { file_id?: string; from_path?: string; to_path?: string; bucket_id?: string };
+        const b = await c.req.json().catch(() => ({})) as {
+            provider_id?: string; file_id?: string; from_path?: string; to_path?: string; bucket_id?: string;
+        };
+        if (!b.provider_id) return c.json({ detail: 'provider_id is required' }, 400);
         const store = phase2For(c.get('tenant'));
         const files = await store.listFiles(b.bucket_id ?? '');
         const target = files.find((f) => String(f.id) === b.file_id || String(f.path) === b.from_path);
@@ -255,7 +264,13 @@ export function registerStorageRoutes(
 
     // POST /api/storage/move-cross
     app.post('/api/storage/move-cross', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { file_id?: string; source_bucket_id?: string; target_bucket_id?: string };
+        const b = await c.req.json().catch(() => ({})) as {
+            source_provider_id?: string; dest_provider_id?: string;
+            file_id?: string; source_bucket_id?: string; target_bucket_id?: string;
+        };
+        if (!b.source_provider_id || !b.dest_provider_id) {
+            return c.json({ detail: 'source_provider_id and dest_provider_id are required' }, 400);
+        }
         const store = phase2For(c.get('tenant'));
         const files = await store.listFiles(b.source_bucket_id ?? '');
         const target = files.find((f) => String(f.id) === b.file_id);
@@ -347,26 +362,30 @@ export function registerStorageRoutes(
     // GET /api/storage/providers/
     app.get('/api/storage/providers/', async (c) => {
         const kv = kvFor(c.get('tenant'));
-        const providers = await kv.getJson<Array<Record<string, unknown>>>('storage_providers', [
-            { id: 'local', name: 'Local Storage', provider: 'local', is_active: true },
-        ]);
+        const providers = await kv.getJson<Array<Record<string, unknown>>>('storage_providers', []);
         return c.json(providers.map(redactConfig));
     });
 
     // POST /api/storage/providers/
     app.post('/api/storage/providers/', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
+        const b = await c.req.json().catch(() => ({})) as {
+            name?: string; provider?: string; provider_account_id?: string; config?: unknown;
+        };
+        const account = await phase2For(c.get('tenant')).getEdgeResource(b.provider_account_id ?? '');
+        if (!account || account.kind !== 'provider') {
+            return c.json({ detail: 'Connected account not found' }, 404);
+        }
         const kv = kvFor(c.get('tenant'));
         const providers = await kv.getJson<Array<Record<string, unknown>>>('storage_providers', []);
         const providerRecord = {
             id: crypto.randomUUID(),
-            name: b.name ?? 'S3 Storage',
-            provider: b.provider ?? 's3',
+            name: b.name ?? `${String(account.name)} Storage`,
+            provider: b.provider ?? String(account.provider),
             is_active: true,
             config_ciphertext: await encryptedConfig(b.config),
             created_at: now(),
-            account_name: 'default',
-            provider_account_id: 'default',
+            account_name: String(account.name),
+            provider_account_id: String(account.id),
         };
         providers.push(providerRecord);
         await kv.setJson('storage_providers', providers, now());
@@ -378,6 +397,9 @@ export function registerStorageRoutes(
         const id = c.req.param('provider_id');
         const kv = kvFor(c.get('tenant'));
         const providers = await kv.getJson<Array<{ id?: string }>>('storage_providers', []);
+        if (!providers.some((provider) => provider.id === id)) {
+            return c.json({ detail: 'Storage provider not found' }, 404);
+        }
         await kv.setJson('storage_providers', providers.filter((p: { id?: string }) => p.id !== id), now());
         return c.json({ success: true, message: 'Storage provider deleted' });
     });
@@ -392,7 +414,10 @@ export function registerStorageRoutes(
 
     // POST /api/storage/netlify-sites
     app.post('/api/storage/netlify-sites', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { site_id?: string; name?: string };
+        const b = await c.req.json().catch(() => ({})) as { account_id?: string; site_id?: string; name?: string };
+        if (!b.account_id || !b.name) {
+            return c.json({ detail: 'account_id and name are required' }, 400);
+        }
         const kv = kvFor(c.get('tenant'));
         const sites = await kv.getJson<Array<Record<string, unknown>>>('netlify_sites', []);
         const record = { id: b.site_id ?? crypto.randomUUID(), name: b.name ?? 'Netlify Site', created_at: now() };
@@ -410,7 +435,10 @@ export function registerStorageRoutes(
 
     // POST /api/storage/vercel-projects
     app.post('/api/storage/vercel-projects', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { project_id?: string; name?: string };
+        const b = await c.req.json().catch(() => ({})) as { account_id?: string; project_id?: string; name?: string };
+        if (!b.account_id || !b.name) {
+            return c.json({ detail: 'account_id and name are required' }, 400);
+        }
         const kv = kvFor(c.get('tenant'));
         const projects = await kv.getJson<Array<Record<string, unknown>>>('vercel_projects', []);
         const record = { id: b.project_id ?? crypto.randomUUID(), name: b.name ?? 'Vercel Project', created_at: now() };

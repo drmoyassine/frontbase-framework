@@ -69,6 +69,7 @@ async function makeHarness() {
         passwordResetDelivery: async (email, token) => {
             passwordResetTokens.set(email.toLowerCase(), token);
         },
+        cloudMode: true,
     });
     const request = async (method, path, body, cookie) => {
         const headers = {};

@@ -34,6 +34,9 @@ function reg(
         return ciphertext;
     };
     const tokenField = `${kind}_token`;
+    const notFoundDetail = (id: string): string => kind === 'vector'
+        ? 'Vector store not found'
+        : `Edge ${kind} '${id}' not found`;
     const configFromBody = (body: Record<string, unknown>): Record<string, unknown> => ({
         ...(body.provider_config && typeof body.provider_config === 'object' ? body.provider_config as Record<string, unknown> : {}),
         url: body[urlField],
@@ -42,10 +45,32 @@ function reg(
         next_signing_key: body.next_signing_key,
         is_default: body.is_default,
         provider_account_id: body.provider_account_id,
+        provider: body.provider,
     });
+    const serializeStored = async (
+        store: Phase2Store,
+        row: Record<string, unknown>,
+    ): Promise<Record<string, unknown>> => serialize({
+        ...row,
+        config: await store.getEdgeResourceConfig(String(row.id)) ?? {},
+    }, urlField, extra);
     const testConfig = async (config: Record<string, unknown>) => {
         const started = Date.now();
         const url = String(config.url ?? '');
+        const provider = String(config.provider ?? '');
+        if (kind === 'vector' && url && !/^(?:postgres(?:ql)?|https?|libsql):\/\//i.test(url)) {
+            return {
+                success: false,
+                message: 'Invalid URL format: must start with one of postgres://, postgresql://, https://, http://, libsql://',
+                error_code: 'INVALID_URL',
+            };
+        }
+        if (kind === 'cache' && provider && !['redis', 'upstash', 'cloudflare_kv', 'deno_kv'].includes(provider)) {
+            return testResult(false, `Unknown cache provider: ${provider}`);
+        }
+        if (kind === 'queue' && provider && !['bullmq', 'cloudflare_queue', 'qstash'].includes(provider)) {
+            return testResult(false, `Test not yet implemented for provider: ${provider}`);
+        }
         if (!url) return testResult(false, `${kind} URL is required`);
         try {
             const headers = typeof config.token === 'string' && config.token
@@ -54,13 +79,76 @@ function reg(
             const response = await guardedExternalFetch(externalFetch, url, { method: 'GET', headers });
             return testResult(response.ok, response.ok ? `${kind} connection test successful` : `${kind} returned ${response.status}`, Date.now() - started);
         } catch (error) {
-            return testResult(false, `${kind} connection failed: ${(error as Error).message}`, Date.now() - started);
+            const result: Record<string, unknown> = {
+                ...testResult(false, `${kind} connection failed: ${(error as Error).message}`),
+                ...(kind === 'vector' ? { error_code: 'INVALID_URL' } : {}),
+            };
+            if (kind === 'vector') delete result.latency_ms;
+            return result;
         }
     };
 
-    app.get(pre + '/', async (c) => c.json(
-        (await p2(c.get('tenant')).listEdgeResources(kind)).map((r) => serialize(r, urlField, extra)),
-    ));
+    app.get(pre + '/', async (c) => {
+        const store = p2(c.get('tenant'));
+        const localEngine = { id: 'local-edge', name: 'Local Edge', provider: 'unknown' };
+        const local = kind === 'cache'
+            ? {
+                id: 'local-cache',
+                name: 'Local Redis',
+                provider: 'redis',
+                cache_url: 'redis://redis:6379',
+                has_token: false,
+                is_default: false,
+                is_system: true,
+                provider_account_id: null,
+                account_name: null,
+                created_at: '',
+                updated_at: '',
+                engine_count: 1,
+                linked_engines: [localEngine],
+                warning: null,
+                supports_remote_delete: false,
+            }
+            : kind === 'queue'
+                ? {
+                    id: 'local-queue',
+                    name: 'Local BullMQ',
+                    provider: 'bullmq',
+                    queue_url: 'redis://redis:6379',
+                    has_token: false,
+                    has_signing_key: false,
+                    is_default: false,
+                    is_system: true,
+                    provider_account_id: null,
+                    account_name: null,
+                    created_at: '',
+                    updated_at: '',
+                    engine_count: 1,
+                    linked_engines: [localEngine],
+                    warning: null,
+                    supports_remote_delete: false,
+                }
+                : {
+                    id: 'local-vector',
+                    name: 'Local Vector (libSQL)',
+                    provider: 'libsql_vector',
+                    vector_url: 'libsql://local-edge',
+                    has_token: false,
+                    is_default: false,
+                    is_system: true,
+                    provider_account_id: null,
+                    account_name: null,
+                    provider_config: null,
+                    created_at: '',
+                    updated_at: '',
+                    engine_count: 1,
+                    linked_engines: [localEngine],
+                    supports_remote_delete: false,
+                };
+        return c.json(await Promise.all(
+            [local, ...(await store.listEdgeResources(kind)).map((row) => serializeStored(store, row))],
+        ));
+    });
 
     app.post(pre + '/', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: string; provider?: string; config?: unknown };
@@ -74,7 +162,16 @@ function reg(
             config: await encryptedConfig(b.config ?? configFromBody(b)),
         }, now());
         const row = await store.getEdgeResource(id);
-        return c.json(serialize(row ?? { id, name: b.name ?? kind, provider: b.provider ?? 'local', created_at: now(), updated_at: now() }, urlField, extra), 201);
+        const response = await serializeStored(store, row ?? {
+            id,
+            name: b.name ?? kind,
+            provider: b.provider ?? 'local',
+            created_at: now(),
+            updated_at: now(),
+        });
+        if (kind === 'cache' || kind === 'queue') response.warning = null;
+        if (kind === 'vector') response.provider_config = null;
+        return c.json(response, 201);
     });
 
     app.post(pre + '/batch/delete', async (c) => {
@@ -103,7 +200,9 @@ function reg(
         const id = c.req.param(param) ?? '';
         const store = p2(c.get('tenant'));
         const existing = await store.getEdgeResource(id);
-        if (!existing) return c.json({ detail: 'Not found' }, 404);
+        if (!existing || existing.kind !== kind) {
+            return c.json({ detail: notFoundDetail(id) }, 404);
+        }
         await store.upsertEdgeResource({
             id,
             kind,
@@ -113,19 +212,35 @@ function reg(
                 ? await encryptedConfig(b.config ?? configFromBody(b))
                 : existing.config as string | undefined,
         }, now());
-        return c.json(serialize(await store.getEdgeResource(id) ?? existing, urlField, extra));
+        const response = await serializeStored(store, await store.getEdgeResource(id) ?? existing);
+        if (kind === 'cache' || kind === 'queue') response.warning = null;
+        if (kind === 'vector') response.provider_config = null;
+        return c.json(response);
     });
 
     app.delete(pre + '/' + idP, async (c) => {
-        await p2(c.get('tenant')).deleteEdgeResource(c.req.param(param) ?? '');
-        return c.json({ success: true });
+        const store = p2(c.get('tenant'));
+        const id = c.req.param(param) ?? '';
+        const existing = await store.getEdgeResource(id);
+        if (!existing || existing.kind !== kind) {
+            return c.json({ detail: notFoundDetail(id) }, 404);
+        }
+        await store.deleteEdgeResource(id);
+        const label = kind === 'vector' ? 'Vector store' : `Edge ${kind}`;
+        return c.json({
+            success: true,
+            message: `${label} '${String(existing.name)}' deleted`,
+            remote_deleted: false,
+        });
     });
 
     app.post(pre + '/' + idP + tSuf, async (c) => {
         const store = p2(c.get('tenant'));
         const id = c.req.param(param) ?? '';
         const res = await store.getEdgeResource(id);
-        if (!res) return c.json(testResult(false, `${kind} not found`));
+        if (!res || res.kind !== kind) {
+            return c.json({ detail: notFoundDetail(id) }, 404);
+        }
         const config = await store.getEdgeResourceConfig(id) ?? {};
         return c.json(await testConfig(config));
     });

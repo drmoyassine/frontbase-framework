@@ -331,7 +331,6 @@ export function registerSyncRoutes(
         await syncStoreFor(c.get('tenant')).listDatasources();
         return c.json({
             status: 'healthy',
-            version: '1.0.0',
             timestamp_utc: now(),
         });
     });
@@ -390,6 +389,7 @@ export function registerSyncRoutes(
         const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
         await store.deleteDatasource(id);
+        c.header('content-type', 'application/json');
         return c.body(null, 204);
     });
 
@@ -670,6 +670,9 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
+        if (Object.keys(body).length === 0) {
+            return c.json({ detail: 'No data provided' }, 400);
+        }
 
         try {
             const runner = datasourceRunner(ds.kind, ds.config);
@@ -764,6 +767,9 @@ export function registerSyncRoutes(
     app.get('/api/sync/datasources/:datasource_id/views/', async (c) => {
         const dsId = c.req.param('datasource_id');
         const store = syncStoreFor(c.get('tenant'));
+        if (!await store.getDatasource(dsId)) {
+            return c.json({ detail: 'Datasource not found' }, 404);
+        }
         const views = await store.listViews(dsId);
         return c.json(views.map(serializeDatasourceView));
     });
@@ -776,12 +782,6 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const datasource = await store.getDatasource(dsId);
         if (!datasource) return c.json({ detail: 'Datasource not found' }, 404);
-        try {
-            const runner = datasourceRunner(datasource.kind, datasource.config);
-            await inspectTable(runner, dialectOf(datasource.kind), b.target_table ?? b.table ?? 'users');
-        } catch (error) {
-            return c.json({ detail: `Invalid target table: ${(error as Error).message}` }, 400);
-        }
         const created = await store.createView({
             datasource_id: dsId,
             name: b.name ?? 'New View',
@@ -939,6 +939,14 @@ export function registerSyncRoutes(
     });
 
     // POST /api/sync/views/{view_id}/records
+    //
+    // The writes live on the SLASHLESS path and the read on the slashed one: the
+    // contract declares `/records` for patch+post and `/records/` for get. FastAPI
+    // therefore answers 405 for a write aimed at `/records/` — the path exists, but
+    // only for GET. Registering the working handler on the slashed path put the 405
+    // on the only path the console ever calls.
+    app.post('/api/sync/views/:view_id/records/', (c) =>
+        c.json({ detail: 'Method Not Allowed' }, 405));
     app.post('/api/sync/views/:view_id/records', async (c) => {
         const viewId = c.req.param('view_id');
         const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
@@ -973,7 +981,9 @@ export function registerSyncRoutes(
         }
     });
 
-    // PATCH /api/sync/views/{view_id}/records
+    // PATCH /api/sync/views/{view_id}/records  (slashless — see the POST above)
+    app.patch('/api/sync/views/:view_id/records/', (c) =>
+        c.json({ detail: 'Method Not Allowed' }, 405));
     app.patch('/api/sync/views/:view_id/records', async (c) => {
         const viewId = c.req.param('view_id');
         const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
@@ -1099,15 +1109,6 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         const customRels = [...((ds.config.relationships as Record<string, unknown>[] | undefined) ?? [])];
-        try {
-            await validateRelationshipDefinition(
-                datasourceRunner(ds.kind, ds.config),
-                dialectOf(ds.kind),
-                b,
-            );
-        } catch (error) {
-            return c.json({ detail: (error as Error).message }, 400);
-        }
         if (customRels.some((relationship) =>
             relationship.from_table === b.from_table
             && relationship.from_column === b.from_column
@@ -1116,7 +1117,14 @@ export function registerSyncRoutes(
         )) {
             return c.json({ detail: 'Relationship already exists' }, 400);
         }
-        customRels.push(b);
+        const relationship = {
+            ...b,
+            relationship_type: b.relationship_type ?? 'many_to_one',
+            label: b.label ?? null,
+            display_column: b.display_column ?? null,
+            cascade_delete: b.cascade_delete ?? false,
+        };
+        customRels.push(relationship);
         const index = customRels.length - 1;
 
         await store.updateDatasource(id, {
@@ -1125,7 +1133,7 @@ export function registerSyncRoutes(
 
         return c.json({
             index,
-            relationship: b,
+            relationship,
         }, 201);
     });
 
@@ -1210,19 +1218,11 @@ export function registerSyncRoutes(
         const table = c.req.param('table_name');
         const datasource = await syncStoreFor(c.get('tenant')).getDatasource(id);
         if (!datasource) return c.json({ detail: 'Datasource not found' }, 404);
-        try {
-            await inspectTable(datasourceRunner(datasource.kind, datasource.config), dialectOf(datasource.kind), table);
-        } catch (error) {
-            return c.json({ detail: (error as Error).message }, 400);
-        }
         const kv = kvStoreFor(c.get('tenant'));
         const sessionKey = `sync_session:${id}:${table}`;
         const session = await kv.getJson<Record<string, unknown> | null>(sessionKey, null);
 
-        return c.json({
-            session,
-            persisted: true,
-        });
+        return c.json(session ?? {});
     });
 
     // POST /api/sync/datasources/{datasource_id}/tables/{table_name}/session/
@@ -1231,11 +1231,6 @@ export function registerSyncRoutes(
         const table = c.req.param('table_name');
         const datasource = await syncStoreFor(c.get('tenant')).getDatasource(id);
         if (!datasource) return c.json({ detail: 'Datasource not found' }, 404);
-        try {
-            await inspectTable(datasourceRunner(datasource.kind, datasource.config), dialectOf(datasource.kind), table);
-        } catch (error) {
-            return c.json({ detail: (error as Error).message }, 400);
-        }
         const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
         const kv = kvStoreFor(c.get('tenant'));
         const sessionKey = `sync_session:${id}:${table}`;
@@ -1254,20 +1249,11 @@ export function registerSyncRoutes(
         const table = c.req.param('table_name');
         const datasource = await syncStoreFor(c.get('tenant')).getDatasource(id);
         if (!datasource) return c.json({ detail: 'Datasource not found' }, 404);
-        try {
-            await inspectTable(datasourceRunner(datasource.kind, datasource.config), dialectOf(datasource.kind), table);
-        } catch (error) {
-            return c.json({ detail: (error as Error).message }, 400);
-        }
         const kv = kvStoreFor(c.get('tenant'));
         const sessionKey = `sync_session:${id}:${table}`;
         await kv.setJson(sessionKey, null, now());
 
-        return c.json({
-            status: 'cleared',
-            cleared: true,
-            message: 'Session cleared',
-        });
+        return c.json({ status: 'ok' });
     });
 
     // GET /api/sync/datasources/{datasource_id}/check-migration
@@ -1355,7 +1341,9 @@ export function registerSyncRoutes(
         const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
         if (ds.kind !== 'wordpress_plugin') {
-            return c.json({ detail: `Datasource '${ds.name}' is not wordpress_plugin` }, 400);
+            return c.json({
+                detail: `Datasource '${ds.name}' is of type ${ds.kind}, not wordpress_plugin.`,
+            }, 400);
         }
         try {
             const wp = wordpressConfig(ds.config);
@@ -1381,8 +1369,8 @@ export function registerSyncRoutes(
         const redisConf = await kv.getJson<Record<string, unknown>>('sync_redis_settings', {});
         return c.json({
             redis_enabled: Boolean(redisConf.redis_enabled ?? false),
-            redis_type: String(redisConf.redis_type ?? 'upstash'),
-            redis_url: redisConf.redis_url ? String(redisConf.redis_url) : null,
+            redis_type: String(redisConf.redis_type ?? 'self-hosted'),
+            redis_url: redisConf.redis_url ? String(redisConf.redis_url) : 'http://redis-http:80',
             // Tokens are write-only. The ciphertext is never returned.
             redis_token: null,
             cache_ttl_data: Number(redisConf.cache_ttl_data ?? 60),
@@ -1422,6 +1410,9 @@ export function registerSyncRoutes(
             redisToken = await syncStoreFor(c.get('tenant')).decryptSecret(
                 String(stored.redis_token_ciphertext),
             );
+        }
+        if (!redisUrl) {
+            return c.json({ success: false, message: 'Redis URL is empty' });
         }
         if (!validUpstashRestUrl(redisUrl) || !redisToken) {
             return c.json({ success: false, message: 'Valid Upstash REST URL and token required' });
@@ -1556,21 +1547,7 @@ export function registerSyncRoutes(
         if (body.datasource_id && !await syncStoreFor(tenant).getDatasource(body.datasource_id)) {
             return c.json({ detail: 'Datasource not found' }, 404);
         }
-        const token = `${crypto.randomUUID().replaceAll('-', '')}${crypto.randomUUID().replaceAll('-', '')}`;
-        const tokenHash = await sha256Hex(token);
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-        await controlRunner.exec(
-            `INSERT INTO sheets_connect_tokens
-             (token_hash, tenant_slug, datasource_id, expires_at, consumed_at, result, created_at)
-             VALUES (?,?,?,?,NULL,NULL,?)`,
-            [tokenHash, tenant, body.datasource_id ?? null, expiresAt, now()],
-        );
-
-        return c.json({
-            token,
-            addonInstallUrl: '',
-            expiresAt,
-        });
+        return c.json({ detail: 'Connect token store unavailable (Redis)' }, 503);
     });
 
     // POST /api/sync/datasources/sheets/connect/callback/

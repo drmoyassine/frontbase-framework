@@ -85,6 +85,8 @@ export function registerEdgeMiscRoutes(
             is_active: true,
             expires_at: parsed.data.expires_at ?? null,
             can_reveal: true,
+            edge_engine_id: null,
+            engine_name: null,
             created_at: timestamp,
             updated_at: timestamp,
         }, 201);
@@ -100,7 +102,7 @@ export function registerEdgeMiscRoutes(
             'SELECT id, name, scope, is_active, expires_at FROM edge_api_keys WHERE tenant_slug = ? AND id = ?',
             [c.get('tenant'), c.req.param('key_id')],
         );
-        if (!current[0]) return c.json({ detail: 'Not found' }, 404);
+        if (!current[0]) return c.json({ detail: 'API key not found' }, 404);
         const row = current[0];
         const timestamp = now();
         await runner.exec(
@@ -125,6 +127,11 @@ export function registerEdgeMiscRoutes(
 
     app.delete('/api/edge-api-keys/:key_id', async (c) => {
         const id = c.req.param('key_id');
+        const existing = await runner.query(
+            'SELECT id FROM edge_api_keys WHERE tenant_slug = ? AND id = ?',
+            [c.get('tenant'), id],
+        );
+        if (!existing[0]) return c.json({ detail: 'API key not found' }, 404);
         await runner.exec('DELETE FROM edge_api_key_secrets WHERE tenant_slug = ? AND key_id = ?', [c.get('tenant'), id]);
         await runner.exec('DELETE FROM edge_api_keys WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), id]);
         await auditSecret(runner, c.get('tenant'), 'edge_api_key_deleted', id, now());
@@ -138,7 +145,7 @@ export function registerEdgeMiscRoutes(
              WHERE tenant_slug = ? AND key_id = ?`,
             [c.get('tenant'), id],
         );
-        if (!rows[0]) return c.json({ detail: 'Not found' }, 404);
+        if (!rows[0]) return c.json({ detail: 'API key not found' }, 404);
         const ciphertext = rows[0].ciphertext;
         if (!ciphertext || rows[0].revealed_at) {
             return c.json({ detail: 'API key has already been revealed' }, 410);
@@ -160,7 +167,56 @@ export function registerEdgeMiscRoutes(
 
     app.get('/api/edge-gpu/schemas', async (c) => {
         await p2(c.get('tenant')).listEdgeResources('gpu');
-        return c.json({ schemas: {}, providers: ['cloudflare', 'openai', 'local'] });
+        return c.json({
+            providers: ['workers_ai', 'openai', 'anthropic', 'google', 'ollama', 'openai_compatible'],
+            schemas: {
+                'text-generation': {
+                    model_type: 'llm',
+                    input: { prompt: 'string', max_tokens: 'number?', temperature: 'number?' },
+                    output: { response: 'string' },
+                },
+                'text-embeddings': {
+                    model_type: 'embedder',
+                    input: { text: 'string[]' },
+                    output: { vectors: 'number[][]' },
+                },
+                'speech-recognition': {
+                    model_type: 'stt',
+                    input: { audio: 'base64' },
+                    output: { text: 'string' },
+                },
+                'text-to-image': {
+                    model_type: 'image_gen',
+                    input: { prompt: 'string', width: 'number?', height: 'number?' },
+                    output: { image: 'base64' },
+                },
+                'image-classification': {
+                    model_type: 'classifier',
+                    input: { image: 'base64' },
+                    output: { label: 'string', score: 'number' },
+                },
+                translation: {
+                    model_type: 'translator',
+                    input: { text: 'string', source_lang: 'string', target_lang: 'string' },
+                    output: { translated_text: 'string' },
+                },
+                summarization: {
+                    model_type: 'summarizer',
+                    input: { text: 'string', max_length: 'number?' },
+                    output: { summary: 'string' },
+                },
+                'object-detection': {
+                    model_type: 'vision',
+                    input: { image: 'base64' },
+                    output: { objects: 'array' },
+                },
+                'text-classification': {
+                    model_type: 'classifier',
+                    input: { text: 'string' },
+                    output: { label: 'string', score: 'number' },
+                },
+            },
+        });
     });
 
     app.get('/api/edge-gpu/catalog', async (c) => {
@@ -169,7 +225,11 @@ export function registerEdgeMiscRoutes(
     });
 
     app.post('/api/edge-gpu/', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string };
+        const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; edge_engine_id?: string };
+        const engine = await p2(c.get('tenant')).getEdgeResource(b.edge_engine_id ?? '');
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: 'Edge engine not found' }, 404);
+        }
         const id = crypto.randomUUID();
         await p2(c.get('tenant')).upsertEdgeResource({ id, kind: 'gpu', name: b.name ?? 'GPU Model', provider: b.provider ?? 'cloudflare' }, now());
         return c.json({ id, name: b.name ?? 'GPU Model' });
@@ -178,7 +238,7 @@ export function registerEdgeMiscRoutes(
     app.put('/api/edge-gpu/:model_id', async (c) => {
         const store = p2(c.get('tenant'));
         const existing = await store.getEdgeResource(c.req.param('model_id'));
-        if (!existing) return c.json({ detail: 'Not found' }, 404);
+        if (!existing) return c.json({ detail: 'GPU model not found' }, 404);
         const body = await c.req.json().catch(() => ({})) as { name?: string; provider?: string };
         await store.upsertEdgeResource({
             id: c.req.param('model_id'),
@@ -190,13 +250,21 @@ export function registerEdgeMiscRoutes(
     });
 
     app.delete('/api/edge-gpu/:model_id', async (c) => {
-        await p2(c.get('tenant')).deleteEdgeResource(c.req.param('model_id'));
+        const store = p2(c.get('tenant'));
+        const model = await store.getEdgeResource(c.req.param('model_id'));
+        if (!model || model.kind !== 'gpu') {
+            return c.json({ detail: 'GPU model not found' }, 404);
+        }
+        await store.deleteEdgeResource(c.req.param('model_id'));
         return c.json({ success: true });
     });
 
     app.post('/api/edge-gpu/:model_id/test', async (c) => {
         const model = await p2(c.get('tenant')).getEdgeResource(c.req.param('model_id'));
-        return c.json({ success: Boolean(model), message: model ? 'GPU model reachable' : 'GPU model tested' });
+        if (!model || model.kind !== 'gpu') {
+            return c.json({ detail: 'GPU model not found' }, 404);
+        }
+        return c.json({ success: true, message: 'GPU model reachable' });
     });
 
     // Cloudflare & Deno integration endpoints.
@@ -213,14 +281,34 @@ export function registerEdgeMiscRoutes(
     // (closure plan §1a Tier 2, via `cloudflareProvisioner`), they tell the truth.
     const NOT_CONNECTED = 'Cloudflare provider is not configured for this deployment';
 
-    app.post('/api/cloudflare/status', (c) => c.json({
-        deployed: false,
-        account_id: null,
-        url: null,
-        worker_name: null,
-    }));
+    const providerAccount = async (tenant: string, providerId: string) => {
+        const provider = await p2(tenant).getEdgeResource(providerId);
+        return provider?.kind === 'provider' ? provider : null;
+    };
+    const providerGuard = async (c: any) => {
+        const body = await c.req.json().catch(() => ({})) as { provider_id?: string };
+        if (!await providerAccount(c.get('tenant'), body.provider_id ?? '')) {
+            return c.json({ detail: 'Provider account not found' }, 404);
+        }
+        return null;
+    };
+
+    app.post('/api/cloudflare/status', async (c) => {
+        const denied = await providerGuard(c);
+        if (denied) return denied;
+        return c.json({
+            deployed: false,
+            account_id: null,
+            url: null,
+            worker_name: null,
+        });
+    });
 
     for (const p of ['/api/cloudflare/connect', '/api/cloudflare/deploy', '/api/cloudflare/teardown', '/api/cloudflare/inspect/content', '/api/cloudflare/inspect/secrets', '/api/cloudflare/inspect/settings', '/api/deno/connect']) {
-        app.post(p, (c) => c.json({ success: false, detail: NOT_CONNECTED }));
+        app.post(p, async (c) => {
+            const denied = await providerGuard(c);
+            if (denied) return denied;
+            return c.json({ success: false, detail: NOT_CONNECTED });
+        });
     }
 }

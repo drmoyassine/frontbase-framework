@@ -15,7 +15,7 @@
 import { Hono } from 'hono';
 import type { DbRunner, StorageProvider } from '@frontbase/edge-infra';
 import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from '../mw/auth.js';
-import { opaqueErrors } from '../mw/errors.js';
+import { fastApiErrorEnvelope, opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
 import { contractRequestValidation } from './request-validation.js';
 import { routedOps, attachImplementedOps, canonicalSlashVariant } from './spec.js';
@@ -67,6 +67,9 @@ export interface CreateCompatAppDeps {
     /** Deliver a raw reset capability out-of-band. The public response remains
      * identical for existing and unknown email addresses. */
     passwordResetDelivery?: (email: string, token: string) => Promise<void>;
+    /** Match the product deployment mode. Cloud-only signup and slug checks are
+     * disabled by default because the framework worker is self-hosted. */
+    cloudMode?: boolean;
     /** Guarded provider HTTP seam. Production defaults to global fetch; tests can
      * inject a deterministic provider double without replacing route logic. */
     externalFetch?: CompatFetch;
@@ -113,6 +116,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
 
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
     app.onError(opaqueErrors);
+    app.use('*', fastApiErrorEnvelope);
     const isConsolePath = (path: string) =>
         path === '/api/console' || path.startsWith('/api/console/');
 
@@ -164,9 +168,11 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
             tenants,
             invites,
             passwordResets,
+            kvFor,
             deps.sessionSecret,
             now,
             deps.passwordResetDelivery,
+            deps.cloudMode ?? false,
         );
     }
 
@@ -211,6 +217,10 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         }
         return next();
     });
+    // Workflow callbacks use a separate service credential in the product.
+    // A console session must never authorize workflow email dispatch.
+    app.use('/api/workflows/*', async (c) =>
+        c.json({ detail: 'Authentication required' }, 401));
     // Validate protected requests only after authentication, preserving default-
     // deny semantics (anonymous callers receive 401, not schema-oracle 422s).
     app.use('*', contractRequestValidation());

@@ -12,14 +12,14 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 const DEFAULT_PROJECT = {
     id: 'default',
-    name: 'My Frontbase Site',
-    description: '',
-    appUrl: '',
-    logoUrl: '',
-    faviconUrl: '',
-    supabase_url: '',
-    supabase_anon_key: '',
-    usersConfig: null,
+    name: 'Default Project',
+    description: null,
+    appUrl: null,
+    logoUrl: null,
+    faviconUrl: null,
+    supabase_url: null,
+    supabase_anon_key: null,
+    usersConfig: {},
 };
 
 export function registerProjectRoutes(app: App, kvFor: (t: string) => KeyValueStore, now: () => string): void {

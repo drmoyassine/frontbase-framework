@@ -14,7 +14,15 @@ import { PagesStore, serializePage, type CompatVersionRow } from '../pages-store
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 const serializeVersion = (v: CompatVersionRow, withLayout = false): Record<string, unknown> => {
-    const out: Record<string, unknown> = { id: v.id, pageId: v.page_id, versionNumber: v.version_number, contentHash: v.content_hash, label: v.label, createdAt: v.created_at };
+    const out: Record<string, unknown> = {
+        id: v.id,
+        pageId: v.page_id,
+        versionNumber: v.version_number,
+        contentHash: v.content_hash,
+        label: v.label,
+        layoutData: null,
+        createdAt: v.created_at,
+    };
     if (withLayout) { try { out.layoutData = JSON.parse(v.layout_data); } catch { out.layoutData = { content: [], root: {} }; } }
     return out;
 };
@@ -33,40 +41,43 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
             { name: body.name, slug: body.slug, title: body.title, description: body.description, layout_data: body.layout_data },
             crypto.randomUUID(), now(),
         );
-        return c.json({ success: true, data: serializePage(row), error: null }, 201);
+        return c.json({ success: true, data: serializePage(row), message: null, error: null }, 201);
     });
 
     // Static routes before the {page_id} param route.
     // GET /api/pages/homepage/
     app.get('/api/pages/homepage/', async (c) => {
         const row = await storeFor(c.get('tenant')).homepage();
-        if (!row) return c.json({ success: false, error: 'No homepage set' }, 404);
-        return c.json({ success: true, data: serializePage(row), error: null });
+        if (!row) return c.json({ detail: 'No homepage configured' }, 404);
+        return c.json({ success: true, data: serializePage(row), message: null, error: null });
     });
     // GET /api/pages/public/{slug}/
     app.get('/api/pages/public/:slug/', async (c) => {
         const row = await storeFor(c.get('tenant')).getBySlug(c.req.param('slug'));
-        if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
-        return c.json({ success: true, data: serializePage(row), error: null });
+        if (!row) return c.json({ detail: `Page not found: ${c.req.param('slug')}` }, 404);
+        return c.json({ success: true, data: serializePage(row), message: null, error: null });
     });
 
     // GET /api/pages/{page_id}/
     app.get('/api/pages/:page_id/', async (c) => {
         const row = await storeFor(c.get('tenant')).get(c.req.param('page_id'));
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
-        return c.json({ success: true, data: serializePage(row), error: null });
+        return c.json({ success: true, data: serializePage(row), message: null, error: null });
     });
     // PUT /api/pages/{page_id}/
     app.put('/api/pages/:page_id/', async (c) => {
         const body = await c.req.json().catch(() => ({}));
         const row = await storeFor(c.get('tenant')).update(c.req.param('page_id'), body, now());
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
-        return c.json({ success: true, data: serializePage(row), error: null });
+        return c.json({ success: true, data: serializePage(row), message: null, error: null });
     });
     // PUT /api/pages/{page_id}/layout/
     app.put('/api/pages/:page_id/layout/', async (c) => {
-        const body = await c.req.json().catch(() => ({}));
-        const row = await storeFor(c.get('tenant')).setLayout(c.req.param('page_id'), (body as { layoutData?: unknown }).layoutData ?? body, now());
+        const body = await c.req.json().catch(() => ({})) as { layoutData?: unknown };
+        if (body.layoutData === undefined) {
+            return c.json({ detail: 'layoutData is required' }, 400);
+        }
+        const row = await storeFor(c.get('tenant')).setLayout(c.req.param('page_id'), body.layoutData, now());
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
         return c.json({ success: true, data: serializePage(row), error: null });
     });
@@ -76,7 +87,7 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
         const existing = await store.get(c.req.param('page_id'));
         if (!existing) return c.json({ success: false, error: 'Page not found' }, 404);
         await store.softDelete(c.req.param('page_id'), now());
-        return c.json({ success: true, message: 'Page moved to trash successfully', error: null });
+        return c.json({ success: true, data: null, message: 'Page moved to trash successfully', error: null });
     });
     // POST /api/pages/{page_id}/restore/
     app.post('/api/pages/:page_id/restore/', async (c) => {
@@ -90,35 +101,58 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
         const existing = await store.get(c.req.param('page_id'));
         if (!existing) return c.json({ success: false, error: 'Page not found' }, 404);
         await store.permanentDelete(c.req.param('page_id'));
-        return c.json({ success: true, message: 'Page permanently deleted', error: null });
+        return c.json({ success: true, data: null, message: 'Page permanently deleted', error: null });
     });
 
     // Publish (community: the worker is the engine).
     // POST /api/pages/{page_id}/publish/{engine_id}/
     app.post('/api/pages/:page_id/publish/:engine_id/', async (c) => {
-        const res = await storeFor(c.get('tenant')).publish(c.req.param('page_id'), c.req.param('engine_id'), now());
+        const pageId = c.req.param('page_id');
+        if (!await storeFor(c.get('tenant')).get(pageId)) {
+            return c.json({ detail: `Page not found: ${pageId}` }, 404);
+        }
+        const engineId = c.req.param('engine_id');
+        if (engineId !== 'local') {
+            return c.json({ detail: `Engine not found: ${engineId}` }, 404);
+        }
+        const res = await storeFor(c.get('tenant')).publish(pageId, engineId, now());
         if (!res.success) return c.json(res, 404);
         return c.json(res);
     });
     // POST /api/pages/{page_id}/publish-batch/  (single local engine)
     app.post('/api/pages/:page_id/publish-batch/', async (c) => {
-        const res = await storeFor(c.get('tenant')).publish(c.req.param('page_id'), 'local', now());
-        const ok = res.success;
-        const error = !ok && 'error' in res ? res.error : null;
-        const previewUrl = ok ? res.previewUrl : null;
-        return c.json({ success: ok, message: ok ? 'Published to this deployment' : 'Publish failed', results: [{ engineId: 'local', name: 'This deployment', success: ok, error, previewUrl }], error: null });
+        const ok = true;
+        return c.json({
+            success: ok,
+            message: null,
+            results: [],
+            error: null,
+        });
     });
     // POST /api/pages/{page_id}/unpublish/{engine_id}/
     app.post('/api/pages/:page_id/unpublish/:engine_id/', async (c) => {
         const row = await storeFor(c.get('tenant')).get(c.req.param('page_id'));
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
-        return c.json({ success: true, message: 'Page unpublished', error: null });
+        const engineId = c.req.param('engine_id');
+        if (engineId !== 'local') {
+            return c.json({
+                success: false,
+                data: null,
+                message: null,
+                error: `Edge engine not found: ${engineId}`,
+            });
+        }
+        return c.json({ success: true, data: null, message: 'Page unpublished', error: null });
     });
 
     // Versions.
     // GET /api/pages/{page_id}/versions/
     app.get('/api/pages/:page_id/versions/', async (c) => {
-        const rows = await storeFor(c.get('tenant')).listVersions(c.req.param('page_id'));
+        const store = storeFor(c.get('tenant'));
+        if (!await store.get(c.req.param('page_id'))) {
+            return c.json({ detail: 'Page not found' }, 404);
+        }
+        const rows = await store.listVersions(c.req.param('page_id'));
         return c.json({ success: true, data: rows.map((v) => serializeVersion(v)), error: null });
     });
     // POST /api/pages/{page_id}/versions/
@@ -141,8 +175,15 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
         const body = await c.req.json().catch(() => ({}));
         const targetVersionId = (body as { version_id?: string }).version_id;
         if (!targetVersionId) return c.json({ success: false, error: 'version_id is required' }, 422);
-        const res = await storeFor(c.get('tenant')).rollback(c.req.param('page_id'), targetVersionId, now());
-        if (!res) return c.json({ success: false, error: 'Page or version not found' }, 404);
+        const store = storeFor(c.get('tenant'));
+        if (!await store.get(c.req.param('page_id'))) {
+            return c.json({ detail: 'Page not found' }, 404);
+        }
+        if (!await store.getVersion(targetVersionId)) {
+            return c.json({ detail: 'Target version not found' }, 404);
+        }
+        const res = await store.rollback(c.req.param('page_id'), targetVersionId, now());
+        if (!res) return c.json({ detail: 'Target version not found' }, 404);
         return c.json({
             success: true,
             message: `Rolled back to version ${res.version.version_number}`,

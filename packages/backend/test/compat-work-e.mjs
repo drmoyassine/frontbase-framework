@@ -57,7 +57,7 @@ async function harness(options = {}) {
     };
 }
 
-test('E1: test-node is terminal error and explicitly says no runtime ran', async () => {
+test('E1: test-node refuses exactly as the product does, and records no execution', async () => {
     const { app, runner } = await harness();
     const draft = await (await request(app, 'POST', '/api/actions/drafts', {
         name: 'Node test audit',
@@ -67,25 +67,36 @@ test('E1: test-node is terminal error and explicitly says no runtime ran', async
     const draftId = draft.id ?? draft.data?.id;
     assert.ok(draftId);
 
+    // Probed against a live self-host product (2026-07-29). With a REAL draft and no
+    // edge engine reachable it answers 503 with this exact detail; with an absent
+    // draft it answers 404 first. E1's original 200-plus-error-row was truthful but
+    // was not the product's answer, and the console branches on the status.
+    const absent = await request(
+        app,
+        'POST',
+        '/api/actions/drafts/00000000-0000-4000-8000-000000000000/test-node/node-1',
+    );
+    assert.equal(absent.status, 404);
+    assert.deepEqual(await absent.json(), { detail: 'Draft not found' });
+
     const response = await request(
         app,
         'POST',
         `/api/actions/drafts/${draftId}/test-node/node-1`,
     );
-    assert.equal(response.status, 200);
-    const body = await response.json();
-    assert.equal(body.status, 'error');
-    assert.match(body.message, /not executed/i);
-    assert.match(body.message, /no live node runtime is configured/i);
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), {
+        detail: 'Edge Engine connection lost during node execution',
+    });
 
+    // E1's actual guarantee, and the reason this test exists: refusing must not leave
+    // a fabricated execution behind. Nothing ran, so nothing may be recorded — least
+    // of all a completed one.
     const rows = await runner.query(
-        'SELECT status, error FROM workflow_executions WHERE tenant_slug = ? AND id = ?',
-        ['tenant-a', body.execution_id],
+        'SELECT status FROM workflow_executions WHERE tenant_slug = ?',
+        ['tenant-a'],
     );
-    assert.deepEqual(rows, [{
-        status: 'error',
-        error: 'node_runtime_not_configured',
-    }]);
+    assert.deepEqual(rows, [], 'a refused node test must record no execution at all');
 });
 
 test('E3 database: configured datasource data shapes the response and stays tenant-scoped', async () => {
@@ -130,10 +141,14 @@ test('E3 database: configured datasource data shapes the response and stays tena
     })).json();
     assert.deepEqual(distinct.values, ['home']);
 
+    // The isolation claim is that tenant-b sees NONE of tenant-a's tables — not that
+    // it gets an error envelope. The product answers an unconfigured tenant with
+    // `{"success":true,"data":{"tables":[]},"message":null,"error":null}` (probed
+    // 2026-07-29), so asserting success:false would fail the moment we matched it.
     setTenant('tenant-b');
     const isolated = await (await request(app, 'GET', '/api/database/tables/')).json();
-    assert.equal(isolated.success, false);
-    assert.deepEqual(isolated.data.tables, []);
+    assert.equal(isolated.success, true);
+    assert.deepEqual(isolated.data.tables, [], 'tenant-b must not see tenant-a tables');
 });
 
 test('E3 database/RLS: named RPCs perform guarded provider calls with service credentials', async () => {
@@ -243,9 +258,20 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
     const storage = memoryStorageProvider();
     const { app, setTenant } = await harness({ storageProvider: storage });
 
+    const accountResponse = await request(app, 'POST', '/api/edge-providers/', {
+        name: 'Tenant A S3 Account',
+        provider: 's3',
+        config: {
+            accessKeyId: 'access-key',
+            secretAccessKey: 'must-never-leak',
+        },
+    });
+    assert.equal(accountResponse.status, 201);
+    const account = await accountResponse.json();
+
     const providerResponse = await request(app, 'POST', '/api/storage/providers/', {
         name: 'Tenant A Object Storage',
-        provider: 's3',
+        provider_account_id: account.id,
         config: {
             accessKeyId: 'access-key',
             secretAccessKey: 'must-never-leak',
@@ -287,6 +313,7 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
     );
 
     const moved = await request(app, 'POST', '/api/storage/move', {
+        provider_id: provider.id,
         file_id: uploaded.data.id,
         bucket_id: sourceBucket,
         from_path: 'docs/original.txt',
@@ -300,6 +327,8 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
     );
 
     const cross = await (await request(app, 'POST', '/api/storage/move-cross', {
+        source_provider_id: provider.id,
+        dest_provider_id: provider.id,
         file_id: uploaded.data.id,
         source_bucket_id: sourceBucket,
         target_bucket_id: 'target-bucket',
@@ -324,6 +353,7 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
     assert.match(signed.url, /^memory:\/\//);
 
     const deleted = await request(app, 'DELETE', '/api/storage/delete', {
+        provider_id: provider.id,
         file_id: uploaded.data.id,
     });
     assert.equal(deleted.status, 200);

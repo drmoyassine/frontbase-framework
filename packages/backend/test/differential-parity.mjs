@@ -358,6 +358,18 @@ for (const testCase of corpus.cases) {
         snapshot(productBase, testCase, productVars),
         snapshot(frameworkBase, testCase, frameworkVars),
     ]);
+    // Re-establish the session the case just destroyed. Not doing this measured the
+    // two systems' 401 handlers for the rest of the run: whichever one actually
+    // honours a logout answers 401 to everything that follows, and the difference is
+    // attributed to those operations rather than to the logout.
+    if (testCase.invalidatesSession) {
+        jars.get(productBase)?.clear();
+        jars.get(frameworkBase)?.clear();
+        await Promise.all([
+            authenticate(productBase, adminEmail, adminPassword),
+            authenticate(frameworkBase, adminEmail, adminPassword),
+        ]);
+    }
     compared++;
     const classes = [];
     if (product.status !== framework.status) classes.push('status');

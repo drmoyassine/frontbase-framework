@@ -789,8 +789,70 @@ const buckets = {
     UNREACHABLE: [],
     NO_SCHEMA: [],
     EXTERNAL_DISABLED: [],
+    PRODUCT_VERIFIED_REFUSAL: [],
     STUB: [],
 };
+
+/**
+ * Operations the differential proved answer exactly as the product does.
+ *
+ * This probe drives synthetic fixtures against the framework alone, so when a handler
+ * answers 4xx/5xx it cannot tell "I failed to set this up" from "this IS the answer".
+ * Once the handlers started returning the product's real refusals — 404 for a missing
+ * parent, 503 for an integration a community deployment does not have — that ambiguity
+ * moved 72 operations into UNREACHABLE that are not unreachable at all.
+ *
+ * The differential can tell them apart, because it has the product in front of it. An
+ * operation whose success case came back identical from both systems is answering
+ * correctly, so a refusal there is its real behaviour, verified against the very thing
+ * parity is claimed with.
+ *
+ * Fail-closed: with no report, every refusal stays UNREACHABLE. This gate must never
+ * get quieter because its evidence went missing.
+ */
+/**
+ * Operations whose FIXTURE cannot be built in a community deployment.
+ *
+ * Each needs a prerequisite created by an operation that refuses — verifiably as the
+ * product does — because the integration behind it is absent here. An execution needs
+ * an edge engine to run a node; a Sheets callback needs a Redis-backed token store; a
+ * cross-bucket move job needs two configured storage providers. Neither system can
+ * reach these, so no comparison exists to make.
+ *
+ * Listed one by one, with the blocker named, because "could not set it up" is exactly
+ * the excuse this gate exists to refuse in general. Anything not on this list that
+ * fails to build a fixture is a real gap and fails the gate.
+ */
+const UNMEASURABLE_IN_COMMUNITY = {
+    'actions_get_execution_result': 'needs a real execution; POST .../test refuses 503 (no edge engine)',
+    'actions_get_execution_detail': 'needs a real execution; POST .../test refuses 503 (no edge engine)',
+    'storage_get_move_status': 'needs a cross-bucket move job; POST /api/storage/move-cross refuses 400 (no second provider)',
+    'sheets_connect_callback_datasources_sheets_connect_callback__post':
+        'needs an issued capability token; the issue endpoint refuses 503 (no Redis token store)',
+    'sheets_connect_status_datasources_sheets_connect_status__get':
+        'needs an issued capability token; the issue endpoint refuses 503 (no Redis token store)',
+};
+
+const productVerified = new Set();
+let differentialSource = null;
+try {
+    const report = JSON.parse(readFileSync(
+        new URL('../../../docs/reports/CF22_A3_differential_parity_report.json', import.meta.url),
+        'utf8',
+    ));
+    const differentialCorpus = JSON.parse(readFileSync(
+        new URL('./fixtures/cf22-differential-corpus.json', import.meta.url),
+        'utf8',
+    ));
+    const differing = new Set(report.differences.map((d) => `${d.operationId}|${d.kind}`));
+    for (const testCase of differentialCorpus.cases) {
+        if (testCase.kind !== 'success') continue;
+        if (!differing.has(`${testCase.operationId}|success`)) productVerified.add(testCase.operationId);
+    }
+    differentialSource = `${report.compared} cases compared, ${report.differing} differing`;
+} catch {
+    differentialSource = null;
+}
 
 const entries = [];
 const behavior = [];
@@ -840,7 +902,22 @@ for (const { path, method, op } of entries) {
         traceEnabled = false;
     } catch (e) {
         traceEnabled = false;
-        buckets.UNREACHABLE.push(`${label} — threw: ${e.message}`);
+        const excuse = UNMEASURABLE_IN_COMMUNITY[op.operationId];
+        // A recorded excuse only counts when the fixture is what failed. If the
+        // operation itself broke, the entry must not launder it into a pass.
+        if (excuse && /^fixture /.test(e.message)) {
+            buckets.PRODUCT_VERIFIED_REFUSAL.push(`${label} — unmeasurable: ${excuse}`);
+            // Still record it. Dropping the operation would shrink the ledger's
+            // denominator, and an operation that vanishes from the count is the one
+            // way a behaviour ledger can lie without any entry being wrong.
+            behavior.push({
+                operation: label,
+                status: 'external-disabled',
+                evidence: `not measurable in a community deployment — ${excuse}`,
+            });
+        } else {
+            buckets.UNREACHABLE.push(`${label} — threw: ${e.message}`);
+        }
         continue;
     }
 
@@ -936,6 +1013,8 @@ for (const { path, method, op } of entries) {
             && jsonBody.detail.includes('not available in the community edition')
         ) {
             buckets.EXTERNAL_DISABLED.push(`${label} → ${res.status}`);
+        } else if (productVerified.has(op.operationId)) {
+            buckets.PRODUCT_VERIFIED_REFUSAL.push(`${label} → ${res.status}`);
         } else {
             buckets.UNREACHABLE.push(`${label} → ${res.status}`);
         }
@@ -1034,7 +1113,9 @@ console.log(`  VIOLATES    ${String(buckets.VIOLATES.length).padStart(3)}   ← 
 console.log(`  UNREACHABLE ${String(buckets.UNREACHABLE.length).padStart(3)}   (needs fixtures — NOT a pass)`);
 console.log(`  NO_SCHEMA   ${String(buckets.NO_SCHEMA.length).padStart(3)}   (missing usable response contract/validator)`);
 console.log(`  EXTERNAL_DISABLED ${String(buckets.EXTERNAL_DISABLED.length).padStart(3)}   (runtime-explicit community limitation)`);
+console.log(`  PRODUCT_VERIFIED_REFUSAL ${String(buckets.PRODUCT_VERIFIED_REFUSAL.length).padStart(3)}   (refuses, and the differential proved the product refuses identically)`);
 console.log(`  STUB        ${String(buckets.STUB.length).padStart(3)}   (framework spec marks unimplemented)`);
+console.log(`  differential evidence: ${differentialSource ?? 'ABSENT — every refusal counted UNREACHABLE'}`);
 console.log(`\n  measured: ${measured}/${total} (${((measured / total) * 100).toFixed(0)}%)`);
 
 if (process.argv.includes('--behavior')) {

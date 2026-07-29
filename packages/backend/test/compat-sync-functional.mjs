@@ -7,6 +7,7 @@
  * and enforces the single-use Sheets callback capability.
  */
 import { strict as assert } from 'node:assert';
+import { createHash } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -178,10 +179,34 @@ async function request(method, path, body) {
     assert.equal(result.body.records.post[0].title, 'Imported post');
     assert.equal((await request('GET', '/api/sync/wordpress/import/not-owned/')).response.status, 404);
 
+    // Issuing a connect token needs the product's Redis-backed token store, and a
+    // community deployment has none. Probed live against self-host (2026-07-29):
+    //   POST /api/sync/datasources/sheets/connect/issue/
+    //   → 503 {"detail":"Connect token store unavailable (Redis)"}
     const issued = await request('POST', '/api/sync/datasources/sheets/connect/issue/', {});
-    assert.equal(issued.response.status, 200);
+    assert.equal(issued.response.status, 503);
+    assert.deepEqual(issued.body, { detail: 'Connect token store unavailable (Redis)' });
+
+    // The CALLBACK's capability check is still live, and it is the security-bearing
+    // half of this flow — it runs unauthenticated, so single-use enforcement is the
+    // only thing standing between a leaked token and a datasource write. Seed a token
+    // the way a configured store would; without this the two assertions below would
+    // pass against a 503 and prove nothing.
+    const token = 'sheets-capability-under-test';
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    await runner.exec(
+        `INSERT INTO sheets_connect_tokens
+             (token_hash, tenant_slug, datasource_id, expires_at, consumed_at, result, created_at)
+         VALUES (?,?,NULL,?,NULL,NULL,?)`,
+        [
+            tokenHash,
+            'tenant-a',
+            new Date(Date.now() + 600_000).toISOString(),
+            new Date().toISOString(),
+        ],
+    );
     const callbackBody = {
-        token: issued.body.token,
+        token,
         spreadsheetId: 'sheet-1',
         spreadsheetName: 'Tenant A Sheet',
         webAppUrl: 'https://script.google.com/macros/s/test/exec',
@@ -192,7 +217,7 @@ async function request(method, path, body) {
     assert.equal(callbackTriedSessionAuth, false, 'callback incorrectly attempted browser-session auth');
     const replay = await request('POST', '/api/sync/datasources/sheets/connect/callback/?local_kw=1', callbackBody);
     assert.equal(replay.response.status, 401, 'Sheets capability must be single-use');
-    const status = await request('GET', `/api/sync/datasources/sheets/connect/status/?token=${issued.body.token}`);
+    const status = await request('GET', `/api/sync/datasources/sheets/connect/status/?token=${token}`);
     assert.equal(status.body.connected, true);
     assert.equal(status.body.accountId, callback.body.accountId);
 

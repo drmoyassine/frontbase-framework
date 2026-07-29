@@ -14,6 +14,80 @@ import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
+const BUILTIN_SKILLS = [
+    {
+        slug: 'code-exec',
+        name: 'Code Execution',
+        description: 'Run sandboxed Python snippets and return structured output.',
+        category: 'utility',
+        toolDefinitions: [
+            { name: 'run_python', description: 'Execute a Python code snippet and return stdout.', parameters: { code: 'string' } },
+        ],
+    },
+    {
+        slug: 'database-query',
+        name: 'Database Query',
+        description: 'Run read-only SQL against a connected datasource and return rows.',
+        category: 'data',
+        toolDefinitions: [
+            { name: 'query_sql', description: 'Execute a read-only SQL SELECT.', parameters: { datasource_id: 'string', sql: 'string' } },
+        ],
+    },
+    {
+        slug: 'document-parser',
+        name: 'Document Parser',
+        description: 'Parse uploaded documents (PDF, DOCX, CSV) into structured text.',
+        category: 'data',
+        toolDefinitions: [
+            { name: 'parse_document', description: 'Extract text from a document file.', parameters: { file_id: 'string' } },
+        ],
+    },
+    {
+        slug: 'integration-http',
+        name: 'HTTP Integration',
+        description: 'Make authenticated HTTP requests to external APIs.',
+        category: 'integration',
+        toolDefinitions: [
+            { name: 'http_request', description: 'Perform an HTTP request.', parameters: { method: 'string', url: 'string', body: 'object' } },
+        ],
+    },
+    {
+        slug: 'web-scraper',
+        name: 'Web Scraper',
+        description: 'Fetch and extract content from a URL (title, text, links).',
+        category: 'web',
+        toolDefinitions: [
+            { name: 'scrape_url', description: 'Fetch a URL and return its text content.', parameters: { url: 'string' } },
+        ],
+    },
+];
+
+const CORE_TOOLS = [
+    ['pages_list', 'List Pages', 'Pages'],
+    ['pages_get', 'Get Page', 'Pages'],
+    ['pages_update', 'Update Page', 'Pages'],
+    ['styles_list', 'List Styles', 'Styles'],
+    ['styles_get', 'Get Style', 'Styles'],
+    ['styles_update', 'Update Style', 'Styles'],
+    ['engine_info', 'Engine Info', 'Engine'],
+    ['engine_status', 'Engine Status', 'Engine'],
+    ['queryDatasource', 'Query Datasource', 'Datasources'],
+    ['triggerWorkflow', 'Trigger Workflow', 'Workflows'],
+].map(([name, label, category]) => ({ name, label, category, disabled: false }));
+
+const builtinSkillViews = () => BUILTIN_SKILLS.map((skill) => ({
+    id: skill.slug,
+    ...skill,
+    version: '1.0.0',
+    isBuiltin: true,
+    isActive: true,
+    tenantId: null,
+    projectId: null,
+    profileSlug: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+}));
+
 export function registerAgentCompatRoutes(
     app: App,
     runner: DbRunner,
@@ -34,6 +108,11 @@ export function registerAgentCompatRoutes(
         const { config, ...safe } = row;
         return { ...safe, has_config: Boolean(config) };
     };
+    const profilesFor = (tenant: string) =>
+        kvFor(tenant).getJson<Array<{ id?: string; name?: string }>>('agent_profiles', []);
+    const profileFor = async (tenant: string, slug: string) =>
+        (await profilesFor(tenant)).find((item) => item.id === slug || item.name === slug);
+    const profileDetail = (slug: string) => `Agent profile '${slug}' not found`;
     const mcpRequest = async (row: Record<string, unknown>, method: string, params: Record<string, unknown> = {}) => {
         const url = String(row.url ?? '');
         if (!url) throw new Error('mcp_url_missing');
@@ -69,14 +148,22 @@ export function registerAgentCompatRoutes(
     // POST /api/agent/chat
     app.post('/api/agent/chat', async (c) => {
         const settings = await kvFor(c.get('tenant')).getJson<Record<string, unknown>>('agent_settings', {});
-        const body = await c.req.json().catch(() => ({})) as { message?: string };
+        const raw = await c.req.json().catch(() => null) as unknown;
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+            return c.json({ detail: 'Invalid JSON body' }, 400);
+        }
+        const body = raw as { message?: string };
         return c.body(sse({ type: 'message', content: body.message ?? '', settingsApplied: Object.keys(settings).length > 0 }), 200, { 'Content-Type': 'text/event-stream' });
     });
 
     // POST /api/agent/chat/{profile_slug}
     app.post('/api/agent/chat/:profile_slug', async (c) => {
         const settings = await kvFor(c.get('tenant')).getJson<Record<string, unknown>>('agent_settings', {});
-        const body = await c.req.json().catch(() => ({})) as { message?: string };
+        const raw = await c.req.json().catch(() => null) as unknown;
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+            return c.json({ detail: 'Invalid JSON body' }, 400);
+        }
+        const body = raw as { message?: string };
         return c.body(sse({
             type: 'message',
             content: body.message ?? '',
@@ -90,43 +177,42 @@ export function registerAgentCompatRoutes(
         const usage = await kvFor(c.get('tenant')).getJson<{
             credits?: number; daily_used?: number; daily_limit?: number; monthly_used?: number; monthly_limit?: number;
         }>('agent_credit_usage', {});
-        return c.json({
-            credits: usage.credits ?? 1000,
-            daily_used: usage.daily_used ?? 0,
-            daily_limit: usage.daily_limit ?? 100,
-            monthly_used: usage.monthly_used ?? 0,
-            monthly_limit: usage.monthly_limit ?? 1000,
-        });
+        void usage;
+        return c.json({ enabled: true, unlimited: true });
     });
 
     // GET /api/agent/settings
     app.get('/api/agent/settings', async (c) => c.json({
-        settings: await kvFor(c.get('tenant')).getJson('agent_settings', {}),
+        settings: await kvFor(c.get('tenant')).getJson('agent_settings', {
+            general: { temperature: 0.7, max_tokens: 4096, top_p: 0.9, timeout_seconds: 60 },
+            system: { disabled_mcp_servers: [], disabled_skills: [], disabled_tools: [] },
+        }),
         can_modify_tenant: true,
-        inherited_from: 'default',
+        inherited_from: 'profile',
     }));
 
     // PUT /api/agent/settings
     app.put('/api/agent/settings', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
         await kvFor(c.get('tenant')).setJson('agent_settings', b, '');
-        return c.json({ message: 'Settings updated', scope: 'tenant' });
+        return c.json({ message: 'Settings saved', scope: String(b.scope ?? 'user') });
     });
 
     // DELETE /api/agent/settings
     app.delete('/api/agent/settings', async (c) => {
         await kvFor(c.get('tenant')).setJson('agent_settings', {}, '');
-        return c.json({ message: 'Settings reset to defaults', scope: 'tenant', deleted: true });
+        return c.json({ message: 'Settings reset', scope: c.req.query('scope') ?? 'user', deleted: 1 });
     });
 
     // GET /api/agent/mcp/{profile_slug}
     app.get('/api/agent/mcp/:profile_slug', async (c) => {
-        const profiles = await kvFor(c.get('tenant')).getJson<Array<{ id?: string; name?: string }>>('agent_profiles', []);
-        const profile = profiles.find((item) => item.id === c.req.param('profile_slug') || item.name === c.req.param('profile_slug'));
+        const slug = c.req.param('profile_slug');
+        const profile = await profileFor(c.get('tenant'), slug);
+        if (!profile) return c.json({ detail: profileDetail(slug) }, 404);
         return c.json({
             protocolVersion: '2024-11-05',
             version: '1.0.0',
-            name: profile?.name ?? c.req.param('profile_slug'),
+            name: profile.name ?? slug,
             capabilities: {},
             instructions: null,
         });
@@ -134,6 +220,10 @@ export function registerAgentCompatRoutes(
 
     // POST /api/agent/mcp/{profile_slug}/tools/list
     app.post('/api/agent/mcp/:profile_slug/tools/list', async (c) => {
+        const slug = c.req.param('profile_slug');
+        if (!await profileFor(c.get('tenant'), slug)) {
+            return c.json({ detail: profileDetail(slug) }, 404);
+        }
         const skills = await runner.query(
             'SELECT id, name, description FROM agent_skills WHERE tenant_slug = ? ORDER BY created_at',
             [c.get('tenant')],
@@ -149,6 +239,10 @@ export function registerAgentCompatRoutes(
 
     // POST /api/agent/mcp/{profile_slug}/tools/call
     app.post('/api/agent/mcp/:profile_slug/tools/call', async (c) => {
+        const slug = c.req.param('profile_slug');
+        if (!await profileFor(c.get('tenant'), slug)) {
+            return c.json({ detail: profileDetail(slug) }, 404);
+        }
         const body = await c.req.json().catch(() => ({})) as { name?: string; arguments?: unknown };
         const skills = await runner.query(
             'SELECT id, name FROM agent_skills WHERE tenant_slug = ?',
@@ -164,6 +258,10 @@ export function registerAgentCompatRoutes(
 
     // POST /api/agent/mcp/{profile_slug}/resources/list
     app.post('/api/agent/mcp/:profile_slug/resources/list', async (c) => {
+        const slug = c.req.param('profile_slug');
+        if (!await profileFor(c.get('tenant'), slug)) {
+            return c.json({ detail: profileDetail(slug) }, 404);
+        }
         const pages = await runner.query(
             'SELECT id, name, slug FROM compat_pages WHERE tenant_slug = ? AND deleted_at IS NULL ORDER BY updated_at DESC',
             [c.get('tenant')],
@@ -179,44 +277,91 @@ export function registerAgentCompatRoutes(
 
     // POST /api/agent/mcp/{profile_slug}/prompts/list
     app.post('/api/agent/mcp/:profile_slug/prompts/list', async (c) => {
+        const slug = c.req.param('profile_slug');
+        if (!await profileFor(c.get('tenant'), slug)) {
+            return c.json({ detail: profileDetail(slug) }, 404);
+        }
         const prompts = await kvFor(c.get('tenant')).getJson<Array<Record<string, unknown>>>('agent_prompts', []);
         return c.json({ prompts });
     });
 
     // POST /api/agent/mcp/{profile_slug}/prompts/get
     app.post('/api/agent/mcp/:profile_slug/prompts/get', async (c) => {
+        const slug = c.req.param('profile_slug');
+        if (!await profileFor(c.get('tenant'), slug)) {
+            return c.json({ detail: profileDetail(slug) }, 404);
+        }
         const body = await c.req.json().catch(() => ({})) as { name?: string };
         const prompts = await kvFor(c.get('tenant')).getJson<Array<Record<string, unknown>>>('agent_prompts', []);
         const prompt = prompts.find((item) => item.name === body.name);
-        return c.json(prompt ?? { name: body.name ?? 'default', description: 'MCP prompt', messages: [] });
+        return prompt ? c.json(prompt) : c.json({ detail: 'Prompt not found' }, 404);
     });
 
     // GET /api/mcp-servers
-    app.get('/api/mcp-servers', async (c) => c.json({
-        servers: (await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ?', [c.get('tenant')])).map(redactConfig),
-    }));
+    app.get('/api/mcp-servers', async (c) => {
+        const mcpServers = (
+            await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ?', [c.get('tenant')])
+        ).map(redactConfig);
+        return c.json({ mcpServers, total: mcpServers.length });
+    });
 
     // POST /api/mcp-servers
     app.post('/api/mcp-servers', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { name?: string; url?: string; transport?: string; config?: unknown };
+        const b = await c.req.json().catch(() => ({})) as {
+            name?: string;
+            slug?: string;
+            description?: string | null;
+            url?: string;
+            transport?: string;
+            auth_type?: string | null;
+            token?: string | null;
+            tool_filter?: string[] | null;
+            category?: string | null;
+            is_active?: boolean;
+            profile_slug?: string | null;
+            config?: unknown;
+        };
         const id = crypto.randomUUID();
         const nowStr = new Date().toISOString();
         await runner.exec(
             'INSERT INTO mcp_servers (id, tenant_slug, name, url, transport, config, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)',
             [id, c.get('tenant'), b.name ?? 'server', b.url ?? '', b.transport ?? 'http', await encryptedConfig(b.config) ?? null, 1, nowStr, nowStr],
         );
-        return c.json({ id, name: b.name ?? 'server' });
+        return c.json({
+            id,
+            name: b.name ?? 'server',
+            slug: b.slug ?? '',
+            description: b.description ?? null,
+            url: b.url ?? '',
+            transport: b.transport ?? 'streamable-http',
+            authType: b.auth_type ?? null,
+            hasAuth: Boolean(b.token),
+            toolFilter: b.tool_filter ?? null,
+            category: b.category ?? null,
+            isActive: b.is_active ?? true,
+            isPublic: false,
+            tenantId: null,
+            projectId: null,
+            profileSlug: b.profile_slug ?? null,
+            createdAt: nowStr,
+            updatedAt: nowStr,
+        }, 201);
     });
 
     // GET /api/mcp-servers/{server_id}
     app.get('/api/mcp-servers/:server_id', async (c) => {
         const r = await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), c.req.param('server_id')]);
-        return r[0] ? c.json(redactConfig(r[0])) : c.json({ detail: 'Not found' }, 404);
+        return r[0] ? c.json(redactConfig(r[0])) : c.json({ detail: 'MCP server not found' }, 404);
     });
 
     // PUT /api/mcp-servers/{server_id}
     app.put('/api/mcp-servers/:server_id', async (c) => {
         const b = await c.req.json().catch(() => ({})) as { name?: string; url?: string };
+        const existing = await runner.query(
+            'SELECT id FROM mcp_servers WHERE tenant_slug = ? AND id = ?',
+            [c.get('tenant'), c.req.param('server_id')],
+        );
+        if (!existing[0]) return c.json({ detail: 'MCP server not found' }, 404);
         await runner.exec(
             'UPDATE mcp_servers SET name = ?, url = ? WHERE tenant_slug = ? AND id = ?',
             [b.name ?? 'server', b.url ?? '', c.get('tenant'), c.req.param('server_id')],
@@ -226,6 +371,11 @@ export function registerAgentCompatRoutes(
 
     // DELETE /api/mcp-servers/{server_id}
     app.delete('/api/mcp-servers/:server_id', async (c) => {
+        const existing = await runner.query(
+            'SELECT id FROM mcp_servers WHERE tenant_slug = ? AND id = ?',
+            [c.get('tenant'), c.req.param('server_id')],
+        );
+        if (!existing[0]) return c.json({ detail: 'MCP server not found' }, 404);
         await runner.exec('DELETE FROM mcp_servers WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), c.req.param('server_id')]);
         return c.body(null, 204);
     });
@@ -236,7 +386,7 @@ export function registerAgentCompatRoutes(
             'SELECT id, url, transport, config FROM mcp_servers WHERE tenant_slug = ? AND id = ?',
             [c.get('tenant'), c.req.param('server_id')],
         );
-        if (!rows[0]) return c.json({ detail: 'Not found' }, 404);
+        if (!rows[0]) return c.json({ detail: 'MCP server not found' }, 404);
         try {
             const result = await mcpRequest(rows[0], 'tools/list');
             const tools = Array.isArray(result.tools) ? result.tools : [];
@@ -249,7 +399,7 @@ export function registerAgentCompatRoutes(
     // POST /api/mcp-servers/{server_id}/test
     app.post('/api/mcp-servers/:server_id/test', async (c) => {
         const r = await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), c.req.param('server_id')]);
-        if (!r[0]) return c.json({ reachable: false, serverId: c.req.param('server_id') });
+        if (!r[0]) return c.json({ detail: 'MCP server not found' }, 404);
         try {
             await mcpRequest(r[0], 'ping');
             return c.json({ reachable: true, serverId: c.req.param('server_id') });
@@ -259,24 +409,59 @@ export function registerAgentCompatRoutes(
     });
 
     // GET /api/agent-skills
-    app.get('/api/agent-skills', async (c) => c.json({
-        skills: (await runner.query('SELECT * FROM agent_skills WHERE tenant_slug = ?', [c.get('tenant')])).map(redactConfig),
-    }));
+    app.get('/api/agent-skills', async (c) => {
+        const custom = (await runner.query(
+            'SELECT * FROM agent_skills WHERE tenant_slug = ?',
+            [c.get('tenant')],
+        )).map(redactConfig);
+        const skills = [...builtinSkillViews(), ...custom];
+        return c.json({ skills, total: skills.length });
+    });
 
     // POST /api/agent-skills
     app.post('/api/agent-skills', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { name?: string; description?: string; config?: unknown };
+        const b = await c.req.json().catch(() => ({})) as {
+            slug?: string;
+            name?: string;
+            description?: string | null;
+            category?: string | null;
+            tool_definitions?: Array<Record<string, unknown>>;
+            version?: string;
+            profile_slug?: string | null;
+            config?: unknown;
+        };
         const id = crypto.randomUUID();
+        const timestamp = new Date().toISOString();
         await runner.exec(
             'INSERT INTO agent_skills (id, tenant_slug, name, description, config, created_at) VALUES (?,?,?,?,?,?)',
-            [id, c.get('tenant'), b.name ?? 'skill', b.description ?? null, await encryptedConfig(b.config) ?? null, new Date().toISOString()],
+            [id, c.get('tenant'), b.name ?? 'skill', b.description ?? null, await encryptedConfig(b.config) ?? null, timestamp],
         );
-        return c.json({ id, name: b.name ?? 'skill' });
+        return c.json({
+            id,
+            slug: b.slug ?? '',
+            name: b.name ?? 'skill',
+            description: b.description ?? null,
+            category: b.category ?? null,
+            toolDefinitions: b.tool_definitions ?? [],
+            version: b.version ?? '1.0.0',
+            isBuiltin: false,
+            isActive: true,
+            tenantId: null,
+            projectId: null,
+            profileSlug: b.profile_slug ?? null,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+        }, 201);
     });
 
     // PUT /api/agent-skills/{skill_id}
     app.put('/api/agent-skills/:skill_id', async (c) => {
         const b = await c.req.json().catch(() => ({})) as { name?: string; description?: string };
+        const existing = await runner.query(
+            'SELECT id FROM agent_skills WHERE tenant_slug = ? AND id = ?',
+            [c.get('tenant'), c.req.param('skill_id')],
+        );
+        if (!existing[0]) return c.json({ detail: 'Skill not found' }, 404);
         await runner.exec(
             'UPDATE agent_skills SET name = ?, description = ? WHERE tenant_slug = ? AND id = ?',
             [b.name ?? 'skill', b.description ?? null, c.get('tenant'), c.req.param('skill_id')],
@@ -286,21 +471,35 @@ export function registerAgentCompatRoutes(
 
     // DELETE /api/agent-skills/{skill_id}
     app.delete('/api/agent-skills/:skill_id', async (c) => {
+        const existing = await runner.query(
+            'SELECT id FROM agent_skills WHERE tenant_slug = ? AND id = ?',
+            [c.get('tenant'), c.req.param('skill_id')],
+        );
+        if (!existing[0]) return c.json({ detail: 'Skill not found' }, 404);
         await runner.exec('DELETE FROM agent_skills WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), c.req.param('skill_id')]);
         return c.body(null, 204);
     });
 
     // GET /api/agent-catalogue
-    app.get('/api/agent-catalogue', async (c) => c.json({
-        skills: (await runner.query(
-            'SELECT id, name, description, config, created_at FROM agent_skills WHERE tenant_slug = ? ORDER BY created_at',
-            [c.get('tenant')],
-        )).map(redactConfig),
-        profiles: [],
+    app.get('/api/agent-catalogue', (c) => c.json({
+        mcpServers: [],
+        skills: BUILTIN_SKILLS.map((skill) => ({
+            id: skill.slug,
+            slug: skill.slug,
+            name: skill.name,
+            category: skill.category,
+            isBuiltin: true,
+            disabled: false,
+        })),
+        coreTools: CORE_TOOLS,
     }));
 
     // GET /api/agent-profiles/{profile_id}/skills
     app.get('/api/agent-profiles/:profile_id/skills', async (c) => {
+        const profiles = await profilesFor(c.get('tenant'));
+        if (!profiles.some((profile) => profile.id === c.req.param('profile_id'))) {
+            return c.json({ detail: 'Profile not found' }, 404);
+        }
         const installs = await kvFor(c.get('tenant')).getJson<Array<{ id: string; profileId: string; skillId: string; configOverrides?: unknown; installedAt: string }>>('agent_profile_skills', []);
         const forProfile = installs.filter((item) => item.profileId === c.req.param('profile_id'));
         const skills = await runner.query('SELECT * FROM agent_skills WHERE tenant_slug = ?', [c.get('tenant')]);
@@ -348,6 +547,10 @@ export function registerAgentCompatRoutes(
     // DELETE /api/agent-profiles/{profile_id}/skills/{install_id}
     app.delete('/api/agent-profiles/:profile_id/skills/:install_id', async (c) => {
         const kv = kvFor(c.get('tenant'));
+        const profiles = await profilesFor(c.get('tenant'));
+        if (!profiles.some((profile) => profile.id === c.req.param('profile_id'))) {
+            return c.json({ detail: 'Profile not found' }, 404);
+        }
         const installs = await kv.getJson<Array<{ id: string; profileId: string }>>('agent_profile_skills', []);
         const kept = installs.filter((item) => !(item.id === c.req.param('install_id') && item.profileId === c.req.param('profile_id')));
         if (kept.length === installs.length) return c.json({ detail: 'Installed skill not found' }, 404);

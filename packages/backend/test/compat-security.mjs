@@ -65,7 +65,11 @@ const tenantBList = await (await req('tenant-b', 'GET', '/api/edge-api-keys')).j
 assert.equal(tenantBList.keys.length, 0);
 assert.equal((await req('tenant-b', 'GET', `/api/edge-api-keys/${created.id}/reveal`)).status, 404);
 assert.equal((await req('tenant-b', 'PUT', `/api/edge-api-keys/${created.id}`, { is_active: false })).status, 404);
-assert.equal((await req('tenant-b', 'DELETE', `/api/edge-api-keys/${created.id}`)).status, 204);
+// 404, not 204. The sibling GET and PUT above already answer 404; the DELETE's 204
+// was the odd one out, and it told tenant B "deleted" for a key it can neither see
+// nor touch — from the caller's side, indistinguishable from having actually
+// deleted tenant A's key. The next assertion proves it never did.
+assert.equal((await req('tenant-b', 'DELETE', `/api/edge-api-keys/${created.id}`)).status, 404);
 
 const stillOwned = await (await req('tenant-a', 'GET', '/api/edge-api-keys')).json();
 assert.equal(stillOwned.keys.length, 1, 'tenant B must not delete tenant A key');

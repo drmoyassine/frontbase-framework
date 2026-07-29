@@ -80,13 +80,19 @@ export function registerDatabaseRoutes(
     // GET /api/database/connections/
     app.get('/api/database/connections/', async (c) => {
         const source = await getActiveRunner(c.get('tenant'));
+        const legacy = await kvFor(c.get('tenant')).getJson<{ connected?: boolean; url?: string; serviceKey?: string }>(
+            'db_connection',
+            {},
+        );
+        const connected = source?.kind === 'supabase' || legacy.connected === true;
         return c.json({
             success: true,
+            message: 'Connections retrieved successfully',
             data: {
                 supabase: {
-                    connected: source?.kind === 'supabase',
-                    url: '',
-                    hasServiceKey: source?.kind === 'supabase',
+                    connected,
+                    url: source?.kind === 'supabase' ? String(source.config.url ?? '') : String(legacy.url ?? ''),
+                    hasServiceKey: source?.kind === 'supabase' || Boolean(legacy.serviceKey),
                 },
             },
         });
@@ -101,40 +107,53 @@ export function registerDatabaseRoutes(
         const serviceKey = String(body.serviceKey ?? '');
         const anonKey = String(body.anonKey ?? '');
         const key = serviceKey || anonKey;
-        if (!url || !key) return c.json({ success: false, message: 'Supabase URL and key are required' });
+        if (!url || !key) return c.json({ success: false, message: 'Supabase URL and key are required', data: null });
         try {
             const response = await guardedExternalFetch(externalFetch, `${url}/rest/v1/`, {
                 headers: { apikey: key, Authorization: `Bearer ${key}` },
             });
-            if (!response.ok) return c.json({ success: false, message: `Failed to connect: ${response.status}` });
+            if (!response.ok) return c.json({ success: false, message: `Failed to connect: ${response.status}`, data: null });
             return c.json({
                 success: true,
                 message: serviceKey
                     ? 'Successfully connected with Service Role Key. Full admin access available.'
                     : 'Connected with Anon Key. For full admin access, add a Service Role Key.',
+                data: null,
             });
         } catch (error) {
-            return c.json({ success: false, message: `Unable to reach Supabase server: ${(error as Error).message}` });
+            const providerMessage = (error as Error).message === 'invalid_provider_url'
+                ? "Request URL is missing an 'http://' or 'https://' protocol."
+                : (error as Error).message;
+            return c.json({
+                success: false,
+                message: `Unable to reach Supabase server: ${providerMessage}`,
+                data: null,
+            });
         }
     });
 
     // POST /api/database/connect-supabase/
     app.post('/api/database/connect-supabase/', async (c) => {
-        await kvFor(c.get('tenant')).setJson('db_connection', { connected: true }, now());
-        return c.json({ success: true, message: 'Connected' });
+        const body = await c.req.json() as { url: string; anonKey: string; serviceKey?: string | null };
+        await kvFor(c.get('tenant')).setJson('db_connection', {
+            connected: true,
+            url: body.url,
+            serviceKey: body.serviceKey ?? '',
+        }, now());
+        return c.json({ success: true, message: 'Supabase connection saved successfully', data: null });
     });
 
     // DELETE /api/database/disconnect-supabase/
     app.delete('/api/database/disconnect-supabase/', async (c) => {
         await kvFor(c.get('tenant')).setJson('db_connection', { connected: false }, now());
-        return c.json({ success: true, message: 'Disconnected' });
+        return c.json({ success: true, message: 'Supabase connection removed successfully', data: null });
     });
 
     // GET /api/database/tables/ & /api/database/supabase-tables/
     const handleListTables = async (c: any) => {
         const source = await getActiveRunner(c.get('tenant'));
         if (!source) {
-            return c.json({ success: false, data: { tables: [] }, message: 'No datasource configured', error: null });
+            return c.json({ success: true, data: { tables: [] }, message: null, error: null });
         }
         const tables = (await listTableNames(source)).map((name) => ({ name, schema: 'public' }));
         return c.json({ success: true, data: { tables }, message: 'Tables fetched', error: null });
@@ -146,19 +165,29 @@ export function registerDatabaseRoutes(
     // GET /api/database/table-data/{table_name}/
     app.get('/api/database/table-data/:table_name/', async (c) => {
         const table = c.req.param('table_name');
-        if (!isIdentifier(table)) {
-            return c.json({ success: false, message: 'Invalid table', data: [], total: 0 }, 400);
-        }
         const source = await getActiveRunner(c.get('tenant'));
         if (!source) {
-            return c.json({ success: false, message: 'No datasource configured', data: [], total: 0 });
+            return c.json({
+                success: true,
+                message: 'Data retrieved successfully',
+                data: [],
+                total: 0,
+            });
+        }
+        if (!isIdentifier(table)) {
+            return c.json({ success: false, message: 'Invalid table', data: [], total: 0 }, 400);
         }
         if (!await validateTable(source, table)) {
             return c.json({ success: false, message: 'Invalid table', data: [], total: 0 }, 400);
         }
         try {
             const rows = await source.activeRunner.query(`SELECT * FROM "${table}" LIMIT 50`);
-            return c.json({ success: true, data: rows, total: rows.length, message: 'Table data fetched' });
+            return c.json({
+                success: true,
+                data: rows,
+                total: rows.length,
+                message: 'Data retrieved successfully',
+            });
         } catch {
             return c.json({ success: false, data: [], total: 0, message: 'Table query failed' });
         }
@@ -167,15 +196,17 @@ export function registerDatabaseRoutes(
     // GET /api/database/table-schema/{table_name}/
     app.get('/api/database/table-schema/:table_name/', async (c) => {
         const table = c.req.param('table_name');
+        const source = await getActiveRunner(c.get('tenant'));
+        if (!source) {
+            return c.json({
+                detail: 'Supabase connection not configured. Connect a Supabase account in Settings → Accounts.',
+            }, 404);
+        }
         if (!isIdentifier(table)) {
             return c.json({ success: false, data: { table_name: table, columns: [] }, error: 'Invalid table' }, 400);
         }
-        const source = await getActiveRunner(c.get('tenant'));
-        if (!source) {
-            return c.json({ success: false, data: { table_name: table, columns: [] }, error: 'No datasource configured' });
-        }
         if (!await validateTable(source, table)) {
-            return c.json({ success: false, data: { table_name: table, columns: [] }, error: 'Invalid table' }, 400);
+            return c.json({ detail: `Table ${table} not found in schema` }, 404);
         }
         try {
             let columns: any[] = [];
@@ -220,7 +251,7 @@ export function registerDatabaseRoutes(
         };
         const source = await getActiveRunner(c.get('tenant'));
         if (!source) {
-            return c.json({ success: false, data: [], rows: [], error: 'No datasource configured' });
+            return c.json({ success: false, data: [], rows: [], error: 'Database not configured' });
         }
         try {
             if (!b.rpcName || source.kind !== 'supabase' || !isIdentifier(b.rpcName)) {
@@ -260,7 +291,7 @@ export function registerDatabaseRoutes(
         const col = b.column_name ?? b.columnName ?? b.column ?? '';
         const source = await getActiveRunner(c.get('tenant'));
         if (!source) {
-            return c.json({ success: false, data: [], values: [], error: 'No datasource configured' });
+            return c.json({ success: true, data: [], error: null });
         }
         if (!isIdentifier(table) || !isIdentifier(col)) {
             return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);

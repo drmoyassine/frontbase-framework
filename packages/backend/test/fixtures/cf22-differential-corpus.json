@@ -1706,7 +1706,8 @@
       "operationId": "authentication_logout",
       "kind": "success",
       "method": "POST",
-      "path": "/api/auth/logout"
+      "path": "/api/auth/logout",
+      "invalidatesSession": true
     },
     {
       "operationId": "authentication_get_me",

@@ -16,8 +16,15 @@ import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 /** EdgeDatabaseResponse: shared edge shape. */
-const asDatabase = (row: Record<string, unknown>): Record<string, unknown> =>
-    serializeEdgeResource(row, 'db_url', { schema_name: 'public', target_count: 1, warning: null });
+const asDatabase = (row: Record<string, unknown>): Record<string, unknown> => {
+    const serialized = serializeEdgeResource(row, 'db_url', {
+        schema_name: null,
+        target_count: 0,
+        warning: null,
+    });
+    delete serialized.engine_count;
+    return serialized;
+};
 
 export function registerEdgeDatabasesRoutes(
     app: App,
@@ -38,6 +45,14 @@ export function registerEdgeDatabasesRoutes(
         schema_name: body.schema_name,
         is_default: body.is_default,
         provider_account_id: body.provider_account_id,
+        provider: body.provider,
+    });
+    const serializeStored = async (
+        store: Phase2Store,
+        row: Record<string, unknown>,
+    ): Promise<Record<string, unknown>> => asDatabase({
+        ...row,
+        config: await store.getEdgeResourceConfig(String(row.id)) ?? {},
     });
     const isPostgresUrl = (url: string) => /^postgres(?:ql)?:\/\//i.test(url);
     const httpRpc = async (body: Record<string, unknown>, name: string, params: Record<string, unknown>) => {
@@ -56,9 +71,30 @@ export function registerEdgeDatabasesRoutes(
     };
 
     // GET /api/edge-databases/
-    app.get('/api/edge-databases/', async (c) => c.json(
-        (await phase2For(c.get('tenant')).listEdgeResources('database')).map(asDatabase),
-    ));
+    app.get('/api/edge-databases/', async (c) => {
+        const store = phase2For(c.get('tenant'));
+        const local = {
+            id: 'local-database',
+            name: 'Local SQLite',
+            provider: 'sqlite',
+            db_url: 'file:local.db',
+            has_token: false,
+            is_default: false,
+            is_system: true,
+            provider_account_id: null,
+            account_name: null,
+            created_at: '',
+            updated_at: '',
+            target_count: 1,
+            linked_engines: [{ id: 'local-edge', name: 'Local Edge', provider: 'unknown' }],
+            warning: null,
+            supports_remote_delete: false,
+            schema_name: null,
+        };
+        return c.json(await Promise.all(
+            [local, ...(await store.listEdgeResources('database')).map((row) => serializeStored(store, row))],
+        ));
+    });
 
     // POST /api/edge-databases/
     app.post('/api/edge-databases/', async (c) => {
@@ -72,7 +108,12 @@ export function registerEdgeDatabasesRoutes(
             provider: b.provider ?? 'sqlite',
             config: await encryptedConfig(b.config ?? configFromBody(b)),
         }, now());
-        return c.json(asDatabase(await store.getEdgeResource(id) ?? { id, name: b.name ?? 'database', created_at: now(), updated_at: now() }), 201);
+        return c.json(await serializeStored(store, await store.getEdgeResource(id) ?? {
+            id,
+            name: b.name ?? 'database',
+            created_at: now(),
+            updated_at: now(),
+        }), 201);
     });
 
     // PUT /api/edge-databases/{db_id}
@@ -80,7 +121,9 @@ export function registerEdgeDatabasesRoutes(
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: string; provider?: string; config?: unknown };
         const store = phase2For(c.get('tenant'));
         const existing = await store.getEdgeResource(c.req.param('db_id'));
-        if (!existing) return c.json({ detail: 'Database not found' }, 404);
+        if (!existing || existing.kind !== 'database') {
+            return c.json({ detail: `Edge database '${c.req.param('db_id')}' not found` }, 404);
+        }
         await store.upsertEdgeResource({
             id: c.req.param('db_id'),
             kind: 'database',
@@ -90,13 +133,23 @@ export function registerEdgeDatabasesRoutes(
                 ? await encryptedConfig(b.config ?? configFromBody(b))
                 : existing.config as string | undefined,
         }, now());
-        return c.json(asDatabase(await store.getEdgeResource(c.req.param('db_id')) ?? existing));
+        return c.json(await serializeStored(store, await store.getEdgeResource(c.req.param('db_id')) ?? existing));
     });
 
     // DELETE /api/edge-databases/{db_id}
     app.delete('/api/edge-databases/:db_id', async (c) => {
-        await phase2For(c.get('tenant')).deleteEdgeResource(c.req.param('db_id'));
-        return c.json({ success: true, detail: 'Database removed' });
+        const databaseId = c.req.param('db_id');
+        const store = phase2For(c.get('tenant'));
+        const database = await store.getEdgeResource(databaseId);
+        if (!database || database.kind !== 'database') {
+            return c.json({ detail: `Edge database '${databaseId}' not found` }, 404);
+        }
+        await store.deleteEdgeResource(databaseId);
+        return c.json({
+            success: true,
+            message: `Edge database '${String(database.name)}' deleted`,
+            remote_deleted: false,
+        });
     });
 
     // POST /api/edge-databases/batch/delete
@@ -120,6 +173,10 @@ export function registerEdgeDatabasesRoutes(
     app.post('/api/edge-databases/test-connection', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
         const url = String(b.db_url ?? '');
+        const provider = String(b.provider ?? '');
+        if (provider && !['postgres', 'postgresql', 'supabase', 'neon', 'turso', 'sqlite'].includes(provider)) {
+            return c.json(testResult(false, `Unknown provider: ${provider}`));
+        }
         const started = Date.now();
         try {
             if (isPostgresUrl(url)) {
@@ -134,17 +191,24 @@ export function registerEdgeDatabasesRoutes(
             }
             return c.json(testResult(true, 'Connection test successful', Date.now() - started));
         } catch (error) {
-            return c.json(testResult(false, `Connection failed: ${(error as Error).message}`, Date.now() - started));
+            return c.json(testResult(false, `Connection failed: ${(error as Error).message}`));
         }
     });
 
     // POST /api/edge-databases/{db_id}/test
     app.post('/api/edge-databases/:db_id/test', async (c) => {
         const store = phase2For(c.get('tenant'));
-        const db = await store.getEdgeResource(c.req.param('db_id'));
-        if (!db) return c.json(testResult(false, 'Database not found'));
+        const databaseId = c.req.param('db_id');
+        const db = await store.getEdgeResource(databaseId);
+        if (!db || db.kind !== 'database') {
+            return c.json({ detail: `Edge database '${databaseId}' not found` }, 404);
+        }
         const config = await store.getEdgeResourceConfig(c.req.param('db_id')) ?? {};
         const url = String(config.url ?? '');
+        const provider = String(config.provider ?? db.provider ?? '');
+        if (provider && !['postgres', 'postgresql', 'supabase', 'neon', 'turso', 'sqlite'].includes(provider)) {
+            return c.json(testResult(false, `Unknown provider: ${provider}`));
+        }
         const started = Date.now();
         try {
             if (isPostgresUrl(url)) {
@@ -159,7 +223,7 @@ export function registerEdgeDatabasesRoutes(
             }
             return c.json(testResult(true, 'Edge database reachable', Date.now() - started));
         } catch (error) {
-            return c.json(testResult(false, `Connection failed: ${(error as Error).message}`, Date.now() - started));
+            return c.json(testResult(false, `Connection failed: ${(error as Error).message}`));
         }
     });
 
@@ -167,6 +231,11 @@ export function registerEdgeDatabasesRoutes(
     app.post('/api/edge-databases/discover-schemas', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
         const url = String(b.db_url ?? '');
+        if (!isPostgresUrl(url) && String(b.provider ?? '') !== 'supabase') {
+            return c.json({
+                detail: 'Schema discovery failed: invalid DSN: scheme is expected to be either "postgresql" or "postgres", got \'\'',
+            }, 400);
+        }
         try {
             if (isPostgresUrl(url)) {
                 const rows = await datasourceRunner('postgres', { connectionString: url }).query(
@@ -177,7 +246,7 @@ export function registerEdgeDatabasesRoutes(
             const result = await httpRpc(b, 'frontbase_discover_edge_schemas', {});
             return c.json({ success: true, schemas: Array.isArray(result.schemas) ? result.schemas : [] });
         } catch (error) {
-            return c.json({ success: false, schemas: [], detail: (error as Error).message }, 400);
+            return c.json({ success: false, schemas: [], detail: `Schema discovery failed: ${(error as Error).message}` }, 400);
         }
     });
 
@@ -188,6 +257,11 @@ export function registerEdgeDatabasesRoutes(
         if (!/^[a-z0-9_]+$/.test(suffix)) return c.json({ success: false, detail: 'Invalid schema suffix' }, 400);
         const schemaName = `frontbase_edge_${suffix}`;
         const url = String(b.db_url ?? '');
+        if (!isPostgresUrl(url) && String(b.provider ?? '') !== 'supabase') {
+            return c.json({
+                detail: 'Schema creation failed: invalid DSN: scheme is expected to be either "postgresql" or "postgres", got \'\'',
+            }, 400);
+        }
         try {
             if (isPostgresUrl(url)) {
                 await datasourceRunner('postgres', { connectionString: url }).exec(`CREATE SCHEMA "${schemaName}"`);
@@ -196,13 +270,16 @@ export function registerEdgeDatabasesRoutes(
             const result = await httpRpc(b, 'frontbase_create_edge_schema', { suffix });
             return c.json({ success: true, schema_name: result.schema_name ?? schemaName, ...result });
         } catch (error) {
-            return c.json({ success: false, detail: (error as Error).message }, 400);
+            return c.json({ success: false, detail: `Schema creation failed: ${(error as Error).message}` }, 400);
         }
     });
 
     // POST /api/edge-databases/reset-role-password
     app.post('/api/edge-databases/reset-role-password', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+        if (!String(b.db_url ?? '') || !String(b.db_token ?? '')) {
+            return c.json({ detail: 'Could not resolve Supabase credentials' }, 400);
+        }
         const schemaName = String(b.schema_name ?? '');
         if (!/^frontbase_edge_[a-z0-9_]+$/.test(schemaName)) {
             return c.json({ success: false, detail: 'Invalid schema name' }, 400);

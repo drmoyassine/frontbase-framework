@@ -53,18 +53,92 @@ function primitive(value: string, schema: Record<string, any> | undefined): unkn
     return value;
 }
 
-function validator(name: string): { safeParse(value: unknown): { success: boolean } } | undefined {
+interface ParseFailure {
+    success: false;
+    error: { issues?: Array<Record<string, any>> };
+}
+
+interface ParseSuccess {
+    success: true;
+}
+
+function validator(name: string): { safeParse(value: unknown): ParseFailure | ParseSuccess } | undefined {
     return (Z as Record<string, any>)[name];
 }
 
-function validationError(location: 'path' | 'query' | 'body') {
+function valueAtPath(input: unknown, path: unknown[]): unknown {
+    let value = input;
+    for (const segment of path) {
+        if (value === null || typeof value !== 'object') return value;
+        value = (value as Record<string | number, unknown>)[segment as string | number];
+    }
+    return value;
+}
+
+function fastApiIssue(
+    location: 'path' | 'query' | 'body',
+    input: unknown,
+    issue: Record<string, any> | undefined,
+): Record<string, unknown> {
+    const path = Array.isArray(issue?.path) ? issue.path : [];
+    const badInput = valueAtPath(input, path);
+    const expected = String(issue?.expected ?? '');
+    let type = 'value_error';
+    let msg = issue?.message || 'Validation failed';
+    if (issue?.code === 'invalid_type') {
+        if (badInput === undefined || badInput === null) {
+            type = 'missing';
+            msg = 'Field required';
+        } else if (expected === 'string') {
+            type = 'string_type';
+            msg = 'Input should be a valid string';
+        } else if (expected === 'boolean') {
+            type = typeof badInput === 'string' ? 'bool_parsing' : 'bool_type';
+            msg = typeof badInput === 'string'
+                ? 'Input should be a valid boolean, unable to interpret input'
+                : 'Input should be a valid boolean';
+        } else if (expected === 'array') {
+            type = 'list_type';
+            msg = 'Input should be a valid list';
+        } else if (expected === 'number') {
+            type = 'float_type';
+            msg = 'Input should be a valid number';
+        }
+    } else if (
+        (issue?.code === 'invalid_value' && Array.isArray(issue.values))
+        || (issue?.code === 'invalid_enum_value' && Array.isArray(issue.options))
+    ) {
+        type = 'literal_error';
+        const values = (issue.values ?? issue.options) as unknown[];
+        const quoted = values.map((value) => `'${String(value)}'`);
+        const expectedText = quoted.length > 1
+            ? `${quoted.slice(0, -1).join(', ')} or ${quoted.at(-1)}`
+            : quoted[0] ?? '';
+        msg = `Input should be ${expectedText}`;
+        return {
+            type,
+            loc: [location, ...path],
+            msg,
+            input: badInput ?? null,
+            ctx: { expected: expectedText },
+        };
+    }
     return {
-        detail: [{
-            type: 'value_error',
-            loc: [location],
-            msg: 'Validation failed',
-            input: null,
-        }],
+        type,
+        loc: [location, ...path],
+        msg,
+        input: badInput ?? null,
+    };
+}
+
+export function fastApiValidationError(
+    location: 'path' | 'query' | 'body',
+    input: unknown,
+    issues?: Array<Record<string, any>>,
+) {
+    return {
+        detail: (issues?.length ? issues : [undefined]).map((issue) =>
+            fastApiIssue(location, input, issue)),
     };
 }
 
@@ -93,8 +167,9 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
                     values[name] = primitive(decodeURIComponent(rawValue), parameter?.schema);
                 }
             }
-            if (!pathValidator.safeParse(values).success) {
-                return c.json(validationError('path'), 422);
+            const parsed = pathValidator.safeParse(values);
+            if (!parsed.success) {
+                return c.json(fastApiValidationError('path', values, parsed.error.issues), 422);
             }
         }
 
@@ -109,8 +184,9 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
                     ? all.map((value) => primitive(value, parameter.schema?.items))
                     : primitive(all[all.length - 1] ?? '', parameter.schema);
             }
-            if (!queryValidator.safeParse(values).success) {
-                return c.json(validationError('query'), 422);
+            const parsed = queryValidator.safeParse(values);
+            if (!parsed.success) {
+                return c.json(fastApiValidationError('query', values, parsed.error.issues), 422);
             }
         }
 
@@ -118,25 +194,48 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
         const jsonSchema = operation.requestBody?.content?.['application/json']?.schema;
         if (bodyValidator && jsonSchema) {
             const body = await c.req.json().catch(() => undefined);
-            if (!bodyValidator.safeParse(body).success) {
-                return c.json(validationError('body'), 422);
+            const parsed = bodyValidator.safeParse(body);
+            if (!parsed.success) {
+                return c.json(fastApiValidationError('body', body, parsed.error.issues), 422);
             }
         }
         const multipartSchema = operation.requestBody?.content?.['multipart/form-data']?.schema;
         if (bodyValidator && multipartSchema) {
             if (!(c.req.header('content-type') ?? '').toLowerCase().includes('multipart/form-data')) {
-                return c.json(validationError('body'), 422);
+                const parsed = bodyValidator.safeParse({});
+                const issues = parsed.success ? undefined : [...(parsed.error.issues ?? [])].sort((left, right) => {
+                    const order = ['file', 'bucket', 'provider_id'];
+                    const leftIndex = order.indexOf(String(left.path?.[0] ?? ''));
+                    const rightIndex = order.indexOf(String(right.path?.[0] ?? ''));
+                    return (leftIndex < 0 ? 100 : leftIndex) - (rightIndex < 0 ? 100 : rightIndex);
+                });
+                return c.json(fastApiValidationError(
+                    'body',
+                    {},
+                    issues,
+                ), 422);
             }
             const form = await c.req.raw.clone().formData().catch(() => null);
-            if (!form) return c.json(validationError('body'), 422);
+            if (!form) return c.json(fastApiValidationError('body', undefined), 422);
             const body: Record<string, unknown> = {};
             for (const key of new Set(form.keys())) {
                 const values = form.getAll(key).map((value) =>
                     typeof value === 'string' ? value : value.name);
                 body[key] = values.length === 1 ? values[0] : values;
             }
-            if (!bodyValidator.safeParse(body).success) {
-                return c.json(validationError('body'), 422);
+            const parsed = bodyValidator.safeParse(body);
+            if (!parsed.success) {
+                const multipartOrder = new Map([
+                    ['file', 0],
+                    ['bucket', 1],
+                    ['provider_id', 2],
+                ]);
+                const issues = [...(parsed.error.issues ?? [])].sort((left, right) => {
+                    const leftKey = String(left.path?.[0] ?? '');
+                    const rightKey = String(right.path?.[0] ?? '');
+                    return (multipartOrder.get(leftKey) ?? 100) - (multipartOrder.get(rightKey) ?? 100);
+                });
+                return c.json(fastApiValidationError('body', body, issues), 422);
             }
         }
         return next();

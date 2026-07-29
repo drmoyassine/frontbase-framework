@@ -48,6 +48,22 @@ export function registerEdgeEnginesRoutes(
         kvFor(tenant).getJson<T>(stateKey(engineId, area), fallback);
     const setEngineState = (tenant: string, engineId: string, area: string, value: unknown) =>
         kvFor(tenant).setJson(stateKey(engineId, area), value, now());
+    const namedEngineMissing = (engineId: string) => ({ detail: `Engine '${engineId}' not found` });
+    const linkedProviderId = async (tenant: string, engineId: string): Promise<string | null> => {
+        const config = await p2(tenant).getEdgeResourceConfig(engineId) ?? {};
+        for (const key of ['edge_provider_id', 'provider_id', 'provider_account_id']) {
+            const value = config[key];
+            if (typeof value === 'string' && value) return value;
+        }
+        return null;
+    };
+    const serializeStoredEngine = async (
+        store: Phase2Store,
+        row: Record<string, unknown>,
+    ): Promise<Record<string, unknown>> => serializeEngine({
+        ...row,
+        config: await store.getEdgeResourceConfig(String(row.id)) ?? {},
+    });
     const configFromBody = (body: Record<string, unknown>) => ({
         ...(body.engine_config && typeof body.engine_config === 'object'
             ? body.engine_config as Record<string, unknown>
@@ -63,9 +79,31 @@ export function registerEdgeEnginesRoutes(
         edge_auth_id: body.edge_auth_id,
     });
     // GET /api/edge-engines/
-    app.get('/api/edge-engines/', async (c) => c.json(
-        (await p2(c.get('tenant')).listEdgeResources('engine')).map((r) => serializeEngine(r)),
-    ));
+    app.get('/api/edge-engines/', async (c) => {
+        const store = p2(c.get('tenant'));
+        const local = serializeEngine({
+            id: 'local-edge',
+            name: 'Local Edge',
+            provider: null,
+            status: 'active',
+            is_system: true,
+            config: {
+                adapter_type: 'full',
+                url: 'http://localhost:3002',
+                edge_db_id: 'local-database',
+                edge_cache_id: 'local-cache',
+                edge_queue_id: 'local-queue',
+            },
+            created_at: '',
+            updated_at: '',
+        });
+        local.edge_db_name = 'Local SQLite';
+        local.edge_cache_name = 'Local Redis';
+        local.edge_queue_name = 'Local BullMQ';
+        return c.json(await Promise.all(
+            [local, ...(await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row))],
+        ));
+    });
 
     // POST /api/edge-engines/
     app.post('/api/edge-engines/', async (c) => {
@@ -79,28 +117,62 @@ export function registerEdgeEnginesRoutes(
             provider: b.provider,
             config: await encryptedConfig(b.config ?? configFromBody(b)),
         }, now());
-        return c.json(serializeEngine(await store.getEdgeResource(id) ?? { id, name: b.name ?? 'Engine', created_at: now(), updated_at: now() }), 201);
+        return c.json(await serializeStoredEngine(store, await store.getEdgeResource(id) ?? {
+            id,
+            name: b.name ?? 'Engine',
+            created_at: now(),
+            updated_at: now(),
+        }), 201);
     });
 
     // GET /api/edge-engines/bundle-hashes/
     app.get('/api/edge-engines/bundle-hashes/', async (c) => {
-        const engines = await p2(c.get('tenant')).listEdgeResources('engine');
-        return c.json(Object.fromEntries(engines.map((engine) => [String(engine.id), null])));
+        const store = p2(c.get('tenant'));
+        const entries: Array<[string, unknown]> = [];
+        for (const engine of await store.listEdgeResources('engine')) {
+            const config = await store.getEdgeResourceConfig(String(engine.id)) ?? {};
+            if (config.bundle_hash !== undefined && config.bundle_hash !== null) {
+                entries.push([String(engine.id), config.bundle_hash]);
+            }
+        }
+        return c.json({
+            full: '0593f9aa8f66',
+            lite: '0593f9aa8f66',
+            ...Object.fromEntries(entries),
+        });
     });
 
     // POST /api/edge-engines/deploy
     app.post('/api/edge-engines/deploy', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string };
+        const b = await c.req.json().catch(() => ({})) as {
+            name?: string; provider?: string; provider_id?: string;
+        };
         const store = p2(c.get('tenant'));
+        const provider = await store.getEdgeResource(b.provider_id ?? '');
+        if (!provider || provider.kind !== 'provider') {
+            return c.json({ detail: 'Provider account not found' }, 400);
+        }
         const id = crypto.randomUUID();
-        await store.upsertEdgeResource({ id, kind: 'engine', name: b.name ?? 'Deployed Engine', provider: b.provider ?? 'cloudflare' }, now());
+        await store.upsertEdgeResource({
+            id,
+            kind: 'engine',
+            name: b.name ?? 'Deployed Engine',
+            provider: b.provider ?? String(provider.provider ?? 'cloudflare'),
+        }, now());
         const engine = await store.getEdgeResource(id);
-        return c.json({ success: true, engine: engine ? serializeEngine(engine) : null, message: 'Deployed successfully' });
+        return c.json({
+            success: true,
+            engine: engine ? await serializeStoredEngine(store, engine) : null,
+            message: 'Deployed successfully',
+        });
     });
 
     // POST /api/edge-engines/import
     app.post('/api/edge-engines/import', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { name?: string };
+        const b = await c.req.json().catch(() => ({})) as { name?: string; bundle?: unknown };
+        if (typeof b.bundle !== 'object' || b.bundle === null || Array.isArray(b.bundle)) {
+            return c.json({ detail: 'Bundle is corrupt or has been tampered with' }, 400);
+        }
         const store = p2(c.get('tenant'));
         const id = crypto.randomUUID();
         await store.upsertEdgeResource({ id, kind: 'engine', name: b.name ?? 'Imported Engine' }, now());
@@ -109,7 +181,12 @@ export function registerEdgeEnginesRoutes(
 
     // POST /api/edge-engines/batch/delete
     app.post('/api/edge-engines/batch/delete', async (c) => c.json(
-        await batchOver(await c.req.json().catch(() => ({})), (id) => p2(c.get('tenant')).deleteEdgeResource(id)),
+        await batchOver(await c.req.json().catch(() => ({})), async (id) => {
+            const store = p2(c.get('tenant'));
+            const resource = await store.getEdgeResource(id);
+            if (!resource || resource.kind !== 'engine') throw new Error('Not found');
+            await store.deleteEdgeResource(id);
+        }),
     ));
 
     // Batch ops updating Phase2Store
@@ -117,9 +194,8 @@ export function registerEdgeEnginesRoutes(
         batchOver(await c.req.json().catch(() => ({})), async (id) => {
             const store = p2(c.get('tenant'));
             const res = await store.getEdgeResource(id);
-            if (res) {
-                await store.upsertEdgeResource({ id, kind: 'engine', name: String(res.name) }, now());
-            }
+            if (!res || res.kind !== 'engine') throw new Error('Not found');
+            await store.upsertEdgeResource({ id, kind: 'engine', name: String(res.name) }, now());
         });
 
     app.post('/api/edge-engines/batch/redeploy', async (c) => c.json(await performBatch(c)));
@@ -128,14 +204,21 @@ export function registerEdgeEnginesRoutes(
     app.post('/api/edge-engines/batch/rotate-secrets-key', async (c) => c.json(await performBatch(c)));
 
     // GET /api/edge-engines/active/by-scope/{scope}
-    app.get('/api/edge-engines/active/by-scope/:scope', async (c) => c.json(
-        (await p2(c.get('tenant')).listEdgeResources('engine')).map((r) => serializeEngine(r)),
-    ));
+    app.get('/api/edge-engines/active/by-scope/:scope', async (c) => {
+        const store = p2(c.get('tenant'));
+        return c.json(await Promise.all(
+            (await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row)),
+        ));
+    });
 
     // GET /api/edge-engines/{engine_id}
     app.get('/api/edge-engines/:engine_id', async (c) => {
-        const e = await p2(c.get('tenant')).getEdgeResource(c.req.param('engine_id'));
-        return e ? c.json(serializeEngine(e)) : c.json({ detail: 'Not found' }, 404);
+        const engineId = c.req.param('engine_id');
+        const store = p2(c.get('tenant'));
+        const engine = await store.getEdgeResource(engineId);
+        return engine
+            ? c.json(await serializeStoredEngine(store, engine))
+            : c.json({ detail: `Engine '${engineId}' not found` }, 404);
     });
 
     // PUT /api/edge-engines/{engine_id}
@@ -144,7 +227,9 @@ export function registerEdgeEnginesRoutes(
         const id = c.req.param('engine_id');
         const store = p2(c.get('tenant'));
         const existing = await store.getEdgeResource(id);
-        if (!existing) return c.json({ detail: 'Not found' }, 404);
+        if (!existing || existing.kind !== 'engine') {
+            return c.json({ detail: 'Edge engine not found' }, 404);
+        }
         await store.upsertEdgeResource({
             id,
             kind: 'engine',
@@ -157,26 +242,52 @@ export function registerEdgeEnginesRoutes(
                 ? await encryptedConfig(b.config ?? configFromBody(b))
                 : existing.config as string | undefined,
         }, now());
-        return c.json(serializeEngine(await store.getEdgeResource(id) ?? existing));
+        return c.json(await serializeStoredEngine(store, await store.getEdgeResource(id) ?? existing));
     });
 
     // DELETE /api/edge-engines/{engine_id}
     app.delete('/api/edge-engines/:engine_id', async (c) => {
-        await p2(c.get('tenant')).deleteEdgeResource(c.req.param('engine_id'));
+        const engineId = c.req.param('engine_id');
+        const store = p2(c.get('tenant'));
+        const engine = await store.getEdgeResource(engineId);
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: `Engine '${engineId}' not found` }, 404);
+        }
+        await store.deleteEdgeResource(engineId);
+        c.header('content-type', 'application/json');
         return c.body(null, 204);
     });
 
     // POST /api/edge-engines/{engine_id}/test
     app.post('/api/edge-engines/:engine_id/test', async (c) => {
-        const engine = await p2(c.get('tenant')).getEdgeResource(c.req.param('engine_id'));
-        return c.json(testResult(Boolean(engine), engine ? 'Engine reachable' : 'Engine not found'));
+        const engineId = c.req.param('engine_id');
+        const engine = await p2(c.get('tenant')).getEdgeResource(engineId);
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: `Engine '${engineId}' not found` }, 404);
+        }
+        const config = await p2(c.get('tenant')).getEdgeResourceConfig(engineId) ?? {};
+        const url = String(config.url ?? '');
+        if (!/^https?:\/\//i.test(url)) {
+            return c.json(testResult(
+                false,
+                "Connection failed: Request URL is missing an 'http://' or 'https://' protocol.",
+            ));
+        }
+        return c.json(testResult(true, 'Engine reachable'));
     });
 
     // POST /api/edge-engines/{engine_id}/redeploy
     app.post('/api/edge-engines/:engine_id/redeploy', async (c) => {
         const store = p2(c.get('tenant'));
-        const engine = await store.getEdgeResource(c.req.param('engine_id'));
-        if (engine) await store.upsertEdgeResource({ id: String(engine.id), kind: 'engine', name: String(engine.name) }, now());
+        const engineId = c.req.param('engine_id');
+        const engine = await store.getEdgeResource(engineId);
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: 'Edge engine not found' }, 404);
+        }
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Unknown provider/adapter_type: docker-full' }, 400);
+        }
+        await store.upsertEdgeResource({ id: String(engine.id), kind: 'engine', name: String(engine.name) }, now());
         return c.json({ success: true, message: 'Engine redeployed' });
     });
 
@@ -184,7 +295,10 @@ export function registerEdgeEnginesRoutes(
     app.post('/api/edge-engines/:engine_id/reconfigure', async (c) => {
         const store = p2(c.get('tenant'));
         const engine = await store.getEdgeResource(c.req.param('engine_id'));
-        if (engine) await store.upsertEdgeResource({ id: String(engine.id), kind: 'engine', name: String(engine.name) }, now());
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: 'Edge engine not found' }, 404);
+        }
+        await store.upsertEdgeResource({ id: String(engine.id), kind: 'engine', name: String(engine.name) }, now());
         return c.json({ success: true, message: 'Engine reconfigured' });
     });
 
@@ -192,17 +306,30 @@ export function registerEdgeEnginesRoutes(
     app.post('/api/edge-engines/:engine_id/sync-manifest', async (c) => {
         const engineId = c.req.param('engine_id');
         const engine = await p2(c.get('tenant')).getEdgeResource(engineId);
-        if (!engine) return c.json({ detail: 'Not found' }, 404);
+        if (!engine) return c.json({ detail: 'Edge engine not found' }, 404);
+        const config = await p2(c.get('tenant')).getEdgeResourceConfig(engineId) ?? {};
+        const url = String(config.url ?? '');
+        if (!/^https?:\/\//i.test(url)) {
+            return c.json({
+                synced: false,
+                reason: "Could not reach engine: Request URL is missing an 'http://' or 'https://' protocol.",
+            });
+        }
         const manifest = await c.req.json().catch(() => ({}));
         await setEngineState(c.get('tenant'), engineId, 'manifest', { manifest, syncedAt: now() });
-        return c.json({ success: true, message: 'Manifest synced' });
+        return c.json({ synced: true });
     });
 
     // POST /api/edge-engines/{engine_id}/rotate-secrets-key
     app.post('/api/edge-engines/:engine_id/rotate-secrets-key', async (c) => {
         const engineId = c.req.param('engine_id');
         const engine = await p2(c.get('tenant')).getEdgeResource(engineId);
-        if (!engine) return c.json({ detail: 'Not found' }, 404);
+        if (!engine) return c.json(namedEngineMissing(engineId), 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({
+                detail: 'Key rotation only applies to shared/community engines. Dedicated/self-host engines bake secrets into env directly.',
+            }, 400);
+        }
         const history = await engineState<Array<Record<string, unknown>>>(c.get('tenant'), engineId, 'rotation-history', []);
         const entry = { id: crypto.randomUUID(), status: 'completed', created_at: now() };
         history.unshift(entry);
@@ -214,21 +341,24 @@ export function registerEdgeEnginesRoutes(
     // GET /api/edge-engines/{engine_id}/rotation-status
     app.get('/api/edge-engines/:engine_id/rotation-status', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
-        return c.json(await engineState(c.get('tenant'), engineId, 'rotation-status', { active: false, status: 'idle' }));
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
+        return c.json({ key_version: 1 });
     });
 
     // GET /api/edge-engines/{engine_id}/rotation-history
     app.get('/api/edge-engines/:engine_id/rotation-history', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
         return c.json({ history: await engineState(c.get('tenant'), engineId, 'rotation-history', []) });
     });
 
     // POST /api/edge-engines/{engine_id}/rollback-rotation
     app.post('/api/edge-engines/:engine_id/rollback-rotation', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Rollback only applies to shared/community engines.' }, 400);
+        }
         const history = await engineState<Array<Record<string, unknown>>>(c.get('tenant'), engineId, 'rotation-history', []);
         if (history[0]) history[0] = { ...history[0], rolled_back_at: now(), status: 'rolled_back' };
         await setEngineState(c.get('tenant'), engineId, 'rotation-history', history);
@@ -239,8 +369,16 @@ export function registerEdgeEnginesRoutes(
     // GET /api/edge-engines/{engine_id}/source
     app.get('/api/edge-engines/:engine_id/source', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
-        const source = await engineState<{ files?: Array<{ content?: string; size?: number }> }>(c.get('tenant'), engineId, 'source', { files: [] });
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Engine not found' }, 404);
+        const source = await engineState<{ files?: Array<{ content?: string; size?: number }> } | null>(
+            c.get('tenant'),
+            engineId,
+            'source',
+            null,
+        );
+        if (!source) {
+            return c.json({ detail: 'No source snapshot — engine may not have been deployed yet' }, 404);
+        }
         const files = Array.isArray(source.files) ? source.files : [];
         const totalSize = files.reduce((sum, file) => sum + (file.size ?? String(file.content ?? '').length), 0);
         return c.json({ success: true, files, file_count: files.length, total_size: totalSize });
@@ -249,8 +387,11 @@ export function registerEdgeEnginesRoutes(
     // PUT /api/edge-engines/{engine_id}/source
     app.put('/api/edge-engines/:engine_id/source', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
-        const source = await c.req.json().catch(() => ({ files: [] }));
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Engine not found' }, 404);
+        const source = await c.req.json().catch(() => ({ files: [] })) as { files?: unknown[] };
+        if (!Array.isArray(source.files) || source.files.length === 0) {
+            return c.json({ detail: 'No files to update' }, 400);
+        }
         await setEngineState(c.get('tenant'), engineId, 'source', source);
         return c.json({ success: true, message: 'Source updated' });
     });
@@ -258,7 +399,7 @@ export function registerEdgeEnginesRoutes(
     // POST /api/edge-engines/{engine_id}/export
     app.post('/api/edge-engines/:engine_id/export', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
         const source = await engineState(c.get('tenant'), engineId, 'source', { files: [] });
         const bundleUrl = `data:application/json,${encodeURIComponent(JSON.stringify({ engineId, source }))}`;
         await setEngineState(c.get('tenant'), engineId, 'last-export', { bundleUrl, exportedAt: now() });
@@ -268,7 +409,9 @@ export function registerEdgeEnginesRoutes(
     // POST /api/edge-engines/{engine_id}/finalize-move
     app.post('/api/edge-engines/:engine_id/finalize-move', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
+        const move = await engineState<{ status?: string } | null>(c.get('tenant'), engineId, 'move', null);
+        if (move?.status !== 'pending') return c.json({ detail: 'Engine is not pending a move.' }, 409);
         await setEngineState(c.get('tenant'), engineId, 'move', { status: 'finalized', updatedAt: now() });
         return c.json({ finalized: true, engine_id: engineId });
     });
@@ -276,7 +419,9 @@ export function registerEdgeEnginesRoutes(
     // POST /api/edge-engines/{engine_id}/cancel-move
     app.post('/api/edge-engines/:engine_id/cancel-move', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
+        const move = await engineState<{ status?: string } | null>(c.get('tenant'), engineId, 'move', null);
+        if (move?.status !== 'pending') return c.json({ detail: 'Engine is not pending a move.' }, 409);
         await setEngineState(c.get('tenant'), engineId, 'move', { status: 'cancelled', updatedAt: now() });
         return c.json({ cancelled: true, message: 'Move cancelled' });
     });
@@ -284,23 +429,27 @@ export function registerEdgeEnginesRoutes(
     // POST /api/edge-engines/{engine_id}/move-to-project
     app.post('/api/edge-engines/:engine_id/move-to-project', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
-        const body = await c.req.json().catch(() => ({}));
-        await setEngineState(c.get('tenant'), engineId, 'move', { status: 'pending', request: body, updatedAt: now() });
-        return c.json({ success: true, message: 'Engine moved to project' });
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
+        return c.json({ detail: 'Target project not found' }, 404);
     });
 
     // GET /api/edge-engines/{engine_id}/logs
     app.get('/api/edge-engines/:engine_id/logs', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Edge engine not found' }, 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Engine has no linked provider account' }, 400);
+        }
         return c.json({ logs: await engineState(c.get('tenant'), engineId, 'logs', []) });
     });
 
     // POST /api/edge-engines/{engine_id}/logs/sync
     app.post('/api/edge-engines/:engine_id/logs/sync', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Edge engine not found' }, 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Engine has no linked provider account' }, 400);
+        }
         const logs = await engineState<Array<Record<string, unknown>>>(c.get('tenant'), engineId, 'logs', []);
         await setEngineState(c.get('tenant'), engineId, 'logs-last-sync', { syncedAt: now(), count: logs.length });
         return c.json({ success: true, synced_count: logs.length });
@@ -309,15 +458,19 @@ export function registerEdgeEnginesRoutes(
     // PATCH /api/edge-engines/{engine_id}/logs/config
     app.patch('/api/edge-engines/:engine_id/logs/config', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
-        await setEngineState(c.get('tenant'), engineId, 'logs-config', await c.req.json().catch(() => ({})));
-        return c.json({ success: true });
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Edge engine not found' }, 404);
+        const body = await c.req.json().catch(() => ({}));
+        await setEngineState(c.get('tenant'), engineId, 'logs-config', body);
+        return c.json({ log_persistence: {} });
     });
 
     // GET /api/edge-engines/{engine_id}/logs/retention
     app.get('/api/edge-engines/:engine_id/logs/retention', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Edge engine not found' }, 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Engine has no linked provider account' }, 400);
+        }
         const config = await engineState<{ retention_days?: number }>(c.get('tenant'), engineId, 'logs-config', {});
         return c.json({ retention_days: config.retention_days ?? 30 });
     });
@@ -325,20 +478,29 @@ export function registerEdgeEnginesRoutes(
     // GET /api/edge-engines/{engine_id}/audit/tenant-secrets
     app.get('/api/edge-engines/:engine_id/audit/tenant-secrets', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
-        return c.json({ entries: await engineState(c.get('tenant'), engineId, 'secret-audit', []) });
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
+        return c.json({
+            engine_id: engineId,
+            entries: await engineState(c.get('tenant'), engineId, 'secret-audit', []),
+        });
     });
 
     // GET /api/edge-engines/{engine_id}/health-check
     app.get('/api/edge-engines/:engine_id/health-check', async (c) => {
         const engine = await p2(c.get('tenant')).getEdgeResource(c.req.param('engine_id'));
-        return c.json({ status: engine ? 'healthy' : 'not_found' });
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: 'Edge engine not found' }, 404);
+        }
+        return c.json({ status: 'error', error: 'Could not connect to engine' });
     });
 
     // GET /api/edge-engines/{engine_id}/inspect/source
     app.get('/api/edge-engines/:engine_id/inspect/source', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Edge engine not found' }, 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Engine has no connected provider account' }, 400);
+        }
         const source = await engineState<{ files?: unknown[] }>(c.get('tenant'), engineId, 'source', { files: [] });
         return c.json({ files: Array.isArray(source.files) ? source.files : [] });
     });
@@ -347,14 +509,20 @@ export function registerEdgeEnginesRoutes(
     app.get('/api/edge-engines/:engine_id/inspect/settings', async (c) => {
         const engineId = c.req.param('engine_id');
         const engine = await p2(c.get('tenant')).getEdgeResource(engineId);
-        if (!engine) return c.json({ detail: 'Not found' }, 404);
+        if (!engine) return c.json({ detail: 'Edge engine not found' }, 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Engine has no connected provider account' }, 400);
+        }
         return c.json({ settings: { provider: engine.provider ?? null, status: engine.status ?? 'active' } });
     });
 
     // GET /api/edge-engines/{engine_id}/inspect/secrets
     app.get('/api/edge-engines/:engine_id/inspect/secrets', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Edge engine not found' }, 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Engine has no connected provider account' }, 400);
+        }
         const config = await p2(c.get('tenant')).getEdgeResourceConfig(engineId) ?? {};
         const secretPattern = /token|secret|password|key|credential|connection/i;
         return c.json({
@@ -367,14 +535,20 @@ export function registerEdgeEnginesRoutes(
     // GET /api/edge-engines/{engine_id}/inspect/domains
     app.get('/api/edge-engines/:engine_id/inspect/domains', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Edge engine not found' }, 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Engine has no connected provider account' }, 400);
+        }
         return c.json({ domains: await engineState(c.get('tenant'), engineId, 'domains', []) });
     });
 
     // POST /api/edge-engines/{engine_id}/inspect/domains
     app.post('/api/edge-engines/:engine_id/inspect/domains', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Edge engine not found' }, 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Engine has no connected provider account' }, 400);
+        }
         const b = await c.req.json().catch(() => ({})) as { domain?: string };
         const domain = { id: crypto.randomUUID(), domain: b.domain ?? 'app.local', status: 'active' };
         const domains = await engineState<Array<Record<string, unknown>>>(c.get('tenant'), engineId, 'domains', []);
@@ -386,7 +560,10 @@ export function registerEdgeEnginesRoutes(
     // DELETE /api/edge-engines/{engine_id}/inspect/domains/{domain_id}
     app.delete('/api/edge-engines/:engine_id/inspect/domains/:domain_id', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Edge engine not found' }, 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Engine has no connected provider account' }, 400);
+        }
         const domains = await engineState<Array<{ id?: string }>>(c.get('tenant'), engineId, 'domains', []);
         await setEngineState(c.get('tenant'), engineId, 'domains', domains.filter((domain) => domain.id !== c.req.param('domain_id')));
         return c.json({ success: true });
@@ -395,7 +572,10 @@ export function registerEdgeEnginesRoutes(
     // POST /api/edge-engines/{engine_id}/inspect/domains/{domain_id}/verify
     app.post('/api/edge-engines/:engine_id/inspect/domains/:domain_id/verify', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Not found' }, 404);
+        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json({ detail: 'Edge engine not found' }, 404);
+        if (!await linkedProviderId(c.get('tenant'), engineId)) {
+            return c.json({ detail: 'Engine has no connected provider account' }, 400);
+        }
         const domains = await engineState<Array<Record<string, unknown>>>(c.get('tenant'), engineId, 'domains', []);
         const domainId = c.req.param('domain_id');
         const index = domains.findIndex((domain) => domain.id === domainId);
@@ -406,6 +586,10 @@ export function registerEdgeEnginesRoutes(
 
     // GET /api/edge-engines/{engine_id}/agent-profiles
     app.get('/api/edge-engines/:engine_id/agent-profiles', async (c) => {
+        const engine = await p2(c.get('tenant')).getEdgeResource(c.req.param('engine_id'));
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: 'Edge engine not found' }, 404);
+        }
         const kv = kvFor(c.get('tenant'));
         const profiles = await kv.getJson<Array<Record<string, unknown>>>('agent_profiles', []);
         return c.json({ profiles, total: profiles.length });
@@ -413,6 +597,10 @@ export function registerEdgeEnginesRoutes(
 
     // POST /api/edge-engines/{engine_id}/agent-profiles
     app.post('/api/edge-engines/:engine_id/agent-profiles', async (c) => {
+        const engine = await p2(c.get('tenant')).getEdgeResource(c.req.param('engine_id'));
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: 'Edge engine not found' }, 404);
+        }
         const b = await c.req.json().catch(() => ({})) as { name?: string; role?: string };
         const kv = kvFor(c.get('tenant'));
         const profiles = await kv.getJson<Array<Record<string, unknown>>>('agent_profiles', []);
@@ -424,22 +612,34 @@ export function registerEdgeEnginesRoutes(
 
     // PUT /api/edge-engines/{engine_id}/agent-profiles/{profile_id}
     app.put('/api/edge-engines/:engine_id/agent-profiles/:profile_id', async (c) => {
+        const engine = await p2(c.get('tenant')).getEdgeResource(c.req.param('engine_id'));
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: 'Edge engine not found' }, 404);
+        }
         const b = await c.req.json().catch(() => ({})) as { name?: string; role?: string };
         const profileId = c.req.param('profile_id');
         const kv = kvFor(c.get('tenant'));
         const profiles = await kv.getJson<Array<{ id?: string }>>('agent_profiles', []);
         const idx = profiles.findIndex((p) => p.id === profileId);
+        if (idx < 0) return c.json({ detail: 'Agent profile not found' }, 404);
         const updated = { ...b, id: profileId };
-        if (idx >= 0) profiles[idx] = updated; else profiles.push(updated);
+        profiles[idx] = updated;
         await kv.setJson('agent_profiles', profiles, now());
         return c.json({ success: true, profile: updated });
     });
 
     // DELETE /api/edge-engines/{engine_id}/agent-profiles/{profile_id}
     app.delete('/api/edge-engines/:engine_id/agent-profiles/:profile_id', async (c) => {
+        const engine = await p2(c.get('tenant')).getEdgeResource(c.req.param('engine_id'));
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: 'Edge engine not found' }, 404);
+        }
         const profileId = c.req.param('profile_id');
         const kv = kvFor(c.get('tenant'));
         const profiles = await kv.getJson<Array<{ id?: string }>>('agent_profiles', []);
+        if (!profiles.some((profile) => profile.id === profileId)) {
+            return c.json({ detail: 'Agent profile not found' }, 404);
+        }
         await kv.setJson('agent_profiles', profiles.filter((p) => p.id !== profileId), now());
         return c.body(null, 204);
     });

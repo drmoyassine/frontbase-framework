@@ -17,7 +17,7 @@
   },
   "DELETE /api/actions/drafts/{draft_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "GET /api/actions/drafts/{draft_id}": {
     "status": "functional",
@@ -33,19 +33,19 @@
   },
   "POST /api/actions/drafts/{draft_id}/publish": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/actions/drafts/{draft_id}/publish-batch/": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/actions/drafts/{draft_id}/publish/{engine_id}/": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/actions/drafts/{draft_id}/publish/{engine_id}/toggle": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/actions/drafts/{draft_id}/rollback/": {
     "status": "functional",
@@ -53,15 +53,15 @@
   },
   "POST /api/actions/drafts/{draft_id}/test": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/actions/drafts/{draft_id}/test-node/{node_id}": {
-    "status": "external-disabled",
-    "evidence": "runtime explicitly reports an unavailable provider/integration"
-  },
-  "GET /api/actions/drafts/{draft_id}/versions/": {
     "status": "functional",
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+  },
+  "GET /api/actions/drafts/{draft_id}/versions/": {
+    "status": "shape-only",
+    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "POST /api/actions/drafts/{draft_id}/versions/": {
     "status": "functional",
@@ -76,36 +76,36 @@
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "GET /api/actions/execution/{execution_id}": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "external-disabled",
+    "evidence": "not measurable in a community deployment — needs a real execution; POST .../test refuses 503 (no edge engine)"
   },
   "GET /api/actions/executions": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/actions/executions/detail/{execution_id}": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "external-disabled",
+    "evidence": "not measurable in a community deployment — needs a real execution; POST .../test refuses 503 (no edge engine)"
   },
   "GET /api/actions/executions/export": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/actions/executions/{draft_id}": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/actions/executions/{draft_id}/production/{engine_id}": {
     "status": "functional",
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "GET /api/agent-catalogue": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/agent-profiles/{profile_id}/skills": {
-    "status": "shape-only",
-    "evidence": "read result DISCARDED — response identical with reads starved (2 SQL observations had no effect)"
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (3 SQL observations)"
   },
   "POST /api/agent-profiles/{profile_id}/skills": {
     "status": "functional",
@@ -113,7 +113,7 @@
   },
   "DELETE /api/agent-profiles/{profile_id}/skills/{install_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "persisted state effect (3 SQL observations)"
   },
   "GET /api/agent-skills": {
     "status": "functional",
@@ -125,11 +125,11 @@
   },
   "DELETE /api/agent-skills/{skill_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "PUT /api/agent-skills/{skill_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "POST /api/agent/chat": {
     "status": "functional",
@@ -148,32 +148,32 @@
     "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "POST /api/agent/mcp/{profile_slug}/prompts/get": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "POST /api/agent/mcp/{profile_slug}/prompts/list": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "POST /api/agent/mcp/{profile_slug}/resources/list": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "POST /api/agent/mcp/{profile_slug}/tools/call": {
     "status": "shape-only",
     "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "POST /api/agent/mcp/{profile_slug}/tools/list": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "DELETE /api/agent/settings": {
     "status": "functional",
     "evidence": "persisted state effect (1 SQL observation)"
   },
   "GET /api/agent/settings": {
-    "status": "shape-only",
-    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "PUT /api/agent/settings": {
     "status": "functional",
@@ -193,7 +193,7 @@
   },
   "DELETE /api/auth-forms/{form_id}/": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "GET /api/auth-forms/{form_id}/": {
     "status": "functional",
@@ -201,27 +201,27 @@
   },
   "PUT /api/auth-forms/{form_id}/": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "PUT /api/auth-forms/{form_id}/set-primary/": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "persisted state effect (3 SQL observations)"
   },
   "POST /api/auth/accept-invite": {
-    "status": "functional",
-    "evidence": "session cookie effect"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/auth/check-slug/{slug}": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "POST /api/auth/forgot-password": {
     "status": "functional",
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "GET /api/auth/invite/{token}": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "OPTIONS /api/auth/login": {
     "status": "functional",
@@ -252,8 +252,8 @@
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/auth/security/blocklist": {
-    "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "DELETE /api/auth/security/blocklist/{ban_id}": {
     "status": "functional",
@@ -268,8 +268,8 @@
     "evidence": "persisted state effect (4 SQL observations)"
   },
   "GET /api/auth/security/bot-protection/metrics": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "GET /api/auth/security/waf": {
     "status": "functional",
@@ -284,36 +284,36 @@
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/auth/signup": {
-    "status": "functional",
-    "evidence": "session cookie effect"
-  },
-  "POST /api/cloudflare/connect": {
-    "status": "external-disabled",
-    "evidence": "runtime explicitly reports an unavailable provider/integration"
-  },
-  "POST /api/cloudflare/deploy": {
-    "status": "external-disabled",
-    "evidence": "runtime explicitly reports an unavailable provider/integration"
-  },
-  "POST /api/cloudflare/inspect/content": {
-    "status": "external-disabled",
-    "evidence": "runtime explicitly reports an unavailable provider/integration"
-  },
-  "POST /api/cloudflare/inspect/secrets": {
-    "status": "external-disabled",
-    "evidence": "runtime explicitly reports an unavailable provider/integration"
-  },
-  "POST /api/cloudflare/inspect/settings": {
-    "status": "external-disabled",
-    "evidence": "runtime explicitly reports an unavailable provider/integration"
-  },
-  "POST /api/cloudflare/status": {
     "status": "shape-only",
     "evidence": "no state, session, or provider effect observed"
   },
+  "POST /api/cloudflare/connect": {
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+  },
+  "POST /api/cloudflare/deploy": {
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+  },
+  "POST /api/cloudflare/inspect/content": {
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+  },
+  "POST /api/cloudflare/inspect/secrets": {
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+  },
+  "POST /api/cloudflare/inspect/settings": {
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+  },
+  "POST /api/cloudflare/status": {
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+  },
   "POST /api/cloudflare/teardown": {
-    "status": "external-disabled",
-    "evidence": "runtime explicitly reports an unavailable provider/integration"
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/database/advanced-query/": {
     "status": "functional",
@@ -325,7 +325,7 @@
   },
   "GET /api/database/connections/": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "DELETE /api/database/disconnect-supabase/": {
     "status": "functional",
@@ -412,8 +412,8 @@
     "evidence": "provider effect (1 outbound request)"
   },
   "POST /api/deno/connect": {
-    "status": "external-disabled",
-    "evidence": "runtime explicitly reports an unavailable provider/integration"
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "GET /api/edge-api-keys": {
     "status": "functional",
@@ -425,7 +425,7 @@
   },
   "DELETE /api/edge-api-keys/{key_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "persisted state effect (4 SQL observations)"
   },
   "PUT /api/edge-api-keys/{key_id}": {
     "status": "functional",
@@ -441,7 +441,7 @@
   },
   "POST /api/edge-caches/": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "persisted state effect (4 SQL observations)"
   },
   "POST /api/edge-caches/batch/delete": {
     "status": "functional",
@@ -453,11 +453,11 @@
   },
   "DELETE /api/edge-caches/{cache_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "PUT /api/edge-caches/{cache_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "evidence": "persisted state effect (5 SQL observations)"
   },
   "POST /api/edge-caches/{cache_id}/test": {
     "status": "functional",
@@ -469,7 +469,7 @@
   },
   "POST /api/edge-databases/": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "persisted state effect (4 SQL observations)"
   },
   "POST /api/edge-databases/batch/delete": {
     "status": "functional",
@@ -484,8 +484,8 @@
     "evidence": "provider effect (1 outbound request)"
   },
   "POST /api/edge-databases/reset-role-password": {
-    "status": "functional",
-    "evidence": "provider effect (1 outbound request)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "POST /api/edge-databases/test-connection": {
     "status": "functional",
@@ -493,11 +493,11 @@
   },
   "DELETE /api/edge-databases/{db_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "PUT /api/edge-databases/{db_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "evidence": "persisted state effect (5 SQL observations)"
   },
   "POST /api/edge-databases/{db_id}/test": {
     "status": "functional",
@@ -505,19 +505,19 @@
   },
   "GET /api/edge-engines/": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (4 SQL observations)"
   },
   "POST /api/edge-engines/": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "persisted state effect (4 SQL observations)"
   },
   "GET /api/edge-engines/active/by-scope/{scope}": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (6 SQL observations)"
   },
   "POST /api/edge-engines/batch/delete": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "POST /api/edge-engines/batch/redeploy": {
     "status": "functional",
@@ -536,44 +536,44 @@
     "evidence": "persisted state effect (3 SQL observations)"
   },
   "GET /api/edge-engines/bundle-hashes/": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "read result DISCARDED — response identical with reads starved (10 SQL observations had no effect)"
   },
   "POST /api/edge-engines/deploy": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/edge-engines/import": {
-    "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "DELETE /api/edge-engines/{engine_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "GET /api/edge-engines/{engine_id}": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "PUT /api/edge-engines/{engine_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "evidence": "persisted state effect (5 SQL observations)"
   },
   "GET /api/edge-engines/{engine_id}/agent-profiles": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/edge-engines/{engine_id}/agent-profiles": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "persisted state effect (3 SQL observations)"
   },
   "DELETE /api/edge-engines/{engine_id}/agent-profiles/{profile_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "PUT /api/edge-engines/{engine_id}/agent-profiles/{profile_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "GET /api/edge-engines/{engine_id}/audit/tenant-secrets": {
     "status": "functional",
@@ -581,7 +581,7 @@
   },
   "POST /api/edge-engines/{engine_id}/cancel-move": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/edge-engines/{engine_id}/export": {
     "status": "functional",
@@ -589,59 +589,59 @@
   },
   "POST /api/edge-engines/{engine_id}/finalize-move": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "GET /api/edge-engines/{engine_id}/health-check": {
     "status": "functional",
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "GET /api/edge-engines/{engine_id}/inspect/domains": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
+    "status": "external-disabled",
+    "evidence": "runtime explicitly reports an unavailable provider/integration"
   },
   "POST /api/edge-engines/{engine_id}/inspect/domains": {
-    "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "status": "external-disabled",
+    "evidence": "runtime explicitly reports an unavailable provider/integration"
   },
   "DELETE /api/edge-engines/{engine_id}/inspect/domains/{domain_id}": {
-    "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "status": "external-disabled",
+    "evidence": "runtime explicitly reports an unavailable provider/integration"
   },
   "POST /api/edge-engines/{engine_id}/inspect/domains/{domain_id}/verify": {
-    "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "status": "external-disabled",
+    "evidence": "runtime explicitly reports an unavailable provider/integration"
   },
   "GET /api/edge-engines/{engine_id}/inspect/secrets": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
+    "status": "external-disabled",
+    "evidence": "runtime explicitly reports an unavailable provider/integration"
   },
   "GET /api/edge-engines/{engine_id}/inspect/settings": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "external-disabled",
+    "evidence": "runtime explicitly reports an unavailable provider/integration"
   },
   "GET /api/edge-engines/{engine_id}/inspect/source": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
+    "status": "external-disabled",
+    "evidence": "runtime explicitly reports an unavailable provider/integration"
   },
   "GET /api/edge-engines/{engine_id}/logs": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
+    "status": "external-disabled",
+    "evidence": "runtime explicitly reports an unavailable provider/integration"
   },
   "PATCH /api/edge-engines/{engine_id}/logs/config": {
     "status": "functional",
     "evidence": "persisted state effect (2 SQL observations)"
   },
   "GET /api/edge-engines/{engine_id}/logs/retention": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
+    "status": "external-disabled",
+    "evidence": "runtime explicitly reports an unavailable provider/integration"
   },
   "POST /api/edge-engines/{engine_id}/logs/sync": {
-    "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "status": "external-disabled",
+    "evidence": "runtime explicitly reports an unavailable provider/integration"
   },
   "POST /api/edge-engines/{engine_id}/move-to-project": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/edge-engines/{engine_id}/reconfigure": {
     "status": "functional",
@@ -649,15 +649,15 @@
   },
   "POST /api/edge-engines/{engine_id}/redeploy": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/edge-engines/{engine_id}/rollback-rotation": {
     "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/edge-engines/{engine_id}/rotate-secrets-key": {
     "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "GET /api/edge-engines/{engine_id}/rotation-history": {
     "status": "functional",
@@ -665,7 +665,7 @@
   },
   "GET /api/edge-engines/{engine_id}/rotation-status": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "GET /api/edge-engines/{engine_id}/source": {
     "status": "functional",
@@ -673,15 +673,15 @@
   },
   "PUT /api/edge-engines/{engine_id}/source": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/edge-engines/{engine_id}/sync-manifest": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "persisted state effect (3 SQL observations)"
   },
   "POST /api/edge-engines/{engine_id}/test": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "GET /api/edge-gpu/": {
     "status": "functional",
@@ -689,19 +689,19 @@
   },
   "POST /api/edge-gpu/": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "GET /api/edge-gpu/catalog": {
     "status": "functional",
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "GET /api/edge-gpu/schemas": {
-    "status": "shape-only",
-    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
+    "status": "functional",
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "DELETE /api/edge-gpu/{model_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "PUT /api/edge-gpu/{model_id}": {
     "status": "functional",
@@ -717,7 +717,7 @@
   },
   "POST /api/edge-providers/": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "persisted state effect (4 SQL observations)"
   },
   "GET /api/edge-providers/accounts/{account_id}/tables": {
     "status": "functional",
@@ -725,15 +725,15 @@
   },
   "POST /api/edge-providers/create-resource-by-account/{account_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "persisted state effect (3 SQL observations)"
   },
   "POST /api/edge-providers/discover": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "POST /api/edge-providers/discover-by-account/{account_id}": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (7 SQL observations)"
   },
   "POST /api/edge-providers/retest/{provider_id}": {
     "status": "functional",
@@ -753,35 +753,35 @@
   },
   "POST /api/edge-providers/{account_id}/list-engines": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/edge-providers/{account_id}/turso-databases": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "persisted state effect (3 SQL observations)"
   },
   "DELETE /api/edge-providers/{account_id}/turso-databases/{db_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/edge-providers/{account_id}/turso-databases/{db_id}/test": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "DELETE /api/edge-providers/{provider_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "GET /api/edge-providers/{provider_id}": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "PUT /api/edge-providers/{provider_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "evidence": "persisted state effect (5 SQL observations)"
   },
   "GET /api/edge-providers/{provider_id}/credentials": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "GET /api/edge-queues/": {
     "status": "functional",
@@ -789,7 +789,7 @@
   },
   "POST /api/edge-queues/": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "persisted state effect (4 SQL observations)"
   },
   "POST /api/edge-queues/batch/delete": {
     "status": "functional",
@@ -801,11 +801,11 @@
   },
   "DELETE /api/edge-queues/{queue_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "PUT /api/edge-queues/{queue_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "evidence": "persisted state effect (5 SQL observations)"
   },
   "POST /api/edge-queues/{queue_id}/test/": {
     "status": "functional",
@@ -817,7 +817,7 @@
   },
   "POST /api/edge-vectors/": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "persisted state effect (4 SQL observations)"
   },
   "POST /api/edge-vectors/batch/delete": {
     "status": "functional",
@@ -829,11 +829,11 @@
   },
   "DELETE /api/edge-vectors/{vector_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "PUT /api/edge-vectors/{vector_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "evidence": "persisted state effect (5 SQL observations)"
   },
   "POST /api/edge-vectors/{vector_id}/test": {
     "status": "functional",
@@ -849,7 +849,7 @@
   },
   "DELETE /api/mcp-servers/{server_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "GET /api/mcp-servers/{server_id}": {
     "status": "functional",
@@ -857,7 +857,7 @@
   },
   "PUT /api/mcp-servers/{server_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "POST /api/mcp-servers/{server_id}/test": {
     "status": "functional",
@@ -896,20 +896,20 @@
     "evidence": "persisted state effect (2 SQL observations)"
   },
   "PUT /api/pages/{page_id}/layout/": {
-    "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "DELETE /api/pages/{page_id}/permanent/": {
     "status": "functional",
     "evidence": "persisted state effect (2 SQL observations)"
   },
   "POST /api/pages/{page_id}/publish-batch/": {
-    "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "POST /api/pages/{page_id}/publish/{engine_id}/": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/pages/{page_id}/restore/": {
     "status": "functional",
@@ -917,7 +917,7 @@
   },
   "POST /api/pages/{page_id}/rollback/": {
     "status": "functional",
-    "evidence": "persisted state effect (5 SQL observations)"
+    "evidence": "persisted state effect (7 SQL observations)"
   },
   "POST /api/pages/{page_id}/unpublish/{engine_id}/": {
     "status": "functional",
@@ -925,7 +925,7 @@
   },
   "GET /api/pages/{page_id}/versions/": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/pages/{page_id}/versions/": {
     "status": "functional",
@@ -988,8 +988,8 @@
     "evidence": "persisted state effect (2 SQL observations)"
   },
   "POST /api/settings/redis/test/": {
-    "status": "functional",
-    "evidence": "provider effect (1 outbound request)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/settings/security/": {
     "status": "functional",
@@ -1005,7 +1005,7 @@
   },
   "POST /api/settings/validate-license": {
     "status": "shape-only",
-    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/storage/buckets": {
     "status": "functional",
@@ -1036,36 +1036,36 @@
     "evidence": "tenant-scoped state read reflected in the response (6 SQL observations)"
   },
   "POST /api/storage/create-folder": {
-    "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "DELETE /api/storage/delete": {
-    "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/storage/list": {
     "status": "functional",
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/storage/move": {
-    "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "POST /api/storage/move-cross": {
-    "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/storage/move-status/{job_id}": {
-    "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "status": "external-disabled",
+    "evidence": "not measurable in a community deployment — needs a cross-bucket move job; POST /api/storage/move-cross refuses 400 (no second provider)"
   },
   "GET /api/storage/netlify-sites": {
     "status": "functional",
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/storage/netlify-sites": {
-    "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/storage/providers/": {
     "status": "functional",
@@ -1073,11 +1073,11 @@
   },
   "POST /api/storage/providers/": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "DELETE /api/storage/providers/{provider_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "GET /api/storage/public-url": {
     "status": "functional",
@@ -1096,8 +1096,8 @@
     "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/storage/vercel-projects": {
-    "status": "functional",
-    "evidence": "persisted state effect (2 SQL observations)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/sync/datasources/": {
     "status": "functional",
@@ -1112,16 +1112,16 @@
     "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "POST /api/sync/datasources/sheets/connect/callback/": {
-    "status": "functional",
-    "evidence": "persisted state effect (4 SQL observations)"
+    "status": "external-disabled",
+    "evidence": "not measurable in a community deployment — needs an issued capability token; the issue endpoint refuses 503 (no Redis token store)"
   },
   "POST /api/sync/datasources/sheets/connect/issue/": {
-    "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "status": "shape-only",
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /api/sync/datasources/sheets/connect/status/": {
-    "status": "shape-only",
-    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
+    "status": "external-disabled",
+    "evidence": "not measurable in a community deployment — needs an issued capability token; the issue endpoint refuses 503 (no Redis token store)"
   },
   "POST /api/sync/datasources/test-raw/": {
     "status": "shape-only",
@@ -1221,7 +1221,7 @@
   },
   "GET /api/sync/datasources/{datasource_id}/views/": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/sync/datasources/{datasource_id}/views/": {
     "status": "functional",
@@ -1301,7 +1301,7 @@
   },
   "DELETE /api/themes/{theme_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (1 SQL observation)"
+    "evidence": "persisted state effect (2 SQL observations)"
   },
   "GET /api/variables/": {
     "status": "functional",
@@ -1329,7 +1329,7 @@
   },
   "POST /api/workflows/send-email": {
     "status": "shape-only",
-    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
+    "evidence": "no state, session, or provider effect observed"
   },
   "GET /health": {
     "status": "shape-only",

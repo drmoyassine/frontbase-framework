@@ -83,10 +83,29 @@ test('settings: action endpoints return conformant acks', async () => {
     });
     assert.equal(redisPut.status, 200);
     assert.equal((await redisPut.json()).redis_token, '');
-    const redis = await req(app, 'POST', '/api/settings/redis/test/', {});
+    // The product tests the credentials in the REQUEST, not the stored ones:
+    // `async def test_redis_connection(settings_update: RedisSettings, ...)` reads
+    // `settings_update.redis_token` (app/routers/settings.py:92-110). The console
+    // calls this to validate a form before saving it, so a stored-token test would
+    // answer for settings the user has not committed yet.
+    const redis = await req(app, 'POST', '/api/settings/redis/test/', {
+        redis_url: 'https://example.upstash.io',
+        redis_token: 'upstash-secret',
+        redis_type: 'upstash',
+        redis_enabled: true,
+        cache_ttl_data: 300,
+        cache_ttl_count: 300,
+    });
     assert.equal(redis.status, 200);
     zRedisTestResult.parse(await redis.json());
     assert.equal(authorization, 'Bearer upstash-secret');
+    // And the product's exact refusal when the request carries no credentials —
+    // NOT a fall back to whatever happens to be stored.
+    authorization = '';
+    const bare = await req(app, 'POST', '/api/settings/redis/test/', {});
+    assert.equal(bare.status, 200);
+    assert.deepEqual(await bare.json(), { success: false, message: 'URL and Token are required' });
+    assert.equal(authorization, '', 'no outbound call may be made without request credentials');
     zTelemetryAck.parse(await (await req(app, 'POST', '/api/settings/telemetry', {
         install_id: 'compat-wave1',
         edition: 'community',

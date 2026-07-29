@@ -19,10 +19,25 @@ export function registerRlsRoutes(
     syncStoreFor: (tenant: string) => SyncStore,
     externalFetch: CompatFetch,
 ): void {
-    const callRpc = async (tenant: string, functionName: string, params: Record<string, unknown>): Promise<unknown> => {
+    const sqlHash = (sql: unknown): string => {
+        if (typeof sql !== 'string' || sql.length === 0) return '';
+        const normalized = sql.replace(/\s+/g, ' ').trim().toLowerCase();
+        let value = 0;
+        for (const char of normalized) value = ((value << 5) - value + char.charCodeAt(0)) >>> 0;
+        return value.toString(16);
+    };
+    const SUPABASE_NOT_CONFIGURED =
+        'Supabase connection not configured. Connect a Supabase account in Settings → Accounts.';
+    const supabaseFor = async (tenant: string) => {
         const datasource = (await syncStoreFor(tenant).listDatasources())
             .find((item) => item.kind === 'supabase');
         if (!datasource) throw new Error('supabase_not_configured');
+        return datasource;
+    };
+    const isNotConfigured = (error: unknown) =>
+        (error as Error).message.includes('supabase_not_configured');
+    const callRpc = async (tenant: string, functionName: string, params: Record<string, unknown>): Promise<unknown> => {
+        const datasource = await supabaseFor(tenant);
         const url = String(datasource.config.url ?? datasource.config.supabaseUrl ?? '').replace(/\/+$/, '');
         const key = String(
             datasource.config.serviceKey
@@ -45,12 +60,9 @@ export function registerRlsRoutes(
         return response.json();
     };
 
-    const failed = (c: any, error: unknown) => c.json({
-        success: false,
-        error: (error as Error).message,
-    }, 502, (error as Error).message.includes('not_configured')
-        ? { 'X-Frontbase-External-Disabled': 'supabase' }
-        : undefined);
+    const failed = (c: any, error: unknown) => isNotConfigured(error)
+        ? c.json({ detail: SUPABASE_NOT_CONFIGURED }, 404)
+        : c.json({ detail: 'RLS provider request failed' }, 502);
 
     app.get('/api/database/rls/policies/', async (c) => {
         try {
@@ -58,7 +70,12 @@ export function registerRlsRoutes(
                 p_schema_name: c.req.query('schema') ?? 'public',
             });
             return c.json({ success: true, data: Array.isArray(data) ? data : [], error: null });
-        } catch (error) { return failed(c, error); }
+        } catch (error) {
+            if (isNotConfigured(error)) {
+                return c.json({ success: true, data: [], error: null });
+            }
+            return failed(c, error);
+        }
     });
 
     app.get('/api/database/rls/tables/', async (c) => {
@@ -67,7 +84,12 @@ export function registerRlsRoutes(
                 p_schema_name: c.req.query('schema') ?? 'public',
             });
             return c.json({ success: true, data: Array.isArray(data) ? data : [], error: null });
-        } catch (error) { return failed(c, error); }
+        } catch (error) {
+            if (isNotConfigured(error)) {
+                return c.json({ success: true, data: [], error: null });
+            }
+            return failed(c, error);
+        }
     });
 
     app.get('/api/database/rls/policies/:table_name', async (c) => {
@@ -81,7 +103,12 @@ export function registerRlsRoutes(
                 data: policies.filter((policy) => policy.table_name === c.req.param('table_name')),
                 error: null,
             });
-        } catch (error) { return failed(c, error); }
+        } catch (error) {
+            if (isNotConfigured(error)) {
+                return c.json({ success: true, data: [], error: null });
+            }
+            return failed(c, error);
+        }
     });
 
     app.post('/api/database/rls/policies/', async (c) => {
@@ -217,6 +244,9 @@ export function registerRlsRoutes(
         };
         const results = [];
         try {
+            // The product resolves the Supabase context before processing the
+            // batch, including an empty batch. Do not fabricate a local success.
+            await supabaseFor(c.get('tenant'));
             for (const policy of body.policies ?? []) {
                 const result = await callRpc(c.get('tenant'), 'frontbase_drop_rls_policy', {
                     p_table_name: policy.tableName,
@@ -252,16 +282,35 @@ export function registerRlsRoutes(
     });
 
     app.post('/api/database/rls/metadata/', async (c) => {
-        const body = await c.req.json().catch(() => ({})) as { tableName?: string; policyName?: string };
+        const body = await c.req.json().catch(() => ({})) as {
+            tableName?: string;
+            policyName?: string;
+            formData?: Record<string, unknown>;
+            generatedUsing?: string | null;
+            generatedCheck?: string | null;
+        };
         const kv = kvFor(c.get('tenant'));
         const all = await kv.getJson<Array<Record<string, unknown>>>('rls_metadata', []);
         const index = all.findIndex((item) =>
             item.tableName === body.tableName && item.policyName === body.policyName);
-        const entry = { ...body, tableName: body.tableName, policyName: body.policyName };
+        const hash = sqlHash(body.generatedUsing);
+        const entry = {
+            ...body,
+            tableName: body.tableName,
+            policyName: body.policyName,
+            formData: body.formData ?? {},
+            generatedUsing: body.generatedUsing ?? null,
+            generatedCheck: body.generatedCheck ?? null,
+            sqlHash: hash,
+        };
         if (index >= 0) all[index] = entry;
         else all.push(entry);
         await kv.setJson('rls_metadata', all, '');
-        return c.json({ success: true, data: { tableName: body.tableName, policyName: body.policyName }, error: null });
+        return c.json({
+            success: true,
+            data: { tableName: body.tableName, policyName: body.policyName, sqlHash: hash },
+            error: null,
+        });
     });
 
     app.delete('/api/database/rls/metadata/:table_name/:policy_name', async (c) => {
@@ -273,13 +322,28 @@ export function registerRlsRoutes(
     });
 
     app.post('/api/database/rls/metadata/verify/', async (c) => {
-        const body = await c.req.json().catch(() => ({})) as { tableName?: string; policyName?: string };
-        const all = await kvFor(c.get('tenant')).getJson<Array<{ tableName?: string; policyName?: string }>>('rls_metadata', []);
-        const found = all.some((entry) =>
+        const body = await c.req.json().catch(() => ({})) as {
+            tableName?: string;
+            policyName?: string;
+            currentUsing?: string | null;
+        };
+        const all = await kvFor(c.get('tenant')).getJson<Array<{
+            tableName?: string;
+            policyName?: string;
+            sqlHash?: string;
+            formData?: Record<string, unknown>;
+        }>>('rls_metadata', []);
+        const found = all.find((entry) =>
             entry.tableName === body.tableName && entry.policyName === body.policyName);
+        const verified = Boolean(found) && sqlHash(body.currentUsing) === found?.sqlHash;
         return c.json({
             success: true,
-            data: { hasMetadata: found, isVerified: found, reason: found ? 'metadata_found' : 'no_metadata' },
+            data: {
+                hasMetadata: Boolean(found),
+                isVerified: verified,
+                reason: found ? (verified ? 'match' : 'modified_externally') : 'no_metadata',
+                ...(verified ? { formData: found?.formData ?? {} } : {}),
+            },
             error: null,
         });
     });

@@ -2,10 +2,10 @@
   "scope": "all 334 community operations; derived from runtime state/session/provider observations",
   "note": "HONEST LEDGER. Per-operation status and evidence are pinned in behavior.ledger.json. Read-only operations are replayed with reads starved so discarded queries cannot count as functional; explicit unavailable-integration reports outrank incidental local audit writes.",
   "counts": {
-    "functional": 309,
-    "shape-only": 17,
-    "external-disabled": 8,
+    "functional": 278,
+    "shape-only": 41,
+    "external-disabled": 15,
     "stub": 0
   },
-  "fingerprint": "823998d888140c2cc8e6c19ad7379d8fe5bf85851c6758a15327ddc1cb99f1fb"
+  "fingerprint": "dd19516d0e9e81c53ae9f32b6e98d04b922c5dde04f892f9a69ee2d544e0c8af"
 }

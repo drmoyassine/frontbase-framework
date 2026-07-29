@@ -83,7 +83,7 @@ test('pages: publish + public/homepage', async () => {
 });
 
 // ---- database ----
-test('database: connections + graceful empty introspection', async () => {
+test('database: connections + unconfigured introspection matches the product', async () => {
     const app = await makeApp();
     const conn = await (await req(app, 'GET', '/api/database/connections/')).json();
     // DatabaseConnectionResponse envelope (contract bf1ac54): {success, data, message?}
@@ -91,18 +91,26 @@ test('database: connections + graceful empty introspection', async () => {
     assert.equal(conn.data.supabase.connected, false);
     const tables = await (await req(app, 'GET', '/api/database/tables/')).json();
     assert.deepEqual(tables.data.tables, []);
-    const schema = await (await req(app, 'GET', '/api/database/table-schema/users/')).json();
-    assert.equal(schema.data.table_name, 'users');
+    // Schema introspection is NOT gracefully empty without a connection: the product
+    // 404s, and the console needs that to tell "no Supabase" apart from "a table with
+    // no columns". Probed against a live self-host product on a clean database
+    // (2026-07-29) — this exact status and body:
+    const schema = await req(app, 'GET', '/api/database/table-schema/users/');
+    assert.equal(schema.status, 404);
+    assert.deepEqual(await schema.json(), {
+        detail: 'Supabase connection not configured. Connect a Supabase account in Settings → Accounts.',
+    });
+    // Table DATA, unlike schema, IS gracefully empty on the product.
     const data = await (await req(app, 'GET', '/api/database/table-data/users/')).json();
     assert.equal(data.total, 0);
 });
 
 // ---- rls ----
-test('rls: provider calls fail closed; metadata round-trips locally', async () => {
+test('rls: unconfigured reads match product; metadata round-trips locally', async () => {
     const app = await makeApp();
     const policies = await req(app, 'GET', '/api/database/rls/policies/');
-    assert.equal(policies.status, 502);
-    assert.equal((await policies.json()).error, 'supabase_not_configured');
+    assert.equal(policies.status, 200);
+    assert.deepEqual((await policies.json()).data, []);
     const saved = await (await req(app, 'POST', '/api/database/rls/metadata/', { tableName: 'users', policyName: 'p1', formData: {} })).json();
     assert.equal(saved.data.tableName, 'users');
     const got = await (await req(app, 'GET', '/api/database/rls/metadata/users/p1')).json();

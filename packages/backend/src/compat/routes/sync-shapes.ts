@@ -13,10 +13,21 @@ export function serializeDatasource(ds: {
     return {
         id: ds.id,
         name: ds.name,
+        project_id: null,
         type: ds.kind, // Spec mandates `type`, not `kind`
+        host: null,
+        port: 5432,
+        database: null,
+        username: null,
+        api_url: null,
+        table_prefix: 'wp_',
         is_active: true,
+        last_tested_at: null,
+        last_test_success: null,
         created_at: ds.created_at,
         updated_at: ds.updated_at,
+        extra_config: null,
+        views: [],
     };
 }
 

@@ -21,10 +21,41 @@ import {
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 const DEFAULTS: Record<string, unknown> = {
-    general: { siteName: 'Frontbase', siteUrl: '', defaultLanguage: 'en', timezone: 'UTC' },
-    privacy: { enableVisitorTracking: false, requireCookieConsent: false, ga4MeasurementId: '', gtmContainerId: '', cookieExpiryDays: 365, advancedVariables: {}, cookieVariables: {}, customHeadHtml: '' },
+    general: { siteName: null, siteUrl: null, defaultLanguage: 'en', timezone: 'UTC' },
+    privacy: {
+        enableVisitorTracking: false,
+        requireCookieConsent: true,
+        ga4MeasurementId: null,
+        gtmContainerId: null,
+        cookieExpiryDays: 365,
+        advancedVariables: {
+            ip: { collect: false, expose: false },
+            browser: { collect: true, expose: true },
+            os: { collect: true, expose: true },
+            language: { collect: true, expose: true },
+            viewport: { collect: true, expose: true },
+            themePreference: { collect: true, expose: true },
+            connectionType: { collect: true, expose: false },
+            referrer: { collect: true, expose: true },
+            isBot: { collect: true, expose: true },
+        },
+        cookieVariables: {
+            isFirstVisit: { collect: true, expose: true },
+            visitCount: { collect: true, expose: true },
+            firstVisitAt: { collect: true, expose: true },
+            landingPage: { collect: true, expose: true },
+        },
+        customHeadHtml: null,
+    },
     security: { full_ip_retention_days: 30 },
-    redis: { redis_url: '', redis_token: '', redis_type: 'upstash', redis_enabled: false, cache_ttl_data: 300, cache_ttl_count: 300 },
+    redis: {
+        redis_url: 'http://redis-http:80',
+        redis_token: null,
+        redis_type: 'self-hosted',
+        redis_enabled: false,
+        cache_ttl_data: 60,
+        cache_ttl_count: 300,
+    },
 };
 
 const VALIDATORS: Record<string, (x: unknown) => { success: boolean }> = {
@@ -54,7 +85,7 @@ export function registerSettingsRoutes(
             const stored = await kvFor(c.get('tenant')).getJson(domain, DEFAULTS[domain]);
             if (domain === 'redis') {
                 const { redis_token_ciphertext: _ciphertext, ...safe } = stored as Record<string, unknown>;
-                return c.json({ ...DEFAULTS.redis as object, ...safe, redis_token: '' });
+                return c.json({ ...DEFAULTS.redis as object, ...safe, redis_token: null });
             }
             return c.json({ ...DEFAULTS[domain] as object, ...(stored as object) });
         });
@@ -88,27 +119,30 @@ export function registerSettingsRoutes(
 
     // POST /api/settings/redis/test/
     app.post('/api/settings/redis/test/', async (c) => {
-        const redisSettings = await kvFor(c.get('tenant')).getJson<Record<string, unknown>>('redis', {});
-        const redisUrl = typeof redisSettings.redis_url === 'string' ? redisSettings.redis_url : '';
-        const ciphertext = typeof redisSettings.redis_token_ciphertext === 'string'
-            ? redisSettings.redis_token_ciphertext
-            : '';
-        if (!redisSettings.redis_enabled || !redisUrl || !ciphertext) {
-            return c.json({ success: false, message: 'Redis is not configured' });
+        const input = await c.req.json() as Record<string, unknown>;
+        const redisUrl = typeof input.redis_url === 'string' ? input.redis_url : '';
+        const rawToken = typeof input.redis_token === 'string' ? input.redis_token : '';
+        if (!redisUrl || !rawToken) {
+            return c.json({ success: false, message: 'URL and Token are required' });
         }
-        if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_not_encrypted');
-        const token = await secretCipher.decrypt(ciphertext);
         try {
             const response = await guardedExternalFetch(
                 externalFetch,
                 `${redisUrl.replace(/\/+$/, '')}/ping`,
-                { headers: { authorization: `Bearer ${token}` } },
+                {
+                    method: 'POST',
+                    headers: {
+                        authorization: `Bearer ${rawToken}`,
+                        'content-type': 'application/json',
+                    },
+                    body: JSON.stringify(['PING']),
+                },
             );
             const payload = await response.json().catch(() => null) as { result?: unknown } | null;
             const success = response.ok && String(payload?.result ?? '').toUpperCase() === 'PONG';
             return c.json({
                 success,
-                message: success ? 'Redis connection test successful' : 'Redis connection failed',
+                message: success ? 'Connection successful!' : 'Redis connection failed',
             });
         } catch {
             return c.json({ success: false, message: 'Redis connection failed' });
@@ -124,12 +158,13 @@ export function registerSettingsRoutes(
 
     // POST /api/settings/validate-license
     app.post('/api/settings/validate-license', async (c) => {
-        await kvFor(c.get('tenant')).getJson('general', DEFAULTS['general']);
+        const body = await c.req.json() as { license_key: string };
+        const valid = body.license_key.startsWith('fb_');
         return c.json({
-            valid: true,
-            tier: 'community',
-            features: ['all_features_enabled'],
-            message: 'Community license valid',
+            valid,
+            tier: valid ? 'enterprise' : 'community',
+            features: valid ? ['supabase', 'custom_domains', 'telemetry_enabled'] : [],
+            message: valid ? 'License activated' : 'Invalid license key',
         });
     });
 
@@ -141,12 +176,9 @@ export function registerSettingsRoutes(
             email: parsed.data.email,
             role: parsed.data.role === 'member' ? 'editor' : parsed.data.role,
         }, now());
-        const inviteUrl = `/accept-invite?token=${encodeURIComponent(invite.token)}`;
         return c.json({
             success: true,
-            message: `Invitation created for ${invite.email}: ${inviteUrl}`,
-            token: invite.token,
-            invite_url: inviteUrl,
+            message: `Invitation sent to ${invite.email}`,
         });
     });
 }

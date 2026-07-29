@@ -217,6 +217,11 @@ for (const [path, item] of Object.entries(spec.paths)) {
         const headers = body === undefined ? undefined : { 'content-type': 'application/json' };
 
         const successPath = fillParams(path, { absent: false });
+        // Logging out is a legitimate operation to compare, but it takes the session
+        // with it and every authed case after it would answer 401 — 476 of them, on
+        // whichever system actually honours the logout. Flag it so the runner can
+        // re-establish the session afterwards.
+        const invalidatesSession = path.startsWith('/api/auth/logout');
         // Whatever this case interpolates, it gets freshly created first.
         const requires = [...new Set(
             [...successPath.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]),
@@ -229,6 +234,7 @@ for (const [path, item] of Object.entries(spec.paths)) {
             ...(headers ? { headers } : {}),
             ...(body === undefined ? {} : { body }),
             ...(requires.length ? { requires } : {}),
+            ...(invalidatesSession ? { invalidatesSession } : {}),
         });
 
         // Failure: make THIS operation reject THIS request.

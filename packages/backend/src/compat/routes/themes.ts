@@ -37,7 +37,11 @@ export function registerThemesRoutes(app: App, storeFor: (t: string) => ThemesSt
     });
     // DELETE /api/themes/{theme_id}
     app.delete('/api/themes/:theme_id', async (c) => {
-        await storeFor(c.get('tenant')).delete(c.req.param('theme_id'));
-        return c.body(null, 204);
+        const store = storeFor(c.get('tenant'));
+        if (!(await store.list()).some((theme) => theme.id === c.req.param('theme_id'))) {
+            return c.json({ detail: 'Theme not found' }, 404);
+        }
+        await store.delete(c.req.param('theme_id'));
+        return c.body(null, 204, { 'Content-Type': 'application/json' });
     });
 }
