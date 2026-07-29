@@ -14,6 +14,7 @@
 import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
+import { isSystemEngine } from './edge-shapes.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -154,9 +155,14 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
         const store = phase2For(c.get('tenant'));
         const existing = await store.getWorkflow(c.req.param('draft_id'));
         if (!existing) return c.json({ success: false, message: 'Draft not found' }, 404);
-        const engine = await store.getEdgeResource(c.req.param('engine_id'));
-        if (!engine || engine.kind !== 'engine') {
-            return c.json({ detail: `Engine not found: ${c.req.param('engine_id')}` }, 404);
+        const engineId = c.req.param('engine_id');
+        // The system edge is the worker itself — always a valid local target. Any
+        // other id must resolve to a stored engine.
+        if (!isSystemEngine(engineId)) {
+            const engine = await store.getEdgeResource(engineId);
+            if (!engine || engine.kind !== 'engine') {
+                return c.json({ detail: `Engine not found: ${engineId}` }, 404);
+            }
         }
         await store.toggleWorkflow(c.req.param('draft_id'), true, now());
         return c.json({ success: true, message: 'Published', workflow_id: c.req.param('draft_id'), version: Number(existing.version ?? 1) + 1 });
@@ -166,12 +172,25 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
         const store = phase2For(c.get('tenant'));
         const existing = await store.getWorkflow(c.req.param('draft_id'));
         if (!existing) return c.json({ success: false, message: 'Draft not found' }, 404);
-        const body = await c.req.json() as { engine_ids: string[] };
-        const engines = await Promise.all(body.engine_ids.map((id) => store.getEdgeResource(id)));
-        if (!engines.some((engine) => engine?.kind === 'engine')) {
-            return c.json({ detail: 'No engines found' }, 404);
-        }
-        return c.json({ success: false, message: 'No engines found', results: [] });
+        const body = await c.req.json().catch(() => ({ engine_ids: [] })) as { engine_ids?: string[] };
+        const ids = Array.isArray(body.engine_ids) ? body.engine_ids : [];
+        // The system edge is always valid (the worker is the engine); other ids must
+        // resolve to stored engines.
+        const resolved = await Promise.all(ids.map(async (id) => {
+            if (isSystemEngine(id)) return true;
+            const engine = await store.getEdgeResource(id);
+            return engine?.kind === 'engine';
+        }));
+        const valid = ids.filter((_, i) => resolved[i]);
+        if (valid.length === 0) return c.json({ detail: 'No engines found' }, 404);
+        await store.toggleWorkflow(c.req.param('draft_id'), true, now());
+        return c.json({
+            success: true,
+            message: 'Published',
+            results: valid.map((id) => ({ engine_id: id, success: true })),
+            workflow_id: c.req.param('draft_id'),
+            version: Number(existing.version ?? 1) + 1,
+        });
     });
     // POST /api/actions/drafts/{draft_id}/publish/{engine_id}/toggle
     app.post('/api/actions/drafts/:draft_id/publish/:engine_id/toggle', async (c) => {

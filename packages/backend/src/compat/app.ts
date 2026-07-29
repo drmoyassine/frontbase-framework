@@ -35,6 +35,7 @@ import { registerWorkflowsRoutes } from './routes/workflows.js';
 import { registerActionsRoutes } from './routes/actions.js';
 import { registerAuthCompatUnauthRoutes, registerAuthCompatAuthedRoutes } from './routes/auth-compat.js';
 import { registerEdgeEnginesRoutes } from './routes/edge-engines.js';
+import type { SystemEdgeDescriptor } from './routes/edge-shapes.js';
 import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
 import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
 import { registerEdgeMiscRoutes } from './routes/edge-misc.js';
@@ -75,6 +76,11 @@ export interface CreateCompatAppDeps {
     externalFetch?: CompatFetch;
     /** Object storage executor for compat upload/move/delete/signed-url routes. */
     storageProvider?: StorageProvider;
+    /** Descriptor for the system edge — the worker this deployment runs on. The
+     *  host (worker entry) owns it because it knows the platform (Cloudflare now;
+     *  Deno/Vercel/Netlify entries later) and the real binding (D1). Defaults to a
+     *  Cloudflare/D1 descriptor. */
+    systemEdge?: SystemEdgeDescriptor;
 }
 
 /** Build a per-tenant store cache. */
@@ -91,6 +97,10 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     const now = deps.now ?? (() => new Date().toISOString());
     const runner = await deps.makeRunner();
     const externalFetch: CompatFetch = deps.externalFetch ?? ((input, init) => globalThis.fetch(input, init));
+    // The system edge is the worker itself. Default to the Cloudflare/D1 reality of
+    // the cf-full worker; the host overrides for other platforms.
+    const systemEdge: SystemEdgeDescriptor = deps.systemEdge
+        ?? { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' };
 
     // Per-tenant stores. Single-tenant in practice (community edition); the
     // tenant comes from the auth context (defaultDenyAuth).
@@ -249,7 +259,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Wave 3
     registerActionsRoutes(app, phase2For, now);
     // Wave 4 — edge domain (engines + providers + caches/queues/vectors + inspector + api-keys + gpu + deploy)
-    registerEdgeEnginesRoutes(app, phase2For, kvFor, secretCipher, now);
+    registerEdgeEnginesRoutes(app, phase2For, kvFor, secretCipher, now, systemEdge);
     registerEdgeProvidersRoutes(app, phase2For, kvFor, secretCipher, externalFetch, now);
     registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now);
     registerEdgeMiscRoutes(app, runner, phase2For, secretCipher, now);

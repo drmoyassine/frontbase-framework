@@ -239,6 +239,12 @@ await check('GET /api/auth/security/blocklist WITHOUT session → 401', async ()
     (await req('/api/auth/security/blocklist')).status === 401);
 await check('GET /api/auth/security/blocklist WITH session → 200', async () =>
     (await req('/api/auth/security/blocklist', { headers: { cookie: compatCookie } })).status === 200);
+await check('GET /api/edge-engines/active/by-scope/full lists the system edge as default target', async () => {
+    const r = await req('/api/edge-engines/active/by-scope/full', { headers: { cookie: compatCookie } });
+    const body = await r.json() as Array<{ id?: string; edge_db_id?: string }>;
+    return r.status === 200 && Array.isArray(body) && body.length > 0
+        && body[0]?.id === 'local-edge' && !!body[0]?.edge_db_id;
+});
 
 if (skipped > 0) console.log(`\n⚠ ${skipped} bundle-dependent check(s) skipped — this run did NOT verify the console bundles.`);
 console.log(failures === 0 ? '\ncf-full smoke: PASS ✅' : `\ncf-full smoke: FAIL ❌ (${failures})`);

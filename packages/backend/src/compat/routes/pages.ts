@@ -10,6 +10,7 @@
 import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { PagesStore, serializePage, type CompatVersionRow } from '../pages-store.js';
+import { isSystemEngine } from './edge-shapes.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -112,7 +113,9 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
             return c.json({ detail: `Page not found: ${pageId}` }, 404);
         }
         const engineId = c.req.param('engine_id');
-        if (engineId !== 'local') {
+        // The system edge (the worker itself) is the local publish target; keep
+        // accepting the legacy 'local' id for back-compat.
+        if (engineId !== 'local' && !isSystemEngine(engineId)) {
             return c.json({ detail: `Engine not found: ${engineId}` }, 404);
         }
         const res = await storeFor(c.get('tenant')).publish(pageId, engineId, now());
@@ -134,7 +137,7 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
         const row = await storeFor(c.get('tenant')).get(c.req.param('page_id'));
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
         const engineId = c.req.param('engine_id');
-        if (engineId !== 'local') {
+        if (engineId !== 'local' && !isSystemEngine(engineId)) {
             return c.json({
                 success: false,
                 data: null,

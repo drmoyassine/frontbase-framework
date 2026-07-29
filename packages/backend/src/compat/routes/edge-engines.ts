@@ -10,7 +10,7 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { KeyValueStore } from '../store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
-import { serializeEngine, batchResult, testResult } from './edge-shapes.js';
+import { serializeEngine, buildSystemEngine, isSystemEngine, batchResult, testResult, type SystemEdgeDescriptor } from './edge-shapes.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -36,7 +36,13 @@ export function registerEdgeEnginesRoutes(
     kvFor: (t: string) => KeyValueStore,
     secretCipher: SecretCipher,
     now: () => string,
+    systemEdge: SystemEdgeDescriptor,
 ): void {
+    // The system edge is the worker itself — synthesized per request with the live
+    // origin so preview links resolve here. Listed FIRST everywhere so it is the
+    // default publish target.
+    const systemEngineFor = (c: { req: { url: string } }): Record<string, unknown> =>
+        buildSystemEngine(systemEdge, new URL(c.req.url).origin);
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
         if (config === undefined) return undefined;
         const ciphertext = await secretCipher.encrypt(JSON.stringify(config));
@@ -81,27 +87,9 @@ export function registerEdgeEnginesRoutes(
     // GET /api/edge-engines/
     app.get('/api/edge-engines/', async (c) => {
         const store = p2(c.get('tenant'));
-        const local = serializeEngine({
-            id: 'local-edge',
-            name: 'Local Edge',
-            provider: null,
-            status: 'active',
-            is_system: true,
-            config: {
-                adapter_type: 'full',
-                url: 'http://localhost:3002',
-                edge_db_id: 'local-database',
-                edge_cache_id: 'local-cache',
-                edge_queue_id: 'local-queue',
-            },
-            created_at: '',
-            updated_at: '',
-        });
-        local.edge_db_name = 'Local SQLite';
-        local.edge_cache_name = 'Local Redis';
-        local.edge_queue_name = 'Local BullMQ';
+        const system = systemEngineFor(c);
         return c.json(await Promise.all(
-            [local, ...(await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row))],
+            [system, ...(await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row))],
         ));
     });
 
@@ -204,16 +192,20 @@ export function registerEdgeEnginesRoutes(
     app.post('/api/edge-engines/batch/rotate-secrets-key', async (c) => c.json(await performBatch(c)));
 
     // GET /api/edge-engines/active/by-scope/{scope}
+    // The system edge is a valid publish target — include it FIRST so the console's
+    // publish dialogs default to it (it's the engine this worker runs on).
     app.get('/api/edge-engines/active/by-scope/:scope', async (c) => {
         const store = p2(c.get('tenant'));
+        const system = systemEngineFor(c);
         return c.json(await Promise.all(
-            (await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row)),
+            [system, ...(await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row))],
         ));
     });
 
     // GET /api/edge-engines/{engine_id}
     app.get('/api/edge-engines/:engine_id', async (c) => {
         const engineId = c.req.param('engine_id');
+        if (isSystemEngine(engineId)) return c.json(systemEngineFor(c));
         const store = p2(c.get('tenant'));
         const engine = await store.getEdgeResource(engineId);
         return engine

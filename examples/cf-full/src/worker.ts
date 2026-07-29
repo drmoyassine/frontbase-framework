@@ -115,6 +115,10 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         userStoreFor: (t: string) => new UserStore(opts.runner, t),
         now,
         storageProvider: opts.storageProvider,
+        // The system edge is THIS worker: Cloudflare, backed by the bound D1. The
+        // cf-full worker always runs on Cloudflare; future deno/vercel/netlify
+        // worker entries pass their own provider + real binding here.
+        systemEdge: { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' },
     });
 
     const engine = createEngine({

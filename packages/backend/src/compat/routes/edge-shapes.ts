@@ -106,3 +106,56 @@ export function serializeEngine(row: Record<string, unknown>, extra: Record<stri
         ...extra,
     };
 }
+
+/**
+ * The system edge — the worker the whole deployment runs on. Unlike stored
+ * engines (real `edge_resources` rows a tenant connects), the system edge is
+ * synthesized per request: it IS this worker, so its provider/bindings are a
+ * property of where it's deployed, not a stored row.
+ *
+ * CF-22: previously this was an inline phantom in `GET /api/edge-engines/` with
+ * `provider: null` and the product's docker-edge bindings hardcoded
+ * (`Local SQLite`/`Local Redis`/`Local BullMQ`), was missing from the
+ * `active/by-scope` publish-target listing, and was unresolvable by every
+ * publish path. The host (the worker entry) owns the descriptor — it knows the
+ * platform (Cloudflare now; Deno/Vercel/Netlify worker entries later) and the
+ * real binding the runtime uses (D1). See `SYSTEM_ENGINE_ID` for why the id is
+ * a constant.
+ */
+export const SYSTEM_ENGINE_ID = 'local-edge';
+
+export const isSystemEngine = (id: unknown): boolean => typeof id === 'string' && id === SYSTEM_ENGINE_ID;
+
+export interface SystemEdgeDescriptor {
+    /** Where this worker is deployed. Cloudflare today; deno/vercel/netlify later. */
+    provider: string;
+    /** Display name. Defaults to "Local Edge". */
+    name?: string;
+    /** Real binding labels shown on the engine card. `null`/omitted → "None". */
+    db?: string | null;
+    cache?: string | null;
+    queue?: string | null;
+}
+
+/**
+ * Build the system edge engine for the current request. `origin` is the live
+ * worker origin (from `c.req.url`) so page preview links resolve to this worker.
+ */
+export function buildSystemEngine(desc: SystemEdgeDescriptor, origin: string): Record<string, unknown> {
+    const engine = serializeEngine({
+        id: SYSTEM_ENGINE_ID,
+        name: desc.name ?? 'Local Edge',
+        provider: desc.provider,
+        status: 'active',
+        is_system: true,
+        config: { adapter_type: 'full', url: origin, edge_db_id: 'system-d1' },
+        created_at: '',
+        updated_at: '',
+    });
+    // serializeEngine leaves the binding names null; fill them from the descriptor
+    // so the card reflects THIS deployment (D1) rather than product defaults.
+    engine.edge_db_name = desc.db ?? null;
+    engine.edge_cache_name = desc.cache ?? null;
+    engine.edge_queue_name = desc.queue ?? null;
+    return engine;
+}

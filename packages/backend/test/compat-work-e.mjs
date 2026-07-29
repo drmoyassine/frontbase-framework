@@ -370,8 +370,55 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
     assert.equal(crossTenantUrl.status, 404);
 });
 
-let failures = 0;
-for (const [name, fn] of tests) {
+test('system edge: self-aware Cloudflare engine is the default publish target for pages & workflows', async () => {
+    const { app } = await harness();
+
+    // The main list surfaces the system edge FIRST, self-aware of its provider and
+    // the real D1 binding (not the old product-docker defaults Local SQLite/Redis/BullMQ).
+    const list = await (await request(app, 'GET', '/api/edge-engines/')).json();
+    const system = list[0];
+    assert.equal(system.id, 'local-edge');
+    assert.equal(system.is_system, true);
+    assert.equal(system.provider, 'cloudflare');
+    assert.equal(system.edge_db_name, 'Cloudflare D1');
+    assert.equal(system.edge_db_id, 'system-d1'); // truthy → counts as full-bundle w/ a database
+    assert.equal(system.is_active, true);
+
+    // The publish-target listing MUST include it (it was excluded → "No active
+    // publish targets"). Listed first, so the console preselects it as the default.
+    const targets = await (await request(app, 'GET', '/api/edge-engines/active/by-scope/full')).json();
+    assert.equal(targets[0].id, 'local-edge');
+    assert.ok(targets.some((e) => e.edge_db_id));
+
+    // Single-get resolves the system engine.
+    const one = await (await request(app, 'GET', '/api/edge-engines/local-edge')).json();
+    assert.equal(one.id, 'local-edge');
+    assert.equal(one.provider, 'cloudflare');
+
+    // Page publish to the system edge succeeds (the worker IS the engine).
+    const page = await (await request(app, 'POST', '/api/pages/', {
+        name: 'System-edge page', slug: 'system-edge', title: 'System',
+    })).json();
+    const pageId = page.data.id;
+    const pagePub = await request(app, 'POST', `/api/pages/${pageId}/publish/local-edge/`);
+    assert.equal(pagePub.status, 200, await pagePub.clone().text());
+
+    // Workflow publish to the system edge succeeds (single-target).
+    const draft = await (await request(app, 'POST', '/api/actions/drafts', {
+        name: 'System-edge workflow', nodes: [], edges: [],
+    })).json();
+    const draftId = draft.id ?? draft.data?.id;
+    const wfPub = await request(app, 'POST', `/api/actions/drafts/${draftId}/publish/local-edge/`);
+    assert.equal(wfPub.status, 200, await wfPub.clone().text());
+    assert.equal((await wfPub.json()).success, true);
+
+    // An unknown engine id is still rejected — the system edge is the only
+    // always-valid local target; everything else must resolve to a stored engine.
+    assert.equal((await request(app, 'POST', `/api/pages/${pageId}/publish/does-not-exist/`)).status, 404);
+    assert.equal((await request(app, 'POST', `/api/actions/drafts/${draftId}/publish/does-not-exist/`)).status, 404);
+});
+
+let failures = 0;for (const [name, fn] of tests) {
     try {
         await fn();
         console.log(`  PASS ${name}`);
