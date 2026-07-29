@@ -12,6 +12,7 @@
  */
 import { Hono } from 'hono';
 import { createCompatApp, routedOps, implementedOps, opKey, productOps } from '../dist/compat/app.js';
+import { canonicalSlashVariant } from '../dist/compat/spec.js';
 import { migrateUp } from '../dist/db/migrations.js';
 import { UserStore } from '../dist/db/users.js';
 import { sqliteRunner } from '@frontbase/edge-infra';
@@ -88,6 +89,32 @@ check('the captured set excludes 501 stubs layered on afterwards', () => {
     return afterStubs.size > captured.size
         && afterStubs.has(opKey('GET', '/api/auth/me'))   // stubbed, so routed
         && !captured.has(opKey('GET', '/api/auth/me'));   // but NOT implemented
+});
+
+// A literal path the console calls WITHOUT its trailing slash can be swallowed by a
+// templated sibling: `/api/variables/registry` matches `/api/variables/{variable_id}`,
+// so the slash reconciler saw "this matches the contract" and left it alone, and the
+// by-id handler answered 404 for a variable named "registry". It reached a live
+// deployment because every in-process gate requests the EXACT contract path, and the
+// browser suite never opened the two screens involved.
+//
+// Checked across the whole contract rather than the two known cases, so re-vendoring
+// cannot introduce a third silently.
+check('no literal path is shadowed by a templated sibling', () => {
+    const unique = [...new Set([...productOps()].map((op) => op.path))];
+    const templates = unique.filter((p) => p.includes('{')).map((p) => new RegExp(
+        `^${p.replace(/\{[^}]+\}/g, ' ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            .split(' ').join('[^/]+')}$`,
+    ));
+    const broken = [];
+    for (const literal of unique.filter((p) => !p.includes('{'))) {
+        const variant = literal.endsWith('/') ? literal.slice(0, -1) : `${literal}/`;
+        if (!templates.some((re) => re.test(variant))) continue;
+        // Shadowed — the reconciler must still resolve it to the literal.
+        if (canonicalSlashVariant(variant) !== literal) broken.push(variant);
+    }
+    if (broken.length) console.log(`     shadowed and unreconciled: ${broken.join(', ')}`);
+    return broken.length === 0;
 });
 
 console.log(failures === 0 ? '\nrouted-ops: PASS ✅' : `\nrouted-ops: FAIL ❌ (${failures})`);

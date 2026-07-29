@@ -164,9 +164,20 @@ export function matchesContractPath(path: string): boolean {
  * than 404ing again — the loop the old middleware fell into is unrepresentable.
  */
 export function canonicalSlashVariant(path: string): string | null {
-    if (matchesContractPath(path)) return null; // already canonical
+    const matchesSelf = matchesContractPath(path); // also builds the lookup indexes
+    if (CONTRACT_LITERALS!.has(path)) return null; // declared verbatim — never rewrite
     const variant = path.endsWith('/') ? path.slice(0, -1) : path + '/';
     if (!variant || variant === path) return null;
+    // A LITERAL contract path outranks a template match on the original.
+    //
+    // `/api/variables/registry` matches the template `/api/variables/{variable_id}`,
+    // so treating "matches something" as "already canonical" handed it to the by-id
+    // handler, which 404s on a variable named "registry". The contract declares the
+    // literal `/api/variables/registry/`, and that is the path the console calls.
+    // Found on a live deployment, not by a gate: the in-process suites request the
+    // exact contract path, so none of them can see this.
+    if (CONTRACT_LITERALS!.has(variant)) return variant;
+    if (matchesSelf) return null; // canonical by template, and no literal outranks it
     return matchesContractPath(variant) ? variant : null;
 }
 
