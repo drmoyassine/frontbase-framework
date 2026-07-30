@@ -145,6 +145,7 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
                 error: `Edge engine not found: ${engineId}`,
             });
         }
+        await storeFor(c.get('tenant')).unpublish(c.req.param('page_id'), now());
         return c.json({ success: true, data: null, message: 'Page unpublished', error: null });
     });
 

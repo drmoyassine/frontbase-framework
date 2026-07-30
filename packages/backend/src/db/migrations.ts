@@ -239,6 +239,15 @@ export const MIGRATIONS: Migration[] = [
         up: [`ALTER TABLE workflows ADD COLUMN is_published INTEGER DEFAULT 0`],
         down: [],
     },
+    {
+        // CF-22: track whether a compat (Builder) page is published/live, so the
+        // eSSR serves only published pages. Existing rows default to 0 (a page is
+        // not live until the user publishes it).
+        version: 18,
+        name: 'compat_pages_is_published',
+        up: [`ALTER TABLE compat_pages ADD COLUMN is_published INTEGER DEFAULT 0`],
+        down: [],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

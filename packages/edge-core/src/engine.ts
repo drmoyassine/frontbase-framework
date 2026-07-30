@@ -26,6 +26,10 @@ export interface EngineOptions {
     swBundle?: string;
     /** Console API sub-router, mounted at /api/console (Phase 2). */
     console?: Hono;
+    /** Resolve a published page by URL path. When set, dynamic CMS pages override
+     *  the baked manifest (the manifest becomes a last-resort fallback). Injected
+     *  by the host so the engine stays DB-blind. Returns null when no such page. */
+    resolvePublishedPage?: (path: string) => Promise<PageEntry | null>;
 }
 
 /**
@@ -137,7 +141,11 @@ export function createEngine(opts: EngineOptions): Hono {
     // 4. eSSR catch-all — same renderer, every host.
     app.get('*', async (c) => {
         const path = new URL(c.req.url).pathname;
-        const page = manifest.pages[path];
+        // Dynamic-first: a published page resolved by the host (e.g. from the CMS
+        // database) overrides the baked manifest; the manifest is the last-resort
+        // fallback (demo pages, or a homepage the user deleted).
+        let page = opts.resolvePublishedPage ? await opts.resolvePublishedPage(path) : undefined;
+        if (!page) page = manifest.pages[path];
         if (!page) return c.notFound();
 
         // Page data goes through the SAME scope enforcement + tenant threading as

@@ -58,6 +58,11 @@ await check('GET / renders (edge)', async () => {
     const r = await req('/');
     return r.status === 200 && (await r.text()).includes('chimera-rendered-by" content="edge"');
 });
+await check('GET / serves the seeded homepage template (dynamic, not the baked demo)', async () => {
+    const r = await req('/');
+    const body = await r.text();
+    return r.status === 200 && body.includes('Welcome to your new site');
+});
 await check('GET / with Accept: application/json returns product API status', async () => {
     const r = await req('/', { headers: { accept: 'application/json' } });
     const body = await r.json() as { message?: string; test_mode?: boolean };
@@ -232,6 +237,22 @@ await check('POST /api/pages/ → create page → GET list → 200', async () =>
     const list = await req('/api/pages/', { headers: { cookie: compatCookie } });
     const body = await list.json() as { data?: unknown[] };
     return list.status === 200 && (body.data?.length ?? 0) >= 1;
+});
+await check('publishing a page serves it at /<slug> (dynamic eSSR)', async () => {
+    const create = await req('/api/pages/', {
+        method: 'POST', headers: { 'content-type': 'application/json', cookie: compatCookie },
+        body: JSON.stringify({ name: 'Served', slug: 'served', title: 'Served' }),
+    });
+    const pageId = (await create.json() as { data: { id: string } }).data.id;
+    await req(`/api/pages/${pageId}/`, {
+        method: 'PUT', headers: { 'content-type': 'application/json', cookie: compatCookie },
+        body: JSON.stringify({ name: 'Served', slug: 'served', layoutData: { content: [{ type: 'Heading', props: { content: 'Served live', level: 'h1' } }], root: {} } }),
+    });
+    const pub = await req(`/api/pages/${pageId}/publish/local-edge/`, { method: 'POST', headers: { cookie: compatCookie } });
+    if (pub.status !== 200) return false;
+    const r = await req('/served');
+    const body = await r.text();
+    return r.status === 200 && body.includes('Served live');
 });
 
 // ---- compat API: security endpoints are behind the guard ----

@@ -19,7 +19,7 @@
  */
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
-import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore } from '@frontbase/backend';
+import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore } from '@frontbase/backend';
 import { d1RunnerFromBinding, s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
 import { manifest } from './manifest.js';
 import SW_BUNDLE from 'virtual:sw-bundle';
@@ -73,6 +73,10 @@ export interface CmsEngineOptions {
 export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     const now = opts.now ?? (() => new Date().toISOString());
     await migrateUp(opts.runner, now);
+    // Fresh-deploy homepage template: a real, editable page that is live at '/'
+    // (is_homepage=1, is_published=1). Idempotent — only seeds when no homepage
+    // exists, so the user can edit/delete/replace it freely.
+    await new PagesStore(opts.runner, '_root').ensureHomepage(now());
     if (opts.admin?.email && opts.admin?.password) {
         const role = opts.admin.role ?? 'master_admin';
         const tenantSlug = role === 'master_admin' ? '_root' : '_default';
@@ -127,6 +131,19 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         environment: 'edge',
         swBundle: SW_BUNDLE,
         console: consoleApp,
+        // Serve published Builder pages (dynamic-first — they override the baked
+        // demo). '/' → the homepage (is_homepage=1); '/<slug>' → by slug. Only
+        // published, non-deleted pages. Community single-tenant: read across tenants.
+        resolvePublishedPage: async (path) => {
+            const rows = path === '/'
+                ? await opts.runner.query('SELECT name, slug, description, layout_data FROM compat_pages WHERE is_homepage = 1 AND is_published = 1 AND deleted_at IS NULL LIMIT 1')
+                : await opts.runner.query('SELECT name, slug, description, layout_data FROM compat_pages WHERE slug = ? AND is_published = 1 AND deleted_at IS NULL LIMIT 1', [decodeURIComponent(path).replace(/^\/+|\/+$/g, '')]);
+            const row = rows[0];
+            if (!row) return null;
+            let layout;
+            try { layout = JSON.parse(String(row.layout_data)); } catch { layout = { content: [], root: {} }; }
+            return { title: String(row.name ?? row.slug ?? 'Page'), slug: String(row.slug ?? ''), description: row.description ? String(row.description) : undefined, layout };
+        },
     });
 
     const app = new Hono();
