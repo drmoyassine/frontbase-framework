@@ -57,6 +57,7 @@ const DEP_PKGS = [
     { name: '@frontbase/edge-infra', artifact: 'dist/index.js' },
     { name: '@frontbase/compiler', artifact: 'dist/index.js' },
     { name: '@frontbase/backend', artifact: 'dist/index.js' },
+    { name: '@frontbase/builder', artifact: 'dist/index.js' },
     { name: '@frontbase/admin-console', artifact: 'dist/spa.js' },
 ];
 function pkgDir(name) { return join(REPO_ROOT, 'packages', name.replace(/^@frontbase\//, '')); }
@@ -84,6 +85,51 @@ const optionalStub = {
             contents: `throw new Error(${JSON.stringify('optional dependency not bundled in this edge build: ')} + ${JSON.stringify(args.path)});`,
             loader: 'js',
         }));
+    },
+};
+
+// Resolve workspace @frontbase/* packages to their dist directories.
+// This ensures esbuild can find workspace packages even when they're not in node_modules.
+const workspaceResolver = {
+    name: 'workspace-resolver',
+    setup(build) {
+        build.onResolve({ filter: /^@frontbase\// }, (args) => {
+            const path = args.path;
+
+            // Direct package imports (e.g., @frontbase/builder)
+            if (!path.includes('/') || path.split('/').length === 2) {
+                const pkgName = path.replace('@frontbase/', '');
+                const pkgDir = join(REPO_ROOT, 'packages', pkgName);
+                const resolvedPath = join(pkgDir, 'dist', 'index.js');
+                if (existsSync(resolvedPath)) {
+                    return { path: resolvedPath };
+                }
+            }
+
+            // Subpath imports (e.g., @frontbase/builder/registry)
+            const parts = path.split('/');
+            const pkgName = parts[1]; // 'builder' from '@frontbase/builder/registry'
+            const subpath = parts.slice(2).join('/'); // 'registry' from '@frontbase/builder/registry'
+            const pkgDir = join(REPO_ROOT, 'packages', pkgName);
+
+            // Try dist/subpath.js
+            let resolvedPath = join(pkgDir, 'dist', `${subpath}.js`);
+            if (existsSync(resolvedPath)) {
+                return { path: resolvedPath };
+            }
+
+            // Try dist/subpath/index.js
+            resolvedPath = join(pkgDir, 'dist', subpath, 'index.js');
+            if (existsSync(resolvedPath)) {
+                return { path: resolvedPath };
+            }
+
+            // Try dist/subpath (no extension)
+            resolvedPath = join(pkgDir, 'dist', subpath);
+            if (existsSync(resolvedPath)) {
+                return { path: resolvedPath };
+            }
+        });
     },
 };
 
@@ -137,12 +183,34 @@ const consoleShellPlugin = {
     },
 };
 
+// 2d. Phase 2: Bundle the editing client (browser-only, DOM-based).
+//     This creates a thin browser bundle that round-trips edits through server
+//     endpoints. No renderPage, liquid, iconMap, or globalRegistry symbols.
+const clientResult = await esbuild.build({
+    ...shared,
+    entryPoints: [join(pkgDir('@frontbase/builder'), 'src', 'editing', 'client', 'index.ts')],
+    write: false,
+    format: 'iife',
+    minify: true,
+    platform: 'browser',
+});
+const CLIENT_SOURCE = clientResult.outputFiles[0].text;
+
+// Inline the client bundle as a string constant → used by BuilderEngine.
+const inlineClientPlugin = {
+    name: 'inline-client',
+    setup(build) {
+        build.onResolve({ filter: /^virtual:builder-client-bundle$/ }, () => ({ path: 'virtual:builder-client-bundle', namespace: 'vclient' }));
+        build.onLoad({ filter: /.*/, namespace: 'vclient' }, () => ({ contents: `export default ${JSON.stringify(CLIENT_SOURCE)};`, loader: 'js' }));
+    },
+};
+
 await esbuild.build({
     ...shared,
     entryPoints: ['src/worker.ts'],
     outfile: join(here, 'dist', 'worker.mjs'),
     minify: true,
-    plugins: [inlineSwPlugin, consoleShellPlugin, optionalStub],
+    plugins: [workspaceResolver, inlineSwPlugin, consoleShellPlugin, optionalStub, inlineClientPlugin],
 });
 
 // 3. Node smoke build (unminified, importable) — the SAME worker + a memory
@@ -157,12 +225,23 @@ await esbuild.build({
     entryPoints: ['src/smoke.ts'],
     outfile: join(here, 'dist', 'smoke.mjs'),
     minify: false,
-    plugins: [inlineSwPlugin, consoleShellPlugin],
+    plugins: [workspaceResolver, inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
 });
 
 const raw = statSync(join(here, 'dist', 'worker.mjs')).size;
 const gz = gzipSync(readFileSync(join(here, 'dist', 'worker.mjs')), { level: 9 }).length;
+const clientGz = gzipSync(CLIENT_SOURCE, { level: 9 }).length;
 console.log('=== full-CMS CF worker artifact ===');
 console.log(`worker.mjs min:      ${(raw / 1024).toFixed(1)} KB`);
 console.log(`worker.mjs min+gzip: ${(gz / 1024).toFixed(1)} KB  (CF free limit 1024 KB — ${gz <= 1024 * 1024 ? 'PASS ✅' : 'FAIL ❌'})`);
 console.log(`  includes inlined /sw.js: ${(SW_SOURCE.length / 1024).toFixed(1)} KB`);
+console.log(`  includes inlined editing client: ${(CLIENT_SOURCE.length / 1024).toFixed(1)} KB (gzip: ${(clientGz / 1024).toFixed(1)} KB)`);
+
+// Verification: Check that client bundle contains no prohibited symbols
+const PROHIBITED = ['renderPage', 'globalRegistry', 'liquid', 'iconMap'];
+const foundProhibited = PROHIBITED.filter(sym => CLIENT_SOURCE.includes(sym));
+if (foundProhibited.length > 0) {
+    console.log(`⚠ WARNING: Client bundle contains prohibited symbols: ${foundProhibited.join(', ')}`);
+} else {
+    console.log(`✅ Client bundle verification: NO prohibited symbols found`);
+}

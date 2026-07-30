@@ -12,6 +12,26 @@
     "./workflow": {
       "types": "./dist/workflow/index.d.ts",
       "import": "./dist/workflow/index.js"
+    },
+    "./ssr/components/interactive": {
+      "types": "./dist/ssr/components/interactive.d.ts",
+      "import": "./dist/ssr/components/interactive.js"
+    },
+    "./ssr/components/static": {
+      "types": "./dist/ssr/components/static.d.ts",
+      "import": "./dist/ssr/components/static.js"
+    },
+    "./ssr/components/data": {
+      "types": "./dist/ssr/components/data.d.ts",
+      "import": "./dist/ssr/components/data.js"
+    },
+    "./ssr/components/landing": {
+      "types": "./dist/ssr/components/landing/index.d.ts",
+      "import": "./dist/ssr/components/landing/index.js"
+    },
+    "./ssr/baseStyles": {
+      "types": "./dist/ssr/baseStyles.d.ts",
+      "import": "./dist/ssr/baseStyles.js"
     }
   },
   "files": [
@@ -27,5 +47,12 @@
     "hono": "^4.6.0",
     "liquidjs": "^10.24.0",
     "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.1",
+    "@types/react-dom": "18.3.1",
+    "lucide-react": "0.462.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   }
 }

@@ -1,9 +1,26 @@
 /**
  * Static Component Renderers
- * 
+ *
  * Pure HTML renderers for static components that don't need interactivity.
  * These components render identically on server and client.
  */
+
+import { LUCIDE_ICONS } from '../iconMap.js';
+
+/**
+ * Resolve a lucide-react icon name (PascalCase, e.g. "Zap", "CheckCircle2") to a
+ * full <svg> string using the bundled path data (generated from the exact
+ * lucide-react version the builder ships). Returns '' for unknown names so callers
+ * can fall through to emoji/URL/text handling. Centralised so every icon surface
+ * (Icon, Badge, Button, …) resolves names consistently — true WYSIWYG with the
+ * builder canvas, which renders the same names via lucide-react.
+ */
+function lucideSvg(name: string | undefined | null): string {
+    if (!name) return '';
+    const inner = LUCIDE_ICONS[name];
+    if (!inner) return '';
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+}
 
 /**
  * Escape HTML special characters for safe rendering.
@@ -263,8 +280,9 @@ function renderBadge(id: string, props: Record<string, unknown>): string {
     const variant = props.variant as string || 'default';
     const size = props.size as string || 'sm';
 
-    // Get pre-rendered icon SVG from publish
-    const iconSvg = props.iconSvg as string || '';
+    // Icon: prefer an explicit publish-time iconSvg, else resolve a lucide name.
+    const iconName = (props.icon as string || props.name as string || '');
+    const iconSvg = (props.iconSvg as string || '') || lucideSvg(iconName);
     const iconPosition = props.iconPosition as string || 'left';
 
     // Custom colors from Builder (take precedence over variant)
@@ -304,8 +322,10 @@ function renderBadge(id: string, props: Record<string, unknown>): string {
     const className = props.className ? `${baseClass} ${props.className}` : baseClass;
     const style = `background:${bgColor};color:${txtColor};${sizeStyles[size] || sizeStyles.sm};border-radius:9999px;display:inline-flex;align-items:center;gap:0.375rem;font-weight:500;width:fit-content;${outlineStyles}`;
 
-    // Build content with icon (apply icon color)
-    const iconStyle = `display:inline-flex;color:${icnColor}`;
+    // Build content with icon (apply icon color + size). The product builder sizes
+    // badge icons with Tailwind `w-3 h-3` (0.75rem); match it so the resolved
+    // lucide SVG (width/height 100%) renders compact, not stretched to the badge.
+    const iconStyle = `display:inline-flex;width:0.75rem;height:0.75rem;color:${icnColor}`;
     const leftIcon = iconSvg && iconPosition === 'left' ? `<span class="fb-badge-icon" style="${iconStyle}">${iconSvg}</span>` : '';
     const rightIcon = iconSvg && iconPosition === 'right' ? `<span class="fb-badge-icon" style="${iconStyle}">${iconSvg}</span>` : '';
 
@@ -365,6 +385,18 @@ function renderIcon(id: string, props: Record<string, unknown>): string {
             .replace(/(\s)width="[^"]*"/g, `$1width="100%"`)
             .replace(/(\s)height="[^"]*"/g, `$1height="100%"`);
         return `<span ${attrs}>${sizedSvg}</span>`;
+    }
+
+    // Priority 1.5: Resolve a lucide-react icon name (e.g. "Zap", "CheckCircle2")
+    // to its bundled SVG. The builder stores lucide PascalCase names in props.icon;
+    // without this the name renders as literal text (the WYSIWYG gap). LUCIDE_ICONS
+    // is generated from the exact lucide-react version the builder ships
+    // (scripts/regen-icons.mjs) so published icons match the canvas byte-for-byte.
+    const lucide = lucideSvg(icon);
+    if (lucide) {
+        const style = `${sizeStyle};display:inline-flex;align-items:center;justify-content:center;color:${color}`;
+        const attrs = getCommonAttributes(id, 'fb-icon', props, style);
+        return `<span ${attrs}>${lucide}</span>`;
     }
 
     // Priority 2: Check if it's an emoji (short string with no URL characters)

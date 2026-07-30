@@ -176,7 +176,12 @@ export function createEngine(opts: EngineOptions): Hono {
             environment,
             registerServiceWorker: environment === 'edge' && !!opts.swBundle,
         });
-        return c.html(html, 200, { 'x-rendered-by': environment });
+        return c.html(html, 200, {
+            'x-rendered-by': environment,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
     });
 
     return app;

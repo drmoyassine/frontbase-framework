@@ -27,8 +27,8 @@ invocation_logs = true
 # and writes the database_id; or create it manually (see README) and paste it here.
 [[d1_databases]]
 binding = "DB"
-database_name = "abcdefg-db"
-database_id = "e6f8b150-1646-44a1-8a81-b9a8e2a03238"
+database_name = "xyzz-db"
+database_id = "252c388a-cfe5-4b86-9890-f7102afc6bbd"
 
 # Secrets are NOT stored here (they'd land in git). Set them with:
 #   wrangler secret put SESSION_SECRET     (required)

@@ -13,6 +13,7 @@
   "dependencies": {
     "@frontbase/admin-console": "workspace:*",
     "@frontbase/backend": "workspace:*",
+    "@frontbase/builder": "workspace:*",
     "@frontbase/edge-core": "workspace:*",
     "@frontbase/edge-infra": "workspace:*",
     "hono": "^4.12.28"

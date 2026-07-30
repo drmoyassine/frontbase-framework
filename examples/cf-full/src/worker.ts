@@ -20,6 +20,8 @@
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore } from '@frontbase/backend';
+import { createBuilderEngine } from '@frontbase/builder';
+import { registerComponents } from '@frontbase/builder/registry';
 import { d1RunnerFromBinding, s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
 import { manifest } from './manifest.js';
 import SW_BUNDLE from 'virtual:sw-bundle';
@@ -125,6 +127,28 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         systemEdge: { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' },
     });
 
+    // Phase 1: Wire the framework eSSR BuilderEngine as the real builder canvas.
+    // The builder uses PagesStore for persistence and is mounted behind auth.
+    const pagesStore = new PagesStore(opts.runner, '_root');
+    await registerComponents(); // Populate the component registry
+    const resolvePrincipal = (await import('@frontbase/edge-infra')).createResolvePrincipal({
+        jwtSecret: opts.sessionSecret,
+        jwtCookie: 'fb_session',
+    });
+    const builderApp = createBuilderEngine({
+        loadPage: async (pageId: string) => {
+            const row = await pagesStore.get(pageId);
+            if (!row) return null;
+            let layout: unknown;
+            try { layout = JSON.parse(row.layout_data); } catch { layout = { content: [], root: {} }; }
+            return { id: row.id, layout: layout as any };
+        },
+        savePage: async (pageId: string, layoutData) => {
+            await pagesStore.update(pageId, { layoutData }, now());
+        },
+        autoSave: false, // No auto-save for now
+    });
+
     const engine = createEngine({
         manifest,
         data: directProvider(manifest),
@@ -191,6 +215,20 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     });
     app.get('/frontbase-setup/spa.js', async (c) =>
         (await assetResponse(c.req.raw, 'no-cache')) ?? c.text('not_found', 404));
+
+    // Phase 1: Mount the builder app behind auth gate.
+    // The builder is accessible only to authenticated users and must be mounted
+    // BEFORE the engine catch-all so /builder/* routes aren't swallowed.
+    app.use('/builder/*', async (c, next) => {
+        const principal = await resolvePrincipal(c.req.raw);
+        if (!principal) {
+            // Redirect to login with return URL
+            const returnUrl = encodeURIComponent(c.req.url);
+            return c.redirect(`/frontbase-admin?returnUrl=${returnUrl}`, 302);
+        }
+        return next();
+    });
+    app.route('/builder', builderApp);
 
     // 3. Engine (published pages, /sw.js, retained console health/setup, and
     //    explicit 410 responses for every other /api/console/* path).

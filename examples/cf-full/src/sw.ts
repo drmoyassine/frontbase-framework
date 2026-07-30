@@ -1,18 +1,18 @@
 /**
- * Service-worker entry — the same Chimera engine running in the browser. Boots
- * @frontbase/edge-core with the proxy provider so, once installed, navigations
- * render locally and data comes back over /api/data. Inlined into the worker
- * artifact at build time (virtual:sw-bundle).
+ * Service-worker entry for the FULL-CMS worker.
+ *
+ * DELIBERATELY MINIMAL: this SW no longer renders pages (the edge worker is the
+ * single source of truth for published pages — see attachServiceWorker). It only
+ * installs/activates so an updated sw.js takes over immediately and neutralises
+ * any previously-installed version. Crucially it does NOT import the engine, so
+ * the /sw.js bundle stays small (it would otherwise carry all of edge-core,
+ * including the lucide icon map, for nothing).
+ *
+ * When offline/on-device rendering is restored (the local-first milestone), this
+ * entry will re-import createEngine + a sync layer here.
  */
 /// <reference lib="webworker" />
-import { createEngine, proxyProvider, attachServiceWorker } from '@frontbase/edge-core';
-import { manifest } from './manifest.js';
-
-const engine = createEngine({
-    manifest,
-    data: proxyProvider('/api/data'),
-    environment: 'service-worker',
-});
+import { attachServiceWorker } from '@frontbase/edge-core';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-attachServiceWorker(self as any, engine, manifest);
+attachServiceWorker(self as any);

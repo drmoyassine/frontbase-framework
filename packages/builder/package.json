@@ -1,13 +1,35 @@
 {
   "name": "@frontbase/builder",
-  "version": "0.0.0",
-  "description": "Frontbase builder — React shell + local SQLite-WASM draft DB + canvas↔preview parity. Browser SPA; NEVER imports edge-infra.",
+  "version": "0.1.0",
+  "description": "Frontbase Builder - eSSR-based visual editor canvas",
   "license": "Apache-2.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./registry": {
+      "types": "./dist/registry/index.d.ts",
+      "import": "./dist/registry/index.js"
+    },
+    "/editing": {
+      "types": "./dist/editing/index.d.ts",
+      "import": "./dist/editing/index.js"
+    },
+    "/editing/client": {
+      "types": "./dist/editing/client/index.d.ts",
+      "import": "./dist/editing/client/index.js"
+    },
+    "./canvas": {
+      "types": "./dist/canvas/index.d.ts",
+      "import": "./dist/canvas/index.js"
+    },
+    "./builder": {
+      "types": "./dist/BuilderEngine.d.ts",
+      "import": "./dist/BuilderEngine.js"
     }
   },
   "files": [
@@ -16,19 +38,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node test/draft.mjs && node test/parity.mjs && node test/canvas-perf.mjs && node test/canvas-parity.mjs && node test/panel.mjs && node test/no-leak.mjs",
-    "test:mutation": "node test/mutation.mjs"
+    "test": "node test/registry.mjs"
   },
-  "peerDependencies": {
-    "@frontbase/compiler": "workspace:*",
+  "dependencies": {
     "@frontbase/edge-core": "workspace:*",
-    "react": "^18 || ^19",
-    "react-dom": "^18 || ^19"
+    "hono": "^4.6.0"
   },
   "devDependencies": {
-    "@types/react": "^18.3.31",
-    "@types/react-dom": "^18.3.7",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "typescript": "^5.7.0"
   }
 }
