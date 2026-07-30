@@ -1,22 +1,30 @@
 /**
- * M1.5.1 — E2E edge + SW byte-parity. Renders the same compiled project page:
- *   - edge path: createEngine(environment:'edge') → HTTP GET
- *   - SW path:   createEngine(environment:'service-worker') driven through a
- *                jsdom-hosted ServiceWorkerGlobalScope with attachServiceWorker,
- *                the navigation fetch event responded to by the engine.
- * Both paths render the SAME layout via the SAME engine. The only difference is
- * the `chimera-rendered-by` host label, which is normalized before comparison
- * (it identifies the host, not the page content) — exactly as the Phase 0 spike
- * parity test did ("same-env-label").
+ * M1.5.1 — E2E edge render + service-worker contract.
  *
- * The compiler assembles a manifest with a registered query, so the records
- * (data) path is exercised on both paths too.
+ * The edge worker is the single source of truth for published pages. The service
+ * worker is DELIBERATELY non-intercepting: `attachServiceWorker` (edge-core/src/
+ * sw.ts) registers only install/activate lifecycle hooks so an updated sw.js
+ * neutralises any previously-installed intercepting version. Rendering navigations
+ * locally in the SW was removed because it shadowed real DB-published pages with
+ * frozen demo pages (the dynamic-CMS bug — a visitor saw a stale "A whole CMS…"
+ * demo instead of their homepage until a hard-refresh bypassed the SW).
+ *
+ * This test therefore asserts the CURRENT contract, not the old SW-renders-locally
+ * one:
+ *   - the edge engine renders the page + its registered-query data, and
+ *   - the SW fetch handler does NOT intercept a navigation (respondWith is never
+ *     called → every navigation falls through to the edge), and
+ *   - the SW lifecycle hooks fire (install → skipWaiting, activate → clients.claim).
+ *
+ * When the local-first/offline-rendering milestone re-imports createEngine into
+ * the SW, a SW-render parity path returns here; until then there is no SW render
+ * output to byte-compare, so the old edge==SW parity assertion is intentionally
+ * gone.
  */
 import { z } from 'zod';
-import { JSDOM } from 'jsdom';
 import { defineQueries } from '../dist/queries/defineQueries.js';
 import { buildSiteManifest } from '../dist/manifest/build.js';
-import { createEngine, directProvider, proxyProvider, attachServiceWorker } from '@frontbase/edge-core';
+import { createEngine, directProvider, attachServiceWorker } from '@frontbase/edge-core';
 
 let failures = 0;
 const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; console.log(`  ❌ ${l}`); } };
@@ -38,67 +46,40 @@ const manifest = buildSiteManifest({
     queries,
 });
 
-// --- edge path ---
+// --- edge path: the worker renders the page + registered-query data ---
 const edge = createEngine({ manifest, data: directProvider(manifest), environment: 'edge' });
 const edgeHome = await (await edge.fetch(new Request('http://e.local/'))).text();
 const edgeProducts = await (await edge.fetch(new Request('http://e.local/products'))).text();
 check('edge: home renders', edgeHome.includes('End-to-End Parity'));
 check('edge: products renders registered-query data', edgeProducts.includes('Edge Widget=$19;Chimera=$42;'));
 
-// --- SW path (jsdom-hosted SW global + attachServiceWorker) ---
-const dom = new JSDOM('<!DOCTYPE html>', { url: 'http://sw.local/' });
-const { window } = dom;
-
-// A minimal ServiceWorkerGlobalScope backed by the engine, exercising attachServiceWorker.
-function makeSwGlobal(engine, manifest) {
-    const listeners = {};
-    const sw = {
-        location: { origin: 'http://sw.local' },
-        skipWaiting: () => Promise.resolve(),
-        clients: { claim: () => Promise.resolve() },
-        addEventListener(type, fn) { (listeners[type] ||= []).push(fn); },
-        __fire(type, event) { (listeners[type] || []).forEach((fn) => fn(event)); },
-    };
-    attachServiceWorker(sw, engine, manifest);
-    return sw;
-}
-
-const swEngine = createEngine({ manifest, data: proxyProvider('http://sw.local/api/data'), environment: 'service-worker' });
-// proxyProvider needs fetch to reach the edge engine; route in-process.
-const origFetch = globalThis.fetch;
-globalThis.fetch = async (url, init) => {
-    const u = typeof url === 'string' ? url : url.toString();
-    if (u.startsWith('http://sw.local/api/data')) return edge.fetch(new Request(u, init));
-    return origFetch(url, init);
+// --- SW contract: a non-intercepting lifecycle-only worker ---
+let skipWaitingCalled = false;
+let claimCalled = false;
+const swListeners = {};
+const sw = {
+    location: { origin: 'http://sw.local' },
+    skipWaiting: () => { skipWaitingCalled = true; return Promise.resolve(); },
+    clients: { claim: () => { claimCalled = true; return Promise.resolve(); } },
+    addEventListener(type, fn) { (swListeners[type] ||= []).push(fn); },
 };
-const sw = makeSwGlobal(swEngine, manifest);
+attachServiceWorker(sw);
 
-async function renderViaSw(path) {
-    const request = new Request('http://sw.local' + path, { headers: {} });
-    // simulate Request.mode = 'navigate' (the SW fetch handler checks this)
-    Object.defineProperty(request, 'mode', { value: 'navigate' });
-    let response;
-    const event = {
-        request,
-        respondWith(r) { response = r; },
-        waitUntil() {},
-    };
-    sw.__fire('fetch', event);
-    const res = await response;
-    return res.text();
-}
-const swHome = await renderViaSw('/');
-const swProducts = await renderViaSw('/products');
-globalThis.fetch = origFetch;
+// Fire the lifecycle events the SW registers for.
+(swListeners.install || []).forEach((fn) => fn({ waitUntil: () => {} }));
+(swListeners.activate || []).forEach((fn) => fn({ waitUntil: () => {} }));
 
-check('SW: home renders', swHome.includes('End-to-End Parity'));
-check('SW: products renders registered-query data', swProducts.includes('Edge Widget=$19;Chimera=$42;'));
+// Fire a navigation fetch event and confirm the SW does NOT intercept it — the
+// core dynamic-CMS guarantee that every navigation reaches the edge worker.
+let respondWithCalled = false;
+const navRequest = new Request('http://sw.local/', { headers: {} });
+Object.defineProperty(navRequest, 'mode', { value: 'navigate' });
+const navEvent = { request: navRequest, respondWith: () => { respondWithCalled = true; }, waitUntil: () => {} };
+(swListeners.fetch || []).forEach((fn) => fn(navEvent));
 
-// --- byte-parity (normalize the host label, which is the only allowed diff) ---
-const norm = (s) => s.replace(/chimera-rendered-by" content="(edge|service-worker)"/g, 'chimera-rendered-by" content="X"')
-    .replace(/x-rendered-by:\s*(edge|service-worker)/g, 'x-rendered-by: X');
-check('home: edge == SW (byte-identical, host label normalized)', norm(edgeHome) === norm(swHome));
-check('products: edge == SW (byte-identical, host label normalized)', norm(edgeProducts) === norm(swProducts));
+check('SW: install calls skipWaiting (immediate take-over)', skipWaitingCalled === true);
+check('SW: activate claims clients', claimCalled === true);
+check('SW: fetch handler does NOT intercept navigations (respondWith never called)', respondWithCalled === false);
 
 console.log(failures === 0 ? '\ne2e-parity: PASS ✅' : `\ne2e-parity: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

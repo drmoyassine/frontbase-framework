@@ -37,78 +37,78 @@
     {
       "name": "aviation",
       "source": "docs/case-studies/aviation.frontbase.json",
-      "bytes": 31462,
-      "sha256": "388bb8197f247e5f90ef38fe347c383c7520e92206c5bf2d042bb502887ef112",
+      "bytes": 31491,
+      "sha256": "edf565d8de8b2df96fe56f5f74d34d77e084e6cbf98fbca2d6f74bfdbdb117aa",
       "records": "none"
     },
     {
       "name": "buildings",
       "source": "docs/case-studies/buildings.frontbase.json",
-      "bytes": 30834,
-      "sha256": "a74febf53c1ee46fc13c46799f73f4b85bb75ba596a2c4683e9e98fcbeba81af",
+      "bytes": 30863,
+      "sha256": "bfc8e3c0cd30550556c1e2584c447af9c44a2c0030d9843413a2799a06d4755f",
       "records": "none"
     },
     {
       "name": "defense",
       "source": "docs/case-studies/defense.frontbase.json",
-      "bytes": 39432,
-      "sha256": "a046ad1b17b115bda3f205394b979e35cc29fc6a2ff63c0871e9e99d35e79ae2",
+      "bytes": 39461,
+      "sha256": "45aad50e4aab71d3d7410570a91531ea9ba1dce1c4505ce7fbcdf511f7f3420b",
       "records": "none"
     },
     {
       "name": "enterprise",
       "source": "docs/case-studies/enterprise.frontbase.json",
-      "bytes": 86011,
-      "sha256": "85f6a9b71d663993a1dca9d8433be5b10bba2feccbcab852601a13ebc976ddd0",
+      "bytes": 86040,
+      "sha256": "94bef1ac639f7a84bccd9e3869d6a7dbc204833d4e60d63d29a10273f1c1212f",
       "records": "none"
     },
     {
       "name": "environment",
       "source": "docs/case-studies/environment.frontbase.json",
-      "bytes": 27577,
-      "sha256": "0f5bf3ceeeb99eb5d902900d79f9c10e5412611ff5c730c5a5bf602671cbac4b",
+      "bytes": 27606,
+      "sha256": "60bd1ba23ef44513ad9b3dad220ae968966bb6c6331aabfc639db4acf4910b92",
       "records": "none"
     },
     {
       "name": "government",
       "source": "docs/case-studies/government.frontbase.json",
-      "bytes": 33486,
-      "sha256": "245f53ac8792e37e8fb7fe7a487a5497ba7414ef692de7752595ae062673b1d5",
+      "bytes": 33515,
+      "sha256": "18a313c786745ccfbd4de227e9a77b58a21091dc92e86a0e0cccd048ffa850e0",
       "records": "none"
     },
     {
       "name": "homee",
       "source": "docs/case-studies/homee.frontbase.json",
-      "bytes": 64938,
-      "sha256": "882c5ad71f7749b31afcce9452f920c018957be7c6f2ab5cc12911f7009fc89d",
+      "bytes": 64967,
+      "sha256": "e22a7e1a05429ec5c61c61bb194cd83eca5d3e6f58a7e561e0eb4cac2ae9077f",
       "records": "none"
     },
     {
       "name": "logistics",
       "source": "docs/case-studies/logistics.frontbase.json",
-      "bytes": 44753,
-      "sha256": "257e2ccdc86ed70de6f2383f56e6b622a06518afab88a4690256099f790cdaed",
+      "bytes": 44782,
+      "sha256": "191e5d1378156bad7cfa305cfd36a530ac231f0fdbbd521eb58754661e98c8ea",
       "records": "none"
     },
     {
       "name": "manufacturing",
       "source": "docs/case-studies/manufacturing.frontbase.json",
-      "bytes": 38428,
-      "sha256": "c1078328aa70e68de1c3b52aa69f341d424ad882c21124f7a7c752e10c30bb21",
+      "bytes": 38457,
+      "sha256": "07d383f42d3eea4dc0effafdc00e95daae61263b9936bbd246beef60b23da3cc",
       "records": "none"
     },
     {
       "name": "oil-gas",
       "source": "docs/case-studies/oil-gas.frontbase.json",
-      "bytes": 30047,
-      "sha256": "ca55dc8ce652423198bb61e43a118764dc6ca7f55333b0a1d522772aa65f3e1f",
+      "bytes": 30076,
+      "sha256": "ac5b9240711546f5d0bcb3ed392f0e5a6ea9f779a3e6732d3450fb79fbefc698",
       "records": "none"
     },
     {
       "name": "telecom",
       "source": "docs/case-studies/telecom.frontbase.json",
-      "bytes": 39260,
-      "sha256": "8c135012e6e048e34bed1b7583fb968d5dbed69ae862eec5e6a480d7e8389f5f",
+      "bytes": 39289,
+      "sha256": "bb831e30355c5e9fb48628f9f71dea0cc8f1608e378d68952625642c873aac5a",
       "records": "none"
     },
     {
