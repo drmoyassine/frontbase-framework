@@ -171,6 +171,24 @@ export function renderStaticComponent(
         case 'Embed':
             return renderEmbed(id, props);
 
+        case 'Alert':
+            return renderAlert(id, props);
+
+        case 'Progress':
+            return renderProgress(id, props);
+
+        case 'Input':
+            return renderInput(id, props);
+
+        case 'Textarea':
+            return renderTextarea(id, props);
+
+        case 'Select':
+            return renderSelect(id, props);
+
+        case 'Breadcrumb':
+            return renderBreadcrumb(id, props);
+
         default:
             // Fallback for unknown static components
             return `<div ${getCommonAttributes(id, 'fb-unknown', props)} data-fb-type="${type}">${childrenHtml}</div>`;
@@ -461,6 +479,108 @@ function renderEmbed(id: string, props: Record<string, unknown>): string {
     const attrs = getCommonAttributes(id, 'fb-embed fb-embed-script', props, containerStyle);
     // Render raw HTML - we trust user-provided embed codes
     return `<div ${attrs}>${html}</div>`;
+}
+
+// =============================================================================
+// Form / feedback components (parity with the builder's React renderers).
+// Rendered read-only in the builder preview, so the eSSR output mirrors that —
+// interactivity arrives via the behaviors runtime, not inline JS. Styled with
+// the HSL CSS variables so they track the theme (light/dark) like shadcn.
+// =============================================================================
+
+function renderAlert(id: string, props: Record<string, unknown>): string {
+    const message = escapeHtml(String(props.message || props.content || props.text || 'This is an alert message.'));
+    const variant = props.variant as string || 'default';
+    const title = props.title as string;
+
+    // shadcn Alert variants — left accent border + themed background/text.
+    const variantStyles: Record<string, { border: string; bg: string; text: string; accent: string }> = {
+        default: { border: 'hsl(var(--border))', bg: 'hsl(var(--background))', text: 'hsl(var(--foreground))', accent: 'hsl(var(--foreground))' },
+        info: { border: '#0ea5e9', bg: 'hsl(199 89% 94%)', text: '#0c4a6e', accent: '#0ea5e9' },
+        success: { border: '#22c55e', bg: 'hsl(138 76% 94%)', text: '#14532d', accent: '#22c55e' },
+        warning: { border: '#f59e0b', bg: 'hsl(43 96% 93%)', text: '#78350f', accent: '#f59e0b' },
+        destructive: { border: 'hsl(var(--destructive))', bg: 'hsl(var(--destructive) / 0.08)', text: 'hsl(var(--destructive))', accent: 'hsl(var(--destructive))' },
+    };
+    const v = variantStyles[variant] || variantStyles.default;
+    const style = `position:relative;width:100%;border-radius:var(--radius,0.5rem);border:1px solid ${v.border};border-left-width:4px;border-left-color:${v.accent};background:${v.bg};color:${v.text};padding:1rem;display:flex;flex-direction:column;gap:0.25rem`;
+    const attrs = getCommonAttributes(id, `fb-alert fb-alert-${variant}`, props, style);
+
+    const titleHtml = title ? `<h5 style="font-weight:600;line-height:1.25;margin:0">${escapeHtml(String(title))}</h5>` : '';
+    const bodyHtml = `<div class="fb-alert-description" style="text-align:left;opacity:0.9">${message}</div>`;
+
+    return `<div ${attrs} role="alert">${titleHtml}${bodyHtml}</div>`;
+}
+
+function renderProgress(id: string, props: Record<string, unknown>): string {
+    // Clamp 0–100 like shadcn's Progress (aria-valuenow).
+    const raw = Number(props.value);
+    const value = Number.isFinite(raw) ? Math.min(100, Math.max(0, raw)) : 50;
+    const color = props.color as string || 'hsl(var(--primary))';
+    const trackColor = props.trackColor as string || 'hsl(var(--secondary))';
+
+    const style = `position:relative;height:0.75rem;width:100%;overflow:hidden;border-radius:9999px;background:${trackColor}`;
+    const attrs = getCommonAttributes(id, 'fb-progress', props, style);
+
+    return `<div ${attrs} role="progressbar" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100">
+        <div class="fb-progress-indicator" style="height:100%;width:${value}%;background:${color};border-radius:9999px;transition:width 0.3s ease"></div>
+    </div>`;
+}
+
+function renderInput(id: string, props: Record<string, unknown>): string {
+    const placeholder = escapeHtml(String(props.placeholder || 'Enter text...'));
+    const type = (props.type as string) || 'text';
+    const style = `display:flex;width:100%;height:2.5rem;padding:0 0.75rem;border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:0.875rem;background:hsl(var(--background));color:hsl(var(--foreground))`;
+    const attrs = getCommonAttributes(id, 'fb-input', props, style);
+    // Mirrors the builder's read-only preview (no client-side value binding yet).
+    return `<input ${attrs} type="${escapeHtml(type)}" placeholder="${placeholder}" readonly />`;
+}
+
+function renderTextarea(id: string, props: Record<string, unknown>): string {
+    const placeholder = escapeHtml(String(props.placeholder || 'Enter text...'));
+    const rows = Number(props.rows) || 3;
+    const style = `display:flex;width:100%;min-height:5rem;padding:0.5rem 0.75rem;border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:0.875rem;background:hsl(var(--background));color:hsl(var(--foreground));resize:vertical`;
+    const attrs = getCommonAttributes(id, 'fb-textarea', props, style);
+    return `<textarea ${attrs} rows="${rows}" placeholder="${placeholder}" readonly></textarea>`;
+}
+
+function renderSelect(id: string, props: Record<string, unknown>): string {
+    const placeholder = escapeHtml(String(props.placeholder || 'Select an option'));
+    const options = Array.isArray(props.options) ? props.options : ['Option 1', 'Option 2', 'Option 3'];
+    // Trigger mirrors shadcn SelectTrigger (the builder's preview): border box,
+    // placeholder text, chevron. Options are emitted as a closed list so a future
+    // behaviors runtime can open them — same shape the builder renders.
+    const triggerStyle = `display:flex;height:2.5rem;width:100%;align-items:center;justify-content:space-between;padding:0 0.75rem;border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:0.875rem;background:hsl(var(--background));color:hsl(var(--muted-foreground))`;
+    const attrs = getCommonAttributes(id, 'fb-select', props, triggerStyle);
+    const chevron = `<svg class="fb-select-chevron" style="width:1rem;height:1rem;opacity:0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+    const optionItems = options.map((opt) => `<li style="padding:0.5rem 0.75rem;cursor:pointer">${escapeHtml(String(opt))}</li>`).join('');
+    return `<div ${attrs} role="combobox" aria-haspopup="listbox" aria-expanded="false">
+        <span>${placeholder}</span>${chevron}
+        <ul class="fb-select-options" style="display:none;list-style:none;margin:0;padding:0">${optionItems}</ul>
+    </div>`;
+}
+
+function renderBreadcrumb(id: string, props: Record<string, unknown>): string {
+    const items = Array.isArray(props.items)
+        ? props.items
+        : [{ label: 'Home', href: '/' }, { label: 'Page', href: '/page' }];
+    const style = `display:flex;align-items:center;gap:0.5rem;font-size:0.875rem;color:hsl(var(--muted-foreground))`;
+    const attrs = getCommonAttributes(id, 'fb-breadcrumb', props, style);
+
+    const parts: string[] = [];
+    items.forEach((item: any, index: number) => {
+        const isLast = index === items.length - 1;
+        const label = escapeHtml(String(item.label ?? ''));
+        const href = item.href ? escapeHtml(String(item.href)) : '#';
+        const linkStyle = isLast
+            ? 'font-weight:500;color:hsl(var(--foreground))'
+            : 'text-decoration:none;color:hsl(var(--muted-foreground))';
+        parts.push(`<li><a href="${href}" style="${linkStyle}">${label}</a></li>`);
+        if (!isLast) {
+            parts.push(`<li class="fb-breadcrumb-separator" aria-hidden="true" style="opacity:0.5">/</li>`);
+        }
+    });
+
+    return `<nav ${attrs} aria-label="breadcrumb"><ol style="display:flex;align-items:center;gap:0.5rem;list-style:none;margin:0;padding:0">${parts.join('')}</ol></nav>`;
 }
 
 // =============================================================================

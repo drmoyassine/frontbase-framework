@@ -1,13 +1,23 @@
 /**
  * Base CSS Styles for Edge SSR Pages
- * 
+ *
  * Fallback CSS used when the Tailwind CSS bundle (cssBundle) is not available
  * on legacy pages. Includes CSS variables, resets, and component base styles.
- * 
+ *
  * Extracted from pages.ts generateHtmlDocument() for maintainability.
+ *
+ * CF-22 WYSIWYG: the landing eSSR components (Navbar, Pricing, Footer, Hero, …)
+ * emit Tailwind class names, but the community/worker render path (shell.ts)
+ * has no Tailwind runtime — it ships only this stylesheet. Without the utility
+ * rules, responsive behaviour breaks (e.g. desktop + mobile navbars render at
+ * once). UTILITIES_CSS is a static build of exactly those classes, compiled
+ * from the component sources (scripts/regen-utilities.mjs); it is prepended so
+ * the landing markup resolves with no runtime Tailwind.
  */
+import { UTILITIES_CSS } from './utilitiesCss.js';
 
-export const FALLBACK_CSS = `
+export const FALLBACK_CSS = `${UTILITIES_CSS}
+
 /* FALLBACK CSS - Used when cssBundle is not available (legacy pages) */
 :root {
     --background: 0 0% 100%;

@@ -38,7 +38,8 @@ export interface PageLayoutData {
 // Component classification
 const STATIC_COMPONENTS = new Set([
     'Text', 'Heading', 'Paragraph', 'Image', 'Badge', 'Divider', 'Spacer',
-    'Icon', 'Avatar', 'Logo', 'Label', 'MarkdownContent', 'Embed'
+    'Icon', 'Avatar', 'Logo', 'Label', 'MarkdownContent', 'Embed',
+    'Alert', 'Progress', 'Input', 'Textarea', 'Select', 'Breadcrumb'
 ]);
 
 const INTERACTIVE_COMPONENTS = new Set([

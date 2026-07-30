@@ -1,0 +1,7 @@
+/*
+ * Input for the static utility stylesheet. Components + utilities only — the
+ * preflight reset is OFF (FALLBACK_CSS owns the reset). Run via
+ * `node scripts/regen-utilities.mjs`.
+ */
+@tailwind components;
+@tailwind utilities;
