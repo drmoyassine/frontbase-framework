@@ -185,6 +185,10 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
 
         // Export registry for client-side editor
         const registryJson = JSON.stringify(opts.getRegistry ? opts.getRegistry() : globalRegistry.exportForAgent());
+        // Component tree for the editing client's bootstrap — it instantiates
+        // Editor and calls load() with these. Without it the tree/property panels
+        // stay empty (the bundle only DEFINES Editor; nothing feeds it the page).
+        const layoutJson = JSON.stringify(layout.content ?? []);
 
         // Use custom template or default
         if (opts.builderTemplate) {
@@ -235,6 +239,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
     <script>
         window.__FRONTBASE_REGISTRY__ = ${registryJson};
         window.__FRONTBASE_PAGE_ID__ = '${pageId}';
+        window.__FRONTBASE_LAYOUT__ = ${layoutJson};
     </script>
     ${opts.clientBundle ? `<script type="module" src="${escapeHtml(opts.clientBundle)}"></script>` : '<script type="module" src="/editing/client/index.js"></script>'}
 </body>

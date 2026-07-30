@@ -25,6 +25,7 @@ import { registerComponents } from '@frontbase/builder/registry';
 import { d1RunnerFromBinding, s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
 import { manifest } from './manifest.js';
 import SW_BUNDLE from 'virtual:sw-bundle';
+import CLIENT_BUNDLE from 'virtual:builder-client-bundle';
 import CONSOLE_INDEX from './console-shell.js';
 
 const SETUP_SPA_HTML = '<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Frontbase Setup</title></head><body><div id="root"></div><script src="/frontbase-setup/spa.js"></script></body></html>';
@@ -165,7 +166,20 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         },
         autoSave: false, // No auto-save for now
         authMiddleware: builderAuthGate,
+        // Point the canvas template at the inlined editing client (built by
+        // build.mjs as virtual:builder-client-bundle), served below at
+        // /builder/client.js. Without this, the template's <script> 404s, the
+        // editing client never runs, and the tree/property panels never build.
+        clientBundle: '/builder/client.js',
     });
+    // Serve the editing client IIFE. Same-origin <script src> from the authed
+    // /builder/edit page carries the session cookie, so builderAuthGate passes.
+    builderApp.get('/client.js', () =>
+        new Response(CLIENT_BUNDLE, {
+            status: 200,
+            headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' },
+        }),
+    );
 
     const engine = createEngine({
         manifest,

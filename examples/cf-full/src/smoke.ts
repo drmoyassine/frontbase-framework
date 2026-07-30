@@ -265,11 +265,22 @@ await check('GET /builder/edit/:id renders the WYSIWYG canvas (authenticated)', 
     const pageId = (await create.json() as { data: { id: string } }).data.id;
     const res = await req(`/builder/edit/${pageId}`, { headers: { cookie: compatCookie } });
     const html = await res.text();
-    return res.status === 200 && html.includes('id="fb-canvas"') && html.includes('<iframe');
+    // Full wiring: canvas iframe + injected component tree + the editing-client
+    // script tag. If any are missing the panels never build.
+    return res.status === 200 && html.includes('id="fb-canvas"') && html.includes('<iframe')
+        && html.includes('__FRONTBASE_LAYOUT__') && html.includes('/builder/client.js');
 });
 await check('GET /builder/edit/:id WITHOUT session → 302 redirect to login', async () => {
     const res = await req('/builder/edit/anything');
     return res.status === 302 && (res.headers.get('location') ?? '').startsWith('/frontbase-admin');
+});
+// The editing client (tree + property panels) is served at /builder/client.js.
+// If this 404s, the canvas template's <script> silently fails and the panels
+// never build — the builder shows only a bare iframe. Regression guard.
+await check('GET /builder/client.js serves the editing client (authenticated)', async () => {
+    const res = await req('/builder/client.js', { headers: { cookie: compatCookie } });
+    const ct = res.headers.get('content-type') ?? '';
+    return res.status === 200 && ct.includes('javascript') && (await res.text()).length > 1000;
 });
 
 // ---- compat API: security endpoints are behind the guard ----
