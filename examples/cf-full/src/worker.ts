@@ -135,6 +135,23 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         jwtSecret: opts.sessionSecret,
         jwtCookie: 'fb_session',
     });
+    // Auth gate for every builder route: no session → 302 to /frontbase-admin
+    // (with a return URL). Passed INTO createBuilderEngine via `authMiddleware` so
+    // it is registered as the FIRST handler — Hono dispatches in registration
+    // order, so a gate added after the routes (or via a parent app.use that
+    // doesn't cascade onto mounted sub-apps) never runs before them.
+    const builderAuthGate = async (c: any, next: any) => {
+        const principal = await resolvePrincipal(c.req.raw);
+        // resolvePrincipal returns { user: null } (a truthy OBJECT) when there is
+        // no credential — NOT null. Checking `!principal` therefore never redirects
+        // (the builder was unprotected from d78b292 until this fix; the routing 404
+        // masked it). Check the USER: no authenticated user → 302 to login.
+        if (!principal?.user) {
+            const returnUrl = encodeURIComponent(c.req.url);
+            return c.redirect(`/frontbase-admin?returnUrl=${returnUrl}`, 302);
+        }
+        return next();
+    };
     const builderApp = createBuilderEngine({
         loadPage: async (pageId: string) => {
             const row = await pagesStore.get(pageId);
@@ -147,6 +164,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             await pagesStore.update(pageId, { layoutData }, now());
         },
         autoSave: false, // No auto-save for now
+        authMiddleware: builderAuthGate,
     });
 
     const engine = createEngine({
@@ -216,18 +234,14 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     app.get('/frontbase-setup/spa.js', async (c) =>
         (await assetResponse(c.req.raw, 'no-cache')) ?? c.text('not_found', 404));
 
-    // Phase 1: Mount the builder app behind auth gate.
-    // The builder is accessible only to authenticated users and must be mounted
-    // BEFORE the engine catch-all so /builder/* routes aren't swallowed.
-    app.use('/builder/*', async (c, next) => {
-        const principal = await resolvePrincipal(c.req.raw);
-        if (!principal) {
-            // Redirect to login with return URL
-            const returnUrl = encodeURIComponent(c.req.url);
-            return c.redirect(`/frontbase-admin?returnUrl=${returnUrl}`, 302);
-        }
-        return next();
-    });
+    // Mount the builder sub-app at '/builder'. BuilderEngine's routes are RELATIVE
+    // ('/edit/:pageId', '/api/components', …); the '/builder' mount prefix supplies
+    // the namespace → '/builder/edit/:pageId' etc. Auth is enforced by the gate
+    // mounted on builderApp itself (above), NOT a parent app.use — a parent
+    // '/builder/*' gate does not cascade onto merged sub-app routes in this Hono
+    // version, and routes that carried the '/builder' prefix doubled the path to
+    // '/builder/builder/...' → 404. Mounted before compat/engine so /builder/*
+    // matches the builder first.
     app.route('/builder', builderApp);
 
     // 3. Engine (published pages, /sw.js, retained console health/setup, and

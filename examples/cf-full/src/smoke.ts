@@ -254,6 +254,23 @@ await check('publishing a page serves it at /<slug> (dynamic eSSR)', async () =>
     const body = await r.text();
     return r.status === 200 && body.includes('Served live');
 });
+// ---- builder canvas: /builder/edit/:id must render (regression guard) ----
+// This slipped through once (d78b292 mounted the builder at '/builder', doubling
+// the prefix to '/builder/builder/...' → 404) because no test hit the route.
+await check('GET /builder/edit/:id renders the WYSIWYG canvas (authenticated)', async () => {
+    const create = await req('/api/pages/', {
+        method: 'POST', headers: { 'content-type': 'application/json', cookie: compatCookie },
+        body: JSON.stringify({ name: 'Builder', slug: 'builder-smoke', title: 'Builder' }),
+    });
+    const pageId = (await create.json() as { data: { id: string } }).data.id;
+    const res = await req(`/builder/edit/${pageId}`, { headers: { cookie: compatCookie } });
+    const html = await res.text();
+    return res.status === 200 && html.includes('id="fb-canvas"') && html.includes('<iframe');
+});
+await check('GET /builder/edit/:id WITHOUT session → 302 redirect to login', async () => {
+    const res = await req('/builder/edit/anything');
+    return res.status === 302 && (res.headers.get('location') ?? '').startsWith('/frontbase-admin');
+});
 
 // ---- compat API: security endpoints are behind the guard ----
 await check('GET /api/auth/security/blocklist WITHOUT session → 401', async () =>

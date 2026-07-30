@@ -10,7 +10,7 @@
  * through server endpoints that re-render via renderPage.
  */
 
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
 import { renderPage, renderDocument } from '@frontbase/edge-core';
 import { FALLBACK_CSS } from '@frontbase/edge-core/ssr/baseStyles';
 import type { PageLayoutData, PageComponent } from '@frontbase/edge-core';
@@ -71,6 +71,16 @@ export interface BuilderEngineOptions {
 
     /** Optional: URL of the client-side editing bundle (Phase 2). */
     clientBundle?: string;
+
+    /**
+     * Optional: auth middleware applied to EVERY builder route as the FIRST
+     * handler (e.g. a session gate that 302-redirects to /frontbase-admin when
+     * there is no principal). Supplied by the host worker — the builder only
+     * APPLIES it, so RULE 1 holds (no edge-infra/auth import in this package).
+     * Hono runs handlers in registration order, so this is wired in BEFORE any
+     * route is registered; adding it later (after routes) is a no-op.
+     */
+    authMiddleware?: MiddlewareHandler;
 }
 
 /**
@@ -103,6 +113,12 @@ interface BuilderContext {
  */
 export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
     const app = new Hono();
+    // Auth gate FIRST. Hono dispatches handlers in registration order, so a gate
+    // registered after the routes (or on a parent app.use that doesn't cascade
+    // onto mounted sub-apps) never runs before them. Applying the host-supplied
+    // gate here, before any route, guarantees every /builder/* route requires a
+    // session.
+    if (opts.authMiddleware) app.use('*', opts.authMiddleware);
     const autoSaveDelay = opts.autoSaveDelay ?? 2000;
 
     /**
@@ -228,7 +244,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
     /**
      * GET /builder/edit/:pageId - Serve the builder UI
      */
-    app.get('/builder/edit/:pageId', async (c) => {
+    app.get('/edit/:pageId', async (c) => {
         const pageId = c.req.param('pageId');
 
         try {
@@ -252,7 +268,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
     /**
      * POST /builder/api/components - Handle component CRUD operations
      */
-    app.post('/builder/api/components', async (c) => {
+    app.post('/api/components', async (c) => {
         const pageId = c.req.header('x-page-id') || '';
 
         try {
@@ -350,7 +366,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
     /**
      * POST /builder/api/render - Render a component (for preview)
      */
-    app.post('/builder/api/render', async (c) => {
+    app.post('/api/render', async (c) => {
         try {
             const { type, props } = await c.req.json();
 
@@ -372,7 +388,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
      * Accepts a full layout and returns the complete renderDocument output,
      * enabling the client to swap the iframe srcdoc for instant visual feedback.
      */
-    app.post('/builder/api/reRender', async (c) => {
+    app.post('/api/reRender', async (c) => {
         try {
             const { layout, pageData } = await c.req.json();
 
@@ -438,7 +454,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
     /**
      * GET /builder/api/registry - Get component registry
      */
-    app.get('/builder/api/registry', (c) => {
+    app.get('/api/registry', (c) => {
         try {
             const registry = opts.getRegistry ? opts.getRegistry() : globalRegistry.exportForAgent();
             return c.json(registry);
@@ -451,7 +467,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
     /**
      * POST /builder/api/validate - Validate component props
      */
-    app.post('/builder/api/validate', async (c) => {
+    app.post('/api/validate', async (c) => {
         try {
             const { type, props } = await c.req.json();
 
