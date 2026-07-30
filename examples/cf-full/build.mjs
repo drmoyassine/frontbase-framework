@@ -217,7 +217,20 @@ await esbuild.build({
 //    runner. platform:'node' with packages:'external' so @libsql/client's NATIVE
 //    node binding (and the workspace @frontbase/* dist) are resolved by Node at
 //    runtime rather than bundled (esbuild can't inline the native .node addon).
-//    Only our own src + the inlined SW are bundled.
+//    Only our own src + the inlined SW/console-shell/client virtuals are bundled.
+//
+//    Deliberately NO workspaceResolver here (unlike the CF worker build above).
+//    workspaceResolver redirects @frontbase/* to their source dist paths, which
+//    makes esbuild BUNDLE those packages into smoke.mjs — inlining their
+//    transitive bare imports (@libsql/client, @supabase/postgrest-js, liquidjs,
+//    zod, drizzle-orm, …) as external statements rooted at cf-full/dist. pnpm's
+//    strict layout does NOT hoist those transitive deps into cf-full/node_modules,
+//    so Node fails with ERR_MODULE_NOT_FOUND at runtime (this broke `pnpm smoke`
+//    in CI). With packages:'external' alone, @frontbase/* stay as bare imports
+//    that Node resolves via the workspace symlinks in cf-full/node_modules, and
+//    each package's OWN deps resolve from that package's node_modules. The worker
+//    (CF) build keeps workspaceResolver because it must bundle everything for the
+//    edge runtime, which has no node_modules.
 await esbuild.build({
     ...shared,
     platform: 'node',
@@ -225,7 +238,7 @@ await esbuild.build({
     entryPoints: ['src/smoke.ts'],
     outfile: join(here, 'dist', 'smoke.mjs'),
     minify: false,
-    plugins: [workspaceResolver, inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
+    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
 });
 
 const raw = statSync(join(here, 'dist', 'worker.mjs')).size;
