@@ -10,6 +10,7 @@
  */
 import { Hono } from 'hono';
 import { renderPage } from './ssr/PageRenderer.js';
+import { buildSystemContext } from './ssr/lib/context.js';
 import type { TemplateContext } from './ssr/lib/context.js';
 import type { SiteManifest, PageEntry, RegisteredQuery } from './manifest.js';
 import type { DataProvider } from './data.js';
@@ -66,7 +67,7 @@ function buildContext(page: PageEntry, path: string, records: Record<string, unk
         },
         user: null,
         visitor: {} as TemplateContext['visitor'],
-        url: {}, system: {} as TemplateContext['system'],
+        url: {}, system: buildSystemContext(),
         cookies: {}, local: {}, session: {},
         records,
         app: { environment: opts.environment, manifestVersion: opts.manifest.version },

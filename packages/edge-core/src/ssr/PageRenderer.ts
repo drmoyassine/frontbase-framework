@@ -90,11 +90,19 @@ async function resolveProps(
 
     const resolved: Record<string, unknown> = {};
 
+    // Expose the system date scalars (year, date, time, datetime, month, day,
+    // env) at the top of the Liquid scope so bare tokens like {{year}} resolve
+    // — the builder's Liquid preview flattens these the same way. Scoped copy
+    // only; an empty system (e.g. the byte-parity pinned context) is a no-op,
+    // so golden snapshots stay deterministic.
+    const system = (context as Record<string, any>).system || {};
+    const scope = { ...context, ...system };
+
     for (const [key, value] of Object.entries(props)) {
         if (typeof value === 'string' && (value.includes('{{') || value.includes('{%'))) {
             // Use LiquidJS for template rendering
             try {
-                resolved[key] = await liquid.parseAndRender(value, context);
+                resolved[key] = await liquid.parseAndRender(value, scope);
             } catch (error) {
                 console.error(`Template error in prop "${key}":`, error);
                 resolved[key] = value; // Fallback to original value

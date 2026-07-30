@@ -82,5 +82,31 @@ ok('FALLBACK_CSS includes the landing components\' spacing utilities', () => {
     return FALLBACK_CSS.includes('.container{width:100%}') && FALLBACK_CSS.includes('.flex{display:flex}') && FALLBACK_CSS.includes('.mx-auto');
 });
 
+// ── 3. The CSS reset (preflight) is present — the builder ships Tailwind     ─
+// preflight; without it the community path inherits browser UA styling: <a>
+// renders blue+underlined (pricing CTAs looked like links, not buttons) and
+// <ul> shows disc bullets (footer link columns). These resets close that gap.
+
+ok('FALLBACK_CSS resets anchor UA styling (color:inherit, no default underline)', () => {
+    return /a\s*{[^}]*color:inherit/.test(FALLBACK_CSS) && FALLBACK_CSS.includes('list-style:none');
+});
+
+ok('FALLBACK_CSS resets list bullets (ol/ul list-style:none)', () => {
+    return FALLBACK_CSS.includes('list-style:none') && FALLBACK_CSS.includes('box-sizing:border-box');
+});
+
+// ── 4. Bare system tokens ({{year}}) resolve in component props ─────────────
+// The footer copyright uses {{year}}; the builder's Liquid preview flattens
+// system.year to the top scope. renderPage must do the same or the year drops.
+
+ok('{{year}} resolves to the system year in a component prop', async () => {
+    const ctxWithYear = { ...baseCtx, system: { year: 2026, date: '2026-07-30', env: 'production' } };
+    const out = await renderPage(
+        { content: [{ id: 'f', type: 'Footer', props: { copyright: '© {{year}} Frontbase' } }] },
+        ctxWithYear,
+    );
+    return out.includes('© 2026 Frontbase') && !out.includes('{{year}}');
+});
+
 console.log(`\nwysiwyg-parity: ${pass}/${pass + fail}${fail ? ' — GATE FAILING' : ' — GREEN ✅'}`);
 process.exit(fail ? 1 : 0);

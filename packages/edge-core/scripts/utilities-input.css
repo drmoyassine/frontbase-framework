@@ -1,7 +1,12 @@
 /*
- * Input for the static utility stylesheet. Components + utilities only — the
- * preflight reset is OFF (FALLBACK_CSS owns the reset). Run via
+ * Input for the static utility stylesheet. base (preflight) + components +
+ * utilities. Preflight is ON because the landing eSSR components emit bare
+ * <a>, <ul>, <h*> elements that assume the Tailwind reset the builder ships —
+ * without it, <a> renders blue+underlined and <ul> shows disc bullets (the
+ * drift the user reported). The reset is element-selectors only, so the .fb-*
+ * class styles in FALLBACK_CSS still win on specificity. Run via
  * `node scripts/regen-utilities.mjs`.
  */
+@tailwind base;
 @tailwind components;
 @tailwind utilities;

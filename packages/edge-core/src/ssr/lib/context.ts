@@ -265,7 +265,7 @@ function buildUrlContext(request: Request): Record<string, string> {
 /**
  * Build system context (all UTC)
  */
-function buildSystemContext(): SystemContext {
+export function buildSystemContext(): SystemContext {
     const now = new Date();
     return {
         date: now.toISOString().split('T')[0],
