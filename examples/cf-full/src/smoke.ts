@@ -260,6 +260,23 @@ await check('GET /api/auth/security/blocklist WITHOUT session → 401', async ()
     (await req('/api/auth/security/blocklist')).status === 401);
 await check('GET /api/auth/security/blocklist WITH session → 200', async () =>
     (await req('/api/auth/security/blocklist', { headers: { cookie: compatCookie } })).status === 200);
+// Audit-trail consistency: a security mutation (WAF) MUST land in the audit log
+// that GET /audit-logs reads — same tenant key, same KV bucket. This is the
+// framework-side guarantee behind CF-22 #129's audit-logs op; it guards against
+// the write/read tenant-key divergence that regressed that op to shape-only.
+await check('POST /api/auth/security/waf → audit-logs shows the waf_updated entry', async () => {
+    const before = await req('/api/auth/security/audit-logs', { headers: { cookie: compatCookie } });
+    const beforeCount = (await before.json() as unknown[]).length;
+    const waf = await req('/api/auth/security/waf', {
+        method: 'POST', headers: { 'content-type': 'application/json', cookie: compatCookie },
+        body: JSON.stringify({ enabled: true }),
+    });
+    if (waf.status !== 200) return false;
+    const after = await req('/api/auth/security/audit-logs', { headers: { cookie: compatCookie } });
+    const entries = await after.json() as Array<{ action?: string }>;
+    return Array.isArray(entries) && entries.length === beforeCount + 1
+        && entries.some((e) => e.action === 'waf_updated');
+});
 await check('GET /api/edge-engines/active/by-scope/full lists the system edge as default target', async () => {
     const r = await req('/api/edge-engines/active/by-scope/full', { headers: { cookie: compatCookie } });
     const body = await r.json() as Array<{ id?: string; edge_db_id?: string }>;
