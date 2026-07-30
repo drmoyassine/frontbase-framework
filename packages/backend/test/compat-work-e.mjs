@@ -454,6 +454,20 @@ test('workflow flips to published after publish (is_published tracks publish, no
     assert.equal(after.is_active, true);
 });
 
+test('imported page keeps its layout (POST /api/pages/ with layoutData is stored)', async () => {
+    const { app } = await harness();
+    // The product's page import sends layoutData (camelCase); the create handler
+    // used to read body.layout_data (snake_case) and silently drop it, so imported
+    // pages came in empty.
+    const layoutData = { content: [{ type: 'Heading', props: { content: 'Imported', level: 'h1' } }], root: {} };
+    const created = await (await request(app, 'POST', '/api/pages/', {
+        name: 'Imported', slug: 'imported', title: 'I', layoutData,
+    })).json();
+    const pageId = created.data.id;
+    const got = await (await request(app, 'GET', `/api/pages/${pageId}/`)).json();
+    assert.deepEqual(got.data.layoutData, layoutData, 'an imported page layout must be stored, not dropped');
+});
+
 let failures = 0;for (const [name, fn] of tests) {
     try {
         await fn();

@@ -36,10 +36,10 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
     });
     // POST /api/pages/
     app.post('/api/pages/', async (c) => {
-        const body = await c.req.json().catch(() => null) as { name?: string; slug?: string; title?: string; description?: string; layout_data?: unknown } | null;
+        const body = await c.req.json().catch(() => null) as { name?: string; slug?: string; title?: string; description?: string; layoutData?: unknown; layout_data?: unknown } | null;
         if (!body?.name || !body.slug) return c.json({ success: false, error: 'name and slug are required' }, 422);
         const row = await storeFor(c.get('tenant')).create(
-            { name: body.name, slug: body.slug, title: body.title, description: body.description, layout_data: body.layout_data },
+            { name: body.name, slug: body.slug, title: body.title, description: body.description, layout_data: body.layoutData ?? body.layout_data },
             crypto.randomUUID(), now(),
         );
         return c.json({ success: true, data: serializePage(row), message: null, error: null }, 201);
