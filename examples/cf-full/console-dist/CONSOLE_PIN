@@ -1,10 +1,10 @@
 {
-  "commit": "eefbdf0ddbf085785099052cad97a4c446b5f6a6",
-  "sha256": "5a8ee1eceea978b75e5cf8e460fcaedb7b117fb56ecc8c3a9a4ae34598e11adb",
+  "commit": "a6c7f53d48aaf3d6d0dc5810a9cbd57e2b5bd482",
+  "sha256": "f2a5f4924d42a39bf425765933e31afe167a9b7dfdb322845e68245207542e6b",
   "jsBundles": [
-    "index-CP-D9vkV-1785436324678.js"
+    "index-DGp9QIhP-1785491920076.js"
   ],
   "cssBundles": [
-    "index-BRcOQHqp-1785436324678.css"
+    "index-oBjoVWzq-1785491920076.css"
   ]
 }
