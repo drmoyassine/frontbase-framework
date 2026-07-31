@@ -71,8 +71,13 @@ interface StyleValueEmitter {
 /**
  * Process a single style entry (key/value from the styles object),
  * handling special shapes like size, padding/margin objects, and horizontalAlign.
+ *
+ * Canonical stylesData→CSS value resolver — every SSR styles path (rootStyles,
+ * getCommonAttributes, stylesDataToCSS) MUST delegate here so published bytes
+ * stay byte-identical across renderers. Format defaults to maybeAddPx (numeric
+ * values get a 'px' suffix unless the property is in UNITLESS_PROPS).
  */
-function processStyleEntry(
+export function processStyleEntry(
     key: string,
     value: unknown,
     emit: StyleValueEmitter,

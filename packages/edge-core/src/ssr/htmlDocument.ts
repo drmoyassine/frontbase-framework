@@ -7,6 +7,11 @@
 
 import { TrackingConfig } from './lib/tracking.js';
 import { FALLBACK_CSS } from './baseStyles.js';
+import { escapeHtml } from './components/lib/utils.js';
+
+// Re-export the canonical escapeHtml so existing callers (e.g. shell.ts) that
+// import it from htmlDocument keep working after the consolidation.
+export { escapeHtml };
 
 // Cache-busting version - update this when hydration scripts change
 const HYDRATE_VERSION = '20260617c';
@@ -295,18 +300,9 @@ export function safeJsonStringify(obj: unknown): string {
         .replace(/<!--/g, '<\\!--');
 }
 
-/**
- * Escape HTML special characters for safe attribute embedding.
- */
-export function escapeHtml(str: string): string {
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
-
+// `escapeHtml` is re-exported from the canonical implementation in
+// `./components/lib/utils.js` (imported above) for callers that historically
+// reached into htmlDocument for it.
 // ── Sprint 4A: builder analytics injection ────────────────────────────────
 
 const GA4_RE = /^G-[A-Z0-9]{6,}$/;

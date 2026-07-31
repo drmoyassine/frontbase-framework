@@ -1,22 +1,12 @@
 /**
  * Interactive Component Renderers
- * 
+ *
  * Renders components that need client-side interactivity (Button, Tabs, etc.)
  * These are rendered with hydration markers for React to take over.
  */
 
-/**
- * Escape HTML special characters for safe rendering.
- */
-function escapeHtml(str: string | undefined): string {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
+import { escapeHtml } from './lib/utils.js';
+import { resolvePropsStyles } from './lib/attrs.js';
 
 /**
  * Helper to build common attributes (id, class, style, data-*)
@@ -29,92 +19,7 @@ function getCommonAttributes(
     hydrateType: string,
     propsJson: string
 ): string {
-    // Merge base class with prop className (e.g. Tailwind classes)
-    let className = [baseClass, props.className].filter(Boolean).join(' ');
-
-    let propStyleString = '';
-
-    const propStyle = props.style as any || {};
-
-    // Handle NEW StylesData format: { activeProperties: [...], values: {...} } or just { values: {...} }
-    if (propStyle && typeof propStyle === 'object' && ('values' in propStyle || 'activeProperties' in propStyle)) {
-        if (propStyle.values) {
-            const { values } = propStyle;
-            const styleParts: string[] = [];
-
-            // Apply ALL styles from values
-            for (const [prop, value] of Object.entries(values)) {
-                if (value === undefined || value === null || value === '' || prop === 'className') {
-                    continue;
-                }
-
-                // Handle special 'size' object: { width, widthUnit, height, heightUnit }
-                if (prop === 'size' && typeof value === 'object') {
-                    const sizeObj = value as any;
-                    if (sizeObj.width !== undefined && sizeObj.width !== 'auto') {
-                        const widthUnit = sizeObj.widthUnit || 'px';
-                        styleParts.push(`width:${sizeObj.width}${widthUnit}`);
-                    }
-                    if (sizeObj.height !== undefined && sizeObj.height !== 'auto') {
-                        const heightUnit = sizeObj.heightUnit || 'px';
-                        styleParts.push(`height:${sizeObj.height}${heightUnit}`);
-                    }
-                    continue;
-                }
-
-                // Handle padding/margin objects: { top, right, bottom, left }
-                if ((prop === 'padding' || prop === 'margin') && typeof value === 'object') {
-                    const boxObj = value as any;
-                    if (boxObj.top !== undefined) styleParts.push(`${prop}-top:${boxObj.top}px`);
-                    if (boxObj.right !== undefined) styleParts.push(`${prop}-right:${boxObj.right}px`);
-                    if (boxObj.bottom !== undefined) styleParts.push(`${prop}-bottom:${boxObj.bottom}px`);
-                    if (boxObj.left !== undefined) styleParts.push(`${prop}-left:${boxObj.left}px`);
-                    continue;
-                }
-
-                // Handle horizontalAlign: converts to margin-left/right auto
-                if (prop === 'horizontalAlign' && typeof value === 'string') {
-                    if (value === 'center') {
-                        styleParts.push('margin-left:auto');
-                        styleParts.push('margin-right:auto');
-                    } else if (value === 'right') {
-                        styleParts.push('margin-left:auto');
-                        styleParts.push('margin-right:0');
-                    } else {
-                        styleParts.push('margin-left:0');
-                        styleParts.push('margin-right:auto');
-                    }
-                    continue;
-                }
-
-                // Skip any remaining object values (would become [object Object])
-                if (typeof value === 'object') {
-                    continue;
-                }
-
-                // Convert camelCase to kebab-case for CSS
-                const cssKey = prop.replace(/([A-Z])/g, '-$1').toLowerCase();
-                styleParts.push(`${cssKey}:${value}`);
-            }
-
-            // Check for className in values
-            if (values.className) {
-                className = [className, values.className].filter(Boolean).join(' ');
-            }
-
-            propStyleString = styleParts.join(';');
-        }
-    }
-    // Handle standard style object
-    else {
-        propStyleString = Object.entries(propStyle)
-            .map(([k, v]) => {
-                const key = k.replace(/([A-Z])/g, '-$1').toLowerCase();
-                return `${key}:${v}`;
-            })
-            .join(';');
-    }
-
+    const { className, styleString: propStyleString } = resolvePropsStyles(baseClass, props);
     const finalStyle = [extraStyle, propStyleString].filter(Boolean).join(';');
 
     const showIf = props['data-show-if'] as string | undefined;

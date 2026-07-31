@@ -11,6 +11,7 @@
 
 import type { HtmlPageData } from './htmlDocument.js';
 import { generateHtmlDocument } from './htmlDocument.js';
+import { escapeHtml } from './components/lib/utils.js';
 
 interface AuthFormConfig {
     type: 'login' | 'signup' | 'both';
@@ -205,13 +206,4 @@ function buildAuthOverlay(
     }, 5000);
 })();
 </script>`;
-}
-
-function escapeHtml(str: string): string {
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
 }
