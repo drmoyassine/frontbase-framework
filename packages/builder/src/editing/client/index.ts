@@ -39,6 +39,7 @@ export * from './drag-drop.js';
  * the canvas is a bare iframe. We wire Editor to the template's #fb-* elements
  * and load the page's component tree.
  */
+
 if (typeof window !== 'undefined' && (window as unknown as { __FRONTBASE_PAGE_ID__?: string }).__FRONTBASE_PAGE_ID__) {
     const init = (): void => {
         const iframe = document.getElementById('fb-canvas') as HTMLIFrameElement | null;

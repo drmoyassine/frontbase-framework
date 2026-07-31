@@ -154,7 +154,15 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
                 type: 'page',
                 custom: {},
             },
-            user: null,
+            // Pass a dummy user to bypass authentication checks in rendered components
+            user: {
+                id: 'builder-user',
+                email: 'builder@frontbase.dev',
+                role: 'admin',
+                name: 'Builder User',
+                firstName: 'Builder',
+                lastName: 'User'
+            },
             visitor: {} as any,
             url: {},
             system: {
@@ -183,8 +191,24 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
             registerServiceWorker: false,
         });
 
-        // Export registry for client-side editor
-        const registryJson = JSON.stringify(opts.getRegistry ? opts.getRegistry() : globalRegistry.exportForAgent());
+        // Export registry for client-side editor. PropertyPanel expects a
+        // RegistryDescriptor ({ components: Record<type, def> }) where each def
+        // nests props under `editable`. exportForAgent() returns a flat array
+        // with `props` at the top level — reshape it to the descriptor the
+        // client consumes, else registry.components is undefined and selecting
+        // a node throws "Cannot read properties of undefined (reading 'Heading')".
+        const agentExport = opts.getRegistry ? opts.getRegistry() : globalRegistry.exportForAgent();
+        const registryDescriptor = {
+            components: Object.fromEntries(
+                agentExport.map((c: any) => [c.type, {
+                    displayName: c.displayName,
+                    category: c.category,
+                    description: c.description,
+                    editable: { props: c.props ?? [] },
+                }])
+            ),
+        };
+        const registryJson = JSON.stringify(registryDescriptor);
         // Component tree for the editing client's bootstrap — it instantiates
         // Editor and calls load() with these. Without it the tree/property panels
         // stay empty (the bundle only DEFINES Editor; nothing feeds it the page).
@@ -225,6 +249,25 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
         .fb-tree-item:hover { background: #f3f4f6; }
         .fb-tree-item.selected { background: #dbeafe; color: #1e40af; }
         .fb-loading { text-align: center; padding: 2rem; color: #6b7280; }
+        /* Tree view — matches the classes TreeView.ts actually generates */
+        #fb-tree-view { padding: 0.5rem 0; }
+        .fb-tree-root { width: 100%; }
+        .fb-tree-node { user-select: none; }
+        .fb-tree-node-content { display: flex; align-items: center; gap: 6px; padding: 6px 12px; cursor: pointer; font-size: 0.8125rem; color: #374151; border-left: 2px solid transparent; }
+        .fb-tree-node-content:hover { background: #f3f4f6; }
+        .fb-tree-node-content.fb-selected { background: #dbeafe; color: #1e40af; border-left-color: #2563eb; font-weight: 500; }
+        .fb-tree-node-toggle { background: none; border: none; cursor: pointer; font-size: 0.625rem; color: #6b7280; padding: 0; width: 14px; flex-shrink: 0; }
+        .fb-tree-node-spacer { width: 14px; flex-shrink: 0; }
+        .fb-tree-node-icon { font-size: 0.875rem; flex-shrink: 0; }
+        .fb-tree-node-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fb-tree-node-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
+        .fb-tree-node-content:hover .fb-tree-node-actions { opacity: 1; }
+        .fb-tree-node-action { background: none; border: none; cursor: pointer; font-size: 0.75rem; padding: 2px 4px; border-radius: 3px; }
+        .fb-tree-node-action:hover { background: #e5e7eb; }
+        .fb-tree-node-children { width: 100%; }
+        .fb-tree-empty { padding: 2rem 1rem; text-align: center; }
+        .fb-tree-empty-text { color: #6b7280; font-size: 0.875rem; margin-bottom: 0.25rem; }
+        .fb-tree-empty-hint { color: #9ca3af; font-size: 0.75rem; }
     </style>
 </head>
 <body>
@@ -236,19 +279,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
                 (function() {
                     var iframe = document.getElementById('fb-canvas');
                     var content = ${JSON.stringify(canvasDocument)};
-                    console.log('[BUILDER DEBUG] canvasDocument length:', content.length);
-                    console.log('[BUILDER DEBUG] First 200 chars:', content.substring(0, 200));
-                    console.log('[BUILDER DEBUG] Includes <!DOCTYPE html>:', content.includes('<!DOCTYPE html>'));
-                    console.log('[BUILDER DEBUG] Includes <html>:', content.includes('<html'));
-                    console.log('[BUILDER DEBUG] Includes frontbase-admin:', content.includes('frontbase-admin'));
-                    // Try both methods for maximum compatibility
-                    try {
-                        iframe.srcdoc = content;
-                        console.log('[BUILDER DEBUG] srcdoc set successfully');
-                    } catch(e) {
-                        console.error('[BUILDER DEBUG] srcdoc failed:', e);
-                        iframe.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(content);
-                    }
+                    iframe.srcdoc = content;
                 })();
             </script>
             <svg id="fb-overlay"></svg>
@@ -260,7 +291,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
         window.__FRONTBASE_PAGE_ID__ = '${pageId}';
         window.__FRONTBASE_LAYOUT__ = ${layoutJson};
     </script>
-    ${opts.clientBundle ? `<script type="module" src="${escapeHtml(opts.clientBundle)}"></script>` : '<script type="module" src="/editing/client/index.js"></script>'}
+    <script src="/builder/client.js"></script>
 </body>
 </html>`;
     }
