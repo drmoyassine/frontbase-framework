@@ -231,7 +231,26 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
     <div id="fb-builder">
         <div id="fb-tree-view"></div>
         <div id="fb-canvas-container">
-            <iframe id="fb-canvas" src="data:text/html;charset=utf-8,${encodeURIComponent(canvasDocument)}"></iframe>
+            <iframe id="fb-canvas" style="border:none; width:100%; min-height:100%; display:block;"></iframe>
+            <script>
+                (function() {
+                    var iframe = document.getElementById('fb-canvas');
+                    var content = ${JSON.stringify(canvasDocument)};
+                    console.log('[BUILDER DEBUG] canvasDocument length:', content.length);
+                    console.log('[BUILDER DEBUG] First 200 chars:', content.substring(0, 200));
+                    console.log('[BUILDER DEBUG] Includes <!DOCTYPE html>:', content.includes('<!DOCTYPE html>'));
+                    console.log('[BUILDER DEBUG] Includes <html>:', content.includes('<html'));
+                    console.log('[BUILDER DEBUG] Includes frontbase-admin:', content.includes('frontbase-admin'));
+                    // Try both methods for maximum compatibility
+                    try {
+                        iframe.srcdoc = content;
+                        console.log('[BUILDER DEBUG] srcdoc set successfully');
+                    } catch(e) {
+                        console.error('[BUILDER DEBUG] srcdoc failed:', e);
+                        iframe.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(content);
+                    }
+                })();
+            </script>
             <svg id="fb-overlay"></svg>
         </div>
         <div id="fb-property-panel"></div>
