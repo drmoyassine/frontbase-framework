@@ -43,12 +43,14 @@ const STATIC_COMPONENTS = new Set([
 
 const INTERACTIVE_COMPONENTS = new Set([
     'Button', 'Link', 'Tabs', 'Accordion', 'Modal', 'Dropdown', 'Tooltip',
-    'Toggle', 'Checkbox', 'Radio', 'Switch'
+    'Toggle', 'Checkbox', 'Radio', 'Switch',
+    'AuthForm' // has a full renderer in interactive.ts; without this it fell through to fb-unknown
 ]);
 
 const DATA_COMPONENTS = new Set([
     'DataTable', 'Form', 'InfoList', 'Chart', 'Grid',
-    'Card', 'KPICard'
+    'Card', 'KPICard',
+    'Repeater' // has a full skeleton renderer in data.ts; without this it fell through to fb-unknown
 ]);
 
 // NOTE: 'Grid' is intentionally NOT a layout component. There is exactly one

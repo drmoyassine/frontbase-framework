@@ -124,6 +124,13 @@
       "bytes": 2149,
       "sha256": "8b641816a4df2bd00dea437f1962882982544f0b772b5e8bf3e7d82bad197784",
       "records": "products.list"
+    },
+    {
+      "name": "authform-repeater",
+      "source": "parity fixture — AuthForm + Repeater eSSR dispatch (previously classified 'unknown' → fb-unknown)",
+      "bytes": 6416,
+      "sha256": "1ca38596309b9904d91cfdbafb9c3b30670e28e2879ac6433dae2914af33ab76",
+      "records": "none"
     }
   ],
   "failures": []

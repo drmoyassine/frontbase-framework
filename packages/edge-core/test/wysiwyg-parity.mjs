@@ -70,6 +70,19 @@ ok('Breadcrumb renders nav + separators (not fb-unknown)', async () => {
     return out.includes('fb-breadcrumb') && out.includes('aria-label="breadcrumb"') && out.includes('Home') && out.includes('Page') && !out.includes('fb-unknown');
 });
 
+// AuthForm + Repeater were missing from the eSSR classification Sets, so they
+// fell through to the fb-unknown fallback on canvas AND published pages despite
+// having full renderers + being creatable in the builder. These lock the fix.
+ok('AuthForm renders a sign-in form (not fb-unknown)', async () => {
+    const out = await render([{ id: 'af', type: 'AuthForm', props: { type: 'both', title: 'Welcome', providers: ['google'] } }]);
+    return out.includes('fb-auth-form') && out.includes('Welcome') && out.includes('type="email"') && !out.includes('fb-unknown');
+});
+
+ok('Repeater renders a hydration skeleton (not fb-unknown)', async () => {
+    const out = await render([{ id: 'rp', type: 'Repeater', props: { columns: 3, layout: 'grid' } }]);
+    return out.includes('data-react-component="Repeater"') && out.includes('animate-pulse') && !out.includes('fb-unknown');
+});
+
 // ── 2. The Tailwind utility stylesheet is embedded in FALLBACK_CSS ──────────
 // Without it, the landing components' responsive classes are inert (Navbar
 // duplication). This guards the regen-utilities artifact.
