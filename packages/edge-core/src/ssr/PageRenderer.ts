@@ -6,7 +6,6 @@
  * Uses LiquidJS for template variable resolution.
  */
 
-import { VariableStore } from './store.js';
 import { renderStaticComponent } from './components/static.js';
 import { renderInteractiveComponent } from './components/interactive.js';
 import { renderDataComponent } from './components/data.js';
@@ -194,10 +193,9 @@ async function resolveHiddenFiltersSSR(
  */
 async function renderComponent(
     component: PageComponent,
-    context: TemplateContext,
-    depth: number = 0
+    context: TemplateContext
 ): Promise<string> {
-    const { id, type, props, styles, children, binding, visibilityCondition } = component;
+    let { id, type, props, styles, children, binding, visibilityCondition } = component;
 
     // Check visibility condition first
     let isClientSideCondition = false;
@@ -231,13 +229,33 @@ async function renderComponent(
     // If client-side condition, pass data-show-if and set initial display style if false
     if (isClientSideCondition) {
         resolvedProps['data-show-if'] = visibilityCondition;
-        
+
         if (!visibilityResult) {
-            // Add display:none to styles
-            if (!component.styles) {
-                component.styles = {};
+            // Shallow-clone the layout-tree node (with cloned `styles` and
+            // `stylesData.values`) BEFORE writing display:none — rendering must
+            // not mutate the caller's (possibly cached/shared) tree, or every
+            // re-render would accumulate display:none on the same node. The
+            // rendered bytes are unchanged: display:none still lands in every
+            // downstream read path (component.styles at L299/L327,
+            // component.stylesData at L299, and the L281 prop-style alias).
+            component = {
+                ...component,
+                styles: { ...(component.styles || {}), display: 'none' },
+                stylesData: component.stylesData
+                    ? {
+                          ...component.stylesData,
+                          values: { ...(component.stylesData.values || {}), display: 'none' },
+                      }
+                    : component.stylesData,
+            };
+            // Re-alias the local `styles` to the clone ONLY when the caller
+            // originally passed a styles field — matches the prior in-place
+            // mutation, where `styles` was captured pre-mutation and only held
+            // a value when the caller provided one. Preserves the L281-283
+            // skip-when-undefined semantics byte-for-byte.
+            if (styles) {
+                styles = component.styles;
             }
-            component.styles.display = 'none';
 
             if (!resolvedProps.style) {
                 resolvedProps.style = {};
@@ -249,11 +267,6 @@ async function renderComponent(
                 };
             } else if (typeof resolvedProps.style === 'string') {
                 resolvedProps.style = resolvedProps.style + ';display:none;';
-            }
-            // Also update stylesData values if present
-            if (component.stylesData) {
-                if (!component.stylesData.values) component.stylesData.values = {};
-                component.stylesData.values.display = 'none';
             }
         }
     }
@@ -291,7 +304,7 @@ async function renderComponent(
 
     // Render children recursively (async)
     const childrenHtml = children
-        ? (await Promise.all(children.map(child => renderComponent(child, context, depth + 1)))).join('')
+        ? (await Promise.all(children.map(child => renderComponent(child, context)))).join('')
         : '';
 
     // Build responsive CSS for viewport-specific style overrides (font-size, colors, etc.)
@@ -597,8 +610,12 @@ export async function renderPage(
     // Community Edition Badge Injection
     let badgeHtml = '';
     const edition = engineConfig().edition;
-    // If it's community edition and no license key is provided, inject the badge
-    if (edition === 'community' && !engineConfig().licenseKey) {
+    // If it's community edition and no license key is provided, inject the badge.
+    // SUPPRESSED in the builder canvas (system.env === 'builder', set by BOTH the
+    // reRender endpoint and the builder Service Worker) — the "Powered by" pill is
+    // a published-page watermark, not builder chrome. Live pages render with
+    // system.env = nodeEnv ('production'), so the badge still shows there.
+    if (edition === 'community' && !engineConfig().licenseKey && context.system?.env !== 'builder') {
         // Floating sign-out pill (only when user is logged in)
         const signOutHtml = context.user ? `
             <div style="position:fixed;bottom:48px;right:16px;z-index:9999;font-family:system-ui,-apple-system,sans-serif;">
@@ -625,5 +642,4 @@ export async function renderPage(
     return `<div class="fb-page ${rootClass}" style="${rootStyle}">${contentHtml}${badgeHtml}</div>`;
 }
 
-export { renderComponent, resolveProps, classifyComponent };
 export type { TemplateContext };
