@@ -231,13 +231,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
     <div id="fb-builder">
         <div id="fb-tree-view"></div>
         <div id="fb-canvas-container">
-            <iframe id="fb-canvas"></iframe>
-            <script>
-                (function() {
-                    var iframe = document.getElementById('fb-canvas');
-                    iframe.srcdoc = ${JSON.stringify(canvasDocument)};
-                })();
-            </script>
+            <iframe id="fb-canvas" src="data:text/html;charset=utf-8,${encodeURIComponent(canvasDocument)}"></iframe>
             <svg id="fb-overlay"></svg>
         </div>
         <div id="fb-property-panel"></div>
