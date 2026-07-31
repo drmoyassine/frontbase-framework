@@ -202,6 +202,10 @@ export async function registerLayoutComponents(): Promise<void> {
             props: [
                 { name: 'items', label: 'Items', type: 'array', group: 'Content',
                     description: 'Array of { label, href }' },
+                { name: 'gap', label: 'Gap', type: 'text', default: '0.5rem', group: 'Geometry' },
+                { name: 'fontSize', label: 'Font Size', type: 'text', default: '0.875rem', group: 'Typography' },
+                { name: 'activeFontWeight', label: 'Active Font Weight', type: 'text', default: '500', group: 'Typography' },
+                { name: 'separatorOpacity', label: 'Separator Opacity', type: 'text', default: '0.5', group: 'Style' },
             ],
             allowChildren: false,
             exampleProps: { items: [{ label: 'Home', href: '/' }, { label: 'Page', href: '/page' }] },
@@ -228,6 +232,9 @@ export async function registerLayoutComponents(): Promise<void> {
                     options: [
                         { value: 'default', label: 'Default' },
                     ]},
+                { name: 'activeColor', label: 'Active Color', type: 'color', default: '#3b82f6', group: 'Style' },
+                { name: 'inactiveColor', label: 'Inactive Color', type: 'color', default: '#6b7280', group: 'Style' },
+                { name: 'borderColor', label: 'Border Color', type: 'color', default: '#e5e7eb', group: 'Style' },
             ],
             allowChildren: true,
             exampleProps: { tabs: [{ id: 't1', label: 'Tab 1', content: 'Content 1' }] },
@@ -250,6 +257,7 @@ export async function registerLayoutComponents(): Promise<void> {
                 { name: 'items', label: 'Items', type: 'array', group: 'Content',
                     description: 'Array of { id, title, content? }' },
                 { name: 'allowMultiple', label: 'Allow Multiple Open', type: 'boolean', default: false, group: 'State' },
+                { name: 'borderColor', label: 'Border Color', type: 'color', default: '#e5e7eb', group: 'Style' },
             ],
             allowChildren: true,
             exampleProps: { items: [{ id: 'a1', title: 'Section 1', content: 'Content' }] },

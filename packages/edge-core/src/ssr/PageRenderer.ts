@@ -445,12 +445,18 @@ function renderLayoutComponent(
         case 'Section':
             return `${combinedCSS}<section id="${elementId}"${propsAttr} class="${className}" style="${inlineStyle}">${childrenHtml}</section>`;
 
-        case 'Row':
-            // Row: flex on desktop, stack on mobile
-            return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} fb-row flex flex-col md:flex-row" style="width:100%;min-height:50px;${inlineStyle}">${childrenHtml}</div>`;
+        case 'Row': {
+            // Row: flex on desktop, stack on mobile. minHeight externalized (default reproduces the prior baked literal).
+            const rowMinHeight = (props.minHeight as string) || '50px';
+            return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} fb-row flex flex-col md:flex-row" style="width:100%;min-height:${rowMinHeight};${inlineStyle}">${childrenHtml}</div>`;
+        }
 
-        case 'Column':
-            return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} fb-column" style="display:flex;flex-direction:column;min-height:50px;min-width:50px;${inlineStyle}">${childrenHtml}</div>`;
+        case 'Column': {
+            // minHeight/minWidth externalized (defaults reproduce the prior baked literals).
+            const colMinHeight = (props.minHeight as string) || '50px';
+            const colMinWidth = (props.minWidth as string) || '50px';
+            return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} fb-column" style="display:flex;flex-direction:column;min-height:${colMinHeight};min-width:${colMinWidth};${inlineStyle}">${childrenHtml}</div>`;
+        }
 
         case 'Flex':
             const flexDirection = (styles.flexDirection as string) || (props.direction as string) || 'row';

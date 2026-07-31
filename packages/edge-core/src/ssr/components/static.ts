@@ -267,8 +267,10 @@ function renderImage(id: string, props: Record<string, unknown>): string {
     const attrs = getCommonAttributes(id, 'fb-image', props, style);
 
     if (!src) {
-        return `<div ${attrs} class="fb-image-placeholder" style="${style};background:#e5e5e5;display:flex;align-items:center;justify-content:center;">
-            <span style="color:#999">No image</span>
+        const placeholderBackground = props.placeholderBackground as string || '#e5e5e5';
+        const placeholderColor = props.placeholderColor as string || '#999';
+        return `<div ${attrs} class="fb-image-placeholder" style="${style};background:${placeholderBackground};display:flex;align-items:center;justify-content:center;">
+            <span style="color:${placeholderColor}">No image</span>
         </div>`;
     }
 
@@ -317,10 +319,12 @@ function renderBadge(id: string, props: Record<string, unknown>): string {
 
     const outlineStyles = variant === 'outline' ? `border:1px solid ${txtColor};` : '';
 
-    // Build style directly - don't use getCommonAttributes which may add width from props.style
-    const baseClass = `fb-badge fb-badge-${variant}`;
-    const className = props.className ? `${baseClass} ${props.className}` : baseClass;
-    const style = `background:${bgColor};color:${txtColor};${sizeStyles[size] || sizeStyles.sm};border-radius:9999px;display:inline-flex;align-items:center;gap:0.375rem;font-weight:500;width:fit-content;${outlineStyles}`;
+    // Externalized geometry — defaults reproduce the prior baked literals byte-for-byte.
+    const borderRadius = props.borderRadius as string || '9999px';
+    const gap = props.gap as string || '0.375rem';
+    const fontWeight = props.fontWeight as string || '500';
+
+    const style = `background:${bgColor};color:${txtColor};${sizeStyles[size] || sizeStyles.sm};border-radius:${borderRadius};display:inline-flex;align-items:center;gap:${gap};font-weight:${fontWeight};width:fit-content;${outlineStyles}`;
 
     // Build content with icon (apply icon color + size). The product builder sizes
     // badge icons with Tailwind `w-3 h-3` (0.75rem); match it so the resolved
@@ -329,7 +333,12 @@ function renderBadge(id: string, props: Record<string, unknown>): string {
     const leftIcon = iconSvg && iconPosition === 'left' ? `<span class="fb-badge-icon" style="${iconStyle}">${iconSvg}</span>` : '';
     const rightIcon = iconSvg && iconPosition === 'right' ? `<span class="fb-badge-icon" style="${iconStyle}">${iconSvg}</span>` : '';
 
-    return `<span id="${id}" class="${className}" style="${style}">${leftIcon}${content}${rightIcon}</span>`;
+    // Route through getCommonAttributes so the stylesData surface (props.style.values)
+    // is honored on the root span like every other static component. Byte-identical for
+    // badges with no stylesData (empirically 0/14 corpus badges carry styles).
+    const attrs = getCommonAttributes(id, `fb-badge fb-badge-${variant}`, props, style);
+
+    return `<span ${attrs}>${leftIcon}${content}${rightIcon}</span>`;
 }
 
 function renderDivider(id: string, props: Record<string, unknown>): string {
@@ -423,7 +432,12 @@ function renderAvatar(id: string, props: Record<string, unknown>): string {
     const size = props.size as string || '40px';
     const shape = props.shape as string || 'circle';
 
-    const borderRadius = shape === 'circle' ? '50%' : (shape === 'rounded' ? '8px' : '0');
+    // Externalized — defaults reproduce the prior baked literals byte-for-byte.
+    const roundedRadius = props.roundedRadius as string || '8px';
+    const initialsBg = props.initialsBg as string || '#6366f1';
+    const initialsColor = props.initialsColor as string || '#fff';
+
+    const borderRadius = shape === 'circle' ? '50%' : (shape === 'rounded' ? roundedRadius : '0');
     const baseStyle = `width:${size};height:${size};border-radius:${borderRadius};overflow:hidden;display:flex;align-items:center;justify-content:center`;
 
     // Note: getCommonAttributes will append to baseStyle if we passed it, but we might want to override or merge.
@@ -438,7 +452,7 @@ function renderAvatar(id: string, props: Record<string, unknown>): string {
 
     // Fallback to initials
     const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    const style = `${baseStyle};background:#6366f1;color:#fff;font-weight:600;font-size:calc(${size} * 0.4)`;
+    const style = `${baseStyle};background:${initialsBg};color:${initialsColor};font-weight:600;font-size:calc(${size} * 0.4)`;
     const attrs = getCommonAttributes(id, 'fb-avatar fb-avatar-initials', props, style);
 
     return `<div ${attrs}>
@@ -451,12 +465,15 @@ function renderLabel(id: string, props: Record<string, unknown>): string {
     const htmlFor = props.for as string || props.htmlFor as string || '';
     const required = props.required as boolean;
 
+    // Externalized — defaults reproduce the prior baked literal byte-for-byte.
+    const asteriskColor = props.asteriskColor as string || '#ef4444';
+
     const style = `display:block;font-weight:500;margin-bottom:0.25rem`;
     const attrs = getCommonAttributes(id, 'fb-label', props, style);
     const forAttr = htmlFor ? `for="${htmlFor}"` : '';
 
     return `<label ${attrs} ${forAttr}>
-        ${content}${required ? '<span style="color:#ef4444;margin-left:0.25rem">*</span>' : ''}
+        ${content}${required ? `<span style="color:${asteriskColor};margin-left:0.25rem">*</span>` : ''}
     </label>`;
 }
 
@@ -476,26 +493,36 @@ function renderEmbed(id: string, props: Record<string, unknown>): string {
     const title = escapeHtml(String(props.title || 'Embedded content'));
     const loading = props.loading as string || 'lazy';
 
-    const containerStyle = `width:${width};height:${height};min-height:100px`;
+    // Externalized — defaults reproduce the prior baked literals byte-for-byte.
+    const embedMinHeight = props.minHeight as string || '100px';
+    const iframeRadius = props.iframeRadius as string || '8px';
+    const iframePlaceholderBg = props.iframePlaceholderBg as string || '#f5f5f5';
+    const iframePlaceholderBorder = props.iframePlaceholderBorder as string || '#ccc';
+    const iframePlaceholderColor = props.iframePlaceholderColor as string || '#999';
+    const scriptPlaceholderBg = props.scriptPlaceholderBg as string || '#fffbeb';
+    const scriptPlaceholderBorder = props.scriptPlaceholderBorder as string || '#f59e0b';
+    const scriptPlaceholderColor = props.scriptPlaceholderColor as string || '#92400e';
+
+    const containerStyle = `width:${width};height:${height};min-height:${embedMinHeight}`;
 
     if (embedType === 'iframe') {
         const src = props.src as string || '';
         const sandbox = escapeHtml(String(props.sandbox || 'allow-scripts allow-same-origin allow-forms'));
 
         if (!src) {
-            const attrs = getCommonAttributes(id, 'fb-embed fb-embed-placeholder', props, `${containerStyle};display:flex;align-items:center;justify-content:center;background:#f5f5f5;border:2px dashed #ccc;border-radius:8px`);
-            return `<div ${attrs}><span style="color:#999">Iframe URL not set</span></div>`;
+            const attrs = getCommonAttributes(id, 'fb-embed fb-embed-placeholder', props, `${containerStyle};display:flex;align-items:center;justify-content:center;background:${iframePlaceholderBg};border:2px dashed ${iframePlaceholderBorder};border-radius:${iframeRadius}`);
+            return `<div ${attrs}><span style="color:${iframePlaceholderColor}">Iframe URL not set</span></div>`;
         }
 
         const attrs = getCommonAttributes(id, 'fb-embed fb-embed-iframe', props, containerStyle);
         return `<div ${attrs}>
-            <iframe 
-                src="${escapeHtml(src)}" 
-                title="${title}" 
-                width="100%" 
-                height="100%" 
-                style="border:none;border-radius:8px" 
-                loading="${loading}" 
+            <iframe
+                src="${escapeHtml(src)}"
+                title="${title}"
+                width="100%"
+                height="100%"
+                style="border:none;border-radius:${iframeRadius}"
+                loading="${loading}"
                 sandbox="${sandbox}"
             ></iframe>
         </div>`;
@@ -504,8 +531,8 @@ function renderEmbed(id: string, props: Record<string, unknown>): string {
     // Script embed - render the raw HTML (user trusts this content)
     const html = props.html as string || '';
     if (!html) {
-        const attrs = getCommonAttributes(id, 'fb-embed fb-embed-placeholder', props, `${containerStyle};display:flex;align-items:center;justify-content:center;background:#fffbeb;border:2px dashed #f59e0b;border-radius:8px`);
-        return `<div ${attrs}><span style="color:#92400e">Script embed code not set</span></div>`;
+        const attrs = getCommonAttributes(id, 'fb-embed fb-embed-placeholder', props, `${containerStyle};display:flex;align-items:center;justify-content:center;background:${scriptPlaceholderBg};border:2px dashed ${scriptPlaceholderBorder};border-radius:${iframeRadius}`);
+        return `<div ${attrs}><span style="color:${scriptPlaceholderColor}">Script embed code not set</span></div>`;
     }
 
     const attrs = getCommonAttributes(id, 'fb-embed fb-embed-script', props, containerStyle);
@@ -534,11 +561,17 @@ function renderAlert(id: string, props: Record<string, unknown>): string {
         destructive: { border: 'hsl(var(--destructive))', bg: 'hsl(var(--destructive) / 0.08)', text: 'hsl(var(--destructive))', accent: 'hsl(var(--destructive))' },
     };
     const v = variantStyles[variant] || variantStyles.default;
-    const style = `position:relative;width:100%;border-radius:var(--radius,0.5rem);border:1px solid ${v.border};border-left-width:4px;border-left-color:${v.accent};background:${v.bg};color:${v.text};padding:1rem;display:flex;flex-direction:column;gap:0.25rem`;
+    // Externalized — defaults reproduce the prior baked literals byte-for-byte.
+    const accentWidth = props.accentWidth as string || '4px';
+    const padding = props.padding as string || '1rem';
+    const gap = props.gap as string || '0.25rem';
+    const titleStyle = props.titleStyle as string || '';
+    const descriptionStyle = props.descriptionStyle as string || '';
+    const style = `position:relative;width:100%;border-radius:var(--radius,0.5rem);border:1px solid ${v.border};border-left-width:${accentWidth};border-left-color:${v.accent};background:${v.bg};color:${v.text};padding:${padding};display:flex;flex-direction:column;gap:${gap}`;
     const attrs = getCommonAttributes(id, `fb-alert fb-alert-${variant}`, props, style);
 
-    const titleHtml = title ? `<h5 style="font-weight:600;line-height:1.25;margin:0">${escapeHtml(String(title))}</h5>` : '';
-    const bodyHtml = `<div class="fb-alert-description" style="text-align:left;opacity:0.9">${message}</div>`;
+    const titleHtml = title ? `<h5 style="font-weight:600;line-height:1.25;margin:0;${titleStyle}">${escapeHtml(String(title))}</h5>` : '';
+    const bodyHtml = `<div class="fb-alert-description" style="text-align:left;opacity:0.9;${descriptionStyle}">${message}</div>`;
 
     return `<div ${attrs} role="alert">${titleHtml}${bodyHtml}</div>`;
 }
@@ -550,18 +583,28 @@ function renderProgress(id: string, props: Record<string, unknown>): string {
     const color = props.color as string || 'hsl(var(--primary))';
     const trackColor = props.trackColor as string || 'hsl(var(--secondary))';
 
-    const style = `position:relative;height:0.75rem;width:100%;overflow:hidden;border-radius:9999px;background:${trackColor}`;
+    // Externalized — defaults reproduce the prior baked literals byte-for-byte.
+    const trackHeight = props.trackHeight as string || '0.75rem';
+    const trackRadius = props.trackRadius as string || '9999px';
+    const indicatorRadius = props.indicatorRadius as string || '9999px';
+    const indicatorTransition = props.indicatorTransition as string || 'width 0.3s ease';
+
+    const style = `position:relative;height:${trackHeight};width:100%;overflow:hidden;border-radius:${trackRadius};background:${trackColor}`;
     const attrs = getCommonAttributes(id, 'fb-progress', props, style);
 
     return `<div ${attrs} role="progressbar" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100">
-        <div class="fb-progress-indicator" style="height:100%;width:${value}%;background:${color};border-radius:9999px;transition:width 0.3s ease"></div>
+        <div class="fb-progress-indicator" style="height:100%;width:${value}%;background:${color};border-radius:${indicatorRadius};transition:${indicatorTransition}"></div>
     </div>`;
 }
 
 function renderInput(id: string, props: Record<string, unknown>): string {
     const placeholder = escapeHtml(String(props.placeholder || 'Enter text...'));
     const type = (props.type as string) || 'text';
-    const style = `display:flex;width:100%;height:2.5rem;padding:0 0.75rem;border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:0.875rem;background:hsl(var(--background));color:hsl(var(--foreground))`;
+    // Externalized — defaults reproduce the prior baked literals byte-for-byte.
+    const fieldHeight = props.fieldHeight as string || '2.5rem';
+    const fieldPadding = props.fieldPadding as string || '0 0.75rem';
+    const fieldFontSize = props.fieldFontSize as string || '0.875rem';
+    const style = `display:flex;width:100%;height:${fieldHeight};padding:${fieldPadding};border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:${fieldFontSize};background:hsl(var(--background));color:hsl(var(--foreground))`;
     const attrs = getCommonAttributes(id, 'fb-input', props, style);
     // Mirrors the builder's read-only preview (no client-side value binding yet).
     return `<input ${attrs} type="${escapeHtml(type)}" placeholder="${placeholder}" readonly />`;
@@ -570,7 +613,9 @@ function renderInput(id: string, props: Record<string, unknown>): string {
 function renderTextarea(id: string, props: Record<string, unknown>): string {
     const placeholder = escapeHtml(String(props.placeholder || 'Enter text...'));
     const rows = Number(props.rows) || 3;
-    const style = `display:flex;width:100%;min-height:5rem;padding:0.5rem 0.75rem;border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:0.875rem;background:hsl(var(--background));color:hsl(var(--foreground));resize:vertical`;
+    // Externalized — defaults reproduce the prior baked literals byte-for-byte.
+    const textareaMinHeight = props.textareaMinHeight as string || '5rem';
+    const style = `display:flex;width:100%;min-height:${textareaMinHeight};padding:0.5rem 0.75rem;border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:0.875rem;background:hsl(var(--background));color:hsl(var(--foreground));resize:vertical`;
     const attrs = getCommonAttributes(id, 'fb-textarea', props, style);
     return `<textarea ${attrs} rows="${rows}" placeholder="${placeholder}" readonly></textarea>`;
 }
@@ -578,12 +623,14 @@ function renderTextarea(id: string, props: Record<string, unknown>): string {
 function renderSelect(id: string, props: Record<string, unknown>): string {
     const placeholder = escapeHtml(String(props.placeholder || 'Select an option'));
     const options = Array.isArray(props.options) ? props.options : ['Option 1', 'Option 2', 'Option 3'];
+    // Externalized — defaults reproduce the prior baked literals byte-for-byte.
+    const selectChevronSize = props.selectChevronSize as string || '1rem';
     // Trigger mirrors shadcn SelectTrigger (the builder's preview): border box,
     // placeholder text, chevron. Options are emitted as a closed list so a future
     // behaviors runtime can open them — same shape the builder renders.
     const triggerStyle = `display:flex;height:2.5rem;width:100%;align-items:center;justify-content:space-between;padding:0 0.75rem;border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:0.875rem;background:hsl(var(--background));color:hsl(var(--muted-foreground))`;
     const attrs = getCommonAttributes(id, 'fb-select', props, triggerStyle);
-    const chevron = `<svg class="fb-select-chevron" style="width:1rem;height:1rem;opacity:0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+    const chevron = `<svg class="fb-select-chevron" style="width:${selectChevronSize};height:${selectChevronSize};opacity:0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
     const optionItems = options.map((opt) => `<li style="padding:0.5rem 0.75rem;cursor:pointer">${escapeHtml(String(opt))}</li>`).join('');
     return `<div ${attrs} role="combobox" aria-haspopup="listbox" aria-expanded="false">
         <span>${placeholder}</span>${chevron}
@@ -595,7 +642,12 @@ function renderBreadcrumb(id: string, props: Record<string, unknown>): string {
     const items = Array.isArray(props.items)
         ? props.items
         : [{ label: 'Home', href: '/' }, { label: 'Page', href: '/page' }];
-    const style = `display:flex;align-items:center;gap:0.5rem;font-size:0.875rem;color:hsl(var(--muted-foreground))`;
+    // Externalized — defaults reproduce the prior baked literals byte-for-byte.
+    const gap = props.gap as string || '0.5rem';
+    const fontSize = props.fontSize as string || '0.875rem';
+    const activeFontWeight = props.activeFontWeight as string || '500';
+    const separatorOpacity = props.separatorOpacity as string || '0.5';
+    const style = `display:flex;align-items:center;gap:${gap};font-size:${fontSize};color:hsl(var(--muted-foreground))`;
     const attrs = getCommonAttributes(id, 'fb-breadcrumb', props, style);
 
     const parts: string[] = [];
@@ -604,15 +656,15 @@ function renderBreadcrumb(id: string, props: Record<string, unknown>): string {
         const label = escapeHtml(String(item.label ?? ''));
         const href = item.href ? escapeHtml(String(item.href)) : '#';
         const linkStyle = isLast
-            ? 'font-weight:500;color:hsl(var(--foreground))'
+            ? `font-weight:${activeFontWeight};color:hsl(var(--foreground))`
             : 'text-decoration:none;color:hsl(var(--muted-foreground))';
         parts.push(`<li><a href="${href}" style="${linkStyle}">${label}</a></li>`);
         if (!isLast) {
-            parts.push(`<li class="fb-breadcrumb-separator" aria-hidden="true" style="opacity:0.5">/</li>`);
+            parts.push(`<li class="fb-breadcrumb-separator" aria-hidden="true" style="opacity:${separatorOpacity}">/</li>`);
         }
     });
 
-    return `<nav ${attrs} aria-label="breadcrumb"><ol style="display:flex;align-items:center;gap:0.5rem;list-style:none;margin:0;padding:0">${parts.join('')}</ol></nav>`;
+    return `<nav ${attrs} aria-label="breadcrumb"><ol style="display:flex;align-items:center;gap:${gap};list-style:none;margin:0;padding:0">${parts.join('')}</ol></nav>`;
 }
 
 // =============================================================================

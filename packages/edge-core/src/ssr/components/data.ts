@@ -386,26 +386,35 @@ function renderInfoList(id: string, props: Record<string, unknown>, propsJson: s
     const items = props.items as Array<{ label: string; value?: string }> || [];
     const columns = (props.columns as number) || 1;
 
+    // Externalized inner literals — defaults reproduce the prior baked literals byte-for-byte.
+    const borderColor = props.borderColor as string || '#f3f4f6';
+    const labelColor = props.labelColor as string || '#6b7280';
+    const labelFontSize = props.labelFontSize as string || '0.875rem';
+    const itemPadding = props.itemPadding as string || '0.75rem 0';
+    const titleFontSize = props.titleFontSize as string || '1rem';
+    const titleFontWeight = props.titleFontWeight as string || '600';
+    const gridGap = props.gridGap as string || '0 2rem';
+
     const attrs = getCommonAttributes(id, 'fb-infolist', props, '', 'infolist', propsJson);
 
     // Render items or skeleton
     const listItems = items.length > 0
         ? items.map(item => `
-            <div class="fb-infolist-item" style="display:flex;flex-direction:column;padding:0.75rem 0;border-bottom:1px solid #f3f4f6">
-                <span style="font-size:0.875rem;color:#6b7280">${escapeHtml(item.label)}</span>
+            <div class="fb-infolist-item" style="display:flex;flex-direction:column;padding:${itemPadding};border-bottom:1px solid ${borderColor}">
+                <span style="font-size:${labelFontSize};color:${labelColor}">${escapeHtml(item.label)}</span>
                 <span style="font-weight:500">${item.value !== undefined ? escapeHtml(String(item.value)) : '<span class="fb-skeleton" style="display:inline-block;width:120px;height:1rem">&nbsp;</span>'}</span>
             </div>
         `).join('')
         : Array(4).fill(0).map(() => `
-            <div class="fb-infolist-item" style="display:flex;flex-direction:column;padding:0.75rem 0;border-bottom:1px solid #f3f4f6">
+            <div class="fb-infolist-item" style="display:flex;flex-direction:column;padding:${itemPadding};border-bottom:1px solid ${borderColor}">
                 <span class="fb-skeleton" style="height:0.875rem;width:80px;margin-bottom:0.25rem">&nbsp;</span>
                 <span class="fb-skeleton" style="height:1rem;width:150px">&nbsp;</span>
             </div>
         `).join('');
 
     return `<div ${attrs}>
-        ${title ? `<h4 style="margin:0 0 1rem 0;font-size:1rem;font-weight:600">${title}</h4>` : ''}
-        <div class="fb-infolist-items fb-loading" style="display:grid;grid-template-columns:repeat(${columns},1fr);gap:0 2rem">
+        ${title ? `<h4 style="margin:0 0 1rem 0;font-size:${titleFontSize};font-weight:${titleFontWeight}">${title}</h4>` : ''}
+        <div class="fb-infolist-items fb-loading" style="display:grid;grid-template-columns:repeat(${columns},1fr);gap:${gridGap}">
             ${listItems}
         </div>
     </div>`;
@@ -454,7 +463,16 @@ function renderDataCard(id: string, props: Record<string, unknown>, childrenHtml
     const iconAlignment = props.iconAlignment as string || 'center';
     const textAlignment = props.textAlignment as string || 'center';
 
-    const style = `border:1px solid #e5e7eb;border-radius:0.5rem;overflow:hidden;text-align:${textAlignment}`;
+    // Externalized inner literals — defaults reproduce the prior baked literals byte-for-byte.
+    const cardBorderColor = props.cardBorderColor as string || '#e5e7eb';
+    const cardRadius = props.cardRadius as string || '0.5rem';
+    const subtitleColor = props.subtitleColor as string || '#6b7280';
+    const subtitleFontSize = props.subtitleFontSize as string || '0.875rem';
+    const imageHeight = props.imageHeight as string || '160px';
+    const imageBackground = props.imageBackground as string || '#f3f4f6';
+    const contentPadding = props.contentPadding as string || '1rem';
+
+    const style = `border:1px solid ${cardBorderColor};border-radius:${cardRadius};overflow:hidden;text-align:${textAlignment}`;
     const attrs = getCommonAttributes(id, 'fb-datacard', props, style, 'datacard', propsJson);
 
     // Check if we have children content - if so, don't show skeleton placeholders
@@ -474,14 +492,14 @@ function renderDataCard(id: string, props: Record<string, unknown>, childrenHtml
         : (hasChildren ? '' : '<div class="fb-skeleton" style="height:1.25rem;width:60%;margin-bottom:0.5rem">&nbsp;</div>');
 
     const subtitleHtml = subtitle
-        ? `<p style="margin:0;color:#6b7280;font-size:0.875rem">${subtitle}</p>`
+        ? `<p style="margin:0;color:${subtitleColor};font-size:${subtitleFontSize}">${subtitle}</p>`
         : (hasChildren ? '' : '<div class="fb-skeleton" style="height:0.875rem;width:80%">&nbsp;</div>');
 
     return `<div ${attrs}>
-        ${image ? `<div class="fb-datacard-image" style="height:160px;background:#f3f4f6">
+        ${image ? `<div class="fb-datacard-image" style="height:${imageHeight};background:${imageBackground}">
             <img src="${escapeHtml(image)}" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy" />
         </div>` : ''}
-        <div class="fb-datacard-content" style="padding:1rem">
+        <div class="fb-datacard-content" style="padding:${contentPadding}">
             ${iconHtml}
             ${titleHtml}
             ${subtitleHtml}

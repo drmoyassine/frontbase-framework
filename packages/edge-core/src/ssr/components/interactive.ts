@@ -235,7 +235,12 @@ function renderButton(id: string, props: Record<string, unknown>, propsJson: str
         xl: 'padding:0.75rem 1.5rem;font-size:1.25rem',
     };
 
-    const style = `${variantStyles[variant] || variantStyles.default};${sizeStyles[size] || sizeStyles.md};border-radius:0.375rem;cursor:pointer;font-weight:500;transition:all 0.15s;${fullWidth ? 'width:100%' : 'width:fit-content'};${disabled ? 'opacity:0.5;cursor:not-allowed' : ''}`;
+    // Externalized root geometry — defaults reproduce the prior baked literals byte-for-byte.
+    const borderRadius = props.borderRadius as string || '0.375rem';
+    const fontWeight = props.fontWeight as string || '500';
+    const transition = props.transition as string || 'all 0.15s';
+
+    const style = `${variantStyles[variant] || variantStyles.default};${sizeStyles[size] || sizeStyles.md};border-radius:${borderRadius};cursor:pointer;font-weight:${fontWeight};transition:${transition};${fullWidth ? 'width:100%' : 'width:fit-content'};${disabled ? 'opacity:0.5;cursor:not-allowed' : ''}`;
 
     // Build action-specific attributes
     let actionAttrs = '';
@@ -286,8 +291,12 @@ function renderButton(id: string, props: Record<string, unknown>, propsJson: str
     // Note: We use getCommonAttributes to handle className and extra styles
     const attrs = getCommonAttributes(id, `fb-button fb-button-${variant}`, props, style, 'button', propsJson);
 
+    // Externalized loading indicator — defaults reproduce the prior baked literal byte-for-byte.
+    const loadingIndicator = props.loadingIndicator as string || '⏳';
+    const loadingGap = props.loadingGap as string || '0.5rem';
+
     return `<button ${attrs} ${actionAttrs} ${disabled ? 'disabled' : ''}>
-        ${loading ? '<span class="fb-spinner" style="margin-right:0.5rem">⏳</span>' : ''}
+        ${loading ? `<span class="fb-spinner" style="margin-right:${loadingGap}">${loadingIndicator}</span>` : ''}
         ${label}
     </button>`;
 }
@@ -310,10 +319,15 @@ function renderTabs(id: string, props: Record<string, unknown>, childrenHtml: st
     const activeTab = props.activeTab as string || (tabs[0]?.id ?? '');
     const variant = props.variant as string || 'default';
 
+    // Externalized child hexes — defaults reproduce the prior baked literals byte-for-byte.
+    const activeColor = props.activeColor as string || '#3b82f6';
+    const inactiveColor = props.inactiveColor as string || '#6b7280';
+    const borderColor = props.borderColor as string || '#e5e7eb';
+
     // Render tab buttons
     const tabButtons = tabs.map((tab) => {
         const isActive = tab.id === activeTab;
-        const activeStyle = isActive ? 'border-bottom:2px solid #3b82f6;color:#3b82f6' : 'border-bottom:2px solid transparent;color:#6b7280';
+        const activeStyle = isActive ? `border-bottom:2px solid ${activeColor};color:${activeColor}` : `border-bottom:2px solid transparent;color:${inactiveColor}`;
         return `<button class="fb-tab-button" data-tab-id="${tab.id}" style="padding:0.5rem 1rem;background:none;border:none;${activeStyle};cursor:pointer;font-weight:500">${escapeHtml(tab.label)}</button>`;
     }).join('');
 
@@ -326,7 +340,7 @@ function renderTabs(id: string, props: Record<string, unknown>, childrenHtml: st
     const attrs = getCommonAttributes(id, `fb-tabs fb-tabs-${variant}`, props, '', 'tabs', propsJson);
 
     return `<div ${attrs}>
-        <div class="fb-tabs-list" style="display:flex;border-bottom:1px solid #e5e7eb;margin-bottom:1rem">${tabButtons}</div>
+        <div class="fb-tabs-list" style="display:flex;border-bottom:1px solid ${borderColor};margin-bottom:1rem">${tabButtons}</div>
         <div class="fb-tabs-content">${tabPanels}${childrenHtml}</div>
     </div>`;
 }
@@ -336,14 +350,17 @@ function renderAccordion(id: string, props: Record<string, unknown>, childrenHtm
     const allowMultiple = props.allowMultiple as boolean || false;
     const openItems = (props.openItems as string[]) || [];
 
+    // Externalized child hex — default reproduces the prior baked literal byte-for-byte.
+    const borderColor = props.borderColor as string || '#e5e7eb';
+
     const accordionItems = items.map((item) => {
         const isOpen = openItems.includes(item.id);
-        return `<div class="fb-accordion-item" data-accordion-id="${item.id}" style="border:1px solid #e5e7eb;margin-bottom:-1px">
+        return `<div class="fb-accordion-item" data-accordion-id="${item.id}" style="border:1px solid ${borderColor};margin-bottom:-1px">
             <button class="fb-accordion-trigger" style="width:100%;padding:1rem;display:flex;justify-content:space-between;align-items:center;background:none;border:none;cursor:pointer;font-weight:500;text-align:left">
                 ${escapeHtml(item.title)}
                 <span style="transform:rotate(${isOpen ? '180deg' : '0deg'});transition:transform 0.2s">▼</span>
             </button>
-            <div class="fb-accordion-content" style="${isOpen ? '' : 'display:none'};padding:1rem;border-top:1px solid #e5e7eb">${item.content ? escapeHtml(String(item.content)) : ''}</div>
+            <div class="fb-accordion-content" style="${isOpen ? '' : 'display:none'};padding:1rem;border-top:1px solid ${borderColor}">${item.content ? escapeHtml(String(item.content)) : ''}</div>
         </div>`;
     }).join('');
 
@@ -367,12 +384,17 @@ function renderModal(id: string, props: Record<string, unknown>, childrenHtml: s
         full: '95vw',
     };
 
-    const style = `display:${isOpen ? 'flex' : 'none'};position:fixed;inset:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:1000`;
+    // Externalized child hexes — defaults reproduce the prior baked literals byte-for-byte.
+    const scrimColor = props.scrimColor as string || 'rgba(0,0,0,0.5)';
+    const contentBg = props.contentBg as string || '#fff';
+    const borderColor = props.borderColor as string || '#e5e7eb';
+
+    const style = `display:${isOpen ? 'flex' : 'none'};position:fixed;inset:0;background:${scrimColor};align-items:center;justify-content:center;z-index:1000`;
     const attrs = getCommonAttributes(id, 'fb-modal', props, style, 'modal', propsJson);
 
     return `<div ${attrs}>
-        <div class="fb-modal-content" style="background:#fff;border-radius:0.5rem;width:${sizeWidths[size] || sizeWidths.md};max-height:90vh;overflow:auto">
-            ${title ? `<div class="fb-modal-header" style="padding:1rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center">
+        <div class="fb-modal-content" style="background:${contentBg};border-radius:0.5rem;width:${sizeWidths[size] || sizeWidths.md};max-height:90vh;overflow:auto">
+            ${title ? `<div class="fb-modal-header" style="padding:1rem;border-bottom:1px solid ${borderColor};display:flex;justify-content:space-between;align-items:center">
                 <h3 style="margin:0;font-size:1.125rem">${title}</h3>
                 <button class="fb-modal-close" style="background:none;border:none;font-size:1.5rem;cursor:pointer;line-height:1">×</button>
             </div>` : ''}
@@ -395,12 +417,18 @@ function renderDropdown(id: string, props: Record<string, unknown>, childrenHtml
     const style = `position:relative;display:inline-block`;
     const attrs = getCommonAttributes(id, 'fb-dropdown', props, style, 'dropdown', propsJson);
 
+    // Externalized child hexes — defaults reproduce the prior baked literals byte-for-byte.
+    const triggerBg = props.triggerBg as string || '#f3f4f6';
+    const triggerBorder = props.triggerBorder as string || '#d1d5db';
+    const menuBg = props.menuBg as string || '#fff';
+    const menuBorder = props.menuBorder as string || '#e5e7eb';
+
     return `<div ${attrs}>
-        <button class="fb-dropdown-trigger" style="padding:0.5rem 1rem;background:#f3f4f6;border:1px solid #d1d5db;border-radius:0.375rem;cursor:pointer;display:flex;align-items:center;gap:0.5rem">
+        <button class="fb-dropdown-trigger" style="padding:0.5rem 1rem;background:${triggerBg};border:1px solid ${triggerBorder};border-radius:0.375rem;cursor:pointer;display:flex;align-items:center;gap:0.5rem">
             ${label}
             <span>▼</span>
         </button>
-        <div class="fb-dropdown-menu" style="display:none;position:absolute;top:100%;left:0;min-width:160px;background:#fff;border:1px solid #e5e7eb;border-radius:0.375rem;box-shadow:0 4px 6px rgba(0,0,0,0.1);z-index:100">
+        <div class="fb-dropdown-menu" style="display:none;position:absolute;top:100%;left:0;min-width:160px;background:${menuBg};border:1px solid ${menuBorder};border-radius:0.375rem;box-shadow:0 4px 6px rgba(0,0,0,0.1);z-index:100">
             ${menuItems}${childrenHtml}
         </div>
     </div>`;
@@ -414,8 +442,12 @@ function renderToggle(id: string, props: Record<string, unknown>, propsJson: str
     const style = `display:inline-flex;align-items:center;gap:0.5rem;cursor:${disabled ? 'not-allowed' : 'pointer'};opacity:${disabled ? '0.5' : '1'}`;
     const attrs = getCommonAttributes(id, 'fb-toggle', props, style, 'toggle', propsJson);
 
+    // Externalized child hexes — defaults reproduce the prior baked literals byte-for-byte.
+    const trackOn = props.trackOn as string || '#3b82f6';
+    const trackOff = props.trackOff as string || '#d1d5db';
+
     return `<label ${attrs}>
-        <span class="fb-toggle-track" style="position:relative;width:44px;height:24px;background:${checked ? '#3b82f6' : '#d1d5db'};border-radius:9999px;transition:background 0.2s">
+        <span class="fb-toggle-track" style="position:relative;width:44px;height:24px;background:${checked ? trackOn : trackOff};border-radius:9999px;transition:background 0.2s">
             <span class="fb-toggle-thumb" style="position:absolute;top:2px;left:${checked ? '22px' : '2px'};width:20px;height:20px;background:#fff;border-radius:50%;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></span>
         </span>
         ${label ? `<span>${label}</span>` : ''}
@@ -431,9 +463,14 @@ function renderCheckbox(id: string, props: Record<string, unknown>, propsJson: s
     const style = `display:inline-flex;align-items:center;gap:0.5rem;cursor:${disabled ? 'not-allowed' : 'pointer'};opacity:${disabled ? '0.5' : '1'}`;
     const attrs = getCommonAttributes(id, 'fb-checkbox', props, style, 'checkbox', propsJson);
 
+    // Externalized child hexes — defaults reproduce the prior baked literals byte-for-byte.
+    const boxOn = props.boxOn as string || '#3b82f6';
+    const boxOff = props.boxOff as string || '#d1d5db';
+    const checkColor = props.checkColor as string || '#fff';
+
     return `<label ${attrs}>
-        <span class="fb-checkbox-box" style="width:18px;height:18px;border:2px solid ${checked ? '#3b82f6' : '#d1d5db'};border-radius:0.25rem;background:${checked ? '#3b82f6' : 'transparent'};display:flex;align-items:center;justify-content:center">
-            ${checked ? '<span style="color:#fff;font-size:12px">✓</span>' : ''}
+        <span class="fb-checkbox-box" style="width:18px;height:18px;border:2px solid ${checked ? boxOn : boxOff};border-radius:0.25rem;background:${checked ? boxOn : 'transparent'};display:flex;align-items:center;justify-content:center">
+            ${checked ? `<span style="color:${checkColor};font-size:12px">✓</span>` : ''}
         </span>
         ${label ? `<span>${label}</span>` : ''}
         <input type="checkbox" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} style="position:absolute;opacity:0;pointer-events:none" />
@@ -449,9 +486,13 @@ function renderRadio(id: string, props: Record<string, unknown>, propsJson: stri
     const style = `display:inline-flex;align-items:center;gap:0.5rem;cursor:${disabled ? 'not-allowed' : 'pointer'};opacity:${disabled ? '0.5' : '1'}`;
     const attrs = getCommonAttributes(id, 'fb-radio', props, style, 'radio', propsJson);
 
+    // Externalized child hexes — defaults reproduce the prior baked literals byte-for-byte.
+    const circleOn = props.circleOn as string || '#3b82f6';
+    const circleOff = props.circleOff as string || '#d1d5db';
+
     return `<label ${attrs}>
-        <span class="fb-radio-circle" style="width:18px;height:18px;border:2px solid ${checked ? '#3b82f6' : '#d1d5db'};border-radius:50%;display:flex;align-items:center;justify-content:center">
-            ${checked ? '<span style="width:10px;height:10px;background:#3b82f6;border-radius:50%"></span>' : ''}
+        <span class="fb-radio-circle" style="width:18px;height:18px;border:2px solid ${checked ? circleOn : circleOff};border-radius:50%;display:flex;align-items:center;justify-content:center">
+            ${checked ? `<span style="width:10px;height:10px;background:${circleOn};border-radius:50%"></span>` : ''}
         </span>
         ${label ? `<span>${label}</span>` : ''}
         <input type="radio" name="${name}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} style="position:absolute;opacity:0;pointer-events:none" />
@@ -465,10 +506,14 @@ function renderTooltip(id: string, props: Record<string, unknown>, childrenHtml:
     const style = `position:relative;display:inline-block`;
     const attrs = getCommonAttributes(id, 'fb-tooltip', props, style, 'tooltip', propsJson);
 
+    // Externalized child hexes — defaults reproduce the prior baked literals byte-for-byte.
+    const tooltipBg = props.tooltipBg as string || '#1f2937';
+    const tooltipColor = props.tooltipColor as string || '#fff';
+
     // Tooltip content is hidden by default, shown on hover via CSS/JS
     return `<span ${attrs}>
         ${childrenHtml}
-        <span class="fb-tooltip-content" data-position="${position}" style="display:none;position:absolute;background:#1f2937;color:#fff;padding:0.25rem 0.5rem;border-radius:0.25rem;font-size:0.75rem;white-space:nowrap;z-index:100">${content}</span>
+        <span class="fb-tooltip-content" data-position="${position}" style="display:none;position:absolute;background:${tooltipBg};color:${tooltipColor};padding:0.25rem 0.5rem;border-radius:0.25rem;font-size:0.75rem;white-space:nowrap;z-index:100">${content}</span>
     </span>`;
 }
 
@@ -481,36 +526,49 @@ function renderAuthForm(id: string, props: Record<string, unknown>, propsJson: s
     const showToggle = formType === 'both';
     const defaultIsLogin = formType !== 'signup';
 
+    // Externalized palette/geometry — defaults reproduce the prior baked literals byte-for-byte.
+    const containerMaxWidth = props.containerMaxWidth as string || '400px';
+    const fieldBorder = props.fieldBorder as string || '#d4d4d8';
+    const labelColor = props.labelColor as string || '#374151';
+    const titleColor = props.titleColor as string || '#18181b';
+    const descriptionColor = props.descriptionColor as string || '#71717a';
+    const dividerColor = props.dividerColor as string || '#e4e4e7';
+    const dividerTextColor = props.dividerTextColor as string || '#a1a1aa';
+    const errorBg = props.errorBg as string || '#fef2f2';
+    const errorBorder = props.errorBorder as string || '#fecaca';
+    const errorText = props.errorText as string || '#dc2626';
+    const toggleTextColor = props.toggleTextColor as string || '#71717a';
+
     const socialButtons = providers.map(p => {
         const name = p.charAt(0).toUpperCase() + p.slice(1);
-        return `<button type="button" class="fb-social-btn" data-provider="${p}" style="width:100%;padding:0.5rem;background:#fff;border:1px solid #d4d4d8;border-radius:0.375rem;font-size:0.8125rem;cursor:pointer">Continue with ${name}</button>`;
+        return `<button type="button" class="fb-social-btn" data-provider="${p}" style="width:100%;padding:0.5rem;background:#fff;border:1px solid ${fieldBorder};border-radius:0.375rem;font-size:0.8125rem;cursor:pointer">Continue with ${name}</button>`;
     }).join('');
 
     const attrs = getCommonAttributes(id, 'fb-auth-form', props, '', 'authform', propsJson);
 
     return `<div ${attrs}>
-        <div style="max-width:400px;margin:0 auto;padding:2rem">
-            <h2 style="margin:0 0 0.25rem;font-size:1.5rem;font-weight:700;color:#18181b;text-align:center">${title}</h2>
-            ${description ? `<p style="margin:0 0 1.5rem;color:#71717a;font-size:0.875rem;text-align:center">${description}</p>` : '<div style="margin-bottom:1.5rem"></div>'}
+        <div style="max-width:${containerMaxWidth};margin:0 auto;padding:2rem">
+            <h2 style="margin:0 0 0.25rem;font-size:1.5rem;font-weight:700;color:${titleColor};text-align:center">${title}</h2>
+            ${description ? `<p style="margin:0 0 1.5rem;color:${descriptionColor};font-size:0.875rem;text-align:center">${description}</p>` : '<div style="margin-bottom:1.5rem"></div>'}
             ${providers.length > 0 ? `
                 <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem">${socialButtons}</div>
                 <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem">
-                    <div style="flex:1;height:1px;background:#e4e4e7"></div>
-                    <span style="color:#a1a1aa;font-size:0.75rem;text-transform:uppercase">or</span>
-                    <div style="flex:1;height:1px;background:#e4e4e7"></div>
+                    <div style="flex:1;height:1px;background:${dividerColor}"></div>
+                    <span style="color:${dividerTextColor};font-size:0.75rem;text-transform:uppercase">or</span>
+                    <div style="flex:1;height:1px;background:${dividerColor}"></div>
                 </div>
             ` : ''}
-            <div id="${id}-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:0.625rem;border-radius:0.375rem;font-size:0.8125rem;margin-bottom:0.75rem"></div>
+            <div id="${id}-error" style="display:none;background:${errorBg};border:1px solid ${errorBorder};color:${errorText};padding:0.625rem;border-radius:0.375rem;font-size:0.8125rem;margin-bottom:0.75rem"></div>
             <form id="${id}-form" style="display:flex;flex-direction:column;gap:0.75rem">
                 <div>
-                    <label style="display:block;font-size:0.8125rem;font-weight:500;color:#374151;margin-bottom:0.25rem">Email</label>
+                    <label style="display:block;font-size:0.8125rem;font-weight:500;color:${labelColor};margin-bottom:0.25rem">Email</label>
                     <input type="email" required autocomplete="email" placeholder="you@example.com"
-                        style="width:100%;padding:0.5rem 0.75rem;border:1px solid #d4d4d8;border-radius:0.375rem;font-size:0.875rem;outline:none;box-sizing:border-box" />
+                        style="width:100%;padding:0.5rem 0.75rem;border:1px solid ${fieldBorder};border-radius:0.375rem;font-size:0.875rem;outline:none;box-sizing:border-box" />
                 </div>
                 <div>
-                    <label style="display:block;font-size:0.8125rem;font-weight:500;color:#374151;margin-bottom:0.25rem">Password</label>
+                    <label style="display:block;font-size:0.8125rem;font-weight:500;color:${labelColor};margin-bottom:0.25rem">Password</label>
                     <input type="password" required autocomplete="${defaultIsLogin ? 'current-password' : 'new-password'}" placeholder="••••••••" minlength="6"
-                        style="width:100%;padding:0.5rem 0.75rem;border:1px solid #d4d4d8;border-radius:0.375rem;font-size:0.875rem;outline:none;box-sizing:border-box" />
+                        style="width:100%;padding:0.5rem 0.75rem;border:1px solid ${fieldBorder};border-radius:0.375rem;font-size:0.875rem;outline:none;box-sizing:border-box" />
                 </div>
                 <button type="submit"
                     style="width:100%;padding:0.625rem;background:${primaryColor};color:#fff;border:none;border-radius:0.375rem;font-size:0.875rem;font-weight:600;cursor:pointer">
@@ -518,7 +576,7 @@ function renderAuthForm(id: string, props: Record<string, unknown>, propsJson: s
                 </button>
             </form>
             ${showToggle ? `
-                <p style="text-align:center;margin-top:1rem;font-size:0.8125rem;color:#71717a">
+                <p style="text-align:center;margin-top:1rem;font-size:0.8125rem;color:${toggleTextColor}">
                     ${defaultIsLogin ? "Don't have an account?" : 'Already have an account?'}
                     <a href="#" style="color:${primaryColor};font-weight:500;text-decoration:none;margin-left:0.25rem" data-fb-toggle-auth>${defaultIsLogin ? 'Sign Up' : 'Sign In'}</a>
                 </p>

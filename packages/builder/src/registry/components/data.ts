@@ -87,6 +87,13 @@ export async function registerDataComponents(): Promise<void> {
             props: [
                 { name: 'title', label: 'Title', type: 'text', group: 'Content' },
                 { name: 'description', label: 'Description', type: 'textarea', group: 'Content' },
+                { name: 'cardBorderColor', label: 'Border Color', type: 'color', default: '#e5e7eb', group: 'Style' },
+                { name: 'cardRadius', label: 'Border Radius', type: 'text', default: '0.5rem', group: 'Geometry' },
+                { name: 'subtitleColor', label: 'Subtitle Color', type: 'color', default: '#6b7280', group: 'Style' },
+                { name: 'subtitleFontSize', label: 'Subtitle Font Size', type: 'text', default: '0.875rem', group: 'Typography' },
+                { name: 'imageHeight', label: 'Image Height', type: 'text', default: '160px', group: 'Geometry' },
+                { name: 'imageBackground', label: 'Image Background', type: 'color', default: '#f3f4f6', group: 'Style' },
+                { name: 'contentPadding', label: 'Content Padding', type: 'text', default: '1rem', group: 'Geometry' },
             ],
             allowChildren: true,
             exampleProps: { title: 'Card Title' },
@@ -163,6 +170,36 @@ export async function registerDataComponents(): Promise<void> {
         defaultProps: { columns: 3, layout: 'grid' },
     };
 
+    // InfoList — key/value list (data-driven, hydrates client-side)
+    const infoListComponent: ComponentDefinition = {
+        type: 'InfoList',
+        displayName: 'Info List',
+        editable: {
+            displayName: 'Info List',
+            category: 'data',
+            icon: 'list',
+            description: 'Key/value list with labels and values',
+            props: [
+                { name: 'title', label: 'Title', type: 'text', group: 'Content' },
+                { name: 'items', label: 'Items', type: 'array', group: 'Content',
+                    description: 'Array of { label, value }' },
+                { name: 'columns', label: 'Columns', type: 'number', default: 1, min: 1, max: 4, group: 'Layout' },
+                { name: 'borderColor', label: 'Item Border Color', type: 'color', default: '#f3f4f6', group: 'Style' },
+                { name: 'labelColor', label: 'Label Color', type: 'color', default: '#6b7280', group: 'Style' },
+                { name: 'labelFontSize', label: 'Label Font Size', type: 'text', default: '0.875rem', group: 'Typography' },
+                { name: 'itemPadding', label: 'Item Padding', type: 'text', default: '0.75rem 0', group: 'Geometry' },
+                { name: 'titleFontSize', label: 'Title Font Size', type: 'text', default: '1rem', group: 'Typography' },
+                { name: 'titleFontWeight', label: 'Title Font Weight', type: 'text', default: '600', group: 'Typography' },
+                { name: 'gridGap', label: 'Grid Gap', type: 'text', default: '0 2rem', group: 'Geometry' },
+            ],
+            allowChildren: false,
+            exampleProps: { items: [{ label: 'Status', value: 'Active' }] },
+            tags: ['list', 'info', 'key-value', 'details'],
+        },
+        eSSRRenderer: createDataRenderer('InfoList'),
+        defaultProps: { items: [], columns: 1 },
+    };
+
     globalRegistry.registerMany([
         dataTableComponent,
         chartComponent,
@@ -170,5 +207,6 @@ export async function registerDataComponents(): Promise<void> {
         kpiCardComponent,
         gridComponent,
         repeaterComponent,
+        infoListComponent,
     ]);
 }

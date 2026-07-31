@@ -61,6 +61,16 @@ export interface NavbarProps {
     showDarkModeToggle?: boolean;
     // Global scale factor (0.8 - 1.5)
     scale?: number;
+    // Externalized scale bases (defaults reproduce the prior baked literals).
+    logoHeightBase?: string;
+    iconSizeBase?: string;
+    logoFontSizeBase?: string;
+    logoFontWeight?: string;
+    menuFontSizeBase?: string;
+    navPaddingBase?: string;
+    navGapBase?: string;
+    menuGapBase?: string;
+    buttonGapBase?: string;
 }
 
 // Helper to render CTA-style links (DRY for both primary and secondary buttons)
@@ -126,20 +136,17 @@ function renderNewFormat(
     const logoLink = logo.link || '/';
     let logoHtml: string;
 
-    // DEBUG: Log logo props to trace rendering path
-    console.log('[Navbar SSR] Logo props:', {
-        type: logo.type,
-        showIcon: logo.showIcon,
-        useProjectLogo: (logo as any).useProjectLogo,
-        imageUrl: logo.imageUrl ? logo.imageUrl.substring(0, 50) + '...' : 'NOT SET',
-        text: logo.text,
-        scale,
-    });
+    // Externalized scale bases — defaults reproduce the prior baked literals byte-for-byte.
+    // Operand order (base * scale) is preserved so parseFloat(base)*scale === base*scale.
+    const logoHeightBase = props.logoHeightBase as string || '2rem';
+    const iconSizeBase = props.iconSizeBase as string || '1.5rem';
+    const logoFontSizeBase = props.logoFontSizeBase as string || '1.25rem';
+    const logoFontWeight = props.logoFontWeight as string || '700';
 
     // Apply scale to sizes
-    const logoHeight = `${2 * scale}rem`;
-    const iconSize = `${1.5 * scale}rem`;
-    const logoFontSize = `${1.25 * scale}rem`;
+    const logoHeight = `${parseFloat(logoHeightBase) * scale}rem`;
+    const iconSize = `${parseFloat(iconSizeBase) * scale}rem`;
+    const logoFontSize = `${parseFloat(logoFontSizeBase) * scale}rem`;
 
     if (logo.type === 'image' && logo.imageUrl) {
         // Use renderImage primitive with scaled size
@@ -159,15 +166,16 @@ function renderNewFormat(
             width: iconSize,
             objectFit: 'contain',
         });
-        const brandText = `<span id="${id}-logo-text" style="font-size: ${logoFontSize}; font-weight: 700;">${escapeHtml(logo.text || 'YourBrand')}</span>`;
+        const brandText = `<span id="${id}-logo-text" style="font-size: ${logoFontSize}; font-weight: ${logoFontWeight};">${escapeHtml(logo.text || 'YourBrand')}</span>`;
         logoHtml = `${iconImg}${brandText}`;
     } else {
         // Text-only logo with scaled font size
-        logoHtml = `<span id="${id}-logo-text" style="font-size: ${logoFontSize}; font-weight: 700;">${escapeHtml(logo.text || 'YourBrand')}</span>`;
+        logoHtml = `<span id="${id}-logo-text" style="font-size: ${logoFontSize}; font-weight: ${logoFontWeight};">${escapeHtml(logo.text || 'YourBrand')}</span>`;
     }
 
     // Menu items HTML with scroll support (apply scale to font size)
-    const menuFontSize = `${0.875 * scale}rem`; // 14px base
+    const menuFontSizeBase = props.menuFontSizeBase as string || '0.875rem';
+    const menuFontSize = `${parseFloat(menuFontSizeBase) * scale}rem`; // 14px base
     const menuItemsHtml = menuItems.map(item => {
         const href = item.navType === 'scroll' ? item.target : item.target;
         const scrollAttr = item.navType === 'scroll' ? `data-scroll-to="${escapeHtml(item.target)}"` : '';
@@ -235,11 +243,15 @@ function renderNewFormat(
         );
     }
 
-    // Computed scaled gap values
-    const navPadding = `${1 * scale}rem`; // py-4 = 1rem
-    const navGap = `${2 * scale}rem`; // gap-8 = 2rem
-    const menuGap = `${1.5 * scale}rem`; // gap-6 = 1.5rem
-    const buttonGap = `${0.75 * scale}rem`; // gap-3 = 0.75rem
+    // Computed scaled gap values — bases externalized, operand order preserved.
+    const navPaddingBase = props.navPaddingBase as string || '1rem';
+    const navGapBase = props.navGapBase as string || '2rem';
+    const menuGapBase = props.menuGapBase as string || '1.5rem';
+    const buttonGapBase = props.buttonGapBase as string || '0.75rem';
+    const navPadding = `${parseFloat(navPaddingBase) * scale}rem`; // py-4 = 1rem
+    const navGap = `${parseFloat(navGapBase) * scale}rem`; // gap-8 = 2rem
+    const menuGap = `${parseFloat(menuGapBase) * scale}rem`; // gap-6 = 1.5rem
+    const buttonGap = `${parseFloat(buttonGapBase) * scale}rem`; // gap-3 = 0.75rem
 
     return `
         <header id="${id}" class="${headerClasses}" style="${inlineStyles}">

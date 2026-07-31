@@ -106,6 +106,15 @@ export async function registerLandingComponents(): Promise<void> {
                 { name: 'links', label: 'Navigation Links', type: 'array', group: 'Content' },
                 { name: 'CTA', label: 'CTA Button Text', type: 'text', group: 'Actions' },
                 { name: 'CTALink', label: 'CTA Link', type: 'url', group: 'Actions' },
+                { name: 'logoHeightBase', label: 'Logo Height Base', type: 'text', default: '2rem', group: 'Scale', description: 'Multiplied by the scale factor' },
+                { name: 'iconSizeBase', label: 'Icon Size Base', type: 'text', default: '1.5rem', group: 'Scale' },
+                { name: 'logoFontSizeBase', label: 'Logo Font Size Base', type: 'text', default: '1.25rem', group: 'Scale' },
+                { name: 'logoFontWeight', label: 'Logo Font Weight', type: 'text', default: '700', group: 'Typography' },
+                { name: 'menuFontSizeBase', label: 'Menu Font Size Base', type: 'text', default: '0.875rem', group: 'Scale' },
+                { name: 'navPaddingBase', label: 'Nav Padding Base', type: 'text', default: '1rem', group: 'Scale' },
+                { name: 'navGapBase', label: 'Nav Gap Base', type: 'text', default: '2rem', group: 'Scale' },
+                { name: 'menuGapBase', label: 'Menu Gap Base', type: 'text', default: '1.5rem', group: 'Scale' },
+                { name: 'buttonGapBase', label: 'Button Gap Base', type: 'text', default: '0.75rem', group: 'Scale' },
             ],
             allowChildren: false,
             exampleProps: { logo: 'YourBrand' },
@@ -197,6 +206,29 @@ export async function registerLandingComponents(): Promise<void> {
         defaultProps: { displayMode: 'static', logoSize: 'md', speed: 20, pauseOnHover: true, grayscale: true },
     };
 
+    // FAQ
+    const faqComponent: ComponentDefinition = {
+        type: 'FAQ',
+        displayName: 'FAQ',
+        editable: {
+            displayName: 'FAQ Section',
+            category: 'landing',
+            icon: 'help-circle',
+            description: 'Frequently asked questions section',
+            props: [
+                { name: 'title', label: 'Section Title', type: 'text', default: 'FAQ', group: 'Content' },
+                { name: 'items', label: 'Questions', type: 'array', group: 'Content',
+                    description: 'Array of { id, title, content }' },
+                { name: 'allowMultiple', label: 'Allow Multiple Open', type: 'boolean', default: false, group: 'State' },
+            ],
+            allowChildren: false,
+            exampleProps: { title: 'FAQ', items: [{ id: 'q1', title: 'Question?', content: 'Answer.' }] },
+            tags: ['faq', 'questions', 'accordion', 'landing'],
+        },
+        eSSRRenderer: createLandingRenderer('FAQ', landingRenderers.renderFAQ),
+        defaultProps: { title: 'FAQ', items: [] },
+    };
+
     globalRegistry.registerMany([
         heroComponent,
         featuresComponent,
@@ -205,5 +237,6 @@ export async function registerLandingComponents(): Promise<void> {
         footerComponent,
         ctaComponent,
         logoCloudComponent,
+        faqComponent,
     ]);
 }
