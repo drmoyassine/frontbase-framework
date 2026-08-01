@@ -186,10 +186,8 @@ export function registerEdgeProvidersRoutes(
         const b = await c.req.json().catch(() => ({})) as {
             provider?: string; credentials?: Record<string, unknown>;
         };
-        const known = ['cloudflare', 'supabase', 'vercel', 'netlify', 'deno', 'upstash', 'neon'];
-        if (!known.includes(String(b.provider ?? ''))) {
-            return c.json({ success: false, detail: `Unsupported provider: ${String(b.provider ?? '')}` });
-        }
+        // The dispatcher returns "Unsupported provider: <name>" for anything not
+        // in the strategy registry, so no separate allowlist is needed here.
         return c.json(await testProvider(String(b.provider ?? ''), b.credentials ?? {}));
     });
 
