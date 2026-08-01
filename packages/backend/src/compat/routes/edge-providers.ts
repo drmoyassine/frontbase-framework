@@ -13,6 +13,12 @@ import type { SecretCipher } from '../../db/secret-cipher.js';
 import { serializeEdgeResource } from './edge-shapes.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 import { initStrategies, testProvider } from './edge-providers/strategies/index.js';
+import {
+    initResourceStrategies,
+    discoverResources,
+    createProviderResource,
+    listEnginesForProvider,
+} from './edge-providers/strategies/resources/index.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -58,6 +64,8 @@ export function registerEdgeProvidersRoutes(
 ): void {
     // Initialize provider test strategies with external fetch implementation
     initStrategies(externalFetch);
+    // Initialize provider resource strategies (discover / create / list-engines)
+    initResourceStrategies(externalFetch);
 
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
         if (config === undefined) return undefined;
@@ -201,31 +209,51 @@ export function registerEdgeProvidersRoutes(
     });
 
     // POST /api/edge-providers/discover
+    // Raw-credentials discovery (credentials passed inline in the body, no account lookup).
     app.post('/api/edge-providers/discover', async (c) => {
-        const body = await c.req.json().catch(() => ({})) as { provider?: string };
-        return c.json({ success: false, detail: `Discovery not supported for provider: ${String(body.provider ?? '')}` });
+        const body = await c.req.json().catch(() => ({})) as {
+            provider?: string; credentials?: Record<string, unknown>;
+        };
+        return c.json(await discoverResources(String(body.provider ?? ''), body.credentials ?? {}));
     });
 
     // POST /api/edge-providers/discover-by-account/{account_id}
     // SPA contract: `data.success && data.resources` -> [{id,name,type}]; else show `data.detail`.
-    // Resource discovery is not feasible in a portable community worker — return an honest
-    // stub so the SPA falls through to setDiscoverError(data.detail) gracefully.
     app.post('/api/edge-providers/discover-by-account/:account_id', async (c) => {
-        if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
-            return providerNotFound(c);
+        const account = await providerFor(c.get('tenant'), c.req.param('account_id'));
+        if (!account) return providerNotFound(c);
+        const store = p2(c.get('tenant'));
+        let creds: Record<string, unknown> = {};
+        try {
+            creds = await store.getEdgeResourceConfig(c.req.param('account_id')) ?? {};
+        } catch {
+            return c.json({ success: false, detail: 'Credentials not available for this account' });
         }
-        return c.json({ success: false, detail: 'Resource discovery not supported in community worker' });
+        return c.json(await discoverResources(String(account.provider ?? ''), creds));
     });
 
     // POST /api/edge-providers/create-resource-by-account/{account_id}
-    // SPA contract: `data.success && data.resource` (reads data.resource.id); else show `data.detail`.
-    // Resource creation is not supported in a portable community worker — honest stub. NOTE:
-    // do NOT upsertEdgeResource here; the previous stub polluted the tenant's provider list.
+    // SPA contract: `data.success && data.resource` (forwards data.resource whole); else show `data.detail`.
     app.post('/api/edge-providers/create-resource-by-account/:account_id', async (c) => {
-        if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
-            return providerNotFound(c);
+        const account = await providerFor(c.get('tenant'), c.req.param('account_id'));
+        if (!account) return providerNotFound(c);
+        const b = await c.req.json().catch(() => ({})) as {
+            resource_type?: string; name?: string; region?: string;
+        };
+        const store = p2(c.get('tenant'));
+        let creds: Record<string, unknown> = {};
+        try {
+            creds = await store.getEdgeResourceConfig(c.req.param('account_id')) ?? {};
+        } catch {
+            return c.json({ success: false, detail: 'Credentials not available for this account' });
         }
-        return c.json({ success: false, detail: 'Resource creation not supported in community worker' });
+        return c.json(await createProviderResource(
+            String(account.provider ?? ''),
+            creds,
+            String(b.resource_type ?? ''),
+            String(b.name ?? ''),
+            b.region,
+        ));
     });
 
     // GET /api/edge-providers/accounts/{account_id}/tables
@@ -250,12 +278,19 @@ export function registerEdgeProvidersRoutes(
     });
 
     // POST /api/edge-providers/{account_id}/list-engines
+    // Live-fetches engines/functions from the provider (Workers, Deno apps, etc.).
+    // SPA contract: `data.success && data.engines` -> [{name,...}]; else show `data.detail`.
     app.post('/api/edge-providers/:account_id/list-engines', async (c) => {
-        if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
-            return providerNotFound(c);
+        const account = await providerFor(c.get('tenant'), c.req.param('account_id'));
+        if (!account) return providerNotFound(c);
+        const store = p2(c.get('tenant'));
+        let creds: Record<string, unknown> = {};
+        try {
+            creds = await store.getEdgeResourceConfig(c.req.param('account_id')) ?? {};
+        } catch {
+            return c.json({ success: false, detail: 'Credentials not available for this account', engines: [] });
         }
-        const engines = await p2(c.get('tenant')).listEdgeResources('engine');
-        return c.json({ success: true, engines: engines.map((e) => ({ id: e.id, name: e.name })) });
+        return c.json(await listEnginesForProvider(String(account.provider ?? ''), creds));
     });
 
     // POST /api/edge-providers/{account_id}/turso-databases
