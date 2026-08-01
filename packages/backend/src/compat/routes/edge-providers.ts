@@ -39,6 +39,15 @@ function asProvider(row: Record<string, unknown>): Record<string, unknown> {
     };
 }
 
+function pickToken(config: Record<string, unknown>, keys: readonly string[]): string {
+    for (const key of keys) {
+        const v = config[key];
+        if (typeof v === 'string' && v) return v;
+        if (v !== undefined && v !== null && v !== '' && String(v)) return String(v);
+    }
+    return '';
+}
+
 export function registerEdgeProvidersRoutes(
     app: App,
     p2: (t: string) => Phase2Store,
@@ -288,5 +297,117 @@ export function registerEdgeProvidersRoutes(
             return c.json({ detail: 'Turso database not found' }, 404);
         }
         return c.json({ success: true, message: 'Turso database reachable' });
+    });
+
+    // POST /api/cloudflare/connect — decrypt stored creds, discover account_id + name.
+    // SPA contract: POST {provider_id} -> reads data.success / data.account_name.
+    app.post('/api/cloudflare/connect', async (c) => {
+        const b = await c.req.json().catch(() => ({})) as { provider_id?: string };
+        const providerId = b.provider_id;
+        if (!providerId) return c.json({ success: false, detail: 'Missing provider_id' }, 400);
+
+        const tenant = c.get('tenant');
+        const provider = await providerFor(tenant, providerId);
+        if (!provider) return providerNotFound(c);
+
+        const config = await p2(tenant).getEdgeResourceConfig(providerId) ?? {};
+        const token = pickToken(config, ['api_token', 'token', 'accessToken', 'apiToken']);
+        if (!token) {
+            return c.json({ success: false, detail: 'No credentials stored for this provider' }, 400);
+        }
+
+        try {
+            // /accounts (not /user/tokens/verify) — we need the real account_id+name.
+            const resp = await guardedExternalFetch(
+                externalFetch,
+                'https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1',
+                { headers: { Authorization: `Bearer ${token}` } },
+            );
+            const data = await resp.json().catch(() => null) as {
+                success?: boolean;
+                errors?: { message?: string }[];
+                result?: { id: string; name: string }[];
+            } | null;
+
+            if (!resp.ok || !data?.success) {
+                return c.json({
+                    success: false,
+                    detail: data?.errors?.[0]?.message || `Cloudflare returned ${resp.status}`,
+                }, 200);
+            }
+
+            const account = data.result?.[0];
+            return c.json({
+                success: true,
+                account_name: account?.name ?? '',
+                account_id: account?.id ?? '',
+            }, 200);
+        } catch (e) {
+            return c.json({
+                success: false,
+                detail: `Connection failed: ${(e as Error).message}`,
+            }, 200);
+        }
+    });
+
+    // POST /api/deno/connect — decrypt stored creds, discover user_id (+ org_slug).
+    // SPA contract: POST {provider_id} -> reads data.success / data.account_name.
+    app.post('/api/deno/connect', async (c) => {
+        const b = await c.req.json().catch(() => ({})) as { provider_id?: string };
+        const providerId = b.provider_id;
+        if (!providerId) return c.json({ success: false, detail: 'Missing provider_id' }, 400);
+
+        const tenant = c.get('tenant');
+        const provider = await providerFor(tenant, providerId);
+        if (!provider) return providerNotFound(c);
+
+        const config = await p2(tenant).getEdgeResourceConfig(providerId) ?? {};
+        const token = pickToken(config, ['access_token', 'personal_token', 'token', 'accessToken']);
+        if (!token) {
+            return c.json({ success: false, detail: 'No credentials stored for this provider' }, 400);
+        }
+
+        try {
+            const userResp = await guardedExternalFetch(
+                externalFetch,
+                'https://api.deno.com/v1/user',
+                { headers: { Authorization: `Bearer ${token}` } },
+            );
+            if (!userResp.ok) {
+                return c.json({ success: false, detail: `Deno returned ${userResp.status}` }, 200);
+            }
+            const user = await userResp.json().catch(() => ({})) as { id?: string; name?: string };
+
+            // Opportunistic org discovery for deployment targeting. Wrapped
+            // individually — a failure here MUST NOT invalidate the user lookup.
+            let org_slug: string | undefined;
+            try {
+                const orgResp = await guardedExternalFetch(
+                    externalFetch,
+                    'https://api.deno.com/v1/organizations',
+                    { headers: { Authorization: `Bearer ${token}` } },
+                );
+                if (orgResp.ok) {
+                    const orgs = await orgResp.json().catch(() => null) as
+                        | { slug?: string; name?: string }[]
+                        | { organizations?: { slug?: string; name?: string }[] }
+                        | null;
+                    const list = Array.isArray(orgs) ? orgs : orgs?.organizations;
+                    org_slug = list?.[0]?.slug || list?.[0]?.name;
+                }
+            } catch { /* non-fatal */ }
+
+            return c.json({
+                success: true,
+                account_name: user.name || user.id || '',
+                user_id: user.id || '',
+                ...(org_slug ? { org_slug } : {}),
+            }, 200);
+        } catch (e) {
+            return c.json({
+                success: false,
+                detail: `Connection failed: ${(e as Error).message}`,
+            }, 200);
+        }
     });
 }
