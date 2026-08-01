@@ -9,7 +9,7 @@
  */
 import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
-import { PagesStore, serializePage, type CompatVersionRow } from '../pages-store.js';
+import { PagesStore, serializePage, type CompatPageRow, type CompatVersionRow } from '../pages-store.js';
 import { isSystemEngine } from './edge-shapes.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
@@ -28,12 +28,54 @@ const serializeVersion = (v: CompatVersionRow, withLayout = false): Record<strin
     return out;
 };
 
+/**
+ * Compute the badge fields (`hasUnpublishedChanges`, `deployments`) that
+ * `serializePage` hardcodes, and override them on the serialized envelope.
+ *
+ * `hasUnpublishedChanges`:
+ *   - not live (is_published = 0) → true (draft / taken offline)
+ *   - live + a Published snapshot exists → current content_hash !== snapshot hash
+ *   - live + no Published snapshot (e.g. seeded homepage, or a page published
+ *     before versions existed) → assume clean (false); we have no reference.
+ *
+ * `deployments`: the worker IS the engine, so a live page has one synthetic
+ * deployment targeting the system edge. Shape mirrors the product's
+ * PageDeployment.
+ */
+const withBadge = (
+    row: CompatPageRow,
+    latest: { contentHash: string | null; createdAt: string } | undefined,
+): Record<string, unknown> => {
+    const out = serializePage(row);
+    const live = !!row.is_published;
+    let hasUnpublished: boolean;
+    if (!live) hasUnpublished = true;
+    else if (latest) hasUnpublished = (row.content_hash ?? null) !== (latest.contentHash ?? null);
+    else hasUnpublished = false;
+    out.hasUnpublishedChanges = hasUnpublished;
+    out.deployments = live
+        ? [{
+            id: row.id,
+            engineId: row.id,
+            status: 'published',
+            version: 1,
+            contentHash: latest?.contentHash ?? row.content_hash,
+            publishedAt: latest?.createdAt ?? row.updated_at,
+            previewUrl: null,
+            target: 'local',
+        }]
+        : [];
+    return out;
+};
+
 export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStore, now: () => string): void {
     // GET /api/pages/
     app.get('/api/pages/', async (c) => {
+        const store = storeFor(c.get('tenant'));
         const includeDeleted = c.req.query('includeDeleted') === 'true';
-        const rows = await storeFor(c.get('tenant')).list(includeDeleted);
-        return c.json({ success: true, data: rows.map(serializePage), error: null });
+        const rows = await store.list(includeDeleted);
+        const latest = await store.latestPublishedHashes(rows.map((r) => r.id));
+        return c.json({ success: true, data: rows.map((r) => withBadge(r, latest[r.id])), error: null });
     });
     // POST /api/pages/
     app.post('/api/pages/', async (c) => {
@@ -49,22 +91,28 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
     // Static routes before the {page_id} param route.
     // GET /api/pages/homepage/
     app.get('/api/pages/homepage/', async (c) => {
-        const row = await storeFor(c.get('tenant')).homepage();
+        const store = storeFor(c.get('tenant'));
+        const row = await store.homepage();
         if (!row) return c.json({ detail: 'No homepage configured' }, 404);
-        return c.json({ success: true, data: serializePage(row), message: null, error: null });
+        const latest = await store.latestPublishedHashes([row.id]);
+        return c.json({ success: true, data: withBadge(row, latest[row.id]), message: null, error: null });
     });
     // GET /api/pages/public/{slug}/
     app.get('/api/pages/public/:slug/', async (c) => {
-        const row = await storeFor(c.get('tenant')).getBySlug(c.req.param('slug'));
+        const store = storeFor(c.get('tenant'));
+        const row = await store.getBySlug(c.req.param('slug'));
         if (!row) return c.json({ detail: `Page not found: ${c.req.param('slug')}` }, 404);
-        return c.json({ success: true, data: serializePage(row), message: null, error: null });
+        const latest = await store.latestPublishedHashes([row.id]);
+        return c.json({ success: true, data: withBadge(row, latest[row.id]), message: null, error: null });
     });
 
     // GET /api/pages/{page_id}/
     app.get('/api/pages/:page_id/', async (c) => {
-        const row = await storeFor(c.get('tenant')).get(c.req.param('page_id'));
+        const store = storeFor(c.get('tenant'));
+        const row = await store.get(c.req.param('page_id'));
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
-        return c.json({ success: true, data: serializePage(row), message: null, error: null });
+        const latest = await store.latestPublishedHashes([row.id]);
+        return c.json({ success: true, data: withBadge(row, latest[row.id]), message: null, error: null });
     });
     // PUT /api/pages/{page_id}/
     app.put('/api/pages/:page_id/', async (c) => {

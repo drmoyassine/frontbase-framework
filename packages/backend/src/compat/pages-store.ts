@@ -181,6 +181,33 @@ export class PagesStore {
         );
     }
 
+    /**
+     * Bulk-fetch the latest published version's content_hash + created_at for
+     * each page id. "Published" = a snapshot whose label starts with
+     * `Published ` (the label `publish()` writes on every publish). Manual
+     * snapshots (POST /versions/) are ignored, so a hand-snapshot taken after
+     * an edit can't masquerade as a live publish. RULE 2: tenant-scoped. Single
+     * query — no N+1. Returns `{ [pageId]: { contentHash, createdAt } }`.
+     */
+    async latestPublishedHashes(pageIds: string[]): Promise<Record<string, { contentHash: string | null; createdAt: string }>> {
+        const out: Record<string, { contentHash: string | null; createdAt: string }> = {};
+        if (pageIds.length === 0) return out;
+        const placeholders = pageIds.map(() => '?').join(',');
+        const rows = await this.runner.query(
+            `SELECT page_id, content_hash, created_at FROM compat_page_versions
+             WHERE tenant_slug = ? AND page_id IN (${placeholders}) AND label LIKE 'Published %'
+             ORDER BY page_id, version_number DESC`,
+            [this.tenant, ...pageIds],
+        ) as unknown as Array<{ page_id: string; content_hash: string | null; created_at: string }>;
+        // ORDER BY page_id, version_number DESC → first row per page_id is the newest publish.
+        for (const r of rows) {
+            if (out[r.page_id] === undefined) {
+                out[r.page_id] = { contentHash: r.content_hash, createdAt: r.created_at };
+            }
+        }
+        return out;
+    }
+
     // ---- versions ----
     async listVersions(pageId: string): Promise<CompatVersionRow[]> {
         return await this.runner.query('SELECT id, page_id, version_number, layout_data, content_hash, label, created_at FROM compat_page_versions WHERE tenant_slug=? AND page_id=? ORDER BY version_number DESC', [this.tenant, pageId]) as unknown as CompatVersionRow[];
