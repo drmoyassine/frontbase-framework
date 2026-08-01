@@ -725,7 +725,7 @@
   },
   "POST /api/edge-providers/create-resource-by-account/{account_id}": {
     "status": "functional",
-    "evidence": "persisted state effect (3 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/edge-providers/discover": {
     "status": "shape-only",
@@ -733,7 +733,7 @@
   },
   "POST /api/edge-providers/discover-by-account/{account_id}": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (7 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
   },
   "POST /api/edge-providers/retest/{provider_id}": {
     "status": "functional",
@@ -1112,16 +1112,16 @@
     "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "POST /api/sync/datasources/sheets/connect/callback/": {
-    "status": "external-disabled",
-    "evidence": "not measurable in a community deployment — needs an issued capability token; the issue endpoint refuses 503 (no Redis token store)"
+    "status": "functional",
+    "evidence": "persisted state effect (4 SQL observations)"
   },
   "POST /api/sync/datasources/sheets/connect/issue/": {
-    "status": "shape-only",
-    "evidence": "no state, session, or provider effect observed"
+    "status": "functional",
+    "evidence": "persisted state effect (1 SQL observation)"
   },
   "GET /api/sync/datasources/sheets/connect/status/": {
-    "status": "external-disabled",
-    "evidence": "not measurable in a community deployment — needs an issued capability token; the issue endpoint refuses 503 (no Redis token store)"
+    "status": "shape-only",
+    "evidence": "read result DISCARDED — response identical with reads starved (1 SQL observation had no effect)"
   },
   "POST /api/sync/datasources/test-raw/": {
     "status": "shape-only",
