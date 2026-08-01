@@ -207,28 +207,25 @@ export function registerEdgeProvidersRoutes(
     });
 
     // POST /api/edge-providers/discover-by-account/{account_id}
+    // SPA contract: `data.success && data.resources` -> [{id,name,type}]; else show `data.detail`.
+    // Resource discovery is not feasible in a portable community worker — return an honest
+    // stub so the SPA falls through to setDiscoverError(data.detail) gracefully.
     app.post('/api/edge-providers/discover-by-account/:account_id', async (c) => {
         if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
             return providerNotFound(c);
         }
-        const store = p2(c.get('tenant'));
-        return c.json({
-            success: true,
-            resources: await Promise.all(
-                (await store.listEdgeResources('provider')).map((row) => providerView(store, row)),
-            ),
-        });
+        return c.json({ success: false, detail: 'Resource discovery not supported in community worker' });
     });
 
     // POST /api/edge-providers/create-resource-by-account/{account_id}
+    // SPA contract: `data.success && data.resource` (reads data.resource.id); else show `data.detail`.
+    // Resource creation is not supported in a portable community worker — honest stub. NOTE:
+    // do NOT upsertEdgeResource here; the previous stub polluted the tenant's provider list.
     app.post('/api/edge-providers/create-resource-by-account/:account_id', async (c) => {
         if (!await providerFor(c.get('tenant'), c.req.param('account_id'))) {
             return providerNotFound(c);
         }
-        const store = p2(c.get('tenant'));
-        const id = crypto.randomUUID();
-        await store.upsertEdgeResource({ id, kind: 'provider', name: 'Account Resource', provider: 'account' }, now());
-        return c.json({ success: true, message: 'Resource created' });
+        return c.json({ success: false, detail: 'Resource creation not supported in community worker' });
     });
 
     // GET /api/edge-providers/accounts/{account_id}/tables
