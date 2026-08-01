@@ -81,6 +81,10 @@ export interface CreateCompatAppDeps {
      *  Deno/Vercel/Netlify entries later) and the real binding (D1). Defaults to a
      *  Cloudflare/D1 descriptor. */
     systemEdge?: SystemEdgeDescriptor;
+    /** Google Workspace Marketplace install URL for the Sheets connect add-on, surfaced
+     *  by /api/sync/datasources/sheets/connect/issue/. Empty default => the SPA renders
+     *  its bundled fallback (matches the product's FRONTBASE_SHEETS_ADDON_URL semantics). */
+    sheetsAddonUrl?: string;
 }
 
 /** Build a per-tenant store cache. */
@@ -101,6 +105,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // the cf-full worker; the host overrides for other platforms.
     const systemEdge: SystemEdgeDescriptor = deps.systemEdge
         ?? { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' };
+    const sheetsAddonUrl: string = deps.sheetsAddonUrl ?? '';
 
     // Per-tenant stores. Single-tenant in practice (community edition); the
     // tenant comes from the auth context (defaultDenyAuth).
@@ -266,7 +271,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Wave 5 — workspace agent
     registerAgentCompatRoutes(app, runner, kvFor, secretCipher, externalFetch);
     // Work A — DB-Synchronizer (/api/sync/*)
-    registerSyncRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now);
+    registerSyncRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now, sheetsAddonUrl);
 
     // Derive what is implemented from the routes just registered, rather than
     // from a parallel hand-maintained list. Everything else in the contract gets a

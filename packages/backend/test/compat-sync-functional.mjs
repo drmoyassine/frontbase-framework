@@ -179,13 +179,16 @@ async function request(method, path, body) {
     assert.equal(result.body.records.post[0].title, 'Imported post');
     assert.equal((await request('GET', '/api/sync/wordpress/import/not-owned/')).response.status, 404);
 
-    // Issuing a connect token needs the product's Redis-backed token store, and a
-    // community deployment has none. Probed live against self-host (2026-07-29):
-    //   POST /api/sync/datasources/sheets/connect/issue/
-    //   → 503 {"detail":"Connect token store unavailable (Redis)"}
+    // Issuing a connect token mints a single-use capability backed by the
+    // sheets_connect_tokens table (migration v16). The raw token is returned to the
+    // SPA; only its SHA-256 is persisted. addonInstallUrl is the Google Workspace
+    // Marketplace listing (empty default => SPA renders its bundled fallback).
     const issued = await request('POST', '/api/sync/datasources/sheets/connect/issue/', {});
-    assert.equal(issued.response.status, 503);
-    assert.deepEqual(issued.body, { detail: 'Connect token store unavailable (Redis)' });
+    assert.equal(issued.response.status, 200);
+    assert.equal(typeof issued.body.token, 'string');
+    assert.ok(issued.body.token.length > 0, 'issue must return a non-empty bearer token');
+    assert.equal(typeof issued.body.addonInstallUrl, 'string');
+    assert.equal(typeof issued.body.expiresAt, 'string');
 
     // The CALLBACK's capability check is still live, and it is the security-bearing
     // half of this flow — it runs unauthenticated, so single-use enforcement is the

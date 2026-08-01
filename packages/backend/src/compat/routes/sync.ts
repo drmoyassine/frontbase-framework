@@ -303,6 +303,7 @@ export function registerSyncRoutes(
     kvStoreFor: (t: string) => KeyValueStore,
     externalFetch: CompatFetch,
     now: () => string,
+    sheetsAddonUrl: string,
 ): void {
     // =========================================================================
     // Wave A1 — Datasource CRUD & Connectivity (10 ops)
@@ -1541,13 +1542,35 @@ export function registerSyncRoutes(
     // =========================================================================
 
     // POST /api/sync/datasources/sheets/connect/issue/
+    // Mint a single-use bearer capability. Only the SHA-256 of the token is persisted;
+    // the raw token is returned to the SPA (which never sees the hash) and is later
+    // presented by the Google Sheets add-on at /callback. The callback claims it
+    // atomically via `WHERE consumed_at IS NULL`, making it single-use across isolates.
+    // A 122-bit randomUUID is ample entropy for a 15-minute, CAS-protected, single-use
+    // capability. addonInstallUrl is the fixed Google Workspace Marketplace listing;
+    // the host overrides via deps.sheetsAddonUrl (empty default => SPA uses its bundled
+    // fallback, matching the product's FRONTBASE_SHEETS_ADDON_URL env semantics).
     app.post('/api/sync/datasources/sheets/connect/issue/', async (c) => {
         const body = await c.req.json().catch(() => ({})) as { datasource_id?: string | null };
         const tenant = c.get('tenant');
+        // Preserve existing reconnect-target validation.
         if (body.datasource_id && !await syncStoreFor(tenant).getDatasource(body.datasource_id)) {
             return c.json({ detail: 'Datasource not found' }, 404);
         }
-        return c.json({ detail: 'Connect token store unavailable (Redis)' }, 503);
+        const token = crypto.randomUUID();
+        const tokenHash = await sha256Hex(token);
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        await controlRunner.exec(
+            `INSERT INTO sheets_connect_tokens
+                (token_hash, tenant_slug, datasource_id, expires_at, consumed_at, created_at)
+             VALUES (?,?,?,?,NULL,?)`,
+            [tokenHash, tenant, body.datasource_id ?? null, expiresAt, now()],
+        );
+        return c.json({
+            token,
+            addonInstallUrl: sheetsAddonUrl,
+            expiresAt,
+        });
     });
 
     // POST /api/sync/datasources/sheets/connect/callback/
