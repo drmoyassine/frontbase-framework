@@ -12,6 +12,7 @@ import type { KeyValueStore } from '../store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
 import { serializeEdgeResource } from './edge-shapes.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
+import { initStrategies, testProvider } from './edge-providers/strategies/index.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -46,6 +47,9 @@ export function registerEdgeProvidersRoutes(
     externalFetch: CompatFetch,
     now: () => string,
 ): void {
+    // Initialize provider test strategies with external fetch implementation
+    initStrategies(externalFetch);
+
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
         if (config === undefined) return undefined;
         const ciphertext = await secretCipher.encrypt(JSON.stringify(config));
@@ -65,50 +69,6 @@ export function registerEdgeProvidersRoutes(
         ...row,
         config: await store.getEdgeResourceConfig(String(row.id)) ?? {},
     });
-    const testProvider = async (provider: string, credentials: Record<string, unknown>) => {
-        // The SPA (PROVIDER_CONFIGS) sends snake_case credential keys: api_token
-        // (cloudflare/vercel/netlify/upstash), access_token (supabase/deno),
-        // api_key (neon), plus token/personal_token fallbacks. Accept all common
-        // variants so the resolver doesn't wrongly report "No credentials stored".
-        const token = String(
-            credentials.api_token ?? credentials.access_token ?? credentials.api_key ??
-            credentials.token ?? credentials.accessToken ?? credentials.apiToken ??
-            credentials.personal_token ?? '',
-        );
-        const endpoints: Record<string, string> = {
-            cloudflare: 'https://api.cloudflare.com/client/v4/user/tokens/verify',
-            supabase: 'https://api.supabase.com/v1/projects',
-            vercel: 'https://api.vercel.com/v2/user',
-            netlify: 'https://api.netlify.com/api/v1/user',
-            deno: 'https://api.deno.com/v1/organizations',
-            upstash: 'https://api.upstash.com/v2/redis/databases',
-            neon: 'https://console.neon.tech/api/v2/projects',
-        };
-        const endpoint = endpoints[provider];
-        if (!token) return { success: false, detail: 'No credentials stored for this provider' };
-        if (!endpoint) return { success: false, detail: `Unsupported provider: ${provider}` };
-        // Upstash's management API authenticates with HTTP Basic (email:api_token),
-        // not a Bearer token — a Bearer header 401s and surfaces a misleading failure.
-        const headers: Record<string, string> = {};
-        if (provider === 'upstash') {
-            const email = String(credentials.email ?? '');
-            headers.Authorization = `Basic ${btoa(`${email}:${token}`)}`;
-        } else {
-            headers.Authorization = `Bearer ${token}`;
-        }
-        try {
-            const response = await guardedExternalFetch(externalFetch, endpoint, { headers });
-            // The field is `detail`, not `message`: the SPA's TestResult type binds
-            // the badge text to `data.detail`, so any other key renders as an empty
-            // green/red badge (the "connected-green but empty" symptom).
-            return {
-                success: response.ok,
-                detail: response.ok ? 'Connection verified' : `Provider returned ${response.status}`,
-            };
-        } catch (error) {
-            return { success: false, detail: `Provider connection failed: ${(error as Error).message}` };
-        }
-    };
     // GET /api/edge-providers/
     app.get('/api/edge-providers/', async (c) => {
         const store = p2(c.get('tenant'));
