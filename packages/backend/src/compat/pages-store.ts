@@ -41,9 +41,9 @@ export function serializePage(r: CompatPageRow): Record<string, unknown> {
 export class PagesStore {
     constructor(private runner: DbRunner, private tenant: string) {}
 
-    async list(): Promise<CompatPageRow[]> {
+    async list(includeDeleted = false): Promise<CompatPageRow[]> {
         return await this.runner.query(
-            'SELECT id, name, slug, title, description, keywords, is_public, is_homepage, is_published, layout_data, seo_data, deleted_at, content_hash, created_at, updated_at FROM compat_pages WHERE tenant_slug = ? AND deleted_at IS NULL ORDER BY created_at',
+            `SELECT id, name, slug, title, description, keywords, is_public, is_homepage, is_published, layout_data, seo_data, deleted_at, content_hash, created_at, updated_at FROM compat_pages WHERE tenant_slug = ? ${includeDeleted ? '' : 'AND deleted_at IS NULL'} ORDER BY created_at`,
             [this.tenant],
         ) as unknown as CompatPageRow[];
     }

@@ -31,7 +31,8 @@ const serializeVersion = (v: CompatVersionRow, withLayout = false): Record<strin
 export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStore, now: () => string): void {
     // GET /api/pages/
     app.get('/api/pages/', async (c) => {
-        const rows = await storeFor(c.get('tenant')).list();
+        const includeDeleted = c.req.query('includeDeleted') === 'true';
+        const rows = await storeFor(c.get('tenant')).list(includeDeleted);
         return c.json({ success: true, data: rows.map(serializePage), error: null });
     });
     // POST /api/pages/
