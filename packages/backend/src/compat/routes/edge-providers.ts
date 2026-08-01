@@ -66,7 +66,15 @@ export function registerEdgeProvidersRoutes(
         config: await store.getEdgeResourceConfig(String(row.id)) ?? {},
     });
     const testProvider = async (provider: string, credentials: Record<string, unknown>) => {
-        const token = String(credentials.apiToken ?? credentials.api_token ?? credentials.token ?? credentials.accessToken ?? '');
+        // The SPA (PROVIDER_CONFIGS) sends snake_case credential keys: api_token
+        // (cloudflare/vercel/netlify/upstash), access_token (supabase/deno),
+        // api_key (neon), plus token/personal_token fallbacks. Accept all common
+        // variants so the resolver doesn't wrongly report "No credentials stored".
+        const token = String(
+            credentials.api_token ?? credentials.access_token ?? credentials.api_key ??
+            credentials.token ?? credentials.accessToken ?? credentials.apiToken ??
+            credentials.personal_token ?? '',
+        );
         const endpoints: Record<string, string> = {
             cloudflare: 'https://api.cloudflare.com/client/v4/user/tokens/verify',
             supabase: 'https://api.supabase.com/v1/projects',
@@ -74,20 +82,31 @@ export function registerEdgeProvidersRoutes(
             netlify: 'https://api.netlify.com/api/v1/user',
             deno: 'https://api.deno.com/v1/organizations',
             upstash: 'https://api.upstash.com/v2/redis/databases',
+            neon: 'https://console.neon.tech/api/v2/projects',
         };
         const endpoint = endpoints[provider];
         if (!token) return { success: false, detail: 'No credentials stored for this provider' };
         if (!endpoint) return { success: false, detail: `Unsupported provider: ${provider}` };
+        // Upstash's management API authenticates with HTTP Basic (email:api_token),
+        // not a Bearer token — a Bearer header 401s and surfaces a misleading failure.
+        const headers: Record<string, string> = {};
+        if (provider === 'upstash') {
+            const email = String(credentials.email ?? '');
+            headers.Authorization = `Basic ${btoa(`${email}:${token}`)}`;
+        } else {
+            headers.Authorization = `Bearer ${token}`;
+        }
         try {
-            const response = await guardedExternalFetch(externalFetch, endpoint, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const response = await guardedExternalFetch(externalFetch, endpoint, { headers });
+            // The field is `detail`, not `message`: the SPA's TestResult type binds
+            // the badge text to `data.detail`, so any other key renders as an empty
+            // green/red badge (the "connected-green but empty" symptom).
             return {
                 success: response.ok,
-                message: response.ok ? 'Provider connection test successful' : `Provider returned ${response.status}`,
+                detail: response.ok ? 'Connection verified' : `Provider returned ${response.status}`,
             };
         } catch (error) {
-            return { success: false, message: `Provider connection failed: ${(error as Error).message}` };
+            return { success: false, detail: `Provider connection failed: ${(error as Error).message}` };
         }
     };
     // GET /api/edge-providers/
@@ -207,7 +226,7 @@ export function registerEdgeProvidersRoutes(
         const b = await c.req.json().catch(() => ({})) as {
             provider?: string; credentials?: Record<string, unknown>;
         };
-        const known = ['cloudflare', 'supabase', 'vercel', 'netlify', 'deno', 'upstash'];
+        const known = ['cloudflare', 'supabase', 'vercel', 'netlify', 'deno', 'upstash', 'neon'];
         if (!known.includes(String(b.provider ?? ''))) {
             return c.json({ success: false, detail: `Unsupported provider: ${String(b.provider ?? '')}` });
         }
