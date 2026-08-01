@@ -1,0 +1,204 @@
+{
+  "note": "Differences allowed to persist, each with a reviewable reason. A difference absent from this file FAILS the gate; an entry that no longer differs also FAILS, so a fix must delete its entry. The file can only shrink.",
+  "source": "CF22_A3_differential_parity_report.json",
+  "differences": {
+    "GET /api/auth-forms/{{form_id}}/ [success]": {
+      "operationId": "auth_forms_get_auth_form",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not create its own fixture — POST /api/auth-forms/ fails with \"no such table: auth_forms\" on a freshly created database, where create_all and Alembic disagree about ownership. Unmeasured, not a parity finding."
+    },
+    "PUT /api/auth-forms/{{form_id}}/ [success]": {
+      "operationId": "auth_forms_update_auth_form",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not create its own fixture — POST /api/auth-forms/ fails with \"no such table: auth_forms\" on a freshly created database, where create_all and Alembic disagree about ownership. Unmeasured, not a parity finding."
+    },
+    "DELETE /api/auth-forms/{{form_id}}/ [success]": {
+      "operationId": "auth_forms_delete_auth_form",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not create its own fixture — POST /api/auth-forms/ fails with \"no such table: auth_forms\" on a freshly created database, where create_all and Alembic disagree about ownership. Unmeasured, not a parity finding."
+    },
+    "PUT /api/auth-forms/{{form_id}}/set-primary/ [success]": {
+      "operationId": "auth_forms_set_primary_auth_form",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not create its own fixture — POST /api/auth-forms/ fails with \"no such table: auth_forms\" on a freshly created database, where create_all and Alembic disagree about ownership. Unmeasured, not a parity finding."
+    },
+    "POST /api/edge-engines/{{engine_id}}/agent-profiles [success]": {
+      "operationId": "edge_agent_profiles_create_profile",
+      "disposition": "record",
+      "observed": {
+        "product": "500",
+        "framework": "201"
+      },
+      "reason": "product answers 500; the framework answers 201. Matching would reproduce a product defect, not close a parity gap."
+    },
+    "POST /api/edge-engines/{{engine_id}}/reconfigure [success]": {
+      "operationId": "edge_engines_reconfigure_engine",
+      "disposition": "record",
+      "observed": {
+        "product": "500",
+        "framework": "200"
+      },
+      "reason": "product answers 500; the framework answers 200. Matching would reproduce a product defect, not close a parity gap."
+    },
+    "POST /api/sync/datasources/test-raw/ [failure]": {
+      "operationId": "test_new_datasource_datasources_test_raw__post",
+      "disposition": "record",
+      "observed": {
+        "product": "500",
+        "framework": "422"
+      },
+      "reason": "product answers 500; the framework answers 422. Matching would reproduce a product defect, not close a parity gap."
+    },
+    "POST /api/sync/datasources/{{datasource_id}}/apply-migration [success]": {
+      "operationId": "apply_datasource_migration_datasources__datasource_id__apply_migration_post",
+      "disposition": "record",
+      "observed": {
+        "product": "timeout-or-network-error",
+        "framework": "503"
+      },
+      "reason": "product does not respond within the case timeout; the framework answers 503. There is no product behaviour here to match."
+    },
+    "POST /api/sync/datasources/00000000-0000-4000-8000-000000000000/apply-migration [failure]": {
+      "operationId": "apply_datasource_migration_datasources__datasource_id__apply_migration_post",
+      "disposition": "record",
+      "observed": {
+        "product": "timeout-or-network-error",
+        "framework": "404"
+      },
+      "reason": "product does not respond within the case timeout; the framework answers 404. There is no product behaviour here to match."
+    },
+    "GET /api/sync/datasources/{{datasource_id}}/check-migration [success]": {
+      "operationId": "check_datasource_migration_datasources__datasource_id__check_migration_get",
+      "disposition": "record",
+      "observed": {
+        "product": "timeout-or-network-error",
+        "framework": "200"
+      },
+      "reason": "product does not respond within the case timeout; the framework answers 200. There is no product behaviour here to match."
+    },
+    "GET /api/sync/datasources/00000000-0000-4000-8000-000000000000/check-migration [failure]": {
+      "operationId": "check_datasource_migration_datasources__datasource_id__check_migration_get",
+      "disposition": "record",
+      "observed": {
+        "product": "timeout-or-network-error",
+        "framework": "404"
+      },
+      "reason": "product does not respond within the case timeout; the framework answers 404. There is no product behaviour here to match."
+    },
+    "GET /api/sync/datasources/{{datasource_id}}/relationships/ [success]": {
+      "operationId": "get_datasource_relationships_datasources__datasource_id__relationships__get",
+      "disposition": "record",
+      "observed": {
+        "product": "500",
+        "framework": "502"
+      },
+      "reason": "product answers 500; the framework answers 502. Matching would reproduce a product defect, not close a parity gap."
+    },
+    "GET /api/sync/datasources/{{datasource_id}}/search [success]": {
+      "operationId": "search_datasource_tables_datasources__datasource_id__search_get",
+      "disposition": "record",
+      "observed": {
+        "product": "timeout-or-network-error",
+        "framework": "422"
+      },
+      "reason": "product does not respond within the case timeout; the framework answers 422. There is no product behaviour here to match."
+    },
+    "GET /api/sync/datasources/00000000-0000-4000-8000-000000000000/search [failure]": {
+      "operationId": "search_datasource_tables_datasources__datasource_id__search_get",
+      "disposition": "record",
+      "observed": {
+        "product": "timeout-or-network-error",
+        "framework": "422"
+      },
+      "reason": "product does not respond within the case timeout; the framework answers 422. There is no product behaviour here to match."
+    },
+    "GET /api/sync/datasources/{{datasource_id}}/tables/ [success]": {
+      "operationId": "get_datasource_tables_datasources__datasource_id__tables__get",
+      "disposition": "record",
+      "observed": {
+        "product": "500",
+        "framework": "502"
+      },
+      "reason": "product answers 500; the framework answers 502. Matching would reproduce a product defect, not close a parity gap."
+    },
+    "GET /api/sync/datasources/{{datasource_id}}/tables/parity_table/data/ [success]": {
+      "operationId": "get_datasource_table_data_datasources__datasource_id__tables__table__data__get",
+      "disposition": "record",
+      "observed": {
+        "product": "500",
+        "framework": "400"
+      },
+      "reason": "product answers 500; the framework answers 400. Matching would reproduce a product defect, not close a parity gap."
+    },
+    "GET /api/sync/datasources/{{datasource_id}}/tables/parity_table/distinct/parity_table/ [success]": {
+      "operationId": "get_distinct_values_datasources__datasource_id__tables__table__distinct__column___get",
+      "disposition": "record",
+      "observed": {
+        "product": "500",
+        "framework": "400"
+      },
+      "reason": "product answers 500; the framework answers 400. Matching would reproduce a product defect, not close a parity gap."
+    },
+    "PATCH /api/sync/datasources/{{datasource_id}}/tables/parity_table/records/00000000-0000-4000-8000-000000000000 [success]": {
+      "operationId": "update_record_datasources__datasource_id__tables__table__records__record_id__patch",
+      "disposition": "record",
+      "observed": {
+        "product": "timeout-or-network-error",
+        "framework": "400"
+      },
+      "reason": "product does not respond within the case timeout; the framework answers 400. There is no product behaviour here to match."
+    },
+    "PATCH /api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/records/00000000-0000-4000-8000-000000000000 [failure]": {
+      "operationId": "update_record_datasources__datasource_id__tables__table__records__record_id__patch",
+      "disposition": "record",
+      "observed": {
+        "product": "timeout-or-network-error",
+        "framework": "404"
+      },
+      "reason": "product does not respond within the case timeout; the framework answers 404. There is no product behaviour here to match."
+    },
+    "GET /api/sync/datasources/{{datasource_id}}/tables/parity_table/schema/ [success]": {
+      "operationId": "get_table_schema_datasources__datasource_id__tables__table__schema__get",
+      "disposition": "record",
+      "observed": {
+        "product": "500",
+        "framework": "400"
+      },
+      "reason": "product answers 500; the framework answers 400. Matching would reproduce a product defect, not close a parity gap."
+    },
+    "GET /api/sync/views/00000000-0000-4000-8000-000000000000/count [success]": {
+      "operationId": "get_view_count_views__view_id__count_get",
+      "disposition": "record",
+      "observed": {
+        "product": "timeout-or-network-error",
+        "framework": "404"
+      },
+      "reason": "product does not respond within the case timeout; the framework answers 404. There is no product behaviour here to match."
+    },
+    "GET /api/sync/views/00000000-0000-4000-8000-000000000000/count [failure]": {
+      "operationId": "get_view_count_views__view_id__count_get",
+      "disposition": "record",
+      "observed": {
+        "product": "timeout-or-network-error",
+        "framework": "404"
+      },
+      "reason": "product does not respond within the case timeout; the framework answers 404. There is no product behaviour here to match."
+    }
+  }
+}
