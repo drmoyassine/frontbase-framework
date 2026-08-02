@@ -1652,4 +1652,154 @@ export function registerSyncRoutes(
             return c.json({ connected: false });
         }
     });
+
+    // =========================================================================
+    // Supabase Migration Endpoints (ported from product backend)
+    // =========================================================================
+
+    // GET /api/sync/datasources/{datasource_id}/check-migration
+    app.get('/api/sync/datasources/:datasource_id/check-migration/', async (c) => {
+        const id = c.req.param('datasource_id');
+        const store = syncStoreFor(c.get('tenant'));
+        const ds = await store.getDatasource(id);
+        if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
+
+        // Only applicable for Supabase
+        if (ds.kind !== 'supabase') {
+            return c.json({ applicable: false, reason: 'Migration only applies to Supabase datasources' });
+        }
+
+        try {
+            const runner = datasourceRunner(ds.kind, ds.config);
+            // Check if execute_query function exists
+            const rows = await runner.query(`
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_proc
+                    WHERE proname = 'execute_query'
+                    AND pronamespace = 'public'::regnamespace
+                ) AS exists
+            `);
+            const hasExecuteQuery = rows[0]?.exists === true;
+
+            return c.json({
+                applicable: true,
+                applied: hasExecuteQuery,
+                functions: hasExecuteQuery ? ['execute_query', 'execute_sql'] : [],
+            });
+        } catch (error) {
+            return c.json({ applicable: true, applied: false, error: (error as Error).message });
+        }
+    });
+
+    // POST /api/sync/datasources/{datasource_id}/apply-migration
+    app.post('/api/sync/datasources/:datasource_id/apply-migration/', async (c) => {
+        const id = c.req.param('datasource_id');
+        const store = syncStoreFor(c.get('tenant'));
+        const ds = await store.getDatasource(id);
+        if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
+
+        // Only applicable for Supabase
+        if (ds.kind !== 'supabase') {
+            return c.json({ detail: 'Migration only applies to Supabase datasources' }, 400);
+        }
+
+        try {
+            // Get SQL from request body (SPA reads from product backend)
+            const body = await c.req.json().catch(() => ({})) as { sql?: string };
+            if (!body.sql || typeof body.sql !== 'string') {
+                return c.json({ detail: 'Request body must contain sql string' }, 400);
+            }
+
+            const migrationSql = body.sql;
+
+            // Split SQL into individual statements (basic split by semicolon, ignoring $$ blocks)
+            const statements = splitSqlStatements(migrationSql);
+
+            const runner = datasourceRunner(ds.kind, ds.config);
+            let successCount = 0;
+            const errors: string[] = [];
+
+            for (const stmt of statements) {
+                if (!stmt.trim() || stmt.trim().startsWith('--')) continue;
+                try {
+                    await runner.exec(stmt);
+                    successCount++;
+                } catch (err) {
+                    // Some statements may fail if objects already exist (CREATE OR REPLACE handles most)
+                    const msg = (err as Error).message;
+                    if (!msg.includes('already exists') && !msg.includes('duplicate')) {
+                        errors.push(msg);
+                    }
+                }
+            }
+
+            if (errors.length > 0) {
+                return c.json({
+                    success: false,
+                    message: `Migration completed with ${errors.length} errors`,
+                    errors: errors.slice(0, 5), // Return first 5 errors
+                }, 500);
+            }
+
+            return c.json({
+                success: true,
+                message: 'Migration applied successfully',
+                statementsExecuted: successCount,
+            });
+        } catch (error) {
+            return c.json({ detail: `Failed to apply migration: ${(error as Error).message}` }, 500);
+        }
+    });
+}
+
+/**
+ * Split SQL into individual statements, respecting $$ dollar-quoted blocks.
+ * Basic implementation for migration purposes.
+ */
+function splitSqlStatements(sql: string): string[] {
+    const statements: string[] = [];
+    let current = '';
+    let inDollarQuote = false;
+    let dollarQuoteTag = '';
+    let i = 0;
+
+    while (i < sql.length) {
+        // Check for dollar quote start/end
+        if (sql[i] === '$') {
+            const tagMatch = sql.substring(i).match(/^(\$(\$?[a-zA-Z_][a-zA-Z0-9_]*)?\$)/);
+            if (tagMatch && tagMatch[1]) {
+                const tag = tagMatch[1];
+                if (inDollarQuote && tag === dollarQuoteTag) {
+                    inDollarQuote = false;
+                    dollarQuoteTag = '';
+                    current += tag;
+                    i += tag.length;
+                    continue;
+                } else if (!inDollarQuote) {
+                    inDollarQuote = true;
+                    dollarQuoteTag = tag;
+                    current += tag;
+                    i += tag.length;
+                    continue;
+                }
+            }
+        }
+
+        // Split by semicolon only when not in dollar quote
+        if (!inDollarQuote && sql[i] === ';') {
+            statements.push(current.trim());
+            current = '';
+            i++;
+            continue;
+        }
+
+        current += sql[i];
+        i++;
+    }
+
+    if (current.trim()) {
+        statements.push(current.trim());
+    }
+
+    return statements.filter(s => s.length > 0);
 }
