@@ -725,7 +725,7 @@
   },
   "POST /api/edge-providers/create-resource-by-account/{account_id}": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/edge-providers/discover": {
     "status": "shape-only",
@@ -733,7 +733,7 @@
   },
   "POST /api/edge-providers/discover-by-account/{account_id}": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (1 SQL observation)"
+    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
   },
   "POST /api/edge-providers/retest/{provider_id}": {
     "status": "functional",
