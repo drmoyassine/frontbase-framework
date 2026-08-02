@@ -733,7 +733,7 @@
   },
   "POST /api/edge-providers/discover-by-account/{account_id}": {
     "status": "functional",
-    "evidence": "tenant-scoped state read reflected in the response (2 SQL observations)"
+    "evidence": "tenant-scoped state read reflected in the response (3 SQL observations)"
   },
   "POST /api/edge-providers/retest/{provider_id}": {
     "status": "functional",

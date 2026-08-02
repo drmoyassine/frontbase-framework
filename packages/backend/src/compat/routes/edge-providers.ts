@@ -19,6 +19,11 @@ import {
     createProviderResource,
     listEnginesForProvider,
 } from './edge-providers/strategies/resources/index.js';
+import {
+    getCachedDiscovery,
+    setCachedDiscovery,
+    invalidateDiscoveryCache,
+} from './edge-providers/strategies/resources/cache.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -220,40 +225,56 @@ export function registerEdgeProvidersRoutes(
     // POST /api/edge-providers/discover-by-account/{account_id}
     // SPA contract: `data.success && data.resources` -> [{id,name,type}]; else show `data.detail`.
     app.post('/api/edge-providers/discover-by-account/:account_id', async (c) => {
-        const account = await providerFor(c.get('tenant'), c.req.param('account_id'));
+        const accountId = c.req.param('account_id');
+        const account = await providerFor(c.get('tenant'), accountId);
         if (!account) return providerNotFound(c);
+        const provider = String(account.provider ?? '');
+        const kv = kvFor(c.get('tenant'));
+        // Per-tenant discovery cache (60s TTL) — repeated picker opens don't hammer
+        // provider rate limits. Invalidated on resource creation.
+        const cached = await getCachedDiscovery(kv, accountId, provider, now());
+        if (cached) return c.json(cached);
         const store = p2(c.get('tenant'));
         let creds: Record<string, unknown> = {};
         try {
-            creds = await store.getEdgeResourceConfig(c.req.param('account_id')) ?? {};
+            creds = await store.getEdgeResourceConfig(accountId) ?? {};
         } catch {
             return c.json({ success: false, detail: 'Credentials not available for this account' });
         }
-        return c.json(await discoverResources(String(account.provider ?? ''), creds));
+        const result = await discoverResources(provider, creds);
+        await setCachedDiscovery(kv, accountId, provider, result, now());
+        return c.json(result);
     });
 
     // POST /api/edge-providers/create-resource-by-account/{account_id}
     // SPA contract: `data.success && data.resource` (forwards data.resource whole); else show `data.detail`.
     app.post('/api/edge-providers/create-resource-by-account/:account_id', async (c) => {
-        const account = await providerFor(c.get('tenant'), c.req.param('account_id'));
+        const accountId = c.req.param('account_id');
+        const account = await providerFor(c.get('tenant'), accountId);
         if (!account) return providerNotFound(c);
+        const provider = String(account.provider ?? '');
         const b = await c.req.json().catch(() => ({})) as {
             resource_type?: string; name?: string; region?: string;
         };
         const store = p2(c.get('tenant'));
         let creds: Record<string, unknown> = {};
         try {
-            creds = await store.getEdgeResourceConfig(c.req.param('account_id')) ?? {};
+            creds = await store.getEdgeResourceConfig(accountId) ?? {};
         } catch {
             return c.json({ success: false, detail: 'Credentials not available for this account' });
         }
-        return c.json(await createProviderResource(
-            String(account.provider ?? ''),
+        const result = await createProviderResource(
+            provider,
             creds,
             String(b.resource_type ?? ''),
             String(b.name ?? ''),
             b.region,
-        ));
+        );
+        if (result.success) {
+            // Invalidate the discovery cache so the new resource shows up immediately.
+            await invalidateDiscoveryCache(kvFor(c.get('tenant')), accountId, provider, now());
+        }
+        return c.json(result);
     });
 
     // GET /api/edge-providers/accounts/{account_id}/tables
