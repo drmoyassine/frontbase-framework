@@ -27,6 +27,13 @@ import { createSupabaseResourceStrategy } from './supabase.js';
 import { createVercelResourceStrategy } from './vercel.js';
 import { createDenoResourceStrategy } from './deno.js';
 import { createNetlifyResourceStrategy } from './netlify.js';
+import {
+    createWordpressResourceStrategy,
+    createWordpressRestResourceStrategy,
+    createWordpressGraphqlResourceStrategy,
+} from './wordpress.js';
+import { createWordpressPluginResourceStrategy } from './wordpress_plugin.js';
+import { createGoogleSheetsResourceStrategy } from './google_sheets.js';
 
 const resourceStrategies = new Map<string, ProviderResourceStrategy>();
 
@@ -42,6 +49,12 @@ export function initResourceStrategies(externalFetch: CompatFetch): void {
         createVercelResourceStrategy,
         createDenoResourceStrategy,
         createNetlifyResourceStrategy,
+        // Tier 2 (tenant-controlled URLs; opts into per-hop-revalidated redirect following)
+        createWordpressResourceStrategy,
+        createWordpressRestResourceStrategy,
+        createWordpressGraphqlResourceStrategy,
+        createWordpressPluginResourceStrategy,
+        createGoogleSheetsResourceStrategy,
     ];
     for (const factory of factories) {
         const strategy = factory(externalFetch);
