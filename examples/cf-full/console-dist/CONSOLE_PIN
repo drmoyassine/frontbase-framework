@@ -1,10 +1,10 @@
 {
   "commit": "3fd3977527bafb64efd28dfec14417f1d5fbc25e",
-  "sha256": "5d9d968a346c11a38928d4a940c2b112baf1a57ed7165a46aa7c32d82fe68cfa",
+  "sha256": "55387354c305febfe1ca4460818e069c4752d21666306384c81b269034c1b625",
   "jsBundles": [
-    "index-COWQz7hE-1785613898664.js"
+    "index-BgnJsT1N-1785708767359.js"
   ],
   "cssBundles": [
-    "index-BmZIr7ql-1785613898664.css"
+    "index-BmZIr7ql-1785708767359.css"
   ]
 }
