@@ -91,9 +91,17 @@ export class BearerTokenStrategy implements ProviderTestStrategy {
 // Discovery parsers
 // ---------------------------------------------------------------------------
 
-/** Supabase: surface the project list so the SPA can prompt for a project. */
+/**
+ * Supabase: surface the project list so the SPA can prompt for a project.
+ *
+ * The Supabase Management API `GET /v1/projects` returns a BARE JSON array,
+ * not `{projects: [...]}`. Accept both shapes for robustness (the bare-array
+ * form is what the live API returns; the wrapped form is defensive).
+ */
 function parseSupabaseDiscovery(json: unknown): Partial<ProviderTestResult> {
-    const arr = (json as { projects?: unknown[] })?.projects;
+    const arr = Array.isArray(json)
+        ? json
+        : (json as { projects?: unknown[] })?.projects;
     if (!Array.isArray(arr)) return {};
     return {
         projects: arr.map((p) => {
