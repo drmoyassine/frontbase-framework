@@ -117,10 +117,16 @@ jobs:
             --commit "$PRODUCT_SHA"
 
       - name: Rebuild console deterministically
+        env:
+          FRONTBASE_FRAMEWORK: ${{ env.FRAMEWORK_REPLAY }}
         run: |
           node framework/scripts/pin-console-build-time.mjs \
             --product "$PRODUCT_CONSOLE_REPLAY" \
             --pin "$FRAMEWORK_REPLAY/examples/cf-full/console-dist/CONSOLE_PIN"
+          # Build the framework's edge-core first so the product's builderSwPlugin
+          # can resolve @frontbase/edge-core (via FRONTBASE_FRAMEWORK env).
+          pnpm --dir "$FRAMEWORK_REPLAY" install --frozen-lockfile
+          pnpm --dir "$FRAMEWORK_REPLAY" --filter @frontbase/edge-core... run build
           npm ci --prefix "$PRODUCT_CONSOLE_REPLAY"
           npm --prefix "$PRODUCT_CONSOLE_REPLAY" run build:community
           node "$FRAMEWORK_REPLAY/scripts/fetch-console.mjs" \
