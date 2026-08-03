@@ -15,6 +15,9 @@ import type { TemplateContext } from './ssr/lib/context.js';
 import type { SiteManifest, PageEntry, RegisteredQuery } from './manifest.js';
 import type { DataProvider } from './data.js';
 import { renderDocument } from './shell.js';
+import { generateGatedPageDocument } from './ssr/gatedPage.js';
+import { getDefaultTrackingConfig } from './ssr/lib/tracking.js';
+import type { HtmlPageData } from './ssr/htmlDocument.js';
 import { engineConfig, type Principal } from './config.js';
 
 export type Environment = 'edge' | 'service-worker' | 'builder';
@@ -72,6 +75,27 @@ function buildContext(page: PageEntry, path: string, records: Record<string, unk
         records,
         app: { environment: opts.environment, manifestVersion: opts.manifest.version },
     } as TemplateContext;
+}
+
+/**
+ * Adapt a resolved PageEntry to the HtmlPageData shape expected by the gated-page
+ * document generator (which reuses the product's generateHtmlDocument shell).
+ *
+ * `isHomepage` is derived from the request path so the post-login redirect baked
+ * into gatedPage.ts resolves to '/' for the homepage and '/<slug>' otherwise —
+ * matching the product's `(page.isHomepage ? '/' : '/' + page.slug)`.
+ */
+function toHtmlPageData(page: PageEntry, path: string): HtmlPageData & { isHomepage: boolean } {
+    return {
+        id: page.slug,
+        slug: page.slug,
+        name: page.title,
+        title: page.title,
+        description: page.description,
+        cssBundle: page.cssBundle,
+        layoutData: page.layout,
+        isHomepage: path === '/',
+    } as HtmlPageData & { isHomepage: boolean };
 }
 
 export function createEngine(opts: EngineOptions): Hono {
@@ -148,6 +172,44 @@ export function createEngine(opts: EngineOptions): Hono {
         let page = opts.resolvePublishedPage ? await opts.resolvePublishedPage(path) : undefined;
         if (!page) page = manifest.pages[path];
         if (!page) return c.notFound();
+
+        // Private-page gating (edge only). Mirrors the product's routes/pages.ts
+        // gate field-for-field: a page whose `isPublic === false`, served to an
+        // unauthenticated visitor, is rendered behind generateGatedPageDocument —
+        // the full page HTML, blurred, with an inline auth overlay (the visitor
+        // sees the content preview + a login/signup form; on success the page is
+        // re-requested and served normally). Authenticated visitors fall through
+        // to the normal render. The host wires `engineConfig().resolvePrincipal`
+        // (the visitor session/cookie); cf-full reuses the SAME fb_session JWT
+        // resolver as the compat /api surface and the builder auth gate, so the
+        // decision is identical to the product's `refreshSession` check.
+        //
+        // Tenant isolation is preserved: the gated body is rendered with EMPTY
+        // records (no query data is fetched or leaked to the unauthenticated
+        // visitor — the scope-enforcement block below is skipped entirely).
+        // The SW/builder environments never gate (a private page is still loaded
+        // for local re-render / canvas editing).
+        if (environment === 'edge' && page.isPublic === false) {
+            const principal = await engineConfig().resolvePrincipal(c.req.raw);
+            if (!principal.user) {
+                const body = await renderPage(page.layout, buildContext(page, path, [], opts));
+                const faviconUrl = await engineConfig().resolveFaviconUrl();
+                const gatedHtml = generateGatedPageDocument(
+                    toHtmlPageData(page, path),
+                    body,
+                    {} as Record<string, unknown>,
+                    getDefaultTrackingConfig(),
+                    faviconUrl || undefined,
+                    page._primaryAuthForm,
+                );
+                return c.html(gatedHtml, 200, {
+                    'x-rendered-by': environment,
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
+                });
+            }
+        }
 
         // Page data goes through the SAME scope enforcement + tenant threading as
         // the Edge Data Proxy — otherwise a tenant/user-scoped page query would

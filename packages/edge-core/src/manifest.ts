@@ -4,6 +4,7 @@
  */
 import type { ZodTypeAny } from 'zod';
 import type { PageLayoutData } from './ssr/PageRenderer.js';
+import type { AuthFormConfig } from './ssr/gatedPage.js';
 
 /** Execution context handed to a registered query on the edge. */
 export interface QueryContext {
@@ -37,6 +38,21 @@ export interface PageEntry {
     /** Publish-time tree-shaken page CSS (styling seam — Phase 1 input 16). */
     cssBundle?: string;
     layout: PageLayoutData;
+    /**
+     * Page visibility — mirrors the product page bundle's `isPublic` field.
+     * `false` = private: the edge serve path gates an unauthenticated visitor
+     * behind generateGatedPageDocument (blurred content + auth overlay).
+     * `undefined`/`true` = public (default — preserves the public-page path and
+     * the golden-corpus byte-parity suite, whose pages never set this).
+     */
+    isPublic?: boolean;
+    /**
+     * Auth-form config baked into the page bundle — mirrors the product's
+     * `_primaryAuthForm` field 1:1. When a private page is served to an
+     * unauthenticated visitor, this is passed to generateGatedPageDocument to
+     * skin the overlay (title/providers/colors). Undefined → overlay defaults.
+     */
+    _primaryAuthForm?: AuthFormConfig;
 }
 
 export interface SiteManifest {

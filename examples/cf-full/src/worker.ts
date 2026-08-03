@@ -136,6 +136,14 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         jwtSecret: opts.sessionSecret,
         jwtCookie: 'fb_session',
     });
+    // Wire the visitor session resolver into the eSSR engine so private-page
+    // gating decides the SAME way the compat /api surface and the builder gate
+    // do: a valid fb_session JWT → authenticated user; otherwise anonymous (and
+    // a private page is served behind the auth overlay). configureEngine RESETS
+    // to defaults on each call (its documented contract), so the edition/env
+    // values are re-stated here alongside resolvePrincipal in ONE call — this
+    // replaces the module-load `configureEngine({ edition, nodeEnv })`.
+    configureEngine({ edition: 'community', nodeEnv: 'production', resolvePrincipal });
     // Auth gate for every builder route: no session → 302 to /frontbase-admin
     // (with a return URL). Passed INTO createBuilderEngine via `authMiddleware` so
     // it is registered as the FIRST handler — Hono dispatches in registration
@@ -192,13 +200,24 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // published, non-deleted pages. Community single-tenant: read across tenants.
         resolvePublishedPage: async (path) => {
             const rows = path === '/'
-                ? await opts.runner.query('SELECT name, slug, description, layout_data FROM compat_pages WHERE is_homepage = 1 AND is_published = 1 AND deleted_at IS NULL LIMIT 1')
-                : await opts.runner.query('SELECT name, slug, description, layout_data FROM compat_pages WHERE slug = ? AND is_published = 1 AND deleted_at IS NULL LIMIT 1', [decodeURIComponent(path).replace(/^\/+|\/+$/g, '')]);
+                ? await opts.runner.query('SELECT name, slug, description, layout_data, is_public FROM compat_pages WHERE is_homepage = 1 AND is_published = 1 AND deleted_at IS NULL LIMIT 1')
+                : await opts.runner.query('SELECT name, slug, description, layout_data, is_public FROM compat_pages WHERE slug = ? AND is_published = 1 AND deleted_at IS NULL LIMIT 1', [decodeURIComponent(path).replace(/^\/+|\/+$/g, '')]);
             const row = rows[0];
             if (!row) return null;
             let layout;
             try { layout = JSON.parse(String(row.layout_data)); } catch { layout = { content: [], root: {} }; }
-            return { title: String(row.name ?? row.slug ?? 'Page'), slug: String(row.slug ?? ''), description: row.description ? String(row.description) : undefined, layout };
+            // Surface the page's visibility flag so the eSSR engine can gate
+            // private pages. is_public is INTEGER (0/1) in compat_pages; coerce
+            // to a boolean, defaulting to public when absent (NULL → public),
+            // matching the product's `isPublic` semantics.
+            const isPublic = row.is_public == null ? undefined : Number(row.is_public) !== 0;
+            return {
+                title: String(row.name ?? row.slug ?? 'Page'),
+                slug: String(row.slug ?? ''),
+                description: row.description ? String(row.description) : undefined,
+                layout,
+                ...(isPublic !== undefined ? { isPublic } : {}),
+            };
         },
     });
 

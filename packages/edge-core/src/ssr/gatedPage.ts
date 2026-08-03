@@ -13,7 +13,7 @@ import type { HtmlPageData } from './htmlDocument.js';
 import { generateHtmlDocument } from './htmlDocument.js';
 import { escapeHtml } from './components/lib/utils.js';
 
-interface AuthFormConfig {
+export interface AuthFormConfig {
     type: 'login' | 'signup' | 'both';
     title?: string;
     description?: string;

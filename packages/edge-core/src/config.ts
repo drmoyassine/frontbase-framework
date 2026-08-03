@@ -51,7 +51,11 @@ const defaults: EngineConfig = {
 
 let current: EngineConfig = { ...defaults };
 
-/** Merge host-provided config over the defaults. Call once at host boot. */
+/** Merge host-provided config over the defaults. Call once at host boot.
+ *  NOTE: each call RESETS to defaults then applies overrides — `configureEngine({})`
+ *  is the documented "reset to anonymous/no-tenant" idiom (used by the test suites).
+ *  Hosts that need to layer several overrides must therefore pass them in a single
+ *  call rather than calling repeatedly (later calls would wipe earlier overrides). */
 export function configureEngine(overrides: Partial<EngineConfig>): void {
     current = { ...defaults, ...overrides };
 }
