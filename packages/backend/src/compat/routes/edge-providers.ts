@@ -24,6 +24,7 @@ import {
     setCachedDiscovery,
     invalidateDiscoveryCache,
 } from './edge-providers/strategies/resources/cache.js';
+import { enrichProviderConfig } from '../connect-enrichment.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -106,17 +107,23 @@ export function registerEdgeProvidersRoutes(
         };
         const id = crypto.randomUUID();
         const store = p2(c.get('tenant'));
+        const provider = b.provider ?? 'local';
+        // Connect-time enrichment: fetch extra creds the product stores beyond the
+        // bare token (Supabase api-keys+jwt_secret, Cloudflare account_id, …).
+        // Best-effort — returns input unchanged on any failure.
+        const baseConfig = (b.config ?? b.provider_credentials ?? {}) as Record<string, unknown>;
+        const enrichedConfig = await enrichProviderConfig(provider, baseConfig, externalFetch);
         await store.upsertEdgeResource({
             id,
             kind: 'provider',
             name: b.name ?? 'Provider',
-            provider: b.provider ?? 'local',
-            config: await encryptedConfig(b.config ?? b.provider_credentials ?? {}),
+            provider,
+            config: await encryptedConfig(enrichedConfig),
         }, now());
         return c.json(await providerView(store, await store.getEdgeResource(id) ?? {
             id,
             name: b.name ?? 'Provider',
-            provider: b.provider ?? 'local',
+            provider,
             created_at: now(),
             updated_at: now(),
         }), 201);
@@ -162,14 +169,20 @@ export function registerEdgeProvidersRoutes(
         const store = p2(c.get('tenant'));
         const existing = await providerFor(c.get('tenant'), id);
         if (!existing) return providerNotFound(c);
+        const provider = b.provider ?? String(existing.provider ?? 'local');
+        let configToStore = existing.config as string | undefined;
+        if (b.config !== undefined || b.provider_credentials !== undefined) {
+            const baseConfig = (b.config ?? b.provider_credentials) as Record<string, unknown>;
+            // Re-enrich when credentials change (e.g. rotated PAT).
+            const enrichedConfig = await enrichProviderConfig(provider, baseConfig ?? {}, externalFetch);
+            configToStore = await encryptedConfig(enrichedConfig);
+        }
         await store.upsertEdgeResource({
             id,
             kind: 'provider',
             name: b.name ?? String(existing.name),
-            provider: b.provider ?? String(existing.provider ?? 'local'),
-            config: b.config !== undefined || b.provider_credentials !== undefined
-                ? await encryptedConfig(b.config ?? b.provider_credentials)
-                : existing.config as string | undefined,
+            provider,
+            config: configToStore,
         }, now());
         return c.json(await providerView(store, await store.getEdgeResource(id) ?? existing));
     });

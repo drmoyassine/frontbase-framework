@@ -271,7 +271,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Wave 5 — workspace agent
     registerAgentCompatRoutes(app, runner, kvFor, secretCipher, externalFetch);
     // Work A — DB-Synchronizer (/api/sync/*)
-    registerSyncRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now, sheetsAddonUrl);
+    registerSyncRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now, sheetsAddonUrl, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId));
 
     // Derive what is implemented from the routes just registered, rather than
     // from a parallel hand-maintained list. Everything else in the contract gets a

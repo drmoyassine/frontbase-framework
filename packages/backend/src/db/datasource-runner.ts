@@ -10,33 +10,39 @@ import {
     sqliteRunner, d1RunnerFromRest, supabaseRunner, postgresRunner,
     type DbRunner,
 } from '@frontbase/edge-infra';
+import { resolveDatasourceConfig } from '../compat/credential-resolver.js';
 
-export type DatasourceKind = 'sqlite' | 'd1' | 'turso' | 'supabase' | 'postgres';
+export type DatasourceKind = 'sqlite' | 'd1' | 'turso' | 'supabase' | 'postgres' | 'neon';
 
-/** Build a DbRunner from a datasource's kind + config. Throws on unknown kind / missing fields. */
+/** Build a DbRunner from a datasource's kind + config. Throws on unknown kind / missing fields.
+ *  Applies the per-kind credential resolver first, so callers may pass a raw account config
+ *  (e.g. Supabase `service_role_key` + `api_url`/`project_ref`) and it is mapped to the
+ *  runner-shaped config (`url` + `serviceKey`) automatically. */
 export function datasourceRunner(kind: string, config: Record<string, unknown>): DbRunner {
+    const resolved = resolveDatasourceConfig(kind, config);
     switch (kind as DatasourceKind) {
         case 'sqlite':
-            return sqliteRunner(String(config.url ?? ':memory:'), config.authToken ? String(config.authToken) : undefined);
+            return sqliteRunner(String(resolved.url ?? ':memory:'), resolved.authToken ? String(resolved.authToken) : undefined);
         case 'turso':
             // Turso is libsql over the wire.
-            return sqliteRunner(String(config.url ?? ''), config.authToken ? String(config.authToken) : undefined);
+            return sqliteRunner(String(resolved.url ?? ''), resolved.authToken ? String(resolved.authToken) : undefined);
         case 'd1':
             return d1RunnerFromRest({
-                accountId: String(config.accountId ?? ''),
-                databaseId: String(config.databaseId ?? ''),
-                apiToken: String(config.apiToken ?? ''),
+                accountId: String(resolved.accountId ?? ''),
+                databaseId: String(resolved.databaseId ?? ''),
+                apiToken: String(resolved.apiToken ?? ''),
             });
         case 'supabase':
             return supabaseRunner({
-                url: String(config.url ?? ''),
-                serviceKey: String(config.serviceKey ?? ''),
-                jwt: config.jwt ? String(config.jwt) : undefined,
-                schema: config.schema ? String(config.schema) : undefined,
+                url: String(resolved.url ?? ''),
+                serviceKey: String(resolved.serviceKey ?? ''),
+                jwt: resolved.jwt ? String(resolved.jwt) : undefined,
+                schema: resolved.schema ? String(resolved.schema) : undefined,
             });
         case 'postgres':
+        case 'neon':
             // F7c: Neon HTTP client (works for Neon + Supabase Postgres pooler URLs).
-            return postgresRunner({ connectionString: String(config.connectionString ?? config.url ?? '') });
+            return postgresRunner({ connectionString: String(resolved.connectionString ?? resolved.url ?? '') });
         default:
             throw new Error('unknown_datasource_kind');
     }
