@@ -4,11 +4,24 @@
 
 import { processStyleEntry } from '../../styleHelpers.js';
 
+/**
+ * Per-viewport style overrides (mobile-first responsive). Each breakpoint maps
+ * CSS property names to values; `buildResponsiveCSS` emits them as !important
+ * media queries (tablet: max-width 1024px, mobile: max-width 640px). Desktop is
+ * the inline base style and has no entry here.
+ */
+export interface ViewportOverrides {
+    tablet?: Record<string, unknown>;
+    mobile?: Record<string, unknown>;
+}
+
 export interface StylesData {
     activeProperties?: string[];
     values?: Record<string, any>;
     stylingMode?: 'visual' | 'css';
     rawCSS?: string;
+    /** Responsive overrides per breakpoint (builder writes these; SSR emits media queries). */
+    viewportOverrides?: ViewportOverrides;
 }
 
 export function sanitizeCSS(css: string | undefined | null): string {

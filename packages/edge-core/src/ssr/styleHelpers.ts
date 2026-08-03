@@ -7,6 +7,10 @@
  * Extracted from PageRenderer.ts for clarity and reusability.
  */
 
+// type-only: styles.ts imports processStyleEntry from this module, so a runtime
+// import would cycle; type-only imports are erased and safe.
+import type { StylesData, ViewportOverrides } from './components/lib/styles.js';
+
 // CSS properties that should NOT receive automatic 'px' units
 const UNITLESS_PROPS = new Set([
     'opacity', 'z-index', 'flex', 'flex-grow', 'flex-shrink', 'order',
@@ -194,16 +198,18 @@ export function buildInlineStyles(props: Record<string, unknown>, styles: Record
  * - Tablet: @media (max-width: 1024px)
  * - Mobile: @media (max-width: 640px)
  */
-export function buildResponsiveCSS(componentId: string, styles: Record<string, any>): string {
-    if (!styles || !styles.viewportOverrides) {
+export function buildResponsiveCSS(componentId: string, styles: StylesData | Record<string, unknown> | undefined): string {
+    // viewportOverrides is typed on StylesData; legacy `component.styles` (plain
+    // record) still flows through here, so narrow defensively.
+    const viewportOverrides = (styles as StylesData | undefined)?.viewportOverrides as ViewportOverrides | undefined;
+    if (!viewportOverrides) {
         return '';
     }
 
-    const viewportOverrides = styles.viewportOverrides;
     const cssRules: string[] = [];
 
     // Helper to convert style values to CSS properties with !important
-    const valuesToCSS = (values: Record<string, any>): string => {
+    const valuesToCSS = (values: Record<string, unknown>): string => {
         const props: string[] = [];
         for (const [key, value] of Object.entries(values)) {
             processStyleEntry(key, value, (cssKey, cssValue) => {
