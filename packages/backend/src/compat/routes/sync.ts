@@ -1157,10 +1157,10 @@ export function registerSyncRoutes(
             for (const table of tables) {
                 const schema = await inspectTable(runner, dialect, table);
                 relationships.push(...schema.foreignKeys.map((foreignKey) => ({
-                    from_table: table,
-                    from_column: foreignKey.column,
-                    to_table: foreignKey.referenced_table,
-                    to_column: foreignKey.referenced_column,
+                    source_table: table,
+                    source_column: foreignKey.column,
+                    target_table: foreignKey.referenced_table,
+                    target_column: foreignKey.referenced_column,
                     relationship_type: 'many_to_one',
                 })));
             }
