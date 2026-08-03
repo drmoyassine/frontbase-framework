@@ -81,8 +81,8 @@ async function request(method, path, body) {
 
     const relations = await request('GET', `/api/sync/datasources/${datasourceId}/relationships/`);
     assert.equal(relations.response.status, 200);
-    assert.equal(relations.body.relationships[0].from_table, 'children');
-    assert.equal(relations.body.relationships[0].to_table, 'parents');
+    assert.equal(relations.body.relationships[0].source_table, 'children');
+    assert.equal(relations.body.relationships[0].target_table, 'parents');
     const displayRelationship = await request(
         'POST',
         `/api/sync/datasources/${datasourceId}/relationships/`,
