@@ -29,7 +29,12 @@ export const resolveSupabase: DatasourceResolver = (config) => {
     const projectRef = String(config.project_ref ?? config.ref ?? '');
     const url = rawUrl || (projectRef ? `https://${projectRef}.supabase.co` : '');
     const resolved: Record<string, unknown> = { url, serviceKey };
-    const jwt = config.jwt ?? config.jwt_secret;
+    // `jwt` here means a JWT *token* to send as the Bearer (defaults to serviceKey,
+    // which is itself a valid JWT). Do NOT map `jwt_secret` — that is the project's
+    // raw signing SECRET (from /v1/projects/{ref}/postgrest), used server-side to
+    // sign tokens; sending it as a Bearer makes PostgREST try to decode it as a JWT
+    // → "Expected 3 parts; got 1". Only honor an explicit caller-provided JWT token.
+    const jwt = config.jwt;
     if (jwt) resolved.jwt = String(jwt);
     const schema = config.schema;
     if (schema) resolved.schema = String(schema);
@@ -49,6 +54,10 @@ export const enrichSupabase: ProviderEnricher = async (config, externalFetch) =>
     const accessToken = String(config.access_token ?? '');
     const projectRef = String(config.project_ref ?? config.ref ?? '');
     if (!accessToken || !projectRef) return config; // nothing to enrich without both
+    // Idempotent: already-enriched accounts (connect-time OR a prior lazy enrich)
+    // have the service_role_key — skip the fetch. Keeps lazy enrichment on the read
+    // path from refetching on every query.
+    if (config.service_role_key) return config;
 
     const merged: Record<string, unknown> = {
         ...config,

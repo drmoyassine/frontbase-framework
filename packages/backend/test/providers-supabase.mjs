@@ -35,11 +35,13 @@ import { resolveSupabase, enrichSupabase } from '../dist/compat/providers/supaba
     assert.equal(out.serviceKey, 'anon');
 }
 
-// 4. jwt + schema are carried through when present.
+// 4. An explicit JWT *token* + schema are carried through; jwt_secret is NOT (it's
+//    a raw signing secret, not a Bearer token — must not be sent as a JWT).
 {
-    const out = resolveSupabase({ url: 'https://x.supabase.co', serviceKey: 'k', jwt_secret: 's3cret', schema: 'private' });
-    assert.equal(out.jwt, 's3cret');
+    const out = resolveSupabase({ url: 'https://x.supabase.co', serviceKey: 'k', jwt: 'hdr.pay.sig', jwt_secret: 'rawsecret', schema: 'private' });
+    assert.equal(out.jwt, 'hdr.pay.sig');
     assert.equal(out.schema, 'private');
+    assert.equal(out.jwt_secret, undefined); // raw secret must NOT leak into the runner shape
 }
 
 // 5. Empty input → empty url + serviceKey (runner decides how to fail).
