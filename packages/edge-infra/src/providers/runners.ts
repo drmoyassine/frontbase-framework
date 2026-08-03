@@ -135,6 +135,23 @@ export interface SupabaseOpts {
  * Alternatively, use table-specific CRUD via the PostgREST client directly
  * (`.from()`, `.select()`, etc.) for typed operations.
  */
+/**
+ * execute_query / execute_sql are declared `RETURNS TABLE(result jsonb)`, so a
+ * PostgREST rpc() returns an ARRAY of rows: `[{ result: <jsonb> }, ...]` (NOT a
+ * bare `{result}`). PostgREST decodes the jsonb column into a parsed JS value, so
+ * `.result` is already an object/array/number (defensive JSON.parse if a string).
+ * Returns null when the column is absent or the aggregate was empty.
+ */
+export function extractRpcResult(data: unknown): unknown {
+    const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null | undefined;
+    const val = row?.result;
+    if (val === undefined || val === null) return null;
+    if (typeof val === 'string') {
+        try { return JSON.parse(val); } catch { return val; }
+    }
+    return val;
+}
+
 export function supabaseRunner(opts: SupabaseOpts): DbRunner {
     const headers: Record<string, string> = {
         apikey: opts.serviceKey,
@@ -162,13 +179,10 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
 
                 if (error) throw new Error(`[Supabase] query failed: ${error.message}`);
 
-                // Parse the JSON result back into rows
-                const result = data as unknown;
-                if (result && typeof result === 'object' && 'result' in result) {
-                    const json = (result as { result: string }).result;
-                    return JSON.parse(json) as Record<string, unknown>[];
-                }
-                return [];
+                // execute_query is RETURNS TABLE(result jsonb) → PostgREST gives
+                // [{result: <rows>}] where <rows> is the json_agg array (already parsed).
+                const rows = extractRpcResult(data);
+                return Array.isArray(rows) ? rows as Record<string, unknown>[] : [];
             } catch (e) {
                 // If execute_query function doesn't exist, provide clear guidance
                 if ((e as Error).message.includes('execute_query')) {
@@ -195,16 +209,12 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
 
                 if (error) throw new Error(`[Supabase] exec failed: ${error.message}`);
 
-                // Parse the result to extract affected row count
-                const result = data as unknown;
-                if (result && typeof result === 'object' && 'result' in result) {
-                    const json = (result as { result: string }).result;
-                    const parsed = JSON.parse(json);
-                    // Handle both direct count and PostgreSQL result format
-                    if (typeof parsed === 'number') return parsed;
-                    if (parsed && typeof parsed === 'object' && 'rowCount' in parsed) {
-                        return (parsed as { rowCount: number }).rowCount;
-                    }
+                // execute_sql is RETURNS TABLE(result jsonb) → [{result: <jsonb>}];
+                // value is a rowCount number or {rowCount} object (already parsed).
+                const parsed = extractRpcResult(data);
+                if (typeof parsed === 'number') return parsed;
+                if (parsed && typeof parsed === 'object' && 'rowCount' in (parsed as Record<string, unknown>)) {
+                    return (parsed as { rowCount: number }).rowCount;
                 }
                 return 0;
             } catch (e) {
