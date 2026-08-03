@@ -21,6 +21,7 @@ import type { DbRunner } from '@frontbase/edge-infra';
 import { datasourceRunner, isIntrospectable, dialectOf } from '../../db/datasource-runner.js';
 import { enrichProviderConfig } from '../connect-enrichment.js';
 import { serializeDatasource, serializeDatasourceView } from './sync-shapes.js';
+import { SUPABASE_SETUP_SQL } from '../supabase-setup-sql.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
@@ -377,13 +378,33 @@ export function registerSyncRoutes(
         const name = String(b.name ?? 'Untitled Datasource');
         const kind = String(b.type ?? b.kind ?? 'sqlite');
         const id = crypto.randomUUID();
-        const store = syncStoreFor(c.get('tenant'));
+        const tenant = c.get('tenant');
+        const store = syncStoreFor(tenant);
         // SPA sends a FLAT DatasourceCreate payload (no `config` wrapper). Persist the
         // normalized credential fields + provider_account_id; secrets themselves stay on
         // the connected account and are hydrated at read/test time (product parity — no
         // secret duplication, survives key rotation).
         const config = flatBodyToConfig(b);
         const created = await store.createDatasource({ name, kind, config }, id, now());
+
+        // Supabase: best-effort auto-apply the setup migration (execute_query /
+        // execute_sql / frontbase_* schema + rows helpers) so /tables/, /schema/,
+        // and /relationships/ work immediately — without the user manually running
+        // SQL in the Supabase editor. A migration failure MUST NOT fail the create:
+        // the datasource is already persisted, so swallow + log + continue. The
+        // helper is idempotent (CREATE OR REPLACE; "already exists" is tolerated).
+        if (kind === 'supabase') {
+            try {
+                const resolved = await mergeAccount(tenant, kind, config);
+                await applyMigrationStatements(datasourceRunner(kind, resolved), SUPABASE_SETUP_SQL);
+            } catch (error) {
+                console.warn(
+                    `[sync] supabase auto-migration failed for datasource ${id}:`,
+                    (error as Error).message,
+                );
+            }
+        }
+
         return c.json(serializeDatasource(created), 201);
     });
 
@@ -1773,34 +1794,17 @@ export function registerSyncRoutes(
         }
 
         try {
-            // Get SQL from request body (SPA reads from product backend)
+            // SQL comes from the request body when provided (SPA may carry a custom
+            // migration). Default to the canonical setup SQL so a bodyless POST
+            // (re)applies execute_query / execute_sql / frontbase_* helpers — the
+            // same migration auto-applied at create time.
             const body = await c.req.json().catch(() => ({})) as { sql?: string };
-            if (!body.sql || typeof body.sql !== 'string') {
-                return c.json({ detail: 'Request body must contain sql string' }, 400);
-            }
-
-            const migrationSql = body.sql;
-
-            // Split SQL into individual statements (basic split by semicolon, ignoring $$ blocks)
-            const statements = splitSqlStatements(migrationSql);
+            const migrationSql = (body.sql && typeof body.sql === 'string' && body.sql.trim())
+                ? body.sql
+                : SUPABASE_SETUP_SQL;
 
             const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
-            let successCount = 0;
-            const errors: string[] = [];
-
-            for (const stmt of statements) {
-                if (!stmt.trim() || stmt.trim().startsWith('--')) continue;
-                try {
-                    await runner.exec(stmt);
-                    successCount++;
-                } catch (err) {
-                    // Some statements may fail if objects already exist (CREATE OR REPLACE handles most)
-                    const msg = (err as Error).message;
-                    if (!msg.includes('already exists') && !msg.includes('duplicate')) {
-                        errors.push(msg);
-                    }
-                }
-            }
+            const { successCount, errors } = await applyMigrationStatements(runner, migrationSql);
 
             if (errors.length > 0) {
                 return c.json({
@@ -1871,4 +1875,45 @@ function splitSqlStatements(sql: string): string[] {
     }
 
     return statements.filter(s => s.length > 0);
+}
+
+/**
+ * Apply a multi-statement SQL migration through a DbRunner, one statement at a
+ * time. Shared by the create-time auto-apply (Supabase) and the explicit
+ * /apply-migration endpoint.
+ *
+ * - Splits with `splitSqlStatements` (respects `$$` dollar-quoting).
+ * - Strips LEADING full-line `--` comments from each statement. The setup SQL
+ *   interleaves a comment header above every `CREATE FUNCTION`, so without this
+ *   strip every statement would start with `--` and be skipped as "just a
+ *   comment". Comments INSIDE a `$$` body are never leading, so they survive.
+ * - Tolerates idempotent re-runs: CREATE OR REPLACE is the norm, and any error
+ *   mentioning "already exists" / "duplicate" is swallowed (re-applying on an
+ *   already-migrated project is a no-op, not a failure).
+ *
+ * Returns `{ successCount, errors }` and never throws — callers decide whether
+ * the collected errors are fatal (the create path ignores them entirely).
+ */
+async function applyMigrationStatements(
+    runner: DbRunner,
+    sql: string,
+): Promise<{ successCount: number; errors: string[] }> {
+    const statements = splitSqlStatements(sql);
+    const errors: string[] = [];
+    let successCount = 0;
+    for (const stmt of statements) {
+        const lines = stmt.split('\n');
+        let i = 0;
+        while (i < lines.length && lines[i]!.trim().startsWith('--')) i += 1;
+        const cleaned = lines.slice(i).join('\n').trim();
+        if (!cleaned) continue;
+        try {
+            await runner.exec(cleaned);
+            successCount += 1;
+        } catch (err) {
+            const msg = String((err as Error)?.message ?? err);
+            if (!/already exists|duplicate/i.test(msg)) errors.push(msg);
+        }
+    }
+    return { successCount, errors };
 }
