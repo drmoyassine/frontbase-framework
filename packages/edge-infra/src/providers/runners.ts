@@ -152,6 +152,34 @@ export function extractRpcResult(data: unknown): unknown {
     return val;
 }
 
+/**
+ * Inline `$1, $2, …` placeholders as properly-escaped SQL literals.
+ *
+ * Why: execute_query / exec_sql CONCATENATE the query string (`EXECUTE 'SELECT
+ * json_agg(t) FROM (' || query || ') t'`) and never bind `$N` parameters, so any
+ * parameterized SQL (the framework's postgres introspection — `WHERE table_name=$1`,
+ * filtered data queries, FK lookups) hits an unresolved placeholder and throws.
+ * Unlike a real prepared statement, the values must be embedded.
+ *
+ * Safety: every value here is a VALUE (a table/column name used in a WHERE clause,
+ * already validated against the live schema via validateIdentifier, or a filter
+ * literal) — never a raw identifier spliced into the SQL skeleton. Strings are
+ * single-quote-escaped (doubling `'` → `''`), the standard PG literal escape;
+ * numbers/booleans pass unquoted; null → NULL. Exported for unit testing.
+ */
+export function inlinePgParams(sql: string, params: unknown[]): string {
+    if (!params.length) return sql;
+    return sql.replace(/\$(\d+)/g, (match, digits) => {
+        const idx = Number(digits) - 1;
+        if (idx < 0 || idx >= params.length) return match; // unknown placeholder — leave it
+        const v = params[idx];
+        if (v === undefined || v === null) return 'NULL';
+        if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+        if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+        return `'${String(v).replace(/'/g, "''")}'`;
+    });
+}
+
 export function supabaseRunner(opts: SupabaseOpts): DbRunner {
     const headers: Record<string, string> = {
         apikey: opts.serviceKey,
@@ -173,8 +201,8 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
             // Otherwise, fall back to direct execution via the client
             try {
                 const { data, error } = await client.rpc('execute_query', {
-                    query_sql: sql,
-                    query_params: JSON.stringify(params) as never,
+                    query_sql: inlinePgParams(sql, params as unknown[]),
+                    query_params: '[]' as never,
                 });
 
                 if (error) throw new Error(`[Supabase] query failed: ${error.message}`);
@@ -203,8 +231,8 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
             // For INSERT/UPDATE/DELETE, use execute_sql to get affected rows
             try {
                 const { data, error } = await client.rpc('execute_sql', {
-                    query_sql: sql,
-                    query_params: JSON.stringify(params) as never,
+                    query_sql: inlinePgParams(sql, params as unknown[]),
+                    query_params: '[]' as never,
                 });
 
                 if (error) throw new Error(`[Supabase] exec failed: ${error.message}`);

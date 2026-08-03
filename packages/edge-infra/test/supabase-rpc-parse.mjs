@@ -56,3 +56,40 @@ import { extractRpcResult } from '../dist/providers/runners.js';
 }
 
 console.log('supabase-rpc-parse: 7/7 passed');
+
+// ---------------------------------------------------------------------------
+// inlinePgParams — inline $N placeholders as escaped literals (the execute_query
+// SQL function concatenates the string and never binds params).
+// ---------------------------------------------------------------------------
+import { inlinePgParams } from '../dist/providers/runners.js';
+
+// 8. String param (table name in WHERE) → single-quoted literal.
+{
+    const out = inlinePgParams('SELECT * FROM t WHERE name=$1', ['activities']);
+    assert.equal(out, "SELECT * FROM t WHERE name='activities'");
+}
+
+// 9. Single-quote in the value is doubled (SQL injection escape).
+{
+    const out = inlinePgParams('WHERE name=$1', ["O'Brien"]);
+    assert.equal(out, "WHERE name='O''Brien'");
+}
+
+// 10. Multiple params + mixed types (number unquoted, boolean, null).
+{
+    const out = inlinePgParams('WHERE a=$1 AND b=$2 AND c=$3 AND d=$4', [5, true, null, 'x']);
+    assert.equal(out, "WHERE a=5 AND b=TRUE AND c=NULL AND d='x'");
+}
+
+// 11. No params → SQL untouched.
+{
+    assert.equal(inlinePgParams('SELECT 1', []), 'SELECT 1');
+}
+
+// 12. Unknown placeholder ($N beyond params length) left in place (don't break SQL).
+{
+    const out = inlinePgParams('WHERE a=$1 AND b=$2', ['only_one']);
+    assert.equal(out, "WHERE a='only_one' AND b=$2");
+}
+
+console.log('supabase-rpc-parse + inline: 12/12 passed');
