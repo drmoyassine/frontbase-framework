@@ -253,7 +253,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
     registerSecurityEventsRoutes(app, secEventsFor);
-    registerPagesRoutes(app, pagesFor, now);
+    registerPagesRoutes(app, pagesFor, now, runner);
     registerDatabaseRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now);
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2

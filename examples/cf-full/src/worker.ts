@@ -19,6 +19,7 @@
  */
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
+import type { PageEntry } from '@frontbase/edge-core';
 import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
@@ -200,8 +201,8 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // published, non-deleted pages. Community single-tenant: read across tenants.
         resolvePublishedPage: async (path) => {
             const rows = path === '/'
-                ? await opts.runner.query('SELECT name, slug, description, layout_data, is_public FROM compat_pages WHERE is_homepage = 1 AND is_published = 1 AND deleted_at IS NULL LIMIT 1')
-                : await opts.runner.query('SELECT name, slug, description, layout_data, is_public FROM compat_pages WHERE slug = ? AND is_published = 1 AND deleted_at IS NULL LIMIT 1', [decodeURIComponent(path).replace(/^\/+|\/+$/g, '')]);
+                ? await opts.runner.query('SELECT name, slug, description, layout_data, is_public, primary_auth_form FROM compat_pages WHERE is_homepage = 1 AND is_published = 1 AND deleted_at IS NULL LIMIT 1')
+                : await opts.runner.query('SELECT name, slug, description, layout_data, is_public, primary_auth_form FROM compat_pages WHERE slug = ? AND is_published = 1 AND deleted_at IS NULL LIMIT 1', [decodeURIComponent(path).replace(/^\/+|\/+$/g, '')]);
             const row = rows[0];
             if (!row) return null;
             let layout;
@@ -211,12 +212,27 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             // to a boolean, defaulting to public when absent (NULL → public),
             // matching the product's `isPublic` semantics.
             const isPublic = row.is_public == null ? undefined : Number(row.is_public) !== 0;
+            // primary_auth_form is the project's primary auth-form config baked at
+            // publish (migration v19) — a TEXT column holding a JSON AuthFormConfig.
+            // The engine threads page._primaryAuthForm into generateGatedPageDocument
+            // so a private page's overlay skins from real config. NULL/invalid →
+            // undefined → the overlay falls back to its built-in defaults.
+            let primaryAuthForm: PageEntry['_primaryAuthForm'];
+            if (row.primary_auth_form != null && String(row.primary_auth_form) !== '') {
+                try {
+                    const parsed = JSON.parse(String(row.primary_auth_form));
+                    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        primaryAuthForm = parsed as PageEntry['_primaryAuthForm'];
+                    }
+                } catch { /* malformed JSON → fall back to overlay defaults */ }
+            }
             return {
                 title: String(row.name ?? row.slug ?? 'Page'),
                 slug: String(row.slug ?? ''),
                 description: row.description ? String(row.description) : undefined,
                 layout,
                 ...(isPublic !== undefined ? { isPublic } : {}),
+                ...(primaryAuthForm ? { _primaryAuthForm: primaryAuthForm } : {}),
             };
         },
     });

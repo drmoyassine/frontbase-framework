@@ -39,6 +39,25 @@ const manifest = {
             _primaryAuthForm: { type: 'login', title: 'Members Only', description: 'Sign in to your account' },
             layout: { root: {}, content: [{ id: 'm1', type: 'Text', props: { content: 'Members Area' } }] },
         },
+        // A page whose _primaryAuthForm carries the FULL AuthFormConfig shape a
+        // real project auth-form bakes at publish (primaryColor, providers,
+        // logoUrl, magicLink) — proves the overlay skins from real config, not
+        // just title/description. This is the row-baked path: worker.ts maps a
+        // compat_pages.primary_auth_form JSON row onto this field 1:1.
+        '/portal': {
+            title: 'Portal', slug: 'portal', isPublic: false,
+            _primaryAuthForm: {
+                type: 'both',
+                title: 'Partner Portal',
+                description: 'Sign in to access your dashboard',
+                primaryColor: '#4338ca',
+                providers: ['google', 'github'],
+                logoUrl: 'https://cdn.example.com/logo.png',
+                magicLink: true,
+                showLinks: true,
+            },
+            layout: { root: {}, content: [{ id: 'pt1', type: 'Text', props: { content: 'Partner Dashboard' } }] },
+        },
         '/dashboard': {
             title: 'Dashboard', slug: 'dashboard', isPublic: false, queryId: 'me.data',
             layout: { root: {}, content: [{ id: 'd1', type: 'Text', props: { content: '{% for r in records %}{{ r.secret }}{% endfor %}' } }] },
@@ -138,6 +157,22 @@ await check('private page _primaryAuthForm.title renders in overlay', async () =
     anon();
     const html = await (await req(engine, '/members')).text();
     return html.includes('Members Only') && html.includes('Sign in to your account');
+});
+
+// 8b. A FULL AuthFormConfig (primaryColor, providers, logoUrl) baked from the
+//     project's primary auth-form surfaces in the overlay — not just the title.
+//     This is the end-to-end proof that real auth-form config (vs the hardcoded
+//     default 'Welcome'/no-providers/no-logo overlay) reaches the visitor.
+await check('full _primaryAuthForm (color/providers/logo) skins the overlay', async () => {
+    anon();
+    const html = await (await req(engine, '/portal')).text();
+    return html.includes('Partner Portal')
+        && html.includes('Sign in to access your dashboard')
+        && html.includes('#4338ca')                       // primaryColor (button + focus ring)
+        && html.includes('Continue with Google')          // providers[0]
+        && html.includes('Continue with Github')          // providers[1]
+        && html.includes('data-provider="google"')
+        && html.includes('https://cdn.example.com/logo.png'); // logoUrl
 });
 
 // 9. Tenant isolation / no data leak: a private page with a user-scoped query,

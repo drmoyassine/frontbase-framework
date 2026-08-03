@@ -248,6 +248,21 @@ export const MIGRATIONS: Migration[] = [
         up: [`ALTER TABLE compat_pages ADD COLUMN is_published INTEGER DEFAULT 0`],
         down: [],
     },
+    {
+        // CF-22 private-page gating: bake the project's primary auth-form config
+        // onto each compat page so generateGatedPageDocument (the private-page
+        // overlay) skins from REAL config instead of hardcoded defaults. The
+        // engine reads `page._primaryAuthForm`; the cf-full worker SELECTs this
+        // column and maps it onto that field. NULL → overlay defaults (preserves
+        // the golden corpus + today's behavior for rows published before this
+        // column existed). Populated at publish from the tenant's primary
+        // auth_forms row. down is empty: SQLite can't drop a column without
+        // rebuilding the table, and a nullable extra column is harmless.
+        version: 19,
+        name: 'compat_pages_primary_auth_form',
+        up: [`ALTER TABLE compat_pages ADD COLUMN primary_auth_form TEXT`],
+        down: [],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

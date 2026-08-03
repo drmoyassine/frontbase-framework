@@ -8,6 +8,7 @@
  * Static routes (/homepage/, /public/{slug}/) registered before /{page_id}/.
  */
 import type { Hono } from 'hono';
+import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { PagesStore, serializePage, type CompatPageRow, type CompatVersionRow } from '../pages-store.js';
 import { isSystemEngine } from './edge-shapes.js';
@@ -68,7 +69,68 @@ const withBadge = (
     return out;
 };
 
-export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStore, now: () => string): void {
+/** Parse an auth_forms.config JSON blob into a plain object (never throws). */
+function parseAuthFormConfig(value: unknown): Record<string, unknown> {
+    if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>;
+    if (typeof value !== 'string' || value.length === 0) return {};
+    try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? parsed as Record<string, unknown>
+            : {};
+    } catch {
+        return {};
+    }
+}
+
+/**
+ * Bake the tenant's primary auth-form config onto a published page's
+ * `primary_auth_form` column (migration v19). Mirrors the product's
+ * `publish_serializer.convert_to_publish_schema` field-for-field:
+ *   - only PRIVATE pages are stamped (a public page never shows the gate, so
+ *     the product leaves primary_auth_form = None for public pages);
+ *   - the baked shape is the AuthFormConfig the eSSR overlay reads —
+ *     {type, title (the form's name), primaryColor, providers, magicLink,
+ *     showLinks}.
+ *
+ * Resolution matches the framework's own /api/auth-forms/primary/ route: the
+ * is_primary row, else the first active form, ordered by is_primary DESC,
+ * created_at DESC. RULE 2: tenant-scoped lookup + update.
+ *
+ * NOTE: non-fatal — the caller has already marked the page live; a failure here
+ * leaves primary_auth_form NULL and the overlay falls back to its defaults.
+ */
+async function stampPrimaryAuthForm(runner: DbRunner, tenant: string, page: CompatPageRow): Promise<void> {
+    // Only private pages need the overlay config baked (matches product).
+    if (page.is_public !== 0) return;
+    const rows = await runner.query(
+        'SELECT name, type, config FROM auth_forms WHERE tenant_slug = ? ORDER BY is_primary DESC, created_at DESC',
+        [tenant],
+    ) as Array<{ name: string; type: string; config: unknown }>;
+    // Pick the is_primary row, else the first active form (is_active undefined → active).
+    let chosen: { name: string; type: string; config: Record<string, unknown> } | null = null;
+    for (const candidate of rows) {
+        const cfg = parseAuthFormConfig(candidate.config);
+        const active = cfg.is_active === undefined || Boolean(cfg.is_active);
+        if (!chosen && active) chosen = { name: candidate.name, type: candidate.type, config: cfg };
+        if (Boolean(cfg.is_primary)) { chosen = { name: candidate.name, type: candidate.type, config: cfg }; break; }
+    }
+    if (!chosen) return;
+    const baked: Record<string, unknown> = {
+        type: chosen.type === 'signup' || chosen.type === 'both' ? chosen.type : 'login',
+        title: chosen.name,
+        providers: Array.isArray(chosen.config.providers) ? chosen.config.providers : [],
+        magicLink: Boolean(chosen.config.magicLink),
+        showLinks: true,
+    };
+    if (typeof chosen.config.primaryColor === 'string') baked.primaryColor = chosen.config.primaryColor;
+    await runner.exec(
+        'UPDATE compat_pages SET primary_auth_form = ? WHERE tenant_slug = ? AND id = ?',
+        [JSON.stringify(baked), tenant, page.id],
+    );
+}
+
+export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStore, now: () => string, runner?: DbRunner): void {
     // GET /api/pages/
     app.get('/api/pages/', async (c) => {
         const store = storeFor(c.get('tenant'));
@@ -157,8 +219,11 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
     // Publish (community: the worker is the engine).
     // POST /api/pages/{page_id}/publish/{engine_id}/
     app.post('/api/pages/:page_id/publish/:engine_id/', async (c) => {
+        const tenant = c.get('tenant');
+        const store = storeFor(tenant);
         const pageId = c.req.param('page_id');
-        if (!await storeFor(c.get('tenant')).get(pageId)) {
+        const page = await store.get(pageId);
+        if (!page) {
             return c.json({ detail: `Page not found: ${pageId}` }, 404);
         }
         const engineId = c.req.param('engine_id');
@@ -167,8 +232,27 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
         if (engineId !== 'local' && !isSystemEngine(engineId)) {
             return c.json({ detail: `Engine not found: ${engineId}` }, 404);
         }
-        const res = await storeFor(c.get('tenant')).publish(pageId, engineId, now());
+        const res = await store.publish(pageId, engineId, now());
         if (!res.success) return c.json(res, 404);
+        // Bake the tenant's primary auth-form config onto the page so the
+        // private-page gating overlay skins from real config. See
+        // stampPrimaryAuthForm for the field-for-field product mapping.
+        //
+        // SEAM: registerPagesRoutes does not receive `runner` today — app.ts
+        // calls it as (app, pagesFor, now) — so `runner` is undefined and this
+        // is a no-op until the one-line activation in createCompatApp:
+        //     registerPagesRoutes(app, pagesFor, now, runner);
+        // The column (migration v19) + the worker SELECT already honor any row
+        // with primary_auth_form set, so this stamp is the last wiring step.
+        // Non-fatal: publish already succeeded; on failure the overlay simply
+        // falls back to its built-in defaults.
+        if (runner) {
+            try {
+                await stampPrimaryAuthForm(runner, tenant, page);
+            } catch (e) {
+                console.error('[pages.publish] stampPrimaryAuthForm failed:', (e as Error)?.message ?? e);
+            }
+        }
         return c.json(res);
     });
     // POST /api/pages/{page_id}/publish-batch/  (single local engine)
