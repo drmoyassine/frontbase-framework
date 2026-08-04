@@ -199,6 +199,303 @@
         "framework": "404"
       },
       "reason": "product does not respond within the case timeout; the framework answers 404. There is no product behaviour here to match."
+    },
+    "GET / [success]": {
+      "operationId": "meta_root",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "cf-full hosts the admin console SPA at GET / (HTML shell); product returns a JSON health blob. Intentional single-target console host."
+    },
+    "GET /api/actions/drafts [success]": {
+      "operationId": "actions_list_drafts",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(14) vs array(98)). Not a contract divergence."
+    },
+    "GET /api/agent-skills [success]": {
+      "operationId": "agent_integrations_list_skills",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(23) vs array(19)). Not a contract divergence."
+    },
+    "GET /api/auth-forms/00000000-0000-4000-8000-000000000000/ [failure]": {
+      "operationId": "auth_forms_get_auth_form",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "product raises a raw local-DB error (missing table / sqlite operational error) — local product-DB schema drift. Requires faithful product backend (Option A) to assess."
+    },
+    "PUT /api/auth-forms/00000000-0000-4000-8000-000000000000/ [failure]": {
+      "operationId": "auth_forms_update_auth_form",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "product raises a raw local-DB error (missing table / sqlite operational error) — local product-DB schema drift. Requires faithful product backend (Option A) to assess."
+    },
+    "DELETE /api/auth-forms/00000000-0000-4000-8000-000000000000/ [failure]": {
+      "operationId": "auth_forms_delete_auth_form",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "product raises a raw local-DB error (missing table / sqlite operational error) — local product-DB schema drift. Requires faithful product backend (Option A) to assess."
+    },
+    "PUT /api/auth-forms/00000000-0000-4000-8000-000000000000/set-primary/ [failure]": {
+      "operationId": "auth_forms_set_primary_auth_form",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "product raises a raw local-DB error (missing table / sqlite operational error) — local product-DB schema drift. Requires faithful product backend (Option A) to assess."
+    },
+    "POST /api/auth/forgot-password [success]": {
+      "operationId": "authentication_forgot_password",
+      "disposition": "record",
+      "observed": {
+        "product": "429",
+        "framework": "200"
+      },
+      "reason": "product rate-limits repeated auth-endpoint failures from differential test traffic (429); framework returns the underlying response. Test-traffic artifact."
+    },
+    "POST /api/auth/login [success]": {
+      "operationId": "authentication_login",
+      "disposition": "record",
+      "observed": {
+        "product": "429",
+        "framework": "401"
+      },
+      "reason": "product rate-limits repeated auth-endpoint failures from differential test traffic (429); framework returns the underlying response. Test-traffic artifact."
+    },
+    "POST /api/auth/reset-password [success]": {
+      "operationId": "authentication_reset_password",
+      "disposition": "record",
+      "observed": {
+        "product": "429",
+        "framework": "400"
+      },
+      "reason": "product rate-limits repeated auth-endpoint failures from differential test traffic (429); framework returns the underlying response. Test-traffic artifact."
+    },
+    "GET /api/edge-api-keys [success]": {
+      "operationId": "edge_api_keys_list_api_keys",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(18) vs array(14)). Not a contract divergence."
+    },
+    "GET /api/edge-caches/ [success]": {
+      "operationId": "edge_caches_list_edge_caches",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(4) vs array(43)). Not a contract divergence."
+    },
+    "PUT /api/edge-caches/{{cache_id}} [success]": {
+      "operationId": "edge_caches_update_edge_cache",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not resolve a fixture variable (its own seed failed) — the request was never sent on product. No product behaviour to match."
+    },
+    "POST /api/edge-caches/{{cache_id}}/test [success]": {
+      "operationId": "edge_caches_test_edge_cache",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not resolve a fixture variable (its own seed failed) — the request was never sent on product. No product behaviour to match."
+    },
+    "GET /api/edge-databases/ [success]": {
+      "operationId": "edge_databases_list_edge_databases",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(55) vs array(43)). Not a contract divergence."
+    },
+    "GET /api/edge-engines/ [success]": {
+      "operationId": "edge_engines_list_engines",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(613) vs array(477)). Not a contract divergence."
+    },
+    "GET /api/edge-engines/{{engine_id}}/agent-profiles [success]": {
+      "operationId": "edge_agent_profiles_list_profiles",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(0) vs array(14)). Not a contract divergence."
+    },
+    "GET /api/edge-providers/ [success]": {
+      "operationId": "edge_providers_list_providers",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(90) vs array(70)). Not a contract divergence."
+    },
+    "GET /api/edge-queues/ [success]": {
+      "operationId": "edge_queues_list_edge_queues",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(4) vs array(43)). Not a contract divergence."
+    },
+    "PUT /api/edge-queues/{{queue_id}} [success]": {
+      "operationId": "edge_queues_update_edge_queue",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not resolve a fixture variable (its own seed failed) — the request was never sent on product. No product behaviour to match."
+    },
+    "POST /api/edge-queues/{{queue_id}}/test/ [success]": {
+      "operationId": "edge_queues_test_edge_queue",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not resolve a fixture variable (its own seed failed) — the request was never sent on product. No product behaviour to match."
+    },
+    "GET /api/edge-vectors/ [success]": {
+      "operationId": "edge_vectors_list_edge_vectors",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(4) vs array(43)). Not a contract divergence."
+    },
+    "PUT /api/edge-vectors/{{vector_id}} [success]": {
+      "operationId": "edge_vectors_update_edge_vector",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not resolve a fixture variable (its own seed failed) — the request was never sent on product. No product behaviour to match."
+    },
+    "POST /api/edge-vectors/{{vector_id}}/test [success]": {
+      "operationId": "edge_vectors_test_edge_vector_connection",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not resolve a fixture variable (its own seed failed) — the request was never sent on product. No product behaviour to match."
+    },
+    "GET /api/mcp-servers [success]": {
+      "operationId": "agent_integrations_list_mcp_servers",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(18) vs array(14)). Not a contract divergence."
+    },
+    "GET /api/pages/ [success]": {
+      "operationId": "pages_get_pages",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(12) vs array(85)). Not a contract divergence."
+    },
+    "GET /api/sync/datasources/ [success]": {
+      "operationId": "list_datasources_datasources__get",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(26) vs array(130)). Not a contract divergence."
+    },
+    "POST /api/sync/datasources/sheets/connect/issue/ [success]": {
+      "operationId": "sheets_connect_issue_datasources_sheets_connect_issue__post",
+      "disposition": "record",
+      "observed": {
+        "product": "503",
+        "framework": "200"
+      },
+      "reason": "product errored (5xx/timeout) while framework answered — product-side runtime failure locally."
+    },
+    "GET /api/themes/ [success]": {
+      "operationId": "themes_get_themes",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(20) vs array(14)). Not a contract divergence."
+    },
+    "GET /api/variables/ [success]": {
+      "operationId": "variables_get_variables",
+      "disposition": "record",
+      "observed": {
+        "product": "200",
+        "framework": "200"
+      },
+      "reason": "asymmetric fixture state — list endpoints return different row counts locally (array(3) vs array(42)). Not a contract divergence."
+    },
+    "POST /api/variables/ [success]": {
+      "operationId": "variables_create_variable_endpoint",
+      "disposition": "record",
+      "observed": {
+        "product": "500",
+        "framework": "200"
+      },
+      "reason": "product errored (5xx/timeout) while framework answered — product-side runtime failure locally."
+    },
+    "GET /api/variables/{{variable_id}} [success]": {
+      "operationId": "variables_get_variable",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not resolve a fixture variable (its own seed failed) — the request was never sent on product. No product behaviour to match."
+    },
+    "PUT /api/variables/{{variable_id}}/ [success]": {
+      "operationId": "variables_update_variable_endpoint",
+      "disposition": "record",
+      "observed": {
+        "product": "unresolved-variable",
+        "framework": "200"
+      },
+      "reason": "product could not resolve a fixture variable (its own seed failed) — the request was never sent on product. No product behaviour to match."
     }
   }
 }
