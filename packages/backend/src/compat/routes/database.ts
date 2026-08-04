@@ -156,7 +156,7 @@ export function registerDatabaseRoutes(
             return c.json({ success: true, data: { tables: [] }, message: null, error: null });
         }
         const tables = (await listTableNames(source)).map((name) => ({ name, schema: 'public' }));
-        return c.json({ success: true, data: { tables }, message: 'Tables fetched', error: null });
+        return c.json({ success: true, data: { tables }, message: null, error: null });
     };
 
     app.get('/api/database/tables/', handleListTables);
@@ -202,11 +202,10 @@ export function registerDatabaseRoutes(
                 detail: 'Supabase connection not configured. Connect a Supabase account in Settings → Accounts.',
             }, 404);
         }
-        if (!isIdentifier(table)) {
-            return c.json({ success: false, data: { table_name: table, columns: [] }, error: 'Invalid table' }, 400);
-        }
-        if (!await validateTable(source, table)) {
-            return c.json({ detail: `Table ${table} not found in schema` }, 404);
+        if (!isIdentifier(table) || !await validateTable(source, table)) {
+            return c.json({
+                detail: 'Supabase connection not configured. Connect a Supabase account in Settings → Accounts.',
+            }, 404);
         }
         try {
             let columns: any[] = [];
@@ -255,7 +254,7 @@ export function registerDatabaseRoutes(
         }
         try {
             if (!b.rpcName || source.kind !== 'supabase' || !isIdentifier(b.rpcName)) {
-                return c.json({ success: false, data: [], rows: [], error: 'Supabase RPC datasource required' }, 400);
+                return c.json({ success: false, data: [], rows: [], error: 'Database not configured' });
             }
             const url = String(source.config.url ?? source.config.supabaseUrl ?? '').replace(/\/+$/, '');
             const key = String(source.config.serviceKey ?? source.config.anonKey ?? source.config.jwt ?? '');
@@ -291,7 +290,7 @@ export function registerDatabaseRoutes(
         const col = b.column_name ?? b.columnName ?? b.column ?? '';
         const source = await getActiveRunner(c.get('tenant'));
         if (!source) {
-            return c.json({ success: true, data: [], error: null });
+            return c.json({ success: true, data: [] });
         }
         if (!isIdentifier(table) || !isIdentifier(col)) {
             return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);

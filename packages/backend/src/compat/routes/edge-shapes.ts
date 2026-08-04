@@ -44,7 +44,7 @@ export function serializeEdgeResource(
     extra: Record<string, unknown> = {},
 ): Record<string, unknown> {
     const config = parseConfig(row.config);
-    return {
+    const response: Record<string, unknown> = {
         id: String(row.id),
         name: String(row.name ?? ''),
         provider: String(row.provider ?? 'local'),
@@ -53,14 +53,21 @@ export function serializeEdgeResource(
         is_default: Boolean(config.is_default),
         is_system: Boolean(row.is_system),
         supports_remote_delete: false,
-        account_name: null,
-        provider_account_id: null,
         engine_count: 0,
         linked_engines: [],
         created_at: String(row.created_at ?? ''),
         updated_at: String(row.updated_at ?? ''),
         ...extra,
     };
+    // Only include provider_account_id and account_name when they have values (product parity)
+    if (config.provider_account_id != null) {
+        response.provider_account_id = String(config.provider_account_id);
+    }
+    // account_name is derived from provider_account_id in product; only include when set
+    if (config.account_name != null) {
+        response.account_name = String(config.account_name);
+    }
+    return response;
 }
 
 /**
@@ -87,7 +94,7 @@ export function serializeEngine(row: Record<string, unknown>, extra: Record<stri
         storage_ids: Array.isArray(config.storage_ids) ? config.storage_ids : [],
         datasources: [],
         storages: [],
-        engine_config: {},
+        engine_config: config,
         gpu_models: [],
         is_active: String(row.status ?? 'active') === 'active',
         is_system: Boolean(row.is_system),

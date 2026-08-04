@@ -72,6 +72,7 @@ export function registerSettingsRoutes(
     secretCipher: SecretCipher,
     externalFetch: CompatFetch,
     now: () => string,
+    userExists?: (email: string, tenant: string) => Promise<boolean>,
 ): void {
     const domainRoutes: [string, string][] = [
         ['general', '/api/settings/general'],
@@ -84,8 +85,10 @@ export function registerSettingsRoutes(
         app.get(path, async (c) => {
             const stored = await kvFor(c.get('tenant')).getJson(domain, DEFAULTS[domain]);
             if (domain === 'redis') {
-                const { redis_token_ciphertext: _ciphertext, ...safe } = stored as Record<string, unknown>;
-                return c.json({ ...DEFAULTS.redis as object, ...safe, redis_token: null });
+                const storedRedis = stored as Record<string, unknown>;
+                const { redis_token_ciphertext: _ciphertext, ...safe } = storedRedis;
+                // Merge defaults with stored, preserving stored values (including redis_type)
+                return c.json({ ...DEFAULTS.redis as object, ...storedRedis, redis_token: null });
             }
             return c.json({ ...DEFAULTS[domain] as object, ...(stored as object) });
         });
@@ -172,6 +175,15 @@ export function registerSettingsRoutes(
     app.post('/api/settings/invites', async (c) => {
         const parsed = zAdminInviteRequest.safeParse(await c.req.json().catch(() => null));
         if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+
+        // Check if user already exists (if userExists callback provided)
+        if (userExists) {
+            const exists = await userExists(parsed.data.email, c.get('tenant'));
+            if (exists) {
+                return c.json({ success: false, message: 'User already exists' });
+            }
+        }
+
         const invite = await invites.create(c.get('tenant'), {
             email: parsed.data.email,
             role: parsed.data.role === 'member' ? 'editor' : parsed.data.role,

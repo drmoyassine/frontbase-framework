@@ -380,6 +380,13 @@ export function registerSyncRoutes(
         const id = crypto.randomUUID();
         const tenant = c.get('tenant');
         const store = syncStoreFor(tenant);
+
+        // Product parity: check duplicate name FIRST (before credential validation).
+        const existing = await store.listDatasources();
+        if (existing.some((ds) => ds.name === name)) {
+            return c.json({ detail: `Datasource with name '${name}' already exists` }, 400);
+        }
+
         // SPA sends a FLAT DatasourceCreate payload (no `config` wrapper). Persist the
         // normalized credential fields + provider_account_id; secrets themselves stay on
         // the connected account and are hydrated at read/test time (product parity — no
@@ -426,6 +433,31 @@ export function registerSyncRoutes(
         // at top level, no `config` wrapper). Normalize, then hydrate from the connected
         // account + lazily enrich.
         const config = await mergeAccount(c.get('tenant'), kind, flatBodyToConfig(b));
+
+        // Product parity: provide helpful suggestion messages for common connection errors.
+        const getSuggestion = (err: Error): string | null => {
+            const msg = err.message.toLowerCase();
+            if (msg.includes('2003') || msg.includes("can't connect to mysql server")) {
+                return 'This usually means the MySQL port (typically 3306) is blocked or the host is incorrect. Ensure Remote MySQL access is enabled in your hosting panel and your IP is whitelisted.';
+            }
+            if (msg.includes('getaddrinfo failed')) {
+                return 'The hostname could not be resolved. Ensure you aren\'t including \'http://\' in the host field and check for typos.';
+            }
+            if (msg.includes('access denied') || msg.includes('password')) {
+                return 'Authentication failed. Verify your username and password are correct for remote access.';
+            }
+            if (msg.includes('timeout')) {
+                return 'The connection timed out. Check your firewall settings and ensure the server is listening on the correct port.';
+            }
+            if (msg.includes("'nonetype' object has no attribute 'group'") || msg.includes('authentication')) {
+                return 'This is a known issue with asyncpg during the authentication handshake. If using Supabase/Neon, ensure you are using the DIRECT port (5432) instead of the pooled port (6543), as the pooler sometimes interferes with the SASL handshake.';
+            }
+            if (msg.startsWith('supabase requires')) {
+                return 'Enter your Supabase Project URL and API key (anon or service_role) in the connection form, or connect a Supabase account in Settings → Accounts so the credentials are filled in automatically.';
+            }
+            return null;
+        };
+
         try {
             const runner = datasourceRunner(kind, config);
             await runner.query('SELECT 1');
@@ -438,9 +470,15 @@ export function registerSyncRoutes(
                 const rows = await runner.query(sql);
                 tables = rows.map((r) => String(r.name));
             }
-            return c.json({ success: true, message: 'Connection successful', tables });
+            return c.json({ success: true, message: 'Connection successful', tables, suggestion: null });
         } catch (err) {
-            return c.json({ success: false, message: 'Connection failed', error: (err as Error).message });
+            const error = err as Error;
+            return c.json({
+                success: false,
+                message: 'Connection failed',
+                error: error.message,
+                suggestion: getSuggestion(error),
+            });
         }
     });
 
@@ -450,6 +488,12 @@ export function registerSyncRoutes(
         const limit = Math.max(1, Math.min(Number(c.req.query('limit') ?? 10), 100));
         const store = syncStoreFor(c.get('tenant'));
         const datasources = await store.listDatasources();
+
+        // Product parity: return 404 when no datasources exist (matching product behavior).
+        if (datasources.length === 0) {
+            return c.json({ detail: 'Datasource not found' }, 404);
+        }
+
         const matches: Record<string, unknown>[] = [];
         for (const datasource of datasources) {
             if (matches.length >= limit) break;
@@ -478,7 +522,6 @@ export function registerSyncRoutes(
         const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
         await store.deleteDatasource(id);
-        c.header('content-type', 'application/json');
         return c.body(null, 204);
     });
 
@@ -686,6 +729,8 @@ export function registerSyncRoutes(
 
         const store = syncStoreFor(c.get('tenant'));
         const ds = await store.getDatasource(id);
+        // Product parity: check datasource existence BEFORE validating query params.
+        // This ensures 404 for missing datasources, not 422 for missing params.
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
@@ -1247,7 +1292,16 @@ export function registerSyncRoutes(
     // PUT /api/sync/datasources/{datasource_id}/relationships/{index}/
     app.put('/api/sync/datasources/:datasource_id/relationships/:index/', async (c) => {
         const id = c.req.param('datasource_id');
-        const index = parseInt(c.req.param('index'), 10);
+        const rawIndex = c.req.param('index');
+        const index = parseInt(rawIndex, 10);
+
+        // Product parity: if index is not a valid integer, return 404 (not 422).
+        // This matches FastAPI's behavior where route param parsing failures
+        // result in the route not matching (404) rather than validation errors.
+        if (isNaN(index)) {
+            return c.json({ detail: 'Datasource not found' }, 404);
+        }
+
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 
         const store = syncStoreFor(c.get('tenant'));
@@ -1282,7 +1336,13 @@ export function registerSyncRoutes(
     // DELETE /api/sync/datasources/{datasource_id}/relationships/{index}/
     app.delete('/api/sync/datasources/:datasource_id/relationships/:index/', async (c) => {
         const id = c.req.param('datasource_id');
-        const index = parseInt(c.req.param('index'), 10);
+        const rawIndex = c.req.param('index');
+        const index = parseInt(rawIndex, 10);
+
+        // Product parity: if index is not a valid integer, return 404 (not 422).
+        if (isNaN(index)) {
+            return c.json({ detail: 'Datasource not found' }, 404);
+        }
 
         const store = syncStoreFor(c.get('tenant'));
         const ds = await store.getDatasource(id);
@@ -1619,9 +1679,29 @@ export function registerSyncRoutes(
         c.header('Connection', 'keep-alive');
 
         return stream(c, async (stream) => {
+            // Product parity: send keepalive pings while streaming.
+            // The product sends ": ping" comments to keep the connection alive.
+            const isComplete = ['completed', 'failed', 'partial'].includes(String(record.status));
+
+            // Send initial progress
             await stream.write(`event: progress\ndata: ${JSON.stringify(record)}\n\n`);
-            if (['completed', 'failed', 'partial'].includes(String(record.status))) {
+
+            if (isComplete) {
                 await stream.write(`event: complete\ndata: ${JSON.stringify(record)}\n\n`);
+            } else {
+                // Send periodic pings for in-progress imports (up to 30 seconds)
+                for (let i = 0; i < 30; i++) {
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                    // Refresh record and send updated progress
+                    const fresh = await kv.getJson<Record<string, unknown> | null>(`wp_import:${importId}`, null);
+                    if (fresh) {
+                        await stream.write(`event: progress\ndata: ${JSON.stringify(fresh)}\n\n`);
+                        if (['completed', 'failed', 'partial'].includes(String(fresh.status))) {
+                            await stream.write(`event: complete\ndata: ${JSON.stringify(fresh)}\n\n`);
+                            break;
+                        }
+                    }
+                }
             }
         });
     });
@@ -1680,14 +1760,15 @@ export function registerSyncRoutes(
         );
         const pending = rows[0];
         if (!pending || pending.consumed_at || Date.parse(String(pending.expires_at)) <= Date.now()) {
-            return c.json({ detail: 'Connect token is invalid, expired, or already used' }, 401);
+            // Product parity: return 422 for invalid/expired/used tokens (not 401).
+            return c.json({ detail: 'Connect token is invalid, expired, or already used' }, 422);
         }
         const claimed = await controlRunner.exec(
             `UPDATE sheets_connect_tokens SET consumed_at = ?
              WHERE token_hash = ? AND consumed_at IS NULL`,
             [now(), tokenHash],
         );
-        if (claimed !== 1) return c.json({ detail: 'Connect token is invalid, expired, or already used' }, 401);
+        if (claimed !== 1) return c.json({ detail: 'Connect token is invalid, expired, or already used' }, 422);
 
         const tenant = String(pending.tenant_slug);
         const store = syncStoreFor(tenant);
@@ -1725,7 +1806,8 @@ export function registerSyncRoutes(
     // GET /api/sync/datasources/sheets/connect/status/
     app.get('/api/sync/datasources/sheets/connect/status/', async (c) => {
         const token = c.req.query('token') ?? '';
-        if (token.length < 10) return c.json({ detail: 'Invalid token' }, 400);
+        // Product parity: if token is missing or too short, return 422 (validation error).
+        if (token.length < 10) return c.json({ detail: 'Invalid token' }, 422);
         const rows = await controlRunner.query(
             `SELECT result FROM sheets_connect_tokens
              WHERE token_hash = ? AND tenant_slug = ? AND expires_at > ?`,

@@ -40,7 +40,7 @@ function asDraft(row: Record<string, unknown>, contentHash: string | null = null
         try { const p = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(p) ? p : []; }
         catch { return []; }
     };
-    return {
+    const base: Record<string, unknown> = {
         id: String(row.id),
         name: String(row.name ?? ''),
         nodes: parse(row.nodes),
@@ -53,11 +53,15 @@ function asDraft(row: Record<string, unknown>, contentHash: string | null = null
         settings: null,
         published_version: row.is_published ? Number(row.version ?? 1) : null,
         deployed_engines: {},
-        content_hash: contentHash,
         created_by: null,
         created_at: String(row.created_at ?? ''),
         updated_at: String(row.updated_at ?? row.created_at ?? ''),
     };
+    // Only include content_hash if explicitly provided (PATCH computes it; POST returns null/absent)
+    if (contentHash !== null) {
+        base.content_hash = contentHash;
+    }
+    return base;
 }
 
 export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2Store, now: () => string): void {
@@ -71,10 +75,16 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
     // POST /api/actions/drafts
     app.post('/api/actions/drafts', async (c) => {
         const b = await c.req.json().catch(() => ({})) as { name?: string; nodes?: unknown; edges?: unknown; is_active?: boolean };
-        const id = crypto.randomUUID();
+        const name = b.name ?? 'Workflow';
         const store = phase2For(c.get('tenant'));
-        await store.upsertWorkflow({ id, name: b.name ?? 'Workflow', nodes: asJson(b.nodes), edges: asJson(b.edges), isActive: b.is_active ?? true }, now());
-        return c.json(asDraft(await store.getWorkflow(id) ?? { id, name: b.name ?? 'Workflow', created_at: now(), updated_at: now() }), 201);
+        // Check for duplicate workflow name (product returns 400 for duplicates)
+        const existing = await store.listWorkflows();
+        if (existing.some((row) => String(row.name ?? '') === name)) {
+            return c.json({ detail: `A workflow with the name '${name}' already exists` }, 400);
+        }
+        const id = crypto.randomUUID();
+        await store.upsertWorkflow({ id, name, nodes: asJson(b.nodes), edges: asJson(b.edges), isActive: b.is_active ?? true }, now());
+        return c.json(asDraft(await store.getWorkflow(id) ?? { id, name, created_at: now(), updated_at: now() }), 201);
     });
 
     // Static sibling (bulk-delete) MUST come before /drafts/:draft_id.

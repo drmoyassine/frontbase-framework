@@ -449,11 +449,11 @@ export function registerAuthCompatAuthedRoutes(
         }
         await kvFor(c.get('tenant')).setJson(
             'auth_security_bot',
-            { ...parsed.data, secret_key: '' },
+            { ...parsed.data, secret_key: '', auto_ban_lockout_hours: parsed.data.auto_ban_lockout_hours ?? 24 },
             now(),
         );
         await audit(c.get('tenant'), 'bot_protection_updated', { enabled: parsed.data.enabled });
-        return c.json({ success: true });
+        return c.json({ success: true, message: null });
     });
     // GET /api/auth/security/bot-protection/metrics
     app.get('/api/auth/security/bot-protection/metrics', async (c) => {

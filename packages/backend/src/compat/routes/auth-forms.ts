@@ -112,17 +112,28 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
     });
 
     app.get('/api/auth-forms/primary/', async (c) => {
-        const rows = await runner.query(
-            `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? ORDER BY is_primary DESC, created_at DESC`,
+        // Framework has no is_active column - it's in config JSON
+        // Match product logic: filter active by config, then find by config.is_primary
+        const allRows = await runner.query(
+            `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? ORDER BY created_at DESC`,
             [c.get('tenant')],
         ) as AuthFormRow[];
-        const row = rows.find((candidate) => {
+        // Filter to active forms (config.is_active !== false)
+        const activeRows = allRows.filter((candidate) => {
             const config = parseConfig(candidate.config);
             return config.is_active === undefined || Boolean(config.is_active);
         });
-        return row
-            ? c.json(envelope(true, serializeForm(row)))
-            : c.json(envelope(false, null, 'No auth forms configured'));
+        // Find first with is_primary in config
+        const primary = activeRows.find((candidate) => {
+            const config = parseConfig(candidate.config);
+            return Boolean(config.is_primary);
+        });
+        // Fallback to first active if no primary found
+        const target = primary || activeRows[0];
+        if (target) {
+            return c.json(envelope(true, serializeForm(target)));
+        }
+        return c.json(envelope(false, null, 'No auth forms configured'));
     });
 
     app.get('/api/auth-forms/:form_id/', async (c) => {

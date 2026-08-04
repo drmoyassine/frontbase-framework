@@ -213,7 +213,13 @@ export function registerEdgeProvidersRoutes(
         const store = p2(c.get('tenant'));
         const provider = await providerFor(c.get('tenant'), c.req.param('provider_id'));
         if (!provider) return providerNotFound(c);
-        return c.json(await testProvider(String(provider.provider ?? ''), await store.getEdgeResourceConfig(c.req.param('provider_id')) ?? {}));
+        const config = await store.getEdgeResourceConfig(c.req.param('provider_id')) ?? {};
+        // Match product behavior: return "No credentials stored" if config is empty
+        // rather than passing empty config to testProvider (which returns "Unsupported provider")
+        if (Object.keys(config).length === 0) {
+            return c.json({ success: false, detail: 'No credentials stored for this provider' });
+        }
+        return c.json(await testProvider(String(provider.provider ?? ''), config));
     });
 
     // POST /api/edge-providers/test-connection

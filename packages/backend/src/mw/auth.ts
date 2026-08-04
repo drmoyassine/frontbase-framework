@@ -37,14 +37,14 @@ export function defaultDenyAuth(resolvePrincipal: (req: Request) => Promise<Prin
         try {
             principal = await resolvePrincipal(c.req.raw);
         } catch {
-            // RULE 4: never reveal why auth failed.
-            return c.json({ error: 'authentication_required' }, 401);
+            // RULE 4: never reveal why auth failed. Match product format for parity.
+            return c.json({ detail: 'Authentication required' }, 401);
         }
         if (!principal.user) {
-            return c.json({ error: 'authentication_required' }, 401);
+            return c.json({ detail: 'Authentication required' }, 401);
         }
         if (!principal.tenant) {
-            return c.json({ error: 'tenant_required' }, 401);
+            return c.json({ detail: 'Authentication required' }, 401);
         }
         c.set('principal', principal);
         c.set('tenant', principal.tenant);

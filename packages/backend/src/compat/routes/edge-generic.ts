@@ -152,14 +152,32 @@ function reg(
 
     app.post(pre + '/', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: string; provider?: string; config?: unknown };
-        const id = crypto.randomUUID();
         const store = p2(c.get('tenant'));
+
+        // Prevent duplicate URLs - return 409 like product does
+        const configFromBodyValue = configFromBody(b);
+        const newUrl = configFromBodyValue[urlField] as string | undefined;
+        if (newUrl) {
+            const existing = await store.listEdgeResources(kind);
+            for (const row of existing) {
+                const rowConfig = await store.getEdgeResourceConfig(String(row.id)) ?? {};
+                if (rowConfig.url === newUrl) {
+                    const existingName = row.name ?? kind;
+                    const detail = kind === 'vector'
+                        ? 'A vector store with this URL/DSN already exists'
+                        : `A ${kind} with this URL already exists ('${existingName}')`;
+                    return c.json({ detail }, 409);
+                }
+            }
+        }
+
+        const id = crypto.randomUUID();
         await store.upsertEdgeResource({
             id,
             kind,
             name: b.name ?? kind,
             provider: b.provider ?? 'local',
-            config: await encryptedConfig(b.config ?? configFromBody(b)),
+            config: await encryptedConfig(b.config ?? configFromBodyValue),
         }, now());
         const row = await store.getEdgeResource(id);
         const response = await serializeStored(store, row ?? {

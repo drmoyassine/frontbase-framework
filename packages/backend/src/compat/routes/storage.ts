@@ -42,10 +42,18 @@ export function registerStorageRoutes(
 
     // ---- buckets (Phase2Store) ----
     // GET /api/storage/buckets
-    app.get('/api/storage/buckets', async (c) => c.json({
-        success: true,
-        buckets: (await phase2For(c.get('tenant')).listBuckets()).map(redactConfig),
-    }));
+    app.get('/api/storage/buckets', async (c) => {
+        const providerId = c.req.query('provider_id');
+        if (!providerId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+            }, 422);
+        }
+        return c.json({
+            success: true,
+            buckets: (await phase2For(c.get('tenant')).listBuckets()).map(redactConfig),
+        });
+    });
 
     // POST /api/storage/buckets
     app.post('/api/storage/buckets', async (c) => {
@@ -71,6 +79,12 @@ export function registerStorageRoutes(
 
     // GET /api/storage/buckets/{bucket_id}
     app.get('/api/storage/buckets/:bucket_id', async (c) => {
+        const providerId = c.req.query('provider_id');
+        if (!providerId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+            }, 422);
+        }
         const all = await phase2For(c.get('tenant')).listBuckets();
         const bucket = all.find((r) => String(r.id) === c.req.param('bucket_id'));
         return bucket
@@ -80,6 +94,12 @@ export function registerStorageRoutes(
 
     // PUT /api/storage/buckets/{bucket_id}
     app.put('/api/storage/buckets/:bucket_id', async (c) => {
+        const providerId = c.req.query('provider_id');
+        if (!providerId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+            }, 422);
+        }
         const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
         const id = c.req.param('bucket_id');
         await phase2For(c.get('tenant')).upsertBucket({

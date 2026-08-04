@@ -246,7 +246,7 @@ export function registerRlsRoutes(
         try {
             // The product resolves the Supabase context before processing the
             // batch, including an empty batch. Do not fabricate a local success.
-            await supabaseFor(c.get('tenant'));
+            const datasource = await supabaseFor(c.get('tenant'));
             for (const policy of body.policies ?? []) {
                 const result = await callRpc(c.get('tenant'), 'frontbase_drop_rls_policy', {
                     p_table_name: policy.tableName,
@@ -267,12 +267,20 @@ export function registerRlsRoutes(
                 errorCount: results.length - successCount,
                 error: null,
             });
-        } catch (error) { return failed(c, error); }
+        } catch (error) {
+            return isNotConfigured(error)
+                ? c.json({ detail: SUPABASE_NOT_CONFIGURED }, 404)
+                : c.json({ detail: 'RLS provider request failed' }, 502);
+        }
     });
 
     // Metadata is Builder form state, not provider state.
-    app.get('/api/database/rls/metadata/', async (c) =>
-        c.json({ success: true, data: await kvFor(c.get('tenant')).getJson('rls_metadata', []), error: null }));
+    app.get('/api/database/rls/metadata/', async (c) => {
+        const metadata = await kvFor(c.get('tenant')).getJson<Array<Record<string, unknown>>>('rls_metadata', []);
+        // Product does not include sqlHash in the array response (only in individual item response)
+        const data = metadata.map(({ sqlHash, ...rest }) => rest);
+        return c.json({ success: true, data, error: null });
+    });
 
     app.get('/api/database/rls/metadata/:table_name/:policy_name', async (c) => {
         const all = await kvFor(c.get('tenant')).getJson<Array<{ tableName: string; policyName: string }>>('rls_metadata', []);

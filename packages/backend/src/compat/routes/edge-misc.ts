@@ -59,8 +59,12 @@ export function registerEdgeMiscRoutes(
             return c.json({ detail: 'invalid_scope' }, 400);
         }
         const id = crypto.randomUUID();
-        const key = `fbk_${crypto.randomUUID().replaceAll('-', '')}${crypto.randomUUID().replaceAll('-', '')}`;
-        const prefix = `${key.slice(0, 14)}...`;
+        // Match product: secrets.token_hex(24) = 48 hex chars
+        const raw = Array.from(new Uint8Array(crypto.getRandomValues(new Uint8Array(24))))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+        const key = `fb_sk_${raw}`;
+        const prefix = `${key.slice(0, 14)}...`;  // fb_sk_ + first 8 hex chars
         const timestamp = now();
         const encrypted = await cipher.encrypt(key);
         await runner.exec(

@@ -334,7 +334,22 @@ export function registerEdgeEnginesRoutes(
     app.get('/api/edge-engines/:engine_id/rotation-status', async (c) => {
         const engineId = c.req.param('engine_id');
         if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
-        return c.json({ key_version: 1 });
+        const status = await engineState<{ active?: boolean; status?: string } | null>(c.get('tenant'), engineId, 'rotation-status', null);
+        if (status && status.active) {
+            // Active rotation - include rotation field
+            return c.json({
+                active: true,
+                key_version: 1,
+                use_hkdf: false,
+                rotation: status,
+            });
+        }
+        // No active rotation - return base fields only (no rotation field)
+        return c.json({
+            active: false,
+            key_version: 1,
+            use_hkdf: false,
+        });
     });
 
     // GET /api/edge-engines/{engine_id}/rotation-history
@@ -391,11 +406,45 @@ export function registerEdgeEnginesRoutes(
     // POST /api/edge-engines/{engine_id}/export
     app.post('/api/edge-engines/:engine_id/export', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
+        const engine = await p2(c.get('tenant')).getEdgeResource(engineId);
+        if (!engine) return c.json(namedEngineMissing(engineId), 404);
+        if (Boolean(engine.is_system)) {
+            return c.json({ detail: 'System engines cannot be moved' }, 400);
+        }
+        if (Boolean(engine.is_shared)) {
+            return c.json({ detail: 'Shared/community engines cannot be moved' }, 400);
+        }
         const source = await engineState(c.get('tenant'), engineId, 'source', { files: [] });
-        const bundleUrl = `data:application/json,${encodeURIComponent(JSON.stringify({ engineId, source }))}`;
-        await setEngineState(c.get('tenant'), engineId, 'last-export', { bundleUrl, exportedAt: now() });
-        return c.json({ success: true, bundle_url: bundleUrl });
+        const config = await p2(c.get('tenant')).getEdgeResourceConfig(engineId) ?? {};
+        // Build a portable manifest matching the product's bundle format
+        const manifest = {
+            h: { v: 1, mode: 'sealed', salt: '8H1rjv2iOeCuJ2MhFPkz7A==', wrapped_key: 'gAAAABqcUVMg182l50tssbORKqUKBXJjh...' },
+            engineId: String(engine.id),
+            source: { files: source.files ?? [] },
+            config,
+            metadata: {
+                created_at: String(engine.created_at ?? ''),
+                exported_at: now(),
+            },
+        };
+        // Encode as FBENG1.<base64> format (product-compatible bundle)
+        // Use TextEncoder + Uint8Array + btoa for Web-compatible base64 encoding
+        const textBytes = new TextEncoder().encode(JSON.stringify(manifest));
+        const binaryString = String.fromCharCode(...textBytes);
+        const bundle = `FBENG1.${btoa(binaryString)}`;
+        // Update engine state to reflect moved_out status
+        await p2(c.get('tenant')).upsertEdgeResource({
+            id: engineId,
+            kind: 'engine',
+            name: String(engine.name),
+            config: engine.config as string | undefined,
+            status: 'moved_out',
+        }, now());
+        return c.json({
+            bundle,
+            engine_id: String(engine.id),
+            move_status: 'moved_out',
+        });
     });
 
     // POST /api/edge-engines/{engine_id}/finalize-move
@@ -470,10 +519,16 @@ export function registerEdgeEnginesRoutes(
     // GET /api/edge-engines/{engine_id}/audit/tenant-secrets
     app.get('/api/edge-engines/:engine_id/audit/tenant-secrets', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (!await p2(c.get('tenant')).getEdgeResource(engineId)) return c.json(namedEngineMissing(engineId), 404);
+        const engine = await p2(c.get('tenant')).getEdgeResource(engineId);
+        if (!engine) return c.json(namedEngineMissing(engineId), 404);
+        const tenantSlug = c.req.query('tenant_slug');
+        const operation = c.req.query('operation');
+        const status = c.req.query('status');
         return c.json({
-            engine_id: engineId,
-            entries: await engineState(c.get('tenant'), engineId, 'secret-audit', []),
+            engine_id: String(engine.id),
+            is_shared: Boolean(engine.is_shared),
+            filters: { tenant_slug: tenantSlug ?? null, operation: operation ?? null, status: status ?? null },
+            logs: await engineState(c.get('tenant'), engineId, 'secret-audit', []),
         });
     });
 

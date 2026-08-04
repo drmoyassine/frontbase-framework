@@ -182,14 +182,26 @@ export function registerAgentCompatRoutes(
     });
 
     // GET /api/agent/settings
-    app.get('/api/agent/settings', async (c) => c.json({
-        settings: await kvFor(c.get('tenant')).getJson('agent_settings', {
+    app.get('/api/agent/settings', async (c) => {
+        const tenant = c.get('tenant');
+        const profileDefaults = {
             general: { temperature: 0.7, max_tokens: 4096, top_p: 0.9, timeout_seconds: 60 },
             system: { disabled_mcp_servers: [], disabled_skills: [], disabled_tools: [] },
-        }),
-        can_modify_tenant: true,
-        inherited_from: 'profile',
-    }));
+        };
+        const stored = await kvFor(tenant).getJson<typeof profileDefaults>('agent_settings', profileDefaults);
+        // Merge stored settings with defaults (stored values override defaults, but missing/null fields use defaults)
+        const general = { ...profileDefaults.general, ...stored.general };
+        const system = {
+            disabled_mcp_servers: [...profileDefaults.system.disabled_mcp_servers, ...(stored.system?.disabled_mcp_servers ?? [])],
+            disabled_skills: [...profileDefaults.system.disabled_skills, ...(stored.system?.disabled_skills ?? [])],
+            disabled_tools: [...profileDefaults.system.disabled_tools, ...(stored.system?.disabled_tools ?? [])],
+        };
+        return c.json({
+            settings: { general, system },
+            can_modify_tenant: true,
+            inherited_from: 'profile',
+        });
+    });
 
     // PUT /api/agent/settings
     app.put('/api/agent/settings', async (c) => {
