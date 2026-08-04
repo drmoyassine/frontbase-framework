@@ -59,14 +59,12 @@ export function serializeEdgeResource(
         updated_at: String(row.updated_at ?? ''),
         ...extra,
     };
-    // Only include provider_account_id and account_name when they have values (product parity)
+    // provider_account_id: include only when set
     if (config.provider_account_id != null) {
         response.provider_account_id = String(config.provider_account_id);
     }
-    // account_name is derived from provider_account_id in product; only include when set
-    if (config.account_name != null) {
-        response.account_name = String(config.account_name);
-    }
+    // account_name: product ALWAYS includes it (null when not set)
+    response.account_name = (config.account_name != null) ? String(config.account_name) : null;
     return response;
 }
 

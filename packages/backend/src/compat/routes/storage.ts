@@ -79,45 +79,65 @@ export function registerStorageRoutes(
 
     // GET /api/storage/buckets/{bucket_id}
     app.get('/api/storage/buckets/:bucket_id', async (c) => {
-        const providerId = c.req.query('provider_id');
-        if (!providerId) {
-            return c.json({
-                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
-            }, 422);
+        try {
+            const providerId = c.req.query('provider_id');
+            if (!providerId) {
+                return c.json({
+                    detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+                }, 422);
+            }
+            const all = await phase2For(c.get('tenant')).listBuckets();
+            const bucket = all.find((r) => String(r.id) === c.req.param('bucket_id'));
+            return bucket
+                ? c.json({ success: true, bucket: redactConfig(bucket) })
+                : c.json({ success: false, error: 'Bucket not found' }, 404);
+        } catch (e) {
+            const err = e as Error;
+            if (err.message?.startsWith('validation')) {
+                return c.json({
+                    detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+                }, 422);
+            }
+            throw e;
         }
-        const all = await phase2For(c.get('tenant')).listBuckets();
-        const bucket = all.find((r) => String(r.id) === c.req.param('bucket_id'));
-        return bucket
-            ? c.json({ success: true, bucket: redactConfig(bucket) })
-            : c.json({ success: false, error: 'Bucket not found' }, 404);
     });
 
     // PUT /api/storage/buckets/{bucket_id}
     app.put('/api/storage/buckets/:bucket_id', async (c) => {
-        const providerId = c.req.query('provider_id');
-        if (!providerId) {
-            return c.json({
-                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
-            }, 422);
-        }
-        const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
-        const id = c.req.param('bucket_id');
-        await phase2For(c.get('tenant')).upsertBucket({
-            id,
-            name: b.name ?? 'bucket',
-            provider: b.provider ?? 'local',
-            config: await encryptedConfig(b.config),
-        }, now());
-        return c.json({
-            success: true,
-            bucket: {
+        try {
+            const providerId = c.req.query('provider_id');
+            if (!providerId) {
+                return c.json({
+                    detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+                }, 422);
+            }
+            const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
+            const id = c.req.param('bucket_id');
+            await phase2For(c.get('tenant')).upsertBucket({
                 id,
                 name: b.name ?? 'bucket',
                 provider: b.provider ?? 'local',
-                has_config: b.config !== undefined,
-                updated_at: now(),
-            },
-        });
+                config: await encryptedConfig(b.config),
+            }, now());
+            return c.json({
+                success: true,
+                bucket: {
+                    id,
+                    name: b.name ?? 'bucket',
+                    provider: b.provider ?? 'local',
+                    has_config: b.config !== undefined,
+                    updated_at: now(),
+                },
+            });
+        } catch (e) {
+            const err = e as Error;
+            if (err.message?.startsWith('validation')) {
+                return c.json({
+                    detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+                }, 422);
+            }
+            throw e;
+        }
     });
 
     // DELETE /api/storage/buckets/{bucket_id}

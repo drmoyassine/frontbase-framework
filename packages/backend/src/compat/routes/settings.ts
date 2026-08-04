@@ -86,9 +86,10 @@ export function registerSettingsRoutes(
             const stored = await kvFor(c.get('tenant')).getJson(domain, DEFAULTS[domain]);
             if (domain === 'redis') {
                 const storedRedis = stored as Record<string, unknown>;
-                const { redis_token_ciphertext: _ciphertext, ...safe } = storedRedis;
-                // Merge defaults with stored, preserving stored values (including redis_type)
-                return c.json({ ...DEFAULTS.redis as object, ...storedRedis, redis_token: null });
+                // Merge defaults with stored, then hide ciphertext, never expose it
+                const merged = { ...DEFAULTS.redis as object, ...storedRedis };
+                const { redis_token_ciphertext: _ciphertext, ...safe } = merged as Record<string, unknown>;
+                return c.json(safe);
             }
             return c.json({ ...DEFAULTS[domain] as object, ...(stored as object) });
         });
@@ -112,11 +113,14 @@ export function registerSettingsRoutes(
                     redis_token_ciphertext: tokenCiphertext ?? null,
                 };
                 await kvFor(c.get('tenant')).setJson(domain, persisted, now());
-                const { redis_token_ciphertext: _ciphertext, ...safe } = persisted;
+                // Return merged defaults with persisted values, hide ciphertext
+                const merged = { ...DEFAULTS.redis as object, ...persisted };
+                const { redis_token_ciphertext: _ciphertext, ...safe } = merged as Record<string, unknown>;
                 return c.json(safe);
             }
             await kvFor(c.get('tenant')).setJson(domain, body, now());
-            return c.json(body);
+            // Return merged defaults with input to match product behavior
+            return c.json({ ...DEFAULTS[domain] as object, ...body });
         });
     }
 

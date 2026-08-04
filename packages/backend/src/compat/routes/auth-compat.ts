@@ -435,8 +435,13 @@ export function registerAuthCompatAuthedRoutes(
         return c.json({ success: true, message: 'IP unblocked' });
     });
     // GET /api/auth/security/bot-protection
-    app.get('/api/auth/security/bot-protection', async (c) =>
-        c.json(await kvFor(c.get('tenant')).getJson('auth_security_bot', BOT_DEFAULTS)));
+    app.get('/api/auth/security/bot-protection', async (c) => {
+        const stored = await kvFor(c.get('tenant')).getJson<Record<string, unknown>>('auth_security_bot', {});
+        // Match product: merge stored values over defaults (so missing fields get defaults)
+        // and mask the secret key in the response (product returns •••••••• for populated keys)
+        const masked = stored.secret_key ? '••••••••' : '';
+        return c.json({ ...BOT_DEFAULTS, ...stored, secret_key: masked });
+    });
     // POST /api/auth/security/bot-protection
     app.post('/api/auth/security/bot-protection', async (c) => {
         const input = await c.req.json().catch(() => null);

@@ -143,7 +143,11 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
     app.post('/api/pages/', async (c) => {
         const body = await c.req.json().catch(() => null) as { name?: string; slug?: string; title?: string; description?: string; layoutData?: unknown; layout_data?: unknown } | null;
         if (!body?.name || !body.slug) return c.json({ success: false, error: 'name and slug are required' }, 422);
-        const row = await storeFor(c.get('tenant')).create(
+        const store = storeFor(c.get('tenant'));
+        // Check for duplicate slug before creating (product parity: 400 on conflict)
+        const existing = await store.getBySlug(body.slug);
+        if (existing) return c.json({ success: false, error: 'A page with this slug already exists' }, 400);
+        const row = await store.create(
             { name: body.name, slug: body.slug, title: body.title, description: body.description, layout_data: body.layoutData ?? body.layout_data },
             crypto.randomUUID(), now(),
         );

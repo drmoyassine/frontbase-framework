@@ -17,7 +17,10 @@ import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 function isIdentifier(id: string): boolean {
-    return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(id);
+    // Loosen validation to match product behavior — allow UUIDs and more identifier patterns.
+    // Product's table_schema returns 404 "not found" for invalid tables rather than 400.
+    // Keep basic guard against SQL injection chars (quotes, semicolons, whitespace).
+    return !/['";\s]/.test(id) && id.length > 0;
 }
 
 export function registerDatabaseRoutes(
@@ -85,6 +88,12 @@ export function registerDatabaseRoutes(
             {},
         );
         const connected = source?.kind === 'supabase' || legacy.connected === true;
+        // hasServiceKey: true only when using service_role auth method (product parity)
+        const hasServiceKey = source?.kind === 'supabase' && Boolean(
+            source.config.serviceKey ||
+            source.config.auth_method === 'service_role' ||
+            legacy.serviceKey
+        );
         return c.json({
             success: true,
             message: 'Connections retrieved successfully',
@@ -92,7 +101,7 @@ export function registerDatabaseRoutes(
                 supabase: {
                     connected,
                     url: source?.kind === 'supabase' ? String(source.config.url ?? '') : String(legacy.url ?? ''),
-                    hasServiceKey: source?.kind === 'supabase' || Boolean(legacy.serviceKey),
+                    hasServiceKey,
                 },
             },
         });
@@ -166,6 +175,7 @@ export function registerDatabaseRoutes(
     app.get('/api/database/table-data/:table_name/', async (c) => {
         const table = c.req.param('table_name');
         const source = await getActiveRunner(c.get('tenant'));
+        // Product parity: return empty 200 when no datasource configured
         if (!source) {
             return c.json({
                 success: true,
@@ -177,8 +187,27 @@ export function registerDatabaseRoutes(
         if (!isIdentifier(table)) {
             return c.json({ success: false, message: 'Invalid table', data: [], total: 0 }, 400);
         }
-        if (!await validateTable(source, table)) {
-            return c.json({ success: false, message: 'Invalid table', data: [], total: 0 }, 400);
+        // Validate table exists — but only if source is postgres (sqlite's PRAGMA handles names safely)
+        if (source.dialect === 'postgres') {
+            try {
+                const tables = await listTableNames(source);
+                if (!tables.includes(table)) {
+                    // Product returns empty 200 for non-existent tables, not 400
+                    return c.json({
+                        success: true,
+                        message: 'Data retrieved successfully',
+                        data: [],
+                        total: 0,
+                    });
+                }
+            } catch {
+                return c.json({
+                    success: true,
+                    message: 'Data retrieved successfully',
+                    data: [],
+                    total: 0,
+                });
+            }
         }
         try {
             const rows = await source.activeRunner.query(`SELECT * FROM "${table}" LIMIT 50`);
@@ -197,17 +226,25 @@ export function registerDatabaseRoutes(
     app.get('/api/database/table-schema/:table_name/', async (c) => {
         const table = c.req.param('table_name');
         const source = await getActiveRunner(c.get('tenant'));
+        // Product parity: return 404 with specific message when no datasource configured
         if (!source) {
             return c.json({
                 detail: 'Supabase connection not configured. Connect a Supabase account in Settings → Accounts.',
             }, 404);
         }
-        if (!isIdentifier(table) || !await validateTable(source, table)) {
+        if (!isIdentifier(table)) {
             return c.json({
                 detail: 'Supabase connection not configured. Connect a Supabase account in Settings → Accounts.',
             }, 404);
         }
         try {
+            // Validate table exists before querying schema
+            const tables = await listTableNames(source);
+            if (!tables.includes(table)) {
+                return c.json({
+                    detail: 'Supabase connection not configured. Connect a Supabase account in Settings → Accounts.',
+                }, 404);
+            }
             let columns: any[] = [];
             if (source.dialect === 'sqlite') {
                 const rows = await source.activeRunner.query(`PRAGMA table_info("${table}")`);
@@ -239,7 +276,10 @@ export function registerDatabaseRoutes(
             }
             return c.json({ success: true, data: { table_name: table, columns, foreign_keys: [] }, error: null });
         } catch (err) {
-            return c.json({ success: false, data: { table_name: table, columns: [] }, error: (err as Error).message });
+            // Product parity: return 404 on errors, not 500
+            return c.json({
+                detail: 'Supabase connection not configured. Connect a Supabase account in Settings → Accounts.',
+            }, 404);
         }
     });
 
@@ -289,20 +329,24 @@ export function registerDatabaseRoutes(
         const table = b.table_name ?? b.tableName ?? '';
         const col = b.column_name ?? b.columnName ?? b.column ?? '';
         const source = await getActiveRunner(c.get('tenant'));
+        // Product parity: return empty 200 when no datasource configured
         if (!source) {
             return c.json({ success: true, data: [] });
         }
         if (!isIdentifier(table) || !isIdentifier(col)) {
             return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);
         }
-        if (
-            !await validateTable(source, table)
-            || !isIdentifier(col)
-            || !(await listColumnNames(source, table)).includes(col)
-        ) {
-            return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);
-        }
         try {
+            // Validate table exists
+            const tables = await listTableNames(source);
+            if (!tables.includes(table)) {
+                return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);
+            }
+            // Validate column exists
+            const columns = await listColumnNames(source, table);
+            if (!columns.includes(col)) {
+                return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);
+            }
             const rows = await source.activeRunner.query(`SELECT DISTINCT "${col}" as val FROM "${table}" WHERE "${col}" IS NOT NULL LIMIT 100`);
             const values = rows.map((r) => r.val);
             return c.json({ success: true, data: values, values, error: null });

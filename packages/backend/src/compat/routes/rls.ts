@@ -123,6 +123,7 @@ export function registerRlsRoutes(
             propagateTo?: Array<Record<string, unknown>>;
         };
         try {
+            await supabaseFor(c.get('tenant'));
             const result = await callRpc(c.get('tenant'), 'frontbase_create_rls_policy', {
                 p_table_name: body.tableName,
                 p_policy_name: body.policyName,
@@ -160,6 +161,7 @@ export function registerRlsRoutes(
     app.put('/api/database/rls/policies/:table_name/:policy_name', async (c) => {
         const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
         try {
+            await supabaseFor(c.get('tenant'));
             const result = await callRpc(c.get('tenant'), 'frontbase_update_rls_policy', {
                 p_table_name: c.req.param('table_name'),
                 p_old_policy_name: c.req.param('policy_name'),
@@ -180,6 +182,7 @@ export function registerRlsRoutes(
 
     app.delete('/api/database/rls/policies/:table_name/:policy_name', async (c) => {
         try {
+            await supabaseFor(c.get('tenant'));
             const result = await callRpc(c.get('tenant'), 'frontbase_drop_rls_policy', {
                 p_table_name: c.req.param('table_name'),
                 p_policy_name: c.req.param('policy_name'),
@@ -195,6 +198,7 @@ export function registerRlsRoutes(
     app.post('/api/database/rls/tables/:table_name/toggle/', async (c) => {
         const body = await c.req.json().catch(() => ({})) as { enable?: boolean };
         try {
+            await supabaseFor(c.get('tenant'));
             const result = await callRpc(c.get('tenant'), 'frontbase_toggle_table_rls', {
                 p_table_name: c.req.param('table_name'),
                 p_enable: body.enable ?? false,
@@ -224,6 +228,7 @@ export function registerRlsRoutes(
             permissive: body.permissive ?? true,
         }));
         try {
+            await supabaseFor(c.get('tenant'));
             const result = await callRpc(c.get('tenant'), 'frontbase_create_rls_policies_batch', {
                 p_policies: policies,
             }) as Record<string, unknown>;
@@ -245,8 +250,8 @@ export function registerRlsRoutes(
         const results = [];
         try {
             // The product resolves the Supabase context before processing the
-            // batch, including an empty batch. Do not fabricate a local success.
-            const datasource = await supabaseFor(c.get('tenant'));
+            // batch, including an empty batch.
+            await supabaseFor(c.get('tenant'));
             for (const policy of body.policies ?? []) {
                 const result = await callRpc(c.get('tenant'), 'frontbase_drop_rls_policy', {
                     p_table_name: policy.tableName,
@@ -277,8 +282,8 @@ export function registerRlsRoutes(
     // Metadata is Builder form state, not provider state.
     app.get('/api/database/rls/metadata/', async (c) => {
         const metadata = await kvFor(c.get('tenant')).getJson<Array<Record<string, unknown>>>('rls_metadata', []);
-        // Product does not include sqlHash in the array response (only in individual item response)
-        const data = metadata.map(({ sqlHash, ...rest }) => rest);
+        // Product excludes sqlHash and generatedCheck from the array response (only in individual item response)
+        const data = metadata.map(({ sqlHash, generatedCheck, ...rest }) => rest);
         return c.json({ success: true, data, error: null });
     });
 

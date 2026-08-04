@@ -163,9 +163,11 @@ function reg(
                 const rowConfig = await store.getEdgeResourceConfig(String(row.id)) ?? {};
                 if (rowConfig.url === newUrl) {
                     const existingName = row.name ?? kind;
-                    const detail = kind === 'vector'
-                        ? 'A vector store with this URL/DSN already exists'
-                        : `A ${kind} with this URL already exists ('${existingName}')`;
+                    const detail = kind === 'cache'
+                        ? `A cache with this URL already exists ('${existingName}')`
+                        : kind === 'queue'
+                        ? `A queue with this URL already exists ('${existingName}')`
+                        : 'A vector store with this URL/DSN already exists';
                     return c.json({ detail }, 409);
                 }
             }

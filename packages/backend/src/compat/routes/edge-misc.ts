@@ -88,6 +88,7 @@ export function registerEdgeMiscRoutes(
             prefix,
             is_active: true,
             expires_at: parsed.data.expires_at ?? null,
+            last_used_at: null,
             can_reveal: true,
             edge_engine_id: null,
             engine_name: null,

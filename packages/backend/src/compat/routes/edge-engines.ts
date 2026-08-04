@@ -43,6 +43,22 @@ export function registerEdgeEnginesRoutes(
     // default publish target.
     const systemEngineFor = (c: { req: { url: string } }): Record<string, unknown> =>
         buildSystemEngine(systemEdge, new URL(c.req.url).origin);
+    // Generate a system key matching product's Fernet format (gAAAAAB prefix)
+    const generateSystemKey = (): string => {
+        const randomBytes = new Uint8Array(32);
+        crypto.getRandomValues(randomBytes);
+        const base64 = btoa(String.fromCharCode(...randomBytes));
+        return `gAAAAAB${base64.substring(0, 40)}`; // Match product's format length
+    };
+
+    // Inject system_key into config (parity with product's inject_system_key)
+    const injectSystemKey = (config: Record<string, unknown>): Record<string, unknown> => {
+        if (config.system_key === undefined || config.system_key === null) {
+            config.system_key = generateSystemKey();
+        }
+        return config;
+    };
+
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
         if (config === undefined) return undefined;
         const ciphertext = await secretCipher.encrypt(JSON.stringify(config));
@@ -98,12 +114,16 @@ export function registerEdgeEnginesRoutes(
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: string; provider?: string; config?: unknown };
         const id = crypto.randomUUID();
         const store = p2(c.get('tenant'));
+        // Build config from body, inject system_key, store as JSON (parity with product)
+        const rawConfig = configFromBody(b) as Record<string, unknown>;
+        injectSystemKey(rawConfig);
+        const configJson = JSON.stringify(rawConfig);
         await store.upsertEdgeResource({
             id,
             kind: 'engine',
             name: b.name ?? 'Engine',
             provider: b.provider,
-            config: await encryptedConfig(b.config ?? configFromBody(b)),
+            config: configJson,
         }, now());
         return c.json(await serializeStoredEngine(store, await store.getEdgeResource(id) ?? {
             id,
@@ -141,11 +161,14 @@ export function registerEdgeEnginesRoutes(
             return c.json({ detail: 'Provider account not found' }, 400);
         }
         const id = crypto.randomUUID();
+        // Inject system_key into config for deployed engine
+        const config = { system_key: generateSystemKey() };
         await store.upsertEdgeResource({
             id,
             kind: 'engine',
             name: b.name ?? 'Deployed Engine',
             provider: b.provider ?? String(provider.provider ?? 'cloudflare'),
+            config: JSON.stringify(config),
         }, now());
         const engine = await store.getEdgeResource(id);
         return c.json({
@@ -163,7 +186,14 @@ export function registerEdgeEnginesRoutes(
         }
         const store = p2(c.get('tenant'));
         const id = crypto.randomUUID();
-        await store.upsertEdgeResource({ id, kind: 'engine', name: b.name ?? 'Imported Engine' }, now());
+        // Inject system_key into config for imported engine
+        const config = { system_key: generateSystemKey() };
+        await store.upsertEdgeResource({
+            id,
+            kind: 'engine',
+            name: b.name ?? 'Imported Engine',
+            config: JSON.stringify(config),
+        }, now());
         return c.json({ success: true, engine_id: id, message: 'Engine imported successfully' });
     });
 
@@ -222,17 +252,33 @@ export function registerEdgeEnginesRoutes(
         if (!existing || existing.kind !== 'engine') {
             return c.json({ detail: 'Edge engine not found' }, 404);
         }
+
+        let newConfig: string | undefined;
+        if (b.config !== undefined
+            || b.engine_config !== undefined
+            || b.url !== undefined
+            || b.adapter_type !== undefined) {
+            // Config is being updated - build new config and inject system_key
+            const rawConfig = configFromBody(b) as Record<string, unknown>;
+            // Preserve existing system_key if present
+            const existingConfig = await store.getEdgeResourceConfig(id) ?? {};
+            if (existingConfig.system_key) {
+                rawConfig.system_key = existingConfig.system_key;
+            } else {
+                injectSystemKey(rawConfig);
+            }
+            newConfig = JSON.stringify(rawConfig);
+        } else {
+            // Config not being updated - preserve existing
+            newConfig = existing.config as string | undefined;
+        }
+
         await store.upsertEdgeResource({
             id,
             kind: 'engine',
             name: b.name ?? String(existing.name),
             provider: b.provider ?? (existing.provider as string | undefined),
-            config: b.config !== undefined
-                || b.engine_config !== undefined
-                || b.url !== undefined
-                || b.adapter_type !== undefined
-                ? await encryptedConfig(b.config ?? configFromBody(b))
-                : existing.config as string | undefined,
+            config: newConfig,
         }, now());
         return c.json(await serializeStoredEngine(store, await store.getEdgeResource(id) ?? existing));
     });

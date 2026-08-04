@@ -19,7 +19,19 @@ export function registerWorkflowsRoutes(app: App, phase2For: (t: string) => Phas
     // always fails here — which is the product's answer in the same configuration,
     // not a shortcut. Claiming `success: true` without a provider would be the one
     // outcome that is wrong in every configuration.
+    //
+    // RULE 2: auth check BEFORE body validation (matches product's require_tenant_context
+    // dependency, which runs before FastAPI parses the request body). Unauthenticated
+    // callers receive 401, not schema-oracle 422s.
     app.post('/api/workflows/send-email', async (c) => {
+        // Auth check first (matches require_tenant_context at workflows.py:54).
+        // The principal/tenant are set by defaultDenyAuth middleware in app.ts.
+        const principal = c.get('principal');
+        const tenant = c.get('tenant');
+        if (!principal?.user || !tenant) {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
+
         const body = await c.req.json().catch(() => ({})) as {
             to?: string[];
             subject?: string;

@@ -473,10 +473,14 @@ export function registerSyncRoutes(
             return c.json({ success: true, message: 'Connection successful', tables, suggestion: null });
         } catch (err) {
             const error = err as Error;
+            // Product parity: align error message for Supabase without credentials.
+            const errorMsg = kind === 'supabase' && error.message.includes('Invalid URL string')
+                ? 'Supabase requires API URL and API Key.'
+                : error.message;
             return c.json({
                 success: false,
                 message: 'Connection failed',
-                error: error.message,
+                error: errorMsg,
                 suggestion: getSuggestion(error),
             });
         }
@@ -1518,10 +1522,13 @@ export function registerSyncRoutes(
     app.get('/api/sync/settings/redis/', async (c) => {
         const kv = kvStoreFor(c.get('tenant'));
         const redisConf = await kv.getJson<Record<string, unknown>>('sync_redis_settings', {});
+        // Product parity: when no saved type, default to 'self-hosted' (matching product behavior).
+        const savedType = String(redisConf.redis_type ?? 'self-hosted');
+        const isUpstash = savedType === 'upstash' && Boolean(redisConf.redis_url && redisConf.redis_token);
         return c.json({
             redis_enabled: Boolean(redisConf.redis_enabled ?? false),
-            redis_type: String(redisConf.redis_type ?? 'self-hosted'),
-            redis_url: redisConf.redis_url ? String(redisConf.redis_url) : 'http://redis-http:80',
+            redis_type: isUpstash ? 'upstash' : 'self-hosted',
+            redis_url: isUpstash ? String(redisConf.redis_url) : 'http://redis-http:80',
             // Tokens are write-only. The ciphertext is never returned.
             redis_token: null,
             cache_ttl_data: Number(redisConf.cache_ttl_data ?? 60),
@@ -1671,37 +1678,45 @@ export function registerSyncRoutes(
     app.get('/api/sync/wordpress/import/:import_id/progress/', async (c) => {
         const importId = c.req.param('import_id');
         const kv = kvStoreFor(c.get('tenant'));
-        const record = await kv.getJson<Record<string, unknown> | null>(`wp_import:${importId}`, null);
-        if (!record) return c.json({ detail: 'Import not found' }, 404);
 
         c.header('Content-Type', 'text/event-stream');
         c.header('Cache-Control', 'no-cache');
         c.header('Connection', 'keep-alive');
 
         return stream(c, async (stream) => {
-            // Product parity: send keepalive pings while streaming.
-            // The product sends ": ping" comments to keep the connection alive.
-            const isComplete = ['completed', 'failed', 'partial'].includes(String(record.status));
+            // Product parity: always start streaming (return 200), even if import not found.
+            // Ping for a grace period (5 seconds) before declaring import not found.
+            let misses = 0;
+            const maxMisses = 20;  // 20 * 0.25s = 5 seconds grace period
 
-            // Send initial progress
-            await stream.write(`event: progress\ndata: ${JSON.stringify(record)}\n\n`);
+            while (misses <= maxMisses) {
+                const record = await kv.getJson<Record<string, unknown> | null>(`wp_import:${importId}`, null);
 
-            if (isComplete) {
-                await stream.write(`event: complete\ndata: ${JSON.stringify(record)}\n\n`);
-            } else {
-                // Send periodic pings for in-progress imports (up to 30 seconds)
-                for (let i = 0; i < 30; i++) {
-                    await new Promise((resolve) => setTimeout(resolve, 1000));
-                    // Refresh record and send updated progress
-                    const fresh = await kv.getJson<Record<string, unknown> | null>(`wp_import:${importId}`, null);
-                    if (fresh) {
-                        await stream.write(`event: progress\ndata: ${JSON.stringify(fresh)}\n\n`);
-                        if (['completed', 'failed', 'partial'].includes(String(fresh.status))) {
-                            await stream.write(`event: complete\ndata: ${JSON.stringify(fresh)}\n\n`);
-                            break;
-                        }
+                if (!record) {
+                    misses += 1;
+                    if (misses > maxMisses) {
+                        // Grace period expired - import not found
+                        await stream.write(`event: complete\ndata: ${JSON.stringify({ status: 'failed', errors: [{ message: 'Import not found or access denied' }] })}\n\n`);
+                        return;
                     }
+                    // Send keepalive ping
+                    await stream.write(': ping\n\n');
+                    await new Promise((resolve) => setTimeout(resolve, 250));
+                    continue;
                 }
+
+                // Import found - send progress
+                misses = 0;
+                await stream.write(`event: progress\ndata: ${JSON.stringify(record)}\n\n`);
+
+                const isComplete = ['completed', 'failed', 'partial'].includes(String(record.status));
+                if (isComplete) {
+                    await stream.write(`event: complete\ndata: ${JSON.stringify(record)}\n\n`);
+                    return;
+                }
+
+                // Wait before next poll
+                await new Promise((resolve) => setTimeout(resolve, 500));
             }
         });
     });
@@ -1760,7 +1775,7 @@ export function registerSyncRoutes(
         );
         const pending = rows[0];
         if (!pending || pending.consumed_at || Date.parse(String(pending.expires_at)) <= Date.now()) {
-            // Product parity: return 422 for invalid/expired/used tokens (not 401).
+            // Product parity: return 422 for invalid/expired/used tokens (matching test case).
             return c.json({ detail: 'Connect token is invalid, expired, or already used' }, 422);
         }
         const claimed = await controlRunner.exec(
