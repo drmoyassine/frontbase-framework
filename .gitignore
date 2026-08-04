@@ -13,4 +13,5 @@ dist/
 
 # Parity-run scratch (differential runtime state, per-pass reports)
 .tmp/
-packages/backend/test/.diff-report*.json
+packages/backend/test/.diff-*.json
+packages/backend/test/.classify.mjs
