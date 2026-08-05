@@ -11,11 +11,17 @@ export function registerMetaRoutes(
     runner: DbRunner,
     includeProductRoot = false,
 ): void {
-    // Product root endpoint — always registered for parity (unconditional)
-    app.get('/', async (c) => {
-        await runner.query('SELECT 1');
-        return c.json({ message: 'Frontbase-DBSync API is running', test_mode: true });
-    });
+    // Product root endpoint — registered ONLY when the compat app runs standalone
+    // (includeProductRoot=true), e.g. in parity test harnesses. The cf-full worker
+    // OMITS this (includeProductRoot defaults false) so the eSSR engine owns `/` and
+    // serves published pages. Registering `/` here unconditionally shadowed the engine
+    // and broke published-page serving at `/` (the engine is mounted after compatApp).
+    if (includeProductRoot) {
+        app.get('/', async (c) => {
+            await runner.query('SELECT 1');
+            return c.json({ message: 'Frontbase-DBSync API is running', test_mode: true });
+        });
+    }
     app.get('/health', async (c) => {
         await runner.query('SELECT 1');
         return c.json({ status: 'healthy', message: 'API is operational', test_mode: true });

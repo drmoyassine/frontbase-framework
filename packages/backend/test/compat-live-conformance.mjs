@@ -66,6 +66,7 @@ const FRAMEWORK_FEATURE_PATHS = new Set([
   'GET /api/edge-engines/',
   'GET /api/database/rls/metadata/',
   'POST /api/database/rls/metadata/verify/',
+  'GET /',  // framework serves published pages at / (full-CMS worker); product returns API health JSON
 ]);
 
 /**
