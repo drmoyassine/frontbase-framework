@@ -12,6 +12,28 @@ async function sha256Hex(value: string): Promise<string> {
     return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * Convert Zod validation errors to Pydantic-style error format.
+ * Pydantic returns { detail: [{ type, loc: ['body', ...path], msg, input }] }
+ */
+function zodToPydanticError(error: { issues: Array<{ code: string; path: Array<string | number>; message: string; expected?: unknown; received?: unknown; input?: unknown }> }): { detail: Array<{ type: string; loc: string[]; msg: string; input: unknown }> } {
+    const typeMap: Record<string, string> = {
+        invalid_type: 'string_type',
+        too_small: 'string_too_short',
+        too_big: 'string_too_long',
+        invalid_enum: 'literal_error',
+    };
+
+    return {
+        detail: error.issues.map((issue) => ({
+            type: typeMap[issue.code] || `${issue.code}_error`,
+            loc: ['body', ...issue.path.map(String)],
+            msg: issue.message,
+            input: 'input' in issue ? issue.input : undefined,
+        })),
+    };
+}
+
 async function auditSecret(
     runner: DbRunner,
     tenant: string,
@@ -39,6 +61,7 @@ export function registerEdgeMiscRoutes(
         const keys = await runner.query(
             `SELECT k.id, k.name, k.scope, k.is_active, k.expires_at,
                     k.created_at, k.updated_at, s.prefix,
+                    k.edge_engine_id,
                     CASE WHEN s.ciphertext IS NOT NULL AND s.revealed_at IS NULL THEN 1 ELSE 0 END AS can_reveal
              FROM edge_api_keys k
              LEFT JOIN edge_api_key_secrets s
@@ -46,12 +69,16 @@ export function registerEdgeMiscRoutes(
              WHERE k.tenant_slug = ?`,
             [c.get('tenant')],
         );
-        return c.json({ keys, total: keys.length });
+        // Match product shape: add engine_name: null for each key
+        return c.json({
+            keys: keys.map((k: Record<string, unknown>) => ({ ...k, engine_name: null })),
+            total: keys.length,
+        });
     });
 
     app.post('/api/edge-api-keys', async (c) => {
         const parsed = zApiKeyCreate.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(zodToPydanticError(parsed.error), 422);
         if (!cipher.isEncrypted(await cipher.encrypt('probe'))) {
             return c.json({ detail: 'Secret encryption is not configured' }, 503);
         }
@@ -99,7 +126,7 @@ export function registerEdgeMiscRoutes(
 
     app.put('/api/edge-api-keys/:key_id', async (c) => {
         const parsed = zApiKeyUpdate.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(zodToPydanticError(parsed.error), 422);
         if (parsed.data.scope && !['user', 'management', 'all'].includes(parsed.data.scope)) {
             return c.json({ detail: 'invalid_scope' }, 400);
         }

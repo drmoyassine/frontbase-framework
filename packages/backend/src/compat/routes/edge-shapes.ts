@@ -59,10 +59,8 @@ export function serializeEdgeResource(
         updated_at: String(row.updated_at ?? ''),
         ...extra,
     };
-    // provider_account_id: include only when set
-    if (config.provider_account_id != null) {
-        response.provider_account_id = String(config.provider_account_id);
-    }
+    // provider_account_id: product ALWAYS includes it (null when not set)
+    response.provider_account_id = (config.provider_account_id != null) ? String(config.provider_account_id) : null;
     // account_name: product ALWAYS includes it (null when not set)
     response.account_name = (config.account_name != null) ? String(config.account_name) : null;
     return response;

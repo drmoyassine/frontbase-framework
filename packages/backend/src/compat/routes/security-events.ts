@@ -12,7 +12,20 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 export function registerSecurityEventsRoutes(app: App, storeFor: (t: string) => SecurityEventsStore): void {
     // GET /api/security-events/
     app.get('/api/security-events/', async (c) => {
-        const events = await storeFor(c.get('tenant')).list();
+        const rows = await storeFor(c.get('tenant')).list();
+        // Map framework schema (kind, detail) to product schema (event_type, details)
+        // Add missing fields (tenant_id, project_id, user_id, source_ip) as NULL
+        const events = rows.map((r: Record<string, unknown>) => ({
+            id: String(r.id),
+            event_type: String(r.kind), // framework uses 'kind', product uses 'event_type'
+            severity: String(r.severity),
+            tenant_id: null, // framework uses tenant_slug, product uses tenant_id
+            project_id: null, // not tracked in framework
+            user_id: null, // not tracked in framework
+            source_ip: null, // not tracked in framework
+            details: r.detail, // framework uses 'detail', product uses 'details'
+            created_at: String(r.created_at),
+        }));
         // Product parity: field order is events, limit, offset, total
         return c.json({ events, limit: 100, offset: 0, total: events.length });
     });

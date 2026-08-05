@@ -146,6 +146,19 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
     return async (c, next) => {
         const path = new URL(c.req.url).pathname;
         const method = c.req.method.toLowerCase();
+
+        // RULE 2: authentication before validation for workflows send-email.
+        // The product uses require_tenant_context which runs before FastAPI parses
+        // the request body, so unauthenticated callers receive 401, not 422.
+        // See comment in app.ts about "/api/workflows/* is deliberately NOT blanket-denied".
+        if (path === '/api/workflows/send-email' && method === 'post') {
+            const principal = c.get('principal');
+            const tenant = c.get('tenant');
+            if (!principal?.user || !tenant) {
+                return c.json({ detail: 'Authentication required' }, 401);
+            }
+        }
+
         const match = routes
             .map((route) => ({ route, values: route.method === method ? path.match(route.regex) : null }))
             .find((candidate) => candidate.values);
@@ -193,10 +206,22 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
         const bodyValidator = validator(`${prefix}Body`);
         const jsonSchema = operation.requestBody?.content?.['application/json']?.schema;
         if (bodyValidator && jsonSchema) {
-            const body = await c.req.json().catch(() => undefined);
-            const parsed = bodyValidator.safeParse(body);
-            if (!parsed.success) {
-                return c.json(fastApiValidationError('body', body, parsed.error.issues), 422);
+            // Check if request body is required (OpenAPI requestBody.required is true)
+            const isBodyRequired = operation.requestBody?.required === true;
+            let body: unknown;
+            try {
+                body = await c.req.json();
+            } catch {
+                // JSON parsing failed - treat as null for validation
+                body = null;
+            }
+            // For required bodies, validate even if null/undefined (will fail schema)
+            // For optional bodies, only validate if body is provided
+            if (isBodyRequired || body !== undefined && body !== null) {
+                const parsed = bodyValidator.safeParse(body);
+                if (!parsed.success) {
+                    return c.json(fastApiValidationError('body', body, parsed.error.issues), 422);
+                }
             }
         }
         const multipartSchema = operation.requestBody?.content?.['multipart/form-data']?.schema;

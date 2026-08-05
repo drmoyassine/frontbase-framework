@@ -43,12 +43,23 @@ export function registerEdgeEnginesRoutes(
     // default publish target.
     const systemEngineFor = (c: { req: { url: string } }): Record<string, unknown> =>
         buildSystemEngine(systemEdge, new URL(c.req.url).origin);
-    // Generate a system key matching product's Fernet format (gAAAAAB prefix)
+    // Generate a system key matching product's Fernet format (184 characters)
+    // Product uses Fernet tokens: 137 bytes encoded as URL-safe base64 with padding
+    // Structure: version(1) + timestamp(8) + IV(16) + ciphertext(80) + HMAC(32) = 137 bytes
     const generateSystemKey = (): string => {
-        const randomBytes = new Uint8Array(32);
-        crypto.getRandomValues(randomBytes);
-        const base64 = btoa(String.fromCharCode(...randomBytes));
-        return `gAAAAAB${base64.substring(0, 40)}`; // Match product's format length
+        const timestamp = Date.now() / 1000 | 0;
+        const buffer = new Uint8Array(137);
+        const view = new DataView(buffer.buffer);
+        // Version byte (0x80 for Fernet)
+        view.setUint8(0, 0x80);
+        // Timestamp (8 bytes, big-endian)
+        view.setUint32(1, timestamp, false);
+        view.setUint32(5, 0, false);
+        // Fill the rest with random bytes (IV + ciphertext + HMAC)
+        crypto.getRandomValues(buffer.subarray(9));
+        // Encode to base64 and convert to URL-safe format
+        let base64 = btoa(String.fromCharCode(...buffer));
+        return base64.replace(/\+/g, '-').replace(/\//g, '_');
     };
 
     // Inject system_key into config (parity with product's inject_system_key)

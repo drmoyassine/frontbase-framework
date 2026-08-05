@@ -305,13 +305,13 @@ function wordpressConfig(config: Record<string, unknown>): {
 function validationError(details: { type: string; loc: string[]; msg: string; input: unknown }[]): {
     success: false;
     error: string;
-    details: typeof details;
+    detail: typeof details;
     message: string;
 } {
     return {
         success: false,
         error: 'Validation Error',
-        details,
+        detail: details,
         message: 'The data provided is invalid',
     };
 }
@@ -1648,7 +1648,7 @@ export function registerSyncRoutes(
             return c.json({
                 success: false,
                 error: 'Validation Error',
-                details: [{ type: 'string_type', loc: ['body', 'datasource_id'], msg: 'Input should be a valid string', input: body.datasource_id }],
+                detail: [{ type: 'string_type', loc: ['body', 'datasource_id'], msg: 'Input should be a valid string', input: body.datasource_id }],
                 message: 'The data provided is invalid',
             }, 422);
         }

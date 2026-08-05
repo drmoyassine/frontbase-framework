@@ -50,7 +50,7 @@ function asDraft(row: Record<string, unknown>, contentHash: string | null = null
         trigger_type: String(row.trigger_type ?? 'manual'),
         trigger_config: null,
         description: null,
-        settings: null,
+        settings: {},
         published_version: row.is_published ? Number(row.version ?? 1) : null,
         deployed_engines: {},
         created_by: null,
@@ -206,11 +206,11 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
     app.post('/api/actions/drafts/:draft_id/publish/:engine_id/toggle', async (c) => {
         const store = phase2For(c.get('tenant'));
         const existing = await store.getWorkflow(c.req.param('draft_id'));
-        if (!existing) return c.json({ detail: 'Workflow draft not found' }, 404);
+        if (!existing) return c.json({ detail: 'Workflow draft not found' }, 400);
         const engine = await store.getEdgeResource(c.req.param('engine_id'));
         if (!engine || engine.kind !== 'engine') {
-            // Product parity: return 400 for invalid/deployment target not found (matches product validation behavior)
-            return c.json({ detail: 'Deployment target not found' }, 400);
+            // Product parity: return 404 for deployment target not found (matches product resource not found behavior)
+            return c.json({ detail: 'Deployment target not found' }, 404);
         }
         const next = !Boolean(existing.is_active);
         await store.toggleWorkflow(c.req.param('draft_id'), next, now());

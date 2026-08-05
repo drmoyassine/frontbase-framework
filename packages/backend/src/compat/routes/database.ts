@@ -13,6 +13,29 @@ import type { KeyValueStore } from '../store.js';
 import type { SyncStore } from '../sync-store.js';
 import { datasourceRunner, dialectOf } from '../../db/datasource-runner.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
+import { z } from 'zod';
+
+/**
+ * Convert Zod validation errors to Pydantic-style error format.
+ * Pydantic returns { detail: [{ type, loc: ['body', ...path], msg, input }] }
+ */
+function zodToPydanticError(error: { issues: Array<{ code: string; path: Array<string | number>; message: string; expected?: unknown; received?: unknown; input?: unknown }> }): { detail: Array<{ type: string; loc: string[]; msg: string; input: unknown }> } {
+    const typeMap: Record<string, string> = {
+        invalid_type: 'string_type',
+        too_small: 'string_too_short',
+        too_big: 'string_too_long',
+        invalid_enum: 'literal_error',
+    };
+
+    return {
+        detail: error.issues.map((issue) => ({
+            type: typeMap[issue.code] || `${issue.code}_error`,
+            loc: ['body', ...issue.path.map(String)],
+            msg: issue.message,
+            input: issue.input ?? null,
+        })),
+    };
+}
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -354,5 +377,38 @@ export function registerDatabaseRoutes(
         } catch {
             return c.json({ success: false, data: [], values: [], error: 'query_failed' });
         }
+    });
+
+    // GET /api/database/rls/metadata/
+    // Product parity: return empty array when no metadata stored
+    app.get('/api/database/rls/metadata/', async (c) => {
+        return c.json({ success: true, data: [], error: null });
+    });
+
+    // POST /api/database/rls/metadata/verify/
+    const zVerifyRlsRequest = z.object({
+        tableName: z.string(),
+        policyName: z.string(),
+        currentUsing: z.string().nullable().optional(),
+    });
+    app.post('/api/database/rls/metadata/verify/', async (c) => {
+        const parsed = zVerifyRlsRequest.safeParse(await c.req.json().catch(() => null));
+        if (!parsed.success) {
+            return c.json(zodToPydanticError(parsed.error), 422);
+        }
+        const source = await getActiveRunner(c.get('tenant'));
+        if (!source) {
+            return c.json({
+                success: true,
+                data: { hasMetadata: false, isVerified: false, reason: 'error', formData: null },
+                error: null,
+            });
+        }
+        // Product parity: return verification result (always false for framework as RLS metadata is not stored)
+        return c.json({
+            success: true,
+            data: { hasMetadata: false, isVerified: false, reason: 'error', formData: null },
+            error: null,
+        });
     });
 }

@@ -81,10 +81,12 @@ function serializeForm(row: AuthFormRow): Record<string, unknown> {
 const envelope = (
     success: boolean,
     data: unknown = null,
+    message: string | null = null,
     error: string | null = null,
-): { success: boolean; data: unknown; error: string | null } => ({
+): { success: boolean; data: unknown; message: string | null; error: string | null } => ({
     success,
     data,
+    message,
     error,
 });
 
@@ -195,7 +197,7 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
         if (target) {
             return c.json(envelope(true, serializeForm(target)));
         }
-        return c.json(envelope(false, null, 'No auth forms configured'));
+        return c.json(envelope(false, null, null, 'No auth forms configured'));
     });
 
     app.get('/api/auth-forms/:form_id/', async (c) => {
@@ -205,7 +207,7 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
         ) as AuthFormRow[];
         return rows[0]
             ? c.json(envelope(true, serializeForm(rows[0])))
-            : c.json(envelope(false, null, 'Auth form not found'));
+            : c.json(envelope(false, null, null, 'Auth form not found'));
     });
 
     app.put('/api/auth-forms/:form_id/', async (c) => {
@@ -214,7 +216,7 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
             [c.get('tenant'), c.req.param('form_id')],
         ) as AuthFormRow[];
         const existing = rows[0];
-        if (!existing) return c.json(envelope(false, null, 'Auth form not found'));
+        if (!existing) return c.json(envelope(false, null, null, 'Auth form not found'));
 
         const body = await c.req.json() as {
             name?: unknown;
@@ -296,7 +298,7 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
             'SELECT id FROM auth_forms WHERE tenant_slug = ? AND id = ?',
             [c.get('tenant'), c.req.param('form_id')],
         );
-        if (!rows[0]) return c.json(envelope(false, null, 'Auth form not found'));
+        if (!rows[0]) return c.json(envelope(false, null, null, 'Auth form not found'));
         await runner.exec(
             'DELETE FROM auth_forms WHERE tenant_slug = ? AND id = ?',
             [c.get('tenant'), c.req.param('form_id')],

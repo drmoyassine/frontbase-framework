@@ -88,9 +88,31 @@ export function registerSettingsRoutes(
                 const storedRedis = stored as Record<string, unknown>;
                 // Merge defaults with stored, then hide ciphertext, never expose it
                 const merged = { ...DEFAULTS.redis as object, ...storedRedis };
-                const { redis_token_ciphertext: _ciphertext, redis_token: _token, ...rest } = merged as Record<string, unknown>;
-                // Product returns redis_token as null, not empty string
-                return c.json({ ...rest, redis_token: null });
+                // Return in exact key order product expects (for JSON string comparison parity)
+                return c.json({
+                    redis_url: merged.redis_url ?? null,
+                    redis_token: null,
+                    redis_type: merged.redis_type ?? 'self-hosted',
+                    redis_enabled: merged.redis_enabled ?? false,
+                    cache_ttl_data: merged.cache_ttl_data ?? 60,
+                    cache_ttl_count: merged.cache_ttl_count ?? 300,
+                });
+            }
+            if (domain === 'privacy') {
+                const storedPrivacy = stored as Record<string, unknown>;
+                // Merge with defaults
+                // Return in exact key order product expects
+                const merged = { ...DEFAULTS.privacy as object, ...storedPrivacy } as Record<string, unknown>;
+                return c.json({
+                    enableVisitorTracking: merged.enableVisitorTracking ?? false,
+                    cookieExpiryDays: merged.cookieExpiryDays ?? 365,
+                    requireCookieConsent: merged.requireCookieConsent ?? true,
+                    advancedVariables: merged.advancedVariables ?? (DEFAULTS.privacy as Record<string, unknown>).advancedVariables,
+                    cookieVariables: merged.cookieVariables ?? (DEFAULTS.privacy as Record<string, unknown>).cookieVariables,
+                    ga4MeasurementId: merged.ga4MeasurementId ?? null,
+                    gtmContainerId: merged.gtmContainerId ?? null,
+                    customHeadHtml: merged.customHeadHtml ?? null,
+                });
             }
             return c.json({ ...DEFAULTS[domain] as object, ...(stored as object) });
         });
@@ -114,10 +136,31 @@ export function registerSettingsRoutes(
                     redis_token_ciphertext: tokenCiphertext ?? null,
                 };
                 await kvFor(c.get('tenant')).setJson(domain, persisted, now());
-                // Return merged defaults with persisted values, hide ciphertext, return redis_token as null
-                const merged = { ...DEFAULTS.redis as object, ...persisted };
-                const { redis_token_ciphertext: _ciphertext, redis_token: _token, ...rest } = merged as Record<string, unknown>;
-                return c.json({ ...rest, redis_token: null });
+                // Merge defaults with persisted values, return in exact key order product expects
+                const merged = { ...DEFAULTS.redis as object, ...persisted } as Record<string, unknown>;
+                return c.json({
+                    redis_url: merged.redis_url ?? null,
+                    redis_token: null,
+                    redis_type: merged.redis_type ?? 'self-hosted',
+                    redis_enabled: merged.redis_enabled ?? false,
+                    cache_ttl_data: merged.cache_ttl_data ?? 60,
+                    cache_ttl_count: merged.cache_ttl_count ?? 300,
+                });
+            }
+            if (domain === 'privacy') {
+                await kvFor(c.get('tenant')).setJson(domain, body, now());
+                // Merge defaults with input, return in exact key order product expects
+                const merged = { ...DEFAULTS.privacy as object, ...body } as Record<string, unknown>;
+                return c.json({
+                    enableVisitorTracking: merged.enableVisitorTracking ?? false,
+                    cookieExpiryDays: merged.cookieExpiryDays ?? 365,
+                    requireCookieConsent: merged.requireCookieConsent ?? true,
+                    advancedVariables: merged.advancedVariables ?? (DEFAULTS.privacy as Record<string, unknown>).advancedVariables,
+                    cookieVariables: merged.cookieVariables ?? (DEFAULTS.privacy as Record<string, unknown>).cookieVariables,
+                    ga4MeasurementId: merged.ga4MeasurementId ?? null,
+                    gtmContainerId: merged.gtmContainerId ?? null,
+                    customHeadHtml: merged.customHeadHtml ?? null,
+                });
             }
             await kvFor(c.get('tenant')).setJson(domain, body, now());
             // Return merged defaults with input to match product behavior

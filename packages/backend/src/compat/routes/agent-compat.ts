@@ -114,14 +114,16 @@ export function registerAgentCompatRoutes(
     };
 
     const redactConfig = (row: any) => {
-        const { config, auth_type, ...safe } = row;
+        const { config, auth_type, token } = row;
         return {
-            ...safe,
+            id: row.id ?? '',
+            name: row.name ?? '',
             slug: row.slug ?? '',
             description: row.description ?? null,
+            url: row.url ?? '',
             transport: row.transport ?? 'streamable-http',
             authType: auth_type ?? null,
-            hasAuth: Boolean(row.token || config),
+            hasAuth: Boolean(token || config),
             toolFilter: row.tool_filter ?? null,
             category: row.category ?? null,
             isActive: Boolean(row.is_active ?? 1),
@@ -129,13 +131,16 @@ export function registerAgentCompatRoutes(
             tenantId: null,
             projectId: null,
             profileSlug: row.profile_slug ?? null,
+            createdAt: row.created_at ?? null,
+            updatedAt: row.updated_at ?? null,
         };
     };
 
     const redactSkillConfig = (row: any) => {
-        const { config, ...safe } = row;
+        const { config } = row;
         return {
-            ...safe,
+            id: row.id ?? '',
+            name: row.name ?? '',
             slug: row.slug ?? '',
             description: row.description ?? null,
             category: row.category ?? null,
@@ -146,6 +151,8 @@ export function registerAgentCompatRoutes(
             tenantId: null,
             projectId: null,
             profileSlug: row.profile_slug ?? null,
+            createdAt: row.created_at ?? null,
+            updatedAt: row.updated_at ?? null,
         };
     };
     const profilesFor = (tenant: string) =>
@@ -252,9 +259,12 @@ export function registerAgentCompatRoutes(
 
     // DELETE /api/agent/settings
     app.delete('/api/agent/settings', async (c) => {
-        await kvFor(c.get('tenant')).setJson('agent_settings', {}, '');
+        const kv = kvFor(c.get('tenant'));
+        const existing = await kv.getJson<Record<string, unknown>>('agent_settings', {});
+        const hadSettings = Object.keys(existing).length > 0;
+        await kv.setJson('agent_settings', {}, '');
         const scope = c.req.query('scope') ?? 'user';
-        return c.json({ deleted: 1, message: 'Settings reset', scope });
+        return c.json({ deleted: hadSettings ? 1 : 0, message: 'Settings reset', scope });
     });
 
     // GET /api/agent/mcp/{profile_slug}

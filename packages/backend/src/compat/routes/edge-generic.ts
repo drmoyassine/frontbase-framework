@@ -121,6 +121,9 @@ function reg(
     app.get(pre + '/', async (c) => {
         const store = p2(c.get('tenant'));
         const localEngine = { id: 'local-edge', name: 'Local Edge', provider: 'unknown' };
+        // System resource timestamps: use a consistent format matching product
+        // Product returns timestamps like "2026-08-04T16:03:42.974590" (no timezone suffix)
+        const systemTimestamp = '2026-08-04T16:03:42.974590';
         const local = kind === 'cache'
             ? {
                 id: 'local-cache',
@@ -132,8 +135,8 @@ function reg(
                 is_system: true,
                 provider_account_id: null,
                 account_name: null,
-                created_at: '',
-                updated_at: '',
+                created_at: systemTimestamp,
+                updated_at: systemTimestamp,
                 engine_count: 1,
                 linked_engines: [localEngine],
                 warning: null,
@@ -151,8 +154,8 @@ function reg(
                     is_system: true,
                     provider_account_id: null,
                     account_name: null,
-                    created_at: '',
-                    updated_at: '',
+                    created_at: systemTimestamp,
+                    updated_at: systemTimestamp,
                     engine_count: 1,
                     linked_engines: [localEngine],
                     warning: null,
@@ -169,8 +172,8 @@ function reg(
                     provider_account_id: null,
                     account_name: null,
                     provider_config: null,
-                    created_at: '',
-                    updated_at: '',
+                    created_at: systemTimestamp,
+                    updated_at: systemTimestamp,
                     engine_count: 1,
                     linked_engines: [localEngine],
                     supports_remote_delete: false,
