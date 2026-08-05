@@ -13,7 +13,8 @@ export function registerSecurityEventsRoutes(app: App, storeFor: (t: string) => 
     // GET /api/security-events/
     app.get('/api/security-events/', async (c) => {
         const events = await storeFor(c.get('tenant')).list();
-        return c.json({ events, total: events.length, limit: 100, offset: 0 });
+        // Product parity: field order is events, limit, offset, total
+        return c.json({ events, limit: 100, offset: 0, total: events.length });
     });
     // GET /api/security-events/summary
     app.get('/api/security-events/summary', async (c) => {
@@ -21,14 +22,15 @@ export function registerSecurityEventsRoutes(app: App, storeFor: (t: string) => 
             total?: number;
             by_severity?: Record<string, number>;
         };
+        // Product parity: field order is by_severity, total
         return c.json({
-            total: summary.total ?? 0,
             by_severity: {
                 low: summary.by_severity?.low ?? 0,
                 medium: summary.by_severity?.medium ?? 0,
                 high: summary.by_severity?.high ?? 0,
                 critical: summary.by_severity?.critical ?? 0,
             },
+            total: summary.total ?? 0,
         });
     });
 }

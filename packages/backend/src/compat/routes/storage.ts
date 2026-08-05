@@ -57,6 +57,12 @@ export function registerStorageRoutes(
 
     // POST /api/storage/buckets
     app.post('/api/storage/buckets', async (c) => {
+        const providerId = c.req.query('provider_id');
+        if (!providerId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+            }, 422);
+        }
         const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
         const id = crypto.randomUUID();
         await phase2For(c.get('tenant')).upsertBucket({

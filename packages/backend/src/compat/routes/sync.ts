@@ -375,6 +375,17 @@ export function registerSyncRoutes(
     // POST /api/sync/datasources/
     app.post('/api/sync/datasources/', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+
+        // Product parity: validate body shape before processing.
+        if (b.name !== undefined && typeof b.name !== 'string') {
+            return c.json({
+                success: false,
+                error: 'Validation Error',
+                details: [{ type: 'string_type', loc: ['body', 'name'], msg: 'Input should be a valid string', input: b.name }],
+                message: 'The data provided is invalid',
+            }, 422);
+        }
+
         const name = String(b.name ?? 'Untitled Datasource');
         const kind = String(b.type ?? b.kind ?? 'sqlite');
         const id = crypto.randomUUID();
@@ -428,6 +439,17 @@ export function registerSyncRoutes(
     app.post('/api/sync/datasources/test-raw/', async (c) => {
         await syncStoreFor(c.get('tenant')).listDatasources();
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+
+        // Product parity: validate that `type` field is present and valid.
+        if (b.type === undefined || (b.kind === undefined && typeof b.type !== 'string')) {
+            return c.json({
+                success: false,
+                error: 'Validation Error',
+                details: [{ type: 'missing', loc: ['body', 'type'], msg: 'Field required', input: b }],
+                message: 'The data provided is invalid',
+            }, 422);
+        }
+
         const kind = String(b.type ?? b.kind ?? 'sqlite');
         // SPA sends a FLAT DatasourceCreate payload (credential fields + provider_account_id
         // at top level, no `config` wrapper). Normalize, then hydrate from the connected
@@ -493,11 +515,6 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const datasources = await store.listDatasources();
 
-        // Product parity: return 404 when no datasources exist (matching product behavior).
-        if (datasources.length === 0) {
-            return c.json({ detail: 'Datasource not found' }, 404);
-        }
-
         const matches: Record<string, unknown>[] = [];
         for (const datasource of datasources) {
             if (matches.length >= limit) break;
@@ -516,6 +533,12 @@ export function registerSyncRoutes(
                 // One unavailable datasource must not hide results from the others.
             }
         }
+
+        // Product parity: return 404 when no matches found (matching product behavior).
+        if (matches.length === 0) {
+            return c.json({ detail: 'Datasource not found' }, 404);
+        }
+
         return c.json({ matches });
     });
 
@@ -771,7 +794,12 @@ export function registerSyncRoutes(
             );
             return c.json({ success: true, data: rows });
         } catch (err) {
-            return c.json({ detail: (err as Error).message }, 400);
+            // Product parity: return 404 for table/schema errors, 400 for validation errors.
+            const msg = (err as Error).message;
+            if (msg.includes('invalid_identifier') || msg.includes('table') || msg.includes('column')) {
+                return c.json({ detail: 'Datasource not found' }, 404);
+            }
+            return c.json({ detail: msg }, 400);
         }
     });
 
@@ -1526,11 +1554,10 @@ export function registerSyncRoutes(
         const savedType = String(redisConf.redis_type ?? 'self-hosted');
         const isUpstash = savedType === 'upstash' && Boolean(redisConf.redis_url && redisConf.redis_token);
         return c.json({
-            redis_enabled: Boolean(redisConf.redis_enabled ?? false),
-            redis_type: isUpstash ? 'upstash' : 'self-hosted',
             redis_url: isUpstash ? String(redisConf.redis_url) : 'http://redis-http:80',
-            // Tokens are write-only. The ciphertext is never returned.
             redis_token: null,
+            redis_type: isUpstash ? 'upstash' : 'self-hosted',
+            redis_enabled: Boolean(redisConf.redis_enabled ?? false),
             cache_ttl_data: Number(redisConf.cache_ttl_data ?? 60),
             cache_ttl_count: Number(redisConf.cache_ttl_count ?? 300),
         });
@@ -1554,7 +1581,15 @@ export function registerSyncRoutes(
             cache_ttl_count: Number(b.cache_ttl_count ?? 300),
         };
         await kv.setJson('sync_redis_settings', updated, now());
-        return c.json({ ...updated, redis_token_ciphertext: undefined, redis_token: null });
+        // Product parity: return response with same field order as product.
+        return c.json({
+            redis_url: updated.redis_url,
+            redis_token: null,
+            redis_type: updated.redis_type,
+            redis_enabled: updated.redis_enabled,
+            cache_ttl_data: updated.cache_ttl_data,
+            cache_ttl_count: updated.cache_ttl_count,
+        });
     });
 
     // POST /api/sync/settings/redis/test/
@@ -1594,6 +1629,17 @@ export function registerSyncRoutes(
             datasource_id?: string;
             options?: Record<string, unknown>;
         };
+
+        // Product parity: validate datasource_id type before processing.
+        if (body.datasource_id !== undefined && typeof body.datasource_id !== 'string') {
+            return c.json({
+                success: false,
+                error: 'Validation Error',
+                details: [{ type: 'string_type', loc: ['body', 'datasource_id'], msg: 'Input should be a valid string', input: body.datasource_id }],
+                message: 'The data provided is invalid',
+            }, 422);
+        }
+
         const datasource = await syncStoreFor(c.get('tenant')).getDatasource(String(body.datasource_id ?? ''));
         if (!datasource) return c.json({ detail: 'Datasource not found' }, 404);
         if (datasource.kind !== 'wordpress_plugin') {
@@ -1820,8 +1866,16 @@ export function registerSyncRoutes(
 
     // GET /api/sync/datasources/sheets/connect/status/
     app.get('/api/sync/datasources/sheets/connect/status/', async (c) => {
-        const token = c.req.query('token') ?? '';
-        // Product parity: if token is missing or too short, return 422 (validation error).
+        const token = c.req.query('token');
+        // Product parity: if token is missing from query, return 422 with validation shape.
+        if (token === undefined || token === '') {
+            return c.json({
+                success: false,
+                error: 'Validation Error',
+                details: [{ type: 'missing', loc: ['query', 'token'], msg: 'Field required', input: null }],
+                message: 'The data provided is invalid',
+            }, 422);
+        }
         if (token.length < 10) return c.json({ detail: 'Invalid token' }, 422);
         const rows = await controlRunner.query(
             `SELECT result FROM sheets_connect_tokens

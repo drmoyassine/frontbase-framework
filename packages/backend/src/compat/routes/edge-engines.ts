@@ -122,7 +122,7 @@ export function registerEdgeEnginesRoutes(
             id,
             kind: 'engine',
             name: b.name ?? 'Engine',
-            provider: b.provider,
+            // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
             config: configJson,
         }, now());
         return c.json(await serializeStoredEngine(store, await store.getEdgeResource(id) ?? {
@@ -135,18 +135,10 @@ export function registerEdgeEnginesRoutes(
 
     // GET /api/edge-engines/bundle-hashes/
     app.get('/api/edge-engines/bundle-hashes/', async (c) => {
-        const store = p2(c.get('tenant'));
-        const entries: Array<[string, unknown]> = [];
-        for (const engine of await store.listEdgeResources('engine')) {
-            const config = await store.getEdgeResourceConfig(String(engine.id)) ?? {};
-            if (config.bundle_hash !== undefined && config.bundle_hash !== null) {
-                entries.push([String(engine.id), config.bundle_hash]);
-            }
-        }
+        // Product returns only the base hashes, no engine-specific entries
         return c.json({
             full: '0593f9aa8f66',
             lite: '0593f9aa8f66',
-            ...Object.fromEntries(entries),
         });
     });
 
@@ -167,7 +159,7 @@ export function registerEdgeEnginesRoutes(
             id,
             kind: 'engine',
             name: b.name ?? 'Deployed Engine',
-            provider: b.provider ?? String(provider.provider ?? 'cloudflare'),
+            // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
             config: JSON.stringify(config),
         }, now());
         const engine = await store.getEdgeResource(id);
@@ -192,6 +184,7 @@ export function registerEdgeEnginesRoutes(
             id,
             kind: 'engine',
             name: b.name ?? 'Imported Engine',
+            // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
             config: JSON.stringify(config),
         }, now());
         return c.json({ success: true, engine_id: id, message: 'Engine imported successfully' });
@@ -277,7 +270,7 @@ export function registerEdgeEnginesRoutes(
             id,
             kind: 'engine',
             name: b.name ?? String(existing.name),
-            provider: b.provider ?? (existing.provider as string | undefined),
+            // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
             config: newConfig,
         }, now());
         return c.json(await serializeStoredEngine(store, await store.getEdgeResource(id) ?? existing));

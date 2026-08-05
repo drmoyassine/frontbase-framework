@@ -78,7 +78,7 @@ export function serializeEngine(row: Record<string, unknown>, extra: Record<stri
         id: String(row.id),
         name: String(row.name ?? ''),
         edge_provider_id: config.edge_provider_id ?? null,
-        provider: row.provider ?? null,
+        provider: null,  // Product always returns provider: null for engines
         adapter_type: String(config.adapter_type ?? row.provider ?? 'full'),
         url: String(config.url ?? ''),
         edge_db_id: config.edge_db_id ?? null,
@@ -150,7 +150,7 @@ export function buildSystemEngine(desc: SystemEdgeDescriptor, origin: string): R
     const engine = serializeEngine({
         id: SYSTEM_ENGINE_ID,
         name: desc.name ?? 'Local Edge',
-        provider: desc.provider,
+        provider: null,  // Product returns provider: null for all engines, including system
         status: 'active',
         is_system: true,
         config: { adapter_type: 'full', url: origin, edge_db_id: 'system-d1' },

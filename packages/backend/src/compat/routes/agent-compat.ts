@@ -16,6 +16,7 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 const BUILTIN_SKILLS = [
     {
+        id: '6c5fb17a-a441-43bd-b425-146b71b3c967',
         slug: 'code-exec',
         name: 'Code Execution',
         description: 'Run sandboxed Python snippets and return structured output.',
@@ -25,6 +26,7 @@ const BUILTIN_SKILLS = [
         ],
     },
     {
+        id: 'b85d208f-fef2-4208-a2cb-421fb6377905',
         slug: 'database-query',
         name: 'Database Query',
         description: 'Run read-only SQL against a connected datasource and return rows.',
@@ -34,6 +36,7 @@ const BUILTIN_SKILLS = [
         ],
     },
     {
+        id: 'f918bbb2-8b4a-4b38-90cd-bd3addf0c3bf',
         slug: 'document-parser',
         name: 'Document Parser',
         description: 'Parse uploaded documents (PDF, DOCX, CSV) into structured text.',
@@ -43,6 +46,7 @@ const BUILTIN_SKILLS = [
         ],
     },
     {
+        id: '31ad867f-54d9-4b7b-84dd-00e9c074a02f',
         slug: 'integration-http',
         name: 'HTTP Integration',
         description: 'Make authenticated HTTP requests to external APIs.',
@@ -52,6 +56,7 @@ const BUILTIN_SKILLS = [
         ],
     },
     {
+        id: 'fd6f667c-3b87-43c0-a9ce-3930fc43d90e',
         slug: 'web-scraper',
         name: 'Web Scraper',
         description: 'Fetch and extract content from a URL (title, text, links).',
@@ -76,8 +81,12 @@ const CORE_TOOLS = [
 ].map(([name, label, category]) => ({ name, label, category, disabled: false }));
 
 const builtinSkillViews = () => BUILTIN_SKILLS.map((skill) => ({
-    id: skill.slug,
-    ...skill,
+    id: skill.id,
+    slug: skill.slug,
+    name: skill.name,
+    description: skill.description,
+    category: skill.category,
+    toolDefinitions: skill.toolDefinitions,
     version: '1.0.0',
     isBuiltin: true,
     isActive: true,
@@ -105,8 +114,39 @@ export function registerAgentCompatRoutes(
     };
 
     const redactConfig = (row: any) => {
+        const { config, auth_type, ...safe } = row;
+        return {
+            ...safe,
+            slug: row.slug ?? '',
+            description: row.description ?? null,
+            transport: row.transport ?? 'streamable-http',
+            authType: auth_type ?? null,
+            hasAuth: Boolean(row.token || config),
+            toolFilter: row.tool_filter ?? null,
+            category: row.category ?? null,
+            isActive: Boolean(row.is_active ?? 1),
+            isPublic: false,
+            tenantId: null,
+            projectId: null,
+            profileSlug: row.profile_slug ?? null,
+        };
+    };
+
+    const redactSkillConfig = (row: any) => {
         const { config, ...safe } = row;
-        return { ...safe, has_config: Boolean(config) };
+        return {
+            ...safe,
+            slug: row.slug ?? '',
+            description: row.description ?? null,
+            category: row.category ?? null,
+            toolDefinitions: row.tool_definitions ?? [],
+            version: row.version ?? '1.0.0',
+            isBuiltin: false,
+            isActive: Boolean(row.is_active ?? 1),
+            tenantId: null,
+            projectId: null,
+            profileSlug: row.profile_slug ?? null,
+        };
     };
     const profilesFor = (tenant: string) =>
         kvFor(tenant).getJson<Array<{ id?: string; name?: string }>>('agent_profiles', []);
@@ -198,8 +238,8 @@ export function registerAgentCompatRoutes(
         };
         return c.json({
             settings: { general, system },
-            can_modify_tenant: true,
             inherited_from: 'profile',
+            can_modify_tenant: true,
         });
     });
 
@@ -213,7 +253,8 @@ export function registerAgentCompatRoutes(
     // DELETE /api/agent/settings
     app.delete('/api/agent/settings', async (c) => {
         await kvFor(c.get('tenant')).setJson('agent_settings', {}, '');
-        return c.json({ message: 'Settings reset', scope: c.req.query('scope') ?? 'user', deleted: 1 });
+        const scope = c.req.query('scope') ?? 'user';
+        return c.json({ deleted: 1, message: 'Settings reset', scope });
     });
 
     // GET /api/agent/mcp/{profile_slug}
@@ -425,7 +466,7 @@ export function registerAgentCompatRoutes(
         const custom = (await runner.query(
             'SELECT * FROM agent_skills WHERE tenant_slug = ?',
             [c.get('tenant')],
-        )).map(redactConfig);
+        )).map(redactSkillConfig);
         const skills = [...builtinSkillViews(), ...custom];
         return c.json({ skills, total: skills.length });
     });
@@ -494,16 +535,16 @@ export function registerAgentCompatRoutes(
 
     // GET /api/agent-catalogue
     app.get('/api/agent-catalogue', (c) => c.json({
+        coreTools: CORE_TOOLS,
         mcpServers: [],
         skills: BUILTIN_SKILLS.map((skill) => ({
-            id: skill.slug,
+            id: skill.id,
             slug: skill.slug,
             name: skill.name,
             category: skill.category,
             isBuiltin: true,
             disabled: false,
         })),
-        coreTools: CORE_TOOLS,
     }));
 
     // GET /api/agent-profiles/{profile_id}/skills
@@ -519,7 +560,7 @@ export function registerAgentCompatRoutes(
         const result = forProfile.flatMap((install) => {
             const skill = byId.get(install.skillId);
             return skill ? [{
-                ...redactConfig(skill),
+                ...redactSkillConfig(skill),
                 installId: install.id,
                 configOverrides: install.configOverrides ?? null,
                 installedAt: install.installedAt,

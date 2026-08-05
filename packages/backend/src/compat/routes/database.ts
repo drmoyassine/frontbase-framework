@@ -96,7 +96,6 @@ export function registerDatabaseRoutes(
         );
         return c.json({
             success: true,
-            message: 'Connections retrieved successfully',
             data: {
                 supabase: {
                     connected,
@@ -104,6 +103,7 @@ export function registerDatabaseRoutes(
                     hasServiceKey,
                 },
             },
+            message: 'Connections retrieved successfully',
         });
     });
 
@@ -349,7 +349,8 @@ export function registerDatabaseRoutes(
             }
             const rows = await source.activeRunner.query(`SELECT DISTINCT "${col}" as val FROM "${table}" WHERE "${col}" IS NOT NULL LIMIT 100`);
             const values = rows.map((r) => r.val);
-            return c.json({ success: true, data: values, values, error: null });
+            // Product parity: only return data field, not separate values field
+            return c.json({ success: true, data: values, error: null });
         } catch {
             return c.json({ success: false, data: [], values: [], error: 'query_failed' });
         }

@@ -23,7 +23,7 @@ export function registerMetaRoutes(
     });
     app.get('/api/queue/health', async (c) => {
         await runner.query('SELECT 1');
-        // Framework has no task queue workers; omit active_workers to match product's None default
-        return c.json({ status: 'healthy', active: null, registered: null });
+        // Framework has no task queue workers; include active_workers (null) and error (null) to match product shape
+        return c.json({ status: 'healthy', active_workers: null, active: null, registered: null, error: null });
     });
 }

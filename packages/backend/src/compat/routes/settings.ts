@@ -88,8 +88,9 @@ export function registerSettingsRoutes(
                 const storedRedis = stored as Record<string, unknown>;
                 // Merge defaults with stored, then hide ciphertext, never expose it
                 const merged = { ...DEFAULTS.redis as object, ...storedRedis };
-                const { redis_token_ciphertext: _ciphertext, ...safe } = merged as Record<string, unknown>;
-                return c.json(safe);
+                const { redis_token_ciphertext: _ciphertext, redis_token: _token, ...rest } = merged as Record<string, unknown>;
+                // Product returns redis_token as null, not empty string
+                return c.json({ ...rest, redis_token: null });
             }
             return c.json({ ...DEFAULTS[domain] as object, ...(stored as object) });
         });
@@ -113,10 +114,10 @@ export function registerSettingsRoutes(
                     redis_token_ciphertext: tokenCiphertext ?? null,
                 };
                 await kvFor(c.get('tenant')).setJson(domain, persisted, now());
-                // Return merged defaults with persisted values, hide ciphertext
+                // Return merged defaults with persisted values, hide ciphertext, return redis_token as null
                 const merged = { ...DEFAULTS.redis as object, ...persisted };
-                const { redis_token_ciphertext: _ciphertext, ...safe } = merged as Record<string, unknown>;
-                return c.json(safe);
+                const { redis_token_ciphertext: _ciphertext, redis_token: _token, ...rest } = merged as Record<string, unknown>;
+                return c.json({ ...rest, redis_token: null });
             }
             await kvFor(c.get('tenant')).setJson(domain, body, now());
             // Return merged defaults with input to match product behavior
@@ -177,8 +178,30 @@ export function registerSettingsRoutes(
 
     // POST /api/settings/invites
     app.post('/api/settings/invites', async (c) => {
-        const parsed = zAdminInviteRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        const body = await c.req.json().catch(() => null);
+        const parsed = zAdminInviteRequest.safeParse(body);
+        if (!parsed.success) {
+            // Convert Zod errors to Pydantic-style format
+            const detail = parsed.error.errors.map(err => {
+                // Get the raw input value for the field that failed
+                let rawInput: unknown = body;
+                for (const key of err.path) {
+                    if (rawInput && typeof rawInput === 'object') {
+                        rawInput = (rawInput as Record<string, unknown>)[String(key)];
+                    } else {
+                        rawInput = undefined;
+                        break;
+                    }
+                }
+                return {
+                    type: err.code,
+                    loc: ['body', ...err.path.map(String)],
+                    msg: err.message,
+                    input: rawInput,
+                };
+            });
+            return c.json({ detail }, 422);
+        }
 
         // Check if user already exists (if userExists callback provided)
         if (userExists) {

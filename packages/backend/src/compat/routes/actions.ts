@@ -209,7 +209,8 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
         if (!existing) return c.json({ detail: 'Workflow draft not found' }, 404);
         const engine = await store.getEdgeResource(c.req.param('engine_id'));
         if (!engine || engine.kind !== 'engine') {
-            return c.json({ detail: 'Deployment target not found' }, 404);
+            // Product parity: return 400 for invalid/deployment target not found (matches product validation behavior)
+            return c.json({ detail: 'Deployment target not found' }, 400);
         }
         const next = !Boolean(existing.is_active);
         await store.toggleWorkflow(c.req.param('draft_id'), next, now());

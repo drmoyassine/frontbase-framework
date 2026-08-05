@@ -27,6 +27,33 @@ function reg(
     extra: Record<string, unknown> = {},
 ): void {
     const param = idP.replace(':', '');
+
+    /** Pydantic-style validation error response matching product's 422 shape */
+    function validationError(field: string, expectedType: string, actualInput: unknown): Record<string, unknown> {
+        return {
+            detail: [{
+                type: `${expectedType}_type`,
+                loc: ['body', field],
+                msg: `Input should be a valid ${expectedType}`,
+                input: actualInput,
+            }],
+        };
+    }
+
+    /** Validate create request body returns 422 detail on violation */
+    function validateCreate(body: Record<string, unknown>): { valid: true } | { valid: false; response: Record<string, unknown> } {
+        if (body.name !== undefined && typeof body.name !== 'string') {
+            return { valid: false, response: validationError('name', 'string', body.name) };
+        }
+        if (body.provider !== undefined && typeof body.provider !== 'string') {
+            return { valid: false, response: validationError('provider', 'string', body.provider) };
+        }
+        if (body[urlField] !== undefined && typeof body[urlField] !== 'string') {
+            return { valid: false, response: validationError(urlField, 'string', body[urlField]) };
+        }
+        return { valid: true };
+    }
+
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
         if (config === undefined) return undefined;
         const ciphertext = await secretCipher.encrypt(JSON.stringify(config));
@@ -50,10 +77,13 @@ function reg(
     const serializeStored = async (
         store: Phase2Store,
         row: Record<string, unknown>,
-    ): Promise<Record<string, unknown>> => serialize({
-        ...row,
-        config: await store.getEdgeResourceConfig(String(row.id)) ?? {},
-    }, urlField, extra);
+    ): Promise<Record<string, unknown>> => ({
+        ...(await serialize({
+            ...row,
+            config: await store.getEdgeResourceConfig(String(row.id)) ?? {},
+        }, urlField, extra)),
+        warning: null,
+    });
     const testConfig = async (config: Record<string, unknown>) => {
         const started = Date.now();
         const url = String(config.url ?? '');
@@ -153,6 +183,12 @@ function reg(
     app.post(pre + '/', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: string; provider?: string; config?: unknown };
         const store = p2(c.get('tenant'));
+
+        // Validate input - return 422 on type mismatch like product does
+        const validation = validateCreate(b);
+        if (!validation.valid) {
+            return c.json(validation.response, 422);
+        }
 
         // Prevent duplicate URLs - return 409 like product does
         const configFromBodyValue = configFromBody(b);

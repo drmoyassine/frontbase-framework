@@ -7,6 +7,28 @@ type AuthFormRow = Record<string, unknown>;
 
 const COLS = 'id, tenant_slug, name, type, config, is_primary, created_at, updated_at';
 
+// Validation error detail type matching FastAPI/Pydantic format
+type ValidationError = {
+    type: string;
+    loc: string[];
+    msg: string;
+    input: unknown;
+};
+
+type ValidationResponse = { detail: ValidationError[] };
+
+function validationError(details: ValidationError[]): ValidationResponse {
+    return { detail: details };
+}
+
+// Common validation error types
+const errorTypes = {
+    string_type: 'string_type',
+    missing: 'missing',
+    bool_type: 'bool_type',
+    array_type: 'array_type',
+};
+
 function parseConfig(value: unknown): Record<string, unknown> {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
         return value as Record<string, unknown>;
@@ -60,10 +82,9 @@ const envelope = (
     success: boolean,
     data: unknown = null,
     error: string | null = null,
-): { success: boolean; data: unknown; message: null; error: string | null } => ({
+): { success: boolean; data: unknown; error: string | null } => ({
     success,
     data,
-    message: null,
     error,
 });
 
@@ -78,14 +99,55 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
 
     app.post('/api/auth-forms/', async (c) => {
         const body = await c.req.json() as {
-            name: string;
-            type: string;
+            name?: unknown;
+            type?: unknown;
             config?: Record<string, unknown> | null;
-            target_contact_type?: string | null;
-            allowed_contact_types?: unknown[] | null;
-            redirect_url?: string | null;
-            is_active?: boolean;
+            target_contact_type?: unknown;
+            allowed_contact_types?: unknown;
+            redirect_url?: unknown;
+            is_active?: unknown;
         };
+        const errors: ValidationError[] = [];
+
+        // Validate name (required, must be string)
+        if (body.name === undefined || body.name === null) {
+            errors.push({ type: errorTypes.missing, loc: ['body', 'name'], msg: 'Field required', input: body });
+        } else if (typeof body.name !== 'string') {
+            errors.push({ type: errorTypes.string_type, loc: ['body', 'name'], msg: 'Input should be a valid string', input: body.name });
+        }
+
+        // Validate type (required, must be string)
+        if (body.type === undefined || body.type === null) {
+            errors.push({ type: errorTypes.missing, loc: ['body', 'type'], msg: 'Field required', input: body });
+        } else if (typeof body.type !== 'string') {
+            errors.push({ type: errorTypes.string_type, loc: ['body', 'type'], msg: 'Input should be a valid string', input: body.type });
+        }
+
+        // Validate target_contact_type (optional, must be string if provided)
+        if (body.target_contact_type !== undefined && body.target_contact_type !== null && typeof body.target_contact_type !== 'string') {
+            errors.push({ type: errorTypes.string_type, loc: ['body', 'target_contact_type'], msg: 'Input should be a valid string', input: body.target_contact_type });
+        }
+
+        // Validate allowed_contact_types (optional, must be array if provided)
+        if (body.allowed_contact_types !== undefined && body.allowed_contact_types !== null && !Array.isArray(body.allowed_contact_types)) {
+            errors.push({ type: errorTypes.array_type, loc: ['body', 'allowed_contact_types'], msg: 'Input should be a valid array', input: body.allowed_contact_types });
+        }
+
+        // Validate redirect_url (optional, must be string if provided)
+        if (body.redirect_url !== undefined && body.redirect_url !== null && typeof body.redirect_url !== 'string') {
+            errors.push({ type: errorTypes.string_type, loc: ['body', 'redirect_url'], msg: 'Input should be a valid string', input: body.redirect_url });
+        }
+
+        // Validate is_active (optional, must be boolean if provided)
+        if (body.is_active !== undefined && body.is_active !== null && typeof body.is_active !== 'boolean') {
+            errors.push({ type: errorTypes.bool_type, loc: ['body', 'is_active'], msg: 'Input should be a valid boolean', input: body.is_active });
+        }
+
+        if (errors.length > 0) {
+            return c.json(validationError(errors), 422);
+        }
+
+        // All validated, proceed with creation
         const id = crypto.randomUUID();
         const timestamp = now();
         const config: Record<string, unknown> = {
@@ -102,8 +164,8 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
         );
         return c.json(envelope(true, serializeForm({
             id,
-            name: body.name,
-            type: body.type,
+            name: body.name as string,
+            type: body.type as string,
             config: JSON.stringify(config),
             is_primary: primary ? 1 : 0,
             created_at: timestamp,
@@ -155,14 +217,50 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
         if (!existing) return c.json(envelope(false, null, 'Auth form not found'));
 
         const body = await c.req.json() as {
-            name?: string;
-            type?: string;
+            name?: unknown;
+            type?: unknown;
             config?: Record<string, unknown> | null;
-            target_contact_type?: string | null;
-            allowed_contact_types?: unknown[] | null;
-            redirect_url?: string | null;
-            is_active?: boolean;
+            target_contact_type?: unknown;
+            allowed_contact_types?: unknown;
+            redirect_url?: unknown;
+            is_active?: unknown;
         };
+        const errors: ValidationError[] = [];
+
+        // Validate name (optional, must be string if provided)
+        if (body.name !== undefined && body.name !== null && typeof body.name !== 'string') {
+            errors.push({ type: errorTypes.string_type, loc: ['body', 'name'], msg: 'Input should be a valid string', input: body.name });
+        }
+
+        // Validate type (optional, must be string if provided)
+        if (body.type !== undefined && body.type !== null && typeof body.type !== 'string') {
+            errors.push({ type: errorTypes.string_type, loc: ['body', 'type'], msg: 'Input should be a valid string', input: body.type });
+        }
+
+        // Validate target_contact_type (optional, must be string if provided)
+        if (body.target_contact_type !== undefined && body.target_contact_type !== null && typeof body.target_contact_type !== 'string') {
+            errors.push({ type: errorTypes.string_type, loc: ['body', 'target_contact_type'], msg: 'Input should be a valid string', input: body.target_contact_type });
+        }
+
+        // Validate allowed_contact_types (optional, must be array if provided)
+        if (body.allowed_contact_types !== undefined && body.allowed_contact_types !== null && !Array.isArray(body.allowed_contact_types)) {
+            errors.push({ type: errorTypes.array_type, loc: ['body', 'allowed_contact_types'], msg: 'Input should be a valid array', input: body.allowed_contact_types });
+        }
+
+        // Validate redirect_url (optional, must be string if provided)
+        if (body.redirect_url !== undefined && body.redirect_url !== null && typeof body.redirect_url !== 'string') {
+            errors.push({ type: errorTypes.string_type, loc: ['body', 'redirect_url'], msg: 'Input should be a valid string', input: body.redirect_url });
+        }
+
+        // Validate is_active (optional, must be boolean if provided)
+        if (body.is_active !== undefined && body.is_active !== null && typeof body.is_active !== 'boolean') {
+            errors.push({ type: errorTypes.bool_type, loc: ['body', 'is_active'], msg: 'Input should be a valid boolean', input: body.is_active });
+        }
+
+        if (errors.length > 0) {
+            return c.json(validationError(errors), 422);
+        }
+
         const oldConfig = parseConfig(existing.config);
         const config = body.config === undefined ? { ...oldConfig } : { ...(body.config ?? {}) };
         if (body.target_contact_type !== undefined) config.target_contact_type = body.target_contact_type;
@@ -174,8 +272,8 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
         await runner.exec(
             'UPDATE auth_forms SET name = ?, type = ?, config = ?, is_primary = ?, updated_at = ? WHERE tenant_slug = ? AND id = ?',
             [
-                body.name ?? String(existing.name),
-                body.type ?? String(existing.type),
+                body.name !== undefined ? body.name : String(existing.name),
+                body.type !== undefined ? body.type : String(existing.type),
                 JSON.stringify(config),
                 primary ? 1 : 0,
                 timestamp,
@@ -185,8 +283,8 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
         );
         return c.json(envelope(true, serializeForm({
             ...existing,
-            name: body.name ?? existing.name,
-            type: body.type ?? existing.type,
+            name: body.name !== undefined ? body.name : existing.name,
+            type: body.type !== undefined ? body.type : existing.type,
             config: JSON.stringify(config),
             is_primary: primary ? 1 : 0,
             updated_at: timestamp,
