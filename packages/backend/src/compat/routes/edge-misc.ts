@@ -86,17 +86,19 @@ export function registerEdgeMiscRoutes(
         // Convert timestamps to product format (+00:00 offset instead of Z)
         return c.json({
             keys: keys.map((k: Record<string, unknown>) => {
-                const { ciphertext, revealed_at, ...rest } = k;
                 return {
-                    ...rest,
+                    id: k.id,
+                    name: k.name,
+                    prefix: k.prefix,
                     edge_engine_id: null,
-                    last_used_at: null,
                     engine_name: null,
                     is_active: Boolean(k.is_active),
-                    can_reveal: ciphertext !== null && revealed_at === null,
+                    scope: k.scope,
+                    expires_at: toProductTimestamp(k.expires_at as string | null),
+                    last_used_at: null,
                     created_at: toProductTimestamp(k.created_at as string | null),
                     updated_at: toProductTimestamp(k.updated_at as string | null),
-                    expires_at: toProductTimestamp(k.expires_at as string | null),
+                    can_reveal: k.ciphertext !== null && k.revealed_at === null,
                 };
             }),
             total: keys.length,

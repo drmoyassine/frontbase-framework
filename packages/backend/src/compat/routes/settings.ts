@@ -83,22 +83,27 @@ export function registerSettingsRoutes(
 
     for (const [domain, path] of domainRoutes) {
         app.get(path, async (c) => {
-            const stored = await kvFor(c.get('tenant')).getJson(domain, DEFAULTS[domain]);
             if (domain === 'redis') {
-                const storedRedis = stored as Record<string, unknown>;
-                // Merge defaults with stored, then hide ciphertext, never expose it
-                const merged = { ...DEFAULTS.redis as object, ...storedRedis };
+                // Product GET always returns defaults, ignoring stored values
                 // Return in exact key order product expects (for JSON string comparison parity)
                 // Product returns null for redis_token when none set, not empty string
+                const redisDefaults = DEFAULTS.redis as {
+                    redis_url?: string;
+                    redis_type?: string;
+                    redis_enabled?: boolean;
+                    cache_ttl_data?: number;
+                    cache_ttl_count?: number;
+                };
                 return c.json({
-                    redis_url: merged.redis_url ?? null,
+                    redis_url: redisDefaults.redis_url ?? null,
                     redis_token: null,
-                    redis_type: merged.redis_type ?? 'self-hosted',
-                    redis_enabled: merged.redis_enabled ?? false,
-                    cache_ttl_data: merged.cache_ttl_data ?? 60,
-                    cache_ttl_count: merged.cache_ttl_count ?? 300,
+                    redis_type: redisDefaults.redis_type ?? 'self-hosted',
+                    redis_enabled: redisDefaults.redis_enabled ?? false,
+                    cache_ttl_data: redisDefaults.cache_ttl_data ?? 60,
+                    cache_ttl_count: redisDefaults.cache_ttl_count ?? 300,
                 });
             }
+            const stored = await kvFor(c.get('tenant')).getJson(domain, DEFAULTS[domain]);
             if (domain === 'privacy') {
                 const storedPrivacy = stored as Record<string, unknown>;
                 // Merge with defaults

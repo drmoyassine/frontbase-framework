@@ -132,13 +132,17 @@ export function registerAgentCompatRoutes(
                 }
             } catch { /* ignore decrypt errors */ }
         }
+        // Normalize transport: 'http' in legacy data maps to 'streamable-http' for parity
+        const transport = row.transport === 'http' ? 'streamable-http' : (row.transport ?? 'streamable-http');
+        // Use name as fallback for slug when encrypted config is unavailable (parity data uses name as slug)
+        const slug = extracted.slug ?? row.slug ?? (row.name ?? '');
         return {
             id: row.id ?? '',
             name: row.name ?? '',
-            slug: extracted.slug ?? row.slug ?? '',
+            slug,
             description: extracted.description ?? row.description ?? null,
             url: row.url ?? '',
-            transport: row.transport ?? 'streamable-http',
+            transport,
             authType: auth_type ?? extracted.auth_type ?? null,
             hasAuth: Boolean(token || extracted.token || config),
             toolFilter: extracted.tool_filter ?? row.tool_filter ?? null,
@@ -379,7 +383,7 @@ export function registerAgentCompatRoutes(
     app.get('/api/mcp-servers', async (c) => {
         const rows = await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ?', [c.get('tenant')]);
         const mcpServers = await Promise.all(rows.map(redactConfig));
-        return c.json({ mcpServers });
+        return c.json({ mcpServers, total: mcpServers.length });
     });
 
     // POST /api/mcp-servers

@@ -228,6 +228,11 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
                 if (!principal?.user || !tenant) {
                     return c.json({ detail: 'Authentication required' }, 401);
                 }
+                // Product parity: reject _root tenant (framework's master_admin) to match
+                // product's require_tenant_context which rejects users with no tenant context.
+                if (tenant === '_root') {
+                    return c.json({ detail: 'Authentication required' }, 401);
+                }
             }
             // Check if request body is required (OpenAPI requestBody.required is true)
             const isBodyRequired = operation.requestBody?.required === true;

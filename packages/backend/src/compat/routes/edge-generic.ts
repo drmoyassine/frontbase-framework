@@ -149,7 +149,7 @@ function reg(
         // For vectors: provider_config comes after account_name, before created_at; no has_signing_key or warning
         if (kind === 'vector') {
             const { linked_engines, supports_remote_delete, ...rest } = baseFields;
-            return { ...rest, linked_engines, supports_remote_delete };
+            return { ...rest, provider_config: config.provider_config ?? null, linked_engines, supports_remote_delete };
         }
         return { ...baseFields, warning: null };
     };

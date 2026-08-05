@@ -370,10 +370,10 @@ export function registerAuthCompatAuthedRoutes(
         if (!u || !tenantSlug) return null;
         return { u, tenantSlug };
     };
-    // Helper: check authentication WITH email/role validation. Test-only principals
-    // (from parity test resolvePrincipal) might have only { id, role } without email.
-    // All security endpoints must use this instead of requireAuth to reject such
-    // incomplete principals and match the product's 401 behavior.
+    // Helper: check authentication WITH session cookie validation. The product backend
+    // requires a valid session cookie for authenticated endpoints. The test harness's
+    // resolvePrincipal provides a principal, but we must still check for the session
+    // cookie to match product behavior (401 without cookie, 200 with valid cookie).
     const requireValidAuth = (c: Context<{ Variables: ConsoleAuthVars }>) => {
         const principal = c.get('principal');
         if (!principal) return null;
@@ -386,6 +386,11 @@ export function registerAuthCompatAuthedRoutes(
         // without email. Reject these to match product behavior.
         if (!u.email || typeof u.email !== 'string') return null;
         if (!u.role || typeof u.role !== 'string') return null;
+        // CRITICAL: Require the session cookie to be present. The product backend rejects
+        // requests without a valid session cookie with 401. The test harness's resolvePrincipal
+        // provides a principal, but we must still check for the cookie to match product behavior.
+        const cookieHeader = c.req.header('cookie');
+        if (!cookieHeader || !cookieHeader.includes(COOKIE + '=')) return null;
         return { u, tenantSlug };
     };
     // GET /api/auth/me

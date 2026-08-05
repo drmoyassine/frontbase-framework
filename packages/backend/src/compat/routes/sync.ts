@@ -303,10 +303,18 @@ function wordpressConfig(config: Record<string, unknown>): {
  * Used for 422 responses when request body/query/path parameters fail validation.
  */
 function validationError(details: { type: string; loc: string[]; msg: string; input: unknown }[]): {
-    detail: typeof details;
+    success: false;
+    error: string;
+    details: typeof details;
+    message: string;
 } {
     // Product parity: return Pydantic/FastAPI validation error format
-    return { detail: details };
+    return {
+        success: false,
+        error: 'Validation Error',
+        details,
+        message: 'The data provided is invalid',
+    };
 }
 
 /**
@@ -567,8 +575,8 @@ export function registerSyncRoutes(
             }
         }
 
-        // Product parity: return 404 when no matches found (matching product behavior).
-        if (matches.length === 0) {
+        // Product parity: return 404 when no matches found OR query is empty (matching product behavior).
+        if (matches.length === 0 || !query) {
             return c.json({ detail: 'Datasource not found' }, 404);
         }
 
@@ -789,8 +797,9 @@ export function registerSyncRoutes(
 
         const store = syncStoreFor(c.get('tenant'));
         const ds = await store.getDatasource(id);
-        // Product parity: check datasource existence BEFORE validating query params.
-        // This ensures 404 for missing datasources, not 422 for missing params.
+        // Product parity: check datasource existence FIRST. If datasource doesn't exist,
+        // return 404 regardless of whether query params are valid. This matches the
+        // product's behavior (datasource check takes priority over param validation).
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
