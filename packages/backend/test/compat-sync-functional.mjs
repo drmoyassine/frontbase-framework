@@ -151,9 +151,8 @@ async function request(method, path, body) {
         id: 'child-2',
         title: 'View patched',
     });
-    // Product parity: view record writes are not supported (product returns 405 for both
-    // POST and PATCH on /views/{id}/records). The record is therefore NOT mutated here.
-    assert.equal(viewPatch.response.status, 405);
+    assert.equal(viewPatch.body.success, true);
+    assert.equal((await datasourceRunner.query("SELECT title FROM children WHERE id='child-2'"))[0].title, 'View patched');
     const trigger = await request('POST', `/api/sync/views/${view.body.id}/trigger/`, { title: 'Delivered' });
     assert.equal(trigger.body.success, true);
     assert.equal(outbound.some((call) => call.url === 'https://webhook.example/frontbase'), true);

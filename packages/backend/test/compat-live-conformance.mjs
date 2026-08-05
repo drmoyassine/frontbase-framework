@@ -70,6 +70,17 @@ const FRAMEWORK_FEATURE_PATHS = new Set([
 ]);
 
 /**
+ * Same as FRAMEWORK_FEATURE_PATHS but for paths with a variable segment (e.g. a view id).
+ * `${METHOD} ${regex}` — the framework supports the operation; the product returns 405.
+ *   - POST/PATCH /api/sync/views/{view_id}/records : framework implements write-through-a-view
+ *     (the public contract declares create/patch_view_record); product returns 405.
+ */
+const FRAMEWORK_FEATURE_PATTERNS = [
+  { method: 'POST', re: /^\/api\/sync\/views\/[^/]+\/records\/?$/ },
+  { method: 'PATCH', re: /^\/api\/sync\/views\/[^/]+\/records\/?$/ },
+];
+
+/**
  * Normalized fields that should NOT be compared (timestamps, IDs, etc.).
  * These are excluded from shape comparison because they differ per-system.
  */
@@ -213,6 +224,9 @@ function classifyConformance(fwResp, prodResp, operationId, method, path) {
   // Framework feature the product lacks → not a parity bug. Checked AFTER crash detection
   // so a genuine 5xx on one of these endpoints is still flagged UNREACHABLE.
   if (method && path && FRAMEWORK_FEATURE_PATHS.has(`${method.toUpperCase()} ${path}`)) {
+    return { verdict: 'TOLERATED_DIFF', reason: 'framework feature the product lacks (intentional divergence)' };
+  }
+  if (method && path && FRAMEWORK_FEATURE_PATTERNS.some((p) => p.method === method.toUpperCase() && p.re.test(path))) {
     return { verdict: 'TOLERATED_DIFF', reason: 'framework feature the product lacks (intentional divergence)' };
   }
 

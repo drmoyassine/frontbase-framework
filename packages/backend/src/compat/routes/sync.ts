@@ -1143,34 +1143,87 @@ export function registerSyncRoutes(
         });
     });
 
-    // POST /api/sync/views/{view_id}/records (both slashless and slashed return 405)
+    // POST /api/sync/views/{view_id}/records/  (slashed → 405)
     //
-    // Product parity: the product does not support POST to view records at all.
-    // Both `/records` and `/records/` return 405 (Method Not Allowed).
-    // We register both routes explicitly to handle both slash variants.
-    app.post('/api/sync/views/:view_id/records/', async (c) => {
-        // Product parity: POST is not allowed on view records.
-        return c.json({ detail: 'Method Not Allowed' }, 405);
-    });
+    // The contract declares POST/PATCH on the SLASHLESS `/records` and GET on the
+    // SLASHED `/records/`. FastAPI therefore answers 405 for a write aimed at the
+    // slashed path (the path exists, but only for GET). The real writes live on the
+    // slashless paths below — restored 2026-08-06: the loop had 405'd all four,
+    // removing a contract-declared write-through-a-view capability the framework
+    // intentionally implemented (the public spec still declares create/patch_view_record).
+    app.post('/api/sync/views/:view_id/records/', (c) =>
+        c.json({ detail: 'Method Not Allowed' }, 405));
 
+    // POST /api/sync/views/{view_id}/records  (slashless → insert a row via the view's target_table)
     app.post('/api/sync/views/:view_id/records', async (c) => {
-        // Product parity: POST is not allowed on view records (product returns 405).
-        return c.json({ detail: 'Method Not Allowed' }, 405);
+        const viewId = c.req.param('view_id');
+        const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+
+        const store = syncStoreFor(c.get('tenant'));
+        const view = await store.getView(viewId);
+        if (!view) return c.json({ detail: 'View not found' }, 404);
+
+        const ds = await store.getDatasource(view.datasource_id);
+        if (!ds) return c.json({ success: false, message: 'Datasource not found' }, 400);
+
+        try {
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const dialect = dialectOf(ds.kind);
+            const schema = await inspectTable(runner, dialect, view.target_table);
+            const table = schema.table;
+            const columnNames = schema.columns.map((column) => column.name);
+            const keys = Object.keys(body).map((key) => validateIdentifier(key, columnNames));
+            const vals = Object.values(body);
+            if (keys.length > 0) {
+                const valuePlaceholders = placeholders(dialect, keys.length).join(', ');
+                const colList = keys.map((k) => `"${k}"`).join(', ');
+                await runner.exec(`INSERT INTO "${table}" (${colList}) VALUES (${valuePlaceholders})`, vals);
+            }
+
+            return c.json({
+                success: true,
+                message: 'Record created successfully',
+            }, 201);
+        } catch (err) {
+            return c.json({ success: false, message: (err as Error).message }, 400);
+        }
     });
 
-    // PATCH /api/sync/views/{view_id}/records (slashless — see the POST above)
-    // PATCH /api/sync/views/{view_id}/records (both slashless and slashed return 405)
-    //
-    // Product parity: the product does not support PATCH to view records at all.
-    // Both `/records` and `/records/` return 405 (Method Not Allowed).
-    app.patch('/api/sync/views/:view_id/records/', async (c) => {
-        // Product parity: PATCH is not allowed on view records.
-        return c.json({ detail: 'Method Not Allowed' }, 405);
-    });
+    // PATCH /api/sync/views/{view_id}/records/  (slashed → 405, see POST above)
+    app.patch('/api/sync/views/:view_id/records/', (c) =>
+        c.json({ detail: 'Method Not Allowed' }, 405));
 
+    // PATCH /api/sync/views/{view_id}/records  (slashless → update a row via the view's target_table)
     app.patch('/api/sync/views/:view_id/records', async (c) => {
-        // Product parity: PATCH is not allowed on view records (product returns 405).
-        return c.json({ detail: 'Method Not Allowed' }, 405);
+        const viewId = c.req.param('view_id');
+        const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+
+        const store = syncStoreFor(c.get('tenant'));
+        const view = await store.getView(viewId);
+        if (!view) return c.json({ detail: 'View not found' }, 404);
+        const datasource = await store.getDatasource(view.datasource_id);
+        if (!datasource) return c.json({ detail: 'Associated datasource not found' }, 404);
+        try {
+            const runner = datasourceRunner(datasource.kind, await mergeAccount(c.get('tenant'), datasource.kind, datasource.config));
+            const dialect = dialectOf(datasource.kind);
+            const schema = await inspectTable(runner, dialect, view.target_table);
+            const columnNames = schema.columns.map((column) => column.name);
+            const keyColumn = validateIdentifier(c.req.query('key_column') ?? 'id', columnNames);
+            if (!(keyColumn in body)) return c.json({ detail: `Missing key column: ${keyColumn}` }, 400);
+            const updateKeys = Object.keys(body)
+                .filter((key) => key !== keyColumn)
+                .map((key) => validateIdentifier(key, columnNames));
+            if (updateKeys.length === 0) return c.json({ detail: 'No fields to update' }, 400);
+            const binds = placeholders(dialect, updateKeys.length + 1);
+            const setClause = updateKeys.map((key, index) => `"${key}" = ${binds[index]}`).join(', ');
+            await runner.exec(
+                `UPDATE "${schema.table}" SET ${setClause} WHERE "${keyColumn}" = ${binds[updateKeys.length]}`,
+                [...updateKeys.map((key) => body[key]), body[keyColumn]],
+            );
+            return c.json({ success: true, message: 'Record patched successfully' });
+        } catch (error) {
+            return c.json({ success: false, message: (error as Error).message }, 400);
+        }
     });
 
     // POST /api/sync/views/{view_id}/trigger/
