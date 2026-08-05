@@ -94,8 +94,9 @@ function reg(
         const formatTimestamp = (ts: unknown): string => {
             const str = String(ts ?? '');
             if (!str) return '';
-            // Remove malformed Z+00:00Z, then +00:00Z, then trailing Z (from toISOString) - longer patterns first
-            const normalized = str.replace(/Z\+00:00Z?$|\+00:00Z?$|Z$/, '');
+            // Remove timezone suffixes: prefer longer patterns first to avoid partial matches
+            // Handles: "Z+00:00", "+00:00Z", "+00:00", "Z" at end of string
+            const normalized = str.replace(/Z\+00:00$|\+00:00Z$|\+00:00$|Z$/, '');
             return isSystem ? normalized : normalized + '+00:00Z';
         };
         // For system resources, use the special local engine; for user resources, use empty defaults

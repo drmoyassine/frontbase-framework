@@ -9,6 +9,33 @@ import type { ThemesStore } from '../store.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
+// Normalize timestamp to Postgres format (YYYY-MM-DDTHH:MM:SS.mmmmmm+00:00)
+// D1 returns ISO format with 'Z' (e.g., 2026-08-05T17:46:48.734Z)
+// Postgres returns format with microseconds and +00:00 (e.g., 2026-08-04T16:03:43.008375+00:00)
+const normalizeTimestamp = (ts: string): string => {
+    if (!ts) return ts;
+    // Replace trailing 'Z' with '+00:00'
+    if (ts.endsWith('Z')) {
+        ts = ts.slice(0, -1) + '+00:00';
+    }
+    // Pad fractional seconds to 6 digits (microseconds) if needed
+    const match = ts.match(/^(.*\.(\d{0,5}))(\+00:00)$/);
+    if (match) {
+        const prefix = match[1] ?? '';
+        const fractional = match[2] ?? '';
+        const tz = match[3] ?? '+00:00';
+        const padded = fractional.padEnd(6, '0');
+        const baseWithoutFrac = prefix.substring(0, prefix.length - fractional.length);
+        return baseWithoutFrac + padded + tz;
+    }
+    // Handle case with no fractional seconds
+    const noFrac = ts.match(/^(.*T\d{2}:\d{2}:\d{2})(\+00:00)$/);
+    if (noFrac) {
+        return noFrac[1] + '.000000' + noFrac[2];
+    }
+    return ts;
+};
+
 const serialize = (r: { id: string; name: string; component_type: string; styles_data: string; is_system: number; created_at: string; updated_at: string }) => {
     // Parse styles_data safely; fall back to empty object if empty/invalid
     let styles_data: Record<string, unknown>;
@@ -23,8 +50,8 @@ const serialize = (r: { id: string; name: string; component_type: string; styles
         styles_data,
         is_system: !!r.is_system,
         id: r.id,
-        created_at: r.created_at,
-        updated_at: r.updated_at,
+        created_at: normalizeTimestamp(r.created_at),
+        updated_at: normalizeTimestamp(r.updated_at),
     };
 };
 

@@ -61,7 +61,7 @@ export function registerWorkflowsRoutes(app: App, phase2For: (t: string) => Phas
         // Body validation: return 422 for malformed input (only after auth check)
         // Product parity: FastAPI validation runs AFTER require_tenant_context,
         // so authenticated users get 422 for invalid input.
-        if (!body.to || (Array.isArray(body.to) && body.to.length === 0)) {
+        if (!body.to || !Array.isArray(body.to) || body.to.length === 0) {
             return c.json({ detail: 'to is required' }, 422);
         }
         if (!body.subject) {

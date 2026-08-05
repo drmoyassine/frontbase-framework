@@ -303,18 +303,10 @@ function wordpressConfig(config: Record<string, unknown>): {
  * Used for 422 responses when request body/query/path parameters fail validation.
  */
 function validationError(details: { type: string; loc: string[]; msg: string; input: unknown }[]): {
-    success: false;
-    error: string;
-    details: typeof details;
-    message: string;
+    detail: typeof details;
 } {
     // Product parity: return Pydantic/FastAPI validation error format
-    return {
-        success: false,
-        error: 'Validation Error',
-        details,
-        message: 'The data provided is invalid',
-    };
+    return { detail: details };
 }
 
 /**
@@ -477,15 +469,15 @@ export function registerSyncRoutes(
 
         // Product parity: validate that `type` field is present and is a string.
         // If type is missing or not a string, return 422 validation error.
-        if (b.type === undefined || (b.kind === undefined && typeof b.type !== 'string')) {
+        if (b.type === undefined || typeof b.type !== 'string') {
             return c.json(validationError([
-                { type: 'missing', loc: ['body', 'type'], msg: 'Field required', input: b },
+                { type: b.type === undefined ? 'missing' : 'string_type', loc: ['body', 'type'], msg: b.type === undefined ? 'Field required' : 'Input should be a valid string', input: b.type },
             ]), 422);
         }
 
         // Product parity: do NOT validate type against enum upfront.
         // The product tries to use invalid types and crashes with TypeError (500).
-        // Let invalid types through so they crash with TypeError, matching product behavior.
+        // Let invalid string types through so they crash with TypeError, matching product behavior.
         const kind = String(b.type ?? b.kind ?? 'sqlite');
 
         // SPA sends a FLAT DatasourceCreate payload (credential fields + provider_account_id
@@ -551,6 +543,9 @@ export function registerSyncRoutes(
 
     // GET /api/sync/datasources/search-all/
     app.get('/api/sync/datasources/search-all/', async (c) => {
+        // Product parity: do NOT validate q as required. Treat missing q as empty search
+        // and return 404 when no results. Product checks datasource existence before
+        // validating query params (e.g., limit), so must return 404 for no matches.
         const query = c.req.query('q') ?? '';
         const limit = Math.max(1, Math.min(Number(c.req.query('limit') ?? 10), 100));
         const store = syncStoreFor(c.get('tenant'));
@@ -796,10 +791,10 @@ export function registerSyncRoutes(
         const rawHiddenFilters = c.req.query('hidden_filters');
 
         const store = syncStoreFor(c.get('tenant'));
-        const ds = await store.getDatasource(id);
         // Product parity: check datasource existence FIRST. If datasource doesn't exist,
         // return 404 regardless of whether query params are valid. This matches the
         // product's behavior (datasource check takes priority over param validation).
+        const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
@@ -1329,6 +1324,22 @@ export function registerSyncRoutes(
             // the product's behavior (datasource check takes priority over index validation).
             if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
+            // Product parity: validate required body fields AFTER datasource check.
+            // The product returns 422 for missing required fields, but only after
+            // confirming the datasource exists.
+            const requiredFields = ['from_column', 'from_table', 'to_column', 'to_table'];
+            const missingFields = requiredFields.filter((field) => b[field] === undefined || b[field] === null || b[field] === '');
+            if (missingFields.length > 0) {
+                return c.json(validationError(
+                    missingFields.map((field) => ({
+                        type: 'missing',
+                        loc: ['body', field],
+                        msg: 'Field required',
+                        input: null,
+                    })),
+                ), 422);
+            }
+
             const index = parseInt(rawIndex, 10);
             // Product parity: if index is not a valid integer, return 422 with validation
             // error (not 404). FastAPI validates path params and returns 422 for type
@@ -1369,7 +1380,8 @@ export function registerSyncRoutes(
             if (error.name === 'TypeError' || error.name === 'ReferenceError' || !(error instanceof Error)) {
                 return c.json(internalServerError(error), 500);
             }
-            return c.json({ detail: error.message }, 500);
+            // Database connection errors and other unexpected errors also return 500.
+            return c.json({ detail: error.message || 'Internal server error' }, 500);
         }
     });
 

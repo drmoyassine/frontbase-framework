@@ -89,6 +89,16 @@ function fastApiIssue(
         if (badInput === undefined || badInput === null) {
             type = 'missing';
             msg = 'Field required';
+            // Product parity: for missing fields in request body, return the entire
+            // request body as input, not null. This matches Pydantic's behavior.
+            if (location === 'body') {
+                return {
+                    type,
+                    loc: [location, ...path],
+                    msg,
+                    input: input ?? {},
+                };
+            }
         } else if (expected === 'string') {
             type = 'string_type';
             msg = 'Input should be a valid string';
@@ -196,24 +206,61 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
             }
             const parsed = pathValidator.safeParse(values);
             if (!parsed.success) {
-                return c.json(fastApiValidationError('path', values, parsed.error.issues), 422);
+                // Product parity: if the first path parameter is datasource_id and it
+                // validates as a UUID-like string, defer to the handler for 404/405 checks.
+                // The product checks datasource existence BEFORE validating subsequent
+                // path parameters (like index), so we must skip validation here to match.
+                const hasDatasourceId = match.route.names[0] === 'datasource_id';
+                const firstParamValid = hasDatasourceId && typeof values.datasource_id === 'string' &&
+                    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.datasource_id);
+                if (firstParamValid) {
+                    // Skip path validation - handler will check datasource existence and
+                    // validate subsequent parameters (index) appropriately.
+                } else {
+                    return c.json(fastApiValidationError('path', values, parsed.error.issues), 422);
+                }
             }
         }
 
         const queryValidator = validator(`${prefix}Query`);
         if (queryValidator) {
-            const url = new URL(c.req.url);
-            const values: Record<string, unknown> = {};
-            for (const parameter of (operation.parameters ?? []).filter((item: any) => item.in === 'query')) {
-                const all = url.searchParams.getAll(parameter.name);
-                if (all.length === 0) continue;
-                values[parameter.name] = parameter.schema?.type === 'array'
-                    ? all.map((value) => primitive(value, parameter.schema?.items))
-                    : primitive(all[all.length - 1] ?? '', parameter.schema);
-            }
-            const parsed = queryValidator.safeParse(values);
-            if (!parsed.success) {
-                return c.json(fastApiValidationError('query', values, parsed.error.issues), 422);
+            // Product parity: skip query validation for search-all endpoint. The product
+            // treats missing q as empty search and returns 404 for no matches, not 422.
+            if (operation.operationId === 'search_all_datasources_datasources_search_all__get') {
+                // Skip query validation - handler will treat missing q as empty search.
+            } else {
+                const url = new URL(c.req.url);
+                const values: Record<string, unknown> = {};
+                for (const parameter of (operation.parameters ?? []).filter((item: any) => item.in === 'query')) {
+                    const all = url.searchParams.getAll(parameter.name);
+                    if (all.length === 0) continue;
+                    values[parameter.name] = parameter.schema?.type === 'array'
+                        ? all.map((value) => primitive(value, parameter.schema?.items))
+                        : primitive(all[all.length - 1] ?? '', parameter.schema);
+                }
+                const parsed = queryValidator.safeParse(values);
+                if (!parsed.success) {
+                    // Product parity: if the path has datasource_id and it validates as a UUID-like
+                    // string, defer query validation to the handler. The product checks datasource
+                    // existence BEFORE validating query parameters, so we must skip validation here
+                    // to match. This allows endpoints like /aggregate/ to return 404 for non-existent
+                    // datasources instead of 422 for missing query params.
+                    const hasDatasourceId = match.route.names[0] === 'datasource_id';
+                    const pathValues: Record<string, unknown> = {};
+                    for (const [index, name] of match.route.names.entries()) {
+                        const rawValue = matchValues[index + 1];
+                        if (rawValue !== undefined) {
+                            pathValues[name] = decodeURIComponent(rawValue);
+                        }
+                    }
+                    const firstParamValid = hasDatasourceId && typeof pathValues.datasource_id === 'string' &&
+                        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathValues.datasource_id);
+                    if (firstParamValid) {
+                        // Skip query validation - handler will check datasource existence first.
+                    } else {
+                        return c.json(fastApiValidationError('query', values, parsed.error.issues), 422);
+                    }
+                }
             }
         }
 
@@ -234,21 +281,34 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
                     return c.json({ detail: 'Authentication required' }, 401);
                 }
             }
-            // Check if request body is required (OpenAPI requestBody.required is true)
-            const isBodyRequired = operation.requestBody?.required === true;
-            let body: unknown;
-            try {
-                body = await c.req.json();
-            } catch {
-                // JSON parsing failed - treat as null for validation
-                body = null;
-            }
-            // For required bodies, validate even if null/undefined (will fail schema)
-            // For optional bodies, only validate if body is provided
-            if (isBodyRequired || body !== undefined && body !== null) {
-                const parsed = bodyValidator.safeParse(body);
-                if (!parsed.success) {
-                    return c.json(fastApiValidationError('body', body, parsed.error.issues), 422);
+            // Product parity: skip body validation for sheets_connect_callback. The handler
+            // manually validates only local_kw (query) and token (body type), but the Zod
+            // schema has spreadsheetId, webAppUrl, webAppSecret as required - which doesn't
+            // match the product's behavior. Let the handler do its own validation.
+            if (operation.operationId === 'sheets_connect_callback_datasources_sheets_connect_callback__post') {
+                // Skip Zod validation - handler will validate manually
+            } else if (operation.operationId === 'update_relationship_datasources__datasource_id__relationships__index___put') {
+                // Product parity: skip body validation for update_relationship. The handler
+                // needs to check datasource existence BEFORE validating the body. The product
+                // returns 404 for non-existent datasources regardless of body validity.
+                // Let the handler do datasource check first, then validate relationship fields.
+            } else {
+                // Check if request body is required (OpenAPI requestBody.required is true)
+                const isBodyRequired = operation.requestBody?.required === true;
+                let body: unknown;
+                try {
+                    body = await c.req.json();
+                } catch {
+                    // JSON parsing failed - treat as null for validation
+                    body = null;
+                }
+                // For required bodies, validate even if null/undefined (will fail schema)
+                // For optional bodies, only validate if body is provided
+                if (isBodyRequired || body !== undefined && body !== null) {
+                    const parsed = bodyValidator.safeParse(body);
+                    if (!parsed.success) {
+                        return c.json(fastApiValidationError('body', body, parsed.error.issues), 422);
+                    }
                 }
             }
         }

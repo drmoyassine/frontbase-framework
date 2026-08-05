@@ -144,16 +144,15 @@ export function registerSettingsRoutes(
                     redis_token_ciphertext: tokenCiphertext ?? null,
                 };
                 await kvFor(c.get('tenant')).setJson(domain, persisted, now());
-                // Product PUT response: input merged with defaults, NOT stored values
-                const merged = { ...DEFAULTS.redis as object, ...input } as Record<string, unknown>;
-                // Product returns null for redis_token, never the actual value
+                // Product PUT response: for unspecified fields, returns null (not defaults)
+                // Only include fields from input, null for missing optional fields
                 return c.json({
-                    redis_url: merged.redis_url ?? null,
+                    redis_url: input.redis_url ?? null,
                     redis_token: null,
-                    redis_type: merged.redis_type ?? 'self-hosted',
-                    redis_enabled: merged.redis_enabled ?? false,
-                    cache_ttl_data: merged.cache_ttl_data ?? 60,
-                    cache_ttl_count: merged.cache_ttl_count ?? 300,
+                    redis_type: input.redis_type ?? 'self-hosted',
+                    redis_enabled: input.redis_enabled ?? false,
+                    cache_ttl_data: input.cache_ttl_data ?? 60,
+                    cache_ttl_count: input.cache_ttl_count ?? 300,
                 });
             }
             if (domain === 'privacy') {
@@ -233,47 +232,10 @@ export function registerSettingsRoutes(
         const body = await c.req.json().catch(() => null);
         const parsed = zAdminInviteRequest.safeParse(body);
         if (!parsed.success) {
-            // Convert Zod errors to Pydantic-style format (exact match)
-            const detail = parsed.error.errors.map(err => {
-                // Get the raw input value for the field that failed
-                let rawInput: unknown = body;
-                for (const key of err.path) {
-                    if (rawInput && typeof rawInput === 'object') {
-                        rawInput = (rawInput as Record<string, unknown>)[String(key)];
-                    } else {
-                        rawInput = undefined;
-                        break;
-                    }
-                }
-                // Map Zod error codes to Pydantic error types
-                let errorType: string = err.code;
-                if (err.code === 'invalid_type') {
-                    // Map Zod's invalid_type to Pydantic's specific type codes
-                    // Pydantic uses: string_type, int_type, float_type, bool_type, etc.
-                    if (err.received === 'undefined') {
-                        errorType = 'missing';
-                    } else if (err.expected === 'string') {
-                        errorType = 'string_type';
-                    } else if (err.expected === 'number') {
-                        errorType = 'int_type';
-                    } else if (err.expected === 'boolean') {
-                        errorType = 'bool_type';
-                    } else if (err.expected === 'array') {
-                        errorType = 'list_type';
-                    } else if (err.expected === 'object') {
-                        errorType = 'dict_type';
-                    } else {
-                        errorType = `${String(err.expected)}_type`;
-                    }
-                }
-                return {
-                    type: errorType,
-                    loc: ['body', ...err.path.map(String)],
-                    msg: err.message,
-                    input: rawInput,
-                };
-            });
-            return c.json({ detail }, 422);
+            // Validation errors are now handled by the middleware, which returns
+            // the correct Pydantic-style format with the entire request body as
+            // input for missing fields. This fallback is for direct calls.
+            return c.json({ detail: 'validation_failed' }, 422);
         }
 
         // Check if user already exists (if userExists callback provided)
