@@ -27,7 +27,7 @@ export function registerStorageRoutes(
         return {
             ...safe,
             config: {},
-            updated_at: safe.updated_at ?? safe.created_at ?? null,
+            updated_at: safe.updated_at ?? safe.created_at ?? '',
         };
     };
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
@@ -99,14 +99,19 @@ export function registerStorageRoutes(
                     detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
                 }, 422);
             }
-            if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+            const kv = kvFor(c.get('tenant'));
+            const providers = await kv.getJson<Array<{ id?: string; provider?: string }>>('storage_providers', []);
+            const provider = providers.find((p) => p.id === providerId);
+            if (!provider) {
                 return c.json({ detail: 'Storage provider not found' }, 404);
             }
             const all = await phase2For(c.get('tenant')).listBuckets();
             const bucket = all.find((r) => String(r.id) === c.req.param('bucket_id'));
-            return bucket
-                ? c.json({ success: true, bucket: redactConfig(bucket) })
-                : c.json({ success: false, error: 'Bucket not found' }, 404);
+            if (!bucket) {
+                const providerType = typeof provider.provider === 'string' ? provider.provider : 'local';
+                return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
+            }
+            return c.json({ success: true, bucket: redactConfig(bucket) });
         } catch (e) {
             const err = e as Error;
             if (err.message?.startsWith('validation')) {
@@ -127,7 +132,10 @@ export function registerStorageRoutes(
                     detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
                 }, 422);
             }
-            if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+            const kv = kvFor(c.get('tenant'));
+            const providers = await kv.getJson<Array<{ id?: string; provider?: string }>>('storage_providers', []);
+            const provider = providers.find((p) => p.id === providerId);
+            if (!provider) {
                 return c.json({ detail: 'Storage provider not found' }, 404);
             }
             const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
@@ -136,7 +144,8 @@ export function registerStorageRoutes(
             const existing = await store.listBuckets();
             const bucket = existing.find((r) => String(r.id) === id);
             if (!bucket) {
-                return c.json({ success: false, error: 'Bucket not found' }, 404);
+                const providerType = typeof provider.provider === 'string' ? provider.provider : 'local';
+                return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
             }
             const existingName = typeof bucket.name === 'string' ? bucket.name : 'bucket';
             const existingProvider = typeof bucket.provider === 'string' ? bucket.provider : 'local';
@@ -194,6 +203,15 @@ export function registerStorageRoutes(
 
     // POST /api/storage/buckets/{bucket_id}/empty
     app.post('/api/storage/buckets/:bucket_id/empty', async (c) => {
+        const providerId = c.req.query('provider_id');
+        if (!providerId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+            }, 422);
+        }
+        if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+            return c.json({ detail: 'Storage provider not found' }, 404);
+        }
         const store = phase2For(c.get('tenant'));
         const files = await store.listFiles(c.req.param('bucket_id'));
         for (const f of files) await store.deleteFile(String(f.id));
@@ -203,7 +221,21 @@ export function registerStorageRoutes(
     // ---- files (Phase2Store) ----
     // GET /api/storage/list
     app.get('/api/storage/list', async (c) => {
-        const bucketId = c.req.query('bucket_id') ?? c.req.query('bucketId') ?? '';
+        const bucketId = c.req.query('bucket_id') ?? c.req.query('bucketId') ?? c.req.query('bucket') ?? '';
+        if (!bucketId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'bucket'], msg: 'Field required', input: null }],
+            }, 422);
+        }
+        const providerId = c.req.query('provider_id');
+        if (!providerId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+            }, 422);
+        }
+        if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+            return c.json({ detail: 'Storage provider not found' }, 404);
+        }
         const files = await phase2For(c.get('tenant')).listFiles(bucketId);
         return c.json({ success: true, files, total: files.length });
     });
@@ -255,11 +287,25 @@ export function registerStorageRoutes(
 
     // GET /api/storage/compute-size
     app.get('/api/storage/compute-size', async (c) => {
-        const store = phase2For(c.get('tenant'));
-        let size = 0;
-        for (const bucket of await store.listBuckets()) {
-            for (const file of await store.listFiles(String(bucket.id))) size += Number(file.size ?? 0);
+        const bucketId = c.req.query('bucket') ?? '';
+        if (!bucketId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'bucket'], msg: 'Field required', input: null }],
+            }, 422);
         }
+        const providerId = c.req.query('provider_id');
+        if (!providerId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+            }, 422);
+        }
+        if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+            return c.json({ detail: 'Storage provider not found' }, 404);
+        }
+        const store = phase2For(c.get('tenant'));
+        const files = await store.listFiles(bucketId);
+        let size = 0;
+        for (const file of files) size += Number(file.size ?? 0);
         return c.json({ success: true, size, human_readable: `${size} B` });
     });
 
@@ -493,6 +539,12 @@ export function registerStorageRoutes(
     // ---- netlify / vercel ----
     // GET /api/storage/netlify-sites
     app.get('/api/storage/netlify-sites', async (c) => {
+        const accountId = c.req.query('account_id');
+        if (!accountId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'account_id'], msg: 'Field required', input: null }],
+            }, 422);
+        }
         const kv = kvFor(c.get('tenant'));
         const sites = await kv.getJson<Array<Record<string, unknown>>>('netlify_sites', []);
         return c.json(sites);
@@ -514,6 +566,12 @@ export function registerStorageRoutes(
 
     // GET /api/storage/vercel-projects
     app.get('/api/storage/vercel-projects', async (c) => {
+        const accountId = c.req.query('account_id');
+        if (!accountId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'account_id'], msg: 'Field required', input: null }],
+            }, 422);
+        }
         const kv = kvFor(c.get('tenant'));
         const projects = await kv.getJson<Array<Record<string, unknown>>>('vercel_projects', []);
         return c.json(projects);

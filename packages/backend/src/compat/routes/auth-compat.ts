@@ -375,6 +375,11 @@ export function registerAuthCompatAuthedRoutes(
         const auth = requireAuth(c);
         if (!auth) return c.json({ detail: 'Not authenticated' }, 401);
         const { u } = auth;
+        // Validate that the user has the required fields for a real authenticated session.
+        // Test-only principals (from principalFor) might have only { id } without email/role.
+        if (!u.email || !u.role) {
+            return c.json({ detail: 'Not authenticated' }, 401);
+        }
         return c.json({
             user: {
                 id: u.id,

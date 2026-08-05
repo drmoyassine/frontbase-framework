@@ -53,7 +53,9 @@ export function registerEdgeDatabasesRoutes(
         if (body.name !== undefined && typeof body.name !== 'string') {
             errors.push({ type: 'string_type', loc: ['body', 'name'], msg: 'Input should be a valid string', input: body.name });
         }
-        if (body.provider !== undefined && typeof body.provider !== 'string') {
+        if (body.provider === undefined) {
+            errors.push({ type: 'missing', loc: ['body', 'provider'], msg: 'Field required', input: body });
+        } else if (typeof body.provider !== 'string') {
             errors.push({ type: 'string_type', loc: ['body', 'provider'], msg: 'Input should be a valid string', input: body.provider });
         }
         if (body.db_url === undefined) {
@@ -122,7 +124,7 @@ export function registerEdgeDatabasesRoutes(
             id,
             kind: 'database',
             name: b.name ?? 'database',
-            provider: b.provider ?? 'sqlite',
+            provider: String(b.provider),
             config: await encryptedConfig(b.config ?? configFromBody(b)),
         }, now());
         return c.json(await serializeStored(store, await store.getEdgeResource(id) ?? {

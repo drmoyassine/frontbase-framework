@@ -316,6 +316,24 @@ function validationError(details: { type: string; loc: string[]; msg: string; in
     };
 }
 
+/**
+ * Internal server error envelope matching FastAPI's 500 response shape.
+ * Used for unexpected errors (TypeError, etc.) that should return 500.
+ */
+function internalServerError(error: Error): {
+    success: false;
+    error: string;
+    message: string;
+    type: string;
+} {
+    return {
+        success: false,
+        error: 'Internal Server Error',
+        message: 'An unexpected error occurred',
+        type: error.constructor.name,
+    };
+}
+
 export function registerSyncRoutes(
     app: App,
     controlRunner: DbRunner,
@@ -516,6 +534,10 @@ export function registerSyncRoutes(
             return c.json({ success: true, message: 'Connection successful', tables, suggestion: null });
         } catch (err) {
             const error = err as Error;
+            // Product parity: unexpected errors (TypeError, etc.) return 500.
+            if (error.name === 'TypeError' || error.name === 'ReferenceError' || !(error instanceof Error)) {
+                return c.json(internalServerError(error), 500);
+            }
             // Product parity: align error message for Supabase without credentials.
             const errorMsg = kind === 'supabase' && error.message.includes('Invalid URL string')
                 ? 'Supabase requires API URL and API Key.'

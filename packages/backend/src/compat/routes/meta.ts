@@ -11,12 +11,11 @@ export function registerMetaRoutes(
     runner: DbRunner,
     includeProductRoot = false,
 ): void {
-    if (includeProductRoot) {
-        app.get('/', async (c) => {
-            await runner.query('SELECT 1');
-            return c.json({ message: 'Frontbase-DBSync API is running', test_mode: true });
-        });
-    }
+    // Product root endpoint — always registered for parity (unconditional)
+    app.get('/', async (c) => {
+        await runner.query('SELECT 1');
+        return c.json({ message: 'Frontbase-DBSync API is running', test_mode: true });
+    });
     app.get('/health', async (c) => {
         await runner.query('SELECT 1');
         return c.json({ status: 'healthy', message: 'API is operational', test_mode: true });

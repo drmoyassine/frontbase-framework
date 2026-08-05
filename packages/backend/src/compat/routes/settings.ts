@@ -245,6 +245,7 @@ export function registerSettingsRoutes(
                 if (err.code === 'invalid_type') {
                     // Map Zod's invalid_type to Pydantic's specific type codes
                     // Pydantic uses: string_type, int_type, float_type, bool_type, etc.
+                    // errorType should be based on what type was EXPECTED (the required type)
                     if (err.received === 'undefined') {
                         errorType = 'missing';
                     } else if (err.expected === 'string') {

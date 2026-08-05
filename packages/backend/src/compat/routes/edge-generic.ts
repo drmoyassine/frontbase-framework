@@ -98,6 +98,10 @@ function reg(
             const normalized = str.replace(/[Z+]00:00:00?$/, '');
             return isSystem ? normalized : normalized + '+00:00Z';
         };
+        // For system resources, use the special local engine; for user resources, use empty defaults
+        const engineData = isSystem
+            ? { engine_count: 1, linked_engines: [{ id: 'a0f2ffa2-62a5-4437-aa88-833138b70421', name: 'Local Edge', provider: 'unknown' }] }
+            : { engine_count: 0, linked_engines: [] };
         const base = {
             id: String(row.id),
             name: String(row.name ?? ''),
@@ -110,8 +114,7 @@ function reg(
             account_name: config.account_name != null ? String(config.account_name) : null,
             created_at: formatTimestamp(row.created_at),
             updated_at: formatTimestamp(row.updated_at),
-            engine_count: 0,
-            linked_engines: [],
+            ...engineData,
             supports_remote_delete: false,
         };
         // Insert warning before supports_remote_delete for caches/queues
@@ -166,13 +169,13 @@ function reg(
 
     app.get(pre + '/', async (c) => {
         const store = p2(c.get('tenant'));
-        const localEngine = { id: 'local-edge', name: 'Local Edge', provider: 'unknown' };
+        const localEngine = { id: 'a0f2ffa2-62a5-4437-aa88-833138b70421', name: 'Local Edge', provider: 'unknown' };
         // System resource timestamps: use a consistent format matching product
         // Product returns timestamps like "2026-08-04T16:03:42.974590" (no timezone suffix)
         const systemTimestamp = '2026-08-04T16:03:42.974590';
         const local = kind === 'cache'
             ? {
-                id: 'local-cache',
+                id: '67d3c848-56cb-405f-a5f6-ed69bbeca48f',
                 name: 'Local Redis',
                 provider: 'redis',
                 cache_url: 'redis://redis:6379',
@@ -190,7 +193,7 @@ function reg(
             }
             : kind === 'queue'
                 ? {
-                    id: 'local-queue',
+                    id: '429039c8-87a6-4f1e-91dc-48536fe865f7',
                     name: 'Local BullMQ',
                     provider: 'bullmq',
                     queue_url: 'redis://redis:6379',
@@ -208,7 +211,7 @@ function reg(
                     supports_remote_delete: false,
                 }
                 : {
-                    id: 'local-vector',
+                    id: '7b2b3b88-0fd6-4ae6-bf30-343fff2784c6',
                     name: 'Local Vector (libSQL)',
                     provider: 'libsql_vector',
                     vector_url: 'libsql://local-edge',
@@ -246,7 +249,8 @@ function reg(
             const existing = await store.listEdgeResources(kind);
             for (const row of existing) {
                 const rowConfig = await store.getEdgeResourceConfig(String(row.id)) ?? {};
-                if (rowConfig.url === newUrl) {
+                // Use == for URL comparison to handle undefined vs string
+                if (rowConfig.url == newUrl) {
                     const existingName = row.name ?? kind;
                     const detail = kind === 'cache'
                         ? `A cache with this URL already exists ('${existingName}')`

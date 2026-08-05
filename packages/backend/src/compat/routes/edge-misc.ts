@@ -60,8 +60,7 @@ export function registerEdgeMiscRoutes(
     const listApiKeys = async (c: any) => {
         const keys = await runner.query(
             `SELECT k.id, k.name, k.scope, k.is_active, k.expires_at,
-                    k.created_at, k.updated_at, s.prefix,
-                    CASE WHEN s.ciphertext IS NOT NULL AND s.revealed_at IS NULL THEN 1 ELSE 0 END AS can_reveal
+                    k.created_at, k.updated_at, s.prefix, s.ciphertext, s.revealed_at
              FROM edge_api_keys k
              LEFT JOIN edge_api_key_secrets s
                ON s.key_id = k.id AND s.tenant_slug = k.tenant_slug
@@ -69,13 +68,19 @@ export function registerEdgeMiscRoutes(
             [c.get('tenant')],
         );
         // Match product shape: add edge_engine_id, last_used_at, engine_name (all null)
+        // Compute can_reveal in JavaScript for D1 compatibility (CASE expression may cause issues)
+        // ciphertext and revealed_at are internal-only, not exposed in the list response
         return c.json({
-            keys: keys.map((k: Record<string, unknown>) => ({
-                ...k,
-                edge_engine_id: null,
-                last_used_at: null,
-                engine_name: null,
-            })),
+            keys: keys.map((k: Record<string, unknown>) => {
+                const { ciphertext, revealed_at, ...rest } = k;
+                return {
+                    ...rest,
+                    edge_engine_id: null,
+                    last_used_at: null,
+                    engine_name: null,
+                    can_reveal: ciphertext !== null && revealed_at === null ? 1 : 0,
+                };
+            }),
             total: keys.length,
         });
     };

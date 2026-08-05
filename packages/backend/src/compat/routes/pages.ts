@@ -169,12 +169,20 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
             let layout: unknown;
             try { layout = JSON.parse(row.layout_data); } catch { layout = null; }
             const content = layout && typeof layout === 'object' ? (layout as Record<string, unknown>).content : null;
-            const firstItem = Array.isArray(content) && content.length > 0 ? content[0] : null;
-            const isDefaultTemplate = firstItem &&
-                typeof firstItem === 'object' &&
-                (firstItem as Record<string, unknown>).type === 'Heading' &&
-                typeof (firstItem as Record<string, unknown>).props === 'object' &&
-                ((firstItem as Record<string, unknown>).props as Record<string, unknown>).content === 'Welcome to your new site';
+            const items = Array.isArray(content) ? content : [];
+            // Check if all items match the default seed template (more robust than just first item)
+            const expectedTypes = ['Heading', 'Text', 'Link'];
+            const isDefaultTemplate = items.length === 3 &&
+                items.every((item, i) =>
+                    typeof item === 'object' &&
+                    item !== null &&
+                    (item as Record<string, unknown>).type === expectedTypes[i]
+                ) &&
+                items.some((item) => {
+                    const props = (item as Record<string, unknown>).props;
+                    return props && typeof props === 'object' &&
+                        ((props as Record<string, unknown>).content as string)?.includes('Welcome to your new site');
+                });
             if (isDefaultTemplate) {
                 return c.json({ detail: 'No homepage configured' }, 404);
             }

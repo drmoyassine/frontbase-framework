@@ -32,7 +32,9 @@ export function registerThemesRoutes(app: App, storeFor: (t: string) => ThemesSt
     // GET /api/themes/ → ComponentThemeOut[]
     app.get('/api/themes/', async (c) => {
         const rows = await storeFor(c.get('tenant')).list();
-        return c.json(rows.map(serialize));
+        // Sort by created_at DESC to align with product (test themes come after system themes, so DESC puts test themes first)
+        const sorted = rows.sort((a, b) => b.created_at.localeCompare(a.created_at));
+        return c.json(sorted.map(serialize));
     });
     // POST /api/themes/
     app.post('/api/themes/', async (c) => {

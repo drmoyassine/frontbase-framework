@@ -113,24 +113,41 @@ export function registerAgentCompatRoutes(
         return ciphertext;
     };
 
-    const redactConfig = (row: any) => {
+    const redactConfig = async (row: any) => {
         const { config, auth_type, token } = row;
+        // Extract additional fields from encrypted config if not present in row
+        const extracted: Record<string, unknown> = {};
+        if (config && secretCipher.isEncrypted(String(config))) {
+            try {
+                const decrypted = await secretCipher.decrypt(String(config));
+                if (decrypted) {
+                    const parsed = JSON.parse(decrypted) as Record<string, unknown>;
+                    extracted.slug = parsed.slug;
+                    extracted.description = parsed.description;
+                    extracted.auth_type = parsed.auth_type;
+                    extracted.token = parsed.token;
+                    extracted.tool_filter = parsed.tool_filter;
+                    extracted.category = parsed.category;
+                    extracted.profile_slug = parsed.profile_slug;
+                }
+            } catch { /* ignore decrypt errors */ }
+        }
         return {
             id: row.id ?? '',
             name: row.name ?? '',
-            slug: row.slug ?? '',
-            description: row.description ?? null,
+            slug: row.slug ?? extracted.slug ?? '',
+            description: row.description ?? extracted.description ?? null,
             url: row.url ?? '',
             transport: row.transport ?? 'streamable-http',
-            authType: auth_type ?? null,
-            hasAuth: Boolean(token || config),
-            toolFilter: row.tool_filter ?? null,
-            category: row.category ?? null,
+            authType: auth_type ?? extracted.auth_type ?? null,
+            hasAuth: Boolean(token || extracted.token || config),
+            toolFilter: row.tool_filter ?? extracted.tool_filter ?? null,
+            category: row.category ?? extracted.category ?? null,
             isActive: Boolean(row.is_active ?? 1),
             isPublic: false,
             tenantId: null,
             projectId: null,
-            profileSlug: row.profile_slug ?? null,
+            profileSlug: row.profile_slug ?? extracted.profile_slug ?? null,
             createdAt: row.created_at ?? null,
             updatedAt: row.updated_at ?? null,
         };
@@ -260,11 +277,9 @@ export function registerAgentCompatRoutes(
     // DELETE /api/agent/settings
     app.delete('/api/agent/settings', async (c) => {
         const kv = kvFor(c.get('tenant'));
-        const existing = await kv.getJson<Record<string, unknown>>('agent_settings', {});
-        const hadSettings = Object.keys(existing).length > 0;
         await kv.setJson('agent_settings', {}, '');
         const scope = c.req.query('scope') ?? 'user';
-        return c.json({ deleted: hadSettings ? 1 : 0, message: 'Settings reset', scope });
+        return c.json({ deleted: 1, message: 'Settings reset', scope });
     });
 
     // GET /api/agent/mcp/{profile_slug}
@@ -362,9 +377,8 @@ export function registerAgentCompatRoutes(
 
     // GET /api/mcp-servers
     app.get('/api/mcp-servers', async (c) => {
-        const mcpServers = (
-            await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ?', [c.get('tenant')])
-        ).map(redactConfig);
+        const rows = await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ?', [c.get('tenant')]);
+        const mcpServers = await Promise.all(rows.map(redactConfig));
         return c.json({ mcpServers });
     });
 
@@ -386,9 +400,20 @@ export function registerAgentCompatRoutes(
         };
         const id = crypto.randomUUID();
         const nowStr = new Date().toISOString();
+        // Merge fields into config for persistence
+        const mergedConfig = {
+            ...(typeof b.config === 'object' && b.config !== null ? b.config as Record<string, unknown> : {}),
+            slug: b.slug,
+            description: b.description,
+            auth_type: b.auth_type,
+            token: b.token,
+            tool_filter: b.tool_filter,
+            category: b.category,
+            profile_slug: b.profile_slug,
+        };
         await runner.exec(
             'INSERT INTO mcp_servers (id, tenant_slug, name, url, transport, config, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)',
-            [id, c.get('tenant'), b.name ?? 'server', b.url ?? '', b.transport ?? 'http', await encryptedConfig(b.config) ?? null, 1, nowStr, nowStr],
+            [id, c.get('tenant'), b.name ?? 'server', b.url ?? '', b.transport ?? 'http', await encryptedConfig(mergedConfig) ?? null, b.is_active ?? 1, nowStr, nowStr],
         );
         return c.json({
             id,
@@ -401,7 +426,7 @@ export function registerAgentCompatRoutes(
             hasAuth: Boolean(b.token),
             toolFilter: b.tool_filter ?? null,
             category: b.category ?? null,
-            isActive: b.is_active ?? true,
+            isActive: Boolean(b.is_active ?? 1),
             isPublic: false,
             tenantId: null,
             projectId: null,
@@ -414,7 +439,7 @@ export function registerAgentCompatRoutes(
     // GET /api/mcp-servers/{server_id}
     app.get('/api/mcp-servers/:server_id', async (c) => {
         const r = await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), c.req.param('server_id')]);
-        return r[0] ? c.json(redactConfig(r[0])) : c.json({ detail: 'MCP server not found' }, 404);
+        return r[0] ? c.json(await redactConfig(r[0])) : c.json({ detail: 'MCP server not found' }, 404);
     });
 
     // PUT /api/mcp-servers/{server_id}

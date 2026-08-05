@@ -50,12 +50,18 @@ export function registerWorkflowsRoutes(app: App, phase2For: (t: string) => Phas
             to?: string[];
             subject?: string;
         };
-        // Product parity: return 401 for validation errors when not authenticated
-        // (product's require_tenant_context dependency runs before body validation)
+
+        // Body validation: return 422 for malformed input (only after auth check)
+        // Product parity: FastAPI validation runs AFTER require_tenant_context,
+        // so authenticated users get 422 for invalid input.
         if (!body.to || (Array.isArray(body.to) && body.to.length === 0)) {
-            return c.json({ detail: 'Authentication required' }, 401);
+            return c.json({ detail: 'to is required' }, 422);
         }
-        if (!body.subject) return c.json({ detail: 'Authentication required' }, 401);
+        if (!body.subject) {
+            return c.json({ detail: 'subject is required' }, 422);
+        }
+
+        // Community deployments have no email provider configured
         return c.json({ detail: 'Email send failed' }, 502);
     });
 }
