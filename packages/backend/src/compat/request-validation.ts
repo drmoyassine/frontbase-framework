@@ -89,14 +89,13 @@ function fastApiIssue(
         if (badInput === undefined || badInput === null) {
             type = 'missing';
             msg = 'Field required';
-            // Product parity: for missing fields in request body, return the entire
-            // request body as input, not null. This matches Pydantic's behavior.
+            // Product parity: Pydantic returns input: null for missing body fields.
             if (location === 'body') {
                 return {
                     type,
                     loc: [location, ...path],
                     msg,
-                    input: input ?? {},
+                    input: null,
                 };
             }
         } else if (expected === 'string') {

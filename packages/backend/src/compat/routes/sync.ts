@@ -301,12 +301,22 @@ function wordpressConfig(config: Record<string, unknown>): {
 /**
  * Validation error envelope matching FastAPI's validation response shape.
  * Used for 422 responses when request body/query/path parameters fail validation.
+ *
+ * Product parity: the product returns a full envelope with success, error, details (plural),
+ * and message fields. This matches Pydantic/FastAPI validation error format.
  */
 function validationError(details: { type: string; loc: string[]; msg: string; input: unknown }[]): {
-    detail: typeof details;
+    success: false;
+    error: string;
+    details: typeof details;
+    message: string;
 } {
-    // Product parity: return Pydantic/FastAPI validation error format
-    return { detail: details };
+    return {
+        success: false,
+        error: 'Validation Error',
+        details,
+        message: 'The data provided is invalid',
+    };
 }
 
 /**
@@ -415,7 +425,14 @@ export function registerSyncRoutes(
         }
 
         const name = String(b.name ?? 'Untitled Datasource');
+        const VALID_TYPES = ['supabase', 'postgres', 'wordpress', 'wordpress_rest', 'wordpress_graphql', 'wordpress_plugin', 'neon', 'planetscale', 'turso', 'mysql', 'sqlite', 'google_sheets', 'rest'];
         const kind = String(b.type ?? b.kind ?? 'sqlite');
+        // Product parity: validate type enum. The product returns 422 for invalid enum values.
+        if (b.type !== undefined && b.type !== null && typeof b.type === 'string' && !VALID_TYPES.includes(kind)) {
+            return c.json(validationError([
+                { type: 'enum', loc: ['body', 'type'], msg: `Input should be ${VALID_TYPES.join(', ')}`, input: kind },
+            ]), 422);
+        }
         const id = crypto.randomUUID();
         const tenant = c.get('tenant');
         const store = syncStoreFor(tenant);
@@ -475,10 +492,15 @@ export function registerSyncRoutes(
             ]), 422);
         }
 
-        // Product parity: do NOT validate type against enum upfront.
-        // The product tries to use invalid types and crashes with TypeError (500).
-        // Let invalid string types through so they crash with TypeError, matching product behavior.
+        // Product parity: validate type against the allowed enum values.
+        // The product returns 422 for invalid enum values, not 500 TypeError.
+        const VALID_TYPES = ['supabase', 'postgres', 'wordpress', 'wordpress_rest', 'wordpress_graphql', 'wordpress_plugin', 'neon', 'planetscale', 'turso', 'mysql', 'sqlite', 'google_sheets', 'rest'];
         const kind = String(b.type ?? b.kind ?? 'sqlite');
+        if (!VALID_TYPES.includes(kind)) {
+            return c.json(validationError([
+                { type: 'enum', loc: ['body', 'type'], msg: `Input should be ${VALID_TYPES.join(', ')}`, input: kind },
+            ]), 422);
+        }
 
         // SPA sends a FLAT DatasourceCreate payload (credential fields + provider_account_id
         // at top level, no `config` wrapper). Normalize, then hydrate from the connected
@@ -604,9 +626,17 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const existing = await store.getDatasource(id);
         if (!existing) return c.json({ detail: 'Datasource not found' }, 404);
+        const VALID_TYPES = ['supabase', 'postgres', 'wordpress', 'wordpress_rest', 'wordpress_graphql', 'wordpress_plugin', 'neon', 'planetscale', 'turso', 'mysql', 'sqlite', 'google_sheets', 'rest'];
+        const kind = String(b.type ?? b.kind ?? existing.kind);
+        // Product parity: validate type enum when provided. The product returns 422 for invalid enum values.
+        if (b.type !== undefined && b.type !== null && typeof b.type === 'string' && !VALID_TYPES.includes(kind)) {
+            return c.json(validationError([
+                { type: 'enum', loc: ['body', 'type'], msg: `Input should be ${VALID_TYPES.join(', ')}`, input: kind },
+            ]), 422);
+        }
         const updated = await store.updateDatasource(id, {
             name: b.name,
-            kind: b.type ?? b.kind,
+            kind,
             config: b.config,
         }, now());
         return c.json(serializeDatasource(updated!));
@@ -634,7 +664,14 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
+        const VALID_TYPES = ['supabase', 'postgres', 'wordpress', 'wordpress_rest', 'wordpress_graphql', 'wordpress_plugin', 'neon', 'planetscale', 'turso', 'mysql', 'sqlite', 'google_sheets', 'rest'];
         const kind = String(b.type ?? b.kind ?? ds.kind);
+        // Product parity: validate type enum when provided. The product returns 422 for invalid enum values.
+        if (b.type !== undefined && b.type !== null && typeof b.type === 'string' && !VALID_TYPES.includes(kind)) {
+            return c.json(validationError([
+                { type: 'enum', loc: ['body', 'type'], msg: `Input should be ${VALID_TYPES.join(', ')}`, input: kind },
+            ]), 422);
+        }
         // Flat DatasourceCreate payload: normalize, hydrate from connected account, enrich.
         const config = await mergeAccount(c.get('tenant'), kind, flatBodyToConfig({ ...ds.config, ...b }));
         try {

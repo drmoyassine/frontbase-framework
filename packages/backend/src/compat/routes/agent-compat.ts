@@ -80,22 +80,24 @@ const CORE_TOOLS = [
     ['triggerWorkflow', 'Trigger Workflow', 'Workflows'],
 ].map(([name, label, category]) => ({ name, label, category, disabled: false }));
 
-const builtinSkillViews = () => BUILTIN_SKILLS.map((skill) => ({
-    id: skill.id,
-    slug: skill.slug,
-    name: skill.name,
-    description: skill.description,
-    category: skill.category,
-    toolDefinitions: skill.toolDefinitions,
-    version: '1.0.0',
-    isBuiltin: true,
-    isActive: true,
+const builtinSkillIds = new Set(BUILTIN_SKILLS.map((s) => s.id));
+
+const formatSkill = (row: any, isBuiltin: boolean) => ({
+    id: row.id ?? '',
+    name: row.name ?? '',
+    slug: row.slug ?? '',
+    description: row.description ?? null,
+    category: row.category ?? null,
+    toolDefinitions: row.tool_definitions ?? [],
+    version: row.version ?? '1.0.0',
+    isBuiltin,
+    isActive: Boolean(row.is_active ?? 1),
     tenantId: null,
     projectId: null,
-    profileSlug: null,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-}));
+    profileSlug: row.profile_slug ?? null,
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
+});
 
 export function registerAgentCompatRoutes(
     app: App,
@@ -157,25 +159,6 @@ export function registerAgentCompatRoutes(
         };
     };
 
-    const redactSkillConfig = (row: any) => {
-        const { config } = row;
-        return {
-            id: row.id ?? '',
-            name: row.name ?? '',
-            slug: row.slug ?? '',
-            description: row.description ?? null,
-            category: row.category ?? null,
-            toolDefinitions: row.tool_definitions ?? [],
-            version: row.version ?? '1.0.0',
-            isBuiltin: false,
-            isActive: Boolean(row.is_active ?? 1),
-            tenantId: null,
-            projectId: null,
-            profileSlug: row.profile_slug ?? null,
-            createdAt: row.created_at ?? null,
-            updatedAt: row.updated_at ?? null,
-        };
-    };
     const profilesFor = (tenant: string) =>
         kvFor(tenant).getJson<Array<{ id?: string; name?: string }>>('agent_profiles', []);
     const profileFor = async (tenant: string, slug: string) =>
@@ -502,11 +485,11 @@ export function registerAgentCompatRoutes(
 
     // GET /api/agent-skills
     app.get('/api/agent-skills', async (c) => {
-        const custom = (await runner.query(
+        const rows = await runner.query(
             'SELECT * FROM agent_skills WHERE tenant_slug = ?',
             [c.get('tenant')],
-        )).map(redactSkillConfig);
-        const skills = [...builtinSkillViews(), ...custom];
+        );
+        const skills = rows.map((row) => formatSkill(row, builtinSkillIds.has(String(row.id))));
         return c.json({ skills, total: skills.length });
     });
 
@@ -599,7 +582,7 @@ export function registerAgentCompatRoutes(
         const result = forProfile.flatMap((install) => {
             const skill = byId.get(install.skillId);
             return skill ? [{
-                ...redactSkillConfig(skill),
+                ...formatSkill(skill, builtinSkillIds.has(String(skill.id))),
                 installId: install.id,
                 configOverrides: install.configOverrides ?? null,
                 installedAt: install.installedAt,
