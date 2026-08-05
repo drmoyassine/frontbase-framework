@@ -139,8 +139,8 @@ export function registerSettingsRoutes(
                     redis_token_ciphertext: tokenCiphertext ?? null,
                 };
                 await kvFor(c.get('tenant')).setJson(domain, persisted, now());
-                // Merge defaults with persisted values, return in exact key order product expects
-                const merged = { ...DEFAULTS.redis as object, ...persisted } as Record<string, unknown>;
+                // Product PUT response: input merged with defaults, NOT stored values
+                const merged = { ...DEFAULTS.redis as object, ...input } as Record<string, unknown>;
                 // Product returns null for redis_token, never the actual value
                 return c.json({
                     redis_url: merged.redis_url ?? null,

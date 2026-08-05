@@ -35,6 +35,10 @@ export function registerProjectRoutes(app: App, kvFor: (t: string) => KeyValueSt
             created_at: storedRecord.created_at || ts,
             updated_at: storedRecord.updated_at || ts,
         };
+        // Ensure usersConfig is always an object, never null (product returns {})
+        if (response.usersConfig === null || response.usersConfig === undefined) {
+            response.usersConfig = {};
+        }
         return c.json(response);
     });
     // PUT /api/project/
@@ -50,6 +54,10 @@ export function registerProjectRoutes(app: App, kvFor: (t: string) => KeyValueSt
             created_at: existing.created_at || ts,
             updated_at: ts,
         };
+        // Ensure usersConfig is always an object, never null (product returns {})
+        if (final.usersConfig === null || final.usersConfig === undefined) {
+            final.usersConfig = {};
+        }
         await kvFor(c.get('tenant')).setJson('project', final, ts);
         return c.json(final);
     });

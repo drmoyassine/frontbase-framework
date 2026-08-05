@@ -94,8 +94,8 @@ function reg(
         const formatTimestamp = (ts: unknown): string => {
             const str = String(ts ?? '');
             if (!str) return '';
-            // Remove trailing Z or +00:00Z to normalize
-            const normalized = str.replace(/[Z+]00:00:00?$/, '');
+            // Remove malformed Z+00:00Z, then +00:00Z, then trailing Z (from toISOString) - longer patterns first
+            const normalized = str.replace(/Z\+00:00Z?$|\+00:00Z?$|Z$/, '');
             return isSystem ? normalized : normalized + '+00:00Z';
         };
         // For system resources, use the special local engine; for user resources, use empty defaults
@@ -244,7 +244,7 @@ function reg(
 
         // Prevent duplicate URLs - return 409 like product does
         const configFromBodyValue = configFromBody(b);
-        const newUrl = configFromBodyValue[urlField] as string | undefined;
+        const newUrl = configFromBodyValue.url as string | undefined;
         if (newUrl) {
             const existing = await store.listEdgeResources(kind);
             for (const row of existing) {

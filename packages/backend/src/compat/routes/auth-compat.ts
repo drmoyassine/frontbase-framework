@@ -370,16 +370,25 @@ export function registerAuthCompatAuthedRoutes(
         if (!u || !tenantSlug) return null;
         return { u, tenantSlug };
     };
+    // Helper: check authentication WITH email/role validation. Test-only principals
+    // (from parity test resolvePrincipal) might have only { id, role } without email.
+    // All security endpoints must use this instead of requireAuth to reject such
+    // incomplete principals and match the product's 401 behavior.
+    const requireValidAuth = (c: Context<{ Variables: ConsoleAuthVars }>) => {
+        const principal = c.get('principal');
+        const u = principal?.user as { id?: string; email?: string; role?: string } | null;
+        const tenantSlug = principal?.tenant ?? null;
+        if (!u || !tenantSlug) return null;
+        // Test-only principals (from parity test resolvePrincipal) might have only { id, role }
+        // without email. Reject these to match product behavior.
+        if (!u.email || !u.role) return null;
+        return { u, tenantSlug };
+    };
     // GET /api/auth/me
     app.get('/api/auth/me', (c) => {
-        const auth = requireAuth(c);
+        const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Not authenticated' }, 401);
         const { u } = auth;
-        // Validate that the user has the required fields for a real authenticated session.
-        // Test-only principals (from principalFor) might have only { id } without email/role.
-        if (!u.email || !u.role) {
-            return c.json({ detail: 'Not authenticated' }, 401);
-        }
         return c.json({
             user: {
                 id: u.id,
@@ -398,7 +407,7 @@ export function registerAuthCompatAuthedRoutes(
     });
     // GET /api/auth/security/audit-logs
     app.get('/api/auth/security/audit-logs', async (c) => {
-        const auth = requireAuth(c);
+        const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Unauthorized' }, 401);
         const raw = await kvFor(auth.tenantSlug).getJson<Record<string, unknown>[]>('auth_security_audit', []);
         const limit = Math.max(0, Number(c.req.query('limit') ?? 50));
@@ -410,13 +419,13 @@ export function registerAuthCompatAuthedRoutes(
     });
     // GET /api/auth/security/blocklist
     app.get('/api/auth/security/blocklist', async (c) => {
-        const auth = requireAuth(c);
+        const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Unauthorized' }, 401);
         return c.json(await kvFor(auth.tenantSlug).getJson<Record<string, unknown>[]>('auth_security_blocklist', []));
     });
     // POST /api/auth/security/blocklist
     app.post('/api/auth/security/blocklist', async (c) => {
-        const auth = requireAuth(c);
+        const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Unauthorized' }, 401);
         const input = await c.req.json().catch(() => null);
         const parsed = zIpBlockRequest.safeParse(input);
@@ -445,7 +454,7 @@ export function registerAuthCompatAuthedRoutes(
     });
     // DELETE /api/auth/security/blocklist/{ban_id}
     app.delete('/api/auth/security/blocklist/:ban_id', async (c) => {
-        const auth = requireAuth(c);
+        const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Unauthorized' }, 401);
         const store = kvFor(auth.tenantSlug);
         const entries = await store.getJson<Record<string, unknown>[]>('auth_security_blocklist', []);
@@ -458,7 +467,7 @@ export function registerAuthCompatAuthedRoutes(
     });
     // GET /api/auth/security/bot-protection
     app.get('/api/auth/security/bot-protection', async (c) => {
-        const auth = requireAuth(c);
+        const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Unauthorized' }, 401);
         const stored = await kvFor(auth.tenantSlug).getJson<Record<string, unknown>>('auth_security_bot', {});
         // Match product: merge stored values over defaults (so missing fields get defaults)
@@ -468,7 +477,7 @@ export function registerAuthCompatAuthedRoutes(
     });
     // POST /api/auth/security/bot-protection
     app.post('/api/auth/security/bot-protection', async (c) => {
-        const auth = requireAuth(c);
+        const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Unauthorized' }, 401);
         const input = await c.req.json().catch(() => null);
         const parsed = zBotProtectionUpdateRequest.safeParse(input);
@@ -488,20 +497,20 @@ export function registerAuthCompatAuthedRoutes(
     });
     // GET /api/auth/security/bot-protection/metrics
     app.get('/api/auth/security/bot-protection/metrics', async (c) => {
-        const auth = requireAuth(c);
+        const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Unauthorized' }, 401);
         const bans = await kvFor(auth.tenantSlug).getJson<unknown[]>('auth_security_blocklist', []);
         return c.json({ solve_rate: 0, total_challenges: 0, blocked_solves: 0, banned_ips: bans.length });
     });
     // GET /api/auth/security/waf
     app.get('/api/auth/security/waf', async (c) => {
-        const auth = requireAuth(c);
+        const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Unauthorized' }, 401);
         return c.json(await kvFor(auth.tenantSlug).getJson('auth_security_waf', { enabled: false }));
     });
     // POST /api/auth/security/waf
     app.post('/api/auth/security/waf', async (c) => {
-        const auth = requireAuth(c);
+        const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Unauthorized' }, 401);
         const input = await c.req.json().catch(() => null);
         const parsed = zWafUpdateRequest.safeParse(input);

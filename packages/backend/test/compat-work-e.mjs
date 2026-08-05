@@ -139,7 +139,7 @@ test('E3 database: configured datasource data shapes the response and stays tena
         tableName: 'published_pages',
         column: 'slug',
     })).json();
-    assert.deepEqual(distinct.values, ['home']);
+    assert.deepEqual(distinct.data, ['home']);
 
     // The isolation claim is that tenant-b sees NONE of tenant-a's tables — not that
     // it gets an error envelope. The product answers an unconfigured tenant with

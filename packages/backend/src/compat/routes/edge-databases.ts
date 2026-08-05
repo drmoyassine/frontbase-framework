@@ -91,7 +91,7 @@ export function registerEdgeDatabasesRoutes(
     // GET /api/edge-databases/
     app.get('/api/edge-databases/', async (c) => {
         const store = phase2For(c.get('tenant'));
-        const local = serializeEdgeResource({
+        const local = asDatabase({
             id: 'local-database',
             name: 'Local SQLite',
             provider: 'sqlite',
@@ -99,12 +99,11 @@ export function registerEdgeDatabasesRoutes(
             created_at: '',
             updated_at: '',
             config: { url: 'file:local.db', is_default: false },
-        }, 'db_url', {
+        });
+        // Override asDatabase defaults for local database
+        Object.assign(local, {
             target_count: 1,
             linked_engines: [{ id: 'local-edge', name: 'Local Edge', provider: 'unknown' }],
-            warning: null,
-            supports_remote_delete: false,
-            schema_name: null,
         });
         return c.json(await Promise.all(
             [local, ...(await store.listEdgeResources('database')).map((row) => serializeStored(store, row))],

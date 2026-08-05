@@ -155,15 +155,11 @@ export function registerStorageRoutes(
                 provider: b.provider ?? existingProvider,
                 config: await encryptedConfig(b.config),
             }, now());
+            const updated = await store.listBuckets();
+            const updatedBucket = updated.find((r) => String(r.id) === id);
             return c.json({
                 success: true,
-                bucket: {
-                    id,
-                    name: b.name ?? existingName,
-                    provider: b.provider ?? existingProvider,
-                    config: {},
-                    updated_at: now(),
-                },
+                bucket: redactConfig(updatedBucket ?? { id, name: b.name ?? existingName, provider: b.provider ?? existingProvider, created_at: now() }),
             });
         } catch (e) {
             const err = e as Error;
@@ -185,10 +181,21 @@ export function registerStorageRoutes(
                     detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
                 }, 422);
             }
-            if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+            const kv = kvFor(c.get('tenant'));
+            const providers = await kv.getJson<Array<{ id?: string; provider?: string }>>('storage_providers', []);
+            const provider = providers.find((p) => p.id === providerId);
+            if (!provider) {
                 return c.json({ detail: 'Storage provider not found' }, 404);
             }
-            await phase2For(c.get('tenant')).deleteBucket(c.req.param('bucket_id'));
+            const id = c.req.param('bucket_id');
+            const store = phase2For(c.get('tenant'));
+            const existing = await store.listBuckets();
+            const bucket = existing.find((r) => String(r.id) === id);
+            if (!bucket) {
+                const providerType = typeof provider.provider === 'string' ? provider.provider : 'local';
+                return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
+            }
+            await store.deleteBucket(id);
             return c.json({ success: true, message: 'Bucket deleted' });
         } catch (e) {
             const err = e as Error;
