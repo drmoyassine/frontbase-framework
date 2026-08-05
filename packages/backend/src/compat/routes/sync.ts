@@ -464,7 +464,14 @@ export function registerSyncRoutes(
             ]), 422);
         }
 
+        // Product parity: validate type/kind against allowed enum values.
+        const validTypes = ['sqlite', 'postgres', 'mysql', 'supabase', 'neon', 'turso', 'cloudflare_d1', 'upstash_redis', 'google_sheets', 'wordpress_plugin'];
         const kind = String(b.type ?? b.kind ?? 'sqlite');
+        if (!validTypes.includes(kind)) {
+            return c.json(validationError([
+                { type: 'value_error', loc: ['body', 'type'], msg: `Invalid datasource type '${kind}'`, input: b.type },
+            ]), 422);
+        }
         // SPA sends a FLAT DatasourceCreate payload (credential fields + provider_account_id
         // at top level, no `config` wrapper). Normalize, then hydrate from the connected
         // account + lazily enrich.
@@ -1120,21 +1127,19 @@ export function registerSyncRoutes(
         });
     });
 
-    // POST /api/sync/views/{view_id}/records
+    // POST /api/sync/views/{view_id}/records (slashless)
+    // POST /api/sync/views/{view_id}/records/ (slashed - returns 405 to match FastAPI)
     //
     // The writes live on the SLASHLESS path and the read on the slashed one: the
     // contract declares `/records` for patch+post and `/records/` for get. FastAPI
     // therefore answers 405 for a write aimed at `/records/` — the path exists, but
-    // only for GET. Registering the working handler on the slashed path put the 405
-    // on the only path the console ever calls.
+    // only for GET. We register both routes explicitly to handle both slash variants.
+    app.post('/api/sync/views/:view_id/records/', async (c) => {
+        // Product parity: slashed path returns 405 (GET exists here, not POST).
+        return c.json({ detail: 'Method Not Allowed' }, 405);
+    });
+
     app.post('/api/sync/views/:view_id/records', async (c) => {
-        // Product parity: return 405 if the path has a trailing slash (FastAPI behavior).
-        // Hono's routing might match both `/records/` and `/records` to the same handler,
-        // so we explicitly check the incoming path and return 405 for the slashed variant.
-        const path = c.req.path;
-        if (path.endsWith('/records/')) {
-            return c.json({ detail: 'Method Not Allowed' }, 405);
-        }
 
         const viewId = c.req.param('view_id');
         const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
@@ -1169,15 +1174,14 @@ export function registerSyncRoutes(
         }
     });
 
-    // PATCH /api/sync/views/{view_id}/records  (slashless — see the POST above)
+    // PATCH /api/sync/views/{view_id}/records (slashless — see the POST above)
+    // PATCH /api/sync/views/{view_id}/records/ (slashed - returns 405 to match FastAPI)
+    app.patch('/api/sync/views/:view_id/records/', async (c) => {
+        // Product parity: slashed path returns 405 (GET exists here, not PATCH).
+        return c.json({ detail: 'Method Not Allowed' }, 405);
+    });
+
     app.patch('/api/sync/views/:view_id/records', async (c) => {
-        // Product parity: return 405 if the path has a trailing slash (FastAPI behavior).
-        // Hono's routing might match both `/records/` and `/records` to the same handler,
-        // so we explicitly check the incoming path and return 405 for the slashed variant.
-        const path = c.req.path;
-        if (path.endsWith('/records/')) {
-            return c.json({ detail: 'Method Not Allowed' }, 405);
-        }
 
         const viewId = c.req.param('view_id');
         const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
@@ -1835,12 +1839,13 @@ export function registerSyncRoutes(
 
     // POST /api/sync/datasources/sheets/connect/callback/
     app.post('/api/sync/datasources/sheets/connect/callback/', async (c) => {
-        // Product parity: validate required query parameter local_kw.
+        // Product parity: collect all validation errors before returning.
+        const details: { type: string; loc: string[]; msg: string; input: unknown }[] = [];
+
+        // Validate required query parameter local_kw.
         const localKw = c.req.query('local_kw');
         if (localKw === undefined || localKw === null) {
-            return c.json(validationError([
-                { type: 'missing', loc: ['query', 'local_kw'], msg: 'Field required', input: null },
-            ]), 422);
+            details.push({ type: 'missing', loc: ['query', 'local_kw'], msg: 'Field required', input: null });
         }
 
         const body = await c.req.json().catch(() => ({})) as {
@@ -1851,11 +1856,13 @@ export function registerSyncRoutes(
             webAppSecret?: string;
         };
 
-        // Product parity: validate token body parameter type.
+        // Validate token body parameter type.
         if (body.token !== undefined && typeof body.token !== 'string') {
-            return c.json(validationError([
-                { type: 'string_type', loc: ['body', 'token'], msg: 'Input should be a valid string', input: body.token },
-            ]), 422);
+            details.push({ type: 'string_type', loc: ['body', 'token'], msg: 'Input should be a valid string', input: body.token });
+        }
+
+        if (details.length > 0) {
+            return c.json(validationError(details), 422);
         }
         const tokenHash = await sha256Hex(String(body.token ?? ''));
         const rows = await controlRunner.query(

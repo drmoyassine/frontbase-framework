@@ -206,6 +206,15 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
         const bodyValidator = validator(`${prefix}Body`);
         const jsonSchema = operation.requestBody?.content?.['application/json']?.schema;
         if (bodyValidator && jsonSchema) {
+            // RULE 2: authentication before body validation for workflows send-email.
+            // Must repeat the auth check here since body validation runs before handlers.
+            if (path === '/api/workflows/send-email' && method === 'post') {
+                const principal = c.get('principal');
+                const tenant = c.get('tenant');
+                if (!principal?.user || !tenant) {
+                    return c.json({ detail: 'Authentication required' }, 401);
+                }
+            }
             // Check if request body is required (OpenAPI requestBody.required is true)
             const isBodyRequired = operation.requestBody?.required === true;
             let body: unknown;

@@ -60,8 +60,7 @@ export function registerEdgeMiscRoutes(
     const listApiKeys = async (c: any) => {
         const keys = await runner.query(
             `SELECT k.id, k.name, k.scope, k.is_active, k.expires_at,
-                    k.created_at, k.updated_at, k.last_used_at, s.prefix,
-                    k.edge_engine_id,
+                    k.created_at, k.updated_at, s.prefix,
                     CASE WHEN s.ciphertext IS NOT NULL AND s.revealed_at IS NULL THEN 1 ELSE 0 END AS can_reveal
              FROM edge_api_keys k
              LEFT JOIN edge_api_key_secrets s
@@ -69,9 +68,14 @@ export function registerEdgeMiscRoutes(
              WHERE k.tenant_slug = ?`,
             [c.get('tenant')],
         );
-        // Match product shape: add engine_name: null for each key
+        // Match product shape: add edge_engine_id, last_used_at, engine_name (all null)
         return c.json({
-            keys: keys.map((k: Record<string, unknown>) => ({ ...k, engine_name: null })),
+            keys: keys.map((k: Record<string, unknown>) => ({
+                ...k,
+                edge_engine_id: null,
+                last_used_at: null,
+                engine_name: null,
+            })),
             total: keys.length,
         });
     };
@@ -112,18 +116,18 @@ export function registerEdgeMiscRoutes(
         await auditSecret(runner, c.get('tenant'), 'edge_api_key_created', id, timestamp);
         return c.json({
             id,
-            key,
             name: parsed.data.name,
-            scope: parsed.data.scope,
             prefix,
-            is_active: true,
-            expires_at: parsed.data.expires_at ?? null,
-            last_used_at: null,
-            can_reveal: true,
             edge_engine_id: null,
             engine_name: null,
+            is_active: true,
+            scope: parsed.data.scope,
+            expires_at: parsed.data.expires_at ?? null,
+            last_used_at: null,
             created_at: timestamp,
             updated_at: timestamp,
+            can_reveal: true,
+            key,
         }, 201);
     });
 

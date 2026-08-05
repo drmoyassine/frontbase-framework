@@ -89,10 +89,10 @@ export function registerSettingsRoutes(
                 // Merge defaults with stored, then hide ciphertext, never expose it
                 const merged = { ...DEFAULTS.redis as object, ...storedRedis };
                 // Return in exact key order product expects (for JSON string comparison parity)
-                // Product returns empty string for redis_token when none set, not null
+                // Product returns null for redis_token when none set, not empty string
                 return c.json({
                     redis_url: merged.redis_url ?? null,
-                    redis_token: (merged.redis_token as string ?? '') || '',
+                    redis_token: null,
                     redis_type: merged.redis_type ?? 'self-hosted',
                     redis_enabled: merged.redis_enabled ?? false,
                     cache_ttl_data: merged.cache_ttl_data ?? 60,
@@ -141,11 +141,10 @@ export function registerSettingsRoutes(
                 await kvFor(c.get('tenant')).setJson(domain, persisted, now());
                 // Merge defaults with persisted values, return in exact key order product expects
                 const merged = { ...DEFAULTS.redis as object, ...persisted } as Record<string, unknown>;
-                // Product returns the input redis_token value (or empty string), not null
-                const returnedToken = (input.redis_token as string ?? '') || '';
+                // Product returns null for redis_token, never the actual value
                 return c.json({
                     redis_url: merged.redis_url ?? null,
-                    redis_token: returnedToken,
+                    redis_token: null,
                     redis_type: merged.redis_type ?? 'self-hosted',
                     redis_enabled: merged.redis_enabled ?? false,
                     cache_ttl_data: merged.cache_ttl_data ?? 60,
@@ -241,10 +240,27 @@ export function registerSettingsRoutes(
                         break;
                     }
                 }
-                // Map Zod's "invalid_type" + "undefined" to Pydantic's "missing"
+                // Map Zod error codes to Pydantic error types
                 let errorType: string = err.code;
-                if (err.code === 'invalid_type' && err.received === 'undefined') {
-                    errorType = 'missing';
+                if (err.code === 'invalid_type') {
+                    // Map Zod's invalid_type to Pydantic's specific type codes
+                    // Pydantic uses: string_type, int_type, float_type, bool_type, etc.
+                    if (err.received === 'undefined') {
+                        errorType = 'missing';
+                    } else if (err.expected === 'string') {
+                        errorType = 'string_type';
+                    } else if (err.expected === 'number') {
+                        errorType = 'int_type';
+                    } else if (err.expected === 'boolean') {
+                        errorType = 'bool_type';
+                    } else if (err.expected === 'array') {
+                        errorType = 'list_type';
+                    } else if (err.expected === 'object') {
+                        errorType = 'dict_type';
+                    } else {
+                        // Fallback: convert "expected" to Pydantic format
+                        errorType = `${err.expected}_type`;
+                    }
                 }
                 return {
                     type: errorType,

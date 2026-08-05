@@ -42,23 +42,24 @@ function asDraft(row: Record<string, unknown>, contentHash: string | null = null
     };
     // content_hash: use explicit param if provided (PATCH computes fresh), otherwise fall back to row value, default null
     const hash = contentHash ?? (row.content_hash ?? null);
+    // Product field order: name, description, trigger_type, trigger_config, nodes, edges, settings, id, is_published, is_active, published_version, deployed_engines, content_hash, created_at, updated_at, created_by
     const base: Record<string, unknown> = {
-        id: String(row.id),
         name: String(row.name ?? ''),
-        nodes: parse(row.nodes),
-        edges: parse(row.edges),
-        is_active: Boolean(row.is_active),
-        is_published: Boolean(row.is_published),
+        description: null,
         trigger_type: String(row.trigger_type ?? 'manual'),
         trigger_config: null,
-        description: null,
+        nodes: parse(row.nodes),
+        edges: parse(row.edges),
         settings: {},
+        id: String(row.id),
+        is_published: Boolean(row.is_published),
+        is_active: Boolean(row.is_active),
         published_version: row.is_published ? Number(row.version ?? 1) : null,
         deployed_engines: {},
-        created_by: null,
+        content_hash: hash,
         created_at: String(row.created_at ?? ''),
         updated_at: String(row.updated_at ?? row.created_at ?? ''),
-        content_hash: hash,
+        created_by: null,
     };
     return base;
 }

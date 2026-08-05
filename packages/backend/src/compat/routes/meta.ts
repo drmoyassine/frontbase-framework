@@ -24,6 +24,12 @@ export function registerMetaRoutes(
     app.get('/api/queue/health', async (c) => {
         await runner.query('SELECT 1');
         // Framework has no task queue workers; return unhealthy status to match product shape (product returns unhealthy when Redis unavailable)
-        return c.json({ status: 'unhealthy', active_workers: null, active: null, registered: null, error: null });
+        return c.json({
+            status: 'unhealthy',
+            active_workers: null,
+            active: null,
+            registered: null,
+            error: 'Error 10061 connecting to localhost:6379. No connection could be made because the target machine actively refused it.'
+        });
     });
 }

@@ -62,9 +62,10 @@ function reg(
         return { valid: true };
     }
 
-    const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
-        if (config === undefined) return undefined;
-        const ciphertext = await secretCipher.encrypt(JSON.stringify(config));
+    /** Encrypt config or empty object - never return undefined to ensure URL comparison works */
+    const encryptedConfig = async (config: unknown): Promise<string> => {
+        const toEncrypt = config === undefined ? {} : config;
+        const ciphertext = await secretCipher.encrypt(JSON.stringify(toEncrypt));
         if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
         return ciphertext;
     };
@@ -88,6 +89,15 @@ function reg(
     ): Promise<Record<string, unknown>> => {
         const config = await store.getEdgeResourceConfig(String(row.id)) ?? {};
         const url = String(config.url ?? '');
+        const isSystem = Boolean(row.is_system);
+        // Normalize timestamp: remove trailing Z/+00:00Z, then add +00:00Z for user resources
+        const formatTimestamp = (ts: unknown): string => {
+            const str = String(ts ?? '');
+            if (!str) return '';
+            // Remove trailing Z or +00:00Z to normalize
+            const normalized = str.replace(/[Z+]00:00:00?$/, '');
+            return isSystem ? normalized : normalized + '+00:00Z';
+        };
         const base = {
             id: String(row.id),
             name: String(row.name ?? ''),
@@ -95,11 +105,11 @@ function reg(
             [urlField]: url,
             has_token: Boolean(config.token),
             is_default: Boolean(config.is_default),
-            is_system: Boolean(row.is_system),
+            is_system: isSystem,
             provider_account_id: config.provider_account_id != null ? String(config.provider_account_id) : null,
             account_name: config.account_name != null ? String(config.account_name) : null,
-            created_at: String(row.created_at ?? ''),
-            updated_at: String(row.updated_at ?? ''),
+            created_at: formatTimestamp(row.created_at),
+            updated_at: formatTimestamp(row.updated_at),
             engine_count: 0,
             linked_engines: [],
             supports_remote_delete: false,

@@ -27,6 +27,7 @@ export function registerStorageRoutes(
         return {
             ...safe,
             config: {},
+            updated_at: safe.updated_at ?? safe.created_at ?? null,
         };
     };
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
@@ -131,18 +132,26 @@ export function registerStorageRoutes(
             }
             const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
             const id = c.req.param('bucket_id');
-            await phase2For(c.get('tenant')).upsertBucket({
+            const store = phase2For(c.get('tenant'));
+            const existing = await store.listBuckets();
+            const bucket = existing.find((r) => String(r.id) === id);
+            if (!bucket) {
+                return c.json({ success: false, error: 'Bucket not found' }, 404);
+            }
+            const existingName = typeof bucket.name === 'string' ? bucket.name : 'bucket';
+            const existingProvider = typeof bucket.provider === 'string' ? bucket.provider : 'local';
+            await store.upsertBucket({
                 id,
-                name: b.name ?? 'bucket',
-                provider: b.provider ?? 'local',
+                name: b.name ?? existingName,
+                provider: b.provider ?? existingProvider,
                 config: await encryptedConfig(b.config),
             }, now());
             return c.json({
                 success: true,
                 bucket: {
                     id,
-                    name: b.name ?? 'bucket',
-                    provider: b.provider ?? 'local',
+                    name: b.name ?? existingName,
+                    provider: b.provider ?? existingProvider,
                     config: {},
                     updated_at: now(),
                 },
@@ -160,17 +169,27 @@ export function registerStorageRoutes(
 
     // DELETE /api/storage/buckets/{bucket_id}
     app.delete('/api/storage/buckets/:bucket_id', async (c) => {
-        const providerId = c.req.query('provider_id');
-        if (!providerId) {
-            return c.json({
-                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
-            }, 422);
+        try {
+            const providerId = c.req.query('provider_id');
+            if (!providerId) {
+                return c.json({
+                    detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+                }, 422);
+            }
+            if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+                return c.json({ detail: 'Storage provider not found' }, 404);
+            }
+            await phase2For(c.get('tenant')).deleteBucket(c.req.param('bucket_id'));
+            return c.json({ success: true, message: 'Bucket deleted' });
+        } catch (e) {
+            const err = e as Error;
+            if (err.message?.startsWith('validation')) {
+                return c.json({
+                    detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+                }, 422);
+            }
+            throw e;
         }
-        if (!await hasStorageProvider(c.get('tenant'), providerId)) {
-            return c.json({ detail: 'Storage provider not found' }, 404);
-        }
-        await phase2For(c.get('tenant')).deleteBucket(c.req.param('bucket_id'));
-        return c.json({ success: true, message: 'Bucket deleted' });
     });
 
     // POST /api/storage/buckets/{bucket_id}/empty

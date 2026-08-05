@@ -28,12 +28,29 @@ function zodToPydanticError(error: { issues: Array<{ code: string; path: Array<s
     };
 
     return {
-        detail: error.issues.map((issue) => ({
-            type: typeMap[issue.code] || `${issue.code}_error`,
-            loc: ['body', ...issue.path.map(String)],
-            msg: issue.message,
-            input: issue.input ?? null,
-        })),
+        detail: error.issues.map((issue) => {
+            let type = typeMap[issue.code] || `${issue.code}_error`;
+
+            // Handle null/missing body → 'missing' type (product parity)
+            if (issue.code === 'invalid_type' && issue.received === 'null' && issue.expected === 'object') {
+                type = 'missing';
+                // Override message to match product
+                return { type, loc: ['body'], msg: 'Field required', input: null };
+            }
+
+            // Handle expected object but got array/string → 'dict_type' (product parity)
+            if (issue.code === 'invalid_type' && issue.expected === 'object' && issue.received && issue.received !== 'null') {
+                type = 'dict_type';
+                return { type, loc: ['body'], msg: 'Input should be a valid dictionary', input: issue.input ?? null };
+            }
+
+            return {
+                type,
+                loc: ['body', ...issue.path.map(String)],
+                msg: issue.message,
+                input: issue.input ?? null,
+            };
+        }),
     };
 }
 
@@ -346,13 +363,14 @@ export function registerDatabaseRoutes(
 
     // POST /api/database/distinct-values/
     // Zod schema matches product's Pydantic validation - requires object body, returns 422 for arrays/primitives
+    // NOTE: Product allows extra fields (no .strict()), returns success for empty objects
     const zDistinctValuesRequest = z.object({
         table_name: z.string().optional(),
         tableName: z.string().optional(),
         column_name: z.string().optional(),
         columnName: z.string().optional(),
         column: z.string().optional(),
-    }).strict();
+    });
     app.post('/api/database/distinct-values/', async (c) => {
         const parsed = zDistinctValuesRequest.safeParse(await c.req.json().catch(() => null));
         if (!parsed.success) {

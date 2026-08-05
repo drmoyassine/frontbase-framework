@@ -47,6 +47,22 @@ export function registerEdgeDatabasesRoutes(
         provider_account_id: body.provider_account_id,
         provider: body.provider,
     });
+    type ValidationError = { type: string; loc: string[]; msg: string; input: unknown };
+    const validateCreateRequest = (body: Record<string, unknown>): ValidationError[] => {
+        const errors: ValidationError[] = [];
+        if (body.name !== undefined && typeof body.name !== 'string') {
+            errors.push({ type: 'string_type', loc: ['body', 'name'], msg: 'Input should be a valid string', input: body.name });
+        }
+        if (body.provider !== undefined && typeof body.provider !== 'string') {
+            errors.push({ type: 'string_type', loc: ['body', 'provider'], msg: 'Input should be a valid string', input: body.provider });
+        }
+        if (body.db_url === undefined) {
+            errors.push({ type: 'missing', loc: ['body', 'db_url'], msg: 'Field required', input: body });
+        } else if (typeof body.db_url !== 'string') {
+            errors.push({ type: 'string_type', loc: ['body', 'db_url'], msg: 'Input should be a valid string', input: body.db_url });
+        }
+        return errors;
+    };
     const serializeStored = async (
         store: Phase2Store,
         row: Record<string, unknown>,
@@ -73,24 +89,21 @@ export function registerEdgeDatabasesRoutes(
     // GET /api/edge-databases/
     app.get('/api/edge-databases/', async (c) => {
         const store = phase2For(c.get('tenant'));
-        const local = {
+        const local = serializeEdgeResource({
             id: 'local-database',
             name: 'Local SQLite',
             provider: 'sqlite',
-            db_url: 'file:local.db',
-            has_token: false,
-            is_default: false,
             is_system: true,
-            provider_account_id: null,
-            account_name: null,
             created_at: '',
             updated_at: '',
+            config: { url: 'file:local.db', is_default: false },
+        }, 'db_url', {
             target_count: 1,
             linked_engines: [{ id: 'local-edge', name: 'Local Edge', provider: 'unknown' }],
             warning: null,
             supports_remote_delete: false,
             schema_name: null,
-        };
+        });
         return c.json(await Promise.all(
             [local, ...(await store.listEdgeResources('database')).map((row) => serializeStored(store, row))],
         ));
@@ -99,6 +112,10 @@ export function registerEdgeDatabasesRoutes(
     // POST /api/edge-databases/
     app.post('/api/edge-databases/', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: string; provider?: string; config?: unknown };
+        const validationErrors = validateCreateRequest(b);
+        if (validationErrors.length > 0) {
+            return c.json({ detail: validationErrors }, 422);
+        }
         const id = crypto.randomUUID();
         const store = phase2For(c.get('tenant'));
         await store.upsertEdgeResource({

@@ -365,7 +365,7 @@ export function registerAgentCompatRoutes(
         const mcpServers = (
             await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ?', [c.get('tenant')])
         ).map(redactConfig);
-        return c.json({ mcpServers, total: mcpServers.length });
+        return c.json({ mcpServers });
     });
 
     // POST /api/mcp-servers

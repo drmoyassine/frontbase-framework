@@ -25,9 +25,17 @@ const DEFAULT_PROJECT = {
 export function registerProjectRoutes(app: App, kvFor: (t: string) => KeyValueStore, now: () => string): void {
     // GET /api/project/
     app.get('/api/project/', async (c) => {
+        const ts = now();
         const stored = await kvFor(c.get('tenant')).getJson('project', {});
-        // Return stored values with defaults; preserve timestamps from storage
-        return c.json({ ...DEFAULT_PROJECT, ...(stored as object) });
+        // Ensure created_at and updated_at are always present (match PUT behavior)
+        const storedRecord = stored as any;
+        const response = {
+            ...DEFAULT_PROJECT,
+            ...storedRecord,
+            created_at: storedRecord.created_at || ts,
+            updated_at: storedRecord.updated_at || ts,
+        };
+        return c.json(response);
     });
     // PUT /api/project/
     app.put('/api/project/', async (c) => {
