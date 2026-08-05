@@ -51,6 +51,24 @@ const TOLERATED_DIFFS = [
 ];
 
 /**
+ * Framework-feature operations — endpoints where the framework INTENTIONALLY diverges
+ * from the product because it offers a feature the product lacks. These are NOT parity
+ * bugs; classifying them as VIOLATES would punish correct framework behavior. Marked
+ * TOLERATED_DIFF so the gate measures genuine parity, not framework-vs-product scope.
+ *
+ * Keys are `${METHOD} ${path}` (exact). Add here when a restored/flagship framework
+ * feature shows up as a body-shape diff against the product.
+ *   - GET /api/edge-engines/            : framework lists the self-aware Cloudflare system edge first
+ *   - GET /api/database/rls/metadata/   : framework stores Builder RLS form state locally (KV)
+ *   - POST /api/database/rls/metadata/verify/ : local verification of that stored metadata
+ */
+const FRAMEWORK_FEATURE_PATHS = new Set([
+  'GET /api/edge-engines/',
+  'GET /api/database/rls/metadata/',
+  'POST /api/database/rls/metadata/verify/',
+]);
+
+/**
  * Normalized fields that should NOT be compared (timestamps, IDs, etc.).
  * These are excluded from shape comparison because they differ per-system.
  */
@@ -178,15 +196,23 @@ function compareShape(fwBody, prodBody) {
 /**
  * Classify a single operation's conformance.
  */
-function classifyConformance(fwResp, prodResp, operationId) {
-  // Product broken → skip, not a framework bug
-  if (prodResp.status >= 500 || prodResp.status === 0) {
-    return { verdict: 'PRODUCT_BROKEN', reason: `product ${prodResp.status === 0 ? 'timeout/error' : prodResp.status}` };
+function classifyConformance(fwResp, prodResp, operationId, method, path) {
+  // Product broken or rate-limiting → skip, not a framework bug. A 429 means the product
+  // throttled the gate (the corpus fires hundreds of authenticated ops per run); it is a
+  // measurement artifact, not a parity difference.
+  if (prodResp.status >= 500 || prodResp.status === 0 || prodResp.status === 429) {
+    return { verdict: 'PRODUCT_BROKEN', reason: `product ${prodResp.status === 0 ? 'timeout/error' : prodResp.status}${prodResp.status === 429 ? ' (rate-limited)' : ''}` };
   }
 
   // Framework crash → genuine bug
   if (fwResp.status >= 500 || fwResp.status === 0) {
     return { verdict: 'UNREACHABLE', reason: `framework ${fwResp.status === 0 ? 'timeout/error' : fwResp.status}` };
+  }
+
+  // Framework feature the product lacks → not a parity bug. Checked AFTER crash detection
+  // so a genuine 5xx on one of these endpoints is still flagged UNREACHABLE.
+  if (method && path && FRAMEWORK_FEATURE_PATHS.has(`${method.toUpperCase()} ${path}`)) {
+    return { verdict: 'TOLERATED_DIFF', reason: 'framework feature the product lacks (intentional divergence)' };
   }
 
   // Status match (within 4xx equivalence class)
@@ -285,7 +311,7 @@ async function main() {
   // Test all corpus cases
   const results = [];
   const productEvidence = { generatedAt: new Date().toISOString(), operations: {} };
-  const buckets = { CONFORMS: [], VIOLATES: [], UNREACHABLE: [], PRODUCT_BROKEN: [] };
+  const buckets = { CONFORMS: [], TOLERATED_DIFF: [], VIOLATES: [], UNREACHABLE: [], PRODUCT_BROKEN: [] };
 
   let idx = 0;
   for (const testCase of CORPUS.cases) {
@@ -307,11 +333,12 @@ async function main() {
     const fwResp = await captureResponse(FW, testCase.path, request, fwCookie);
 
     // Classify
-    const { verdict, reason, ...details } = classifyConformance(fwResp, prodResp, opId);
+    const { verdict, reason, ...details } = classifyConformance(fwResp, prodResp, opId, testCase.method, testCase.path);
     results.push({ operationId: opId, verdict, reason, ...details });
 
     const label = `${testCase.method} ${testCase.path}`;
     if (verdict === 'CONFORMS') buckets.CONFORMS.push(label);
+    else if (verdict === 'TOLERATED_DIFF') buckets.TOLERATED_DIFF.push(`${label} — ${reason}`);
     else if (verdict === 'VIOLATES') buckets.VIOLATES.push(`${label} — ${reason}`);
     else if (verdict === 'UNREACHABLE') buckets.UNREACHABLE.push(`${label} — ${reason}`);
     else if (verdict === 'PRODUCT_BROKEN') buckets.PRODUCT_BROKEN.push(`${label} — ${reason}`);
@@ -333,6 +360,7 @@ async function main() {
   console.log('\nResults');
   console.log('=======');
   console.log(`  CONFORMS       ${String(buckets.CONFORMS.length).padStart(3)}`);
+  console.log(`  TOLERATED_DIFF ${String(buckets.TOLERATED_DIFF.length).padStart(3)}   ← framework features the product lacks`);
   console.log(`  VIOLATES       ${String(buckets.VIOLATES.length).padStart(3)}   ← parity bugs`);
   console.log(`  UNREACHABLE    ${String(buckets.UNREACHABLE.length).padStart(3)}   ← framework crashes`);
   console.log(`  PRODUCT_BROKEN ${String(buckets.PRODUCT_BROKEN.length).padStart(3)}   ← product issues (skip)`);
