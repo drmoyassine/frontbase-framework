@@ -45,10 +45,10 @@ export function registerProjectRoutes(app: App, kvFor: (t: string) => KeyValueSt
     app.put('/api/project/', async (c) => {
         const body = await c.req.json().catch(() => ({}));
         const ts = now();
-        // Merge with defaults and request body
-        const merged = { ...DEFAULT_PROJECT, ...(body as object) };
-        // Preserve existing created_at if present, otherwise use current time
+        // Read existing data first to preserve fields not in the request body
         const existing = await kvFor(c.get('tenant')).getJson('project', {}) as any;
+        // Merge: existing data defaults -> existing stored values -> request body takes precedence
+        const merged = { ...DEFAULT_PROJECT, ...existing, ...(body as object) };
         const final = {
             ...merged,
             created_at: existing.created_at || ts,

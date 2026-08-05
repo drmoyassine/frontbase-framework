@@ -102,7 +102,9 @@ function reg(
         const engineData = isSystem
             ? { engine_count: 1, linked_engines: [{ id: 'a0f2ffa2-62a5-4437-aa88-833138b70421', name: 'Local Edge', provider: 'unknown' }] }
             : { engine_count: 0, linked_engines: [] };
-        const base = {
+
+        // Extract fields from base for explicit reconstruction to match product field order
+        const baseFields = {
             id: String(row.id),
             name: String(row.name ?? ''),
             provider: String(row.provider ?? 'local'),
@@ -117,21 +119,39 @@ function reg(
             ...engineData,
             supports_remote_delete: false,
         };
-        // Insert warning before supports_remote_delete for caches/queues
+
+        // Product field order for all: id, name, provider, urlField, has_token, [has_signing_key], is_default, is_system,
+        // provider_account_id, account_name, [provider_config], created_at, updated_at, engine_count, linked_engines,
+        // [warning], supports_remote_delete
         if (kind === 'cache') {
-            const { supports_remote_delete, ...rest } = base;
+            const { supports_remote_delete, ...rest } = baseFields;
             return { ...rest, warning: null, supports_remote_delete: supports_remote_delete as false };
         }
         if (kind === 'queue') {
-            const { supports_remote_delete, ...rest } = base;
-            return { ...rest, has_signing_key: false, warning: null, supports_remote_delete: supports_remote_delete as false };
+            // has_signing_key comes after has_token, before is_default
+            const { has_token, is_default, is_system, provider_account_id, account_name, created_at, updated_at, engine_count, linked_engines, supports_remote_delete, ...rest } = baseFields;
+            return {
+                ...rest,
+                has_token,
+                has_signing_key: false,
+                is_default,
+                is_system,
+                provider_account_id,
+                account_name,
+                created_at,
+                updated_at,
+                engine_count,
+                linked_engines,
+                warning: null,
+                supports_remote_delete: supports_remote_delete as false,
+            };
         }
-        // For vectors, insert provider_config before created_at, no warning
+        // For vectors: provider_config comes after account_name, before created_at; no has_signing_key or warning
         if (kind === 'vector') {
-            const { created_at, updated_at, engine_count, linked_engines, supports_remote_delete, ...rest } = base;
+            const { created_at, updated_at, engine_count, linked_engines, supports_remote_delete, ...rest } = baseFields;
             return { ...rest, provider_config: null, created_at, updated_at, engine_count, linked_engines, supports_remote_delete };
         }
-        return { ...base, warning: null };
+        return { ...baseFields, warning: null };
     };
     const testConfig = async (config: Record<string, unknown>) => {
         const started = Date.now();

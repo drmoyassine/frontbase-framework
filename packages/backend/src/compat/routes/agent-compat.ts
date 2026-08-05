@@ -135,19 +135,19 @@ export function registerAgentCompatRoutes(
         return {
             id: row.id ?? '',
             name: row.name ?? '',
-            slug: row.slug ?? extracted.slug ?? '',
-            description: row.description ?? extracted.description ?? null,
+            slug: extracted.slug ?? row.slug ?? '',
+            description: extracted.description ?? row.description ?? null,
             url: row.url ?? '',
             transport: row.transport ?? 'streamable-http',
             authType: auth_type ?? extracted.auth_type ?? null,
             hasAuth: Boolean(token || extracted.token || config),
-            toolFilter: row.tool_filter ?? extracted.tool_filter ?? null,
-            category: row.category ?? extracted.category ?? null,
+            toolFilter: extracted.tool_filter ?? row.tool_filter ?? null,
+            category: extracted.category ?? row.category ?? null,
             isActive: Boolean(row.is_active ?? 1),
             isPublic: false,
             tenantId: null,
             projectId: null,
-            profileSlug: row.profile_slug ?? extracted.profile_slug ?? null,
+            profileSlug: extracted.profile_slug ?? row.profile_slug ?? null,
             createdAt: row.created_at ?? null,
             updatedAt: row.updated_at ?? null,
         };
@@ -413,7 +413,7 @@ export function registerAgentCompatRoutes(
         };
         await runner.exec(
             'INSERT INTO mcp_servers (id, tenant_slug, name, url, transport, config, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)',
-            [id, c.get('tenant'), b.name ?? 'server', b.url ?? '', b.transport ?? 'http', await encryptedConfig(mergedConfig) ?? null, b.is_active ?? 1, nowStr, nowStr],
+            [id, c.get('tenant'), b.name ?? 'server', b.url ?? '', b.transport ?? 'streamable-http', await encryptedConfig(mergedConfig) ?? null, b.is_active ?? 1, nowStr, nowStr],
         );
         return c.json({
             id,

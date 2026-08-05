@@ -78,7 +78,8 @@ export function registerEdgeMiscRoutes(
                     edge_engine_id: null,
                     last_used_at: null,
                     engine_name: null,
-                    can_reveal: ciphertext !== null && revealed_at === null ? 1 : 0,
+                    is_active: Boolean(k.is_active),
+                    can_reveal: ciphertext !== null && revealed_at === null,
                 };
             }),
             total: keys.length,

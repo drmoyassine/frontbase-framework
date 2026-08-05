@@ -43,7 +43,7 @@ import { fastApiValidationError } from '../request-validation.js';
 const DUMMY_HASH = 'pbkdf2$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
-const COOKIE = 'fb_session';
+const COOKIE = 'frontbase_session';
 const MAX_AGE = 7 * 24 * 3600;
 const SESSION_COOKIE = (token: string) => `${COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${MAX_AGE}`;
 const CLEAR_COOKIE = `${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;

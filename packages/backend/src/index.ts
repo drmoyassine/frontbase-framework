@@ -10,7 +10,7 @@
  * (RULE 2); Drizzle is the single source of truth (A-13); opaque errors (RULE 4).
  *
  * `sessionSecret` (BLOCKER-2) is the identity seam: when `resolvePrincipal` is
- * omitted but `sessionSecret` is given, one is built for the `fb_session` JWT
+ * omitted but `sessionSecret` is given, one is built for the `frontbase_session` JWT
  * cookie (wired in M-ID.1).
  */
 import { Hono } from 'hono';
@@ -42,7 +42,7 @@ export interface CreateConsoleDeps {
      *  Called lazily per tenant. */
     makeRunner: () => Promise<DbRunner> | DbRunner;
     /** Resolve the calling principal. If omitted but sessionSecret is given, one is
-     *  built for the fb_session JWT cookie (M-ID.1). Default: anonymous. */
+     *  built for the frontbase_session JWT cookie (M-ID.1). Default: anonymous. */
     resolvePrincipal?: (req: Request) => Promise<Principal>;
     /** HS256 secret for the session JWT (identity seam — M-ID.1). */
     sessionSecret?: string;
@@ -99,9 +99,9 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     let sharedRunner = await makeRunner();
 
     // Resolve the principal resolver: explicit wins; sessionSecret builds one for
-    // the fb_session JWT cookie (M-ID.1, D2); else anonymous.
+    // the frontbase_session JWT cookie (M-ID.1, D2); else anonymous.
     const baseResolvePrincipal = deps.resolvePrincipal
-        ?? (deps.sessionSecret ? createResolvePrincipal({ jwtSecret: deps.sessionSecret, jwtCookie: 'fb_session' })
+        ?? (deps.sessionSecret ? createResolvePrincipal({ jwtSecret: deps.sessionSecret, jwtCookie: 'frontbase_session' })
             : (async () => ({ user: null, tenant: undefined })));
 
     // Stores per tenant — built synchronously from the shared runner. RULE 6: one runner.

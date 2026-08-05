@@ -10,7 +10,7 @@
  * The vendored GET / operation remains owned by the eSSR engine.
  *
  * Deploy secrets (wrangler secret put — never in wrangler.toml, never in git):
- *   SESSION_SECRET  (required) HS256 key for the fb_session JWT cookie
+ *   SESSION_SECRET  (required) HS256 key for the frontbase_session JWT cookie
  *   SETUP_TOKEN     (optional) enables the first-run /setup wizard
  *   SETUP_EXPIRES_AT (optional) ISO expiry for the deploy-generated setup link
  *   ADMIN_EMAIL     (optional) seed the first owner on first boot …
@@ -117,7 +117,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         makeRunner: () => opts.runner,
         resolvePrincipal: (await import('@frontbase/edge-infra')).createResolvePrincipal({
             jwtSecret: opts.sessionSecret,
-            jwtCookie: 'fb_session',
+            jwtCookie: 'frontbase_session',
         }) as (req: Request) => Promise<any>,
         sessionSecret: opts.sessionSecret,
         userStoreFor: (t: string) => new UserStore(opts.runner, t),
@@ -135,11 +135,11 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     await registerComponents(); // Populate the component registry
     const resolvePrincipal = (await import('@frontbase/edge-infra')).createResolvePrincipal({
         jwtSecret: opts.sessionSecret,
-        jwtCookie: 'fb_session',
+        jwtCookie: 'frontbase_session',
     });
     // Wire the visitor session resolver into the eSSR engine so private-page
     // gating decides the SAME way the compat /api surface and the builder gate
-    // do: a valid fb_session JWT → authenticated user; otherwise anonymous (and
+    // do: a valid frontbase_session JWT → authenticated user; otherwise anonymous (and
     // a private page is served behind the auth overlay). configureEngine RESETS
     // to defaults on each call (its documented contract), so the edition/env
     // values are re-stated here alongside resolvePrincipal in ONE call — this

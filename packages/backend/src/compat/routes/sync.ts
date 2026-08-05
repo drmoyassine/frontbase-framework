@@ -472,24 +472,21 @@ export function registerSyncRoutes(
 
     // POST /api/sync/datasources/test-raw/
     app.post('/api/sync/datasources/test-raw/', async (c) => {
-        await syncStoreFor(c.get('tenant')).listDatasources();
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 
-        // Product parity: validate that `type` field is present and valid.
+        // Product parity: validate that `type` field is present and is a string.
+        // If type is missing or not a string, return 422 validation error.
         if (b.type === undefined || (b.kind === undefined && typeof b.type !== 'string')) {
             return c.json(validationError([
                 { type: 'missing', loc: ['body', 'type'], msg: 'Field required', input: b },
             ]), 422);
         }
 
-        // Product parity: validate type/kind against allowed enum values.
-        const validTypes = ['sqlite', 'postgres', 'mysql', 'supabase', 'neon', 'turso', 'cloudflare_d1', 'upstash_redis', 'google_sheets', 'wordpress_plugin'];
+        // Product parity: do NOT validate type against enum upfront.
+        // The product tries to use invalid types and crashes with TypeError (500).
+        // Let invalid types through so they crash with TypeError, matching product behavior.
         const kind = String(b.type ?? b.kind ?? 'sqlite');
-        if (!validTypes.includes(kind)) {
-            return c.json(validationError([
-                { type: 'value_error', loc: ['body', 'type'], msg: `Invalid datasource type '${kind}'`, input: b.type },
-            ]), 422);
-        }
+
         // SPA sends a FLAT DatasourceCreate payload (credential fields + provider_account_id
         // at top level, no `config` wrapper). Normalize, then hydrate from the connected
         // account + lazily enrich.
@@ -1318,68 +1315,84 @@ export function registerSyncRoutes(
 
     // PUT /api/sync/datasources/{datasource_id}/relationships/{index}/
     app.put('/api/sync/datasources/:datasource_id/relationships/:index/', async (c) => {
-        const id = c.req.param('datasource_id');
-        const rawIndex = c.req.param('index');
-        const index = parseInt(rawIndex, 10);
-
-        // Product parity: if index is not a valid integer, return 422 with validation
-        // error (not 404). FastAPI validates path params and returns 422 for type
-        // mismatches like "unable to parse string as an integer".
-        if (isNaN(index) || rawIndex.includes('-')) {
-            return c.json(validationError([
-                { type: 'int_parsing', loc: ['path', 'index'], msg: 'Input should be a valid integer, unable to parse string as an integer', input: rawIndex },
-            ]), 422);
-        }
-
-        const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
-
-        const store = syncStoreFor(c.get('tenant'));
-        const ds = await store.getDatasource(id);
-        if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
-
-        const customRels = [...((ds.config.relationships as Record<string, unknown>[] | undefined) ?? [])];
-        if (index < 0 || index >= customRels.length) {
-            return c.json({ detail: 'Relationship index out of range' }, 400);
-        }
         try {
-            await validateRelationshipDefinition(
-                datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config)),
-                dialectOf(ds.kind),
-                b,
-            );
-        } catch (error) {
-            return c.json({ detail: (error as Error).message }, 400);
+            const id = c.req.param('datasource_id');
+            const rawIndex = c.req.param('index');
+            const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+
+            const store = syncStoreFor(c.get('tenant'));
+            const ds = await store.getDatasource(id);
+            // Product parity: check datasource existence FIRST. If datasource doesn't
+            // exist, return 404 regardless of whether index is valid. This matches
+            // the product's behavior (datasource check takes priority over index validation).
+            if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
+
+            const index = parseInt(rawIndex, 10);
+            // Product parity: if index is not a valid integer, return 422 with validation
+            // error (not 404). FastAPI validates path params and returns 422 for type
+            // mismatches like "unable to parse string as an integer". This validation
+            // happens AFTER datasource existence check.
+            if (isNaN(index) || rawIndex.includes('-')) {
+                return c.json(validationError([
+                    { type: 'int_parsing', loc: ['path', 'index'], msg: 'Input should be a valid integer, unable to parse string as an integer', input: rawIndex },
+                ]), 422);
+            }
+
+            const customRels = [...((ds.config.relationships as Record<string, unknown>[] | undefined) ?? [])];
+            if (index < 0 || index >= customRels.length) {
+                return c.json({ detail: 'Relationship index out of range' }, 400);
+            }
+            try {
+                await validateRelationshipDefinition(
+                    datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config)),
+                    dialectOf(ds.kind),
+                    b,
+                );
+            } catch (error) {
+                return c.json({ detail: (error as Error).message }, 400);
+            }
+
+            customRels[index] = b;
+            await store.updateDatasource(id, {
+                config: { ...ds.config, relationships: customRels },
+            }, now());
+
+            return c.json({
+                index,
+                relationship: b,
+            });
+        } catch (err) {
+            const error = err as Error;
+            // Unexpected errors (TypeError, etc.) return 500.
+            if (error.name === 'TypeError' || error.name === 'ReferenceError' || !(error instanceof Error)) {
+                return c.json(internalServerError(error), 500);
+            }
+            return c.json({ detail: error.message }, 500);
         }
-
-        customRels[index] = b;
-        await store.updateDatasource(id, {
-            config: { ...ds.config, relationships: customRels },
-        }, now());
-
-        return c.json({
-            index,
-            relationship: b,
-        });
     });
 
     // DELETE /api/sync/datasources/{datasource_id}/relationships/{index}/
     app.delete('/api/sync/datasources/:datasource_id/relationships/:index/', async (c) => {
         const id = c.req.param('datasource_id');
         const rawIndex = c.req.param('index');
-        const index = parseInt(rawIndex, 10);
 
+        const store = syncStoreFor(c.get('tenant'));
+        const ds = await store.getDatasource(id);
+        // Product parity: check datasource existence FIRST. If datasource doesn't
+        // exist, return 404 regardless of whether index is valid. This matches
+        // the product's behavior (datasource check takes priority over index validation).
+        if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
+
+        const index = parseInt(rawIndex, 10);
         // Product parity: if index is not a valid integer, return 422 with validation
         // error (not 404). FastAPI validates path params and returns 422 for type
-        // mismatches like "unable to parse string as an integer".
+        // mismatches like "unable to parse string as an integer". This validation
+        // happens AFTER datasource existence check.
         if (isNaN(index) || rawIndex.includes('-')) {
             return c.json(validationError([
                 { type: 'int_parsing', loc: ['path', 'index'], msg: 'Input should be a valid integer, unable to parse string as an integer', input: rawIndex },
             ]), 422);
         }
-
-        const store = syncStoreFor(c.get('tenant'));
-        const ds = await store.getDatasource(id);
-        if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         const customRels = [...((ds.config.relationships as Record<string, unknown>[] | undefined) ?? [])];
         if (index < 0 || index >= customRels.length) {

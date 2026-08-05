@@ -46,6 +46,13 @@ export function registerWorkflowsRoutes(app: App, phase2For: (t: string) => Phas
             return c.json({ detail: 'Authentication required' }, 401);
         }
 
+        // Product parity: the product's require_tenant_context rejects users without
+        // a tenant context (tenant_slug=null). The framework assigns _root to master_admin
+        // users, which would pass the above checks. Reject _root to match product behavior.
+        if (tenant === '_root') {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
+
         const body = await c.req.json().catch(() => ({})) as {
             to?: string[];
             subject?: string;

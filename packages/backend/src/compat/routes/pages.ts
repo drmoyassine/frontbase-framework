@@ -54,18 +54,8 @@ const withBadge = (
     else if (latest) hasUnpublished = (row.content_hash ?? null) !== (latest.contentHash ?? null);
     else hasUnpublished = false;
     out.hasUnpublishedChanges = hasUnpublished;
-    out.deployments = live
-        ? [{
-            id: row.id,
-            engineId: row.id,
-            status: 'published',
-            version: 1,
-            contentHash: latest?.contentHash ?? row.content_hash,
-            publishedAt: latest?.createdAt ?? row.updated_at,
-            previewUrl: null,
-            target: 'local',
-        }]
-        : [];
+    // Product parity: deployments is always an empty array (no synthetic objects)
+    out.deployments = [];
     return out;
 };
 

@@ -18,6 +18,15 @@ import { isSystemEngine } from './edge-shapes.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
+/**
+ * Validates UUID format (matches Python's uuid.UUID() validation behavior).
+ * Returns true for valid UUIDs, false otherwise.
+ */
+function isValidUUID(id: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+}
+
 const asJson = (v: unknown): string => typeof v === 'string' ? v : JSON.stringify(v ?? []);
 
 function pythonJson(value: unknown): string {
@@ -204,16 +213,24 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
     });
     // POST /api/actions/drafts/{draft_id}/publish/{engine_id}/toggle
     app.post('/api/actions/drafts/:draft_id/publish/:engine_id/toggle', async (c) => {
+        const draftId = c.req.param('draft_id');
+        const engineId = c.req.param('engine_id');
         const store = phase2For(c.get('tenant'));
-        const existing = await store.getWorkflow(c.req.param('draft_id'));
+
+        // Validate draft_id UUID format (product parity: 400 for invalid format)
+        if (!isValidUUID(draftId)) {
+            return c.json({ detail: 'Invalid draft ID format' }, 400);
+        }
+
+        const existing = await store.getWorkflow(draftId);
         if (!existing) return c.json({ detail: 'Workflow draft not found' }, 404);
-        const engine = await store.getEdgeResource(c.req.param('engine_id'));
+        const engine = await store.getEdgeResource(engineId);
         if (!engine || engine.kind !== 'engine') {
             // Product parity: return 404 for deployment target not found (matches product resource not found behavior)
             return c.json({ detail: 'Deployment target not found' }, 404);
         }
         const next = !Boolean(existing.is_active);
-        await store.toggleWorkflow(c.req.param('draft_id'), next, now());
+        await store.toggleWorkflow(draftId, next, now());
         return c.json({ success: true, message: next ? 'Workflow activated' : 'Workflow deactivated', is_active: next });
     });
     // POST /api/actions/drafts/{draft_id}/rollback/  (community: no version store per workflow → graceful)

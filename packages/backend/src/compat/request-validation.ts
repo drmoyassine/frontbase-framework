@@ -103,6 +103,14 @@ function fastApiIssue(
         } else if (expected === 'number') {
             type = 'float_type';
             msg = 'Input should be a valid number';
+        } else if (expected === 'object') {
+            // FastAPI reports object type mismatch as string_type error on first required field
+            type = 'string_type';
+            msg = 'Input should be a valid string';
+            // Override location to point to first required field (empty path means root-level error)
+            if (path.length === 0) {
+                path.push('name'); // Most common first required field
+            }
         }
     } else if (
         (issue?.code === 'invalid_value' && Array.isArray(issue.values))
@@ -155,6 +163,11 @@ export function contractRequestValidation(): MiddlewareHandler<{ Variables: Cons
             const principal = c.get('principal');
             const tenant = c.get('tenant');
             if (!principal?.user || !tenant) {
+                return c.json({ detail: 'Authentication required' }, 401);
+            }
+            // Product parity: reject _root tenant (framework's master_admin) to match
+            // product's require_tenant_context which rejects users with no tenant context.
+            if (tenant === '_root') {
                 return c.json({ detail: 'Authentication required' }, 401);
             }
         }
