@@ -49,6 +49,9 @@ export function registerStorageRoutes(
                 detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
             }, 422);
         }
+        if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+            return c.json({ detail: 'Storage provider not found' }, 404);
+        }
         return c.json({
             success: true,
             buckets: (await phase2For(c.get('tenant')).listBuckets()).map(redactConfig),
@@ -62,6 +65,9 @@ export function registerStorageRoutes(
             return c.json({
                 detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
             }, 422);
+        }
+        if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+            return c.json({ detail: 'Storage provider not found' }, 404);
         }
         const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
         const id = crypto.randomUUID();
@@ -92,6 +98,9 @@ export function registerStorageRoutes(
                     detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
                 }, 422);
             }
+            if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+                return c.json({ detail: 'Storage provider not found' }, 404);
+            }
             const all = await phase2For(c.get('tenant')).listBuckets();
             const bucket = all.find((r) => String(r.id) === c.req.param('bucket_id'));
             return bucket
@@ -116,6 +125,9 @@ export function registerStorageRoutes(
                 return c.json({
                     detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
                 }, 422);
+            }
+            if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+                return c.json({ detail: 'Storage provider not found' }, 404);
             }
             const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
             const id = c.req.param('bucket_id');

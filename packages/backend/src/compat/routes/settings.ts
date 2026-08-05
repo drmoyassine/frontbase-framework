@@ -24,10 +24,8 @@ const DEFAULTS: Record<string, unknown> = {
     general: { siteName: null, siteUrl: null, defaultLanguage: 'en', timezone: 'UTC' },
     privacy: {
         enableVisitorTracking: false,
-        requireCookieConsent: true,
-        ga4MeasurementId: null,
-        gtmContainerId: null,
         cookieExpiryDays: 365,
+        requireCookieConsent: true,
         advancedVariables: {
             ip: { collect: false, expose: false },
             browser: { collect: true, expose: true },
@@ -45,6 +43,8 @@ const DEFAULTS: Record<string, unknown> = {
             firstVisitAt: { collect: true, expose: true },
             landingPage: { collect: true, expose: true },
         },
+        ga4MeasurementId: null,
+        gtmContainerId: null,
         customHeadHtml: null,
     },
     security: { full_ip_retention_days: 30 },

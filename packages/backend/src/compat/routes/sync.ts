@@ -298,6 +298,24 @@ function wordpressConfig(config: Record<string, unknown>): {
     };
 }
 
+/**
+ * Validation error envelope matching FastAPI's validation response shape.
+ * Used for 422 responses when request body/query/path parameters fail validation.
+ */
+function validationError(details: { type: string; loc: string[]; msg: string; input: unknown }[]): {
+    success: false;
+    error: string;
+    details: typeof details;
+    message: string;
+} {
+    return {
+        success: false,
+        error: 'Validation Error',
+        details,
+        message: 'The data provided is invalid',
+    };
+}
+
 export function registerSyncRoutes(
     app: App,
     controlRunner: DbRunner,
@@ -378,12 +396,10 @@ export function registerSyncRoutes(
 
         // Product parity: validate body shape before processing.
         if (b.name !== undefined && typeof b.name !== 'string') {
-            return c.json({
-                success: false,
-                error: 'Validation Error',
-                details: [{ type: 'string_type', loc: ['body', 'name'], msg: 'Input should be a valid string', input: b.name }],
-                message: 'The data provided is invalid',
-            }, 422);
+            return c.json(validationError([
+                { type: 'string_type', loc: ['body', 'name'], msg: 'Input should be a valid string', input: b.name },
+                { type: 'missing', loc: ['body', 'type'], msg: 'Field required', input: b },
+            ]), 422);
         }
 
         const name = String(b.name ?? 'Untitled Datasource');
@@ -442,12 +458,9 @@ export function registerSyncRoutes(
 
         // Product parity: validate that `type` field is present and valid.
         if (b.type === undefined || (b.kind === undefined && typeof b.type !== 'string')) {
-            return c.json({
-                success: false,
-                error: 'Validation Error',
-                details: [{ type: 'missing', loc: ['body', 'type'], msg: 'Field required', input: b }],
-                message: 'The data provided is invalid',
-            }, 422);
+            return c.json(validationError([
+                { type: 'missing', loc: ['body', 'type'], msg: 'Field required', input: b },
+            ]), 422);
         }
 
         const kind = String(b.type ?? b.kind ?? 'sqlite');

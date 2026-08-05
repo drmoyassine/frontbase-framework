@@ -111,7 +111,13 @@ export function registerEdgeEnginesRoutes(
 
     // POST /api/edge-engines/
     app.post('/api/edge-engines/', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: string; provider?: string; config?: unknown };
+        const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: unknown; provider?: string; config?: unknown };
+        // Validate name is a string (parity with product validation)
+        if (b.name !== undefined && typeof b.name !== 'string') {
+            return c.json({
+                detail: [{ type: 'string_type', loc: ['body', 'name'], msg: 'Input should be a valid string', input: b.name }],
+            }, 422);
+        }
         const id = crypto.randomUUID();
         const store = p2(c.get('tenant'));
         // Build config from body, inject system_key, store as JSON (parity with product)
@@ -136,9 +142,10 @@ export function registerEdgeEnginesRoutes(
     // GET /api/edge-engines/bundle-hashes/
     app.get('/api/edge-engines/bundle-hashes/', async (c) => {
         // Product returns only the base hashes, no engine-specific entries
+        // Key order matches product: lite first, then full
         return c.json({
-            full: '0593f9aa8f66',
             lite: '0593f9aa8f66',
+            full: '0593f9aa8f66',
         });
     });
 
