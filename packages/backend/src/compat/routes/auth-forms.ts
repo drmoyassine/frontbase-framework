@@ -92,11 +92,15 @@ const envelope = (
 
 export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => string): void {
     app.get('/api/auth-forms/', async (c) => {
-        const rows = await runner.query(
-            `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? ORDER BY created_at DESC`,
-            [c.get('tenant')],
-        ) as AuthFormRow[];
-        return c.json(envelope(true, rows.map(serializeForm)));
+        try {
+            const rows = await runner.query(
+                `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? ORDER BY created_at DESC`,
+                [c.get('tenant')],
+            ) as AuthFormRow[];
+            return c.json(envelope(true, rows.map(serializeForm)));
+        } catch (e) {
+            return c.json(envelope(false, null, null, String(e)));
+        }
     });
 
     app.post('/api/auth-forms/', async (c) => {
@@ -149,74 +153,87 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
             return c.json(validationError(errors), 422);
         }
 
-        // All validated, proceed with creation
-        const id = crypto.randomUUID();
-        const timestamp = now();
-        const config: Record<string, unknown> = {
-            ...(body.config ?? {}),
-            target_contact_type: body.target_contact_type ?? null,
-            allowed_contact_types: body.allowed_contact_types ?? [],
-            redirect_url: body.redirect_url ?? null,
-            is_active: body.is_active ?? true,
-        };
-        const primary = Boolean(config.is_primary);
-        await runner.exec(
-            'INSERT INTO auth_forms (id, tenant_slug, name, type, config, is_primary, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
-            [id, c.get('tenant'), body.name, body.type, JSON.stringify(config), primary ? 1 : 0, timestamp, timestamp],
-        );
-        return c.json(envelope(true, serializeForm({
-            id,
-            name: body.name as string,
-            type: body.type as string,
-            config: JSON.stringify(config),
-            is_primary: primary ? 1 : 0,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })), 201);
+        try {
+            // All validated, proceed with creation
+            const id = crypto.randomUUID();
+            const timestamp = now();
+            const config: Record<string, unknown> = {
+                ...(body.config ?? {}),
+                target_contact_type: body.target_contact_type ?? null,
+                allowed_contact_types: body.allowed_contact_types ?? [],
+                redirect_url: body.redirect_url ?? null,
+                is_active: body.is_active ?? true,
+            };
+            const primary = Boolean(config.is_primary);
+            await runner.exec(
+                'INSERT INTO auth_forms (id, tenant_slug, name, type, config, is_primary, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+                [id, c.get('tenant'), body.name, body.type, JSON.stringify(config), primary ? 1 : 0, timestamp, timestamp],
+            );
+            return c.json(envelope(true, serializeForm({
+                id,
+                name: body.name as string,
+                type: body.type as string,
+                config: JSON.stringify(config),
+                is_primary: primary ? 1 : 0,
+                created_at: timestamp,
+                updated_at: timestamp,
+            })), 201);
+        } catch (e) {
+            return c.json(envelope(false, null, null, String(e)));
+        }
     });
 
     app.get('/api/auth-forms/primary/', async (c) => {
-        // Framework has no is_active column - it's in config JSON
-        // Match product logic: filter active by config, then find by config.is_primary
-        const allRows = await runner.query(
-            `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? ORDER BY created_at DESC`,
-            [c.get('tenant')],
-        ) as AuthFormRow[];
-        // Filter to active forms (config.is_active !== false)
-        const activeRows = allRows.filter((candidate) => {
-            const config = parseConfig(candidate.config);
-            return config.is_active === undefined || Boolean(config.is_active);
-        });
-        // Find first with is_primary in config
-        const primary = activeRows.find((candidate) => {
-            const config = parseConfig(candidate.config);
-            return Boolean(config.is_primary);
-        });
-        // Fallback to first active if no primary found
-        const target = primary || activeRows[0];
-        if (target) {
-            return c.json(envelope(true, serializeForm(target)));
+        try {
+            // Framework has no is_active column - it's in config JSON
+            // Match product logic: filter active by config, then find by config.is_primary
+            const allRows = await runner.query(
+                `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? ORDER BY created_at DESC`,
+                [c.get('tenant')],
+            ) as AuthFormRow[];
+            // Filter to active forms (config.is_active !== false)
+            const activeRows = allRows.filter((candidate) => {
+                const config = parseConfig(candidate.config);
+                return config.is_active === undefined || Boolean(config.is_active);
+            });
+            // Find first with is_primary in config
+            const primary = activeRows.find((candidate) => {
+                const config = parseConfig(candidate.config);
+                return Boolean(config.is_primary);
+            });
+            // Fallback to first active if no primary found
+            const target = primary || activeRows[0];
+            if (target) {
+                return c.json(envelope(true, serializeForm(target)));
+            }
+            return c.json(envelope(false, null, null, 'No auth forms configured'));
+        } catch (e) {
+            return c.json(envelope(false, null, null, String(e)));
         }
-        return c.json(envelope(false, null, null, 'No auth forms configured'));
     });
 
     app.get('/api/auth-forms/:form_id/', async (c) => {
-        const rows = await runner.query(
-            `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? AND id = ?`,
-            [c.get('tenant'), c.req.param('form_id')],
-        ) as AuthFormRow[];
-        return rows[0]
-            ? c.json(envelope(true, serializeForm(rows[0])))
-            : c.json(envelope(false, null, null, 'Auth form not found'));
+        try {
+            const rows = await runner.query(
+                `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? AND id = ?`,
+                [c.get('tenant'), c.req.param('form_id')],
+            ) as AuthFormRow[];
+            return rows[0]
+                ? c.json(envelope(true, serializeForm(rows[0])))
+                : c.json(envelope(false, null, null, 'Auth form not found'));
+        } catch (e) {
+            return c.json(envelope(false, null, null, String(e)));
+        }
     });
 
     app.put('/api/auth-forms/:form_id/', async (c) => {
-        const rows = await runner.query(
-            `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? AND id = ?`,
-            [c.get('tenant'), c.req.param('form_id')],
-        ) as AuthFormRow[];
-        const existing = rows[0];
-        if (!existing) return c.json(envelope(false, null, null, 'Auth form not found'));
+        try {
+            const rows = await runner.query(
+                `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? AND id = ?`,
+                [c.get('tenant'), c.req.param('form_id')],
+            ) as AuthFormRow[];
+            const existing = rows[0];
+            if (!existing) return c.json(envelope(false, null, null, 'Auth form not found'));
 
         const body = await c.req.json() as {
             name?: unknown;
@@ -291,34 +308,45 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
             is_primary: primary ? 1 : 0,
             updated_at: timestamp,
         })));
+        } catch (e) {
+            return c.json(envelope(false, null, null, String(e)));
+        }
     });
 
     app.delete('/api/auth-forms/:form_id/', async (c) => {
-        const rows = await runner.query(
-            'SELECT id FROM auth_forms WHERE tenant_slug = ? AND id = ?',
-            [c.get('tenant'), c.req.param('form_id')],
-        );
-        if (!rows[0]) return c.json(envelope(false, null, null, 'Auth form not found'));
-        await runner.exec(
-            'DELETE FROM auth_forms WHERE tenant_slug = ? AND id = ?',
-            [c.get('tenant'), c.req.param('form_id')],
-        );
-        return c.json(envelope(true));
+        try {
+            const rows = await runner.query(
+                'SELECT id FROM auth_forms WHERE tenant_slug = ? AND id = ?',
+                [c.get('tenant'), c.req.param('form_id')],
+            );
+            if (!rows[0]) return c.json(envelope(false, null, null, 'Auth form not found'));
+            await runner.exec(
+                'DELETE FROM auth_forms WHERE tenant_slug = ? AND id = ?',
+                [c.get('tenant'), c.req.param('form_id')],
+            );
+            return c.json(envelope(true));
+        } catch (e) {
+            return c.json(envelope(false, null, null, String(e)));
+        }
     });
 
     app.put('/api/auth-forms/:form_id/set-primary/', async (c) => {
-        const rows = await runner.query(
-            `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? AND id = ?`,
-            [c.get('tenant'), c.req.param('form_id')],
-        ) as AuthFormRow[];
-        const existing = rows[0];
-        if (!existing) return c.json(envelope(false, null, 'Auth form not found'));
+        try {
+            const rows = await runner.query(
+                `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? AND id = ?`,
+                [c.get('tenant'), c.req.param('form_id')],
+            ) as AuthFormRow[];
+            const existing = rows[0];
+            if (!existing) return c.json(envelope(false, null, 'Auth form not found'));
 
-        await runner.exec('UPDATE auth_forms SET is_primary = 0 WHERE tenant_slug = ?', [c.get('tenant')]);
-        await runner.exec(
-            'UPDATE auth_forms SET is_primary = 1, updated_at = ? WHERE tenant_slug = ? AND id = ?',
-            [now(), c.get('tenant'), c.req.param('form_id')],
-        );
-        return c.json(envelope(true, serializeForm({ ...existing, is_primary: 1 })));
+            await runner.exec('UPDATE auth_forms SET is_primary = 0 WHERE tenant_slug = ?', [c.get('tenant')]);
+            await runner.exec(
+                'UPDATE auth_forms SET is_primary = 1, updated_at = ? WHERE tenant_slug = ? AND id = ?',
+                [now(), c.get('tenant'), c.req.param('form_id')],
+            );
+            return c.json(envelope(true, serializeForm({ ...existing, is_primary: 1 })));
+        } catch (e) {
+            return c.json(envelope(false, null, null, String(e)));
+        }
     });
 }

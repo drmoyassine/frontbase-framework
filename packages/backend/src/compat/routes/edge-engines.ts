@@ -112,11 +112,11 @@ export function registerEdgeEnginesRoutes(
         edge_auth_id: body.edge_auth_id,
     });
     // GET /api/edge-engines/
+    // Product does NOT include the system edge in the list response (only stored engines)
     app.get('/api/edge-engines/', async (c) => {
         const store = p2(c.get('tenant'));
-        const system = systemEngineFor(c);
         return c.json(await Promise.all(
-            [system, ...(await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row))],
+            (await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row)),
         ));
     });
 

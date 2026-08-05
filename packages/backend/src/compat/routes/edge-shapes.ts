@@ -72,6 +72,10 @@ export function serializeEdgeResource(
  */
 export function serializeEngine(row: Record<string, unknown>, extra: Record<string, unknown> = {}): Record<string, unknown> {
     const config = parseConfig(row.config);
+    // engine_config only includes fields not already exposed at top level
+    // Product returns only system_key (and other internal fields), not url/datasource_ids/etc.
+    const engineConfig: Record<string, unknown> = {};
+    if (config.system_key !== undefined) engineConfig.system_key = config.system_key;
     return {
         id: String(row.id),
         name: String(row.name ?? ''),
@@ -90,7 +94,7 @@ export function serializeEngine(row: Record<string, unknown>, extra: Record<stri
         storage_ids: Array.isArray(config.storage_ids) ? config.storage_ids : [],
         datasources: [],
         storages: [],
-        engine_config: config,
+        engine_config: engineConfig,
         gpu_models: [],
         is_active: String(row.status ?? 'active') === 'active',
         is_system: Boolean(row.is_system),

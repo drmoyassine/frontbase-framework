@@ -226,6 +226,10 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         ].some((prefix) => path.startsWith(prefix));
         if (!privileged) return next();
         const principal = c.get('principal');
+        // Check authentication FIRST (RULE 2: default-deny)
+        if (!principal?.user) {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
         const role = (principal.user as { role?: string } | null)?.role;
         if (!role || !['master_admin', 'owner', 'tenant_admin', 'admin'].includes(role)) {
             return c.json({ detail: 'Forbidden' }, 403);

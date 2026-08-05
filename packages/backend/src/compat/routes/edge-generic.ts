@@ -77,13 +77,37 @@ function reg(
     const serializeStored = async (
         store: Phase2Store,
         row: Record<string, unknown>,
-    ): Promise<Record<string, unknown>> => ({
-        ...(await serialize({
-            ...row,
-            config: await store.getEdgeResourceConfig(String(row.id)) ?? {},
-        }, urlField, extra)),
-        warning: null,
-    });
+    ): Promise<Record<string, unknown>> => {
+        const config = await store.getEdgeResourceConfig(String(row.id)) ?? {};
+        const url = String(config.url ?? '');
+        const base = {
+            id: String(row.id),
+            name: String(row.name ?? ''),
+            provider: String(row.provider ?? 'local'),
+            [urlField]: url,
+            has_token: Boolean(config.token),
+            is_default: Boolean(config.is_default),
+            is_system: Boolean(row.is_system),
+            provider_account_id: config.provider_account_id != null ? String(config.provider_account_id) : null,
+            account_name: config.account_name != null ? String(config.account_name) : null,
+            created_at: String(row.created_at ?? ''),
+            updated_at: String(row.updated_at ?? ''),
+            engine_count: 0,
+            linked_engines: [],
+            supports_remote_delete: false,
+        };
+        // Insert warning before supports_remote_delete for caches/queues
+        if (kind === 'cache' || kind === 'queue') {
+            const { supports_remote_delete, ...rest } = base;
+            return { ...rest, warning: null, supports_remote_delete: supports_remote_delete as false };
+        }
+        // For vectors, insert provider_config before created_at, no warning
+        if (kind === 'vector') {
+            const { created_at, updated_at, engine_count, linked_engines, supports_remote_delete, ...rest } = base;
+            return { ...rest, provider_config: null, created_at, updated_at, engine_count, linked_engines, supports_remote_delete };
+        }
+        return { ...base, warning: null };
+    };
     const testConfig = async (config: Record<string, unknown>) => {
         const started = Date.now();
         const url = String(config.url ?? '');
@@ -228,8 +252,6 @@ function reg(
             created_at: now(),
             updated_at: now(),
         });
-        if (kind === 'cache' || kind === 'queue') response.warning = null;
-        if (kind === 'vector') response.provider_config = null;
         return c.json(response, 201);
     });
 
@@ -272,8 +294,6 @@ function reg(
                 : existing.config as string | undefined,
         }, now());
         const response = await serializeStored(store, await store.getEdgeResource(id) ?? existing);
-        if (kind === 'cache' || kind === 'queue') response.warning = null;
-        if (kind === 'vector') response.provider_config = null;
         return c.json(response);
     });
 

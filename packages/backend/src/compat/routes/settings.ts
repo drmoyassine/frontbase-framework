@@ -130,7 +130,9 @@ export function registerSettingsRoutes(
                         throw new Error('secret_cipher_unavailable');
                     }
                 }
+                // Merge with existing stored values to preserve fields not in the request
                 const persisted = {
+                    ...existing,
                     ...input,
                     redis_token: '',
                     redis_token_ciphertext: tokenCiphertext ?? null,

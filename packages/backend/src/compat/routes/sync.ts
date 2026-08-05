@@ -305,13 +305,13 @@ function wordpressConfig(config: Record<string, unknown>): {
 function validationError(details: { type: string; loc: string[]; msg: string; input: unknown }[]): {
     success: false;
     error: string;
-    detail: typeof details;
+    details: typeof details;
     message: string;
 } {
     return {
         success: false,
         error: 'Validation Error',
-        detail: details,
+        details,
         message: 'The data provided is invalid',
     };
 }
@@ -1834,15 +1834,21 @@ export function registerSyncRoutes(
         );
         const pending = rows[0];
         if (!pending || pending.consumed_at || Date.parse(String(pending.expires_at)) <= Date.now()) {
-            // Product parity: return 422 for invalid/expired/used tokens (matching test case).
-            return c.json({ detail: 'Connect token is invalid, expired, or already used' }, 422);
+            // Product parity: return 422 with validation shape for invalid/expired/used tokens.
+            return c.json(validationError([
+                { type: 'value_error', loc: ['body', 'token'], msg: 'Connect token is invalid, expired, or already used', input: body.token ?? null },
+            ]), 422);
         }
         const claimed = await controlRunner.exec(
             `UPDATE sheets_connect_tokens SET consumed_at = ?
              WHERE token_hash = ? AND consumed_at IS NULL`,
             [now(), tokenHash],
         );
-        if (claimed !== 1) return c.json({ detail: 'Connect token is invalid, expired, or already used' }, 422);
+        if (claimed !== 1) {
+            return c.json(validationError([
+                { type: 'value_error', loc: ['body', 'token'], msg: 'Connect token is invalid, expired, or already used', input: body.token ?? null },
+            ]), 422);
+        }
 
         const tenant = String(pending.tenant_slug);
         const store = syncStoreFor(tenant);
@@ -1882,14 +1888,15 @@ export function registerSyncRoutes(
         const token = c.req.query('token');
         // Product parity: if token is missing from query, return 422 with validation shape.
         if (token === undefined || token === '') {
-            return c.json({
-                success: false,
-                error: 'Validation Error',
-                details: [{ type: 'missing', loc: ['query', 'token'], msg: 'Field required', input: null }],
-                message: 'The data provided is invalid',
-            }, 422);
+            return c.json(validationError([
+                { type: 'missing', loc: ['query', 'token'], msg: 'Field required', input: null },
+            ]), 422);
         }
-        if (token.length < 10) return c.json({ detail: 'Invalid token' }, 422);
+        if (token.length < 10) {
+            return c.json(validationError([
+                { type: 'value_error', loc: ['query', 'token'], msg: 'Invalid token', input: token },
+            ]), 422);
+        }
         const rows = await controlRunner.query(
             `SELECT result FROM sheets_connect_tokens
              WHERE token_hash = ? AND tenant_slug = ? AND expires_at > ?`,

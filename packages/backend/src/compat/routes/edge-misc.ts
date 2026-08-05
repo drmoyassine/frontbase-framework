@@ -60,7 +60,7 @@ export function registerEdgeMiscRoutes(
     app.get('/api/edge-api-keys', async (c) => {
         const keys = await runner.query(
             `SELECT k.id, k.name, k.scope, k.is_active, k.expires_at,
-                    k.created_at, k.updated_at, s.prefix,
+                    k.created_at, k.updated_at, k.last_used_at, s.prefix,
                     k.edge_engine_id,
                     CASE WHEN s.ciphertext IS NOT NULL AND s.revealed_at IS NULL THEN 1 ELSE 0 END AS can_reveal
              FROM edge_api_keys k
