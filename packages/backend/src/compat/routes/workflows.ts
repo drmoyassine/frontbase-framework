@@ -26,9 +26,23 @@ export function registerWorkflowsRoutes(app: App, phase2For: (t: string) => Phas
     app.post('/api/workflows/send-email', async (c) => {
         // Auth check first (matches require_tenant_context at workflows.py:54).
         // The principal/tenant are set by defaultDenyAuth middleware in app.ts.
+        // RULE 2: Fail-closed - reject if principal or tenant is missing/invalid.
         const principal = c.get('principal');
         const tenant = c.get('tenant');
-        if (!principal?.user || !tenant) {
+        const user = principal?.user as { id?: string; email?: string } | null;
+
+        // Explicit null checks - never default to allowing access
+        if (principal === null || principal === undefined) {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
+        if (user === null || user === undefined) {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
+        if (!tenant) {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
+        // Ensure we have at least one user identifier
+        if (!user.id && !user.email) {
             return c.json({ detail: 'Authentication required' }, 401);
         }
 

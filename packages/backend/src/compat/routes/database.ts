@@ -345,37 +345,49 @@ export function registerDatabaseRoutes(
     });
 
     // POST /api/database/distinct-values/
+    // Zod schema matches product's Pydantic validation - requires object body, returns 422 for arrays/primitives
+    const zDistinctValuesRequest = z.object({
+        table_name: z.string().optional(),
+        tableName: z.string().optional(),
+        column_name: z.string().optional(),
+        columnName: z.string().optional(),
+        column: z.string().optional(),
+    }).strict();
     app.post('/api/database/distinct-values/', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as {
-            table_name?: string; tableName?: string; column_name?: string; columnName?: string; column?: string;
-        };
+        const parsed = zDistinctValuesRequest.safeParse(await c.req.json().catch(() => null));
+        if (!parsed.success) {
+            return c.json(zodToPydanticError(parsed.error), 422);
+        }
+        const b = parsed.data;
         const table = b.table_name ?? b.tableName ?? '';
         const col = b.column_name ?? b.columnName ?? b.column ?? '';
         const source = await getActiveRunner(c.get('tenant'));
         // Product parity: return empty 200 when no datasource configured
         if (!source) {
-            return c.json({ success: true, data: [] });
+            return c.json({ success: true, data: [], error: null });
         }
+        // Product parity: return success with empty data for all invalid inputs, not errors
         if (!isIdentifier(table) || !isIdentifier(col)) {
-            return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);
+            return c.json({ success: true, data: [], error: null });
         }
         try {
             // Validate table exists
             const tables = await listTableNames(source);
             if (!tables.includes(table)) {
-                return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);
+                return c.json({ success: true, data: [], error: null });
             }
             // Validate column exists
             const columns = await listColumnNames(source, table);
             if (!columns.includes(col)) {
-                return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);
+                return c.json({ success: true, data: [], error: null });
             }
             const rows = await source.activeRunner.query(`SELECT DISTINCT "${col}" as val FROM "${table}" WHERE "${col}" IS NOT NULL LIMIT 100`);
             const values = rows.map((r) => r.val);
             // Product parity: only return data field, not separate values field
             return c.json({ success: true, data: values, error: null });
         } catch {
-            return c.json({ success: false, data: [], values: [], error: 'query_failed' });
+            // Product parity: return success with empty data on query failure
+            return c.json({ success: true, data: [], error: null });
         }
     });
 

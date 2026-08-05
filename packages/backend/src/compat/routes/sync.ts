@@ -395,10 +395,11 @@ export function registerSyncRoutes(
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 
         // Product parity: validate body shape before processing.
+        // When name is present but not a string, return only the name validation error
+        // (not a compound error), matching the product's validation behavior.
         if (b.name !== undefined && typeof b.name !== 'string') {
             return c.json(validationError([
                 { type: 'string_type', loc: ['body', 'name'], msg: 'Input should be a valid string', input: b.name },
-                { type: 'missing', loc: ['body', 'type'], msg: 'Field required', input: b },
             ]), 422);
         }
 
@@ -1126,9 +1127,15 @@ export function registerSyncRoutes(
     // therefore answers 405 for a write aimed at `/records/` — the path exists, but
     // only for GET. Registering the working handler on the slashed path put the 405
     // on the only path the console ever calls.
-    app.post('/api/sync/views/:view_id/records/', (c) =>
-        c.json({ detail: 'Method Not Allowed' }, 405));
     app.post('/api/sync/views/:view_id/records', async (c) => {
+        // Product parity: return 405 if the path has a trailing slash (FastAPI behavior).
+        // Hono's routing might match both `/records/` and `/records` to the same handler,
+        // so we explicitly check the incoming path and return 405 for the slashed variant.
+        const path = c.req.path;
+        if (path.endsWith('/records/')) {
+            return c.json({ detail: 'Method Not Allowed' }, 405);
+        }
+
         const viewId = c.req.param('view_id');
         const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 
@@ -1163,9 +1170,15 @@ export function registerSyncRoutes(
     });
 
     // PATCH /api/sync/views/{view_id}/records  (slashless — see the POST above)
-    app.patch('/api/sync/views/:view_id/records/', (c) =>
-        c.json({ detail: 'Method Not Allowed' }, 405));
     app.patch('/api/sync/views/:view_id/records', async (c) => {
+        // Product parity: return 405 if the path has a trailing slash (FastAPI behavior).
+        // Hono's routing might match both `/records/` and `/records` to the same handler,
+        // so we explicitly check the incoming path and return 405 for the slashed variant.
+        const path = c.req.path;
+        if (path.endsWith('/records/')) {
+            return c.json({ detail: 'Method Not Allowed' }, 405);
+        }
+
         const viewId = c.req.param('view_id');
         const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 
@@ -1343,7 +1356,9 @@ export function registerSyncRoutes(
         // Product parity: if index is not a valid integer, return 404 (not 422).
         // This matches FastAPI's behavior where route param parsing failures
         // result in the route not matching (404) rather than validation errors.
-        if (isNaN(index)) {
+        // A UUID like "00000000-0000-4000-8000-000000000000" parses to NaN,
+        // which we treat as "route not found" to match FastAPI's behavior.
+        if (isNaN(index) || rawIndex.includes('-')) {
             return c.json({ detail: 'Datasource not found' }, 404);
         }
 
@@ -1385,7 +1400,11 @@ export function registerSyncRoutes(
         const index = parseInt(rawIndex, 10);
 
         // Product parity: if index is not a valid integer, return 404 (not 422).
-        if (isNaN(index)) {
+        // This matches FastAPI's behavior where route param parsing failures
+        // result in the route not matching (404) rather than validation errors.
+        // A UUID like "00000000-0000-4000-8000-000000000000" parses to NaN,
+        // which we treat as "route not found" to match FastAPI's behavior.
+        if (isNaN(index) || rawIndex.includes('-')) {
             return c.json({ detail: 'Datasource not found' }, 404);
         }
 
@@ -1645,12 +1664,9 @@ export function registerSyncRoutes(
 
         // Product parity: validate datasource_id type before processing.
         if (body.datasource_id !== undefined && typeof body.datasource_id !== 'string') {
-            return c.json({
-                success: false,
-                error: 'Validation Error',
-                detail: [{ type: 'string_type', loc: ['body', 'datasource_id'], msg: 'Input should be a valid string', input: body.datasource_id }],
-                message: 'The data provided is invalid',
-            }, 422);
+            return c.json(validationError([
+                { type: 'string_type', loc: ['body', 'datasource_id'], msg: 'Input should be a valid string', input: body.datasource_id },
+            ]), 422);
         }
 
         const datasource = await syncStoreFor(c.get('tenant')).getDatasource(String(body.datasource_id ?? ''));
@@ -1819,6 +1835,14 @@ export function registerSyncRoutes(
 
     // POST /api/sync/datasources/sheets/connect/callback/
     app.post('/api/sync/datasources/sheets/connect/callback/', async (c) => {
+        // Product parity: validate required query parameter local_kw.
+        const localKw = c.req.query('local_kw');
+        if (localKw === undefined || localKw === null) {
+            return c.json(validationError([
+                { type: 'missing', loc: ['query', 'local_kw'], msg: 'Field required', input: null },
+            ]), 422);
+        }
+
         const body = await c.req.json().catch(() => ({})) as {
             token?: string;
             spreadsheetId?: string;
@@ -1826,6 +1850,13 @@ export function registerSyncRoutes(
             webAppUrl?: string;
             webAppSecret?: string;
         };
+
+        // Product parity: validate token body parameter type.
+        if (body.token !== undefined && typeof body.token !== 'string') {
+            return c.json(validationError([
+                { type: 'string_type', loc: ['body', 'token'], msg: 'Input should be a valid string', input: body.token },
+            ]), 422);
+        }
         const tokenHash = await sha256Hex(String(body.token ?? ''));
         const rows = await controlRunner.query(
             `SELECT tenant_slug, datasource_id, expires_at, consumed_at

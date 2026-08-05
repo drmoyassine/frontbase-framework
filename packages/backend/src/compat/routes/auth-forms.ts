@@ -54,11 +54,12 @@ function serializeForm(row: AuthFormRow): Record<string, unknown> {
     const redirect = typeof config.redirect_url === 'string' ? config.redirect_url : null;
     const createdAt = String(row.created_at ?? '');
     const updatedAt = String(row.updated_at ?? createdAt);
+    // Return empty config object to match product (fields are at top level, not in config)
     return {
         id: String(row.id),
         name: String(row.name ?? ''),
         type: String(row.type ?? 'login'),
-        config,
+        config: {},
         target_contact_type: target,
         targetContactType: target,
         allowed_contact_types: allowed,
@@ -201,12 +202,11 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
                 const config = parseConfig(candidate.config);
                 return Boolean(config.is_primary);
             });
-            // Fallback to first active if no primary found
-            const target = primary || activeRows[0];
-            if (target) {
-                return c.json(envelope(true, serializeForm(target)));
+            // No fallback - must have an explicit primary form
+            if (primary) {
+                return c.json(envelope(true, serializeForm(primary)));
             }
-            return c.json(envelope(false, null, null, 'No auth forms configured'));
+            return c.json(envelope(false, null, null, 'Auth form not found'));
         } catch (e) {
             return c.json(envelope(false, null, null, String(e)));
         }
@@ -337,7 +337,7 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
                 [c.get('tenant'), c.req.param('form_id')],
             ) as AuthFormRow[];
             const existing = rows[0];
-            if (!existing) return c.json(envelope(false, null, 'Auth form not found'));
+            if (!existing) return c.json(envelope(false, null, null, 'Auth form not found'));
 
             await runner.exec('UPDATE auth_forms SET is_primary = 0 WHERE tenant_slug = ?', [c.get('tenant')]);
             await runner.exec(

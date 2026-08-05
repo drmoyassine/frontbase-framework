@@ -42,14 +42,22 @@ function reg(
 
     /** Validate create request body returns 422 detail on violation */
     function validateCreate(body: Record<string, unknown>): { valid: true } | { valid: false; response: Record<string, unknown> } {
-        if (body.name !== undefined && typeof body.name !== 'string') {
-            return { valid: false, response: validationError('name', 'string', body.name) };
-        }
-        if (body.provider !== undefined && typeof body.provider !== 'string') {
+        const missing: { loc: string[]; msg: string; type: string }[] = [];
+        if (body.provider === undefined) {
+            missing.push({ loc: ['body', 'provider'], msg: 'Field required', type: 'missing' });
+        } else if (typeof body.provider !== 'string') {
             return { valid: false, response: validationError('provider', 'string', body.provider) };
         }
-        if (body[urlField] !== undefined && typeof body[urlField] !== 'string') {
+        if (body[urlField] === undefined) {
+            missing.push({ loc: ['body', urlField], msg: 'Field required', type: 'missing' });
+        } else if (typeof body[urlField] !== 'string') {
             return { valid: false, response: validationError(urlField, 'string', body[urlField]) };
+        }
+        if (missing.length > 0) {
+            return { valid: false, response: { detail: missing } };
+        }
+        if (body.name !== undefined && typeof body.name !== 'string') {
+            return { valid: false, response: validationError('name', 'string', body.name) };
         }
         return { valid: true };
     }
@@ -97,9 +105,13 @@ function reg(
             supports_remote_delete: false,
         };
         // Insert warning before supports_remote_delete for caches/queues
-        if (kind === 'cache' || kind === 'queue') {
+        if (kind === 'cache') {
             const { supports_remote_delete, ...rest } = base;
             return { ...rest, warning: null, supports_remote_delete: supports_remote_delete as false };
+        }
+        if (kind === 'queue') {
+            const { supports_remote_delete, ...rest } = base;
+            return { ...rest, has_signing_key: false, warning: null, supports_remote_delete: supports_remote_delete as false };
         }
         // For vectors, insert provider_config before created_at, no warning
         if (kind === 'vector') {

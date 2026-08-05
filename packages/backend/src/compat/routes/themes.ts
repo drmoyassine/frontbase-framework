@@ -18,11 +18,11 @@ const serialize = (r: { id: string; name: string; component_type: string; styles
         styles_data = {};
     }
     return {
-        id: r.id,
         name: r.name,
         component_type: r.component_type,
         styles_data,
         is_system: !!r.is_system,
+        id: r.id,
         created_at: r.created_at,
         updated_at: r.updated_at,
     };

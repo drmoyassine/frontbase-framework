@@ -26,16 +26,24 @@ export function registerProjectRoutes(app: App, kvFor: (t: string) => KeyValueSt
     // GET /api/project/
     app.get('/api/project/', async (c) => {
         const stored = await kvFor(c.get('tenant')).getJson('project', {});
-        const ts = now();
-        return c.json({ ...DEFAULT_PROJECT, created_at: ts, updated_at: ts, ...(stored as object) });
+        // Return stored values with defaults; preserve timestamps from storage
+        return c.json({ ...DEFAULT_PROJECT, ...(stored as object) });
     });
     // PUT /api/project/
     app.put('/api/project/', async (c) => {
         const body = await c.req.json().catch(() => ({}));
         const ts = now();
+        // Merge with defaults and request body
         const merged = { ...DEFAULT_PROJECT, ...(body as object) };
-        await kvFor(c.get('tenant')).setJson('project', merged, ts);
-        return c.json({ ...merged, created_at: ts, updated_at: ts });
+        // Preserve existing created_at if present, otherwise use current time
+        const existing = await kvFor(c.get('tenant')).getJson('project', {}) as any;
+        const final = {
+            ...merged,
+            created_at: existing.created_at || ts,
+            updated_at: ts,
+        };
+        await kvFor(c.get('tenant')).setJson('project', final, ts);
+        return c.json(final);
     });
     // POST /api/project/assets/upload/ — branding asset bytes. Community stores
     // metadata only here (real object storage is wired in Wave 2). Permissive shape.

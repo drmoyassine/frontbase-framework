@@ -57,7 +57,7 @@ export function registerEdgeMiscRoutes(
     now: () => string,
 ): void {
     // edge-api-keys (5)
-    app.get('/api/edge-api-keys', async (c) => {
+    const listApiKeys = async (c: any) => {
         const keys = await runner.query(
             `SELECT k.id, k.name, k.scope, k.is_active, k.expires_at,
                     k.created_at, k.updated_at, k.last_used_at, s.prefix,
@@ -74,7 +74,10 @@ export function registerEdgeMiscRoutes(
             keys: keys.map((k: Record<string, unknown>) => ({ ...k, engine_name: null })),
             total: keys.length,
         });
-    });
+    };
+    // Register both with and without trailing slash to match product
+    app.get('/api/edge-api-keys', listApiKeys);
+    app.get('/api/edge-api-keys/', listApiKeys);
 
     app.post('/api/edge-api-keys', async (c) => {
         const parsed = zApiKeyCreate.safeParse(await c.req.json().catch(() => null));

@@ -26,7 +26,7 @@ export function registerStorageRoutes(
         const { config: _config, config_ciphertext: _ciphertext, ...safe } = record;
         return {
             ...safe,
-            has_config: Boolean(_config ?? _ciphertext),
+            config: {},
         };
     };
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
@@ -83,7 +83,7 @@ export function registerStorageRoutes(
                 id,
                 name: b.name ?? 'bucket',
                 provider: b.provider ?? 'local',
-                has_config: b.config !== undefined,
+                config: {},
                 created_at: now(),
             },
         }, 201);
@@ -143,7 +143,7 @@ export function registerStorageRoutes(
                     id,
                     name: b.name ?? 'bucket',
                     provider: b.provider ?? 'local',
-                    has_config: b.config !== undefined,
+                    config: {},
                     updated_at: now(),
                 },
             });
@@ -160,6 +160,15 @@ export function registerStorageRoutes(
 
     // DELETE /api/storage/buckets/{bucket_id}
     app.delete('/api/storage/buckets/:bucket_id', async (c) => {
+        const providerId = c.req.query('provider_id');
+        if (!providerId) {
+            return c.json({
+                detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+            }, 422);
+        }
+        if (!await hasStorageProvider(c.get('tenant'), providerId)) {
+            return c.json({ detail: 'Storage provider not found' }, 404);
+        }
         await phase2For(c.get('tenant')).deleteBucket(c.req.param('bucket_id'));
         return c.json({ success: true, message: 'Bucket deleted' });
     });

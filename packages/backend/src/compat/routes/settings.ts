@@ -89,9 +89,10 @@ export function registerSettingsRoutes(
                 // Merge defaults with stored, then hide ciphertext, never expose it
                 const merged = { ...DEFAULTS.redis as object, ...storedRedis };
                 // Return in exact key order product expects (for JSON string comparison parity)
+                // Product returns empty string for redis_token when none set, not null
                 return c.json({
                     redis_url: merged.redis_url ?? null,
-                    redis_token: null,
+                    redis_token: (merged.redis_token as string ?? '') || '',
                     redis_type: merged.redis_type ?? 'self-hosted',
                     redis_enabled: merged.redis_enabled ?? false,
                     cache_ttl_data: merged.cache_ttl_data ?? 60,
@@ -140,9 +141,11 @@ export function registerSettingsRoutes(
                 await kvFor(c.get('tenant')).setJson(domain, persisted, now());
                 // Merge defaults with persisted values, return in exact key order product expects
                 const merged = { ...DEFAULTS.redis as object, ...persisted } as Record<string, unknown>;
+                // Product returns the input redis_token value (or empty string), not null
+                const returnedToken = (input.redis_token as string ?? '') || '';
                 return c.json({
                     redis_url: merged.redis_url ?? null,
-                    redis_token: null,
+                    redis_token: returnedToken,
                     redis_type: merged.redis_type ?? 'self-hosted',
                     redis_enabled: merged.redis_enabled ?? false,
                     cache_ttl_data: merged.cache_ttl_data ?? 60,
@@ -238,8 +241,13 @@ export function registerSettingsRoutes(
                         break;
                     }
                 }
+                // Map Zod's "invalid_type" + "undefined" to Pydantic's "missing"
+                let errorType: string = err.code;
+                if (err.code === 'invalid_type' && err.received === 'undefined') {
+                    errorType = 'missing';
+                }
                 return {
-                    type: err.code,
+                    type: errorType,
                     loc: ['body', ...err.path.map(String)],
                     msg: err.message,
                     input: rawInput,

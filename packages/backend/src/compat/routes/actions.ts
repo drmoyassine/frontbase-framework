@@ -40,6 +40,8 @@ function asDraft(row: Record<string, unknown>, contentHash: string | null = null
         try { const p = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(p) ? p : []; }
         catch { return []; }
     };
+    // content_hash: use explicit param if provided (PATCH computes fresh), otherwise fall back to row value, default null
+    const hash = contentHash ?? (row.content_hash ?? null);
     const base: Record<string, unknown> = {
         id: String(row.id),
         name: String(row.name ?? ''),
@@ -56,11 +58,8 @@ function asDraft(row: Record<string, unknown>, contentHash: string | null = null
         created_by: null,
         created_at: String(row.created_at ?? ''),
         updated_at: String(row.updated_at ?? row.created_at ?? ''),
+        content_hash: hash,
     };
-    // Only include content_hash if explicitly provided (PATCH computes it; POST returns null/absent)
-    if (contentHash !== null) {
-        base.content_hash = contentHash;
-    }
     return base;
 }
 
@@ -206,7 +205,7 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
     app.post('/api/actions/drafts/:draft_id/publish/:engine_id/toggle', async (c) => {
         const store = phase2For(c.get('tenant'));
         const existing = await store.getWorkflow(c.req.param('draft_id'));
-        if (!existing) return c.json({ detail: 'Workflow draft not found' }, 400);
+        if (!existing) return c.json({ detail: 'Workflow draft not found' }, 404);
         const engine = await store.getEdgeResource(c.req.param('engine_id'));
         if (!engine || engine.kind !== 'engine') {
             // Product parity: return 404 for deployment target not found (matches product resource not found behavior)
