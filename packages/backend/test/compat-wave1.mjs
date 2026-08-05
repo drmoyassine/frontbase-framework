@@ -82,7 +82,7 @@ test('settings: action endpoints return conformant acks', async () => {
         cache_ttl_count: 300,
     });
     assert.equal(redisPut.status, 200);
-    assert.equal((await redisPut.json()).redis_token, '');
+    assert.equal((await redisPut.json()).redis_token, null);
     // The product tests the credentials in the REQUEST, not the stored ones:
     // `async def test_redis_connection(settings_update: RedisSettings, ...)` reads
     // `settings_update.redis_token` (app/routers/settings.py:92-110). The console

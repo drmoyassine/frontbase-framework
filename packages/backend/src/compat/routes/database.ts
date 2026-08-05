@@ -409,36 +409,9 @@ export function registerDatabaseRoutes(
         }
     });
 
-    // GET /api/database/rls/metadata/
-    // Product parity: return empty array when no metadata stored
-    app.get('/api/database/rls/metadata/', async (c) => {
-        return c.json({ success: true, data: [], error: null });
-    });
-
-    // POST /api/database/rls/metadata/verify/
-    const zVerifyRlsRequest = z.object({
-        tableName: z.string(),
-        policyName: z.string(),
-        currentUsing: z.string().nullable().optional(),
-    });
-    app.post('/api/database/rls/metadata/verify/', async (c) => {
-        const parsed = zVerifyRlsRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) {
-            return c.json(zodToPydanticError(parsed.error), 422);
-        }
-        const source = await getActiveRunner(c.get('tenant'));
-        if (!source) {
-            return c.json({
-                success: true,
-                data: { hasMetadata: false, isVerified: false, reason: 'error', formData: null },
-                error: null,
-            });
-        }
-        // Product parity: return verification result (always false for framework as RLS metadata is not stored)
-        return c.json({
-            success: true,
-            data: { hasMetadata: false, isVerified: false, reason: 'error', formData: null },
-            error: null,
-        });
-    });
+    // NOTE: /api/database/rls/metadata/ (GET list) and /api/database/rls/metadata/verify/
+    // (POST) are implemented in rls.ts. RLS metadata is Builder form state, not provider
+    // state (see rls.ts), so those handlers read/write the local KV directly and must NOT
+    // be shadowed by product-parity stubs here. Earlier parity work added stubs here that
+    // always returned [] / {reason:'error'}, which silently shadowed the real handlers.
 }

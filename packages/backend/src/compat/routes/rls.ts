@@ -304,12 +304,8 @@ export function registerRlsRoutes(
 
     // Metadata is Builder form state, not provider state.
     app.get('/api/database/rls/metadata/', async (c) => {
-        // Product parity: return 404 when Supabase not configured
-        try {
-            await supabaseFor(c.get('tenant'));
-        } catch {
-            return c.json({ detail: 'Not Found' }, 404);
-        }
+        // RLS metadata is Builder form state (local KV), not provider state — it must
+        // remain accessible without a Supabase connection, so no supabaseFor() guard here.
         const metadata = await kvFor(c.get('tenant')).getJson<Array<Record<string, unknown>>>('rls_metadata', []);
         // Product excludes sqlHash and generatedCheck from the array response (only in individual item response)
         const data = metadata.map(({ sqlHash, generatedCheck, ...rest }) => rest);
@@ -374,12 +370,8 @@ export function registerRlsRoutes(
         if (!parsed.success) {
             return c.json(zodToPydanticError(parsed.error), 422);
         }
-        // Product parity: return 404 when Supabase not configured
-        try {
-            await supabaseFor(c.get('tenant'));
-        } catch {
-            return c.json({ detail: 'Not Found' }, 404);
-        }
+        // RLS metadata is Builder form state (local KV), not provider state — it must
+        // remain accessible without a Supabase connection, so no supabaseFor() guard here.
         const all = await kvFor(c.get('tenant')).getJson<Array<{
             tableName?: string;
             policyName?: string;

@@ -112,11 +112,15 @@ export function registerEdgeEnginesRoutes(
         edge_auth_id: body.edge_auth_id,
     });
     // GET /api/edge-engines/
-    // Product does NOT include the system edge in the list response (only stored engines)
+    // The framework's self-aware Cloudflare system edge (local-edge) is a flagship feature
+    // the product lacks — it is the default single-target publish for pages & workflows.
+    // It is deliberately listed FIRST (ahead of stored engines), diverging from the product
+    // which has no system edge. Removing it to "match product" destroyed the feature.
     app.get('/api/edge-engines/', async (c) => {
         const store = p2(c.get('tenant'));
+        const system = systemEngineFor(c);
         return c.json(await Promise.all(
-            (await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row)),
+            [system, ...(await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row))],
         ));
     });
 

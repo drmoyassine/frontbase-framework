@@ -158,7 +158,7 @@ export function buildSystemEngine(desc: SystemEdgeDescriptor, origin: string): R
     const engine = serializeEngine({
         id: SYSTEM_ENGINE_ID,
         name: desc.name ?? 'Local Edge',
-        provider: null,  // Product returns provider: null for all engines, including system
+        provider: desc.provider,  // System edge is self-aware of its provider (cloudflare) — a framework feature the product lacks
         status: 'active',
         is_system: true,
         config: { adapter_type: 'full', url: origin, edge_db_id: 'system-d1' },
@@ -167,6 +167,7 @@ export function buildSystemEngine(desc: SystemEdgeDescriptor, origin: string): R
     });
     // serializeEngine leaves the binding names null; fill them from the descriptor
     // so the card reflects THIS deployment (D1) rather than product defaults.
+    engine.provider = desc.provider;  // self-aware of its provider (cloudflare) — framework feature
     engine.edge_db_name = desc.db ?? null;
     engine.edge_cache_name = desc.cache ?? null;
     engine.edge_queue_name = desc.queue ?? null;

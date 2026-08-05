@@ -1840,7 +1840,7 @@ export function registerSyncRoutes(
             details.push({ type: 'missing', loc: ['query', 'local_kw'], msg: 'Field required', input: null });
         }
 
-        const body = await c.req.json().catch(() => ({})) as {
+        const body = (await c.req.json().catch(() => ({})) ?? {}) as {
             token?: string;
             spreadsheetId?: string;
             spreadsheetName?: string | null;

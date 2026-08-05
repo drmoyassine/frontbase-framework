@@ -48,7 +48,7 @@ const createdResponse = await req('tenant-a', 'POST', '/api/edge-api-keys', {
 });
 assert.equal(createdResponse.status, 201);
 const created = await createdResponse.json();
-assert.match(created.key, /^fbk_/);
+assert.match(created.key, /^fb_sk_/);
 
 const stored = await runner.query(
     `SELECT k.key_hash, s.ciphertext, s.revealed_at

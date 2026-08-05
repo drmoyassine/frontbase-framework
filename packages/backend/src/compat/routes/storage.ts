@@ -47,7 +47,12 @@ export function registerStorageRoutes(
         return providers.some((provider) => provider.id === providerId);
     };
 
-    const SUPPORTED_STORAGE_PROVIDERS = new Set(['supabase', 'cloudflare', 'vercel', 'netlify']);
+    // Supported storage provider types. The product imposes no whitelist here (its
+    // storage router accepts any provider type and dispatches to an adapter), and the
+    // framework's storage layer is provider-agnostic (KV-simulated). 's3' and 'local'
+    // are first-class (S3-compatible object storage + local dev) — excluding them, as
+    // earlier parity work did, rejected legitimate providers the product accepts.
+    const SUPPORTED_STORAGE_PROVIDERS = new Set(['supabase', 'cloudflare', 'vercel', 'netlify', 's3', 'local', 'r2', 'b2']);
 
     // ---- buckets (Phase2Store) ----
     // GET /api/storage/buckets
