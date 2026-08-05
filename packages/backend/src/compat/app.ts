@@ -204,10 +204,6 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         // The Sheets add-on has no browser session. A short-lived, hashed,
         // single-use capability authorizes this one callback.
         if (path === '/api/sync/datasources/sheets/connect/callback/') return next();
-        // Auth routes (/api/auth/*) do their own authentication checks via
-        // requireValidAuth in the route handlers, not via defaultDenyAuth.
-        // This allows them to return product-compatible error messages.
-        if (path.startsWith('/api/auth/')) return next();
         return defaultDenyAuth(resolvePrincipal as (req: Request) => Promise<any>)(c, next);
     });
     // Provider credentials, infrastructure lifecycle, security administration,
@@ -232,10 +228,6 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         const principal = c.get('principal');
         // Check authentication FIRST (RULE 2: default-deny)
         if (!principal?.user) {
-            // Auth security endpoints return "Unauthorized" to match product
-            if (path.startsWith('/api/auth/security/')) {
-                return c.json({ detail: 'Unauthorized' }, 401);
-            }
             return c.json({ detail: 'Authentication required' }, 401);
         }
         const role = (principal.user as { role?: string } | null)?.role;

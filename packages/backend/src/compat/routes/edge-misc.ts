@@ -16,31 +16,12 @@ async function sha256Hex(value: string): Promise<string> {
  * Convert ISO timestamp to product timestamp format.
  * Product uses format like "2026-08-05T12:22:14.178278+00:00" (with microseconds and +00:00 offset).
  * Framework ISO format uses "Z" suffix for UTC.
- * This converts "2026-08-05T12:22:14.178Z" -> "2026-08-05T12:22:14.178000+00:00"
+ * This converts "2026-08-05T12:22:14.178Z" -> "2026-08-05T12:22:14.178+00:00"
  * Handles both null/undefined and string values (including the string "null" from D1).
- * Pads fractional seconds to 6 digits to match product's microsecond precision format.
  */
 function toProductTimestamp(ts: string | null | undefined): string | null {
     if (ts === null || ts === undefined || ts === 'null' || ts === '') return null;
-    let normalized = ts;
-    // Replace trailing 'Z' with empty string first
-    if (normalized.endsWith('Z')) {
-        normalized = normalized.slice(0, -1);
-    }
-    // Match the fractional seconds part and pad to 6 digits
-    const match = normalized.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.(\d+)(?:[+-]\d{2}:\d{2})?$/);
-    if (match) {
-        const [, prefix, fractional] = match;
-        // Pad or truncate to 6 digits (fractional is guaranteed to exist by the regex)
-        const padded = fractional!.padEnd(6, '0').slice(0, 6);
-        return `${prefix}.${padded}+00:00`;
-    }
-    // If no fractional seconds, add them
-    const noFraction = normalized.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:[+-]\d{2}:\d{2})?$/);
-    if (noFraction) {
-        return `${noFraction[1]}.000000+00:00`;
-    }
-    // Fallback: just replace Z with +00:00
+    // Replace trailing 'Z' with '+00:00' to match product format
     return ts.endsWith('Z') ? ts.slice(0, -1) + '+00:00' : ts;
 }
 

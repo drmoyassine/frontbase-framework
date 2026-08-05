@@ -28,31 +28,6 @@ function reg(
 ): void {
     const param = idP.replace(':', '');
 
-    /**
-     * Format timestamp to product format with 6-digit fractional seconds and +00:00 timezone.
-     * Input: "2026-08-05T18:58:43.289Z" or similar
-     * Output for non-system: "2026-08-05T18:58:43.289000+00:00"
-     * Output for system: "2026-08-05T18:58:43.289000" (no timezone)
-     */
-    const toProductTimestamp = (ts: string | null | undefined, isSystemResource: boolean): string => {
-        if (!ts || ts === 'null' || ts === '') return '';
-        let normalized = String(ts);
-        // Remove ALL timezone suffixes (including combinations)
-        // Order matters: try longer patterns first
-        normalized = normalized.replace(/[+-]\d{2}:\d{2}$/, '')  // Remove ±00:00
-            .replace(/Z$/, '');                                  // Then remove trailing Z
-        // Match the fractional seconds part and pad to 6 digits
-        const match = normalized.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.(\d+)$/);
-        if (match) {
-            const [, prefix, fractional] = match;
-            // Pad to 6 digits (fractional is guaranteed to exist by the regex)
-            const padded = fractional!.padEnd(6, '0').slice(0, 6);
-            normalized = `${prefix}.${padded}`;
-        }
-        // Add timezone suffix for non-system resources (product uses +00:00Z)
-        return isSystemResource ? normalized : `${normalized}+00:00Z`;
-    };
-
     /** Pydantic-style validation error response matching product's 422 shape */
     function validationError(field: string, expectedType: string, actualInput: unknown): Record<string, unknown> {
         return {
@@ -115,6 +90,15 @@ function reg(
         const config = await store.getEdgeResourceConfig(String(row.id)) ?? {};
         const url = String(config.url ?? '');
         const isSystem = Boolean(row.is_system);
+        // Normalize timestamp: remove trailing Z/+00:00Z, then add +00:00Z for user resources
+        const formatTimestamp = (ts: unknown): string => {
+            const str = String(ts ?? '');
+            if (!str) return '';
+            // Remove timezone suffixes: prefer longer patterns first to avoid partial matches
+            // Handles: "Z+00:00", "+00:00Z", "+00:00", "Z" at end of string
+            const normalized = str.replace(/Z\+00:00$|\+00:00Z$|\+00:00$|Z$/, '');
+            return isSystem ? normalized : normalized + '+00:00Z';
+        };
         // For system resources, use the special local engine; for user resources, use empty defaults
         const engineData = isSystem
             ? { engine_count: 1, linked_engines: [{ id: 'a0f2ffa2-62a5-4437-aa88-833138b70421', name: 'Local Edge', provider: 'unknown' }] }
@@ -131,8 +115,8 @@ function reg(
             is_system: isSystem,
             provider_account_id: config.provider_account_id != null ? String(config.provider_account_id) : null,
             account_name: config.account_name != null ? String(config.account_name) : null,
-            created_at: toProductTimestamp(row.created_at as string | null, isSystem),
-            updated_at: toProductTimestamp(row.updated_at as string | null, isSystem),
+            created_at: formatTimestamp(row.created_at),
+            updated_at: formatTimestamp(row.updated_at),
             ...engineData,
             supports_remote_delete: false,
         };

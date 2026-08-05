@@ -51,7 +51,7 @@ const DEFAULTS: Record<string, unknown> = {
     redis: {
         redis_url: 'http://redis-http:80',
         redis_token: null,
-        redis_type: 'upstash',
+        redis_type: 'self-hosted',
         redis_enabled: false,
         cache_ttl_data: 60,
         cache_ttl_count: 300,
@@ -84,16 +84,23 @@ export function registerSettingsRoutes(
     for (const [domain, path] of domainRoutes) {
         app.get(path, async (c) => {
             if (domain === 'redis') {
-                // Product GET returns hardcoded defaults for redis_url and redis_type,
-                // but reads stored values for redis_enabled, cache_ttl_data, cache_ttl_count
-                const stored = await kvFor(c.get('tenant')).getJson<Record<string, unknown>>('redis', {});
+                // Product GET always returns defaults, ignoring stored values
+                // Return in exact key order product expects (for JSON string comparison parity)
+                // Product returns null for redis_token when none set, not empty string
+                const redisDefaults = DEFAULTS.redis as {
+                    redis_url?: string;
+                    redis_type?: string;
+                    redis_enabled?: boolean;
+                    cache_ttl_data?: number;
+                    cache_ttl_count?: number;
+                };
                 return c.json({
-                    redis_url: 'http://redis-http:80',
+                    redis_url: redisDefaults.redis_url ?? null,
                     redis_token: null,
-                    redis_type: 'self-hosted',
-                    redis_enabled: stored.redis_enabled ?? false,
-                    cache_ttl_data: stored.cache_ttl_data ?? 60,
-                    cache_ttl_count: stored.cache_ttl_count ?? 300,
+                    redis_type: redisDefaults.redis_type ?? 'self-hosted',
+                    redis_enabled: redisDefaults.redis_enabled ?? false,
+                    cache_ttl_data: redisDefaults.cache_ttl_data ?? 60,
+                    cache_ttl_count: redisDefaults.cache_ttl_count ?? 300,
                 });
             }
             const stored = await kvFor(c.get('tenant')).getJson(domain, DEFAULTS[domain]);
@@ -142,7 +149,7 @@ export function registerSettingsRoutes(
                 return c.json({
                     redis_url: input.redis_url ?? null,
                     redis_token: null,
-                    redis_type: input.redis_type ?? 'upstash',
+                    redis_type: input.redis_type ?? 'self-hosted',
                     redis_enabled: input.redis_enabled ?? false,
                     cache_ttl_data: input.cache_ttl_data ?? 60,
                     cache_ttl_count: input.cache_ttl_count ?? 300,

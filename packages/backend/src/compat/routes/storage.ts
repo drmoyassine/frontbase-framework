@@ -141,8 +141,13 @@ export function registerStorageRoutes(
             }
             return c.json({ success: true, bucket: redactConfig(bucket) });
         } catch (e) {
-            // Handle any unexpected errors gracefully
-            return c.json({ detail: 'Internal server error' }, 500);
+            const err = e as Error;
+            if (err.message?.startsWith('validation')) {
+                return c.json({
+                    detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+                }, 422);
+            }
+            throw e;
         }
     });
 
@@ -189,8 +194,13 @@ export function registerStorageRoutes(
                 bucket: redactConfig(updatedBucket ?? { id, name: b.name ?? existingName, provider: b.provider ?? existingProvider, created_at: now() }),
             });
         } catch (e) {
-            // Handle any unexpected errors gracefully
-            return c.json({ detail: 'Internal server error' }, 500);
+            const err = e as Error;
+            if (err.message?.startsWith('validation')) {
+                return c.json({
+                    detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+                }, 422);
+            }
+            throw e;
         }
     });
 
@@ -224,8 +234,13 @@ export function registerStorageRoutes(
             await store.deleteBucket(id);
             return c.json({ success: true, message: 'Bucket deleted' });
         } catch (e) {
-            // Handle any unexpected errors gracefully
-            return c.json({ detail: 'Internal server error' }, 500);
+            const err = e as Error;
+            if (err.message?.startsWith('validation')) {
+                return c.json({
+                    detail: [{ type: 'missing', loc: ['query', 'provider_id'], msg: 'Field required', input: null }],
+                }, 422);
+            }
+            throw e;
         }
     });
 
