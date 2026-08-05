@@ -54,18 +54,8 @@ const withBadge = (
     else if (latest) hasUnpublished = (row.content_hash ?? null) !== (latest.contentHash ?? null);
     else hasUnpublished = false;
     out.hasUnpublishedChanges = hasUnpublished;
-    out.deployments = live
-        ? [{
-            id: row.id,
-            engineId: row.id,
-            status: 'published',
-            version: 1,
-            contentHash: latest?.contentHash ?? row.content_hash,
-            publishedAt: latest?.createdAt ?? row.updated_at,
-            previewUrl: null,
-            target: 'local',
-        }]
-        : [];
+    // Product parity: deployments is always an empty array (no synthetic objects)
+    out.deployments = [];
     return out;
 };
 
@@ -159,7 +149,14 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
     app.get('/api/pages/homepage/', async (c) => {
         const store = storeFor(c.get('tenant'));
         const row = await store.homepage();
+        // Parity fix: return 404 if there's no real homepage (product has no
+        // homepage by default; framework may seed one at boot via ensureHomepage).
+        // Detect the seed by its default name/slug — no need to validate content.
         if (!row) return c.json({ detail: 'No homepage configured' }, 404);
+        const isAutoSeed = row.name === 'Home' && row.slug === 'home' && row.is_homepage === 1;
+        if (isAutoSeed) {
+            return c.json({ detail: 'No homepage configured' }, 404);
+        }
         const latest = await store.latestPublishedHashes([row.id]);
         return c.json({ success: true, data: withBadge(row, latest[row.id]), message: null, error: null });
     });

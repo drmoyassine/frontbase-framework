@@ -16,6 +16,7 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 const BUILTIN_SKILLS = [
     {
+        id: '6c5fb17a-a441-43bd-b425-146b71b3c967',
         slug: 'code-exec',
         name: 'Code Execution',
         description: 'Run sandboxed Python snippets and return structured output.',
@@ -25,6 +26,7 @@ const BUILTIN_SKILLS = [
         ],
     },
     {
+        id: 'b85d208f-fef2-4208-a2cb-421fb6377905',
         slug: 'database-query',
         name: 'Database Query',
         description: 'Run read-only SQL against a connected datasource and return rows.',
@@ -34,6 +36,7 @@ const BUILTIN_SKILLS = [
         ],
     },
     {
+        id: 'f918bbb2-8b4a-4b38-90cd-bd3addf0c3bf',
         slug: 'document-parser',
         name: 'Document Parser',
         description: 'Parse uploaded documents (PDF, DOCX, CSV) into structured text.',
@@ -43,6 +46,7 @@ const BUILTIN_SKILLS = [
         ],
     },
     {
+        id: '31ad867f-54d9-4b7b-84dd-00e9c074a02f',
         slug: 'integration-http',
         name: 'HTTP Integration',
         description: 'Make authenticated HTTP requests to external APIs.',
@@ -52,6 +56,7 @@ const BUILTIN_SKILLS = [
         ],
     },
     {
+        id: 'fd6f667c-3b87-43c0-a9ce-3930fc43d90e',
         slug: 'web-scraper',
         name: 'Web Scraper',
         description: 'Fetch and extract content from a URL (title, text, links).',
@@ -76,8 +81,12 @@ const CORE_TOOLS = [
 ].map(([name, label, category]) => ({ name, label, category, disabled: false }));
 
 const builtinSkillViews = () => BUILTIN_SKILLS.map((skill) => ({
-    id: skill.slug,
-    ...skill,
+    id: skill.id,
+    slug: skill.slug,
+    name: skill.name,
+    description: skill.description,
+    category: skill.category,
+    toolDefinitions: skill.toolDefinitions,
     version: '1.0.0',
     isBuiltin: true,
     isActive: true,
@@ -104,9 +113,68 @@ export function registerAgentCompatRoutes(
         return ciphertext;
     };
 
-    const redactConfig = (row: any) => {
-        const { config, ...safe } = row;
-        return { ...safe, has_config: Boolean(config) };
+    const redactConfig = async (row: any) => {
+        const { config, auth_type, token } = row;
+        // Extract additional fields from encrypted config if not present in row
+        const extracted: Record<string, unknown> = {};
+        if (config && secretCipher.isEncrypted(String(config))) {
+            try {
+                const decrypted = await secretCipher.decrypt(String(config));
+                if (decrypted) {
+                    const parsed = JSON.parse(decrypted) as Record<string, unknown>;
+                    extracted.slug = parsed.slug;
+                    extracted.description = parsed.description;
+                    extracted.auth_type = parsed.auth_type;
+                    extracted.token = parsed.token;
+                    extracted.tool_filter = parsed.tool_filter;
+                    extracted.category = parsed.category;
+                    extracted.profile_slug = parsed.profile_slug;
+                }
+            } catch { /* ignore decrypt errors */ }
+        }
+        // Normalize transport: 'http' in legacy data maps to 'streamable-http' for parity
+        const transport = row.transport === 'http' ? 'streamable-http' : (row.transport ?? 'streamable-http');
+        // Use name as fallback for slug when encrypted config is unavailable (parity data uses name as slug)
+        const slug = extracted.slug ?? row.slug ?? (row.name ?? '');
+        return {
+            id: row.id ?? '',
+            name: row.name ?? '',
+            slug,
+            description: extracted.description ?? row.description ?? null,
+            url: row.url ?? '',
+            transport,
+            authType: auth_type ?? extracted.auth_type ?? null,
+            hasAuth: Boolean(token || extracted.token || config),
+            toolFilter: extracted.tool_filter ?? row.tool_filter ?? null,
+            category: extracted.category ?? row.category ?? null,
+            isActive: Boolean(row.is_active ?? 1),
+            isPublic: false,
+            tenantId: null,
+            projectId: null,
+            profileSlug: extracted.profile_slug ?? row.profile_slug ?? null,
+            createdAt: row.created_at ?? null,
+            updatedAt: row.updated_at ?? null,
+        };
+    };
+
+    const redactSkillConfig = (row: any) => {
+        const { config } = row;
+        return {
+            id: row.id ?? '',
+            name: row.name ?? '',
+            slug: row.slug ?? '',
+            description: row.description ?? null,
+            category: row.category ?? null,
+            toolDefinitions: row.tool_definitions ?? [],
+            version: row.version ?? '1.0.0',
+            isBuiltin: false,
+            isActive: Boolean(row.is_active ?? 1),
+            tenantId: null,
+            projectId: null,
+            profileSlug: row.profile_slug ?? null,
+            createdAt: row.created_at ?? null,
+            updatedAt: row.updated_at ?? null,
+        };
     };
     const profilesFor = (tenant: string) =>
         kvFor(tenant).getJson<Array<{ id?: string; name?: string }>>('agent_profiles', []);
@@ -198,8 +266,8 @@ export function registerAgentCompatRoutes(
         };
         return c.json({
             settings: { general, system },
-            can_modify_tenant: true,
             inherited_from: 'profile',
+            can_modify_tenant: true,
         });
     });
 
@@ -212,8 +280,10 @@ export function registerAgentCompatRoutes(
 
     // DELETE /api/agent/settings
     app.delete('/api/agent/settings', async (c) => {
-        await kvFor(c.get('tenant')).setJson('agent_settings', {}, '');
-        return c.json({ message: 'Settings reset', scope: c.req.query('scope') ?? 'user', deleted: 1 });
+        const kv = kvFor(c.get('tenant'));
+        await kv.setJson('agent_settings', {}, '');
+        const scope = c.req.query('scope') ?? 'user';
+        return c.json({ deleted: 1, message: 'Settings reset', scope });
     });
 
     // GET /api/agent/mcp/{profile_slug}
@@ -311,9 +381,8 @@ export function registerAgentCompatRoutes(
 
     // GET /api/mcp-servers
     app.get('/api/mcp-servers', async (c) => {
-        const mcpServers = (
-            await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ?', [c.get('tenant')])
-        ).map(redactConfig);
+        const rows = await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ?', [c.get('tenant')]);
+        const mcpServers = await Promise.all(rows.map(redactConfig));
         return c.json({ mcpServers, total: mcpServers.length });
     });
 
@@ -335,9 +404,20 @@ export function registerAgentCompatRoutes(
         };
         const id = crypto.randomUUID();
         const nowStr = new Date().toISOString();
+        // Merge fields into config for persistence
+        const mergedConfig = {
+            ...(typeof b.config === 'object' && b.config !== null ? b.config as Record<string, unknown> : {}),
+            slug: b.slug,
+            description: b.description,
+            auth_type: b.auth_type,
+            token: b.token,
+            tool_filter: b.tool_filter,
+            category: b.category,
+            profile_slug: b.profile_slug,
+        };
         await runner.exec(
             'INSERT INTO mcp_servers (id, tenant_slug, name, url, transport, config, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)',
-            [id, c.get('tenant'), b.name ?? 'server', b.url ?? '', b.transport ?? 'http', await encryptedConfig(b.config) ?? null, 1, nowStr, nowStr],
+            [id, c.get('tenant'), b.name ?? 'server', b.url ?? '', b.transport ?? 'streamable-http', await encryptedConfig(mergedConfig) ?? null, b.is_active ?? 1, nowStr, nowStr],
         );
         return c.json({
             id,
@@ -350,7 +430,7 @@ export function registerAgentCompatRoutes(
             hasAuth: Boolean(b.token),
             toolFilter: b.tool_filter ?? null,
             category: b.category ?? null,
-            isActive: b.is_active ?? true,
+            isActive: Boolean(b.is_active ?? 1),
             isPublic: false,
             tenantId: null,
             projectId: null,
@@ -363,7 +443,7 @@ export function registerAgentCompatRoutes(
     // GET /api/mcp-servers/{server_id}
     app.get('/api/mcp-servers/:server_id', async (c) => {
         const r = await runner.query('SELECT * FROM mcp_servers WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), c.req.param('server_id')]);
-        return r[0] ? c.json(redactConfig(r[0])) : c.json({ detail: 'MCP server not found' }, 404);
+        return r[0] ? c.json(await redactConfig(r[0])) : c.json({ detail: 'MCP server not found' }, 404);
     });
 
     // PUT /api/mcp-servers/{server_id}
@@ -425,7 +505,7 @@ export function registerAgentCompatRoutes(
         const custom = (await runner.query(
             'SELECT * FROM agent_skills WHERE tenant_slug = ?',
             [c.get('tenant')],
-        )).map(redactConfig);
+        )).map(redactSkillConfig);
         const skills = [...builtinSkillViews(), ...custom];
         return c.json({ skills, total: skills.length });
     });
@@ -494,16 +574,16 @@ export function registerAgentCompatRoutes(
 
     // GET /api/agent-catalogue
     app.get('/api/agent-catalogue', (c) => c.json({
+        coreTools: CORE_TOOLS,
         mcpServers: [],
         skills: BUILTIN_SKILLS.map((skill) => ({
-            id: skill.slug,
+            id: skill.id,
             slug: skill.slug,
             name: skill.name,
             category: skill.category,
             isBuiltin: true,
             disabled: false,
         })),
-        coreTools: CORE_TOOLS,
     }));
 
     // GET /api/agent-profiles/{profile_id}/skills
@@ -519,7 +599,7 @@ export function registerAgentCompatRoutes(
         const result = forProfile.flatMap((install) => {
             const skill = byId.get(install.skillId);
             return skill ? [{
-                ...redactConfig(skill),
+                ...redactSkillConfig(skill),
                 installId: install.id,
                 configOverrides: install.configOverrides ?? null,
                 installedAt: install.installedAt,

@@ -16,3 +16,4 @@ dist/
 packages/backend/test/.diff-*.json
 packages/backend/test/.classify.mjs
 packages/backend/test/.product-evidence.json
+packages/backend/test/.gate-out*.txt

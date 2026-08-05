@@ -32,7 +32,7 @@ export function serializePage(r: CompatPageRow): Record<string, unknown> {
     try { layout = JSON.parse(r.layout_data); } catch { layout = { content: [], root: {} }; }
     return {
         id: r.id, name: r.name, slug: r.slug, title: r.title, description: r.description,
-        keywords: r.keywords, isPublic: !!r.is_public, isHomepage: !!r.is_homepage, isPublished: !!r.is_published,
+        keywords: r.keywords, isPublic: !!r.is_public, isHomepage: !!r.is_homepage,
         layoutData: layout, createdAt: r.created_at, updatedAt: r.updated_at, deletedAt: r.deleted_at,
         contentHash: r.content_hash, hasUnpublishedChanges: true, deployments: [],
     };

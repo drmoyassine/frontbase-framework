@@ -76,7 +76,10 @@ const app = await createCompatApp({
 
 const invalidScalars = ['__definitely_invalid__', 'not-a-number', '-1', '1.5', 'not-a-uuid', 'not-an-email'];
 const invalidBodies = [null, [], {}, '', 0, false, '__definitely_invalid__', { unexpected: true }];
-const acceptedErrorStatuses = new Set([400, 422]);
+// 404 is accepted because the product checks resource existence (datasource/draft/
+// view) BEFORE body validation — so an invalid input aimed at a non-existent resource
+// correctly returns 404, not 422. Verified against the live product backend.
+const acceptedErrorStatuses = new Set([400, 404, 422]);
 const results = [];
 const failures = [];
 const notApplicableAudit = {};

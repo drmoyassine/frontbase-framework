@@ -18,6 +18,15 @@ import { isSystemEngine } from './edge-shapes.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
+/**
+ * Validates UUID format (matches Python's uuid.UUID() validation behavior).
+ * Returns true for valid UUIDs, false otherwise.
+ */
+function isValidUUID(id: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+}
+
 const asJson = (v: unknown): string => typeof v === 'string' ? v : JSON.stringify(v ?? []);
 
 function pythonJson(value: unknown): string {
@@ -40,27 +49,27 @@ function asDraft(row: Record<string, unknown>, contentHash: string | null = null
         try { const p = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(p) ? p : []; }
         catch { return []; }
     };
+    // content_hash: use explicit param if provided (PATCH computes fresh), otherwise fall back to row value, default null
+    const hash = contentHash ?? (row.content_hash ?? null);
+    // Product field order: name, description, trigger_type, trigger_config, nodes, edges, settings, id, is_published, is_active, published_version, deployed_engines, content_hash, created_at, updated_at, created_by
     const base: Record<string, unknown> = {
-        id: String(row.id),
         name: String(row.name ?? ''),
-        nodes: parse(row.nodes),
-        edges: parse(row.edges),
-        is_active: Boolean(row.is_active),
-        is_published: Boolean(row.is_published),
+        description: null,
         trigger_type: String(row.trigger_type ?? 'manual'),
         trigger_config: null,
-        description: null,
-        settings: null,
+        nodes: parse(row.nodes),
+        edges: parse(row.edges),
+        settings: {},
+        id: String(row.id),
+        is_published: Boolean(row.is_published),
+        is_active: Boolean(row.is_active),
         published_version: row.is_published ? Number(row.version ?? 1) : null,
         deployed_engines: {},
-        created_by: null,
+        content_hash: hash,
         created_at: String(row.created_at ?? ''),
         updated_at: String(row.updated_at ?? row.created_at ?? ''),
+        created_by: null,
     };
-    // Only include content_hash if explicitly provided (PATCH computes it; POST returns null/absent)
-    if (contentHash !== null) {
-        base.content_hash = contentHash;
-    }
     return base;
 }
 
@@ -204,15 +213,24 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
     });
     // POST /api/actions/drafts/{draft_id}/publish/{engine_id}/toggle
     app.post('/api/actions/drafts/:draft_id/publish/:engine_id/toggle', async (c) => {
+        const draftId = c.req.param('draft_id');
+        const engineId = c.req.param('engine_id');
         const store = phase2For(c.get('tenant'));
-        const existing = await store.getWorkflow(c.req.param('draft_id'));
+
+        // Validate draft_id UUID format (product parity: 400 for invalid format)
+        if (!isValidUUID(draftId)) {
+            return c.json({ detail: 'Invalid draft ID format' }, 400);
+        }
+
+        const existing = await store.getWorkflow(draftId);
         if (!existing) return c.json({ detail: 'Workflow draft not found' }, 404);
-        const engine = await store.getEdgeResource(c.req.param('engine_id'));
+        const engine = await store.getEdgeResource(engineId);
         if (!engine || engine.kind !== 'engine') {
+            // Product parity: return 404 for deployment target not found (matches product resource not found behavior)
             return c.json({ detail: 'Deployment target not found' }, 404);
         }
         const next = !Boolean(existing.is_active);
-        await store.toggleWorkflow(c.req.param('draft_id'), next, now());
+        await store.toggleWorkflow(draftId, next, now());
         return c.json({ success: true, message: next ? 'Workflow activated' : 'Workflow deactivated', is_active: next });
     });
     // POST /api/actions/drafts/{draft_id}/rollback/  (community: no version store per workflow → graceful)

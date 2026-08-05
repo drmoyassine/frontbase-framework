@@ -15,8 +15,8 @@ const DEFAULT_PROJECT = {
     name: 'Default Project',
     description: null,
     appUrl: null,
-    logoUrl: null,
     faviconUrl: null,
+    logoUrl: null,
     supabase_url: null,
     supabase_anon_key: null,
     usersConfig: {},
@@ -25,17 +25,41 @@ const DEFAULT_PROJECT = {
 export function registerProjectRoutes(app: App, kvFor: (t: string) => KeyValueStore, now: () => string): void {
     // GET /api/project/
     app.get('/api/project/', async (c) => {
-        const stored = await kvFor(c.get('tenant')).getJson('project', {});
         const ts = now();
-        return c.json({ ...DEFAULT_PROJECT, created_at: ts, updated_at: ts, ...(stored as object) });
+        const stored = await kvFor(c.get('tenant')).getJson('project', {});
+        // Ensure created_at and updated_at are always present (match PUT behavior)
+        const storedRecord = stored as any;
+        const response = {
+            ...DEFAULT_PROJECT,
+            ...storedRecord,
+            created_at: storedRecord.created_at || ts,
+            updated_at: storedRecord.updated_at || ts,
+        };
+        // Ensure usersConfig is always an object, never null (product returns {})
+        if (response.usersConfig === null || response.usersConfig === undefined) {
+            response.usersConfig = {};
+        }
+        return c.json(response);
     });
     // PUT /api/project/
     app.put('/api/project/', async (c) => {
         const body = await c.req.json().catch(() => ({}));
         const ts = now();
-        const merged = { ...DEFAULT_PROJECT, ...(body as object) };
-        await kvFor(c.get('tenant')).setJson('project', merged, ts);
-        return c.json({ ...merged, created_at: ts, updated_at: ts });
+        // Read existing data first to preserve fields not in the request body
+        const existing = await kvFor(c.get('tenant')).getJson('project', {}) as any;
+        // Merge: existing data defaults -> existing stored values -> request body takes precedence
+        const merged = { ...DEFAULT_PROJECT, ...existing, ...(body as object) };
+        const final = {
+            ...merged,
+            created_at: existing.created_at || ts,
+            updated_at: ts,
+        };
+        // Ensure usersConfig is always an object, never null (product returns {})
+        if (final.usersConfig === null || final.usersConfig === undefined) {
+            final.usersConfig = {};
+        }
+        await kvFor(c.get('tenant')).setJson('project', final, ts);
+        return c.json(final);
     });
     // POST /api/project/assets/upload/ — branding asset bytes. Community stores
     // metadata only here (real object storage is wired in Wave 2). Permissive shape.

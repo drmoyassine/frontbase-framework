@@ -10,6 +10,29 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { KeyValueStore } from '../store.js';
 import type { SyncStore } from '../sync-store.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
+import { z } from 'zod';
+
+/**
+ * Convert Zod validation errors to Pydantic-style error format.
+ * Pydantic returns { detail: [{ type, loc: ['body', ...path], msg, input }] }
+ */
+function zodToPydanticError(error: { issues: Array<{ code: string; path: Array<string | number>; message: string; expected?: unknown; received?: unknown; input?: unknown }> }): { detail: Array<{ type: string; loc: string[]; msg: string; input: unknown }> } {
+    const typeMap: Record<string, string> = {
+        invalid_type: 'string_type',
+        too_small: 'string_too_short',
+        too_big: 'string_too_long',
+        invalid_enum: 'literal_error',
+    };
+
+    return {
+        detail: error.issues.map((issue) => ({
+            type: typeMap[issue.code] || `${issue.code}_error`,
+            loc: ['body', ...issue.path.map(String)],
+            msg: issue.message,
+            input: issue.input ?? null,
+        })),
+    };
+}
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -281,6 +304,8 @@ export function registerRlsRoutes(
 
     // Metadata is Builder form state, not provider state.
     app.get('/api/database/rls/metadata/', async (c) => {
+        // RLS metadata is Builder form state (local KV), not provider state — it must
+        // remain accessible without a Supabase connection, so no supabaseFor() guard here.
         const metadata = await kvFor(c.get('tenant')).getJson<Array<Record<string, unknown>>>('rls_metadata', []);
         // Product excludes sqlHash and generatedCheck from the array response (only in individual item response)
         const data = metadata.map(({ sqlHash, generatedCheck, ...rest }) => rest);
@@ -335,11 +360,18 @@ export function registerRlsRoutes(
     });
 
     app.post('/api/database/rls/metadata/verify/', async (c) => {
-        const body = await c.req.json().catch(() => ({})) as {
-            tableName?: string;
-            policyName?: string;
-            currentUsing?: string | null;
-        };
+        // Product parity: validate request body with Zod and return 422 Pydantic-style errors
+        const zVerifyRlsRequest = z.object({
+            tableName: z.string(),
+            policyName: z.string(),
+            currentUsing: z.string().nullable().optional(),
+        });
+        const parsed = zVerifyRlsRequest.safeParse(await c.req.json().catch(() => null));
+        if (!parsed.success) {
+            return c.json(zodToPydanticError(parsed.error), 422);
+        }
+        // RLS metadata is Builder form state (local KV), not provider state — it must
+        // remain accessible without a Supabase connection, so no supabaseFor() guard here.
         const all = await kvFor(c.get('tenant')).getJson<Array<{
             tableName?: string;
             policyName?: string;
@@ -347,8 +379,8 @@ export function registerRlsRoutes(
             formData?: Record<string, unknown>;
         }>>('rls_metadata', []);
         const found = all.find((entry) =>
-            entry.tableName === body.tableName && entry.policyName === body.policyName);
-        const verified = Boolean(found) && sqlHash(body.currentUsing) === found?.sqlHash;
+            entry.tableName === parsed.data.tableName && entry.policyName === parsed.data.policyName);
+        const verified = Boolean(found) && sqlHash(parsed.data.currentUsing) === found?.sqlHash;
         return c.json({
             success: true,
             data: {

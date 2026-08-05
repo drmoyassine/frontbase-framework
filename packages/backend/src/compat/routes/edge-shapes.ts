@@ -36,7 +36,11 @@ function parseConfig(raw: unknown): Record<string, unknown> {
  * A stored `edge_resources` row → the tag's `Edge*Response` schema.
  * `urlField` is the only structural difference between the tags
  * (`db_url` / `cache_url` / `queue_url` / `vector_url`); `extra` carries the
- * per-tag optionals (queues' `has_signing_key`, databases' `schema_name`, ...).
+ * per-tag optionals (queues' `has_signing_key', databases' `schema_name', ...).
+ *
+ * Product parity: field order MUST match product for JSON serialization parity.
+ * The product returns fields in a specific order; any difference causes the
+ * conformance test to fail (body shape differs).
  */
 export function serializeEdgeResource(
     row: Record<string, unknown>,
@@ -44,7 +48,11 @@ export function serializeEdgeResource(
     extra: Record<string, unknown> = {},
 ): Record<string, unknown> {
     const config = parseConfig(row.config);
-    const response: Record<string, unknown> = {
+    // Product field order (from actual JSON response): id, name, provider, <url>,
+    // has_token, is_default, is_system, provider_account_id, account_name,
+    // created_at, updated_at, target_count, linked_engines, warning,
+    // supports_remote_delete, schema_name
+    return {
         id: String(row.id),
         name: String(row.name ?? ''),
         provider: String(row.provider ?? 'local'),
@@ -52,20 +60,16 @@ export function serializeEdgeResource(
         has_token: Boolean(config.token),
         is_default: Boolean(config.is_default),
         is_system: Boolean(row.is_system),
-        supports_remote_delete: false,
-        engine_count: 0,
-        linked_engines: [],
+        provider_account_id: (config.provider_account_id != null) ? String(config.provider_account_id) : null,
+        account_name: (config.account_name != null) ? String(config.account_name) : null,
         created_at: String(row.created_at ?? ''),
         updated_at: String(row.updated_at ?? ''),
-        ...extra,
+        target_count: extra.target_count ?? 0,
+        linked_engines: [],
+        warning: extra.warning ?? null,
+        supports_remote_delete: false,
+        schema_name: extra.schema_name ?? null,
     };
-    // provider_account_id: include only when set
-    if (config.provider_account_id != null) {
-        response.provider_account_id = String(config.provider_account_id);
-    }
-    // account_name: product ALWAYS includes it (null when not set)
-    response.account_name = (config.account_name != null) ? String(config.account_name) : null;
-    return response;
 }
 
 /**
@@ -74,11 +78,15 @@ export function serializeEdgeResource(
  */
 export function serializeEngine(row: Record<string, unknown>, extra: Record<string, unknown> = {}): Record<string, unknown> {
     const config = parseConfig(row.config);
+    // engine_config only includes fields not already exposed at top level
+    // Product returns only system_key (and other internal fields), not url/datasource_ids/etc.
+    const engineConfig: Record<string, unknown> = {};
+    if (config.system_key !== undefined) engineConfig.system_key = config.system_key;
     return {
         id: String(row.id),
         name: String(row.name ?? ''),
         edge_provider_id: config.edge_provider_id ?? null,
-        provider: row.provider ?? null,
+        provider: null,  // Product always returns provider: null for engines
         adapter_type: String(config.adapter_type ?? row.provider ?? 'full'),
         url: String(config.url ?? ''),
         edge_db_id: config.edge_db_id ?? null,
@@ -92,7 +100,7 @@ export function serializeEngine(row: Record<string, unknown>, extra: Record<stri
         storage_ids: Array.isArray(config.storage_ids) ? config.storage_ids : [],
         datasources: [],
         storages: [],
-        engine_config: config,
+        engine_config: engineConfig,
         gpu_models: [],
         is_active: String(row.status ?? 'active') === 'active',
         is_system: Boolean(row.is_system),
@@ -150,7 +158,7 @@ export function buildSystemEngine(desc: SystemEdgeDescriptor, origin: string): R
     const engine = serializeEngine({
         id: SYSTEM_ENGINE_ID,
         name: desc.name ?? 'Local Edge',
-        provider: desc.provider,
+        provider: desc.provider,  // System edge is self-aware of its provider (cloudflare) — a framework feature the product lacks
         status: 'active',
         is_system: true,
         config: { adapter_type: 'full', url: origin, edge_db_id: 'system-d1' },
@@ -159,6 +167,7 @@ export function buildSystemEngine(desc: SystemEdgeDescriptor, origin: string): R
     });
     // serializeEngine leaves the binding names null; fill them from the descriptor
     // so the card reflects THIS deployment (D1) rather than product defaults.
+    engine.provider = desc.provider;  // self-aware of its provider (cloudflare) — framework feature
     engine.edge_db_name = desc.db ?? null;
     engine.edge_cache_name = desc.cache ?? null;
     engine.edge_queue_name = desc.queue ?? null;

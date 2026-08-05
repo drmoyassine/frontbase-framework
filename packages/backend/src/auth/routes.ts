@@ -8,7 +8,7 @@ import type { UserStore } from '../db/users.js';
 import { verifyPassword, issueSession } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../mw/auth.js';
 
-const COOKIE = 'fb_session';
+const COOKIE = 'frontbase_session';
 const MAX_AGE = 604800; // 7 days
 // A well-formed PBKDF2 hash of a random value — verified against on unknown-email
 // logins so the response time doesn't reveal whether the email exists (MED-5).

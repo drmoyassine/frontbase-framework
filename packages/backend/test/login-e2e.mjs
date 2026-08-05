@@ -26,7 +26,7 @@ check('unauth /pages → 401', (await req('/pages')).status === 401);
 const loginRes = await req('/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'admin@test.com', password: 'pw12345' }) });
 check('login → 200', loginRes.status === 200);
 const setCookie = loginRes.headers.get('set-cookie') ?? '';
-check('login sets fb_session cookie', setCookie.includes('fb_session='));
+check('login sets frontbase_session cookie', setCookie.includes('frontbase_session='));
 check('cookie is HttpOnly + SameSite=Lax', setCookie.includes('HttpOnly') && setCookie.includes('SameSite=Lax'));
 const loginBody = await loginRes.json();
 check('login response has user {id,email,role}', loginBody.user?.email === 'admin@test.com' && loginBody.user?.role === 'owner');

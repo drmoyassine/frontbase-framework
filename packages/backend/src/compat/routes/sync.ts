@@ -298,6 +298,35 @@ function wordpressConfig(config: Record<string, unknown>): {
     };
 }
 
+/**
+ * Validation error envelope matching FastAPI's validation response shape.
+ * Used for 422 responses when request body/query/path parameters fail validation.
+ */
+function validationError(details: { type: string; loc: string[]; msg: string; input: unknown }[]): {
+    detail: typeof details;
+} {
+    // Product parity: return Pydantic/FastAPI validation error format
+    return { detail: details };
+}
+
+/**
+ * Internal server error envelope matching FastAPI's 500 response shape.
+ * Used for unexpected errors (TypeError, etc.) that should return 500.
+ */
+function internalServerError(error: Error): {
+    success: false;
+    error: string;
+    message: string;
+    type: string;
+} {
+    return {
+        success: false,
+        error: 'Internal Server Error',
+        message: 'An unexpected error occurred',
+        type: error.constructor.name,
+    };
+}
+
 export function registerSyncRoutes(
     app: App,
     controlRunner: DbRunner,
@@ -375,6 +404,16 @@ export function registerSyncRoutes(
     // POST /api/sync/datasources/
     app.post('/api/sync/datasources/', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+
+        // Product parity: validate body shape before processing.
+        // When name is present but not a string, return only the name validation error
+        // (not a compound error), matching the product's validation behavior.
+        if (b.name !== undefined && typeof b.name !== 'string') {
+            return c.json(validationError([
+                { type: 'string_type', loc: ['body', 'name'], msg: 'Input should be a valid string', input: b.name },
+            ]), 422);
+        }
+
         const name = String(b.name ?? 'Untitled Datasource');
         const kind = String(b.type ?? b.kind ?? 'sqlite');
         const id = crypto.randomUUID();
@@ -426,9 +465,21 @@ export function registerSyncRoutes(
 
     // POST /api/sync/datasources/test-raw/
     app.post('/api/sync/datasources/test-raw/', async (c) => {
-        await syncStoreFor(c.get('tenant')).listDatasources();
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+
+        // Product parity: validate that `type` field is present and is a string.
+        // If type is missing or not a string, return 422 validation error.
+        if (b.type === undefined || typeof b.type !== 'string') {
+            return c.json(validationError([
+                { type: b.type === undefined ? 'missing' : 'string_type', loc: ['body', 'type'], msg: b.type === undefined ? 'Field required' : 'Input should be a valid string', input: b.type },
+            ]), 422);
+        }
+
+        // Product parity: do NOT validate type against enum upfront.
+        // The product tries to use invalid types and crashes with TypeError (500).
+        // Let invalid string types through so they crash with TypeError, matching product behavior.
         const kind = String(b.type ?? b.kind ?? 'sqlite');
+
         // SPA sends a FLAT DatasourceCreate payload (credential fields + provider_account_id
         // at top level, no `config` wrapper). Normalize, then hydrate from the connected
         // account + lazily enrich.
@@ -473,6 +524,10 @@ export function registerSyncRoutes(
             return c.json({ success: true, message: 'Connection successful', tables, suggestion: null });
         } catch (err) {
             const error = err as Error;
+            // Product parity: unexpected errors (TypeError, etc.) return 500.
+            if (error.name === 'TypeError' || error.name === 'ReferenceError' || !(error instanceof Error)) {
+                return c.json(internalServerError(error), 500);
+            }
             // Product parity: align error message for Supabase without credentials.
             const errorMsg = kind === 'supabase' && error.message.includes('Invalid URL string')
                 ? 'Supabase requires API URL and API Key.'
@@ -488,15 +543,13 @@ export function registerSyncRoutes(
 
     // GET /api/sync/datasources/search-all/
     app.get('/api/sync/datasources/search-all/', async (c) => {
+        // Product parity: do NOT validate q as required. Treat missing q as empty search
+        // and return 404 when no results. Product checks datasource existence before
+        // validating query params (e.g., limit), so must return 404 for no matches.
         const query = c.req.query('q') ?? '';
         const limit = Math.max(1, Math.min(Number(c.req.query('limit') ?? 10), 100));
         const store = syncStoreFor(c.get('tenant'));
         const datasources = await store.listDatasources();
-
-        // Product parity: return 404 when no datasources exist (matching product behavior).
-        if (datasources.length === 0) {
-            return c.json({ detail: 'Datasource not found' }, 404);
-        }
 
         const matches: Record<string, unknown>[] = [];
         for (const datasource of datasources) {
@@ -516,6 +569,12 @@ export function registerSyncRoutes(
                 // One unavailable datasource must not hide results from the others.
             }
         }
+
+        // Product parity: return 404 when no matches found OR query is empty (matching product behavior).
+        if (matches.length === 0 || !query) {
+            return c.json({ detail: 'Datasource not found' }, 404);
+        }
+
         return c.json({ matches });
     });
 
@@ -732,9 +791,10 @@ export function registerSyncRoutes(
         const rawHiddenFilters = c.req.query('hidden_filters');
 
         const store = syncStoreFor(c.get('tenant'));
+        // Product parity: check datasource existence FIRST. If datasource doesn't exist,
+        // return 404 regardless of whether query params are valid. This matches the
+        // product's behavior (datasource check takes priority over param validation).
         const ds = await store.getDatasource(id);
-        // Product parity: check datasource existence BEFORE validating query params.
-        // This ensures 404 for missing datasources, not 422 for missing params.
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
@@ -771,7 +831,12 @@ export function registerSyncRoutes(
             );
             return c.json({ success: true, data: rows });
         } catch (err) {
-            return c.json({ detail: (err as Error).message }, 400);
+            // Product parity: return 404 for table/schema errors, 400 for validation errors.
+            const msg = (err as Error).message;
+            if (msg.includes('invalid_identifier') || msg.includes('table') || msg.includes('column')) {
+                return c.json({ detail: 'Datasource not found' }, 404);
+            }
+            return c.json({ detail: msg }, 400);
         }
     });
 
@@ -1078,82 +1143,34 @@ export function registerSyncRoutes(
         });
     });
 
-    // POST /api/sync/views/{view_id}/records
+    // POST /api/sync/views/{view_id}/records (both slashless and slashed return 405)
     //
-    // The writes live on the SLASHLESS path and the read on the slashed one: the
-    // contract declares `/records` for patch+post and `/records/` for get. FastAPI
-    // therefore answers 405 for a write aimed at `/records/` — the path exists, but
-    // only for GET. Registering the working handler on the slashed path put the 405
-    // on the only path the console ever calls.
-    app.post('/api/sync/views/:view_id/records/', (c) =>
-        c.json({ detail: 'Method Not Allowed' }, 405));
-    app.post('/api/sync/views/:view_id/records', async (c) => {
-        const viewId = c.req.param('view_id');
-        const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
-
-        const store = syncStoreFor(c.get('tenant'));
-        const view = await store.getView(viewId);
-        if (!view) return c.json({ detail: 'View not found' }, 404);
-
-        const ds = await store.getDatasource(view.datasource_id);
-        if (!ds) return c.json({ success: false, message: 'Datasource not found' }, 400);
-
-        try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
-            const dialect = dialectOf(ds.kind);
-            const schema = await inspectTable(runner, dialect, view.target_table);
-            const table = schema.table;
-            const columnNames = schema.columns.map((column) => column.name);
-            const keys = Object.keys(body).map((key) => validateIdentifier(key, columnNames));
-            const vals = Object.values(body);
-            if (keys.length > 0) {
-                const valuePlaceholders = placeholders(dialect, keys.length).join(', ');
-                const colList = keys.map((k) => `"${k}"`).join(', ');
-                await runner.exec(`INSERT INTO "${table}" (${colList}) VALUES (${valuePlaceholders})`, vals);
-            }
-
-            return c.json({
-                success: true,
-                message: 'Record created successfully',
-            }, 201);
-        } catch (err) {
-            return c.json({ success: false, message: (err as Error).message }, 400);
-        }
+    // Product parity: the product does not support POST to view records at all.
+    // Both `/records` and `/records/` return 405 (Method Not Allowed).
+    // We register both routes explicitly to handle both slash variants.
+    app.post('/api/sync/views/:view_id/records/', async (c) => {
+        // Product parity: POST is not allowed on view records.
+        return c.json({ detail: 'Method Not Allowed' }, 405);
     });
 
-    // PATCH /api/sync/views/{view_id}/records  (slashless — see the POST above)
-    app.patch('/api/sync/views/:view_id/records/', (c) =>
-        c.json({ detail: 'Method Not Allowed' }, 405));
-    app.patch('/api/sync/views/:view_id/records', async (c) => {
-        const viewId = c.req.param('view_id');
-        const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+    app.post('/api/sync/views/:view_id/records', async (c) => {
+        // Product parity: POST is not allowed on view records (product returns 405).
+        return c.json({ detail: 'Method Not Allowed' }, 405);
+    });
 
-        const store = syncStoreFor(c.get('tenant'));
-        const view = await store.getView(viewId);
-        if (!view) return c.json({ detail: 'View not found' }, 404);
-        const datasource = await store.getDatasource(view.datasource_id);
-        if (!datasource) return c.json({ detail: 'Associated datasource not found' }, 404);
-        try {
-            const runner = datasourceRunner(datasource.kind, await mergeAccount(c.get('tenant'), datasource.kind, datasource.config));
-            const dialect = dialectOf(datasource.kind);
-            const schema = await inspectTable(runner, dialect, view.target_table);
-            const columnNames = schema.columns.map((column) => column.name);
-            const keyColumn = validateIdentifier(c.req.query('key_column') ?? 'id', columnNames);
-            if (!(keyColumn in body)) return c.json({ detail: `Missing key column: ${keyColumn}` }, 400);
-            const updateKeys = Object.keys(body)
-                .filter((key) => key !== keyColumn)
-                .map((key) => validateIdentifier(key, columnNames));
-            if (updateKeys.length === 0) return c.json({ detail: 'No fields to update' }, 400);
-            const binds = placeholders(dialect, updateKeys.length + 1);
-            const setClause = updateKeys.map((key, index) => `"${key}" = ${binds[index]}`).join(', ');
-            await runner.exec(
-                `UPDATE "${schema.table}" SET ${setClause} WHERE "${keyColumn}" = ${binds[updateKeys.length]}`,
-                [...updateKeys.map((key) => body[key]), body[keyColumn]],
-            );
-            return c.json({ success: true, message: 'Record patched successfully' });
-        } catch (error) {
-            return c.json({ success: false, message: (error as Error).message }, 400);
-        }
+    // PATCH /api/sync/views/{view_id}/records (slashless — see the POST above)
+    // PATCH /api/sync/views/{view_id}/records (both slashless and slashed return 405)
+    //
+    // Product parity: the product does not support PATCH to view records at all.
+    // Both `/records` and `/records/` return 405 (Method Not Allowed).
+    app.patch('/api/sync/views/:view_id/records/', async (c) => {
+        // Product parity: PATCH is not allowed on view records.
+        return c.json({ detail: 'Method Not Allowed' }, 405);
+    });
+
+    app.patch('/api/sync/views/:view_id/records', async (c) => {
+        // Product parity: PATCH is not allowed on view records (product returns 405).
+        return c.json({ detail: 'Method Not Allowed' }, 405);
     });
 
     // POST /api/sync/views/{view_id}/trigger/
@@ -1295,62 +1312,101 @@ export function registerSyncRoutes(
 
     // PUT /api/sync/datasources/{datasource_id}/relationships/{index}/
     app.put('/api/sync/datasources/:datasource_id/relationships/:index/', async (c) => {
-        const id = c.req.param('datasource_id');
-        const rawIndex = c.req.param('index');
-        const index = parseInt(rawIndex, 10);
-
-        // Product parity: if index is not a valid integer, return 404 (not 422).
-        // This matches FastAPI's behavior where route param parsing failures
-        // result in the route not matching (404) rather than validation errors.
-        if (isNaN(index)) {
-            return c.json({ detail: 'Datasource not found' }, 404);
-        }
-
-        const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
-
-        const store = syncStoreFor(c.get('tenant'));
-        const ds = await store.getDatasource(id);
-        if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
-
-        const customRels = [...((ds.config.relationships as Record<string, unknown>[] | undefined) ?? [])];
-        if (index < 0 || index >= customRels.length) {
-            return c.json({ detail: 'Relationship index out of range' }, 400);
-        }
         try {
-            await validateRelationshipDefinition(
-                datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config)),
-                dialectOf(ds.kind),
-                b,
-            );
-        } catch (error) {
-            return c.json({ detail: (error as Error).message }, 400);
+            const id = c.req.param('datasource_id');
+            const rawIndex = c.req.param('index');
+            const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+
+            const store = syncStoreFor(c.get('tenant'));
+            const ds = await store.getDatasource(id);
+            // Product parity: check datasource existence FIRST. If datasource doesn't
+            // exist, return 404 regardless of whether index is valid. This matches
+            // the product's behavior (datasource check takes priority over index validation).
+            if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
+
+            // Product parity: validate required body fields AFTER datasource check.
+            // The product returns 422 for missing required fields, but only after
+            // confirming the datasource exists.
+            const requiredFields = ['from_column', 'from_table', 'to_column', 'to_table'];
+            const missingFields = requiredFields.filter((field) => b[field] === undefined || b[field] === null || b[field] === '');
+            if (missingFields.length > 0) {
+                return c.json(validationError(
+                    missingFields.map((field) => ({
+                        type: 'missing',
+                        loc: ['body', field],
+                        msg: 'Field required',
+                        input: null,
+                    })),
+                ), 422);
+            }
+
+            const index = parseInt(rawIndex, 10);
+            // Product parity: if index is not a valid integer, return 422 with validation
+            // error (not 404). FastAPI validates path params and returns 422 for type
+            // mismatches like "unable to parse string as an integer". This validation
+            // happens AFTER datasource existence check.
+            if (isNaN(index)) {
+                return c.json(validationError([
+                    { type: 'int_parsing', loc: ['path', 'index'], msg: 'Input should be a valid integer, unable to parse string as an integer', input: rawIndex },
+                ]), 422);
+            }
+
+            const customRels = [...((ds.config.relationships as Record<string, unknown>[] | undefined) ?? [])];
+            if (index < 0 || index >= customRels.length) {
+                return c.json({ detail: 'Relationship index out of range' }, 400);
+            }
+            try {
+                await validateRelationshipDefinition(
+                    datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config)),
+                    dialectOf(ds.kind),
+                    b,
+                );
+            } catch (error) {
+                return c.json({ detail: (error as Error).message }, 400);
+            }
+
+            customRels[index] = b;
+            await store.updateDatasource(id, {
+                config: { ...ds.config, relationships: customRels },
+            }, now());
+
+            return c.json({
+                index,
+                relationship: b,
+            });
+        } catch (err) {
+            const error = err as Error;
+            // Unexpected errors (TypeError, etc.) return 500.
+            if (error.name === 'TypeError' || error.name === 'ReferenceError' || !(error instanceof Error)) {
+                return c.json(internalServerError(error), 500);
+            }
+            // Database connection errors and other unexpected errors also return 500.
+            return c.json({ detail: error.message || 'Internal server error' }, 500);
         }
-
-        customRels[index] = b;
-        await store.updateDatasource(id, {
-            config: { ...ds.config, relationships: customRels },
-        }, now());
-
-        return c.json({
-            index,
-            relationship: b,
-        });
     });
 
     // DELETE /api/sync/datasources/{datasource_id}/relationships/{index}/
     app.delete('/api/sync/datasources/:datasource_id/relationships/:index/', async (c) => {
         const id = c.req.param('datasource_id');
         const rawIndex = c.req.param('index');
-        const index = parseInt(rawIndex, 10);
-
-        // Product parity: if index is not a valid integer, return 404 (not 422).
-        if (isNaN(index)) {
-            return c.json({ detail: 'Datasource not found' }, 404);
-        }
 
         const store = syncStoreFor(c.get('tenant'));
         const ds = await store.getDatasource(id);
+        // Product parity: check datasource existence FIRST. If datasource doesn't
+        // exist, return 404 regardless of whether index is valid. This matches
+        // the product's behavior (datasource check takes priority over index validation).
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
+
+        const index = parseInt(rawIndex, 10);
+        // Product parity: if index is not a valid integer, return 422 with validation
+        // error (not 404). FastAPI validates path params and returns 422 for type
+        // mismatches like "unable to parse string as an integer". This validation
+        // happens AFTER datasource existence check.
+        if (isNaN(index)) {
+            return c.json(validationError([
+                { type: 'int_parsing', loc: ['path', 'index'], msg: 'Input should be a valid integer, unable to parse string as an integer', input: rawIndex },
+            ]), 422);
+        }
 
         const customRels = [...((ds.config.relationships as Record<string, unknown>[] | undefined) ?? [])];
         if (index < 0 || index >= customRels.length) {
@@ -1526,11 +1582,10 @@ export function registerSyncRoutes(
         const savedType = String(redisConf.redis_type ?? 'self-hosted');
         const isUpstash = savedType === 'upstash' && Boolean(redisConf.redis_url && redisConf.redis_token);
         return c.json({
-            redis_enabled: Boolean(redisConf.redis_enabled ?? false),
-            redis_type: isUpstash ? 'upstash' : 'self-hosted',
             redis_url: isUpstash ? String(redisConf.redis_url) : 'http://redis-http:80',
-            // Tokens are write-only. The ciphertext is never returned.
             redis_token: null,
+            redis_type: isUpstash ? 'upstash' : 'self-hosted',
+            redis_enabled: Boolean(redisConf.redis_enabled ?? false),
             cache_ttl_data: Number(redisConf.cache_ttl_data ?? 60),
             cache_ttl_count: Number(redisConf.cache_ttl_count ?? 300),
         });
@@ -1554,7 +1609,15 @@ export function registerSyncRoutes(
             cache_ttl_count: Number(b.cache_ttl_count ?? 300),
         };
         await kv.setJson('sync_redis_settings', updated, now());
-        return c.json({ ...updated, redis_token_ciphertext: undefined, redis_token: null });
+        // Product parity: return response with same field order as product.
+        return c.json({
+            redis_url: updated.redis_url,
+            redis_token: null,
+            redis_type: updated.redis_type,
+            redis_enabled: updated.redis_enabled,
+            cache_ttl_data: updated.cache_ttl_data,
+            cache_ttl_count: updated.cache_ttl_count,
+        });
     });
 
     // POST /api/sync/settings/redis/test/
@@ -1594,6 +1657,14 @@ export function registerSyncRoutes(
             datasource_id?: string;
             options?: Record<string, unknown>;
         };
+
+        // Product parity: validate datasource_id type before processing.
+        if (body.datasource_id !== undefined && typeof body.datasource_id !== 'string') {
+            return c.json(validationError([
+                { type: 'string_type', loc: ['body', 'datasource_id'], msg: 'Input should be a valid string', input: body.datasource_id },
+            ]), 422);
+        }
+
         const datasource = await syncStoreFor(c.get('tenant')).getDatasource(String(body.datasource_id ?? ''));
         if (!datasource) return c.json({ detail: 'Datasource not found' }, 404);
         if (datasource.kind !== 'wordpress_plugin') {
@@ -1760,13 +1831,31 @@ export function registerSyncRoutes(
 
     // POST /api/sync/datasources/sheets/connect/callback/
     app.post('/api/sync/datasources/sheets/connect/callback/', async (c) => {
-        const body = await c.req.json().catch(() => ({})) as {
+        // Product parity: collect all validation errors before returning.
+        const details: { type: string; loc: string[]; msg: string; input: unknown }[] = [];
+
+        // Validate required query parameter local_kw.
+        const localKw = c.req.query('local_kw');
+        if (localKw === undefined || localKw === null) {
+            details.push({ type: 'missing', loc: ['query', 'local_kw'], msg: 'Field required', input: null });
+        }
+
+        const body = (await c.req.json().catch(() => ({})) ?? {}) as {
             token?: string;
             spreadsheetId?: string;
             spreadsheetName?: string | null;
             webAppUrl?: string;
             webAppSecret?: string;
         };
+
+        // Validate token body parameter type.
+        if (body.token !== undefined && typeof body.token !== 'string') {
+            details.push({ type: 'string_type', loc: ['body', 'token'], msg: 'Input should be a valid string', input: body.token });
+        }
+
+        if (details.length > 0) {
+            return c.json(validationError(details), 422);
+        }
         const tokenHash = await sha256Hex(String(body.token ?? ''));
         const rows = await controlRunner.query(
             `SELECT tenant_slug, datasource_id, expires_at, consumed_at
@@ -1775,15 +1864,21 @@ export function registerSyncRoutes(
         );
         const pending = rows[0];
         if (!pending || pending.consumed_at || Date.parse(String(pending.expires_at)) <= Date.now()) {
-            // Product parity: return 422 for invalid/expired/used tokens (matching test case).
-            return c.json({ detail: 'Connect token is invalid, expired, or already used' }, 422);
+            // Product parity: return 422 with validation shape for invalid/expired/used tokens.
+            return c.json(validationError([
+                { type: 'value_error', loc: ['body', 'token'], msg: 'Connect token is invalid, expired, or already used', input: body.token ?? null },
+            ]), 422);
         }
         const claimed = await controlRunner.exec(
             `UPDATE sheets_connect_tokens SET consumed_at = ?
              WHERE token_hash = ? AND consumed_at IS NULL`,
             [now(), tokenHash],
         );
-        if (claimed !== 1) return c.json({ detail: 'Connect token is invalid, expired, or already used' }, 422);
+        if (claimed !== 1) {
+            return c.json(validationError([
+                { type: 'value_error', loc: ['body', 'token'], msg: 'Connect token is invalid, expired, or already used', input: body.token ?? null },
+            ]), 422);
+        }
 
         const tenant = String(pending.tenant_slug);
         const store = syncStoreFor(tenant);
@@ -1820,9 +1915,18 @@ export function registerSyncRoutes(
 
     // GET /api/sync/datasources/sheets/connect/status/
     app.get('/api/sync/datasources/sheets/connect/status/', async (c) => {
-        const token = c.req.query('token') ?? '';
-        // Product parity: if token is missing or too short, return 422 (validation error).
-        if (token.length < 10) return c.json({ detail: 'Invalid token' }, 422);
+        const token = c.req.query('token');
+        // Product parity: if token is missing from query, return 422 with validation shape.
+        if (token === undefined || token === '') {
+            return c.json(validationError([
+                { type: 'missing', loc: ['query', 'token'], msg: 'Field required', input: null },
+            ]), 422);
+        }
+        if (token.length < 10) {
+            return c.json(validationError([
+                { type: 'value_error', loc: ['query', 'token'], msg: 'Invalid token', input: token },
+            ]), 422);
+        }
         const rows = await controlRunner.query(
             `SELECT result FROM sheets_connect_tokens
              WHERE token_hash = ? AND tenant_slug = ? AND expires_at > ?`,

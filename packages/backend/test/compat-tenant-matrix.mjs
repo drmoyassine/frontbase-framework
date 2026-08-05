@@ -132,7 +132,11 @@ const engine = await create('/api/edge-engines/', { name: SENTINEL, url: 'https:
 const provider = await create('/api/edge-providers/', { name: SENTINEL, provider: 'cloudflare' });
 const queue = await create('/api/edge-queues/', { name: SENTINEL, provider: 'qstash', queue_url: 'https://matrix.example' });
 const vector = await create('/api/edge-vectors/', { name: SENTINEL, provider: 'turso', vector_url: 'https://matrix.example' });
-const bucket = await create('/api/storage/buckets?provider_id=matrix-provider', { name: SENTINEL, provider: 'local' });
+// Storage buckets reference a storage provider that must exist (product parity: the
+// provider is validated before listing/creating buckets). The edge-provider above is the
+// connected account; mint a storage provider from it, then bucket against its id.
+const storageProvider = await create('/api/storage/providers/', { name: SENTINEL, provider_account_id: provider.id, provider: 'local' });
+const bucket = await create(`/api/storage/buckets?provider_id=${storageProvider.id}`, { name: SENTINEL, provider: 'local' });
 const server = await create('/api/mcp-servers', {
     name: SENTINEL,
     slug: 'tenant-a-server',

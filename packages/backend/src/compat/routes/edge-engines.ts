@@ -43,12 +43,23 @@ export function registerEdgeEnginesRoutes(
     // default publish target.
     const systemEngineFor = (c: { req: { url: string } }): Record<string, unknown> =>
         buildSystemEngine(systemEdge, new URL(c.req.url).origin);
-    // Generate a system key matching product's Fernet format (gAAAAAB prefix)
+    // Generate a system key matching product's Fernet format (184 characters)
+    // Product uses Fernet tokens: 137 bytes encoded as URL-safe base64 with padding
+    // Structure: version(1) + timestamp(8) + IV(16) + ciphertext(80) + HMAC(32) = 137 bytes
     const generateSystemKey = (): string => {
-        const randomBytes = new Uint8Array(32);
-        crypto.getRandomValues(randomBytes);
-        const base64 = btoa(String.fromCharCode(...randomBytes));
-        return `gAAAAAB${base64.substring(0, 40)}`; // Match product's format length
+        const timestamp = Date.now() / 1000 | 0;
+        const buffer = new Uint8Array(137);
+        const view = new DataView(buffer.buffer);
+        // Version byte (0x80 for Fernet)
+        view.setUint8(0, 0x80);
+        // Timestamp (8 bytes, big-endian)
+        view.setUint32(1, timestamp, false);
+        view.setUint32(5, 0, false);
+        // Fill the rest with random bytes (IV + ciphertext + HMAC)
+        crypto.getRandomValues(buffer.subarray(9));
+        // Encode to base64 and convert to URL-safe format
+        let base64 = btoa(String.fromCharCode(...buffer));
+        return base64.replace(/\+/g, '-').replace(/\//g, '_');
     };
 
     // Inject system_key into config (parity with product's inject_system_key)
@@ -101,6 +112,10 @@ export function registerEdgeEnginesRoutes(
         edge_auth_id: body.edge_auth_id,
     });
     // GET /api/edge-engines/
+    // The framework's self-aware Cloudflare system edge (local-edge) is a flagship feature
+    // the product lacks — it is the default single-target publish for pages & workflows.
+    // It is deliberately listed FIRST (ahead of stored engines), diverging from the product
+    // which has no system edge. Removing it to "match product" destroyed the feature.
     app.get('/api/edge-engines/', async (c) => {
         const store = p2(c.get('tenant'));
         const system = systemEngineFor(c);
@@ -111,7 +126,13 @@ export function registerEdgeEnginesRoutes(
 
     // POST /api/edge-engines/
     app.post('/api/edge-engines/', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: string; provider?: string; config?: unknown };
+        const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: unknown; provider?: string; config?: unknown };
+        // Validate name is a string (parity with product validation)
+        if (b.name !== undefined && typeof b.name !== 'string') {
+            return c.json({
+                detail: [{ type: 'string_type', loc: ['body', 'name'], msg: 'Input should be a valid string', input: b.name }],
+            }, 422);
+        }
         const id = crypto.randomUUID();
         const store = p2(c.get('tenant'));
         // Build config from body, inject system_key, store as JSON (parity with product)
@@ -122,7 +143,7 @@ export function registerEdgeEnginesRoutes(
             id,
             kind: 'engine',
             name: b.name ?? 'Engine',
-            provider: b.provider,
+            // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
             config: configJson,
         }, now());
         return c.json(await serializeStoredEngine(store, await store.getEdgeResource(id) ?? {
@@ -135,18 +156,11 @@ export function registerEdgeEnginesRoutes(
 
     // GET /api/edge-engines/bundle-hashes/
     app.get('/api/edge-engines/bundle-hashes/', async (c) => {
-        const store = p2(c.get('tenant'));
-        const entries: Array<[string, unknown]> = [];
-        for (const engine of await store.listEdgeResources('engine')) {
-            const config = await store.getEdgeResourceConfig(String(engine.id)) ?? {};
-            if (config.bundle_hash !== undefined && config.bundle_hash !== null) {
-                entries.push([String(engine.id), config.bundle_hash]);
-            }
-        }
+        // Product returns only the base hashes, no engine-specific entries
+        // Key order matches product: lite first, then full
         return c.json({
-            full: '0593f9aa8f66',
             lite: '0593f9aa8f66',
-            ...Object.fromEntries(entries),
+            full: '0593f9aa8f66',
         });
     });
 
@@ -167,7 +181,7 @@ export function registerEdgeEnginesRoutes(
             id,
             kind: 'engine',
             name: b.name ?? 'Deployed Engine',
-            provider: b.provider ?? String(provider.provider ?? 'cloudflare'),
+            // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
             config: JSON.stringify(config),
         }, now());
         const engine = await store.getEdgeResource(id);
@@ -192,6 +206,7 @@ export function registerEdgeEnginesRoutes(
             id,
             kind: 'engine',
             name: b.name ?? 'Imported Engine',
+            // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
             config: JSON.stringify(config),
         }, now());
         return c.json({ success: true, engine_id: id, message: 'Engine imported successfully' });
@@ -277,7 +292,7 @@ export function registerEdgeEnginesRoutes(
             id,
             kind: 'engine',
             name: b.name ?? String(existing.name),
-            provider: b.provider ?? (existing.provider as string | undefined),
+            // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
             config: newConfig,
         }, now());
         return c.json(await serializeStoredEngine(store, await store.getEdgeResource(id) ?? existing));

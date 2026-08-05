@@ -58,7 +58,7 @@ async function makeHarness() {
         role: 'master_admin',
         now: NOW,
     });
-    const resolvePrincipal = createResolvePrincipal({ jwtSecret: SECRET, jwtCookie: 'fb_session' });
+    const resolvePrincipal = createResolvePrincipal({ jwtSecret: SECRET, jwtCookie: 'frontbase_session' });
     const passwordResetTokens = new Map();
     const app = await createCompatApp({
         makeRunner: async () => runner,

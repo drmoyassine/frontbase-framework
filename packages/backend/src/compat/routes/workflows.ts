@@ -26,9 +26,30 @@ export function registerWorkflowsRoutes(app: App, phase2For: (t: string) => Phas
     app.post('/api/workflows/send-email', async (c) => {
         // Auth check first (matches require_tenant_context at workflows.py:54).
         // The principal/tenant are set by defaultDenyAuth middleware in app.ts.
+        // RULE 2: Fail-closed - reject if principal or tenant is missing/invalid.
         const principal = c.get('principal');
         const tenant = c.get('tenant');
-        if (!principal?.user || !tenant) {
+        const user = principal?.user as { id?: string; email?: string } | null;
+
+        // Explicit null checks - never default to allowing access
+        if (principal === null || principal === undefined) {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
+        if (user === null || user === undefined) {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
+        if (!tenant) {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
+        // Ensure we have at least one user identifier
+        if (!user.id && !user.email) {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
+
+        // Product parity: the product's require_tenant_context rejects users without
+        // a tenant context (tenant_slug=null). The framework assigns _root to master_admin
+        // users, which would pass the above checks. Reject _root to match product behavior.
+        if (tenant === '_root') {
             return c.json({ detail: 'Authentication required' }, 401);
         }
 
@@ -36,10 +57,18 @@ export function registerWorkflowsRoutes(app: App, phase2For: (t: string) => Phas
             to?: string[];
             subject?: string;
         };
-        if (!body.to || (Array.isArray(body.to) && body.to.length === 0)) {
-            return c.json({ detail: 'At least one recipient is required' }, 400);
+
+        // Body validation: return 422 for malformed input (only after auth check)
+        // Product parity: FastAPI validation runs AFTER require_tenant_context,
+        // so authenticated users get 422 for invalid input.
+        if (!body.to || !Array.isArray(body.to) || body.to.length === 0) {
+            return c.json({ detail: 'to is required' }, 422);
         }
-        if (!body.subject) return c.json({ detail: 'Subject is required' }, 400);
+        if (!body.subject) {
+            return c.json({ detail: 'subject is required' }, 422);
+        }
+
+        // Community deployments have no email provider configured
         return c.json({ detail: 'Email send failed' }, 502);
     });
 }

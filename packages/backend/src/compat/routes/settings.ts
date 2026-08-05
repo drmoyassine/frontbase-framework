@@ -24,10 +24,8 @@ const DEFAULTS: Record<string, unknown> = {
     general: { siteName: null, siteUrl: null, defaultLanguage: 'en', timezone: 'UTC' },
     privacy: {
         enableVisitorTracking: false,
-        requireCookieConsent: true,
-        ga4MeasurementId: null,
-        gtmContainerId: null,
         cookieExpiryDays: 365,
+        requireCookieConsent: true,
         advancedVariables: {
             ip: { collect: false, expose: false },
             browser: { collect: true, expose: true },
@@ -45,6 +43,8 @@ const DEFAULTS: Record<string, unknown> = {
             firstVisitAt: { collect: true, expose: true },
             landingPage: { collect: true, expose: true },
         },
+        ga4MeasurementId: null,
+        gtmContainerId: null,
         customHeadHtml: null,
     },
     security: { full_ip_retention_days: 30 },
@@ -83,13 +83,42 @@ export function registerSettingsRoutes(
 
     for (const [domain, path] of domainRoutes) {
         app.get(path, async (c) => {
-            const stored = await kvFor(c.get('tenant')).getJson(domain, DEFAULTS[domain]);
             if (domain === 'redis') {
-                const storedRedis = stored as Record<string, unknown>;
-                // Merge defaults with stored, then hide ciphertext, never expose it
-                const merged = { ...DEFAULTS.redis as object, ...storedRedis };
-                const { redis_token_ciphertext: _ciphertext, ...safe } = merged as Record<string, unknown>;
-                return c.json(safe);
+                // Product GET always returns defaults, ignoring stored values
+                // Return in exact key order product expects (for JSON string comparison parity)
+                // Product returns null for redis_token when none set, not empty string
+                const redisDefaults = DEFAULTS.redis as {
+                    redis_url?: string;
+                    redis_type?: string;
+                    redis_enabled?: boolean;
+                    cache_ttl_data?: number;
+                    cache_ttl_count?: number;
+                };
+                return c.json({
+                    redis_url: redisDefaults.redis_url ?? null,
+                    redis_token: null,
+                    redis_type: redisDefaults.redis_type ?? 'self-hosted',
+                    redis_enabled: redisDefaults.redis_enabled ?? false,
+                    cache_ttl_data: redisDefaults.cache_ttl_data ?? 60,
+                    cache_ttl_count: redisDefaults.cache_ttl_count ?? 300,
+                });
+            }
+            const stored = await kvFor(c.get('tenant')).getJson(domain, DEFAULTS[domain]);
+            if (domain === 'privacy') {
+                const storedPrivacy = stored as Record<string, unknown>;
+                // Merge with defaults
+                // Return in exact key order product expects
+                const merged = { ...DEFAULTS.privacy as object, ...storedPrivacy } as Record<string, unknown>;
+                return c.json({
+                    enableVisitorTracking: merged.enableVisitorTracking ?? false,
+                    cookieExpiryDays: merged.cookieExpiryDays ?? 365,
+                    requireCookieConsent: merged.requireCookieConsent ?? true,
+                    advancedVariables: merged.advancedVariables ?? (DEFAULTS.privacy as Record<string, unknown>).advancedVariables,
+                    cookieVariables: merged.cookieVariables ?? (DEFAULTS.privacy as Record<string, unknown>).cookieVariables,
+                    ga4MeasurementId: merged.ga4MeasurementId ?? null,
+                    gtmContainerId: merged.gtmContainerId ?? null,
+                    customHeadHtml: merged.customHeadHtml ?? null,
+                });
             }
             return c.json({ ...DEFAULTS[domain] as object, ...(stored as object) });
         });
@@ -107,16 +136,39 @@ export function registerSettingsRoutes(
                         throw new Error('secret_cipher_unavailable');
                     }
                 }
+                // Merge with existing stored values to preserve fields not in the request
                 const persisted = {
+                    ...existing,
                     ...input,
                     redis_token: '',
                     redis_token_ciphertext: tokenCiphertext ?? null,
                 };
                 await kvFor(c.get('tenant')).setJson(domain, persisted, now());
-                // Return merged defaults with persisted values, hide ciphertext
-                const merged = { ...DEFAULTS.redis as object, ...persisted };
-                const { redis_token_ciphertext: _ciphertext, ...safe } = merged as Record<string, unknown>;
-                return c.json(safe);
+                // Product PUT response: for unspecified fields, returns null (not defaults)
+                // Only include fields from input, null for missing optional fields
+                return c.json({
+                    redis_url: input.redis_url ?? null,
+                    redis_token: null,
+                    redis_type: input.redis_type ?? 'self-hosted',
+                    redis_enabled: input.redis_enabled ?? false,
+                    cache_ttl_data: input.cache_ttl_data ?? 60,
+                    cache_ttl_count: input.cache_ttl_count ?? 300,
+                });
+            }
+            if (domain === 'privacy') {
+                await kvFor(c.get('tenant')).setJson(domain, body, now());
+                // Merge defaults with input, return in exact key order product expects
+                const merged = { ...DEFAULTS.privacy as object, ...body } as Record<string, unknown>;
+                return c.json({
+                    enableVisitorTracking: merged.enableVisitorTracking ?? false,
+                    cookieExpiryDays: merged.cookieExpiryDays ?? 365,
+                    requireCookieConsent: merged.requireCookieConsent ?? true,
+                    advancedVariables: merged.advancedVariables ?? (DEFAULTS.privacy as Record<string, unknown>).advancedVariables,
+                    cookieVariables: merged.cookieVariables ?? (DEFAULTS.privacy as Record<string, unknown>).cookieVariables,
+                    ga4MeasurementId: merged.ga4MeasurementId ?? null,
+                    gtmContainerId: merged.gtmContainerId ?? null,
+                    customHeadHtml: merged.customHeadHtml ?? null,
+                });
             }
             await kvFor(c.get('tenant')).setJson(domain, body, now());
             // Return merged defaults with input to match product behavior
@@ -177,8 +229,14 @@ export function registerSettingsRoutes(
 
     // POST /api/settings/invites
     app.post('/api/settings/invites', async (c) => {
-        const parsed = zAdminInviteRequest.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        const body = await c.req.json().catch(() => null);
+        const parsed = zAdminInviteRequest.safeParse(body);
+        if (!parsed.success) {
+            // Validation errors are now handled by the middleware, which returns
+            // the correct Pydantic-style format with the entire request body as
+            // input for missing fields. This fallback is for direct calls.
+            return c.json({ detail: 'validation_failed' }, 422);
+        }
 
         // Check if user already exists (if userExists callback provided)
         if (userExists) {

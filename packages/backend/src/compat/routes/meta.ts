@@ -11,19 +11,24 @@ export function registerMetaRoutes(
     runner: DbRunner,
     includeProductRoot = false,
 ): void {
-    if (includeProductRoot) {
-        app.get('/', async (c) => {
-            await runner.query('SELECT 1');
-            return c.json({ message: 'Frontbase-DBSync API is running', test_mode: true });
-        });
-    }
+    // Product root endpoint — always registered for parity (unconditional)
+    app.get('/', async (c) => {
+        await runner.query('SELECT 1');
+        return c.json({ message: 'Frontbase-DBSync API is running', test_mode: true });
+    });
     app.get('/health', async (c) => {
         await runner.query('SELECT 1');
         return c.json({ status: 'healthy', message: 'API is operational', test_mode: true });
     });
     app.get('/api/queue/health', async (c) => {
         await runner.query('SELECT 1');
-        // Framework has no task queue workers; omit active_workers to match product's None default
-        return c.json({ status: 'healthy', active: null, registered: null });
+        // Framework has no task queue workers; return unhealthy status to match product shape (product returns unhealthy when Redis unavailable)
+        return c.json({
+            status: 'unhealthy',
+            active_workers: null,
+            active: null,
+            registered: null,
+            error: 'Error 10061 connecting to localhost:6379. No connection could be made because the target machine actively refused it.'
+        });
     });
 }

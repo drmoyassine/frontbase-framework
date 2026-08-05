@@ -226,6 +226,10 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         ].some((prefix) => path.startsWith(prefix));
         if (!privileged) return next();
         const principal = c.get('principal');
+        // Check authentication FIRST (RULE 2: default-deny)
+        if (!principal?.user) {
+            return c.json({ detail: 'Authentication required' }, 401);
+        }
         const role = (principal.user as { role?: string } | null)?.role;
         if (!role || !['master_admin', 'owner', 'tenant_admin', 'admin'].includes(role)) {
             return c.json({ detail: 'Forbidden' }, 403);
@@ -249,7 +253,14 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Real handlers for implemented ops, registered with the exact product paths
     // on the main app (no sub-app mount — that mismatches trailing slashes).
     registerVariablesRoutes(app, varStoreFor, now);
-    registerSettingsRoutes(app, kvFor, invites, secretCipher, externalFetch, now);
+    // Settings routes need userExists check for invite validation (parity with product)
+    const userExists = deps.userStoreFor
+        ? async (email: string, tenant: string) => {
+            const user = await deps.userStoreFor!(tenant).findByEmailForVerify(email);
+            return user !== null;
+        }
+        : undefined;
+    registerSettingsRoutes(app, kvFor, invites, secretCipher, externalFetch, now, userExists);
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
     registerSecurityEventsRoutes(app, secEventsFor);

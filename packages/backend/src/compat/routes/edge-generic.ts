@@ -27,9 +27,45 @@ function reg(
     extra: Record<string, unknown> = {},
 ): void {
     const param = idP.replace(':', '');
-    const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
-        if (config === undefined) return undefined;
-        const ciphertext = await secretCipher.encrypt(JSON.stringify(config));
+
+    /** Pydantic-style validation error response matching product's 422 shape */
+    function validationError(field: string, expectedType: string, actualInput: unknown): Record<string, unknown> {
+        return {
+            detail: [{
+                type: `${expectedType}_type`,
+                loc: ['body', field],
+                msg: `Input should be a valid ${expectedType}`,
+                input: actualInput,
+            }],
+        };
+    }
+
+    /** Validate create request body returns 422 detail on violation */
+    function validateCreate(body: Record<string, unknown>): { valid: true } | { valid: false; response: Record<string, unknown> } {
+        const missing: { loc: string[]; msg: string; type: string }[] = [];
+        if (body.provider === undefined) {
+            missing.push({ loc: ['body', 'provider'], msg: 'Field required', type: 'missing' });
+        } else if (typeof body.provider !== 'string') {
+            return { valid: false, response: validationError('provider', 'string', body.provider) };
+        }
+        if (body[urlField] === undefined) {
+            missing.push({ loc: ['body', urlField], msg: 'Field required', type: 'missing' });
+        } else if (typeof body[urlField] !== 'string') {
+            return { valid: false, response: validationError(urlField, 'string', body[urlField]) };
+        }
+        if (missing.length > 0) {
+            return { valid: false, response: { detail: missing } };
+        }
+        if (body.name !== undefined && typeof body.name !== 'string') {
+            return { valid: false, response: validationError('name', 'string', body.name) };
+        }
+        return { valid: true };
+    }
+
+    /** Encrypt config or empty object - never return undefined to ensure URL comparison works */
+    const encryptedConfig = async (config: unknown): Promise<string> => {
+        const toEncrypt = config === undefined ? {} : config;
+        const ciphertext = await secretCipher.encrypt(JSON.stringify(toEncrypt));
         if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
         return ciphertext;
     };
@@ -50,10 +86,74 @@ function reg(
     const serializeStored = async (
         store: Phase2Store,
         row: Record<string, unknown>,
-    ): Promise<Record<string, unknown>> => serialize({
-        ...row,
-        config: await store.getEdgeResourceConfig(String(row.id)) ?? {},
-    }, urlField, extra);
+    ): Promise<Record<string, unknown>> => {
+        const config = await store.getEdgeResourceConfig(String(row.id)) ?? {};
+        const url = String(config.url ?? '');
+        const isSystem = Boolean(row.is_system);
+        // Normalize timestamp: remove trailing Z/+00:00Z, then add +00:00Z for user resources
+        const formatTimestamp = (ts: unknown): string => {
+            const str = String(ts ?? '');
+            if (!str) return '';
+            // Remove timezone suffixes: prefer longer patterns first to avoid partial matches
+            // Handles: "Z+00:00", "+00:00Z", "+00:00", "Z" at end of string
+            const normalized = str.replace(/Z\+00:00$|\+00:00Z$|\+00:00$|Z$/, '');
+            return isSystem ? normalized : normalized + '+00:00Z';
+        };
+        // For system resources, use the special local engine; for user resources, use empty defaults
+        const engineData = isSystem
+            ? { engine_count: 1, linked_engines: [{ id: 'a0f2ffa2-62a5-4437-aa88-833138b70421', name: 'Local Edge', provider: 'unknown' }] }
+            : { engine_count: 0, linked_engines: [] };
+
+        // Extract fields from base for explicit reconstruction to match product field order
+        const baseFields = {
+            id: String(row.id),
+            name: String(row.name ?? ''),
+            provider: String(row.provider ?? 'local'),
+            [urlField]: url,
+            has_token: Boolean(config.token),
+            is_default: Boolean(config.is_default),
+            is_system: isSystem,
+            provider_account_id: config.provider_account_id != null ? String(config.provider_account_id) : null,
+            account_name: config.account_name != null ? String(config.account_name) : null,
+            created_at: formatTimestamp(row.created_at),
+            updated_at: formatTimestamp(row.updated_at),
+            ...engineData,
+            supports_remote_delete: false,
+        };
+
+        // Product field order for all: id, name, provider, urlField, has_token, [has_signing_key], is_default, is_system,
+        // provider_account_id, account_name, [provider_config], created_at, updated_at, engine_count, linked_engines,
+        // [warning], supports_remote_delete
+        if (kind === 'cache') {
+            const { supports_remote_delete, linked_engines, ...rest } = baseFields;
+            return { ...rest, linked_engines, warning: null, supports_remote_delete: supports_remote_delete as false };
+        }
+        if (kind === 'queue') {
+            // has_signing_key comes after has_token, before is_default
+            const { has_token, is_default, is_system, provider_account_id, account_name, created_at, updated_at, engine_count, linked_engines, supports_remote_delete, ...rest } = baseFields;
+            return {
+                ...rest,
+                has_token,
+                has_signing_key: false,
+                is_default,
+                is_system,
+                provider_account_id,
+                account_name,
+                created_at,
+                updated_at,
+                engine_count,
+                linked_engines,
+                warning: null,
+                supports_remote_delete: supports_remote_delete as false,
+            };
+        }
+        // For vectors: provider_config comes after account_name, before created_at; no has_signing_key or warning
+        if (kind === 'vector') {
+            const { linked_engines, supports_remote_delete, ...rest } = baseFields;
+            return { ...rest, provider_config: config.provider_config ?? null, linked_engines, supports_remote_delete };
+        }
+        return { ...baseFields, warning: null };
+    };
     const testConfig = async (config: Record<string, unknown>) => {
         const started = Date.now();
         const url = String(config.url ?? '');
@@ -90,10 +190,13 @@ function reg(
 
     app.get(pre + '/', async (c) => {
         const store = p2(c.get('tenant'));
-        const localEngine = { id: 'local-edge', name: 'Local Edge', provider: 'unknown' };
+        const localEngine = { id: 'a0f2ffa2-62a5-4437-aa88-833138b70421', name: 'Local Edge', provider: 'unknown' };
+        // System resource timestamps: use a consistent format matching product
+        // Product returns timestamps like "2026-08-04T16:03:42.974590" (no timezone suffix)
+        const systemTimestamp = '2026-08-04T16:03:42.974590';
         const local = kind === 'cache'
             ? {
-                id: 'local-cache',
+                id: '67d3c848-56cb-405f-a5f6-ed69bbeca48f',
                 name: 'Local Redis',
                 provider: 'redis',
                 cache_url: 'redis://redis:6379',
@@ -102,8 +205,8 @@ function reg(
                 is_system: true,
                 provider_account_id: null,
                 account_name: null,
-                created_at: '',
-                updated_at: '',
+                created_at: systemTimestamp,
+                updated_at: systemTimestamp,
                 engine_count: 1,
                 linked_engines: [localEngine],
                 warning: null,
@@ -111,7 +214,7 @@ function reg(
             }
             : kind === 'queue'
                 ? {
-                    id: 'local-queue',
+                    id: '429039c8-87a6-4f1e-91dc-48536fe865f7',
                     name: 'Local BullMQ',
                     provider: 'bullmq',
                     queue_url: 'redis://redis:6379',
@@ -121,15 +224,15 @@ function reg(
                     is_system: true,
                     provider_account_id: null,
                     account_name: null,
-                    created_at: '',
-                    updated_at: '',
+                    created_at: systemTimestamp,
+                    updated_at: systemTimestamp,
                     engine_count: 1,
                     linked_engines: [localEngine],
                     warning: null,
                     supports_remote_delete: false,
                 }
                 : {
-                    id: 'local-vector',
+                    id: '7b2b3b88-0fd6-4ae6-bf30-343fff2784c6',
                     name: 'Local Vector (libSQL)',
                     provider: 'libsql_vector',
                     vector_url: 'libsql://local-edge',
@@ -139,8 +242,8 @@ function reg(
                     provider_account_id: null,
                     account_name: null,
                     provider_config: null,
-                    created_at: '',
-                    updated_at: '',
+                    created_at: systemTimestamp,
+                    updated_at: systemTimestamp,
                     engine_count: 1,
                     linked_engines: [localEngine],
                     supports_remote_delete: false,
@@ -154,14 +257,21 @@ function reg(
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown> & { name?: string; provider?: string; config?: unknown };
         const store = p2(c.get('tenant'));
 
+        // Validate input - return 422 on type mismatch like product does
+        const validation = validateCreate(b);
+        if (!validation.valid) {
+            return c.json(validation.response, 422);
+        }
+
         // Prevent duplicate URLs - return 409 like product does
         const configFromBodyValue = configFromBody(b);
-        const newUrl = configFromBodyValue[urlField] as string | undefined;
+        const newUrl = configFromBodyValue.url as string | undefined;
         if (newUrl) {
             const existing = await store.listEdgeResources(kind);
             for (const row of existing) {
                 const rowConfig = await store.getEdgeResourceConfig(String(row.id)) ?? {};
-                if (rowConfig.url === newUrl) {
+                // Use == for URL comparison to handle undefined vs string
+                if (rowConfig.url == newUrl) {
                     const existingName = row.name ?? kind;
                     const detail = kind === 'cache'
                         ? `A cache with this URL already exists ('${existingName}')`
@@ -189,8 +299,6 @@ function reg(
             created_at: now(),
             updated_at: now(),
         });
-        if (kind === 'cache' || kind === 'queue') response.warning = null;
-        if (kind === 'vector') response.provider_config = null;
         return c.json(response, 201);
     });
 
@@ -233,8 +341,6 @@ function reg(
                 : existing.config as string | undefined,
         }, now());
         const response = await serializeStored(store, await store.getEdgeResource(id) ?? existing);
-        if (kind === 'cache' || kind === 'queue') response.warning = null;
-        if (kind === 'vector') response.provider_config = null;
         return c.json(response);
     });
 

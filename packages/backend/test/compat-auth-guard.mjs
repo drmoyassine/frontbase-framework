@@ -65,7 +65,7 @@ test('login with valid creds bypasses the guard, issues a session cookie', async
     const app = await anonApp();
     const r = await req(app, 'POST', '/api/auth/login', { email: 'admin@test.com', password: 'password123' });
     assert.equal(r.status, 200);
-    assert.ok(r.headers.get('set-cookie'), 'login must set the fb_session cookie');
+    assert.ok(r.headers.get('set-cookie'), 'login must set the frontbase_session cookie');
     assert.equal((await r.json()).user.email, 'admin@test.com');
 });
 

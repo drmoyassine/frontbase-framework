@@ -139,7 +139,7 @@ test('E3 database: configured datasource data shapes the response and stays tena
         tableName: 'published_pages',
         column: 'slug',
     })).json();
-    assert.deepEqual(distinct.values, ['home']);
+    assert.deepEqual(distinct.data, ['home']);
 
     // The isolation claim is that tenant-b sees NONE of tenant-a's tables — not that
     // it gets an error envelope. The product answers an unconfigured tenant with
@@ -280,7 +280,9 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
     assert.equal(providerResponse.status, 201);
     const provider = await providerResponse.json();
     assert.ok(provider.id);
-    assert.equal(provider.has_config, true);
+    // Product parity: the provider response exposes `config` (redacted to {}), not a
+    // `has_config` flag. The secret must never appear in the serialized response.
+    assert.ok(provider.config !== undefined);
     assert.equal(JSON.stringify(provider).includes('must-never-leak'), false);
 
     const bucketResponse = await request(

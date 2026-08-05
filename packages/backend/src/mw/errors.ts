@@ -34,6 +34,12 @@ export const fastApiErrorEnvelope: MiddlewareHandler = async (c, next) => {
     } catch {
         return;
     }
+    // Product parity: don't transform Pydantic/FastAPI validation error responses.
+    // FastAPI validation errors have shape: { detail: [...] } with an array of issues.
+    // These should pass through unchanged, not be re-wrapped.
+    if (body.detail !== undefined && typeof body.detail !== 'string') {
+        return;
+    }
     if (body.detail !== undefined) return;
 
     const detail = typeof body.message === 'string'

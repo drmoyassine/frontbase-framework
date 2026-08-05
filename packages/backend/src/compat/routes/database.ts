@@ -13,6 +13,46 @@ import type { KeyValueStore } from '../store.js';
 import type { SyncStore } from '../sync-store.js';
 import { datasourceRunner, dialectOf } from '../../db/datasource-runner.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
+import { z } from 'zod';
+
+/**
+ * Convert Zod validation errors to Pydantic-style error format.
+ * Pydantic returns { detail: [{ type, loc: ['body', ...path], msg, input }] }
+ */
+function zodToPydanticError(error: { issues: Array<{ code: string; path: Array<string | number>; message: string; expected?: unknown; received?: unknown; input?: unknown }> }): { detail: Array<{ type: string; loc: string[]; msg: string; input: unknown }> } {
+    const typeMap: Record<string, string> = {
+        invalid_type: 'string_type',
+        too_small: 'string_too_short',
+        too_big: 'string_too_long',
+        invalid_enum: 'literal_error',
+    };
+
+    return {
+        detail: error.issues.map((issue) => {
+            let type = typeMap[issue.code] || `${issue.code}_error`;
+
+            // Handle null/missing body → 'missing' type (product parity)
+            if (issue.code === 'invalid_type' && issue.received === 'null' && issue.expected === 'object') {
+                type = 'missing';
+                // Override message to match product
+                return { type, loc: ['body'], msg: 'Field required', input: null };
+            }
+
+            // Handle expected object but got array/string → 'dict_type' (product parity)
+            if (issue.code === 'invalid_type' && issue.expected === 'object' && issue.received && issue.received !== 'null') {
+                type = 'dict_type';
+                return { type, loc: ['body'], msg: 'Input should be a valid dictionary', input: issue.input ?? null };
+            }
+
+            return {
+                type,
+                loc: ['body', ...issue.path.map(String)],
+                msg: issue.message,
+                input: issue.input ?? null,
+            };
+        }),
+    };
+}
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -96,7 +136,6 @@ export function registerDatabaseRoutes(
         );
         return c.json({
             success: true,
-            message: 'Connections retrieved successfully',
             data: {
                 supabase: {
                     connected,
@@ -104,6 +143,7 @@ export function registerDatabaseRoutes(
                     hasServiceKey,
                 },
             },
+            message: 'Connections retrieved successfully',
         });
     });
 
@@ -322,36 +362,56 @@ export function registerDatabaseRoutes(
     });
 
     // POST /api/database/distinct-values/
+    // Zod schema matches product's Pydantic validation - requires object body, returns 422 for arrays/primitives
+    // NOTE: Product allows extra fields (no .strict()), returns success for empty objects
+    const zDistinctValuesRequest = z.object({
+        table_name: z.string().optional(),
+        tableName: z.string().optional(),
+        column_name: z.string().optional(),
+        columnName: z.string().optional(),
+        column: z.string().optional(),
+    });
     app.post('/api/database/distinct-values/', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as {
-            table_name?: string; tableName?: string; column_name?: string; columnName?: string; column?: string;
-        };
+        const parsed = zDistinctValuesRequest.safeParse(await c.req.json().catch(() => null));
+        if (!parsed.success) {
+            return c.json(zodToPydanticError(parsed.error), 422);
+        }
+        const b = parsed.data;
         const table = b.table_name ?? b.tableName ?? '';
         const col = b.column_name ?? b.columnName ?? b.column ?? '';
         const source = await getActiveRunner(c.get('tenant'));
         // Product parity: return empty 200 when no datasource configured
         if (!source) {
-            return c.json({ success: true, data: [] });
+            return c.json({ success: true, data: [], error: null });
         }
+        // Product parity: return success with empty data for all invalid inputs, not errors
         if (!isIdentifier(table) || !isIdentifier(col)) {
-            return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);
+            return c.json({ success: true, data: [], error: null });
         }
         try {
             // Validate table exists
             const tables = await listTableNames(source);
             if (!tables.includes(table)) {
-                return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);
+                return c.json({ success: true, data: [], error: null });
             }
             // Validate column exists
             const columns = await listColumnNames(source, table);
             if (!columns.includes(col)) {
-                return c.json({ success: false, data: [], values: [], error: 'Invalid table or column' }, 400);
+                return c.json({ success: true, data: [], error: null });
             }
             const rows = await source.activeRunner.query(`SELECT DISTINCT "${col}" as val FROM "${table}" WHERE "${col}" IS NOT NULL LIMIT 100`);
             const values = rows.map((r) => r.val);
-            return c.json({ success: true, data: values, values, error: null });
+            // Product parity: only return data field, not separate values field
+            return c.json({ success: true, data: values, error: null });
         } catch {
-            return c.json({ success: false, data: [], values: [], error: 'query_failed' });
+            // Product parity: return success with empty data on query failure
+            return c.json({ success: true, data: [], error: null });
         }
     });
+
+    // NOTE: /api/database/rls/metadata/ (GET list) and /api/database/rls/metadata/verify/
+    // (POST) are implemented in rls.ts. RLS metadata is Builder form state, not provider
+    // state (see rls.ts), so those handlers read/write the local KV directly and must NOT
+    // be shadowed by product-parity stubs here. Earlier parity work added stubs here that
+    // always returned [] / {reason:'error'}, which silently shadowed the real handlers.
 }

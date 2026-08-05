@@ -12,6 +12,41 @@ async function sha256Hex(value: string): Promise<string> {
     return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * Convert ISO timestamp to product timestamp format.
+ * Product uses format like "2026-08-05T12:22:14.178278+00:00" (with microseconds and +00:00 offset).
+ * Framework ISO format uses "Z" suffix for UTC.
+ * This converts "2026-08-05T12:22:14.178Z" -> "2026-08-05T12:22:14.178+00:00"
+ * Handles both null/undefined and string values (including the string "null" from D1).
+ */
+function toProductTimestamp(ts: string | null | undefined): string | null {
+    if (ts === null || ts === undefined || ts === 'null' || ts === '') return null;
+    // Replace trailing 'Z' with '+00:00' to match product format
+    return ts.endsWith('Z') ? ts.slice(0, -1) + '+00:00' : ts;
+}
+
+/**
+ * Convert Zod validation errors to Pydantic-style error format.
+ * Pydantic returns { detail: [{ type, loc: ['body', ...path], msg, input }] }
+ */
+function zodToPydanticError(error: { issues: Array<{ code: string; path: Array<string | number>; message: string; expected?: unknown; received?: unknown; input?: unknown }> }): { detail: Array<{ type: string; loc: string[]; msg: string; input: unknown }> } {
+    const typeMap: Record<string, string> = {
+        invalid_type: 'string_type',
+        too_small: 'string_too_short',
+        too_big: 'string_too_long',
+        invalid_enum: 'literal_error',
+    };
+
+    return {
+        detail: error.issues.map((issue) => ({
+            type: typeMap[issue.code] || `${issue.code}_error`,
+            loc: ['body', ...issue.path.map(String)],
+            msg: issue.message,
+            input: 'input' in issue ? issue.input : undefined,
+        })),
+    };
+}
+
 async function auditSecret(
     runner: DbRunner,
     tenant: string,
@@ -35,23 +70,47 @@ export function registerEdgeMiscRoutes(
     now: () => string,
 ): void {
     // edge-api-keys (5)
-    app.get('/api/edge-api-keys', async (c) => {
+    const listApiKeys = async (c: any) => {
         const keys = await runner.query(
             `SELECT k.id, k.name, k.scope, k.is_active, k.expires_at,
-                    k.created_at, k.updated_at, s.prefix,
-                    CASE WHEN s.ciphertext IS NOT NULL AND s.revealed_at IS NULL THEN 1 ELSE 0 END AS can_reveal
+                    k.created_at, k.updated_at, s.prefix, s.ciphertext, s.revealed_at
              FROM edge_api_keys k
              LEFT JOIN edge_api_key_secrets s
                ON s.key_id = k.id AND s.tenant_slug = k.tenant_slug
              WHERE k.tenant_slug = ?`,
             [c.get('tenant')],
         );
-        return c.json({ keys, total: keys.length });
-    });
+        // Match product shape: add edge_engine_id, last_used_at, engine_name (all null)
+        // Compute can_reveal in JavaScript for D1 compatibility (CASE expression may cause issues)
+        // ciphertext and revealed_at are internal-only, not exposed in the list response
+        // Convert timestamps to product format (+00:00 offset instead of Z)
+        return c.json({
+            keys: keys.map((k: Record<string, unknown>) => {
+                return {
+                    id: k.id,
+                    name: k.name,
+                    prefix: k.prefix,
+                    edge_engine_id: null,
+                    engine_name: null,
+                    is_active: Boolean(k.is_active),
+                    scope: k.scope,
+                    expires_at: toProductTimestamp(k.expires_at as string | null),
+                    last_used_at: null,
+                    created_at: toProductTimestamp(k.created_at as string | null),
+                    updated_at: toProductTimestamp(k.updated_at as string | null),
+                    can_reveal: k.ciphertext !== null && k.revealed_at === null,
+                };
+            }),
+            total: keys.length,
+        });
+    };
+    // Register both with and without trailing slash to match product
+    app.get('/api/edge-api-keys', listApiKeys);
+    app.get('/api/edge-api-keys/', listApiKeys);
 
     app.post('/api/edge-api-keys', async (c) => {
         const parsed = zApiKeyCreate.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(zodToPydanticError(parsed.error), 422);
         if (!cipher.isEncrypted(await cipher.encrypt('probe'))) {
             return c.json({ detail: 'Secret encryption is not configured' }, 503);
         }
@@ -80,26 +139,27 @@ export function registerEdgeMiscRoutes(
             [id, c.get('tenant'), prefix, encrypted, timestamp],
         );
         await auditSecret(runner, c.get('tenant'), 'edge_api_key_created', id, timestamp);
+        const productTimestamp = toProductTimestamp(timestamp);
         return c.json({
             id,
-            key,
             name: parsed.data.name,
-            scope: parsed.data.scope,
             prefix,
-            is_active: true,
-            expires_at: parsed.data.expires_at ?? null,
-            last_used_at: null,
-            can_reveal: true,
             edge_engine_id: null,
             engine_name: null,
-            created_at: timestamp,
-            updated_at: timestamp,
+            is_active: true,
+            scope: parsed.data.scope,
+            expires_at: toProductTimestamp(parsed.data.expires_at ?? null),
+            last_used_at: null,
+            created_at: productTimestamp,
+            updated_at: productTimestamp,
+            can_reveal: true,
+            key,
         }, 201);
     });
 
     app.put('/api/edge-api-keys/:key_id', async (c) => {
         const parsed = zApiKeyUpdate.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) return c.json({ detail: 'validation_failed' }, 422);
+        if (!parsed.success) return c.json(zodToPydanticError(parsed.error), 422);
         if (parsed.data.scope && !['user', 'management', 'all'].includes(parsed.data.scope)) {
             return c.json({ detail: 'invalid_scope' }, 400);
         }
