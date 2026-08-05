@@ -36,7 +36,11 @@ function parseConfig(raw: unknown): Record<string, unknown> {
  * A stored `edge_resources` row → the tag's `Edge*Response` schema.
  * `urlField` is the only structural difference between the tags
  * (`db_url` / `cache_url` / `queue_url` / `vector_url`); `extra` carries the
- * per-tag optionals (queues' `has_signing_key`, databases' `schema_name`, ...).
+ * per-tag optionals (queues' `has_signing_key', databases' `schema_name', ...).
+ *
+ * Product parity: field order MUST match product for JSON serialization parity.
+ * The product returns fields in a specific order; any difference causes the
+ * conformance test to fail (body shape differs).
  */
 export function serializeEdgeResource(
     row: Record<string, unknown>,
@@ -44,7 +48,11 @@ export function serializeEdgeResource(
     extra: Record<string, unknown> = {},
 ): Record<string, unknown> {
     const config = parseConfig(row.config);
-    const response: Record<string, unknown> = {
+    // Product field order (from actual JSON response): id, name, provider, <url>,
+    // has_token, is_default, is_system, provider_account_id, account_name,
+    // created_at, updated_at, target_count, linked_engines, warning,
+    // supports_remote_delete, schema_name
+    return {
         id: String(row.id),
         name: String(row.name ?? ''),
         provider: String(row.provider ?? 'local'),
@@ -52,18 +60,16 @@ export function serializeEdgeResource(
         has_token: Boolean(config.token),
         is_default: Boolean(config.is_default),
         is_system: Boolean(row.is_system),
-        supports_remote_delete: false,
-        engine_count: 0,
-        linked_engines: [],
+        provider_account_id: (config.provider_account_id != null) ? String(config.provider_account_id) : null,
+        account_name: (config.account_name != null) ? String(config.account_name) : null,
         created_at: String(row.created_at ?? ''),
         updated_at: String(row.updated_at ?? ''),
-        ...extra,
+        target_count: extra.target_count ?? 0,
+        linked_engines: [],
+        warning: extra.warning ?? null,
+        supports_remote_delete: false,
+        schema_name: extra.schema_name ?? null,
     };
-    // provider_account_id: product ALWAYS includes it (null when not set)
-    response.provider_account_id = (config.provider_account_id != null) ? String(config.provider_account_id) : null;
-    // account_name: product ALWAYS includes it (null when not set)
-    response.account_name = (config.account_name != null) ? String(config.account_name) : null;
-    return response;
 }
 
 /**

@@ -105,9 +105,11 @@ export function registerEdgeDatabasesRoutes(
             target_count: 1,
             linked_engines: [{ id: 'local-edge', name: 'Local Edge', provider: 'unknown' }],
         });
-        return c.json(await Promise.all(
-            [local, ...(await store.listEdgeResources('database')).map((row) => serializeStored(store, row))],
-        ));
+        // Product parity: append local database at the end, not at the beginning
+        const userDatabases = await Promise.all(
+            (await store.listEdgeResources('database')).map((row) => serializeStored(store, row))
+        );
+        return c.json([...userDatabases, local]);
     });
 
     // POST /api/edge-databases/

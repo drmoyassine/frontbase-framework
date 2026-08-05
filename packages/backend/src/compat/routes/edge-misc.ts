@@ -13,6 +13,19 @@ async function sha256Hex(value: string): Promise<string> {
 }
 
 /**
+ * Convert ISO timestamp to product timestamp format.
+ * Product uses format like "2026-08-05T12:22:14.178278+00:00" (with microseconds and +00:00 offset).
+ * Framework ISO format uses "Z" suffix for UTC.
+ * This converts "2026-08-05T12:22:14.178Z" -> "2026-08-05T12:22:14.178+00:00"
+ * Handles both null/undefined and string values (including the string "null" from D1).
+ */
+function toProductTimestamp(ts: string | null | undefined): string | null {
+    if (ts === null || ts === undefined || ts === 'null' || ts === '') return null;
+    // Replace trailing 'Z' with '+00:00' to match product format
+    return ts.endsWith('Z') ? ts.slice(0, -1) + '+00:00' : ts;
+}
+
+/**
  * Convert Zod validation errors to Pydantic-style error format.
  * Pydantic returns { detail: [{ type, loc: ['body', ...path], msg, input }] }
  */
@@ -70,6 +83,7 @@ export function registerEdgeMiscRoutes(
         // Match product shape: add edge_engine_id, last_used_at, engine_name (all null)
         // Compute can_reveal in JavaScript for D1 compatibility (CASE expression may cause issues)
         // ciphertext and revealed_at are internal-only, not exposed in the list response
+        // Convert timestamps to product format (+00:00 offset instead of Z)
         return c.json({
             keys: keys.map((k: Record<string, unknown>) => {
                 const { ciphertext, revealed_at, ...rest } = k;
@@ -80,6 +94,9 @@ export function registerEdgeMiscRoutes(
                     engine_name: null,
                     is_active: Boolean(k.is_active),
                     can_reveal: ciphertext !== null && revealed_at === null,
+                    created_at: toProductTimestamp(k.created_at as string | null),
+                    updated_at: toProductTimestamp(k.updated_at as string | null),
+                    expires_at: toProductTimestamp(k.expires_at as string | null),
                 };
             }),
             total: keys.length,
@@ -120,6 +137,7 @@ export function registerEdgeMiscRoutes(
             [id, c.get('tenant'), prefix, encrypted, timestamp],
         );
         await auditSecret(runner, c.get('tenant'), 'edge_api_key_created', id, timestamp);
+        const productTimestamp = toProductTimestamp(timestamp);
         return c.json({
             id,
             name: parsed.data.name,
@@ -128,10 +146,10 @@ export function registerEdgeMiscRoutes(
             engine_name: null,
             is_active: true,
             scope: parsed.data.scope,
-            expires_at: parsed.data.expires_at ?? null,
+            expires_at: toProductTimestamp(parsed.data.expires_at ?? null),
             last_used_at: null,
-            created_at: timestamp,
-            updated_at: timestamp,
+            created_at: productTimestamp,
+            updated_at: productTimestamp,
             can_reveal: true,
             key,
         }, 201);

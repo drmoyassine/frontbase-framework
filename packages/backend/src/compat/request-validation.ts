@@ -144,10 +144,11 @@ export function fastApiValidationError(
     input: unknown,
     issues?: Array<Record<string, any>>,
 ) {
-    return {
-        detail: (issues?.length ? issues : [undefined]).map((issue) =>
-            fastApiIssue(location, input, issue)),
-    };
+    const details = (issues?.length ? issues : [undefined]).map((issue) =>
+        fastApiIssue(location, input, issue));
+    // Product parity: return Pydantic/FastAPI validation error format
+    // Product returns { detail: [...] } not a wrapped envelope
+    return { detail: details };
 }
 
 export function contractRequestValidation(): MiddlewareHandler<{ Variables: ConsoleAuthVars }> {

@@ -228,7 +228,7 @@ export function registerSettingsRoutes(
         const body = await c.req.json().catch(() => null);
         const parsed = zAdminInviteRequest.safeParse(body);
         if (!parsed.success) {
-            // Convert Zod errors to Pydantic-style format
+            // Convert Zod errors to Pydantic-style format (exact match)
             const detail = parsed.error.errors.map(err => {
                 // Get the raw input value for the field that failed
                 let rawInput: unknown = body;
@@ -245,7 +245,6 @@ export function registerSettingsRoutes(
                 if (err.code === 'invalid_type') {
                     // Map Zod's invalid_type to Pydantic's specific type codes
                     // Pydantic uses: string_type, int_type, float_type, bool_type, etc.
-                    // errorType should be based on what type was EXPECTED (the required type)
                     if (err.received === 'undefined') {
                         errorType = 'missing';
                     } else if (err.expected === 'string') {
@@ -259,8 +258,7 @@ export function registerSettingsRoutes(
                     } else if (err.expected === 'object') {
                         errorType = 'dict_type';
                     } else {
-                        // Fallback: convert "expected" to Pydantic format
-                        errorType = `${err.expected}_type`;
+                        errorType = `${String(err.expected)}_type`;
                     }
                 }
                 return {

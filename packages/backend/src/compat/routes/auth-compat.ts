@@ -376,12 +376,16 @@ export function registerAuthCompatAuthedRoutes(
     // incomplete principals and match the product's 401 behavior.
     const requireValidAuth = (c: Context<{ Variables: ConsoleAuthVars }>) => {
         const principal = c.get('principal');
-        const u = principal?.user as { id?: string; email?: string; role?: string } | null;
-        const tenantSlug = principal?.tenant ?? null;
-        if (!u || !tenantSlug) return null;
+        if (!principal) return null;
+        const u = principal.user as { id?: string; email?: string; role?: string } | null;
+        const tenantSlug = principal.tenant ?? null;
+        // Defensive: require explicit user object with email and role
+        if (!u || typeof u !== 'object') return null;
+        if (!tenantSlug || typeof tenantSlug !== 'string') return null;
         // Test-only principals (from parity test resolvePrincipal) might have only { id, role }
         // without email. Reject these to match product behavior.
-        if (!u.email || !u.role) return null;
+        if (!u.email || typeof u.email !== 'string') return null;
+        if (!u.role || typeof u.role !== 'string') return null;
         return { u, tenantSlug };
     };
     // GET /api/auth/me

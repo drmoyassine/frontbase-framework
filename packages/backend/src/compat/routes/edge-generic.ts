@@ -124,8 +124,8 @@ function reg(
         // provider_account_id, account_name, [provider_config], created_at, updated_at, engine_count, linked_engines,
         // [warning], supports_remote_delete
         if (kind === 'cache') {
-            const { supports_remote_delete, ...rest } = baseFields;
-            return { ...rest, warning: null, supports_remote_delete: supports_remote_delete as false };
+            const { supports_remote_delete, linked_engines, ...rest } = baseFields;
+            return { ...rest, linked_engines, warning: null, supports_remote_delete: supports_remote_delete as false };
         }
         if (kind === 'queue') {
             // has_signing_key comes after has_token, before is_default
@@ -148,8 +148,8 @@ function reg(
         }
         // For vectors: provider_config comes after account_name, before created_at; no has_signing_key or warning
         if (kind === 'vector') {
-            const { created_at, updated_at, engine_count, linked_engines, supports_remote_delete, ...rest } = baseFields;
-            return { ...rest, provider_config: null, created_at, updated_at, engine_count, linked_engines, supports_remote_delete };
+            const { linked_engines, supports_remote_delete, ...rest } = baseFields;
+            return { ...rest, linked_engines, supports_remote_delete };
         }
         return { ...baseFields, warning: null };
     };

@@ -303,17 +303,10 @@ function wordpressConfig(config: Record<string, unknown>): {
  * Used for 422 responses when request body/query/path parameters fail validation.
  */
 function validationError(details: { type: string; loc: string[]; msg: string; input: unknown }[]): {
-    success: false;
-    error: string;
-    details: typeof details;
-    message: string;
+    detail: typeof details;
 } {
-    return {
-        success: false,
-        error: 'Validation Error',
-        details,
-        message: 'The data provided is invalid',
-    };
+    // Product parity: return Pydantic/FastAPI validation error format
+    return { detail: details };
 }
 
 /**
@@ -1332,7 +1325,7 @@ export function registerSyncRoutes(
             // error (not 404). FastAPI validates path params and returns 422 for type
             // mismatches like "unable to parse string as an integer". This validation
             // happens AFTER datasource existence check.
-            if (isNaN(index) || rawIndex.includes('-')) {
+            if (isNaN(index)) {
                 return c.json(validationError([
                     { type: 'int_parsing', loc: ['path', 'index'], msg: 'Input should be a valid integer, unable to parse string as an integer', input: rawIndex },
                 ]), 422);
@@ -1388,7 +1381,7 @@ export function registerSyncRoutes(
         // error (not 404). FastAPI validates path params and returns 422 for type
         // mismatches like "unable to parse string as an integer". This validation
         // happens AFTER datasource existence check.
-        if (isNaN(index) || rawIndex.includes('-')) {
+        if (isNaN(index)) {
             return c.json(validationError([
                 { type: 'int_parsing', loc: ['path', 'index'], msg: 'Input should be a valid integer, unable to parse string as an integer', input: rawIndex },
             ]), 422);
