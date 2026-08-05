@@ -142,18 +142,29 @@ async function captureResponse(backend, path, request, cookie) {
 
 /**
  * Compare JSON shapes, ignoring normalized fields and applying tolerated diffs.
+ * For arrays, compares only the first element's structure (lists may have different lengths).
  */
 function compareShape(fwBody, prodBody) {
   if (fwBody === prodBody) return true;
   if (!fwBody || !prodBody) return false;
 
-  const normalize = (obj) => {
+  const normalize = (obj, parentKey = null) => {
     if (!obj || typeof obj !== 'object') return obj;
-    if (Array.isArray(obj)) return obj.map(normalize);
+    if (Array.isArray(obj)) {
+      // For arrays, compare only the first element's structure (if both non-empty)
+      // This handles list endpoints where data may differ but shape should be consistent
+      if (obj.length > 0) {
+        return [normalize(obj[0], parentKey)];
+      }
+      return [];
+    }
     const out = {};
     for (const [key, val] of Object.entries(obj)) {
+      // Skip normalized fields
       if (NORMALIZED_FIELDS.has(key)) continue;
-      out[key] = normalize(val);
+      // Skip dynamic keys under engine_config (system_key, etc.)
+      if (parentKey === 'engine_config') continue;
+      out[key] = normalize(val, key);
     }
     return out;
   };
