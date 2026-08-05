@@ -25746,7 +25746,7 @@ const SPEC: Record<string, unknown> = {
           {
             "in": "query",
             "name": "q",
-            "required": false,
+            "required": true,
             "schema": {
               "title": "Q",
               "type": "string"
@@ -26769,7 +26769,7 @@ const SPEC: Record<string, unknown> = {
           {
             "in": "query",
             "name": "category",
-            "required": false,
+            "required": true,
             "schema": {
               "title": "Category",
               "type": "string"
