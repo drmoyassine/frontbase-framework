@@ -5,8 +5,15 @@ permissions:
   issues: write
 
 on:
-  schedule:
-    - cron: '0 4 * * *'
+  # Scheduled run DISABLED 2026-08-07 (owner decision — stop-parity): this nightly
+  # gate replays the sync from product HEAD and re-writes the CONSOLE_PIN /
+  # PRODUCT_COMMIT pins, so it fails on EVERY product advance (pin staleness) —
+  # exactly the parity-sync chasing the user stopped. It is non-blocking (only
+  # opens a GitHub issue) and the push-gated `contracts` workflow still guards
+  # real contract drift on every push. workflow_dispatch is kept so this can be
+  # run manually, re-enabled, or narrowed (ignore SHA-only pin changes) later.
+  # schedule:
+  #   - cron: '0 4 * * *'
   workflow_dispatch:
     inputs:
       prove_failure:
