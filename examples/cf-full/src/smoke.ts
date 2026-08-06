@@ -197,7 +197,7 @@ await check('GET /api/auth/me WITHOUT session → 401 (default-deny)', async () 
     (await req('/api/auth/me')).status === 401);
 
 let compatCookie = '';
-await check('POST /api/auth/login (compat) with seeded admin → 200 + fb_session cookie', async () => {
+await check('POST /api/auth/login (compat) with seeded admin → 200 + frontbase_session cookie', async () => {
     const r = await req('/api/auth/login', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email: ADMIN.email, password: ADMIN.password }),
@@ -205,7 +205,7 @@ await check('POST /api/auth/login (compat) with seeded admin → 200 + fb_sessio
     const setCookie = r.headers.get('set-cookie') ?? '';
     compatCookie = setCookie.split(';')[0] ?? '';
     const body = await r.json() as { user?: { email?: string; is_master?: boolean } };
-    return r.status === 200 && compatCookie.startsWith('fb_session=')
+    return r.status === 200 && compatCookie.startsWith('frontbase_session=')
         && body.user?.email === ADMIN.email && body.user?.is_master === true;
 });
 

@@ -135,13 +135,13 @@ test.describe('CF-22 Gate 4 — console acceptance', () => {
 
     test('12. session cookie is HttpOnly and SameSite-protected', async ({ page, context }) => {
         await login(page);
-        const session = (await context.cookies()).find((c) => c.name === 'fb_session');
-        expect(session, 'fb_session cookie').toBeTruthy();
-        expect(session!.httpOnly, 'fb_session must be HttpOnly (not readable by JS)').toBe(true);
-        expect(session!.sameSite, 'fb_session must be SameSite').not.toBe('None');
+        const session = (await context.cookies()).find((c) => c.name === 'frontbase_session');
+        expect(session, 'frontbase_session cookie').toBeTruthy();
+        expect(session!.httpOnly, 'frontbase_session must be HttpOnly (not readable by JS)').toBe(true);
+        expect(session!.sameSite, 'frontbase_session must be SameSite').not.toBe('None');
         // `secure` is only assertable over https — checked on the deployed run.
         if (new URL(page.url()).protocol === 'https:') {
-            expect(session!.secure, 'fb_session must be Secure over https').toBe(true);
+            expect(session!.secure, 'frontbase_session must be Secure over https').toBe(true);
         }
     });
 
