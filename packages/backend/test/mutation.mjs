@@ -66,7 +66,7 @@ await withSourceMutation(
 await withSourceMutation(
     'authz: default-deny middleware',
     AUTH,
-    "        if (!principal.user) {\n            return c.json({ error: 'authentication_required' }, 401);\n        }",
+    "        if (!principal.user) {\n            return c.json({ detail: 'Authentication required' }, 401);\n        }",
     "        /* MUTATION: deny removed */",
     async () => {
         buildPackage(PKG);
@@ -221,8 +221,8 @@ await withSourceMutation(
 await withSourceMutation(
     'compat tenant matrix: variable read confinement',
     COMPAT_STORE,
-    "'SELECT id, name, type, description, formula, value, created_at FROM template_variables WHERE tenant_slug = ? AND id = ?',\n            [this.tenant, id]",
-    "'SELECT id, name, type, description, formula, value, created_at FROM template_variables WHERE id = ?',\n            [id]",
+    "'SELECT id, name, type, value, formula, description, created_at FROM template_variables WHERE tenant_slug = ? AND id = ?',\n            [this.tenant, id]",
+    "'SELECT id, name, type, value, formula, description, created_at FROM template_variables WHERE id = ?',\n            [id]",
     async () => {
         buildPackage(PKG);
         expectRed('tenant matrix: goes red on a cross-tenant compat read', runGate(pkgDir, 'test/compat-tenant-matrix.mjs'));
