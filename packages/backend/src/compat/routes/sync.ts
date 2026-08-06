@@ -123,6 +123,57 @@ async function inspectTable(
     };
 }
 
+/**
+ * Batched foreign-key introspection for GET /relationships/.
+ * Postgres: ONE information_schema query for all FKs across the public schema
+ *   (was N×inspectTable = 2N round-trips; brutal for remote Supabase/Neon).
+ * SQLite: PRAGMA foreign_key_list is per-table only, so iterate — but it's local
+ *   in-process (no network), so the N cheap calls don't matter.
+ */
+async function listRelationships(
+    runner: DbRunner,
+    dialect: 'sqlite' | 'postgres',
+): Promise<{ source_table: string; source_column: string; target_table: string; target_column: string }[]> {
+    if (dialect === 'postgres') {
+        const rows = await runner.query(
+            `SELECT tc.table_name AS source_table,
+                    kcu.column_name AS source_column,
+                    ccu.table_name AS target_table,
+                    ccu.column_name AS target_column
+             FROM information_schema.table_constraints tc
+             JOIN information_schema.key_column_usage kcu
+               ON tc.constraint_name = kcu.constraint_name
+              AND tc.table_schema = kcu.table_schema
+             JOIN information_schema.constraint_column_usage ccu
+               ON ccu.constraint_name = tc.constraint_name
+              AND ccu.table_schema = tc.table_schema
+             WHERE tc.constraint_type = 'FOREIGN KEY'
+               AND tc.table_schema = 'public'`,
+        );
+        return rows.map((row) => ({
+            source_table: String(row.source_table),
+            source_column: String(row.source_column),
+            target_table: String(row.target_table),
+            target_column: String(row.target_column),
+        }));
+    }
+    const tables = await listTables(runner, dialect);
+    const relationships: { source_table: string; source_column: string; target_table: string; target_column: string }[] = [];
+    for (const table of tables) {
+        const safe = validateIdentifier(table, tables);
+        const fkRows = await runner.query(`PRAGMA foreign_key_list("${safe}")`);
+        for (const row of fkRows) {
+            relationships.push({
+                source_table: table,
+                source_column: String(row.from),
+                target_table: String(row.table),
+                target_column: String(row.to),
+            });
+        }
+    }
+    return relationships;
+}
+
 function placeholders(dialect: 'sqlite' | 'postgres', count: number, start = 1): string[] {
     return Array.from({ length: count }, (_, index) => dialect === 'sqlite' ? '?' : `$${start + index}`);
 }
@@ -1293,17 +1344,14 @@ export function registerSyncRoutes(
             const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
             const dialect = dialectOf(ds.kind);
             const tables = await listTables(runner, dialect);
-            const relationships: Record<string, unknown>[] = [];
-            for (const table of tables) {
-                const schema = await inspectTable(runner, dialect, table);
-                relationships.push(...schema.foreignKeys.map((foreignKey) => ({
-                    source_table: table,
-                    source_column: foreignKey.column,
-                    target_table: foreignKey.referenced_table,
-                    target_column: foreignKey.referenced_column,
-                    relationship_type: 'many_to_one',
-                })));
-            }
+            // Batched: one FK query (Postgres) or local per-table pragma (SQLite) — was N inspectTable calls.
+            const relationships = (await listRelationships(runner, dialect)).map((r) => ({
+                source_table: r.source_table,
+                source_column: r.source_column,
+                target_table: r.target_table,
+                target_column: r.target_column,
+                relationship_type: 'many_to_one',
+            }));
             return c.json({ tables, relationships });
         } catch (error) {
             return c.json({ detail: `Failed to fetch relationships: ${(error as Error).message}` }, 502);
