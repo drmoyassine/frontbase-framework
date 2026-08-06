@@ -127,6 +127,11 @@ jobs:
           # can resolve @frontbase/edge-core (via FRONTBASE_FRAMEWORK env).
           pnpm --dir "$FRAMEWORK_REPLAY" install --frozen-lockfile
           pnpm --dir "$FRAMEWORK_REPLAY" --filter @frontbase/edge-core... run build
+          # The backend's contracts:emit step (tsc) also needs @frontbase/edge-infra and
+          # @frontbase/compiler (backend peer-deps); edge-core alone left them unbuilt →
+          # TS2307 "Cannot find module '@frontbase/edge-infra'". Both peer-depend on
+          # edge-core (built above) and on nothing else of ours, so build them next.
+          pnpm --dir "$FRAMEWORK_REPLAY" --filter @frontbase/edge-infra --filter @frontbase/compiler run build
           npm ci --prefix "$PRODUCT_CONSOLE_REPLAY"
           npm --prefix "$PRODUCT_CONSOLE_REPLAY" run build:community
           node "$FRAMEWORK_REPLAY/scripts/fetch-console.mjs" \
