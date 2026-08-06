@@ -1,5 +1,9 @@
 # CF-22 — Admin Console 100% Visual + Functional Parity
 
+> **🛑 WORK PAUSED 2026-08-06 (owner decision) — reactive only.**
+> Automated/proactive framework↔product parity work was stopped; CF-22 will only be revisited to fix regressions the owner personally hits. The remaining gap (the ~34 VIOLATES / 5 UNREACHABLE in the live conformance gate, plus the 2026-07-29 differential run) is **accepted last-mile residue**, not an active target — the live gate is informational only.
+> The detailed "IN PROGRESS" status below is the **pre-pause engineering state**, preserved for context and future resumption. *(Banner added 2026-08-07.)*
+
 **Single source of truth for CF-22.** This document supersedes and replaces all
 prior CF-22 status/delivery/audit/incident docs (see [§11 Document history](#11-document-history)).
 Where any older note conflicts with this file, this file controls.
