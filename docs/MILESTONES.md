@@ -4,6 +4,8 @@
 **Status**: Phases 0, 1, 2 ✅ COMPLETE — Phase 3 (Agent Experience) next · CF-22 (console visual parity) 🛑 PAUSED 2026-08-06 (accepted residue, reactive-only — see docs/cf-22-admin-visual-parity-gap.md)
 **Last Updated**: 2026-08-07 (CF-22 pause memo added)
 
+> **Public-release strategy update (2026-08-13):** Frontbase is preparing for public release as a self-hostable, AI/agent-oriented, edge-native app-builder and framework. The phased engineering roadmap remains valid evidence, but release scope and gates are now centralized in [`PUBLIC-RELEASE-STRATEGY.md`](./PUBLIC-RELEASE-STRATEGY.md). The immediate release action is the R0 scope/truth audit; no target date or downstream course deadline overrides security, external-consumer, self-host, and operability gates.
+
 > **Phase status at a glance:** Phase 0 🟢 · Phase 1 🟢 · Phase 2 🟢 (M2.3 builder is *foundation-complete* — full canvas is a carried-forward item) · Phase 3 🔵 next · Phase 4 🔵.
 > Carried-forward / deferred items from every phase are consolidated in **[§ Carried-forward items](#carried-forward-items-live-backlog)** so nothing is lost between phases.
 >

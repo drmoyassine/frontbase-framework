@@ -821,6 +821,41 @@ Unblocks the identity sprint (which seeds users into the console DB) and makes a
 
 ---
 
+## Decision A-20: Public Release Positioning and Gated Rollout
+
+**Date**: 2026-08-13
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+
+### Context
+
+The framework has completed substantial engine, compiler, infrastructure, backend, builder, and console work, while package consumability, external clean-room installation, self-host evidence, documentation, security residue, and release operations still need one coherent public-release contract. Frontbase may also be taught by downstream education products, but their timelines must not become Frontbase product governance.
+
+### Decision
+
+Prepare Frontbase for public release as a **self-hostable, AI/agent-oriented, edge-native app-builder and framework**. Use [`PUBLIC-RELEASE-STRATEGY.md`](./PUBLIC-RELEASE-STRATEGY.md) as the canonical rollout contract:
+
+1. Audit and freeze a truthful first public edition and release label.
+2. Prove external package consumption and clean-environment project creation outside the monorepo.
+3. Prove adopter-controlled self-hosting for every deployment path claimed publicly.
+4. Keep security, recoverability, documentation, versioning, and release automation as non-waivable gates.
+5. Treat CF-22 as paused accepted residue unless explicitly reactivated; scope the public edition honestly around it.
+6. Accept downstream consumer evidence only as input to generalized Frontbase requirements. NoCodeHero may teach a released Frontbase version but does not set Frontbase's roadmap, release label, or acceptance criteria.
+
+### Rationale
+
+This positioning expresses the architecture's actual differentiators while preventing “open repository,” “Cloudflare deploy,” or “course deadline” from being mistaken for a complete public product. A gated release train makes installation, ownership, security, and operations part of the self-hosting promise and lets Frontbase choose a smaller honest initial edition instead of overstating parity or portability.
+
+### Consequences
+
+- The immediate release action is the R0 scope/truth audit, not an uncontrolled feature sprint.
+- Existing Phase 3/4 dates are planning evidence, not automatic launch commitments.
+- Public claims must distinguish Cloudflare-first integration from other verified self-host paths.
+- Package publication and clean-room consumption become explicit blockers.
+- Downstream education can co-evolve with Frontbase through versioned capabilities and generalized evidence without importing business strategy into this repository.
+
+---
+
 ## Decision History
 
 | Date | Decision | Status |
@@ -841,13 +876,16 @@ Unblocks the identity sprint (which seeds users into the console DB) and makes a
 | 2026-07-07 | A-15: Framework Repository & Licensing (fresh private repo, Apache-2.0) | ✅ Approved |
 | 2026-07-07 | A-16: Registered-Query Authoring Model (one contract, code-first MVP) | ✅ Approved |
 | 2026-07-10 | A-17: DB Provider Verification Surface & Tenant-Isolation Layer | ✅ Approved |
+| 2026-07-11 | A-18: Identity & Provisioning Layer | ✅ Approved |
+| 2026-07-11 | A-19: Console DB Unification & CF D1 Default | ✅ Approved |
+| 2026-08-13 | A-20: Public Release Positioning and Gated Rollout | ✅ Approved |
 
 ---
 
 ## Document Metadata
 
-**Version**: 2.0
-**Status**: Active — Chimera architecture adopted (A-12/A-13/A-14)
+**Version**: 2.1
+**Status**: Active — Chimera architecture adopted; public-release rollout governed by A-20
 **Owner**: Architecture Team
 **Next Review**: As new decisions are made
 

@@ -1,5 +1,9 @@
 # Frontbase Framework
 
+Frontbase is preparing for public release as a **self-hostable, AI/agent-oriented, edge-native app-builder and framework**. Its Chimera architecture uses one rendering engine across the edge, browser service worker, and builder preview, with schema-driven authoring and no required hosted control plane.
+
+The public release is not yet declared complete. See [Public Release Strategy](docs/PUBLIC-RELEASE-STRATEGY.md) for rollout gates and [Milestones](docs/MILESTONES.md) for implementation status.
+
 **Chimera (Universal eSSR)** — one Hono engine, three render environments, byte-identical output, and a CMS whose Worker and Static Assets deploy together to Cloudflare.
 
 No hydration mismatches. No server/client render drift. No separate backend to stand up. Public pages render server-side (edge or service worker) from the *same* engine that runs your visual builder canvas. The Worker is about 233 KB gzip; the product console is deployed through Workers Static Assets.
