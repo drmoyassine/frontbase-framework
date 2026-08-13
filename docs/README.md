@@ -104,6 +104,25 @@ Technology stack: Hono + isomorphic JSX for all published pages, React confined 
 
 ---
 
+### Public release
+
+#### [PUBLIC-RELEASE-STRATEGY.md](./PUBLIC-RELEASE-STRATEGY.md)
+**Status**: Active preparation — canonical rollout contract (Decision A-20)
+
+Release positioning, the R0–R4 release train, and the non-waivable release gates (product scope, package consumability, self-host path, security, verification, documentation, release operations, honest positioning).
+
+#### [PUBLIC-RELEASE-AUDIT.md](./PUBLIC-RELEASE-AUDIT.md)
+**Status**: Not started — R0 scope/truth audit
+
+The read-first audit that freezes the first public edition, reconciles all claims with shipped behavior, and produces the ordered public-release backlog. Implements R0; its immediate action is to claim and execute R0.
+
+#### [RELEASE-READINESS.md](./RELEASE-READINESS.md)
+**Status**: Reference checklist — date-free
+
+A single, date-free checklist of *what must be true* before Frontbase is cited by version, deployed, or adopted for teaching. Consolidates the release gates from the strategy and A-20 (it adds no new gates or timelines). Records that CF-22 console parity and the full builder canvas are accepted residue to be honestly scoped (A-20 pt 5), not parity gates.
+
+---
+
 ## 🚦 Next Steps
 
 ### Phase 0 — ✅ COMPLETE (2026-07-07)
