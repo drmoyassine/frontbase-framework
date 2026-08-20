@@ -13,7 +13,7 @@ GET  /about                public page
 GET  /sw.js                the browser engine (service-worker handover)
 GET  /frontbase-admin      product community console
 GET  /setup                first-admin setup only; initialized apps redirect to /frontbase-admin/dashboard
-POST /api/auth/login       product-compatible login → fb_session cookie
+POST /api/auth/login       product-compatible login → frontbase_session cookie
 GET  /api/auth/me          product-compatible current user
 GET  /api/console/health   public
 GET  /api/console/setup/*  retained first-run initialization surface
@@ -29,9 +29,11 @@ outside the Worker under `console-dist/frontbase-admin/` and Wrangler uploads it
 through the `ASSETS` binding. The request path is pure Web-standard (Web Crypto for
 PBKDF2 + the HS256 session JWT; the D1 binding for storage) — **no** `nodejs_compat`.
 
-Optional AI / Postgres / queue SDKs are dynamic-imported behind feature executors
-a basic D1 CMS never invokes; they're mapped to a throwing stub so the artifact is
-self-contained and using one of those features fails with a clear message.
+Optional AI / queue / object-store SDKs are dynamic-imported behind feature
+executors a basic D1 CMS never invokes; they're mapped to a throwing stub so the
+artifact is self-contained and using one of those features fails with a clear
+message. `@neondatabase/serverless` is bundled for real — the console's
+edge-database connect/schema flows (Supabase/Neon Postgres) invoke it at runtime.
 
 ## Prove it before you deploy
 
@@ -101,7 +103,7 @@ Then log in:
 curl -i https://<your-worker>.workers.dev/api/auth/login \
   -H 'content-type: application/json' \
   -d '{"email":"you@example.com","password":"…"}'
-# → 200 + Set-Cookie: fb_session=…
+# → 200 + Set-Cookie: frontbase_session=…
 ```
 
 The product console itself uses `/api/auth/login` and is available at

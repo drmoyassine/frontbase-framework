@@ -77,6 +77,29 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
     console.log('  (supabaseRunner: credential-gated — set SUPABASE_URL/SUPABASE_SERVICE_KEY to run live)');
 }
 
+// ---- postgresRunner: Supabase DSN guard (fail-fast, no network I/O) ----
+// Supavisor/direct Supabase endpoints are raw PG wire protocol — the neon()
+// HTTPS client can never reach them, and the doomed fetch kills workerd's
+// outbound proxy (wrangler dev exits 1). The factory must reject up front.
+{
+    const { postgresRunner } = await import('../dist/providers/postgres.js');
+    const cases = [
+        ['Supavisor pooler DSN', 'postgres://postgres.apbkobhfnmcqqzqeeqss:pw@aws-0-eu-central-1.pooler.supabase.com:6543/postgres'],
+        ['direct db.<ref>.supabase.co DSN', 'postgres://postgres:pw@db.apbkobhfnmcqqzqeeqss.supabase.co:5432/postgres'],
+    ];
+    for (const [label, dsn] of cases) {
+        let threw = false;
+        try { postgresRunner({ connectionString: dsn }); } catch (e) {
+            threw = String(e.message).includes('wire protocol');
+        }
+        check(`postgresRunner: rejects ${label} before any fetch`, threw);
+    }
+    let constructed = true;
+    try { postgresRunner({ connectionString: 'postgres://user:pw@ep-cool-name-123456.eu-central-1.aws.neon.tech/neondb?sslmode=require' }); }
+    catch { constructed = false; }
+    check('postgresRunner: Neon DSN constructs fine (guard does not over-block)', constructed);
+}
+
 console.log(failures === 0 ? '\nrunners: PASS ✅' : `\nrunners: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);
 

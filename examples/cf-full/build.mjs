@@ -5,11 +5,13 @@
  *      (edge-core engine + backend console + edge-infra D1 runner) → one file.
  *   3. Emit a Node smoke build so the login gate can be proven before deploy.
  *
- * Optional datasource/AI/queue SDKs (ai, @ai-sdk/*, @neondatabase/serverless,
- * @upstash/qstash, @modelcontextprotocol/sdk) are dynamic-imported behind feature
+ * Optional AI/queue/object-store SDKs (ai, @ai-sdk/*, @upstash/qstash,
+ * @modelcontextprotocol/sdk, @aws-sdk/*) are dynamic-imported behind feature
  * executors a basic D1 CMS never invokes. We map them to a throwing stub so the
  * artifact is fully self-contained (no unresolved bare imports) and any attempt
  * to use those features fails with a clear message instead of a cryptic CF error.
+ * @neondatabase/serverless is NOT stubbed — the console's edge-database
+ * connect/schema flows (Supabase/Neon Postgres) need it at runtime.
  */
 import * as esbuild from 'esbuild';
 import { gzipSync } from 'node:zlib';
@@ -75,7 +77,9 @@ if (missing.length > 0) {
 
 // Optional deps that are dynamic-imported behind feature flags — not part of a
 // basic D1 CMS. Stubbed so the single-file artifact carries no dangling imports.
-const OPTIONAL = ['ai', '@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@neondatabase/serverless', '@upstash/qstash', '@modelcontextprotocol/sdk', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'];
+// (@neondatabase/serverless is bundled for real: the edge-database Postgres
+// flows invoke it on demand, not behind an unused feature flag.)
+const OPTIONAL = ['ai', '@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@upstash/qstash', '@modelcontextprotocol/sdk', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'];
 const optionalStub = {
     name: 'stub-optional-deps',
     setup(build) {

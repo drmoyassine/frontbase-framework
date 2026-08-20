@@ -88,6 +88,69 @@ export function registerEdgeDatabasesRoutes(
         return await response.json().catch(() => ({})) as Record<string, unknown>;
     };
 
+    // --- Supabase Management API path (product parity) -----------------------
+    // The product's Supabase schema lifecycle runs over the Management API
+    // (edge_databases.py: provider==='supabase' && provider_account_id →
+    // api.supabase.com/v1/projects/{ref}/database/query), NOT over the DSN:
+    // Supavisor endpoints speak the raw Postgres wire protocol, which no
+    // fetch-only Worker runtime can reach. The DSN is only mined for the
+    // project ref (postgres.<ref>@… / db.<ref>.supabase…).
+    const SUPABASE_API = 'https://api.supabase.com/v1';
+
+    /**
+     * Resolve (access_token, project_ref) for Management API calls from the
+     * request body + the connected account's stored config. Ports the product's
+     * get_supabase_api_context. The store is tenant-scoped, so an account id
+     * from another tenant yields an empty config (no access_token) → null
+     * (isolation by construction).
+     */
+    const supabaseApiContext = async (
+        store: Phase2Store,
+        body: Record<string, unknown>,
+    ): Promise<{ token: string; projectRef: string } | null> => {
+        const accountId = String(body.provider_account_id ?? '');
+        if (!accountId) return null;
+        const creds = await store.getEdgeResourceConfig(accountId);
+        if (!creds) return null;
+        const token = String(creds.access_token ?? '');
+        if (!token) return null;
+        const url = String(body.db_url ?? '');
+        const projectRef =
+            url.match(/postgres\.([a-z0-9]+)[@:]/)?.[1] ??
+            url.match(/db\.([a-z0-9]+)\.supabase/)?.[1] ?? '';
+        if (!projectRef) return null;
+        return { token, projectRef };
+    };
+
+    /** Run SQL via the Management API query endpoint (ports _supabase_run_sql). */
+    const supabaseRunSql = async (
+        token: string,
+        projectRef: string,
+        query: string,
+    ): Promise<unknown> => {
+        const response = await guardedExternalFetch(
+            externalFetch,
+            `${SUPABASE_API}/projects/${encodeURIComponent(projectRef)}/database/query`,
+            {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+                body: JSON.stringify({ query }),
+            },
+        );
+        if (response.status !== 200 && response.status !== 201) {
+            throw new Error(`Supabase SQL API ${response.status}`);
+        }
+        return await response.json().catch(() => ({}));
+    };
+
+    /** URL-safe random token (equivalent of Python's secrets.token_urlsafe(n)). */
+    const tokenUrlSafe = (bytes: number): string => {
+        const buf = crypto.getRandomValues(new Uint8Array(bytes));
+        let bin = '';
+        for (const b of buf) bin += String.fromCharCode(b);
+        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    };
+
     // GET /api/edge-databases/
     app.get('/api/edge-databases/', async (c) => {
         const store = phase2For(c.get('tenant'));
@@ -199,6 +262,15 @@ export function registerEdgeDatabasesRoutes(
         }
         const started = Date.now();
         try {
+            // Supabase: ping via the Management API (the pooler DSN is wire
+            // protocol only — unreachable from a fetch-only runtime).
+            const supa = provider === 'supabase'
+                ? await supabaseApiContext(phase2For(c.get('tenant')), b)
+                : null;
+            if (supa) {
+                await supabaseRunSql(supa.token, supa.projectRef, 'SELECT 1');
+                return c.json(testResult(true, 'Connected to Supabase DB (management API)', Date.now() - started));
+            }
             if (isPostgresUrl(url)) {
                 await datasourceRunner('postgres', { connectionString: url }).query('SELECT 1');
             } else {
@@ -231,6 +303,14 @@ export function registerEdgeDatabasesRoutes(
         }
         const started = Date.now();
         try {
+            // Supabase: ping via the Management API using the linked account.
+            const supa = provider === 'supabase' && config.provider_account_id
+                ? await supabaseApiContext(store, { db_url: url, provider_account_id: config.provider_account_id })
+                : null;
+            if (supa) {
+                await supabaseRunSql(supa.token, supa.projectRef, 'SELECT 1');
+                return c.json(testResult(true, 'Connected to Supabase DB (management API)', Date.now() - started));
+            }
             if (isPostgresUrl(url)) {
                 await datasourceRunner('postgres', { connectionString: url }).query('SELECT 1');
             } else {
@@ -257,6 +337,30 @@ export function registerEdgeDatabasesRoutes(
             }, 400);
         }
         try {
+            // Supabase: product parity — Management API, has_role computed per schema.
+            const supa = String(b.provider ?? '') === 'supabase'
+                ? await supabaseApiContext(phase2For(c.get('tenant')), b)
+                : null;
+            if (supa) {
+                const rows = await supabaseRunSql(
+                    supa.token,
+                    supa.projectRef,
+                    'SELECT s.schema_name, '
+                    + '  EXISTS(SELECT 1 FROM pg_roles WHERE rolname = s.schema_name || \'_role\') AS has_role '
+                    + 'FROM information_schema.schemata s '
+                    + "WHERE s.schema_name LIKE 'frontbase_edge%' ORDER BY s.schema_name",
+                );
+                const schemas = (Array.isArray(rows) ? rows : [])
+                    .map((row) => row && typeof row === 'object' ? row as Record<string, unknown> : null)
+                    .filter((row): row is Record<string, unknown> => row !== null)
+                    .map((row) => ({
+                        id: String(row.schema_name ?? ''),
+                        name: String(row.schema_name ?? ''),
+                        type: 'pg_schema',
+                        has_role: row.has_role === true || row.has_role === 'true',
+                    }));
+                return c.json({ success: true, schemas });
+            }
             if (isPostgresUrl(url)) {
                 const rows = await datasourceRunner('postgres', { connectionString: url }).query(
                     "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'frontbase_edge%' ORDER BY schema_name",
@@ -283,6 +387,29 @@ export function registerEdgeDatabasesRoutes(
             }, 400);
         }
         try {
+            // Supabase: product parity — schema + scoped role + grants via the
+            // Management API; returns the generated role credentials.
+            const supa = String(b.provider ?? '') === 'supabase'
+                ? await supabaseApiContext(phase2For(c.get('tenant')), b)
+                : null;
+            if (supa) {
+                const roleName = `${schemaName}_role`;
+                const rolePassword = tokenUrlSafe(32);
+                const sql =
+                    `CREATE SCHEMA IF NOT EXISTS "${schemaName}";\n`
+                    + 'DO $$ BEGIN\n'
+                    + `  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${roleName}') THEN\n`
+                    + `    CREATE ROLE ${roleName} LOGIN PASSWORD '${rolePassword}';\n`
+                    + '  ELSE\n'
+                    + `    ALTER ROLE ${roleName} PASSWORD '${rolePassword}';\n`
+                    + '  END IF;\n'
+                    + 'END $$;\n'
+                    + `GRANT USAGE ON SCHEMA "${schemaName}" TO ${roleName};\n`
+                    + `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "${schemaName}" TO ${roleName};\n`
+                    + `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schemaName}" GRANT ALL ON TABLES TO ${roleName};`;
+                await supabaseRunSql(supa.token, supa.projectRef, sql);
+                return c.json({ success: true, schema_name: schemaName, role_name: roleName, role_password: rolePassword });
+            }
             if (isPostgresUrl(url)) {
                 await datasourceRunner('postgres', { connectionString: url }).exec(`CREATE SCHEMA "${schemaName}"`);
                 return c.json({ success: true, schema_name: schemaName, message: 'Schema created' });
@@ -297,15 +424,38 @@ export function registerEdgeDatabasesRoutes(
     // POST /api/edge-databases/reset-role-password
     app.post('/api/edge-databases/reset-role-password', async (c) => {
         const b = await c.req.json().catch(() => ({})) as Record<string, unknown>;
-        if (!String(b.db_url ?? '') || !String(b.db_token ?? '')) {
-            return c.json({ detail: 'Could not resolve Supabase credentials' }, 400);
-        }
         const schemaName = String(b.schema_name ?? '');
         if (!/^frontbase_edge_[a-z0-9_]+$/.test(schemaName)) {
             return c.json({ success: false, detail: 'Invalid schema name' }, 400);
         }
         const url = String(b.db_url ?? '');
         try {
+            // Supabase: product parity — role reset via the Management API using
+            // the connected account (the product requires no db_token here).
+            const supa = await supabaseApiContext(phase2For(c.get('tenant')), b);
+            if (supa) {
+                const roleName = `${schemaName}_role`;
+                const rolePassword = tokenUrlSafe(32);
+                const sql =
+                    'DO $$ BEGIN\n'
+                    + `  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${roleName}') THEN\n`
+                    + `    CREATE ROLE ${roleName} LOGIN PASSWORD '${rolePassword}';\n`
+                    + '  ELSE\n'
+                    + `    ALTER ROLE ${roleName} PASSWORD '${rolePassword}';\n`
+                    + '  END IF;\n'
+                    + 'END $$;\n'
+                    + `GRANT CONNECT ON DATABASE postgres TO ${roleName};\n`
+                    + `GRANT USAGE ON SCHEMA "${schemaName}" TO ${roleName};\n`
+                    + `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "${schemaName}" TO ${roleName};\n`
+                    + `GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA "${schemaName}" TO ${roleName};\n`
+                    + `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schemaName}" GRANT ALL ON TABLES TO ${roleName};\n`
+                    + `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schemaName}" GRANT ALL ON SEQUENCES TO ${roleName};`;
+                await supabaseRunSql(supa.token, supa.projectRef, sql);
+                return c.json({ success: true, role_name: roleName, role_password: rolePassword });
+            }
+            if (!url || !String(b.db_token ?? '')) {
+                return c.json({ detail: 'Could not resolve Supabase credentials' }, 400);
+            }
             if (isPostgresUrl(url)) {
                 const roleName = `${schemaName}_role`;
                 const password = `${crypto.randomUUID()}-${crypto.randomUUID()}`;

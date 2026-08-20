@@ -2,7 +2,9 @@
  * F7c + F7b gate (Phase 3 follow-ups / P2-a + P2-b). Credential-gated: needs a
  * live Postgres reachable via the neon HTTP client. Self-skips without creds.
  *
- * Set POSTGRES_URL (a Neon/Supabase pooler connection string) to run.
+ * Set POSTGRES_URL (a Neon connection string) to run. Supabase DSNs are
+ * rejected by the postgres runner guard — their endpoints are PG wire
+ * protocol only; Supabase flows go through the Management API instead.
  *
  * Proves: kind:'postgres' is runnable (F7c), and per-dialect introspection (F7b)
  * returns tables + columns over information_schema (not sqlite_master).
