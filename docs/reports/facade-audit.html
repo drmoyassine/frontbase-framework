@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frontbase Façade Audit</title>
+<style>
+:root {
+    --ground: #f7f6f2;
+    --panel: #efece5;
+    --panel-2: #e9e5dc;
+    --rule: #d8d3c7;
+    --ink: #20262f;
+    --ink-soft: #4d5560;
+    --ink-faint: #7a828d;
+    --accent: #2f4d8a;
+    --accent-soft: #dde4f2;
+    --ok: #2e6b4f;
+    --ok-bg: #e2ede6;
+    --bad: #a02c2c;
+    --bad-bg: #f3e2e0;
+    --warn: #8a5a14;
+    --warn-bg: #f2e8d3;
+    --mut: #5c636e;
+    --mut-bg: #e8e7e2;
+    --code-bg: #ebe8e0;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --ground: #151a22;
+        --panel: #1c2330;
+        --panel-2: #232b3a;
+        --rule: #333d4e;
+        --ink: #e4e3dd;
+        --ink-soft: #b3b8c2;
+        --ink-faint: #8b93a0;
+        --accent: #8fa9dd;
+        --accent-soft: #26304a;
+        --ok: #7fbd9c;
+        --ok-bg: #1d3229;
+        --bad: #e08f8c;
+        --bad-bg: #3a2222;
+        --warn: #d8b26a;
+        --warn-bg: #383021;
+        --mut: #9aa2ae;
+        --mut-bg: #272e3a;
+        --code-bg: #1f2632;
+    }
+}
+:root[data-theme="dark"] {
+    --ground: #151a22;
+    --panel: #1c2330;
+    --panel-2: #232b3a;
+    --rule: #333d4e;
+    --ink: #e4e3dd;
+    --ink-soft: #b3b8c2;
+    --ink-faint: #8b93a0;
+    --accent: #8fa9dd;
+    --accent-soft: #26304a;
+    --ok: #7fbd9c;
+    --ok-bg: #1d3229;
+    --bad: #e08f8c;
+    --bad-bg: #3a2222;
+    --warn: #d8b26a;
+    --warn-bg: #383021;
+    --mut: #9aa2ae;
+    --mut-bg: #272e3a;
+    --code-bg: #1f2632;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.62 "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+main { max-width: 74rem; margin: 0 auto; padding: 0 1.5rem 5rem; }
+.measure { max-width: 46rem; }
+
+/* ---- type ---- */
+h1, h2, h3 { text-wrap: balance; }
+h1 {
+    font-size: clamp(1.9rem, 4vw, 2.7rem);
+    font-weight: 800;
+    letter-spacing: -0.022em;
+    line-height: 1.12;
+    margin: 0;
+}
+h2 {
+    font-size: 1.28rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 3.6rem 0 0.9rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--rule);
+}
+h2 .no { color: var(--ink-faint); font-weight: 600; margin-right: 0.6rem; }
+h3 { font-size: 1.02rem; font-weight: 650; margin: 1.9rem 0 0.5rem; }
+p { margin: 0 0 1rem; }
+.lede { font-size: 1.08rem; color: var(--ink-soft); max-width: 42rem; }
+.eyebrow {
+    font: 600 0.72rem/1 ui-monospace, "Cascadia Mono", Consolas, monospace;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 2.6rem 0 0.55rem;
+}
+code, .mono {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+    font-size: 0.86em;
+}
+code {
+    background: var(--code-bg);
+    padding: 0.08em 0.36em;
+    border-radius: 3px;
+    word-break: break-word;
+}
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- header ---- */
+header { padding: 3.4rem 0 0; }
+.header-rule { border: none; border-top: 3px solid var(--ink); margin: 1.6rem 0 1.3rem; }
+.meta-line {
+    display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem;
+    font: 500 0.78rem/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace;
+    color: var(--ink-faint);
+    margin-bottom: 1.6rem;
+}
+
+/* ---- counters ---- */
+.counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr)); gap: 0.7rem; margin: 1.8rem 0 0; }
+.counter {
+    background: var(--panel); border: 1px solid var(--rule);
+    border-radius: 6px; padding: 0.85rem 1rem 0.8rem;
+}
+.counter .n { font-size: 1.7rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.counter .n.bad { color: var(--bad); }
+.counter .n.mut { color: var(--mut); }
+.counter .n.acc { color: var(--accent); }
+.counter .lbl { font-size: 0.76rem; color: var(--ink-soft); margin-top: 0.25rem; line-height: 1.35; }
+
+/* ---- pills ---- */
+.pill {
+    display: inline-block; white-space: nowrap;
+    font: 650 0.68rem/1 ui-monospace, "Cascadia Mono", Consolas, monospace;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 0.28em 0.6em; border-radius: 999px;
+}
+.p-real  { background: var(--ok-bg);   color: var(--ok); }
+.p-fac   { background: var(--bad-bg);  color: var(--bad); }
+.p-part  { background: var(--warn-bg); color: var(--warn); }
+.p-miss  { background: var(--mut-bg);  color: var(--mut); }
+.p-honest{ background: var(--accent-soft); color: var(--accent); }
+
+/* ---- tables ---- */
+.tblwrap { overflow-x: auto; margin: 1.1rem 0 1.6rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 0.855rem; line-height: 1.45; }
+th, td { text-align: left; padding: 0.5rem 0.75rem; vertical-align: top; border-bottom: 1px solid var(--rule); }
+thead th {
+    font: 650 0.68rem/1.3 ui-monospace, "Cascadia Mono", Consolas, monospace;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-faint); background: var(--panel-2);
+    position: sticky; top: 0;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--panel-2); }
+td .mono, th .mono { font-size: 0.95em; }
+td code { background: transparent; padding: 0; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---- callouts ---- */
+.callout {
+    border-left: 3px solid var(--accent);
+    background: var(--panel); border-radius: 0 6px 6px 0;
+    padding: 0.9rem 1.1rem; margin: 1.3rem 0;
+}
+.callout.bad { border-left-color: var(--bad); }
+.callout.warn { border-left-color: var(--warn); }
+.callout p:last-child { margin-bottom: 0; }
+.callout .t { font-weight: 700; margin-bottom: 0.3rem; }
+
+/* ---- flow diagram (the signature element) ---- */
+.alibis { margin: 1.4rem 0 1.8rem; display: grid; gap: 0.55rem; }
+.alibi {
+    display: grid; grid-template-columns: 3.2rem 1fr; gap: 1rem;
+    background: var(--panel); border: 1px solid var(--rule);
+    border-radius: 6px; padding: 0.9rem 1.1rem;
+}
+.alibi .step {
+    font: 800 1rem/1.2 ui-monospace, "Cascadia Mono", Consolas, monospace;
+    color: var(--bad); padding-top: 0.15rem;
+}
+.alibi h4 { margin: 0 0 0.3rem; font-size: 0.95rem; font-weight: 700; }
+.alibi p { margin: 0; font-size: 0.89rem; color: var(--ink-soft); }
+.alibi p code { font-size: 0.86em; }
+
+/* ---- misc ---- */
+.cols-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1rem; margin: 1.1rem 0; }
+.panelbox { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 1rem 1.15rem; }
+.panelbox h4 { margin: 0 0 0.5rem; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.panelbox ul, .callout ul, .tight-ul { margin: 0.4rem 0 0; padding-left: 1.15rem; }
+.panelbox li, .callout li { margin-bottom: 0.34rem; font-size: 0.92rem; }
+footer { margin-top: 4rem; padding-top: 1.3rem; border-top: 1px solid var(--rule); font-size: 0.8rem; color: var(--ink-faint); }
+.backlog-p { font-weight: 700; font-size: 0.9rem; margin: 1.6rem 0 0.4rem; }
+.kbd-note { font-size: 0.8rem; color: var(--ink-faint); }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+    <div class="eyebrow">Compatibility audit · engine lifecycle &amp; edge resources</div>
+    <h1>Frontbase Façade Audit</h1>
+    <hr class="header-rule">
+    <div class="meta-line">
+        <span>2026-08-21</span>
+        <span>repos: frontbase-framework · Frontbase- (product)</span>
+        <span>trigger: silent Vercel engine deploy</span>
+    </div>
+    <p class="lede">A user deploys an engine to Vercel from the console; the API answers <em>“Deployed successfully”</em> in 25&nbsp;ms and nothing exists anywhere. That one route turned out to be the visible edge of a pattern: <strong>every lifecycle verb that implies remote work in <code>/api/edge-engines/*</code> is local bookkeeping or fabrication</strong>, the codebase contains no deploy machinery at all, and the parity gate certified all of it. This report inventories what the product machinery actually is, classifies the framework surface against it, and traces exactly how the gate missed it.</p>
+
+    <div class="counters">
+        <div class="counter"><div class="n bad">17</div><div class="lbl">engine-lifecycle façade ops in <span class="mono">edge-engines.ts</span></div></div>
+        <div class="counter"><div class="n bad">~17</div><div class="lbl">satellite façades (GPU test, Turso, license, chat, batch publish, site records…)</div></div>
+        <div class="counter"><div class="n mut">0</div><div class="lbl">bundle builders or deploy adapters anywhere in the framework</div></div>
+        <div class="counter"><div class="n acc">6+2</div><div class="lbl">structural gate blind spots, plus a CI wiring gap</div></div>
+        <div class="counter"><div class="n mut">53</div><div class="lbl">ops whose response validator accepts <em>any</em> object</div></div>
+    </div>
+</header>
+
+<!-- ================= 1. THE FINDING ================= -->
+<section id="finding">
+    <h2><span class="no">1</span>The finding, precisely</h2>
+    <p><code>POST /api/edge-engines/deploy</code> (<span class="mono">packages/backend/src/compat/routes/edge-engines.ts:168</span>) performs, in full: a tenant-scoped lookup of <code>provider_id</code>; one D1 insert whose entire config is a Fernet-<em>shaped</em> but unencrypted <code>system_key</code>; and <code>{success:true, message:'Deployed successfully'}</code>. No fetch is ever issued — the file never references <code>externalFetch</code>. The inserted row confesses at serialization time: <code>url:''</code>, <code>provider:null</code>, <code>last_deployed_at:null</code> (<span class="mono">edge-shapes.ts:89–113</span>) — a successful deploy of an engine that was never deployed.</p>
+    <p>The product’s equivalent (<span class="mono">Frontbase-/fastapi-backend/app/routers/edge_engines.py:169</span>) delegates to <code>engine_provisioner.provision_and_deploy</code>, which resolves the provider, templates the engine URL, runs quota and placement guards, upserts the EdgeEngine row, and hands off to <code>engine_deploy.redeploy</code> — build the bundle with tsup, push secrets <em>before</em> the first Vercel deployment, POST <code>/v13/deployments</code>, capture a source snapshot, flush the engine cache, sync the manifest.</p>
+    <div class="callout bad">
+        <div class="t">The codebase already knows this is wrong</div>
+        <p>When the cloudflare deploy façade was removed, someone wrote into <span class="mono">edge-misc.ts:336–346</span>: <em>“a false success is worse than an honest refusal.”</em> That standard was applied to one route family. Seventeen engine-lifecycle ops and roughly seventeen satellites still return the false success.</p>
+    </div>
+</section>
+
+<!-- ================= 2. WHAT MUST BE PORTED ================= -->
+<section id="machinery">
+    <h2><span class="no">2</span>The machinery a faithful port must cover</h2>
+    <p>The product’s deployment and edge-resource lifecycle lives in ~20 service files (≈8,000 lines) behind two routers. Its architecture is consistent and clean: <strong>provider-agnostic orchestrators dispatch through dict registries to thin per-provider adapters</strong> — never if/elif in routers. That maps directly onto the framework’s existing strategy-registry pattern, which already exposes <code>discover</code> / <code>createResource</code> / <code>listEngines</code> — everything except deploy.</p>
+
+    <div class="tblwrap"><table>
+        <thead><tr><th>Service</th><th class="num">LOC</th><th>Role in the lifecycle</th></tr></thead>
+        <tbody>
+            <tr><td class="mono">engine_provisioner.py</td><td class="num">299</td><td>Wizard entry: provider resolution, URL templates per provider, PRE_DEPLOY_HOOKS (CF subdomain, Deno org domain, Netlify URL), quota + placement guards, resource binding sync</td></tr>
+            <tr><td class="mono">engine_deploy.py</td><td class="num">347</td><td>The universal deploy loop: <code>PROVIDER_DEPLOYERS</code> registry, fork detection, build, deploy, secrets, snapshot capture, cache flush</td></tr>
+            <tr><td class="mono">bundle.py</td><td class="num">484</td><td><strong>The bundle is the product</strong>: tsup builds from the edge source tree (or Docker-mode <code>/api/build-bundle</code>), <code>frontbase-core/</code> fork/snapshot convention, SHA source-hash drift detection</td></tr>
+            <tr><td class="mono">cloudflare_api.py</td><td class="num">211</td><td>Worker upload (multipart + bindings), workers.dev enable, per-secret PUT, delete</td></tr>
+            <tr><td class="mono">vercel_deploy_api.py</td><td class="num">295</td><td>env PATCH/POST before deploy, <code>/v13/deployments</code> with inline files + vercel.json routes, first-deploy double-push, project/deployment/env/events APIs</td></tr>
+            <tr><td class="mono">netlify_deploy_api.py</td><td class="num">215</td><td>Site lifecycle + edge-function deploy <strong>via the netlify CLI subprocess</strong> (eszip is CLI-only)</td></tr>
+            <tr><td class="mono">deno_deploy_api.py</td><td class="num">225</td><td>App ensure (409-slug retry), asset deploy with inline files, env PATCH, <code>.deno.net</code> vs <code>.deno.dev</code> URL correction</td></tr>
+            <tr><td class="mono">supabase_deploy_api.py</td><td class="num">109</td><td>Function PATCH-or-POST, project-level secrets, delete</td></tr>
+            <tr><td class="mono">secrets_builder.py</td><td class="num">1,023</td><td>14 <code>FRONTBASE_*</code> env JSON blobs; provider shaping (D1 <code>d1://</code>, KV <code>kv://</code>, queue <code>cfq://</code>, Supabase url/anonKey/jwt/schema)</td></tr>
+            <tr><td class="mono">edge_secrets_push.py</td><td class="num">793</td><td>Tenant-secrets control plane: AES-GCM blobs, HKDF/random key rotation with transition window, rollback, Celery 90-day schedule, audit</td></tr>
+            <tr><td class="mono">domain_manager.py</td><td class="num">675</td><td>Per-provider domain attach/detach/verify; <code>original_url</code> preservation; health-probe verification incl. wildcard probes</td></tr>
+            <tr><td class="mono">engine_reconfigure.py</td><td class="num">384</td><td>Live binding swap: CF Settings PATCH, env APIs, full redeploy where the runtime reads env at build time (Vercel/Netlify)</td></tr>
+            <tr><td class="mono">engine_move.py + engine_bundle.py + engine_closure.py</td><td class="num">1,109</td><td>Portable move as a crypto protocol: closure subgraph → decrypt-all manifest → scrypt/Fernet <code>FBENG1.</code> envelope → match-or-create import → sha256-confirmed destructive finalize, 7-day TTL revert</td></tr>
+            <tr><td class="mono">supabase_state_db.py</td><td class="num">693</td><td>State-DB sub-lifecycle: 7-table DDL, scoped role, 10-year scoped JWT mint, PostgREST schema exposure + reload, full cleanup</td></tr>
+            <tr><td class="mono">edge_logs.py</td><td class="num">641</td><td>Provider log APIs (Deno, CF GraphQL Analytics, Supabase analytics, Netlify deploys, Vercel events) with 2-tier cache + retention model</td></tr>
+            <tr><td class="mono">provider_discovery / _deleter / _tester / engine_lister</td><td class="num">~2,000</td><td>Registries for discovery, remote deletion (incl. scoped-token cleanup), connection tests, import-existing-engines — the framework already ports most of this genuinely</td></tr>
+        </tbody>
+    </table></div>
+
+    <h3>The state model the framework’s store can’t hold yet</h3>
+    <p>The framework’s <code>edge_resources</code> table is <span class="mono">id, tenant_slug, kind, name, provider, config(encrypted text), status, created_at, updated_at</span> — the entire lifecycle model. The product’s EdgeEngine additionally tracks <code>url</code>, <code>adapter_type</code>, <code>is_active/is_system/is_imported/is_shared/is_managed/is_forked</code>, <code>source_snapshot</code>, <code>modified_core_files</code>, <code>bundle_checksum</code>, <code>config_checksum</code>, <code>last_deployed_at/last_synced_at</code>, <code>sync_status</code>, and the move trio <code>move_status/move_secret_hash/moved_out_at</code>. In the framework these facts either don’t exist or are fabricated at serialization time (<span class="mono">edge-shapes.ts</span> hardcodes <code>sync_status:'unknown'</code>, <code>is_outdated:false</code>, <code>last_deployed_at:null</code>…).</p>
+
+    <div class="callout warn">
+        <div class="t">Architectural landmine: three load-bearing parts are process-based</div>
+        <p>“Faithful” cannot mean literal transcription, because the framework console runs inside a Worker:</p>
+        <ul>
+            <li><strong>Bundle builds</strong> shell out to <code>npx tsup</code> (or POST to a Docker edge-container’s <code>/api/build-bundle</code>). A Worker can spawn neither. The natural seam is the product’s own Docker mode: <strong>prebuilt bundle artifacts</strong> shipped with / resolved by the framework, with source-hash drift computed over the artifact.</li>
+            <li><strong>Netlify deploys</strong> require the netlify CLI — Edge Functions’ eszip packaging has no pure-API path. Port options: a build service, or an honest refusal documented as such.</li>
+            <li><strong>Scheduled jobs</strong> (90-day key rotation, stale-move pruning) run on Celery beat → map to Cron Triggers.</li>
+        </ul>
+        <p>These are design decisions the port plan must make explicitly — and they interact directly with the framework-as-source-of-truth question.</p>
+    </div>
+</section>
+
+<!-- ================= 3. GAP MATRIX ================= -->
+<section id="gap">
+    <h2><span class="no">3</span>The gap matrix: lifecycle verb by verb</h2>
+    <p>Classification of the framework’s compat surface against product behavior. <span class="pill p-real">real</span> genuine external work · <span class="pill p-fac">façade</span> success-shaped local record · <span class="pill p-part">partial</span> real core, fabricated edges · <span class="pill p-honest">honest refusal</span> errors as errors · <span class="pill p-miss">missing</span> no machinery at all.</p>
+
+    <div class="tblwrap"><table>
+        <thead><tr><th>Lifecycle verb</th><th>Product does</th><th>Framework status</th><th>Gap</th></tr></thead>
+        <tbody>
+            <tr><td class="mono">deploy</td><td>Provision + build + provider deploy API + URL + snapshot</td><td><span class="pill p-fac">façade</span></td><td>No bundle builder, no deploy adapter, no URL/engine_id returned</td></tr>
+            <tr><td class="mono">import</td><td>Unseal FBENG1, remap ids, re-encrypt secrets, insert inactive</td><td><span class="pill p-fac">façade</span></td><td>Bundle contents never read; row inserted blind</td></tr>
+            <tr><td class="mono">redeploy</td><td>Rebuild + re-upload to provider</td><td><span class="pill p-fac">façade</span></td><td>Row touch only</td></tr>
+            <tr><td class="mono">reconfigure</td><td>Binding swap → CF Settings PATCH / env APIs / redeploy</td><td><span class="pill p-fac">façade</span></td><td>Upserts the <em>name</em>; “Engine reconfigured”</td></tr>
+            <tr><td class="mono">batch/{redeploy,toggle,sync-check,rotate}</td><td>Semaphore(3) fan-out of the real verbs</td><td><span class="pill p-fac">façade</span> ×4</td><td>All four share one body: re-upsert row, report success. Toggle doesn’t toggle</td></tr>
+            <tr><td class="mono">{id}/test</td><td>GET <code>{url}/api/health</code> with latency</td><td><span class="pill p-fac">façade</span></td><td>A regex against the stored URL; zero I/O. Sibling routes (databases, caches) do fetch — the pattern exists</td></tr>
+            <tr><td class="mono">sync-manifest</td><td>GET <code>{url}/api/manifest</code>, sync GPU models</td><td><span class="pill p-fac">façade</span></td><td>Stores the client-POSTed manifest; trusts the caller to supply what it should poll</td></tr>
+            <tr><td class="mono">rotate-secrets-key / rollback</td><td>HKDF/random key, transition window, re-encrypt, redeploy, audit</td><td><span class="pill p-fac">façade</span> ×2</td><td>Fabricates a <code>completed</code> KV entry; <code>key_version</code> hardcoded 1</td></tr>
+            <tr><td class="mono">export / finalize-move / move-to-project</td><td>scrypt/Fernet sealed bundle; sha256-confirmed finalize; atomic move</td><td><span class="pill p-fac">façade</span> + <span class="pill p-miss">missing</span></td><td>Hardcoded salt/wrapped-key literals, plaintext payload, secrets embedded unencrypted; move handshake unreachable (always 404/409)</td></tr>
+            <tr><td class="mono">logs / logs/sync</td><td>Provider log APIs + persistence into engine state DB</td><td><span class="pill p-fac">façade</span></td><td>Reads a KV area nothing ever writes → forever <code>[]</code>; sync reports <code>synced_count:0</code> as success</td></tr>
+            <tr><td class="mono">bundle-hashes</td><td>Real source hashes for drift UI</td><td><span class="pill p-fac">façade</span></td><td>Two hardcoded constants</td></tr>
+            <tr><td class="mono">inspect/domains · verify</td><td>CF Workers Domains / Vercel domains / Netlify custom_domain + health probe</td><td><span class="pill p-fac">façade</span></td><td>KV push with <code>status:'active'</code>; verify sets <code>verified</code> unconditionally</td></tr>
+            <tr><td class="mono">health-check</td><td>GET engine health with x-system-key</td><td><span class="pill p-honest">honest refusal</span></td><td>Constant <code>{status:'error'}</code> — correct behavior for a nonexistent engine</td></tr>
+            <tr><td class="mono">DELETE {id}?delete_remote</td><td>Provider teardown (CF/supabase/vercel/netlify/deno), errors tolerated, cascade</td><td><span class="pill p-part">partial</span></td><td>Local cascade only; no remote teardown</td></tr>
+            <tr><td class="mono">PUT /source (fork)</td><td>Snapshot merge, traversal guard, <code>is_forked</code> + <code>modified_core_files</code></td><td><span class="pill p-part">partial</span></td><td>KV write without fork tracking — and deploy never captures a snapshot, so the convention is structurally orphaned</td></tr>
+            <tr><td class="mono">edge-databases lifecycle</td><td>Supabase Mgmt API schema/role/JWT lifecycle, CF scoped tokens, remote delete</td><td><span class="pill p-real">real</span></td><td>Ported 2026-08-21 (this session); remote delete still local-only</td></tr>
+            <tr><td class="mono">provider discovery / test / create-resource</td><td>Registry over 15+ provider APIs</td><td><span class="pill p-real">real</span></td><td>Genuine; the seam the deploy port should grow from</td></tr>
+            <tr><td class="mono">turso create/delete/test</td><td>Turso platform API / libsql <code>SELECT 1</code></td><td><span class="pill p-fac">façade</span> ×3</td><td>Local row ops + unconditional “reachable” — while the real Turso strategy sits unused in the same file</td></tr>
+            <tr><td class="mono">storage upload/move/delete/urls</td><td>Object ops via provider</td><td><span class="pill p-real">real</span></td><td>Bytes genuinely move</td></tr>
+            <tr><td class="mono">netlify-sites / vercel-projects (storage)</td><td>Real site/project creation</td><td><span class="pill p-fac">façade</span> ×4</td><td>KV records only</td></tr>
+            <tr><td class="mono">validate-license · agent chat · gpu test · batch publish</td><td>License server · LLM call · model invocation · engine dispatch</td><td><span class="pill p-fac">façade</span> ×5+</td><td><code>fb_</code> prefix ⇒ enterprise; chat echoes your message back as SSE; <code>ok = true</code></td></tr>
+            <tr><td class="mono">cloudflare/deno deploy·teardown·status</td><td>Real CF/Deno operations</td><td><span class="pill p-honest">honest refusal</span></td><td>Removed façade; comments cite the closure plan — the standard the rest of the file violates</td></tr>
+            <tr><td class="mono">sync.* / database.* / rls.* (46 ops)</td><td>Data studio, migrations, WP import, Sheets</td><td><span class="pill p-real">real</span></td><td>—</td></tr>
+        </tbody>
+    </table></div>
+    <p class="kbd-note">Everything data-touching is genuine. The façade pattern is confined to the engine lifecycle and its satellites — which is exactly the surface a console user exercises end-to-end when they click Deploy.</p>
+</section>
+
+<!-- ================= 4. GATE FORENSICS ================= -->
+<section id="gate">
+    <h2><span class="no">4</span>Gate forensics: how the parity gate certified all this</h2>
+    <p>The conformance harness (<span class="mono">packages/backend/test/compat-conformance.mjs</span>; the “legacy” twin is byte-identical) is a serious piece of machinery. Its oracle is the vendored product OpenAPI plus a differential-evidence set; probes are synthetic requests; outbound fetch is stubbed to always-200. Its failure is not sloppiness but <strong>stacked alibis</strong> — each layer individually defensible, jointly vacuous for exactly the façade class.</p>
+
+    <h3>How <code>edge-engines/deploy</code> passed, end to end</h3>
+    <div class="alibis">
+        <div class="alibi"><div class="step">i</div><div>
+            <h4>The probe only ever hits the refusal branch</h4>
+            <p>Synthesized body <code>{provider_id:'probe', worker_name:'probe'}</code> → local lookup miss → <strong>400</strong>. The fixture loop skips literal paths (no <code>{param}</code> to substitute), so the probe can never create a real provider first. The 200 branch — the actual façade — is never exercised by this gate.</p>
+        </div></div>
+        <div class="alibi"><div class="step">ii</div><div>
+            <h4>The refusal is “product-verified” because the product refused too</h4>
+            <p>The differential corpus’s <em>success-labeled</em> deploy case used <code>provider_id:'parity'</code> — dead on both systems. “No difference between product and framework” ⇒ op enters <code>productVerified</code> ⇒ the probe’s 400 lands in <strong>PRODUCT_VERIFIED_REFUSAL</strong>, a bucket the gate tolerates unconditionally. Identical refusals to identical garbage inputs launder an op into “verified.”</p>
+        </div></div>
+        <div class="alibi"><div class="step">iii</div><div>
+            <h4>The behavior classifier scores the refusal <code>functional</code> via a 0-row read</h4>
+            <p>Verified in source: the discarded-read check only runs when reads <em>returned rows</em> (<span class="mono">compat-conformance.mjs:954</span>); any handler whose only SQL is a lookup that finds nothing scores <code>functional</code> at <span class="mono">:983–984</span> with the pinned evidence string <em>“tenant-scoped state read reflected in the response”</em> — false here; nothing was reflected. This exact string is pinned in <span class="mono">contracts/behavior.ledger.json</span>.</p>
+        </div></div>
+        <div class="alibi"><div class="step">iv</div><div>
+            <h4>And if the 200 branch were reached, the validator accepts any object</h4>
+            <p><span class="mono">zod.gen.ts:1316</span>: <code>zEdgeEnginesDeployEngineResponse = z.record(z.unknown())</code>, generated from the vendored spec’s <code>{additionalProperties:true, properties:{}}</code>. A success payload missing <code>url</code>, <code>engine_id</code>, and <code>deploy_result</code> parses as <strong>CONFORMS</strong>. 53 documented-2xx ops validate through vacuous schemas like this one.</p>
+        </div></div>
+    </div>
+
+    <h3>The structural blind spots, enumerated</h3>
+    <div class="tblwrap"><table>
+        <thead><tr><th>#</th><th>Blind spot</th><th>Mechanism (verified)</th><th>Hides</th></tr></thead>
+        <tbody>
+            <tr><td class="num">a</td><td>Vacuous vendored response schemas</td><td>53 of the documented-2xx ops validate through <code>z.record(z.unknown())</code></td><td>Any success-payload divergence: missing fields, wrong types, empty objects</td></tr>
+            <tr><td class="num">b</td><td>No side-effect verification</td><td><code>providerTrace</code> records outbound calls but nothing requires them; a local write alone scores <code>functional</code></td><td>Every façade that persists a local record: deploy, reconfigure, sync-manifest, batch ops, site “creation,” Turso delete</td></tr>
+            <tr><td class="num">c</td><td>Behavior ledger is self-pinned</td><td><code>--dump-ledger</code> writes the ledger from the framework’s own measured output; <code>--behavior-gate</code> compares framework to that snapshot</td><td>Detects façade <em>regression</em>, never the façade itself — the framework grading its own homework</td></tr>
+            <tr><td class="num">d</td><td>Differential evidence limited to what synthetic inputs elicit</td><td>Corpus bodies are placeholder-filled; “no difference” usually means “both refused identically”; 73 ops ride PVR</td><td>Every success-path divergence whose prerequisites (real credentials/providers) the corpus can’t create</td></tr>
+            <tr><td class="num">e</td><td>External fetch stubbed to always-200</td><td>The seam returns canned success for every URL, catch-all fallback included; URL/method/headers never asserted</td><td>Wrong request shape to providers, wrong response interpretation, all provider-failure parity</td></tr>
+            <tr><td class="num">f</td><td>Drift gate compares the contract to itself</td><td>The framework spec is <em>emitted from</em> the vendored spec (<span class="mono">emit-openapi.mjs:5–8,44</span>); the comparator ignores the only added flag</td><td>Everything behavioral, by construction</td></tr>
+            <tr><td class="num">g</td><td>82 unmeasured ops tolerated as shipped</td><td><code>--gate</code> fails only on VIOLATES/UNREACHABLE/NO_SCHEMA; PVR, EXTERNAL_DISABLED, STUB never fail it</td><td>Includes a missing route (<code>sync/datasources/search-all</code>) and a live 500 (<code>test-raw</code>) inside the 9 UNREACHABLE</td></tr>
+            <tr><td class="num">+</td><td><code>functional</code>-via-0-row-read</td><td><span class="mono">:954</span> + <span class="mono">:983–984</span> — the starve-replay never runs for 0-row lookups; refusal handlers score <code>functional</code> with a false evidence string</td><td>Not-found paths posing as behavior; the same hole previously caught by hand in <span class="mono">edge-misc.ts</span> (“the discarded read had one effect: it made the classifier score these functional”)</td></tr>
+            <tr><td class="num">+</td><td>CI never runs the real gates</td><td>Verified: the backend <code>test</code> chain invokes <span class="mono">compat-conformance.mjs</span> <strong>flagless</strong> (reporting mode, always exit 0) — while <span class="mono">contracts.yml:69–73</span> comments “Includes compat-conformance --gate,” which is false. <code>behavior</code> and <code>gate:cf22</code> (incl. <code>--require-functional</code>) are invoked by no workflow</td><td>All of the above, in CI, permanently</td></tr>
+        </tbody>
+    </table></div>
+
+    <div class="callout bad">
+        <div class="t">Net damage inside the passing run</div>
+        <p>Of the 252 ops counted as “measured CONFORMS,” at least <strong>10 are façade successes</strong> (reconfigure, sync-manifest, the four batch verbs, engine test, bundle-hashes, netlify-sites, vercel-projects) — validated by vacuous schemas and scored <code>functional</code> for writing local rows. The printed “75% measured, 0 violations” is, for the engine lifecycle, a certificate of nothing.</p>
+    </div>
+</section>
+
+<!-- ================= 5. HARDENING ================= -->
+<section id="hardening">
+    <h2><span class="no">5</span>Gate hardening, ranked</h2>
+    <ol style="padding-left:1.2rem; margin:1rem 0;">
+        <li style="margin-bottom:0.8rem;"><strong>Pin success-payload schemas from product recordings.</strong> Record real product 2xx bodies for the 53 vacuous-schema ops and diff framework bodies against them with the existing <code>firstBodyDifference</code> machinery. Kills the deploy/reconfigure/sync-manifest/batch class at the shape level.</li>
+        <li style="margin-bottom:0.8rem;"><strong>Add an <code>EXTERNAL_REQUIRED</code> assertion class.</strong> The <code>providerTrace</code> plumbing already exists: annotate ops that perform provider work, fail any 2xx with zero outbound calls, and assert target URL + method against a per-op allowlist. Deploy, engine test, Turso delete/test, site creates fail immediately and correctly.</li>
+        <li style="margin-bottom:0.8rem;"><strong>Close the 0-row-read hole.</strong> A lookup that returns nothing must not count as “state read reflected in the response” when the response is a refusal; classify refusal + lookup-miss as <code>refusal</code>. Then wire <code>--require-functional</code> into CI.</li>
+        <li style="margin-bottom:0.8rem;"><strong>Make PVR non-free.</strong> Move the 73-op list to a reviewed allowlist file; require each entry’s corpus case to have produced an actual product 2xx, not an identically-refused synthetic.</li>
+        <li style="margin-bottom:0.8rem;"><strong>Seed corpus prerequisites.</strong> The generator already supports <code>{{provider_id}}</code> variables — use them (plus the recorded stub) so the differential exercises success paths.</li>
+        <li><strong>Wire the gates that exist.</strong> Put <code>--gate</code> on the CI invocation (after fixing the 9 UNREACHABLE), add <code>behavior</code> and <code>gate:cf22</code> to <span class="mono">contracts.yml</span>, and delete or make true the “includes --gate” comment. Stamp ledger entries with the differential-report hash so provenance is auditable.</li>
+    </ol>
+</section>
+
+<!-- ================= 6. PORT BACKLOG ================= -->
+<section id="backlog">
+    <h2><span class="no">6</span>Port backlog</h2>
+    <p>Ordered so each phase ends with behavior the hardened gate can actually certify. Sizes assume the registry pattern and the existing <code>guardedExternalFetch</code> / strategy seams.</p>
+
+    <p class="backlog-p">P0 — make <code>deploy</code> real (the wizard path)</p>
+    <ul class="tight-ul">
+        <li><strong>Decision required first:</strong> bundle strategy. Prebuilt artifacts (product’s Docker-mode equivalent) vs. build service. This gates everything else.</li>
+        <li>Port <code>engine_provisioner</code> (URL templates, guards, binding sync) + state-model columns (<code>url</code>, <code>adapter_type</code>, checksums, <code>last_deployed_at</code>…).</li>
+        <li>Port deploy adapters in risk order: <strong>Vercel</strong> (pure API, the user’s immediate need) → <strong>Deno</strong> (pure API) → <strong>Cloudflare</strong> (pure API) → Supabase (pure API) → Netlify (blocked on eszip; honest refusal if no build service).</li>
+        <li>Port <code>/{id}/test</code> and <code>health-check</code> as real probes (the sibling routes already show the pattern).</li>
+        <li>Ship alongside gate items 1–3, so the new surface is born certified.</li>
+    </ul>
+
+    <p class="backlog-p">P1 — lifecycle completeness</p>
+    <ul class="tight-ul">
+        <li>Real <code>redeploy</code> / <code>reconfigure</code> / batch verbs (delete the shared <code>performBatch</code> body).</li>
+        <li>Delete-with-remote-teardown (<code>engine_test.delete_remote_resource</code> registry) for engines + edge databases/caches/queues/vectors.</li>
+        <li>Domains via provider APIs with health-probe verification; real <code>sync-manifest</code>; real <code>bundle-hashes</code> from the artifact hash.</li>
+        <li>Fix the satellites: Turso ×3 (the strategy already exists), GPU test, storage site/project records.</li>
+    </ul>
+
+    <p class="backlog-p">P2 — the deep machinery</p>
+    <ul class="tight-ul">
+        <li>Secrets: <code>secrets_builder</code> env blobs + tenant-secrets push; key rotation with transition window (Cron Trigger for the schedule).</li>
+        <li>Logs: provider log APIs + persistence; the retention model.</li>
+        <li>Portable move: the full <code>FBENG1</code> crypto protocol (the current fake-seal export with embedded plaintext secrets should be removed <em>before</em> any port — it’s a leak-shaped liability).</li>
+        <li>Fork/snapshot: deploy-time capture, <code>is_forked</code>/<code>modified_core_files</code>, snapshot builds (bound to the P0 bundle decision).</li>
+    </ul>
+</section>
+
+<!-- ================= METHOD ================= -->
+<footer>
+    <p><strong>Method.</strong> Three independent audits: product machinery inventory (Frontbase- fastapi-backend, ~20 service files + 2 routers, read in full); framework compat-surface classification (every route in <span class="mono">packages/backend/src/compat/</span>, handlers quoted); gate forensics (harness source + replayed probes). Load-bearing forensic claims re-verified against source before publication: the 0-row classifier hole (<span class="mono">compat-conformance.mjs:954, 983–984, 1003</span>), the vacuous deploy validator (<span class="mono">zod.gen.ts:1316</span>), the flagless CI invocation (<span class="mono">package.json:21</span>), and the false “includes --gate” comment (<span class="mono">contracts.yml:69–73</span>). Product-side line numbers are from the working tree at audit time. No files were modified during the audit.</p>
+</footer>
+
+</main>
+</body>
+</html>
