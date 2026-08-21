@@ -40,8 +40,7 @@ query — Supabase, Neon, HTTP-flavored libsql — connect exactly as on Workers
 ## Run with Docker
 
 ```bash
-cd examples/cf-full
-cp .env.example .env        # then edit — SESSION_SECRET is required
+cp .env.example .env        # repo root, next to docker-compose.yml — SESSION_SECRET is required
 docker compose up -d --build
 docker compose ps           # wait for (healthy)
 ```

@@ -8,13 +8,15 @@
 #   4. http://127.0.0.1:8787/frontbase-admin  (or set ADMIN_* in .env to seed
 #      the first administrator at boot and skip the setup flow)
 #
-# Secrets are runtime env only — compose reads them from .env (gitignored) and
-# nothing secret is baked into the image.
+# The build context is the whole pnpm workspace (the image builds every
+# package and ships examples/cf-full's engine); the Dockerfile sits beside
+# this file at the repo root. Secrets are runtime env only — compose reads
+# them from .env (gitignored) and nothing secret is baked into the image.
 services:
   frontbase:
     build:
-      context: ../..                  # repo root — the pnpm workspace (compose resolves relative to THIS file: examples/cf-full → up two)
-      dockerfile: examples/cf-full/Dockerfile
+      context: .                      # repo root — the pnpm workspace
+      dockerfile: Dockerfile
     image: frontbase-cms:local
     environment:
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required — set it in .env next to docker-compose.yml (see .env.example)}
