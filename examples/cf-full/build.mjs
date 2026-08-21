@@ -253,6 +253,22 @@ await esbuild.build({
     plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
 });
 
+// 4. Node server build — the self-host/Docker entry (src/node.ts → dist/node.mjs).
+//    Identical shape to the smoke build above (same rationale: external packages
+//    so the libsql native binding and workspace @frontbase/* dist resolve from
+//    node_modules at runtime); the only difference is the entrypoint. Served by
+//    `node dist/node.mjs` (npm script start:node) or the Dockerfile CMD.
+await esbuild.build({
+    ...shared,
+    platform: 'node',
+    packages: 'external',
+    target: 'node22',
+    entryPoints: ['src/node.ts'],
+    outfile: join(here, 'dist', 'node.mjs'),
+    minify: false,
+    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
+});
+
 const raw = statSync(join(here, 'dist', 'worker.mjs')).size;
 const gz = gzipSync(readFileSync(join(here, 'dist', 'worker.mjs')), { level: 9 }).length;
 const clientGz = gzipSync(CLIENT_SOURCE, { level: 9 }).length;

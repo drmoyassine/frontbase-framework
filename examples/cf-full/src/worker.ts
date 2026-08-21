@@ -373,7 +373,12 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     const assetResponse = async (request: Request, cacheControl: string): Promise<Response | null> => {
         if (!opts.assets) return null;
         const response = await opts.assets.fetch(request);
-        if (!response.ok) return null;
+        // 304 is a HIT, not a miss: both the Static Assets binding and the Node
+        // disk shim answer a matching If-None-Match with 304. Treating it as a
+        // miss (`!response.ok`) 404s the very revalidation the no-cache policy
+        // on /static/react/hydrate.js asks browsers to make — the browser has
+        // the bytes cached and gets a 404 instead of "still valid".
+        if (response.status !== 200 && response.status !== 304) return null;
         const headers = new Headers(response.headers);
         headers.set('Cache-Control', cacheControl);
         headers.set('X-Content-Type-Options', 'nosniff');
