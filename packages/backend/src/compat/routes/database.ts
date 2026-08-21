@@ -12,7 +12,9 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { KeyValueStore } from '../store.js';
 import type { SyncStore } from '../sync-store.js';
 import { datasourceRunner, dialectOf } from '../../db/datasource-runner.js';
+import { resolveDatasourceConfig } from '../credential-resolver.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
+import { mergeAccountConfig, type AccountConfigFor } from '../providers/merge-account.js';
 import { z } from 'zod';
 
 /**
@@ -70,6 +72,7 @@ export function registerDatabaseRoutes(
     kvFor: (t: string) => KeyValueStore,
     externalFetch: CompatFetch,
     now: () => string,
+    accountConfigFor?: AccountConfigFor,
 ): void {
     type ActiveDatasource = {
         activeRunner: DbRunner;
@@ -85,11 +88,31 @@ export function registerDatabaseRoutes(
         const datasources = await store.listDatasources();
         const ds = datasources[0];
         if (ds) {
+            // Hydrate account-backed configs before building the runner — the
+            // stored row holds only provider_account_id; the url/keys live on the
+            // connected account (same seam as the sync routes). Unhydrated, the
+            // supabase runner fails at request time with `Invalid URL string`.
+            const merged = await mergeAccountConfig(
+                accountConfigFor, externalFetch, tenant, ds.kind, ds.config,
+            ).catch(() => ds.config);
+            // Resolve to runner shape (service_role_key→serviceKey, api_url→url)
+            // so every consumer of the returned config — advanced-query's
+            // url/key reads, the connections endpoint — sees the same fields
+            // the runner was built from, not the raw account fields.
+            const config = resolveDatasourceConfig(ds.kind, merged);
+            // Kinds without a runner (wordpress, google_sheets, …) are not a
+            // database connection — treat as unconfigured rather than 500ing.
+            let activeRunner: DbRunner;
+            try {
+                activeRunner = datasourceRunner(ds.kind, config);
+            } catch {
+                return null;
+            }
             return {
-                activeRunner: datasourceRunner(ds.kind, ds.config),
+                activeRunner,
                 dialect: dialectOf(ds.kind),
                 kind: ds.kind,
-                config: ds.config,
+                config,
             };
         }
         return null;
@@ -204,8 +227,20 @@ export function registerDatabaseRoutes(
         if (!source) {
             return c.json({ success: true, data: { tables: [] }, message: null, error: null });
         }
-        const tables = (await listTableNames(source)).map((name) => ({ name, schema: 'public' }));
-        return c.json({ success: true, data: { tables }, message: null, error: null });
+        try {
+            const tables = (await listTableNames(source)).map((name) => ({ name, schema: 'public' }));
+            return c.json({ success: true, data: { tables }, message: null, error: null });
+        } catch (err) {
+            // Surface the failure in the envelope's error slot instead of a raw
+            // 500 — the console shows "Failed to fetch tables" either way, but
+            // the cause stays visible to the operator.
+            return c.json({
+                success: false,
+                data: { tables: [] },
+                message: null,
+                error: (err as Error).message,
+            });
+        }
     };
 
     app.get('/api/database/tables/', handleListTables);

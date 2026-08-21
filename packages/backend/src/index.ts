@@ -244,4 +244,15 @@ export { createCompatApp } from './compat/app.js';
 export { PagesStore } from './compat/pages-store.js';
 export type { CreateCompatAppDeps } from './compat/app.js';
 export { buildFrameworkSpec, productOps, productSpec, opKey, routedOps, implementedOps } from './compat/app.js';
+// Serve-time binding enrichment (FastAPI public.py → convert_component port).
+export { SyncStore } from './compat/sync-store.js';
+export type { DatasourceRecord } from './compat/sync-store.js';
+export { enrichLayoutBindings, computeProxyDataRequest, stripLayoutEnrichment, buildChartAggregateQuery } from './compat/enrichment.js';
+export type { EnrichableDatasource, SchemaColumnSnapshot } from './compat/enrichment.js';
+// Datasource introspection pieces the worker's serve-time enrichment needs
+// (schema snapshots for Form/InfoList binding.columns bakes).
+export { inspectTable } from './compat/routes/sync.js';
+export { datasourceRunner, dialectOf } from './db/datasource-runner.js';
+export { resolveDatasourceConfig } from './compat/credential-resolver.js';
+export { mergeAccountConfig } from './compat/providers/merge-account.js';
 export * from './db/schema.js';

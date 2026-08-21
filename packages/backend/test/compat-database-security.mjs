@@ -46,7 +46,10 @@ async function request(method, path, body) {
 const tableRead = await request('GET', '/api/database/table-data/users/');
 assert.equal(tableRead.status, 200);
 const tableBody = await tableRead.json();
-assert.equal(tableBody.success, false);
+// Product parity: empty 200 when no datasource is configured. The security
+// property is the leak checks below — the control DB must never surface.
+assert.equal(tableBody.success, true);
+assert.equal(tableBody.total, 0);
 assert.equal(JSON.stringify(tableBody).includes('private@tenant-b.example'), false);
 assert.equal(JSON.stringify(tableBody).includes('tenant-b-password-hash'), false);
 
@@ -68,7 +71,12 @@ assert.equal(datasource.status, 201);
 const rawSqlWithDatasource = await request('POST', '/api/database/advanced-query/', {
     query: 'SELECT * FROM users',
 });
-assert.equal(rawSqlWithDatasource.status, 400, 'advanced-query must accept named Supabase RPCs, never raw SQL');
+// Raw SQL is never executed — only named Supabase RPCs are dispatched. The
+// refusal arrives in the envelope (success:false), not as a status code.
+const rawSqlBody = await rawSqlWithDatasource.json();
+assert.equal(rawSqlWithDatasource.status, 200, 'advanced-query must accept named Supabase RPCs, never raw SQL');
+assert.equal(rawSqlBody.success, false);
+assert.equal(JSON.stringify(rawSqlBody).includes('private@tenant-b.example'), false);
 
 const crafted = await request(
     'GET',
