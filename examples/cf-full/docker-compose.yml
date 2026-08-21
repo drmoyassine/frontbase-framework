@@ -1,0 +1,43 @@
+# Backendless single-container Frontbase CMS — the same Hono engine the
+# Cloudflare Worker runs, on a local sqlite file in a named volume.
+#
+#   1. Stage the console artifacts (product checkout prerequisite):
+#        pnpm run fetch:console -- --product-dir ../Frontbase-
+#   2. Create .env next to this file (see .env.example — SESSION_SECRET required)
+#   3. docker compose up -d --build
+#   4. http://127.0.0.1:8787/frontbase-admin  (or set ADMIN_* in .env to seed
+#      the first administrator at boot and skip the setup flow)
+#
+# Secrets are runtime env only — compose reads them from .env (gitignored) and
+# nothing secret is baked into the image.
+services:
+  frontbase:
+    build:
+      context: ../..                  # repo root — the pnpm workspace (compose resolves relative to THIS file: examples/cf-full → up two)
+      dockerfile: examples/cf-full/Dockerfile
+    image: frontbase-cms:local
+    environment:
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required — set it in .env next to docker-compose.yml (see .env.example)}
+      APP_DB_URL: ${APP_DB_URL:-file:/data/app.db}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_ROLE: ${ADMIN_ROLE:-master_admin}
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+      SETUP_EXPIRES_AT: ${SETUP_EXPIRES_AT:-}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-}
+      STORAGE_REGION: ${STORAGE_REGION:-}
+    ports:
+      - "${FRONTBASE_PORT:-8787}:8787"
+    volumes:
+      - frontbase-data:/data
+    restart: unless-stopped
+    healthcheck:                      # mirrors the image HEALTHCHECK so `docker compose ps` reports either way
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+volumes:
+  frontbase-data:
