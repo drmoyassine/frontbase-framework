@@ -46,6 +46,22 @@ binding is swapped) and exercises the public pages, the SW handover, and the ful
 login gate: default-deny → login → authenticated `/me` → wrong-password 401 →
 idempotent re-seed.
 
+## Self-host (Docker, no Cloudflare)
+
+The same engine also runs as one backendless Node container — sqlite file on a
+volume, console from disk, no sidecars:
+
+```bash
+pnpm run fetch:console -- --product-dir ../Frontbase-   # console artifacts (once)
+cd examples/cf-full
+cp .env.example .env            # set SESSION_SECRET (+ optional ADMIN_* seeds)
+docker compose up -d --build    # http://127.0.0.1:8787/frontbase-admin
+```
+
+Bare metal works too: `pnpm --filter @frontbase/example-cf-full build` then
+`SESSION_SECRET=… node dist/node.mjs` (npm script `start:node`).
+Full reference: [docs/guides/self-host-docker.md](../../docs/guides/self-host-docker.md).
+
 ## Deploy (your machine — needs a Cloudflare account)
 
 ```bash

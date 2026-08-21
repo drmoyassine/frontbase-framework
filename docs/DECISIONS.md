@@ -856,6 +856,31 @@ This positioning expresses the architecture's actual differentiators while preve
 
 ---
 
+## Decision A-21: Backendless Node/Docker Self-Host Adapter
+
+**Date**: 2026-08-22
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+
+### Context
+
+The deployable CMS (`examples/cf-full`) ran only on Cloudflare Workers (D1 + Static Assets bindings). A-20 §3 requires adopter-controlled self-hosting for every deployment path claimed publicly, and self-hosting without a Cloudflare account needs a portable host.
+
+### Decision
+
+Support a **single backendless container** (and bare-metal Node) via `examples/cf-full/src/node.ts`: the SAME exported `createCmsEngine` with exactly three host swaps — `sqliteRunner` over a `file:` URL (sqlite-dialect parity with D1; generic PG/MySQL as the *app* DB remains the A-15-adjacent unclosable constraint), a disk-backed ASSETS shim over `console-dist/` (same binding contract, ETag/304), and a caught fire-and-forget dispatcher. `migrateUp` self-applies at boot; `ADMIN_*` seeds are idempotent. Docker gate = deploy-level console verification + hydrate-vendor presence (patch-hydrate silently skips without the vendor). Secrets are runtime env only; `.env` is gitignored; `.dockerignore` excludes `.dev.vars`/`.env`/`*.secret`.
+
+A FastAPI A/B parity stack (product stack beside this container for differential testing) is a recorded future goal — the framework's Hono app implements its own full API, so the stacks are peers, never a frontend/backend pair. A two-service all-TS split was considered and rejected for now (artificial for a single-app architecture).
+
+### Consequences
+
+- Self-host claims in release materials can reference a verified Docker path, not just Cloudflare.
+- `assetResponse` now treats asset-store 304s as hits (fixes conditional-GET 404s on both hosts).
+- Image builds require `pnpm run fetch:console` staging first (posture B preserved); the gate fails fast otherwise.
+- Runtime image carries a prod `node_modules` (libsql native addon cannot be bundled); per-arch builds only.
+
+---
+
 ## Decision History
 
 | Date | Decision | Status |
