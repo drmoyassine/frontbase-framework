@@ -13,8 +13,10 @@ import { escapeHtml } from './components/lib/utils.js';
 // import it from htmlDocument keep working after the consolidation.
 export { escapeHtml };
 
-// Cache-busting version - update this when hydration scripts change
-const HYDRATE_VERSION = '20260617c';
+// Cache-busting version - update this when hydration scripts change.
+// Exported so shell.ts (the canvas/published-page shell) references the SAME
+// version instead of a drifting copy.
+export const HYDRATE_VERSION = '20260617c';
 
 // Default favicon path constant
 const DEFAULT_FAVICON = '/static/icon.png';

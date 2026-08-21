@@ -34,6 +34,12 @@ export interface EngineOptions {
      *  the baked manifest (the manifest becomes a last-resort fallback). Injected
      *  by the host so the engine stays DB-blind. Returns null when no such page. */
     resolvePublishedPage?: (path: string) => Promise<PageEntry | null>;
+    /** Enrich a page layout at serve time (product parity: FastAPI public.py →
+     *  convert_component adds binding.dataRequest before the edge renders).
+     *  Host-injected so the engine stays DB-blind; runs on the NORMAL render
+     *  path only — the gated preview renders the raw layout so an
+     *  unauthenticated visitor never triggers a datasource fetch. */
+    enrichLayout?: (layout: unknown) => Promise<unknown>;
 }
 
 /**
@@ -122,9 +128,14 @@ export function createEngine(opts: EngineOptions): Hono {
     }
 
     // 2. Edge Data Proxy — the ONLY data path browsers ever see (A-16).
+    //    Exception: /api/data/execute is handled by the compat layer (framework D — client hydration).
     if (environment === 'edge') {
-        app.post('/api/data/:queryId', async (c) => {
+        app.post('/api/data/:queryId', async (c, next) => {
             const queryId = c.req.param('queryId');
+            // Delegate /api/data/execute to the compat layer (framework D — client hydration)
+            if (queryId === 'execute') {
+                return next(); // Pass through to compat app
+            }
             const q = manifest.queries[queryId];
             if (!q) return c.json({ error: 'unknown_query' }, 404);
 
@@ -209,6 +220,14 @@ export function createEngine(opts: EngineOptions): Hono {
                     'Expires': '0',
                 });
             }
+        }
+
+        // Serve-time layout enrichment (see EngineOptions.enrichLayout). Applies
+        // AFTER the gating branch — a gated (unauthenticated) preview renders
+        // the raw layout, so enrichment/data fetches never happen behind the
+        // auth overlay.
+        if (opts.enrichLayout) {
+            page = { ...page, layout: await opts.enrichLayout(page.layout) as PageEntry['layout'] };
         }
 
         // Page data goes through the SAME scope enforcement + tenant threading as
