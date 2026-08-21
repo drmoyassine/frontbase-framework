@@ -1,24 +1,26 @@
 {
-  "name": "@frontbase/example-cf-full",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "node build.mjs",
-    "smoke": "node build.mjs && node dist/smoke.mjs",
-    "test": "node test/console-pin.mjs",
-    "e2e": "node build.mjs && playwright test -c e2e/playwright.config.ts",
-    "e2e:report": "playwright show-report e2e/report"
-  },
-  "dependencies": {
-    "@frontbase/admin-console": "workspace:*",
-    "@frontbase/backend": "workspace:*",
-    "@frontbase/builder": "workspace:*",
-    "@frontbase/edge-core": "workspace:*",
-    "@frontbase/edge-infra": "workspace:*",
-    "hono": "^4.12.28"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.62.0"
-  }
+    "name": "@frontbase/example-cf-full",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "node build.mjs",
+        "e2e": "node build.mjs && playwright test -c e2e/playwright.config.ts",
+        "e2e:report": "playwright show-report e2e/report",
+        "smoke": "node build.mjs && node dist/smoke.mjs",
+        "start:node": "node dist/node.mjs",
+        "test": "node test/console-pin.mjs"
+    },
+    "dependencies": {
+        "@frontbase/admin-console": "workspace:*",
+        "@frontbase/backend": "workspace:*",
+        "@frontbase/builder": "workspace:*",
+        "@frontbase/edge-core": "workspace:*",
+        "@frontbase/edge-infra": "workspace:*",
+        "@hono/node-server": "^1.14.0",
+        "hono": "^4.12.28"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.62.0"
+    }
 }

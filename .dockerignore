@@ -1,0 +1,40 @@
+# Build-context filter for the Dockerfile (context = repo root).
+# Everything here is either reinstalled/rebuilt inside the image, or must
+# NEVER enter an image layer (secrets) or the context upload (Windows junctions).
+
+# VCS / editor / session metadata
+.git
+.gitattributes
+.claude
+
+# Dependencies & build state — reinstalled/rebuilt inside the image.
+# CRITICAL on a Windows host: pnpm's node_modules uses junctions Docker cannot
+# COPY, and the tree carries Windows-native .node binaries for a Linux image.
+node_modules
+**/node_modules
+**/dist
+**/.wrangler
+
+# Live secrets — NEVER into an image layer or build cache (repo rule).
+**/.dev.vars
+*.secret
+.secret.txt
+**/.env
+.env
+
+# Test / scratch artifacts
+**/test-results
+examples/cf-full/e2e/report
+examples/cf-full/e2e/test-results
+*.log
+.tmp
+
+# Not needed to build the image (golden-corpus is NOT ignored: examples/
+# cf-worker's build imports layout JSON from it, so `pnpm -r build` needs it
+# in the context — all 820 KB of it).
+docs
+
+# Deliberately NOT ignored: examples/cf-full/console-dist/** and
+# examples/cf-full/public/** — gitignored (posture B: product artifacts staged
+# by `pnpm run fetch:console`) but they ARE the deploy payload the gate checks.
+# (`**/dist` above does not match `console-dist` — different path segment.)
