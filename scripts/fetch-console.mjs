@@ -92,3 +92,23 @@ const commit = execSync('git rev-parse HEAD', { cwd: productDir, encoding: 'utf-
 writeFileSync(join(consoleDist, 'CONSOLE_PIN'), JSON.stringify({ commit, sha256, jsBundles, cssBundles }, null, 2) + '\n');
 console.log(`✓ console-dist/frontbase-admin populated (pin: ${commit.slice(0, 12)}, ${jsBundles.length} JS + ${cssBundles.length} CSS bundle(s))`);
 console.log('  NOTE: frontbase-admin/index.html and CONSOLE_PIN are both committed — commit them together.');
+
+// Stage the edge hydration bundle the same posture: the product's built
+// services/edge/public/react/hydrate.js lands as the pristine VENDOR copy,
+// and examples/cf-full/scripts/patch-hydrate.mjs (wired into its build.mjs)
+// derives the served public/react/hydrate.js + console-dist/react/hydrate.js
+// from it. rmSync(consoleDist) above removed the previous derived copy — the
+// cf-full build regenerates it. Hashed entry-*.css are kept verbatim (the
+// worker serves /static/react/entry-*.css from the assets directory).
+const edgeReactDir = join(productDir, 'services', 'edge', 'public', 'react');
+const vendorDir = join(cfFullDir, 'public', 'react');
+if (existsSync(edgeReactDir) && existsSync(join(edgeReactDir, 'hydrate.js'))) {
+    mkdirSync(vendorDir, { recursive: true });
+    copyFileSync(join(edgeReactDir, 'hydrate.js'), join(vendorDir, 'hydrate.vendor.js'));
+    for (const f of readdirSync(edgeReactDir)) {
+        if (/^entry-.*\.css$/.test(f)) copyFileSync(join(edgeReactDir, f), join(vendorDir, f));
+    }
+    console.log('✓ public/react/hydrate.vendor.js staged (cf-full build applies the canvas-fallback patches)');
+} else {
+    console.log('  NOTE: services/edge/public/react/hydrate.js not found in the product checkout — vendor not staged.');
+}

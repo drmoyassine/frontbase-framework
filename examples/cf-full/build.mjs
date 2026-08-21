@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { validateConsoleArtifact, consoleBundlesPresent } from '../../scripts/console-pin.mjs';
+import { patchHydrate } from './scripts/patch-hydrate.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 mkdirSync(join(here, 'dist'), { recursive: true });
@@ -53,6 +54,13 @@ const CONSOLE_INDEX_PATH = join(CONSOLE_ROOT, 'index.html');
 if (!consoleBundlesPresent(REPO_ROOT)) {
     console.log('⚠ console bundles absent — building against the committed shell only.');
     console.log('  This artifact is NOT deployable; run `pnpm run fetch:console` before deploying.');
+}
+// Regenerate the served hydration bundle from the vendored product build.
+// Throws when the vendor bytes drift and a patch anchor stops matching —
+// never ship a silently unpatched bundle (see scripts/patch-hydrate.mjs).
+const hydratePatch = patchHydrate();
+if (hydratePatch.patched) {
+    console.log(`→ hydrate.js: ${hydratePatch.patches} canvas-fallback patches applied (${hydratePatch.bytes} bytes)`);
 }
 const DEP_PKGS = [
     { name: '@frontbase/edge-core', artifact: 'dist/index.js' },
