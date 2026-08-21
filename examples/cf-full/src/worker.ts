@@ -61,6 +61,9 @@ export interface CmsEngineOptions {
     /** Wrangler Static Assets binding. Omitted by the in-process smoke. */
     assets?: { fetch(request: Request): Promise<Response> };
     storageProvider?: StorageProvider;
+    /** Identity of the host this engine runs on (edge-engines system card).
+     *  Defaults to the Cloudflare worker; the Node entry passes its own. */
+    systemEdge?: { provider: string; name?: string; db?: string | null; cache?: string | null; queue?: string | null };
 }
 
 /**
@@ -235,10 +238,10 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         userStoreFor: (t: string) => new UserStore(opts.runner, t),
         now,
         storageProvider: opts.storageProvider,
-        // The system edge is THIS worker: Cloudflare, backed by the bound D1. The
-        // cf-full worker always runs on Cloudflare; future deno/vercel/netlify
-        // worker entries pass their own provider + real binding here.
-        systemEdge: { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' },
+        // The system edge is THIS process. The default describes the Cloudflare
+        // worker (bound D1); the Node/Docker entry overrides via opts.systemEdge
+        // so self-hosts don't report "Cloudflare D1" they don't have.
+        systemEdge: opts.systemEdge ?? { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' },
         // Enrich console page reads so the admin SPA / builder surfaces hold a
         // dataRequest the hydration runtime can execute (canvas data preview).
         // Save paths strip it in PagesStore before persisting.

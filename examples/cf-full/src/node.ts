@@ -123,6 +123,8 @@ const engine = await createCmsEngine({
     assets,
     dispatcher,
     storageProvider,
+    // The edge-engines system card must describe THIS host, not Cloudflare.
+    systemEdge: { provider: 'node', name: 'Self-host Edge', db: 'SQLite (libsql)' },
 });
 
 const port = Number(env.PORT ?? 8787);
