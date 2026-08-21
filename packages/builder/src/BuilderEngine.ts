@@ -73,6 +73,21 @@ export interface BuilderEngineOptions {
     clientBundle?: string;
 
     /**
+     * Optional: enrich a layout with serve-time binding data BEFORE it is
+     * rendered (canvas preview). Applied at every render site — GET /edit,
+     * POST /api/components, POST /api/reRender — because the canvas pipeline
+     * re-renders the CLIENT's in-memory layout, not a stored one. A freshly
+     * dropped component has never round-tripped through storage, so without
+     * this its binding carries no dataRequest/columns and the hydrated canvas
+     * components render "No data available" / "No schema available".
+     *
+     * The host owns the semantics (e.g. strip-then-enrich so a stale baked
+     * dataRequest from an edited binding is rebuilt, and persistence that
+     * strips the enrichment back off before writing).
+     */
+    enrichLayout?: (layout: PageLayoutData) => Promise<PageLayoutData> | PageLayoutData;
+
+    /**
      * Optional: auth middleware applied to EVERY builder route as the FIRST
      * handler (e.g. a session gate that 302-redirects to /frontbase-admin when
      * there is no principal). Supplied by the host worker — the builder only
@@ -129,7 +144,11 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
      * contains the full HTML document with FALLBACK_CSS, exactly what a visitor
      * sees when visiting the published page.
      */
-    async function renderBuilderCanvas(pageId: string, layout: PageLayoutData, pageData?: { title?: string; slug?: string; description?: string }): Promise<string> {
+    async function renderBuilderCanvas(pageId: string, layoutInput: PageLayoutData, pageData?: { title?: string; slug?: string; description?: string }): Promise<string> {
+        // Canvas data preview: enrich the layout the same way published pages
+        // are enriched, so hydrated components hold a executable dataRequest.
+        const layout = opts.enrichLayout ? await opts.enrichLayout(structuredClone(layoutInput)) : layoutInput;
+
         // Build PageEntry for renderDocument (matches published page structure)
         const system = buildSystemContext();
         const pageEntry: PageEntry = {
@@ -209,10 +228,16 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
             ),
         };
         const registryJson = JSON.stringify(registryDescriptor);
+        // Script-safe JSON embed: `</script>` inside a JSON string literal
+        // (the canvas document embeds the hydrate <script> tag; JSON.stringify
+        // leaves `/` untouched) terminates the surrounding <script> block
+        // early — the rest renders as body text and the iframe never receives
+        // its srcdoc (blank canvas). `\/` is valid JSON/JS string escaping.
+        const scriptSafeJson = (v: unknown) => JSON.stringify(v).replace(/<\//g, '<\\/');
         // Component tree for the editing client's bootstrap — it instantiates
         // Editor and calls load() with these. Without it the tree/property panels
         // stay empty (the bundle only DEFINES Editor; nothing feeds it the page).
-        const layoutJson = JSON.stringify(layout.content ?? []);
+        const layoutContent = layout.content ?? [];
 
         // Use custom template or default
         if (opts.builderTemplate) {
@@ -278,7 +303,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
             <script>
                 (function() {
                     var iframe = document.getElementById('fb-canvas');
-                    var content = ${JSON.stringify(canvasDocument)};
+                    var content = ${scriptSafeJson(canvasDocument)};
                     iframe.srcdoc = content;
                 })();
             </script>
@@ -287,9 +312,9 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
         <div id="fb-property-panel"></div>
     </div>
     <script>
-        window.__FRONTBASE_REGISTRY__ = ${registryJson};
+        window.__FRONTBASE_REGISTRY__ = ${scriptSafeJson(registryDescriptor)};
         window.__FRONTBASE_PAGE_ID__ = '${pageId}';
-        window.__FRONTBASE_LAYOUT__ = ${layoutJson};
+        window.__FRONTBASE_LAYOUT__ = ${scriptSafeJson(layoutContent)};
     </script>
     <script src="/builder/client.js"></script>
 </body>
@@ -366,6 +391,12 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
                 default:
                     return c.json({ error: 'Unknown operation' }, 400);
             }
+
+            // Canvas data preview: re-enrich the mutated layout so an edited
+            // binding (changed table/chart axis) gets a fresh dataRequest —
+            // a previously baked one would keep querying the OLD table. The
+            // host's save path strips this back off before persisting.
+            if (opts.enrichLayout) layout = await opts.enrichLayout(layout);
 
             // Save the updated layout
             await opts.savePage(pageId, layout);
@@ -445,11 +476,19 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
      */
     app.post('/api/reRender', async (c) => {
         try {
-            const { layout, pageData } = await c.req.json();
+            const { layout: layoutInput, pageData } = await c.req.json();
+            let layout = layoutInput;
 
             if (!layout) {
                 return c.json({ error: 'Layout is required' }, 400);
             }
+
+            // THE fresh-drop path: the console builder POSTs its in-memory
+            // layout here after every edit (debounced). A component dropped on
+            // an unsaved page has never been through storage, so enrich the
+            // binding now — otherwise the hydrated canvas renders
+            // "No data available" until the first save + reload.
+            if (opts.enrichLayout) layout = await opts.enrichLayout(layout);
 
             const system = buildSystemContext();
             const pageEntry: PageEntry = {

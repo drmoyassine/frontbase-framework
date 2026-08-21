@@ -8,6 +8,7 @@
  * deployments list reflects that). RULE 2: every read/write filtered by tenant.
  */
 import type { DbRunner } from '@frontbase/edge-infra';
+import { stripLayoutEnrichment } from './enrichment.js';
 
 export interface CompatPageRow {
     id: string; name: string; slug: string; title: string | null; description: string | null;
@@ -70,7 +71,10 @@ export class PagesStore {
     }
 
     async create(input: { name: string; slug: string; title?: string | null; description?: string | null; layout_data?: unknown }, id: string, now: string): Promise<CompatPageRow> {
-        const layout = JSON.stringify(input.layout_data ?? { content: [], root: {} });
+        // Strip enrich-on-read artifacts (console reads bake proxy dataRequests
+        // for the canvas; a client round-trip would otherwise persist them,
+        // where a stale queryConfig could shadow later binding edits).
+        const layout = JSON.stringify(stripLayoutEnrichment(input.layout_data ?? { content: [], root: {} }));
         const ch = await hash(layout);
         await this.runner.exec(
             'INSERT INTO compat_pages (id, tenant_slug, name, slug, title, description, keywords, is_public, is_homepage, layout_data, seo_data, deleted_at, content_hash, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
@@ -98,7 +102,10 @@ export class PagesStore {
         let layout_data = existing.layout_data;
         let content_hash = existing.content_hash;
         if (layoutSource !== undefined) {
-            layout_data = typeof layoutSource === 'string' ? layoutSource : JSON.stringify(layoutSource);
+            // Strip enrich-on-read artifacts before persisting (see create).
+            layout_data = typeof layoutSource === 'string'
+                ? stripLayoutEnrichment(layoutSource) as string
+                : JSON.stringify(stripLayoutEnrichment(layoutSource));
             content_hash = await hash(layout_data);
         }
         await this.runner.exec(
@@ -111,7 +118,10 @@ export class PagesStore {
     async setLayout(id: string, layoutData: unknown, now: string): Promise<CompatPageRow | null> {
         const existing = await this.get(id);
         if (!existing) return null;
-        const layout = typeof layoutData === 'string' ? layoutData : JSON.stringify(layoutData);
+        // Strip enrich-on-read artifacts before persisting (see create).
+        const layout = typeof layoutData === 'string'
+            ? stripLayoutEnrichment(layoutData) as string
+            : JSON.stringify(stripLayoutEnrichment(layoutData));
         const ch = await hash(layout);
         await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=?', [layout, ch, now, this.tenant, id]);
         return { ...existing, layout_data: layout, content_hash: ch, updated_at: now };

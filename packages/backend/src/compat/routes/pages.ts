@@ -120,14 +120,37 @@ async function stampPrimaryAuthForm(runner: DbRunner, tenant: string, page: Comp
     );
 }
 
-export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStore, now: () => string, runner?: DbRunner): void {
+export function registerPagesRoutes(
+    app: App,
+    storeFor: (t: string) => PagesStore,
+    now: () => string,
+    runner?: DbRunner,
+    /**
+     * Enrich a layout for DISPLAY (builder canvas data preview): bakes the
+     * proxy dataRequest the client hydration runtime needs to fetch. Reads
+     * only — every write path strips it back off via stripLayoutEnrichment so
+     * nothing enriched ever persists into stored layouts.
+     */
+    enrichLayout?: (tenant: string, layout: unknown) => Promise<unknown>,
+): void {
+    /** Enrich a serialized envelope's layoutData in place (non-fatal). */
+    const enrichData = async (tenant: string, data: Record<string, unknown> | null): Promise<Record<string, unknown> | null> => {
+        if (!enrichLayout || !data || data.layoutData === undefined || data.layoutData === null) return data;
+        try {
+            data.layoutData = await enrichLayout(tenant, data.layoutData);
+        } catch { /* non-fatal — canvas falls back to "No data available" */ }
+        return data;
+    };
+
     // GET /api/pages/
     app.get('/api/pages/', async (c) => {
         const store = storeFor(c.get('tenant'));
         const includeDeleted = c.req.query('includeDeleted') === 'true';
         const rows = await store.list(includeDeleted);
         const latest = await store.latestPublishedHashes(rows.map((r) => r.id));
-        return c.json({ success: true, data: rows.map((r) => withBadge(r, latest[r.id])), error: null });
+        // Enrich each envelope (the SPA may open the builder from list data).
+        const data = await Promise.all(rows.map(async (r) => await enrichData(c.get('tenant'), withBadge(r, latest[r.id]))));
+        return c.json({ success: true, data, error: null });
     });
     // POST /api/pages/
     app.post('/api/pages/', async (c) => {
@@ -166,7 +189,7 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
         const row = await store.getBySlug(c.req.param('slug'));
         if (!row) return c.json({ detail: `Page not found: ${c.req.param('slug')}` }, 404);
         const latest = await store.latestPublishedHashes([row.id]);
-        return c.json({ success: true, data: withBadge(row, latest[row.id]), message: null, error: null });
+        return c.json({ success: true, data: await enrichData(c.get('tenant'), withBadge(row, latest[row.id])), message: null, error: null });
     });
 
     // GET /api/pages/{page_id}/
@@ -175,7 +198,7 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
         const row = await store.get(c.req.param('page_id'));
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
         const latest = await store.latestPublishedHashes([row.id]);
-        return c.json({ success: true, data: withBadge(row, latest[row.id]), message: null, error: null });
+        return c.json({ success: true, data: await enrichData(c.get('tenant'), withBadge(row, latest[row.id])), message: null, error: null });
     });
     // PUT /api/pages/{page_id}/
     app.put('/api/pages/:page_id/', async (c) => {
@@ -306,7 +329,7 @@ export function registerPagesRoutes(app: App, storeFor: (t: string) => PagesStor
     app.get('/api/pages/:page_id/versions/:version_id/', async (c) => {
         const v = await storeFor(c.get('tenant')).getVersion(c.req.param('version_id'));
         if (!v) return c.json({ success: false, error: 'Version not found' }, 404);
-        return c.json({ success: true, data: serializeVersion(v, true), message: null, error: null });
+        return c.json({ success: true, data: await enrichData(c.get('tenant'), serializeVersion(v, true)), message: null, error: null });
     });
     // POST /api/pages/{page_id}/rollback/
     app.post('/api/pages/:page_id/rollback/', async (c) => {

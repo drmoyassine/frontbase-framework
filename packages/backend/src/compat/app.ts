@@ -41,6 +41,7 @@ import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
 import { registerEdgeMiscRoutes } from './routes/edge-misc.js';
 import { registerAgentCompatRoutes } from './routes/agent-compat.js';
 import { registerSyncRoutes } from './routes/sync.js';
+import { registerDataExecuteRoute } from './routes/data-execute.js';
 import { SyncStore } from './sync-store.js';
 import { CommunityInviteStore, PasswordResetStore, TemplateVariableStore, KeyValueStore, ThemesStore, SecurityEventsStore } from './store.js';
 import { PagesStore } from './pages-store.js';
@@ -85,6 +86,12 @@ export interface CreateCompatAppDeps {
      *  by /api/sync/datasources/sheets/connect/issue/. Empty default => the SPA renders
      *  its bundled fallback (matches the product's FRONTBASE_SHEETS_ADDON_URL semantics). */
     sheetsAddonUrl?: string;
+    /** Optional: enrich page layouts served to the console (builder canvas data
+     *  preview — bakes the proxy dataRequest the client hydration runtime
+     *  executes). Receives the route's tenant; returns the enriched layout.
+     *  Read paths only — the pages save routes strip the enrichment back off,
+     *  so nothing enriched persists into stored layouts. */
+    enrichPageLayout?: (tenant: string, layout: unknown) => Promise<unknown>;
 }
 
 /** Build a per-tenant store cache. */
@@ -172,7 +179,13 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // UNAUTHENTICATED routes — registered BEFORE default-deny:
     // 1. Meta (health/liveness)
     registerMetaRoutes(app, runner, deps.includeProductRoot);
-    // 2. UNAUTHENTICATED auth ops only (login/logout/signup/forgot/reset/invite/
+    // 2. Client hydration data plane (product parity — public route, no systemKeyAuth)
+    registerDataExecuteRoute(
+        app, runner, syncStoreFor, kvFor, externalFetch, now,
+        (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId),
+        resolvePrincipal,
+    );
+    // 3. UNAUTHENTICATED auth ops only (login/logout/signup/forgot/reset/invite/
     //    accept/check-slug) — a user can't present a session to log in. The
     //    AUTHENTICATED auth ops (me + security console) are registered AFTER the
     //    guard below (they read/modify admin security state — RULE 2).
@@ -264,8 +277,11 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
     registerSecurityEventsRoutes(app, secEventsFor);
-    registerPagesRoutes(app, pagesFor, now, runner);
-    registerDatabaseRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now);
+    registerPagesRoutes(app, pagesFor, now, runner, deps.enrichPageLayout);
+    registerDatabaseRoutes(
+        app, runner, syncStoreFor, kvFor, externalFetch, now,
+        (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId),
+    );
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
     registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now);

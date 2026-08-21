@@ -20,7 +20,7 @@
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import type { PageEntry } from '@frontbase/edge-core';
-import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore } from '@frontbase/backend';
+import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, type EnrichableDatasource, type SchemaColumnSnapshot } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { d1RunnerFromBinding, s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
@@ -110,6 +110,118 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         storageProvider: opts.storageProvider,
     });
 
+    // Binding enrichment (the public.py → convert_component port) — shared by
+    // three surfaces: the eSSR published-page serve path (engine enrichLayout),
+    // the compat /api/pages reads (admin SPA data preview), and the builder
+    // canvas loadPage. Datasource lists are TTL-cached (5s per tenant): the
+    // enrich path runs on every page view / canvas load, and the pages-list
+    // route enriches N layouts per request — without the cache each call
+    // re-queries the datasource table.
+    const enrichCipher = await createSecretCipher(opts.sessionSecret);
+    let enrichDsCache: { at: number; byTenant: Map<string, EnrichableDatasource[]> } | null = null;
+    const datasourcesFor = async (tenant: string): Promise<EnrichableDatasource[]> => {
+        const at = Date.now();
+        if (!enrichDsCache || at - enrichDsCache.at > 5_000) enrichDsCache = { at, byTenant: new Map() };
+        let list = enrichDsCache.byTenant.get(tenant);
+        if (!list) {
+            list = [];
+            // Caller's tenant first; community single-tenant fallbacks preserve
+            // the original engine behavior ('_root' then '_default').
+            const order = tenant === '_root' ? [tenant, '_default'] : [tenant, '_root', '_default'];
+            for (const t of order) {
+                try {
+                    list = await new SyncStore(opts.runner, t, enrichCipher).listDatasources();
+                } catch { list = []; }
+                if (list.length > 0) break;
+            }
+            enrichDsCache.byTenant.set(tenant, list);
+        }
+        return list;
+    };
+    // Schema snapshots for the Form/InfoList `binding.columns` bake. Their edge
+    // hooks have no schema endpoint to call — empty columns render "No schema
+    // available for '<table>'. Try re-publishing" — so serve-time enrichment
+    // bakes the column list alongside the dataRequest. Cached 30s per
+    // datasource+table (null = failed lookup; don't retry every request).
+    let enrichSchemaCache: { at: number; byKey: Map<string, SchemaColumnSnapshot[] | null> } | null = null;
+    const schemaSnapshotsFor = async (
+        tenant: string,
+        layout: unknown,
+        datasources: EnrichableDatasource[],
+    ): Promise<Map<string, SchemaColumnSnapshot[]> | undefined> => {
+        // Collect (dataSourceId, tableName) pairs from Form/InfoList bindings
+        // that don't already carry a columns snapshot.
+        const needed = new Set<string>();
+        const scan = (node: unknown): void => {
+            if (Array.isArray(node)) { node.forEach(scan); return; }
+            if (!node || typeof node !== 'object') return;
+            const comp = node as Record<string, unknown>;
+            if (comp.type === 'Form' || comp.type === 'InfoList') {
+                const props = comp.props as Record<string, unknown> | undefined;
+                const b = (comp.binding ?? props?.binding) as Record<string, unknown> | undefined;
+                if (b && typeof b === 'object') {
+                    const dsId = [b.dataSourceId, b.datasourceId, b.datasource_id].find((v) => typeof v === 'string' && v) as string | undefined;
+                    const table = [b.tableName, b.table_name].find((v) => typeof v === 'string' && v) as string | undefined;
+                    const hasColumns = Array.isArray(b.columns) && b.columns.length > 0;
+                    if (dsId && table && !hasColumns) needed.add(`${dsId}::${table}`);
+                }
+            }
+            for (const value of Object.values(comp)) {
+                if (value && typeof value === 'object') scan(value);
+            }
+        };
+        scan(layout);
+        if (needed.size === 0) return undefined;
+        const at = Date.now();
+        if (!enrichSchemaCache || at - enrichSchemaCache.at > 30_000) enrichSchemaCache = { at, byKey: new Map() };
+        const out = new Map<string, SchemaColumnSnapshot[]>();
+        const byId = new Map(datasources.map((d) => [d.id, d]));
+        for (const key of needed) {
+            if (enrichSchemaCache.byKey.has(key)) {
+                const cached = enrichSchemaCache.byKey.get(key);
+                if (cached) out.set(key, cached);
+                continue;
+            }
+            const [dsId, table] = key.split('::');
+            const ds = byId.get(dsId);
+            let snapshot: SchemaColumnSnapshot[] | null = null;
+            if (ds) {
+                try {
+                    // Same credential hydration the compat data routes use:
+                    // account-backed datasources keep their secrets on the edge
+                    // resource (connected account) row — merge them back via
+                    // getEdgeResourceConfig, exactly like app.ts's
+                    // accountConfigFor for registerDataExecuteRoute.
+                    const merged = await mergeAccountConfig(
+                        (t, accountId) => new Phase2Store(opts.runner, t, enrichCipher).getEdgeResourceConfig(accountId),
+                        (input, init) => globalThis.fetch(input, init),
+                        tenant, ds.kind, ds.config ?? {},
+                    ).catch(() => ds.config ?? {});
+                    const runner = datasourceRunner(ds.kind, resolveDatasourceConfig(ds.kind, merged));
+                    snapshot = (await inspectTable(runner, dialectOf(ds.kind), table)).columns;
+                } catch { snapshot = null; }
+            }
+            enrichSchemaCache.byKey.set(key, snapshot);
+            if (snapshot) out.set(key, snapshot);
+        }
+        return out;
+    };
+    const enrichWithDatasources = async (tenant: string, layout: unknown): Promise<unknown> => {
+        try {
+            const datasources = await datasourcesFor(tenant);
+            return enrichLayoutBindings(layout, datasources, await schemaSnapshotsFor(tenant, layout, datasources));
+        } catch {
+            return layout; // best-effort — serve un-enriched
+        }
+    };
+    // Canvas render path: normalize (strip any baked enrichment — the console's
+    // client state may carry a dataRequest for a table the user has since
+    // changed) then re-enrich from the CURRENT binding. This is what makes a
+    // freshly dropped component on an unsaved page fetch data: its binding has
+    // never been through storage, so enrichment happens here, at render time.
+    const enrichForCanvas = async (layout: any): Promise<any> =>
+        await enrichWithDatasources('_root', stripLayoutEnrichment(layout)) as any;
+
     // CF-22 P3: the compat /api/* surface (the eSSR engine owns vendored GET /).
     // Sits BEFORE the engine catch-all so /api/auth/login, /api/pages/, etc.
     // are served by the framework, not shadowed by the eSSR proxy.
@@ -127,6 +239,10 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // cf-full worker always runs on Cloudflare; future deno/vercel/netlify
         // worker entries pass their own provider + real binding here.
         systemEdge: { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' },
+        // Enrich console page reads so the admin SPA / builder surfaces hold a
+        // dataRequest the hydration runtime can execute (canvas data preview).
+        // Save paths strip it in PagesStore before persisting.
+        enrichPageLayout: (tenant, layout) => enrichWithDatasources(tenant, layout),
     });
 
     // Phase 1: Wire the framework eSSR BuilderEngine as the real builder canvas.
@@ -168,6 +284,8 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             if (!row) return null;
             let layout: unknown;
             try { layout = JSON.parse(row.layout_data); } catch { layout = { content: [], root: {} }; }
+            // Raw authored layout — the render sites enrich via enrichLayout
+            // below (covers freshly dropped, never-saved components too).
             return { id: row.id, layout: layout as any };
         },
         savePage: async (pageId: string, layoutData) => {
@@ -175,6 +293,12 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         },
         autoSave: false, // No auto-save for now
         authMiddleware: builderAuthGate,
+        // Canvas shows real data (deliberate divergence from the product's
+        // "No data available" canvas). Applied at every render site, including
+        // reRender — the console's live-edit path for UNSAVED layouts. Enriched
+        // layouts saved through savePage are stripped by PagesStore first, so
+        // nothing baked ever lands in storage.
+        enrichLayout: enrichForCanvas,
         // Point the canvas template at the inlined editing client (built by
         // build.mjs as virtual:builder-client-bundle), served below at
         // /builder/client.js. Without this, the template's <script> 404s, the
@@ -235,6 +359,13 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
                 ...(primaryAuthForm ? { _primaryAuthForm: primaryAuthForm } : {}),
             };
         },
+        // Serve-time binding enrichment (product parity: FastAPI public.py →
+        // convert_component bakes binding.dataRequest so client hydration has a
+        // request to execute). Attaches proxy-strategy dataRequests — only
+        // datasourceId is baked into the page; credentials resolve server-side
+        // at /api/data/execute. Shared helper (TTL-cached datasource list),
+        // same '_root'-then-'_default' fallback as before.
+        enrichLayout: (layout) => enrichWithDatasources('_root', layout),
     });
 
     const app = new Hono();
@@ -248,6 +379,53 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         headers.set('X-Content-Type-Options', 'nosniff');
         return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
     };
+
+    // ── Client hydration assets (product parity) ─────────────────────────────
+    // These are bundled from the product's built hydrate.js (vendor:console-dist).
+    // In production, the ASSETS binding serves them from public/react/*; in dev
+    // (no binding), we return a clear 404 rather than serving a broken file.
+    // The framework's htmlDocument.ts unconditionally loads these at
+    // /static/react/hydrate.js?v=<version> and /static/icon.png — the bundle
+    // MUST exist for DataTable/Form/etc. client hydration.
+    app.get('/static/react/hydrate.js', async (c) => {
+        const url = new URL(c.req.url);
+        url.pathname = '/react/hydrate.js';
+        // NOT immutable: this bundle is patched locally (scripts/patch-hydrate.mjs)
+        // while the version query stays pinned by the vendored console/SW html —
+        // revalidate via ETag so patched bytes reach browsers that already cached
+        // the URL (a conditional GET 304s when unchanged, so the cost is one
+        // round trip per canvas load).
+        const asset = await assetResponse(new Request(url, c.req.raw), 'no-cache, must-revalidate');
+        if (asset) {
+            const headers = new Headers(asset.headers);
+            headers.set('Content-Type', 'application/javascript; charset=utf-8');
+            return new Response(asset.body, { status: asset.status, statusText: asset.statusText, headers });
+        }
+        return c.text('not_found', 404);
+    });
+    app.get('/static/react/:cssFile{entry-.+\\.css}', async (c) => {
+        const cssFile = c.req.param('cssFile');
+        const url = new URL(c.req.url);
+        url.pathname = `/react/${cssFile}`;
+        const asset = await assetResponse(new Request(url, c.req.raw), 'public, max-age=31536000, immutable');
+        if (asset) {
+            const headers = new Headers(asset.headers);
+            headers.set('Content-Type', 'text/css; charset=utf-8');
+            return new Response(asset.body, { status: asset.status, statusText: asset.statusText, headers });
+        }
+        return c.text('not_found', 404);
+    });
+    app.get('/static/icon.png', async (c) => {
+        const url = new URL(c.req.url);
+        url.pathname = '/icon.png';
+        const asset = await assetResponse(new Request(url, c.req.raw), 'public, max-age=86400');
+        if (asset) {
+            const headers = new Headers(asset.headers);
+            headers.set('Content-Type', 'image/png');
+            return new Response(asset.body, { status: asset.status, statusText: asset.statusText, headers });
+        }
+        return c.text('not_found', 404);
+    });
     const consoleShell = async (c: any) => {
         if (await needsSetup()) return c.redirect('/setup', 302);
         const url = new URL(c.req.url);

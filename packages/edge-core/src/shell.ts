@@ -1,14 +1,16 @@
 /**
- * Chimera document shell — the published-page HTML document.
+ * Chimera document shell — the published-page / builder-canvas HTML document.
  *
- * Deliberately ships NO React, NO hydration bundle, NO SDK scripts (contrast:
- * the product's htmlDocument.ts). Page CSS comes from the publish-time
- * `cssBundle` (styling seam — Phase 1 input 16), falling back to base styles.
- * The ~10 KB behaviors runtime will be added here when M1.1 formalizes it.
+ * Product parity: loads the vendored client hydration runtime at
+ * /static/react/hydrate.js (served by the host — vendored the same way as the
+ * console SPA). Without it, SSR markers ([data-react-component] + skeletons)
+ * are emitted but nothing mounts, so DataTables stay skeletons. Page CSS comes
+ * from the publish-time `cssBundle` (styling seam — Phase 1 input 16), falling
+ * back to base styles.
  */
 import { FALLBACK_CSS } from './ssr/baseStyles.js';
 import type { PageEntry } from './manifest.js';
-import { escapeHtml } from './ssr/htmlDocument.js';
+import { escapeHtml, HYDRATE_VERSION } from './ssr/htmlDocument.js';
 
 export interface ShellOptions {
     environment: string;
@@ -34,11 +36,13 @@ export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOpt
 <meta name="chimera-rendered-by" content="${escapeHtml(opts.environment)}">
 <title>${escapeHtml(page.title)}</title>
 ${page.description ? `<meta name="description" content="${escapeHtml(page.description)}">` : ''}
+<link rel="modulepreload" href="/static/react/hydrate.js?v=${HYDRATE_VERSION}">
 <style>${page.cssBundle || FALLBACK_CSS}</style>
 </head>
 <body>
 <div id="root">${bodyHtml}</div>
 ${behaviors}
+<script type="module" src="/static/react/hydrate.js?v=${HYDRATE_VERSION}"></script>
 ${swRegistration}
 </body>
 </html>`;

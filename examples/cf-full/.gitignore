@@ -20,3 +20,9 @@ console-dist/frontbase-admin/*
 e2e/report/
 e2e/test-results/
 test-results/
+
+# Product-derived edge hydration assets, same posture as console-dist:
+# fetch:console stages public/react/hydrate.vendor.js from the product
+# checkout, and the cf-full build derives public/react/hydrate.js (patched)
+# from it. Nothing under public/ is source — do not commit.
+public/

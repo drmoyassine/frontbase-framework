@@ -19,7 +19,7 @@ import type { SyncStore } from '../sync-store.js';
 import type { KeyValueStore } from '../store.js';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { datasourceRunner, isIntrospectable, dialectOf } from '../../db/datasource-runner.js';
-import { enrichProviderConfig } from '../connect-enrichment.js';
+import { mergeAccountConfig } from '../providers/merge-account.js';
 import { serializeDatasource, serializeDatasourceView } from './sync-shapes.js';
 import { SUPABASE_SETUP_SQL } from '../supabase-setup-sql.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
@@ -47,7 +47,12 @@ async function listTables(runner: DbRunner, dialect: 'sqlite' | 'postgres'): Pro
     return rows.map((row) => String(row.name));
 }
 
-async function inspectTable(
+/**
+ * Resolve + validate a table name against the datasource's real table list and
+ * return its column/FK metadata. Exported for the edge data API and the
+ * worker-side enrichment schema snapshots (they bake binding.columns).
+ */
+export async function inspectTable(
     runner: DbRunner,
     dialect: 'sqlite' | 'postgres',
     rawTable: string,
@@ -391,32 +396,15 @@ export function registerSyncRoutes(
     /**
      * Merge a connected account's stored config into a datasource config when the
      * datasource references one via `provider_account_id`, then lazily enrich.
-     * The per-kind transform (service_role_key→serviceKey, etc.) is applied inside
-     * datasourceRunner. Framework port of get_datasource_credentials hydration.
-     *
-     * Lazy enrichment: accounts created before the connect-time enrichers shipped
-     * (or whose provider has since rotated keys) may lack the resolved secret
-     * (e.g. Supabase service_role_key). When the merged config carries the
-     * enrichment inputs (access_token + project_ref) but not the secret, the
-     * kind's enricher fetches it on demand — best-effort, idempotent (enrichers
-     * skip when the secret is already present). This makes pre-existing accounts
-     * resolve without a re-connect.
+     * Shared with the database routes (see providers/merge-account.ts for why
+     * every runner built from a stored datasource config must hydrate).
      */
-    const mergeAccount = async (
+    const mergeAccount = (
         tenant: string,
         kind: string,
         config: Record<string, unknown>,
-    ): Promise<Record<string, unknown>> => {
-        const accountId = String(config?.provider_account_id ?? '');
-        let merged = config;
-        if (accountId && accountConfigFor) {
-            const accountConfig = await accountConfigFor(tenant, accountId).catch(() => null);
-            if (accountConfig) merged = { ...accountConfig, ...config };
-        }
-        // Lazy enrich (idempotent — no-op when the secret is already present).
-        merged = await enrichProviderConfig(kind, merged, externalFetch).catch(() => merged);
-        return merged;
-    };
+    ): Promise<Record<string, unknown>> =>
+        mergeAccountConfig(accountConfigFor, externalFetch, tenant, kind, config);
 
     /**
      * Credential-shaped fields the SPA sends at the TOP LEVEL of a DatasourceCreate
@@ -880,7 +868,7 @@ export function registerSyncRoutes(
                  LIMIT ${resultLimit}`,
                 where.params,
             );
-            return c.json({ success: true, data: rows });
+            return c.json({ success: true, data: rows, records: rows });
         } catch (err) {
             // Product parity: return 404 for table/schema errors, 400 for validation errors.
             const msg = (err as Error).message;

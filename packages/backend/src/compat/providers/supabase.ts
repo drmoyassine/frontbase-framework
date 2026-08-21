@@ -29,6 +29,12 @@ export const resolveSupabase: DatasourceResolver = (config) => {
     const projectRef = String(config.project_ref ?? config.ref ?? '');
     const url = rawUrl || (projectRef ? `https://${projectRef}.supabase.co` : '');
     const resolved: Record<string, unknown> = { url, serviceKey };
+    // Carry the public anon key through (connect-time enrichment stores both)
+    // so policy-split consumers can send it for anonymous traffic — the
+    // published-page RPC proxy uses it for unauthenticated callers while
+    // authenticated console/preview calls keep the service-role key.
+    const anonKey = String(config.anonKey ?? config.anon_key ?? '');
+    if (anonKey && anonKey !== serviceKey) resolved.anonKey = anonKey;
     // `jwt` here means a JWT *token* to send as the Bearer (defaults to serviceKey,
     // which is itself a valid JWT). Do NOT map `jwt_secret` — that is the project's
     // raw signing SECRET (from /v1/projects/{ref}/postgrest), used server-side to
