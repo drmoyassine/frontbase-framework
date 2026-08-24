@@ -281,6 +281,91 @@ export function sigv4StorageProvider(opts: S3StorageOpts): StorageProvider {
     };
 }
 
+// ── Supabase Storage REST ───────────────────────────────────────────────────
+//
+// The product's Supabase adapter is plain REST with the service-role key
+// (supabase_adapter.py): POST/GET /object/{bucket}/{path}, DELETE with a
+// prefixes body, /object/sign for signed URLs. No SDK — same fetch-only
+// constraints as the SigV4 provider above.
+//
+// RULE 1: server-only — the service key never enters a browser bundle.
+// RULE 4: errors surface the HTTP status; the caller maps them to a code.
+
+export interface SupabaseStorageOpts {
+    /** Project URL, e.g. https://<ref>.supabase.co */
+    apiUrl: string;
+    /** Service-role key (anon works only for public buckets). */
+    serviceRoleKey: string;
+}
+
+/** Build a Supabase StorageProvider over the Storage REST API (fetch + Bearer). */
+export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvider {
+    const origin = opts.apiUrl.replace(/\/+$/, '');
+    const base = `${origin}/storage/v1`;
+    const headers = { authorization: `Bearer ${opts.serviceRoleKey}`, apikey: opts.serviceRoleKey };
+    // Per-segment encoding, slashes preserved (the product's quote(path, safe="/")).
+    const safePath = (path: string) => path.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+    const assertOk = async (resp: Response, op: string): Promise<void> => {
+        if (!resp.ok) throw new Error(`supabase_${op}_failed_${resp.status}`);
+    };
+
+    return {
+        async put({ bucket, key, bytes, contentType }: PutOpts): Promise<{ key: string }> {
+            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(key)}`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': contentType ?? 'application/octet-stream' },
+                body: bytes as BufferSource,
+            });
+            await assertOk(resp, 'put');
+            return { key };
+        },
+
+        async get(bucket: string, key: string) {
+            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(key)}`, { headers });
+            await assertOk(resp, 'get');
+            return { bytes: new Uint8Array(await resp.arrayBuffer()), contentType: resp.headers.get('content-type') ?? undefined };
+        },
+
+        async delete(bucket: string, key: string) {
+            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}`, {
+                method: 'DELETE',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify({ prefixes: [key.replace(/^\/+/, '')] }),
+            });
+            await assertOk(resp, 'delete');
+        },
+
+        async signedUrl(bucket: string, key: string, expiresInSeconds = 900): Promise<string> {
+            const resp = await fetch(`${base}/object/sign/${encodeURIComponent(bucket)}/${safePath(key)}`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify({ expiresIn: expiresInSeconds }),
+            });
+            await assertOk(resp, 'sign');
+            const relative = (await resp.json())?.signedURL;
+            if (!relative) throw new Error('supabase_sign_failed_no_url');
+            // The API returns a path relative to the storage service root
+            // (/object/sign/...); some hosts return it host-relative or absolute.
+            // Normalize onto {origin}/storage/v1 before returning.
+            const asUrl = new URL(String(relative), `${origin}/storage/v1`);
+            if (!asUrl.pathname.startsWith('/storage/v1')) asUrl.pathname = `/storage/v1${asUrl.pathname}`;
+            return asUrl.toString();
+        },
+
+        async signedUploadUrl(bucket: string, key: string, _contentType?: string, expiresInSeconds = 900): Promise<string> {
+            const resp = await fetch(`${base}/upload/sign/${encodeURIComponent(bucket)}/${safePath(key)}`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify({ expiresIn: expiresInSeconds }),
+            });
+            await assertOk(resp, 'upload_sign');
+            const url = (await resp.json())?.url;
+            if (!url) throw new Error('supabase_upload_sign_failed_no_url');
+            return String(url);
+        },
+    };
+}
+
 /** In-memory storage provider — for tests and dev. NOT durable. */
 export function memoryStorageProvider(): StorageProvider & { _store: Map<string, { bytes: Uint8Array; contentType?: string }> } {
     const store = new Map<string, { bytes: Uint8Array; contentType?: string }>();

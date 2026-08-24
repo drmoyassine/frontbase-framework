@@ -10,7 +10,7 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { KeyValueStore } from '../store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
-import { sigv4StorageProvider } from '@frontbase/edge-infra';
+import { sigv4StorageProvider, supabaseStorageProvider } from '@frontbase/edge-infra';
 import type { StorageProvider } from '@frontbase/edge-infra';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
@@ -116,9 +116,18 @@ export function registerStorageRoutes(
             };
         }
 
+        if (type === 'supabase') {
+            // The account's stored config is the console's connect-time enrichment:
+            // api_url + anon/service-role keys. Storage ops run server-side with the
+            // service-role key (product parity, supabase_adapter.py).
+            const apiUrl = String(accountConfig.api_url ?? accountConfig.url ?? '');
+            const serviceRoleKey = String(accountConfig.service_role_key ?? accountConfig.serviceKey ?? accountConfig.anon_key ?? '');
+            if (!apiUrl || !serviceRoleKey) return { status: 400, message: 'Supabase account missing api_url or keys' };
+            return { client: supabaseStorageProvider({ apiUrl, serviceRoleKey }) };
+        }
+
         // Types the product adapters cover but the framework does not port yet
-        // (supabase/vercel/netlify native APIs) resolve to the product's
-        // registry-miss response.
+        // (vercel/netlify native APIs) resolve to the product's registry-miss response.
         return { status: 400, message: `No storage adapter for provider type '${type}'` };
     };
     /** Resolve from provider_id when present; otherwise fall back to the env-wired

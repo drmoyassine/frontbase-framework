@@ -409,14 +409,14 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
         });
         await check('storage: adapter-less provider type → 400 (product registry-miss)', async () => {
             if (!accountId) return false;
-            const supa = await req('/api/storage/providers/', {
+            const na = await req('/api/storage/providers/', {
                 method: 'POST', headers: authed,
-                body: JSON.stringify({ provider_account_id: accountId, name: 'No Adapter', provider: 'supabase' }),
+                body: JSON.stringify({ provider_account_id: accountId, name: 'No Adapter', provider: 'vercel' }),
             });
-            const supaId = (await supa.json() as { id?: string }).id;
-            const r = await req(`/api/storage/signed-url?provider_id=${supaId}&bucket=b&path=p`, { headers: { cookie: compatCookie } });
+            const naId = (await na.json() as { id?: string }).id;
+            const r = await req(`/api/storage/signed-url?provider_id=${naId}&bucket=b&path=p`, { headers: { cookie: compatCookie } });
             const body = await r.json() as { detail?: string };
-            return r.status === 400 && body.detail === "No storage adapter for provider type 'supabase'";
+            return r.status === 400 && body.detail === "No storage adapter for provider type 'vercel'";
         });
         await check('storage: missing provider_id → 422 (product contract: provider_id is required)', async () => {
             const r = await req('/api/storage/signed-url?bucket=b&path=p', { headers: { cookie: compatCookie } });
@@ -426,6 +426,109 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
         });
     } finally {
         s3mock.close();
+    }
+}
+
+// The live frontbase-site flow: provider type 'supabase' with credentials from
+// connect-time enrichment (api_url + service_role_key on the EdgeResource).
+// A local mock of the Supabase Storage REST surface proves the adapter's
+// request shapes — Bearer headers, object/sign → absolutized URL, prefixes
+// delete — without touching a real project.
+{
+    const objects = new Map<string, { bytes: Uint8Array; contentType?: string; authorization?: string }>();
+    const supaMock = createServer((incoming, res) => {
+        const path = (incoming.url ?? '/').split('?')[0];
+        const readBody = () => new Promise<Buffer>((resolve) => {
+            const chunks: Buffer[] = [];
+            incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
+            incoming.on('end', () => resolve(Buffer.concat(chunks)));
+        });
+        // Path segments are per-segment encoded by the adapter — decode back.
+        const objectKey = (prefix: string) => path.slice(prefix.length).split('/').map(decodeURIComponent).join('/');
+        if (incoming.method === 'POST' && path.startsWith('/storage/v1/object/sign/')) {
+            res.writeHead(200, { 'content-type': 'application/json' })
+                .end(JSON.stringify({ signedURL: `${path}?token=smoke` }));
+        } else if (incoming.method === 'POST' && path.startsWith('/storage/v1/object/')) {
+            void readBody().then((buf) => {
+                objects.set(objectKey('/storage/v1/object/'), {
+                    bytes: new Uint8Array(buf),
+                    contentType: incoming.headers['content-type'],
+                    authorization: incoming.headers.authorization,
+                });
+                res.writeHead(200).end();
+            });
+        } else if (incoming.method === 'GET' && (path.startsWith('/storage/v1/object/sign/') || path.startsWith('/storage/v1/object/'))) {
+            const key = path.startsWith('/storage/v1/object/sign/')
+                ? objectKey('/storage/v1/object/sign/')
+                : objectKey('/storage/v1/object/');
+            const obj = objects.get(key);
+            if (!obj) { res.writeHead(404).end(); return; }
+            res.writeHead(200, { 'content-type': obj.contentType ?? 'application/octet-stream' }).end(obj.bytes);
+        } else if (incoming.method === 'DELETE' && path.startsWith('/storage/v1/object/')) {
+            void readBody().then((buf) => {
+                const prefixes = (JSON.parse(buf.toString() || '{}') as { prefixes?: string[] }).prefixes ?? [];
+                const bucket = objectKey('/storage/v1/object/');
+                for (const prefix of prefixes) objects.delete(`${bucket}/${prefix.replace(/^\/+/, '')}`);
+                res.writeHead(200).end();
+            });
+        } else {
+            res.writeHead(405).end();
+        }
+    });
+    await new Promise<void>((resolve) => supaMock.listen(0, '127.0.0.1', resolve));
+    const supaOrigin = `http://127.0.0.1:${(supaMock.address() as AddressInfo).port}`;
+    try {
+        const authed = { 'content-type': 'application/json', cookie: compatCookie } as const;
+        // Connect a supabase account the way enrichment leaves it: api_url + the
+        // service-role key stored on the EdgeResource (no PAT → enricher no-ops).
+        const account = await req('/api/edge-providers/', {
+            method: 'POST', headers: authed,
+            body: JSON.stringify({
+                name: 'Smoke Supabase', provider: 'supabase',
+                provider_credentials: { api_url: supaOrigin, service_role_key: 'smoke-service-key' },
+            }),
+        });
+        const accountId = (await account.json() as { id?: string }).id;
+        const provider = await req('/api/storage/providers/', {
+            method: 'POST', headers: authed,
+            body: JSON.stringify({ provider_account_id: accountId, name: 'Smoke Supabase Storage' }),
+        });
+        const providerId = (await provider.json() as { id?: string }).id;
+        let publicUrl = '';
+
+        await check('storage: supabase upload resolves the service-role client (no more registry-miss 400)', async () => {
+            if (!providerId) return false;
+            const form = new FormData();
+            form.append('file', new File([new TextEncoder().encode('supabase-smoke-bytes')], 'hello.txt', { type: 'text/plain' }));
+            form.append('provider_id', providerId);
+            form.append('bucket', 'frontbase-assets');
+            form.append('path', '/smoke/hello.txt');
+            const r = await req('/api/storage/upload', { method: 'POST', headers: { cookie: compatCookie }, body: form });
+            const body = await r.json() as { success?: boolean; path?: string; publicUrl?: string };
+            publicUrl = body.publicUrl ?? '';
+            return r.status === 200 && body.success === true && body.path === '/smoke/hello.txt'
+                && publicUrl.startsWith(supaOrigin);
+        });
+        await check('storage: supabase PUT carried the Bearer service key and exact bytes', async () => {
+            const obj = objects.get('frontbase-assets/smoke/hello.txt');
+            return !!obj && new TextDecoder().decode(obj.bytes) === 'supabase-smoke-bytes'
+                && obj.authorization === 'Bearer smoke-service-key';
+        });
+        await check('storage: supabase signed URL is absolutized and round-trips', async () => {
+            if (!publicUrl) return false;
+            const direct = await fetch(publicUrl);
+            return direct.status === 200 && (await direct.text()) === 'supabase-smoke-bytes';
+        });
+        await check('storage: supabase delete uses the prefixes shape', async () => {
+            if (!providerId) return false;
+            const r = await req('/api/storage/delete', {
+                method: 'DELETE', headers: authed,
+                body: JSON.stringify({ paths: ['/smoke/hello.txt'], bucket: 'frontbase-assets', provider_id: providerId }),
+            });
+            return r.status === 200 && !objects.has('frontbase-assets/smoke/hello.txt');
+        });
+    } finally {
+        supaMock.close();
     }
 }
 
