@@ -5,11 +5,12 @@
  *
  * RULE 2: tenant isolated via `c.get('tenant')`.
  */
-import type { Hono } from 'hono';
+import type { Context, Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { KeyValueStore } from '../store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
+import { sigv4StorageProvider } from '@frontbase/edge-infra';
 import type { StorageProvider } from '@frontbase/edge-infra';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
@@ -46,6 +47,89 @@ export function registerStorageRoutes(
         const providers = await kvFor(tenant).getJson<Array<{ id?: string }>>('storage_providers', []);
         return providers.some((provider) => provider.id === providerId);
     };
+
+    // ---- provider resolution (product parity: factory.py get_storage_adapter) ----
+    // Byte-transfer ops resolve a live client per request from the storage_providers
+    // record: credentials live on the CONNECTED ACCOUNT (EdgeResource kind
+    // 'provider', encrypted at rest), not on the provider record itself (the
+    // console's create payload only carries provider_account_id + netlify site_id).
+    // Per-op resolution, no cross-request cache — rotated credentials take effect
+    // immediately, exactly like the product.
+    type ResolvedStorage = { client: StorageProvider } | { status: 400 | 404 | 500 | 503; message: string };
+    const sha256Hex = async (value: string): Promise<string> => {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+        return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+    };
+    const resolveStorageClient = async (tenant: string, providerId: string): Promise<ResolvedStorage> => {
+        const providers = await kvFor(tenant).getJson<Array<Record<string, unknown>>>('storage_providers', []);
+        const record = providers.find((provider) => provider.id === providerId);
+        if (!record) return { status: 404, message: `Storage provider ${providerId} not found` };
+        const type = String(record.provider ?? '');
+        let accountConfig: Record<string, unknown> = {};
+        try {
+            accountConfig = await phase2For(tenant).getEdgeResourceConfig(String(record.provider_account_id ?? '')) ?? {};
+        } catch {
+            return { status: 500, message: 'Stored provider credentials are unreadable' };
+        }
+
+        if (type === 'cloudflare') {
+            const apiToken = String(accountConfig.api_token ?? accountConfig.apiToken ?? '');
+            const accountId = String(accountConfig.account_id ?? accountConfig.accountId ?? '');
+            if (!apiToken) return { status: 400, message: 'Cloudflare account missing api_token' };
+            if (!accountId) return { status: 400, message: 'Could not resolve Cloudflare account ID for R2' };
+            // S3 credentials derived from the Bearer token (product parity,
+            // cloudflare_adapter.py): access key = token id, secret = SHA-256(token).
+            // Never log the token or its derived secret.
+            let tokenId = '';
+            try {
+                const resp = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
+                    headers: { authorization: `Bearer ${apiToken}` },
+                });
+                if (resp.ok) {
+                    tokenId = String((await resp.json())?.result?.id ?? '');
+                }
+            } catch { /* surfaced below as a derive failure */ }
+            if (!tokenId) return { status: 400, message: 'Could not derive R2 credentials for this token' };
+            return {
+                client: sigv4StorageProvider({
+                    accessKeyId: tokenId,
+                    secretAccessKey: await sha256Hex(apiToken),
+                    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+                    region: 'auto',
+                }),
+            };
+        }
+
+        if (type === 's3' || type === 'r2' || type === 'b2') {
+            const accessKeyId = String(accountConfig.access_key_id ?? accountConfig.accessKeyId ?? '');
+            const secretAccessKey = String(accountConfig.secret_access_key ?? accountConfig.secretAccessKey ?? '');
+            if (!accessKeyId || !secretAccessKey) {
+                return { status: 400, message: `${type} account missing access_key_id / secret_access_key` };
+            }
+            return {
+                client: sigv4StorageProvider({
+                    accessKeyId,
+                    secretAccessKey,
+                    endpoint: accountConfig.endpoint ? String(accountConfig.endpoint) : undefined,
+                    region: accountConfig.region ? String(accountConfig.region) : undefined,
+                }),
+            };
+        }
+
+        // Types the product adapters cover but the framework does not port yet
+        // (supabase/vercel/netlify native APIs) resolve to the product's
+        // registry-miss response.
+        return { status: 400, message: `No storage adapter for provider type '${type}'` };
+    };
+    /** Resolve from provider_id when present; otherwise fall back to the env-wired
+     *  provider so env/Docker deployments (STORAGE_* vars) keep working. */
+    const resolveForOp = async (tenant: string, providerId: string | undefined): Promise<ResolvedStorage> => {
+        if (providerId) return resolveStorageClient(tenant, providerId);
+        return storageProvider ? { client: storageProvider } : { status: 503, message: 'Storage provider is not configured' };
+    };
+    /** Product-shaped resolver failure (`{detail}`, matching _resolve_adapter's HTTPException). */
+    const resolutionError = (c: Context<{ Variables: ConsoleAuthVars }>, resolved: { status: 400 | 404 | 500 | 503; message: string }) =>
+        c.json({ detail: resolved.message }, resolved.status);
 
     // Supported storage provider types. The product imposes no whitelist here (its
     // storage router accepts any provider type and dispatches to an adapter), and the
@@ -300,15 +384,36 @@ export function registerStorageRoutes(
     app.delete('/api/storage/delete', async (c) => {
         const b = await c.req.json().catch(() => ({})) as {
             provider_id?: string; file_id?: string; fileId?: string; id?: string;
+            paths?: string[]; bucket?: string;
         };
         if (!b.provider_id) return c.json({ detail: 'provider_id is required' }, 400);
+        const store = phase2For(c.get('tenant'));
+        // Console shape (FileBrowser api.ts): {paths: [...], bucket, provider_id} —
+        // object paths, one delete per path. Legacy shape: a single file id.
+        if (Array.isArray(b.paths) && b.paths.length > 0) {
+            const resolved = await resolveForOp(c.get('tenant'), b.provider_id);
+            if ('status' in resolved) return resolutionError(c, resolved);
+            const bucket = b.bucket ?? '';
+            const files = await store.listFiles(bucket);
+            for (const objectPath of b.paths.map(String)) {
+                try {
+                    await resolved.client.delete(bucket, objectPath);
+                } catch {
+                    return c.json({ success: false, message: 'Storage provider delete failed' }, 502);
+                }
+                const row = files.find((f) => String(f.path) === objectPath);
+                if (row) await store.deleteFile(String(row.id));
+            }
+            return c.json({ success: true, message: 'File deleted' });
+        }
         const id = b.file_id ?? b.fileId ?? b.id ?? '';
         if (id) {
-            const store = phase2For(c.get('tenant'));
             const file = await store.getFile(id);
-            if (file && storageProvider) {
+            if (file) {
+                const resolved = await resolveForOp(c.get('tenant'), b.provider_id);
+                if ('status' in resolved) return resolutionError(c, resolved);
                 try {
-                    await storageProvider.delete(
+                    await resolved.client.delete(
                         String(file.bucketId),
                         String(file.path),
                     );
@@ -367,9 +472,8 @@ export function registerStorageRoutes(
 
     // POST /api/storage/upload
     app.post('/api/storage/upload', async (c) => {
-        if (!storageProvider) return c.json({ success: false, message: 'Storage provider is not configured' }, 503);
         const contentType = c.req.header('content-type') ?? '';
-        let b: { name?: string; path?: string; bucket_id?: string; content?: string };
+        let b: { name?: string; path?: string; bucket_id?: string; provider_id?: string; content?: string };
         let bytes: Uint8Array;
         let mimeType = 'application/octet-stream';
         if (contentType.includes('multipart/form-data')) {
@@ -380,11 +484,12 @@ export function registerStorageRoutes(
                 name: file.name,
                 path: String(form.get('path') ?? file.name),
                 bucket_id: String(form.get('bucket') ?? ''),
+                provider_id: String(form.get('provider_id') ?? ''),
             };
             bytes = new Uint8Array(await file.arrayBuffer());
             mimeType = file.type || mimeType;
         } else {
-            b = await c.req.json().catch(() => ({})) as { name?: string; path?: string; bucket_id?: string; content?: string };
+            b = await c.req.json().catch(() => ({})) as { name?: string; path?: string; bucket_id?: string; provider_id?: string; content?: string };
             bytes = new TextEncoder().encode(b.content ?? '');
         }
         const store = phase2For(c.get('tenant'));
@@ -393,8 +498,10 @@ export function registerStorageRoutes(
         const filePath = b.path ?? `/${fileName}`;
         const bucketId = b.bucket_id ?? '';
         if (!bucketId) return c.json({ success: false, message: 'Bucket is required' }, 400);
+        const resolved = await resolveForOp(c.get('tenant'), b.provider_id || undefined);
+        if ('status' in resolved) return resolutionError(c, resolved);
         try {
-            await storageProvider.put({ bucket: bucketId, key: filePath, bytes, contentType: mimeType });
+            await resolved.client.put({ bucket: bucketId, key: filePath, bytes, contentType: mimeType });
         } catch {
             return c.json({ success: false, message: 'Storage upload failed' }, 502);
         }
@@ -406,9 +513,20 @@ export function registerStorageRoutes(
             size: bytes.length,
             mimeType,
         }, now());
+        // Product response shape ({"success": true, **adapter_result}) — the console
+        // reads path/publicUrl at the top level. publicUrl for R2-backed providers is
+        // a 24h signed URL (same stand-in the public-url route uses).
+        let publicUrl: string | undefined;
+        try {
+            publicUrl = await resolved.client.signedUrl(bucketId, filePath, 24 * 60 * 60);
+        } catch { /* non-fatal — the upload itself succeeded */ }
         return c.json({
             success: true,
-            data: { id, name: fileName, path: filePath, size: bytes.length },
+            id,
+            name: fileName,
+            path: filePath,
+            size: bytes.length,
+            publicUrl,
             message: 'File uploaded',
         });
     });
@@ -417,23 +535,28 @@ export function registerStorageRoutes(
     app.post('/api/storage/move', async (c) => {
         const b = await c.req.json().catch(() => ({})) as {
             provider_id?: string; file_id?: string; from_path?: string; to_path?: string; bucket_id?: string;
+            sourceKey?: string; destinationKey?: string; sourceBucket?: string; destBucket?: string;
         };
         if (!b.provider_id) return c.json({ detail: 'provider_id is required' }, 400);
+        const fromPath = b.sourceKey ?? b.from_path;
+        const toPath = b.destinationKey ?? b.to_path;
+        const bucketId = b.sourceBucket ?? b.destBucket ?? b.bucket_id ?? '';
         const store = phase2For(c.get('tenant'));
-        const files = await store.listFiles(b.bucket_id ?? '');
-        const target = files.find((f) => String(f.id) === b.file_id || String(f.path) === b.from_path);
-        if (!target || !b.to_path) return c.json({ success: false, message: 'File not found or destination missing' }, 404);
+        const files = await store.listFiles(bucketId);
+        const target = files.find((f) => String(f.id) === b.file_id || (fromPath !== undefined && String(f.path) === fromPath));
+        if (!target || !toPath) return c.json({ success: false, message: 'File not found or destination missing' }, 404);
         {
-            if (!storageProvider) return c.json({ success: false, message: 'Storage provider is not configured' }, 503);
+            const resolved = await resolveForOp(c.get('tenant'), b.provider_id);
+            if ('status' in resolved) return resolutionError(c, resolved);
             try {
-                const object = await storageProvider.get(String(target.bucket_id), String(target.path));
-                await storageProvider.put({
+                const object = await resolved.client.get(String(target.bucket_id), String(target.path));
+                await resolved.client.put({
                     bucket: String(target.bucket_id),
-                    key: b.to_path,
+                    key: toPath,
                     bytes: object.bytes,
                     contentType: object.contentType,
                 });
-                await storageProvider.delete(String(target.bucket_id), String(target.path));
+                await resolved.client.delete(String(target.bucket_id), String(target.path));
             } catch {
                 return c.json({ success: false, message: 'Storage move failed' }, 502);
             }
@@ -441,7 +564,7 @@ export function registerStorageRoutes(
             await store.createFile({
                 id: String(target.id),
                 bucketId: String(target.bucket_id),
-                path: b.to_path,
+                path: toPath,
                 name: String(target.name),
                 size: Number(target.size ?? 0),
                 mimeType: target.mime_type ? String(target.mime_type) : undefined,
@@ -455,33 +578,40 @@ export function registerStorageRoutes(
         const b = await c.req.json().catch(() => ({})) as {
             source_provider_id?: string; dest_provider_id?: string;
             file_id?: string; source_bucket_id?: string; target_bucket_id?: string;
+            source_bucket?: string; source_key?: string; dest_bucket?: string; dest_key?: string;
         };
         if (!b.source_provider_id || !b.dest_provider_id) {
             return c.json({ detail: 'source_provider_id and dest_provider_id are required' }, 400);
         }
+        const sourceBucket = b.source_bucket ?? b.source_bucket_id ?? '';
+        const destBucket = b.dest_bucket ?? b.target_bucket_id ?? '';
         const store = phase2For(c.get('tenant'));
-        const files = await store.listFiles(b.source_bucket_id ?? '');
-        const target = files.find((f) => String(f.id) === b.file_id);
-        if (!target || !b.target_bucket_id) return c.json({ success: false, message: 'File not found or target bucket missing' }, 404);
+        const files = await store.listFiles(sourceBucket);
+        const target = files.find((f) => String(f.id) === b.file_id || (b.source_key !== undefined && String(f.path) === b.source_key));
+        if (!target || !destBucket) return c.json({ success: false, message: 'File not found or target bucket missing' }, 404);
+        const destKey = b.dest_key ?? String(target.path);
         {
-            if (!storageProvider) return c.json({ success: false, message: 'Storage provider is not configured' }, 503);
+            const source = await resolveForOp(c.get('tenant'), b.source_provider_id);
+            if ('status' in source) return resolutionError(c, source);
+            const dest = await resolveForOp(c.get('tenant'), b.dest_provider_id);
+            if ('status' in dest) return resolutionError(c, dest);
             try {
-                const object = await storageProvider.get(String(target.bucket_id), String(target.path));
-                await storageProvider.put({
-                    bucket: b.target_bucket_id,
-                    key: String(target.path),
+                const object = await source.client.get(String(target.bucket_id), String(target.path));
+                await dest.client.put({
+                    bucket: destBucket,
+                    key: destKey,
                     bytes: object.bytes,
                     contentType: object.contentType,
                 });
-                await storageProvider.delete(String(target.bucket_id), String(target.path));
+                await source.client.delete(String(target.bucket_id), String(target.path));
             } catch {
                 return c.json({ success: false, message: 'Cross-bucket move failed' }, 502);
             }
             await store.deleteFile(String(target.id));
             await store.createFile({
                 id: String(target.id),
-                bucketId: b.target_bucket_id,
-                path: String(target.path),
+                bucketId: destBucket,
+                path: destKey,
                 name: String(target.name),
                 size: Number(target.size ?? 0),
                 mimeType: target.mime_type ? String(target.mime_type) : undefined,
@@ -515,13 +645,11 @@ export function registerStorageRoutes(
 
     // GET /api/storage/public-url
     app.get('/api/storage/public-url', async (c) => {
-        if (!storageProvider) return c.json({ success: false, message: 'Storage provider is not configured' }, 503);
-        if (!await hasStorageProvider(c.get('tenant'), c.req.query('provider_id') ?? '')) {
-            return c.json({ success: false, message: 'Storage provider not found' }, 404);
-        }
+        const resolved = await resolveForOp(c.get('tenant'), c.req.query('provider_id') || undefined);
+        if ('status' in resolved) return resolutionError(c, resolved);
         const bucket = c.req.query('bucket') ?? '';
         const path = c.req.query('path') ?? '';
-        const publicUrl = await storageProvider.signedUrl(bucket, path, 24 * 60 * 60);
+        const publicUrl = await resolved.client.signedUrl(bucket, path, 24 * 60 * 60);
         return c.json({
             success: true,
             url: publicUrl,
@@ -531,14 +659,12 @@ export function registerStorageRoutes(
 
     // GET /api/storage/signed-url
     app.get('/api/storage/signed-url', async (c) => {
-        if (!storageProvider) return c.json({ success: false, message: 'Storage provider is not configured' }, 503);
-        if (!await hasStorageProvider(c.get('tenant'), c.req.query('provider_id') ?? '')) {
-            return c.json({ success: false, message: 'Storage provider not found' }, 404);
-        }
+        const resolved = await resolveForOp(c.get('tenant'), c.req.query('provider_id') || undefined);
+        if ('status' in resolved) return resolutionError(c, resolved);
         const bucket = c.req.query('bucket') ?? '';
         const path = c.req.query('path') ?? '';
         const expiresIn = Math.max(1, Math.min(86_400, Number(c.req.query('expiresIn') ?? 3600)));
-        const signedUrl = await storageProvider.signedUrl(bucket, path, expiresIn);
+        const signedUrl = await resolved.client.signedUrl(bucket, path, expiresIn);
         return c.json({
             success: true,
             signedUrl,

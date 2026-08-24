@@ -7,6 +7,7 @@
  */
 import { strict as assert } from 'node:assert';
 import { unlinkSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createCompatApp } from '../dist/compat/app.js';
@@ -255,121 +256,147 @@ test('E3 database/RLS: named RPCs perform guarded provider calls with service cr
 });
 
 test('E3 storage: upload/move/cross-move/delete change provider bytes and metadata', async () => {
+    // Console contract: byte-transfer ops carry provider_id and the client is
+    // resolved per-op from the connected account's stored (encrypted) credentials —
+    // an env-wired provider never receives them. A local S3-mock stands in for the
+    // object host so the signed requests run for real.
+    const objects = new Map();
+    const s3mock = createServer((incoming, res) => {
+        const key = (incoming.url ?? '/').split('?')[0].replace(/^\/+/, '');
+        if (incoming.method === 'PUT') {
+            const chunks = [];
+            incoming.on('data', (chunk) => chunks.push(chunk));
+            incoming.on('end', () => {
+                objects.set(key, Buffer.concat(chunks));
+                res.writeHead(200).end();
+            });
+        } else if (incoming.method === 'GET') {
+            const bytes = objects.get(key);
+            if (!bytes) { res.writeHead(404).end('not_found'); return; }
+            res.writeHead(200).end(bytes);
+        } else if (incoming.method === 'DELETE') {
+            objects.delete(key);
+            res.writeHead(204).end();
+        } else {
+            res.writeHead(405).end();
+        }
+    });
+    await new Promise((resolve) => s3mock.listen(0, '127.0.0.1', resolve));
+    const s3Endpoint = `http://127.0.0.1:${s3mock.address().port}`;
+    const objectText = (bucket, key) => {
+        const bytes = objects.get(`${bucket}/${key.replace(/^\/+/, '')}`);
+        return bytes === undefined ? undefined : new TextDecoder().decode(bytes);
+    };
+
+    // Env-wired provider stays in the harness: a provider_id op must NOT leak into it.
     const storage = memoryStorageProvider();
     const { app, setTenant } = await harness({ storageProvider: storage });
+    try {
+        const accountResponse = await request(app, 'POST', '/api/edge-providers/', {
+            name: 'Tenant A S3 Account',
+            provider: 's3',
+            config: {
+                accessKeyId: 'access-key',
+                secretAccessKey: 'must-never-leak',
+                endpoint: s3Endpoint,
+            },
+        });
+        assert.equal(accountResponse.status, 201);
+        const account = await accountResponse.json();
 
-    const accountResponse = await request(app, 'POST', '/api/edge-providers/', {
-        name: 'Tenant A S3 Account',
-        provider: 's3',
-        config: {
-            accessKeyId: 'access-key',
-            secretAccessKey: 'must-never-leak',
-        },
-    });
-    assert.equal(accountResponse.status, 201);
-    const account = await accountResponse.json();
+        const providerResponse = await request(app, 'POST', '/api/storage/providers/', {
+            name: 'Tenant A Object Storage',
+            provider_account_id: account.id,
+        });
+        assert.equal(providerResponse.status, 201);
+        const provider = await providerResponse.json();
+        assert.ok(provider.id);
+        // Product parity: the provider response exposes `config` (redacted to {}), not a
+        // `has_config` flag. The secret must never appear in the serialized response.
+        assert.ok(provider.config !== undefined);
+        assert.equal(JSON.stringify(provider).includes('must-never-leak'), false);
 
-    const providerResponse = await request(app, 'POST', '/api/storage/providers/', {
-        name: 'Tenant A Object Storage',
-        provider_account_id: account.id,
-        config: {
-            accessKeyId: 'access-key',
-            secretAccessKey: 'must-never-leak',
-        },
-    });
-    assert.equal(providerResponse.status, 201);
-    const provider = await providerResponse.json();
-    assert.ok(provider.id);
-    // Product parity: the provider response exposes `config` (redacted to {}), not a
-    // `has_config` flag. The secret must never appear in the serialized response.
-    assert.ok(provider.config !== undefined);
-    assert.equal(JSON.stringify(provider).includes('must-never-leak'), false);
+        const bucketResponse = await request(
+            app,
+            'POST',
+            `/api/storage/buckets?provider_id=${provider.id}`,
+            {
+            name: 'Source',
+            provider: 's3',
+            },
+        );
+        const bucket = await bucketResponse.json();
+        assert.equal(bucketResponse.status, 201, JSON.stringify(bucket));
+        const sourceBucket = bucket.bucket.id;
 
-    const bucketResponse = await request(
-        app,
-        'POST',
-        `/api/storage/buckets?provider_id=${provider.id}`,
-        {
-        name: 'Source',
-        provider: 's3',
-        },
-    );
-    const bucket = await bucketResponse.json();
-    assert.equal(bucketResponse.status, 201, JSON.stringify(bucket));
-    const sourceBucket = bucket.bucket.id;
+        const form = new FormData();
+        form.set('bucket', sourceBucket);
+        form.set('provider_id', provider.id);
+        form.set('path', 'docs/original.txt');
+        form.set('file', new File(['provider-backed-content'], 'original.txt', {
+            type: 'text/plain',
+        }));
+        const uploaded = await (await request(app, 'POST', '/api/storage/upload', form)).json();
+        assert.equal(uploaded.success, true);
+        assert.equal(uploaded.path, 'docs/original.txt');
+        assert.equal(objectText(sourceBucket, 'docs/original.txt'), 'provider-backed-content');
+        // Resolved through the account, NOT the env-wired provider.
+        assert.equal(storage._store.size, 0);
 
-    const form = new FormData();
-    form.set('bucket', sourceBucket);
-    form.set('provider_id', provider.id);
-    form.set('path', 'docs/original.txt');
-    form.set('file', new File(['provider-backed-content'], 'original.txt', {
-        type: 'text/plain',
-    }));
-    const uploaded = await (await request(app, 'POST', '/api/storage/upload', form)).json();
-    assert.equal(uploaded.success, true);
-    assert.equal(
-        new TextDecoder().decode(
-            (await storage.get(sourceBucket, 'docs/original.txt')).bytes,
-        ),
-        'provider-backed-content',
-    );
+        const moved = await request(app, 'POST', '/api/storage/move', {
+            provider_id: provider.id,
+            file_id: uploaded.id,
+            bucket_id: sourceBucket,
+            from_path: 'docs/original.txt',
+            to_path: 'docs/moved.txt',
+        });
+        assert.equal(moved.status, 200);
+        assert.equal(objectText(sourceBucket, 'docs/original.txt'), undefined);
+        assert.equal(objectText(sourceBucket, 'docs/moved.txt'), 'provider-backed-content');
 
-    const moved = await request(app, 'POST', '/api/storage/move', {
-        provider_id: provider.id,
-        file_id: uploaded.data.id,
-        bucket_id: sourceBucket,
-        from_path: 'docs/original.txt',
-        to_path: 'docs/moved.txt',
-    });
-    assert.equal(moved.status, 200);
-    await assert.rejects(storage.get(sourceBucket, 'docs/original.txt'), /not_found/);
-    assert.equal(
-        new TextDecoder().decode((await storage.get(sourceBucket, 'docs/moved.txt')).bytes),
-        'provider-backed-content',
-    );
+        const cross = await (await request(app, 'POST', '/api/storage/move-cross', {
+            source_provider_id: provider.id,
+            dest_provider_id: provider.id,
+            file_id: uploaded.id,
+            source_bucket_id: sourceBucket,
+            target_bucket_id: 'target-bucket',
+        })).json();
+        assert.equal(cross.success, true);
+        assert.equal(objectText('target-bucket', 'docs/moved.txt'), 'provider-backed-content');
+        const status = await (await request(
+            app,
+            'GET',
+            `/api/storage/move-status/${cross.data.job_id}`,
+        )).json();
+        assert.equal(status.data.status, 'completed');
 
-    const cross = await (await request(app, 'POST', '/api/storage/move-cross', {
-        source_provider_id: provider.id,
-        dest_provider_id: provider.id,
-        file_id: uploaded.data.id,
-        source_bucket_id: sourceBucket,
-        target_bucket_id: 'target-bucket',
-    })).json();
-    assert.equal(cross.success, true);
-    assert.equal(
-        new TextDecoder().decode((await storage.get('target-bucket', 'docs/moved.txt')).bytes),
-        'provider-backed-content',
-    );
-    const status = await (await request(
-        app,
-        'GET',
-        `/api/storage/move-status/${cross.data.job_id}`,
-    )).json();
-    assert.equal(status.data.status, 'completed');
+        const signed = await (await request(
+            app,
+            'GET',
+            `/api/storage/signed-url?provider_id=${provider.id}&bucket=target-bucket&path=docs%2Fmoved.txt`,
+        )).json();
+        assert.ok(signed.url.startsWith(s3Endpoint), `unexpected signed url ${signed.url}`);
+        assert.match(signed.url, /X-Amz-Signature=/);
 
-    const signed = await (await request(
-        app,
-        'GET',
-        `/api/storage/signed-url?provider_id=${provider.id}&bucket=target-bucket&path=docs%2Fmoved.txt`,
-    )).json();
-    assert.match(signed.url, /^memory:\/\//);
+        const deleted = await request(app, 'DELETE', '/api/storage/delete', {
+            provider_id: provider.id,
+            file_id: uploaded.id,
+        });
+        assert.equal(deleted.status, 200);
+        assert.equal(objectText('target-bucket', 'docs/moved.txt'), undefined);
 
-    const deleted = await request(app, 'DELETE', '/api/storage/delete', {
-        provider_id: provider.id,
-        file_id: uploaded.data.id,
-    });
-    assert.equal(deleted.status, 200);
-    await assert.rejects(storage.get('target-bucket', 'docs/moved.txt'), /not_found/);
-
-    setTenant('tenant-b');
-    const providers = await (await request(app, 'GET', '/api/storage/providers/')).json();
-    assert.equal(providers.some((entry) => entry.id === provider.id), false);
-    const crossTenantUrl = await request(
-        app,
-        'GET',
-        `/api/storage/signed-url?provider_id=${provider.id}&bucket=target-bucket&path=docs%2Fmoved.txt`,
-    );
-    assert.equal(crossTenantUrl.status, 404);
+        setTenant('tenant-b');
+        const providers = await (await request(app, 'GET', '/api/storage/providers/')).json();
+        assert.equal(providers.some((entry) => entry.id === provider.id), false);
+        const crossTenantUrl = await request(
+            app,
+            'GET',
+            `/api/storage/signed-url?provider_id=${provider.id}&bucket=target-bucket&path=docs%2Fmoved.txt`,
+        );
+        assert.equal(crossTenantUrl.status, 404);
+    } finally {
+        s3mock.close();
+    }
 });
 
 test('system edge: self-aware Cloudflare engine is the default publish target for pages & workflows', async () => {

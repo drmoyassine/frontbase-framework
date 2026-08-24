@@ -7,6 +7,8 @@
 import { sqliteRunner } from '@frontbase/edge-infra';
 import { createCmsEngine } from './worker.js';
 import { existsSync, readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -311,6 +313,121 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
     return r.status === 200 && Array.isArray(body) && body.length > 0
         && body[0]?.id === 'local-edge' && !!body[0]?.edge_db_id;
 });
+
+// ---- storage: provider-configured byte transfer (out-of-the-box S3/R2) ----
+// Regression guard for the 503-everywhere gap: byte-transfer ops must resolve a
+// live client from the storage_providers record (credentials live on the
+// connected account, encrypted at rest) instead of requiring env-wired
+// STORAGE_* vars. A local S3-mock receives the signed requests, so the whole
+// chain — provider record → EdgeResource decrypt → SigV4 sign → fetch →
+// presign — runs for real.
+{
+    const objects = new Map<string, { bytes: Uint8Array; contentType?: string; authorization?: string }>();
+    const s3mock = createServer((incoming, res) => {
+        const key = (incoming.url ?? '/').split('?')[0].replace(/^\/+/, '');
+        if (incoming.method === 'PUT') {
+            const chunks: Buffer[] = [];
+            incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
+            incoming.on('end', () => {
+                objects.set(key, {
+                    bytes: new Uint8Array(Buffer.concat(chunks)),
+                    contentType: incoming.headers['content-type'],
+                    authorization: incoming.headers.authorization,
+                });
+                res.writeHead(200).end();
+            });
+        } else if (incoming.method === 'GET') {
+            const obj = objects.get(key);
+            if (!obj) { res.writeHead(404).end('not_found'); return; }
+            res.writeHead(200, { 'content-type': obj.contentType ?? 'application/octet-stream' }).end(obj.bytes);
+        } else if (incoming.method === 'DELETE') {
+            objects.delete(key);
+            res.writeHead(204).end();
+        } else {
+            res.writeHead(405).end();
+        }
+    });
+    await new Promise<void>((resolve) => s3mock.listen(0, '127.0.0.1', resolve));
+    const s3Endpoint = `http://127.0.0.1:${(s3mock.address() as AddressInfo).port}`;
+    try {
+        // Connect an S3 account (the console's ConnectProviderDialog payload)…
+        const authed = { 'content-type': 'application/json', cookie: compatCookie } as const;
+        const account = await req('/api/edge-providers/', {
+            method: 'POST', headers: authed,
+            body: JSON.stringify({
+                name: 'Smoke S3', provider: 's3',
+                provider_credentials: { access_key_id: 'smoke-key', secret_access_key: 'smoke-secret', endpoint: s3Endpoint },
+            }),
+        });
+        const accountId = (await account.json() as { id?: string }).id;
+        // …promote it to a storage provider (the StoragePanel payload)…
+        const provider = await req('/api/storage/providers/', {
+            method: 'POST', headers: authed,
+            body: JSON.stringify({ provider_account_id: accountId, name: 'Smoke Storage' }),
+        });
+        const providerId = (await provider.json() as { id?: string }).id;
+
+        await check('storage: upload resolves a client from stored (encrypted) credentials — no env vars', async () => {
+            if (!providerId) return false;
+            const form = new FormData();
+            form.append('file', new File([new TextEncoder().encode('storage-smoke-bytes')], 'hello.txt', { type: 'text/plain' }));
+            form.append('provider_id', providerId);
+            form.append('bucket', 'smoke-bucket');
+            form.append('path', '/smoke/hello.txt');
+            const r = await req('/api/storage/upload', { method: 'POST', headers: { cookie: compatCookie }, body: form });
+            const body = await r.json() as { success?: boolean; path?: string; publicUrl?: string };
+            return r.status === 200 && body.success === true && body.path === '/smoke/hello.txt'
+                && typeof body.publicUrl === 'string' && body.publicUrl.includes('X-Amz-Signature');
+        });
+        await check('storage: the upload reached the S3 host as a SigV4-signed PUT', async () => {
+            const obj = objects.get('smoke-bucket/smoke/hello.txt');
+            return !!obj && new TextDecoder().decode(obj.bytes) === 'storage-smoke-bytes'
+                && (obj.authorization ?? '').startsWith('AWS4-HMAC-SHA256');
+        });
+        await check('storage: signed-url presigns through the resolved client and the URL round-trips', async () => {
+            if (!providerId) return false;
+            const r = await req(`/api/storage/signed-url?provider_id=${providerId}&bucket=smoke-bucket&path=${encodeURIComponent('/smoke/hello.txt')}`, { headers: { cookie: compatCookie } });
+            const body = await r.json() as { success?: boolean; signedUrl?: string };
+            if (r.status !== 200 || body.success !== true || !body.signedUrl?.includes('X-Amz-Signature')) return false;
+            const direct = await fetch(body.signedUrl);
+            return direct.status === 200 && (await direct.text()) === 'storage-smoke-bytes';
+        });
+        await check('storage: console-shape delete removes the object and the metadata row', async () => {
+            if (!providerId) return false;
+            const r = await req('/api/storage/delete', {
+                method: 'DELETE', headers: authed,
+                body: JSON.stringify({ paths: ['/smoke/hello.txt'], bucket: 'smoke-bucket', provider_id: providerId }),
+            });
+            if (r.status !== 200) return false;
+            const probe = await fetch(`${s3Endpoint}/smoke-bucket/smoke/hello.txt`);
+            return probe.status === 404;
+        });
+        await check('storage: unknown provider_id → 404 with the product detail', async () => {
+            const r = await req('/api/storage/signed-url?provider_id=does-not-exist&bucket=b&path=p', { headers: { cookie: compatCookie } });
+            const body = await r.json() as { detail?: string };
+            return r.status === 404 && body.detail?.includes('not found') === true;
+        });
+        await check('storage: adapter-less provider type → 400 (product registry-miss)', async () => {
+            if (!accountId) return false;
+            const supa = await req('/api/storage/providers/', {
+                method: 'POST', headers: authed,
+                body: JSON.stringify({ provider_account_id: accountId, name: 'No Adapter', provider: 'supabase' }),
+            });
+            const supaId = (await supa.json() as { id?: string }).id;
+            const r = await req(`/api/storage/signed-url?provider_id=${supaId}&bucket=b&path=p`, { headers: { cookie: compatCookie } });
+            const body = await r.json() as { detail?: string };
+            return r.status === 400 && body.detail === "No storage adapter for provider type 'supabase'";
+        });
+        await check('storage: missing provider_id → 422 (product contract: provider_id is required)', async () => {
+            const r = await req('/api/storage/signed-url?bucket=b&path=p', { headers: { cookie: compatCookie } });
+            const body = await r.json() as { detail?: Array<{ loc?: string[] }> };
+            return r.status === 422 && Array.isArray(body.detail)
+                && body.detail.some((d) => d.loc?.join('.') === 'query.provider_id');
+        });
+    } finally {
+        s3mock.close();
+    }
+}
 
 if (skipped > 0) console.log(`\n⚠ ${skipped} bundle-dependent check(s) skipped — this run did NOT verify the console bundles.`);
 console.log(failures === 0 ? '\ncf-full smoke: PASS ✅' : `\ncf-full smoke: FAIL ❌ (${failures})`);

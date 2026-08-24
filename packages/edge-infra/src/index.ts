@@ -47,7 +47,7 @@ export { qstashDispatcher } from './queue/dispatchers.js';
 export type { Dispatcher, QstashDispatcherOpts } from './queue/dispatchers.js';
 
 // storage (S3-compatible — R2/S3/B2/MinIO; Phase 3a / F4)
-export { s3StorageProvider, memoryStorageProvider } from './storage/providers.js';
+export { s3StorageProvider, sigv4StorageProvider, memoryStorageProvider } from './storage/providers.js';
 export type { StorageProvider, PutOpts, S3StorageOpts } from './storage/providers.js';
 
 // provisioning (CF Management API — D1/KV/Queues; Phase 3a / F5)
