@@ -20,6 +20,54 @@ export interface StorageProvider {
     signedUrl(bucket: string, key: string, expiresInSeconds?: number): Promise<string>;
     /** A presigned URL the client can PUT bytes to directly (F4b, default 15 min). */
     signedUploadUrl(bucket: string, key: string, contentType?: string, expiresInSeconds?: number): Promise<string>;
+
+    // ---- bucket / object management (optional) ----
+    // Product parity: buckets and file listings live on the PROVIDER, not in the
+    // CMS database — the console's bucket list and file browser read them
+    // through the adapter. Providers without these ops (env-wired memory, the
+    // SDK-based s3StorageProvider) fall back to the store-simulated surface.
+    /** List buckets as they exist on the provider. */
+    listBuckets?(): Promise<BucketEntry[]>;
+    /** Create a bucket on the provider. Returns the created bucket record. */
+    createBucket?(opts: CreateBucketOpts): Promise<Record<string, unknown>>;
+    /** Fetch one bucket by id/name. */
+    getBucket?(id: string): Promise<BucketEntry>;
+    /** Update bucket settings (public flag, limits). */
+    updateBucket?(id: string, opts: { isPublic?: boolean; fileSizeLimit?: number; allowedMimeTypes?: string[] }): Promise<void>;
+    /** Delete a bucket (must be empty). */
+    deleteBucket?(id: string): Promise<void>;
+    /** Remove every object in a bucket. */
+    emptyBucket?(id: string): Promise<void>;
+    /** List the entries directly under a path (product list_files shape). */
+    listFiles?(bucket: string, path: string, opts?: { limit?: number; offset?: number; search?: string }): Promise<FileEntry[]>;
+    /** Create a folder (provider-specific marker). */
+    createFolder?(bucket: string, folderPath: string): Promise<void>;
+}
+
+export interface BucketEntry {
+    id: string;
+    name: string;
+    public?: boolean;
+    created_at?: string;
+    updated_at?: string;
+    [key: string]: unknown;
+}
+
+export interface FileEntry {
+    name: string;
+    id?: string;
+    size?: number;
+    updated_at?: string | null;
+    mimetype?: string | null;
+    metadata?: unknown;
+    isFolder: boolean;
+}
+
+export interface CreateBucketOpts {
+    name: string;
+    isPublic?: boolean;
+    fileSizeLimit?: number;
+    allowedMimeTypes?: string[];
 }
 
 export interface PutOpts {
@@ -230,6 +278,20 @@ const presign = async (
 /** Path-style object path: `/bucket/uriEncodedKey` (slashes in the key preserved). */
 const objectPath = (bucket: string, key: string): string => `/${uriEncode(bucket)}/${uriEncode(key.replace(/^\/+/, ''), true)}`;
 
+// Minimal S3 XML extraction — ListBuckets/ListObjectsV2 responses use plain
+// (unprefixed) tags on every supported S3-compatible host, so regex access is
+// sufficient and keeps this dependency-free.
+const xmlTag = (tag: string, xml: string): string => {
+    const m = xml.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
+    return m?.[1] ?? '';
+};
+const xmlBlocks = (xml: string, tag: string): string[] => xml.match(new RegExp(`<${tag}>[\\s\\S]*?</${tag}>`, 'g')) ?? [];
+const xmlDecode = (value: string): string => value
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&amp;/g, '&');
+
 const assertOk = async (resp: Response, op: string): Promise<void> => {
     if (!resp.ok) throw new Error(`s3_${op}_failed_${resp.status}`);
 };
@@ -278,7 +340,99 @@ export function sigv4StorageProvider(opts: S3StorageOpts): StorageProvider {
         async signedUploadUrl(bucket: string, key: string, _contentType?: string, expiresInSeconds = 900): Promise<string> {
             return presign(ctx, 'PUT', objectPath(bucket, key), expiresInSeconds);
         },
+
+        // ---- management (S3 REST: PUT/DELETE bucket, ListBuckets/ListObjectsV2) ----
+
+        async listBuckets(): Promise<BucketEntry[]> {
+            const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: '/', payloadHash: EMPTY_SHA256 });
+            const resp = await fetch(url, { method: 'GET', headers });
+            await assertOk(resp, 'list_buckets');
+            const xml = await resp.text();
+            return xmlBlocks(xml, 'Bucket')
+                .map((block) => xmlDecode(xmlTag('Name', block)))
+                .filter(Boolean)
+                .map((name) => ({ id: name, name, public: false }));
+        },
+
+        async createBucket(opts: CreateBucketOpts): Promise<Record<string, unknown>> {
+            const name = opts.name;
+            const { url, headers } = await sign(ctx, { method: 'PUT', canonicalPath: `/${uriEncode(name)}`, payloadHash: EMPTY_SHA256 });
+            await assertOk(await fetch(url, { method: 'PUT', headers }), 'create_bucket');
+            return { id: name, name, public: opts.isPublic ?? false };
+        },
+
+        async getBucket(id: string): Promise<BucketEntry> {
+            const { url, headers } = await sign(ctx, { method: 'HEAD', canonicalPath: `/${uriEncode(id)}`, payloadHash: EMPTY_SHA256 });
+            await assertOk(await fetch(url, { method: 'HEAD', headers }), 'get_bucket');
+            return { id, name: id, public: false };
+        },
+
+        async deleteBucket(id: string): Promise<void> {
+            const { url, headers } = await sign(ctx, { method: 'DELETE', canonicalPath: `/${uriEncode(id)}`, payloadHash: EMPTY_SHA256 });
+            await assertOk(await fetch(url, { method: 'DELETE', headers }), 'delete_bucket');
+        },
+
+        async emptyBucket(id: string): Promise<void> {
+            for await (const key of listObjectKeys(ctx, id)) {
+                const { url, headers } = await sign(ctx, { method: 'DELETE', canonicalPath: objectPath(id, key), payloadHash: EMPTY_SHA256 });
+                await assertOk(await fetch(url, { method: 'DELETE', headers }), 'empty_bucket');
+            }
+        },
+
+        async listFiles(bucket: string, path: string, opts?: { limit?: number; offset?: number; search?: string }): Promise<FileEntry[]> {
+            const prefix = path.replace(/^\/+|\/+$/g, '') + (path ? '/' : '');
+            const query: Array<[string, string]> = [['list-type', '2'], ['prefix', prefix], ['delimiter', '/']];
+            if (opts?.limit) query.push(['max-keys', String(opts.limit)]);
+            const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: `/${uriEncode(bucket)}`, query, payloadHash: EMPTY_SHA256 });
+            const resp = await fetch(url, { method: 'GET', headers });
+            await assertOk(resp, 'list_files');
+            const xml = await resp.text();
+            const entries: FileEntry[] = [];
+            for (const block of xmlBlocks(xml, 'Contents')) {
+                const key = xmlDecode(xmlTag('Key', block));
+                const name = key.slice(prefix.length);
+                if (!name || name.endsWith('/')) continue; // the prefix itself / folder markers
+                entries.push({
+                    name,
+                    id: key,
+                    size: Number(xmlTag('Size', block) || 0),
+                    updated_at: xmlTag('LastModified', block) || null,
+                    mimetype: null,
+                    isFolder: false,
+                });
+            }
+            for (const block of xmlBlocks(xml, 'CommonPrefixes')) {
+                const common = xmlDecode(xmlTag('Prefix', block));
+                const name = common.slice(prefix.length).replace(/\/+$/, '');
+                if (!name) continue;
+                entries.push({ name, id: common, size: 0, mimetype: null, isFolder: true });
+            }
+            return entries;
+        },
+
+        async createFolder(bucket: string, folderPath: string): Promise<void> {
+            // S3 has no real folders — same marker object the product's adapters use.
+            await this.put({ bucket, key: `${folderPath.replace(/^\/+|\/+$/g, '')}/.folder`, bytes: new Uint8Array(0), contentType: 'application/x-directory' });
+        },
     };
+}
+
+/** Recursively yield every object key in a bucket (paginated, no delimiter). */
+async function* listObjectKeys(ctx: SigV4Context, bucket: string): AsyncGenerator<string> {
+    let token = '';
+    do {
+        const query: Array<[string, string]> = [['list-type', '2'], ...(token ? [['continuation-token', token] as [string, string]] : [])];
+        const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: `/${uriEncode(bucket)}`, query, payloadHash: EMPTY_SHA256 });
+        const resp = await fetch(url, { method: 'GET', headers });
+        await assertOk(resp, 'list_keys');
+        const xml = await resp.text();
+        for (const block of xmlBlocks(xml, 'Contents')) {
+            const key = xmlDecode(xmlTag('Key', block));
+            if (key) yield key;
+        }
+        token = xmlTag('NextContinuationToken', xml);
+        if (xmlTag('IsTruncated', xml).trim() !== 'true') break;
+    } while (token);
 }
 
 // ── Supabase Storage REST ───────────────────────────────────────────────────
@@ -362,6 +516,114 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
             const url = (await resp.json())?.url;
             if (!url) throw new Error('supabase_upload_sign_failed_no_url');
             return String(url);
+        },
+
+        // ---- management (product supabase_adapter.py shapes) ----
+
+        async listBuckets(): Promise<BucketEntry[]> {
+            const resp = await fetch(`${base}/bucket`, { headers });
+            await assertOk(resp, 'list_buckets');
+            const list = (await resp.json()) as Array<Record<string, unknown>>;
+            return list.map((b) => ({
+                id: String(b.id ?? b.name ?? ''),
+                name: String(b.name ?? b.id ?? ''),
+                public: Boolean(b.public),
+                created_at: b.created_at == null ? undefined : String(b.created_at),
+                updated_at: b.updated_at == null ? undefined : String(b.updated_at),
+                ...b,
+            }));
+        },
+
+        async createBucket(opts: CreateBucketOpts): Promise<Record<string, unknown>> {
+            const payload: Record<string, unknown> = { id: opts.name, name: opts.name, public: opts.isPublic ?? false };
+            if (opts.fileSizeLimit) payload.file_size_limit = opts.fileSizeLimit;
+            if (opts.allowedMimeTypes) payload.allowed_mime_types = opts.allowedMimeTypes;
+            const resp = await fetch(`${base}/bucket`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            await assertOk(resp, 'create_bucket');
+            const created = await resp.json().catch(() => ({})) as Record<string, unknown>;
+            return { id: opts.name, name: opts.name, public: opts.isPublic ?? false, ...created };
+        },
+
+        async getBucket(id: string): Promise<BucketEntry> {
+            const resp = await fetch(`${base}/bucket/${encodeURIComponent(id)}`, { headers });
+            await assertOk(resp, 'get_bucket');
+            const b = (await resp.json()) as Record<string, unknown>;
+            return { id: String(b.id ?? id), name: String(b.name ?? id), public: Boolean(b.public), ...b };
+        },
+
+        async updateBucket(id: string, opts: { isPublic?: boolean; fileSizeLimit?: number; allowedMimeTypes?: string[] }): Promise<void> {
+            const payload: Record<string, unknown> = { public: opts.isPublic ?? false };
+            if (opts.fileSizeLimit !== undefined) payload.file_size_limit = opts.fileSizeLimit;
+            if (opts.allowedMimeTypes !== undefined) payload.allowed_mime_types = opts.allowedMimeTypes;
+            const resp = await fetch(`${base}/bucket/${encodeURIComponent(id)}`, {
+                method: 'PUT',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            await assertOk(resp, 'update_bucket');
+        },
+
+        async deleteBucket(id: string): Promise<void> {
+            await assertOk(await fetch(`${base}/bucket/${encodeURIComponent(id)}`, { method: 'DELETE', headers }), 'delete_bucket');
+        },
+
+        async emptyBucket(id: string): Promise<void> {
+            const resp = await fetch(`${base}/bucket/${encodeURIComponent(id)}/empty`, { method: 'POST', headers });
+            await assertOk(resp, 'empty_bucket');
+        },
+
+        async listFiles(bucket: string, path: string, opts?: { limit?: number; offset?: number; search?: string }): Promise<FileEntry[]> {
+            const payload: Record<string, unknown> = {
+                prefix: path,
+                limit: opts?.limit ?? 100,
+                offset: opts?.offset ?? 0,
+                sortBy: { column: 'name', order: 'asc' },
+            };
+            if (opts?.search) payload.search = opts.search;
+            const resp = await fetch(`${base}/object/list/${encodeURIComponent(bucket)}`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            await assertOk(resp, 'list_files');
+            const entries = (await resp.json()) as Array<Record<string, unknown>>;
+            // Normalize exactly like the product: skip placeholder markers,
+            // dedupe folder entries Supabase repeats for nested subfolders.
+            const formatted: FileEntry[] = [];
+            const seenFolders = new Set<string>();
+            for (const entry of entries) {
+                const name = String(entry.name ?? '');
+                const metadata = entry.metadata as { size?: unknown; mimetype?: unknown } | null | undefined;
+                const isFolder = metadata === null || metadata === undefined;
+                if (name === '.emptyFolderPlaceholder' || name === '.folder') continue;
+                if (isFolder && seenFolders.has(name)) continue;
+                if (isFolder) seenFolders.add(name);
+                const rawTs = entry.updated_at ?? entry.last_accessed_at ?? entry.created_at;
+                formatted.push({
+                    name,
+                    id: String(entry.id ?? name),
+                    size: isFolder ? 0 : Number(metadata?.size ?? 0),
+                    updated_at: rawTs == null ? null : String(rawTs),
+                    mimetype: metadata?.mimetype == null ? null : String(metadata.mimetype),
+                    metadata,
+                    isFolder,
+                });
+            }
+            return formatted;
+        },
+
+        async createFolder(bucket: string, folderPath: string): Promise<void> {
+            const target = `${folderPath.replace(/\/+$/, '')}/.folder`;
+            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(target)}`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/x-directory' },
+                body: '',
+            });
+            await assertOk(resp, 'create_folder');
         },
     };
 }

@@ -323,9 +323,14 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
 // presign — runs for real.
 {
     const objects = new Map<string, { bytes: Uint8Array; contentType?: string; authorization?: string }>();
+    const buckets = new Set<string>(['smoke-bucket']);
     const s3mock = createServer((incoming, res) => {
-        const key = (incoming.url ?? '/').split('?')[0].replace(/^\/+/, '');
-        if (incoming.method === 'PUT') {
+        const url = new URL(incoming.url ?? '/', 'http://s3mock.local');
+        const key = url.pathname.replace(/^\/+/, '');
+        if (incoming.method === 'PUT' && !key.includes('/')) {
+            buckets.add(key); // bucket create = PUT /{bucket}
+            res.writeHead(200).end();
+        } else if (incoming.method === 'PUT') {
             const chunks: Buffer[] = [];
             incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
             incoming.on('end', () => {
@@ -336,11 +341,43 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
                 });
                 res.writeHead(200).end();
             });
+        } else if (incoming.method === 'GET' && url.searchParams.get('list-type') === '2') {
+            // ListObjectsV2 — Contents for files, CommonPrefixes for delimiter folders.
+            const bucket = key;
+            const prefix = url.searchParams.get('prefix') ?? '';
+            const scoped = [...objects.keys()].filter((k) => k.startsWith(`${bucket}/`));
+            const contents = scoped.filter((k) => {
+                const rel = k.slice(bucket.length + 1);
+                if (!rel.startsWith(prefix)) return false;
+                const rest = rel.slice(prefix.length);
+                return rest !== '' && !rest.includes('/');
+            });
+            const folders = new Set<string>();
+            for (const k of scoped) {
+                const rel = k.slice(bucket.length + 1);
+                if (!rel.startsWith(prefix)) continue;
+                const rest = rel.slice(prefix.length);
+                const slash = rest.indexOf('/');
+                if (slash > 0) folders.add(rest.slice(0, slash + 1));
+            }
+            const xml = '<?xml version="1.0" encoding="UTF-8"?><ListBucketResult>'
+                + `<Name>${bucket}</Name><Prefix>${prefix}</Prefix><KeyCount>${contents.length + folders.size}</KeyCount>`
+                + contents.map((k) => `<Contents><Key>${k.slice(bucket.length + 1)}</Key><Size>${objects.get(k)!.bytes.length}</Size><LastModified>2026-01-01T00:00:00.000Z</LastModified></Contents>`).join('')
+                + [...folders].map((p) => `<CommonPrefixes><Prefix>${p}</Prefix></CommonPrefixes>`).join('')
+                + '</ListBucketResult>';
+            res.writeHead(200, { 'content-type': 'application/xml' }).end(xml);
+        } else if (incoming.method === 'GET' && !key) {
+            // ListBuckets
+            const xml = '<?xml version="1.0" encoding="UTF-8"?><ListAllMyBucketsResult><Buckets>'
+                + [...buckets].map((b) => `<Bucket><Name>${b}</Name></Bucket>`).join('')
+                + '</Buckets></ListAllMyBucketsResult>';
+            res.writeHead(200, { 'content-type': 'application/xml' }).end(xml);
         } else if (incoming.method === 'GET') {
             const obj = objects.get(key);
             if (!obj) { res.writeHead(404).end('not_found'); return; }
             res.writeHead(200, { 'content-type': obj.contentType ?? 'application/octet-stream' }).end(obj.bytes);
         } else if (incoming.method === 'DELETE') {
+            if (!key.includes('/')) buckets.delete(key);
             objects.delete(key);
             res.writeHead(204).end();
         } else {
@@ -367,6 +404,22 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
         });
         const providerId = (await provider.json() as { id?: string }).id;
 
+        await check('storage: s3 bucket create reaches the host as a signed PUT', async () => {
+            if (!providerId) return false;
+            const r = await req(`/api/storage/buckets?provider_id=${providerId}`, {
+                method: 'POST', headers: authed,
+                body: JSON.stringify({ name: 'smoke-bucket', public: false }),
+            });
+            const body = await r.json() as { success?: boolean; bucket?: { id?: string } };
+            return r.status === 201 && body.success === true && body.bucket?.id === 'smoke-bucket' && buckets.has('smoke-bucket');
+        });
+        await check('storage: s3 bucket list parses the ListBuckets XML', async () => {
+            if (!providerId) return false;
+            const r = await req(`/api/storage/buckets?provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const body = await r.json() as { success?: boolean; buckets?: Array<{ id?: string; provider?: string }> };
+            return r.status === 200 && body.success === true
+                && body.buckets?.some((b) => b.id === 'smoke-bucket' && b.provider === 'S3') === true;
+        });
         await check('storage: upload resolves a client from stored (encrypted) credentials — no env vars', async () => {
             if (!providerId) return false;
             const form = new FormData();
@@ -391,6 +444,17 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
             if (r.status !== 200 || body.success !== true || !body.signedUrl?.includes('X-Amz-Signature')) return false;
             const direct = await fetch(body.signedUrl);
             return direct.status === 200 && (await direct.text()) === 'storage-smoke-bytes';
+        });
+        await check('storage: s3 file list uses ListObjectsV2 (delimiter folders, sizes)', async () => {
+            if (!providerId) return false;
+            const top = await req(`/api/storage/list?bucket=smoke-bucket&provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const topBody = await top.json() as { success?: boolean; files?: Array<{ name?: string; isFolder?: boolean }>; total?: number };
+            if (top.status !== 200 || topBody.success !== true) return false;
+            if (!topBody.files?.some((f) => f.name === 'smoke' && f.isFolder === true)) return false;
+            const nested = await req(`/api/storage/list?bucket=smoke-bucket&path=smoke&provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const nestedBody = await nested.json() as { files?: Array<{ name?: string; isFolder?: boolean; size?: number }> };
+            return nested.status === 200
+                && nestedBody.files?.some((f) => f.name === 'hello.txt' && f.isFolder === false && f.size === 'storage-smoke-bytes'.length) === true;
         });
         await check('storage: console-shape delete removes the object and the metadata row', async () => {
             if (!providerId) return false;
@@ -436,6 +500,7 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
 // delete — without touching a real project.
 {
     const objects = new Map<string, { bytes: Uint8Array; contentType?: string; authorization?: string }>();
+    const buckets = new Map<string, { name: string; public: boolean }>();
     const supaMock = createServer((incoming, res) => {
         const path = (incoming.url ?? '/').split('?')[0];
         const readBody = () => new Promise<Buffer>((resolve) => {
@@ -443,9 +508,65 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
             incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
             incoming.on('end', () => resolve(Buffer.concat(chunks)));
         });
+        const json = (code: number, body: unknown) => res.writeHead(code, { 'content-type': 'application/json' }).end(JSON.stringify(body));
         // Path segments are per-segment encoded by the adapter — decode back.
         const objectKey = (prefix: string) => path.slice(prefix.length).split('/').map(decodeURIComponent).join('/');
-        if (incoming.method === 'POST' && path.startsWith('/storage/v1/object/sign/')) {
+        if (path === '/storage/v1/bucket') {
+            if (incoming.method === 'GET') {
+                json(200, [...buckets.entries()].map(([id, b]) => ({ id, name: b.name, public: b.public, created_at: '2026-01-01T00:00:00Z' })));
+            } else if (incoming.method === 'POST') {
+                void readBody().then((buf) => {
+                    const b = JSON.parse(buf.toString() || '{}') as { id?: string; name?: string; public?: boolean };
+                    buckets.set(String(b.id ?? b.name ?? ''), { name: String(b.name ?? b.id ?? ''), public: Boolean(b.public) });
+                    json(200, { name: String(b.name ?? b.id ?? '') });
+                });
+            } else {
+                res.writeHead(405).end();
+            }
+        } else if (path.startsWith('/storage/v1/bucket/')) {
+            const id = decodeURIComponent(path.slice('/storage/v1/bucket/'.length));
+            if (incoming.method === 'GET') {
+                const b = buckets.get(id);
+                if (b) json(200, { id, name: b.name, public: b.public });
+                else json(404, { message: 'Bucket not found' });
+            } else if (incoming.method === 'PUT') {
+                void readBody().then((buf) => {
+                    const b = buckets.get(id);
+                    if (b) b.public = Boolean((JSON.parse(buf.toString() || '{}') as { public?: boolean }).public);
+                    json(200, {});
+                });
+            } else if (incoming.method === 'DELETE') {
+                buckets.delete(id);
+                json(200, {});
+            } else if (incoming.method === 'POST' && id.endsWith('/empty')) {
+                const bucketId = id.slice(0, -'/empty'.length);
+                for (const k of [...objects.keys()]) if (k.startsWith(`${bucketId}/`)) objects.delete(k);
+                json(200, {});
+            } else {
+                res.writeHead(405).end();
+            }
+        } else if (incoming.method === 'POST' && path.startsWith('/storage/v1/object/list/')) {
+            void readBody().then((buf) => {
+                const prefix = ((JSON.parse(buf.toString() || '{}') as { prefix?: string }).prefix ?? '').replace(/^\/+|\/+$/g, '');
+                const bucket = decodeURIComponent(path.slice('/storage/v1/object/list/'.length));
+                const entries: Array<Record<string, unknown>> = [];
+                const folders = new Set<string>();
+                for (const [k, obj] of objects) {
+                    if (!k.startsWith(`${bucket}/`)) continue;
+                    const rel = k.slice(bucket.length + 1);
+                    if (prefix && !rel.startsWith(`${prefix}/`)) continue;
+                    const rest = prefix ? rel.slice(prefix.length + 1) : rel;
+                    if (rest.includes('/')) { folders.add(rest.split('/')[0]); continue; }
+                    entries.push({
+                        name: rest, id: k,
+                        updated_at: '2026-01-01T00:00:00Z', created_at: '2026-01-01T00:00:00Z',
+                        metadata: { size: obj.bytes.length, mimetype: obj.contentType ?? 'application/octet-stream' },
+                    });
+                }
+                for (const f of folders) entries.push({ name: f, id: `${prefix ? `${prefix}/` : ''}${f}` });
+                json(200, entries);
+            });
+        } else if (incoming.method === 'POST' && path.startsWith('/storage/v1/object/sign/')) {
             res.writeHead(200, { 'content-type': 'application/json' })
                 .end(JSON.stringify({ signedURL: `${path}?token=smoke` }));
         } else if (incoming.method === 'POST' && path.startsWith('/storage/v1/object/')) {
@@ -496,6 +617,23 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
         const providerId = (await provider.json() as { id?: string }).id;
         let publicUrl = '';
 
+        await check('storage: supabase bucket create reaches the real API', async () => {
+            if (!providerId) return false;
+            const r = await req(`/api/storage/buckets?provider_id=${providerId}`, {
+                method: 'POST', headers: authed,
+                body: JSON.stringify({ name: 'frontbase-assets', public: true }),
+            });
+            const body = await r.json() as { success?: boolean; bucket?: { id?: string } };
+            return r.status === 201 && body.success === true && body.bucket?.id === 'frontbase-assets' && buckets.has('frontbase-assets');
+        });
+        await check('storage: supabase bucket list comes from the provider (labeled)', async () => {
+            if (!providerId) return false;
+            const r = await req(`/api/storage/buckets?provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const body = await r.json() as { success?: boolean; buckets?: Array<{ id?: string; name?: string; provider?: string; public?: boolean }> };
+            const entry = body.buckets?.find((b) => b.id === 'frontbase-assets');
+            return r.status === 200 && body.success === true
+                && !!entry && entry.provider === 'Supabase' && entry.public === true;
+        });
         await check('storage: supabase upload resolves the service-role client (no more registry-miss 400)', async () => {
             if (!providerId) return false;
             const form = new FormData();
@@ -519,6 +657,28 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
             const direct = await fetch(publicUrl);
             return direct.status === 200 && (await direct.text()) === 'supabase-smoke-bytes';
         });
+        await check('storage: supabase file list reflects provider objects', async () => {
+            if (!providerId) return false;
+            const top = await req(`/api/storage/list?bucket=frontbase-assets&provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const topBody = await top.json() as { success?: boolean; files?: Array<{ name?: string; isFolder?: boolean }> };
+            if (top.status !== 200 || topBody.success !== true) return false;
+            if (!topBody.files?.some((f) => f.name === 'smoke' && f.isFolder === true)) return false;
+            const nested = await req(`/api/storage/list?bucket=frontbase-assets&path=smoke&provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const nestedBody = await nested.json() as { files?: Array<{ name?: string; isFolder?: boolean; size?: number; mimetype?: string | null }>; total?: number };
+            return nested.status === 200 && (nestedBody.total ?? 0) >= 1
+                && nestedBody.files?.some((f) => f.name === 'hello.txt' && f.isFolder === false
+                    && f.size === 'supabase-smoke-bytes'.length && f.mimetype === 'text/plain') === true;
+        });
+        await check('storage: supabase create-folder writes the .folder marker', async () => {
+            if (!providerId) return false;
+            const r = await req('/api/storage/create-folder', {
+                method: 'POST', headers: authed,
+                body: JSON.stringify({ bucket: 'frontbase-assets', folderPath: 'new-folder', provider_id: providerId }),
+            });
+            const marker = objects.get('frontbase-assets/new-folder/.folder');
+            return r.status === 200
+                && !!marker && marker.bytes.length === 0 && marker.contentType === 'application/x-directory';
+        });
         await check('storage: supabase delete uses the prefixes shape', async () => {
             if (!providerId) return false;
             const r = await req('/api/storage/delete', {
@@ -526,6 +686,13 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
                 body: JSON.stringify({ paths: ['/smoke/hello.txt'], bucket: 'frontbase-assets', provider_id: providerId }),
             });
             return r.status === 200 && !objects.has('frontbase-assets/smoke/hello.txt');
+        });
+        await check('storage: supabase bucket delete reaches the real API', async () => {
+            if (!providerId) return false;
+            const r = await req(`/api/storage/buckets/frontbase-assets?provider_id=${providerId}`, {
+                method: 'DELETE', headers: authed,
+            });
+            return r.status === 200 && !buckets.has('frontbase-assets');
         });
     } finally {
         supaMock.close();

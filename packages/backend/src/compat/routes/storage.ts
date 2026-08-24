@@ -136,6 +136,21 @@ export function registerStorageRoutes(
         if (providerId) return resolveStorageClient(tenant, providerId);
         return storageProvider ? { client: storageProvider } : { status: 503, message: 'Storage provider is not configured' };
     };
+    // Provider types with a ported REAL adapter. Management ops (bucket CRUD,
+    // file listing, folders) read the provider directly for these; every other
+    // supported type — 'local' above all, whose storage the framework simulates
+    // in the store — keeps the store-simulated surface, exactly as the product's
+    // local/filesystem adapter is served there.
+    const REAL_ADAPTER_TYPES = new Set(['cloudflare', 's3', 'r2', 'b2', 'supabase']);
+    /** Resolve a MANAGEMENT client, or undefined when the surface is
+     *  store-simulated. Credential errors still surface for real-adapter types. */
+    const resolveManaged = async (tenant: string, providerId: string): Promise<{ client: StorageProvider } | { client: undefined } | { status: 400 | 404 | 500 | 503; message: string }> => {
+        const providers = await kvFor(tenant).getJson<Array<Record<string, unknown>>>('storage_providers', []);
+        const record = providers.find((provider) => provider.id === providerId);
+        if (!record) return { status: 404, message: `Storage provider ${providerId} not found` };
+        if (!REAL_ADAPTER_TYPES.has(String(record.provider ?? ''))) return { client: undefined };
+        return resolveStorageClient(tenant, providerId);
+    };
     /** Product-shaped resolver failure (`{detail}`, matching _resolve_adapter's HTTPException). */
     const resolutionError = (c: Context<{ Variables: ConsoleAuthVars }>, resolved: { status: 400 | 404 | 500 | 503; message: string }) =>
         c.json({ detail: resolved.message }, resolved.status);
@@ -167,6 +182,19 @@ export function registerStorageRoutes(
         if (!SUPPORTED_STORAGE_PROVIDERS.has(providerType)) {
             return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
         }
+        const managed = await resolveManaged(c.get('tenant'), providerId);
+        if ('status' in managed) return resolutionError(c, managed);
+        if (managed.client?.listBuckets) {
+            // Product parity: buckets live on the provider (adapter.list_buckets),
+            // labeled with the provider type — not CMS rows.
+            try {
+                const label = providerType.charAt(0).toUpperCase() + providerType.slice(1);
+                const buckets = (await managed.client.listBuckets()).map((b) => ({ ...b, provider: label }));
+                return c.json({ success: true, buckets });
+            } catch (e) {
+                return c.json({ detail: `Failed to list buckets: ${(e as Error).message}` }, 502);
+            }
+        }
         return c.json({
             success: true,
             buckets: (await phase2For(c.get('tenant')).listBuckets()).map(redactConfig),
@@ -192,7 +220,28 @@ export function registerStorageRoutes(
         if (!SUPPORTED_STORAGE_PROVIDERS.has(providerType)) {
             return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
         }
-        const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
+        const b = await c.req.json().catch(() => ({})) as {
+            name?: string; public?: boolean; file_size_limit?: number; allowed_mime_types?: string[];
+            provider?: string; config?: unknown;
+        };
+        if (!b.name) return c.json({ detail: 'Bucket name is required' }, 400);
+        const managed = await resolveManaged(c.get('tenant'), providerId);
+        if ('status' in managed) return resolutionError(c, managed);
+        if (managed.client?.createBucket) {
+            // Product parity (console createBucket payload): the bucket is created
+            // on the provider — no CMS row; uploads target it by name.
+            try {
+                const bucket = await managed.client.createBucket({
+                    name: b.name,
+                    isPublic: b.public ?? false,
+                    fileSizeLimit: b.file_size_limit,
+                    allowedMimeTypes: b.allowed_mime_types,
+                });
+                return c.json({ success: true, bucket }, 201);
+            } catch (e) {
+                return c.json({ detail: `Bucket create failed: ${(e as Error).message}` }, 502);
+            }
+        }
         const id = crypto.randomUUID();
         await phase2For(c.get('tenant')).upsertBucket({
             id,
@@ -232,6 +281,15 @@ export function registerStorageRoutes(
             if (!SUPPORTED_STORAGE_PROVIDERS.has(providerType)) {
                 return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
             }
+            const managed = await resolveManaged(c.get('tenant'), providerId);
+            if ('status' in managed) return resolutionError(c, managed);
+            if (managed.client?.getBucket) {
+                try {
+                    return c.json({ success: true, bucket: await managed.client.getBucket(c.req.param('bucket_id')) });
+                } catch (e) {
+                    return c.json({ detail: `Failed to get bucket: ${(e as Error).message}` }, 502);
+                }
+            }
             const all = await phase2For(c.get('tenant')).listBuckets();
             const bucket = all.find((r) => String(r.id) === c.req.param('bucket_id'));
             if (!bucket) {
@@ -269,8 +327,26 @@ export function registerStorageRoutes(
             if (!SUPPORTED_STORAGE_PROVIDERS.has(providerType)) {
                 return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
             }
-            const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; config?: unknown };
+            const b = await c.req.json().catch(() => ({})) as {
+                name?: string; provider?: string; config?: unknown;
+                public?: boolean; file_size_limit?: number; allowed_mime_types?: string[];
+            };
             const id = c.req.param('bucket_id');
+            const managed = await resolveManaged(c.get('tenant'), providerId);
+            if ('status' in managed) return resolutionError(c, managed);
+            if (managed.client?.updateBucket) {
+                // Console updateBucket payload: {public, file_size_limit, allowed_mime_types}.
+                try {
+                    await managed.client.updateBucket(id, {
+                        isPublic: b.public,
+                        fileSizeLimit: b.file_size_limit,
+                        allowedMimeTypes: b.allowed_mime_types,
+                    });
+                } catch (e) {
+                    return c.json({ detail: `Failed to update bucket: ${(e as Error).message}` }, 502);
+                }
+                return c.json({ success: true, bucket: { id, name: id, public: b.public ?? false } });
+            }
             const store = phase2For(c.get('tenant'));
             const existing = await store.listBuckets();
             const bucket = existing.find((r) => String(r.id) === id);
@@ -323,6 +399,16 @@ export function registerStorageRoutes(
                 return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
             }
             const id = c.req.param('bucket_id');
+            const managed = await resolveManaged(c.get('tenant'), providerId);
+            if ('status' in managed) return resolutionError(c, managed);
+            if (managed.client?.deleteBucket) {
+                try {
+                    await managed.client.deleteBucket(id);
+                    return c.json({ success: true, message: 'Bucket deleted' });
+                } catch (e) {
+                    return c.json({ detail: `Failed to delete bucket: ${(e as Error).message}` }, 502);
+                }
+            }
             const store = phase2For(c.get('tenant'));
             const existing = await store.listBuckets();
             const bucket = existing.find((r) => String(r.id) === id);
@@ -361,6 +447,16 @@ export function registerStorageRoutes(
         if (!SUPPORTED_STORAGE_PROVIDERS.has(providerType)) {
             return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
         }
+        const managed = await resolveManaged(c.get('tenant'), providerId);
+        if ('status' in managed) return resolutionError(c, managed);
+        if (managed.client?.emptyBucket) {
+            try {
+                await managed.client.emptyBucket(c.req.param('bucket_id'));
+                return c.json({ success: true, message: 'Bucket emptied' });
+            } catch (e) {
+                return c.json({ detail: `Failed to empty bucket: ${(e as Error).message}` }, 502);
+            }
+        }
         const store = phase2For(c.get('tenant'));
         const files = await store.listFiles(c.req.param('bucket_id'));
         for (const f of files) await store.deleteFile(String(f.id));
@@ -384,6 +480,43 @@ export function registerStorageRoutes(
         }
         if (!await hasStorageProvider(c.get('tenant'), providerId)) {
             return c.json({ detail: 'Storage provider not found' }, 404);
+        }
+        const managed = await resolveManaged(c.get('tenant'), providerId);
+        if ('status' in managed) return resolutionError(c, managed);
+        if (managed.client?.listFiles) {
+            // Product /list post-processing: fetch a large batch from the
+            // provider, substring-search, keep folders on top, sort globally,
+            // then paginate.
+            type Entry = { name?: string; size?: number; updated_at?: string | null; mimetype?: string | null; isFolder?: boolean };
+            let entries: Entry[];
+            try {
+                entries = await managed.client.listFiles(bucketId, c.req.query('path') ?? '', { limit: 3000 });
+            } catch (e) {
+                return c.json({ detail: `Failed to list files: ${(e as Error).message}` }, 502);
+            }
+            const search = c.req.query('search') ?? '';
+            if (search) {
+                const needle = search.toLowerCase();
+                entries = entries.filter((f) => String(f.name ?? '').toLowerCase().includes(needle));
+            }
+            const sortBy = c.req.query('sort_by') ?? 'name';
+            const reverse = c.req.query('sort_order') === 'desc';
+            const keyOf = (f: Entry): number | string => {
+                if (sortBy === 'size') return Number(f.size ?? 0);
+                if (sortBy === 'updated_at') return f.updated_at == null ? '' : String(f.updated_at);
+                if (sortBy === 'type') return f.mimetype ?? (String(f.name ?? '').includes('.') ? String(f.name).split('.').pop()!.toLowerCase() : '');
+                return String(f.name ?? '').toLowerCase();
+            };
+            const cmp = (a: Entry, b: Entry): number => {
+                const ka = keyOf(a);
+                const kb = keyOf(b);
+                const v = typeof ka === 'number' && typeof kb === 'number' ? ka - kb : String(ka) < String(kb) ? -1 : String(ka) > String(kb) ? 1 : 0;
+                return reverse ? -v : v;
+            };
+            const sorted = [...entries.filter((f) => f.isFolder).sort(cmp), ...entries.filter((f) => !f.isFolder).sort(cmp)];
+            const limit = Math.max(1, Math.min(Number(c.req.query('limit') ?? 100) || 100, 3000));
+            const offset = Math.max(Number(c.req.query('offset') ?? 0) || 0, 0);
+            return c.json({ success: true, files: sorted.slice(offset, offset + limit), total: sorted.length });
         }
         const files = await phase2For(c.get('tenant')).listFiles(bucketId);
         return c.json({ success: true, files, total: files.length });
@@ -437,9 +570,20 @@ export function registerStorageRoutes(
     // POST /api/storage/create-folder
     app.post('/api/storage/create-folder', async (c) => {
         const b = await c.req.json().catch(() => ({})) as {
-            provider_id?: string; name?: string; path?: string; bucket_id?: string;
+            provider_id?: string; bucket?: string; folderPath?: string; name?: string; path?: string; bucket_id?: string;
         };
         if (!b.provider_id) return c.json({ detail: 'provider_id is required' }, 400);
+        const managed = await resolveManaged(c.get('tenant'), b.provider_id);
+        if ('status' in managed) return resolutionError(c, managed);
+        // Console shape (FileBrowser api.ts): {folderPath, bucket, provider_id}.
+        if (b.bucket && b.folderPath && managed.client?.createFolder) {
+            try {
+                await managed.client.createFolder(b.bucket, b.folderPath);
+                return c.json({ success: true, message: 'Folder created' });
+            } catch (e) {
+                return c.json({ detail: `Failed to create folder: ${(e as Error).message}` }, 502);
+            }
+        }
         const store = phase2For(c.get('tenant'));
         const id = crypto.randomUUID();
         const folderName = b.name ?? 'folder';
