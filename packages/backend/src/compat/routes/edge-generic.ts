@@ -24,6 +24,7 @@ function reg(
     systemResources: SystemResourcesDescriptor,
     systemEdge: SystemEdgeDescriptor,
     onMutation: ((tenant: string) => void) | undefined,
+    resolveLinkedEngineId: ((tenant: string) => Promise<string | null>) | undefined,
     pre: string,
     kind: string,
     idP: string,
@@ -96,27 +97,44 @@ function reg(
     const resourceWasDefault = async (store: Phase2Store, id: string): Promise<boolean> => {
         try { return Boolean((await store.getEdgeResourceConfig(id))?.is_default); } catch { return false; }
     };
+    /** The registry row the runtime currently uses for this kind (the adopted
+     *  default), resolved through the same chain cacheFor et al. use. Its card
+     *  shows the system engine as linked; every other row shows none. */
+    const linkedEngineIdFor = async (tenant: string): Promise<string | null> => {
+        if (!resolveLinkedEngineId) return null;
+        try { return await resolveLinkedEngineId(tenant); } catch { return null; }
+    };
     const serializeStored = async (
         store: Phase2Store,
         row: Record<string, unknown>,
+        linkedEngineId?: string | null,
     ): Promise<Record<string, unknown>> => {
         const config = await store.getEdgeResourceConfig(String(row.id)) ?? {};
         const url = String(config.url ?? '');
         const isSystem = Boolean(row.is_system);
-        // Normalize timestamp: remove trailing Z/+00:00Z, then add +00:00Z for user resources
+        // Normalize timestamp to a single valid UTC suffix. The product's
+        // emitters append "Z" to an already-offset isoformat ("…+00:00Z"),
+        // which no JS Date can parse — the console rendered "Invalid Date".
+        // Deliberate divergence (user-approved 2026-08-25, product fixed in
+        // step): every timestamp leaves as a parseable single-suffix form.
         const formatTimestamp = (ts: unknown): string => {
             const str = String(ts ?? '');
             if (!str) return '';
-            // Remove timezone suffixes: prefer longer patterns first to avoid partial matches
-            // Handles: "Z+00:00", "+00:00Z", "+00:00", "Z" at end of string
+            // Remove any timezone suffixes: prefer longer patterns first to
+            // avoid partial matches ("Z+00:00", "+00:00Z", "+00:00", "Z").
             const normalized = str.replace(/Z\+00:00$|\+00:00Z$|\+00:00$|Z$/, '');
-            return isSystem ? normalized : normalized + '+00:00Z';
+            return isSystem ? normalized : normalized + 'Z';
         };
         // For system resources, link the real system edge engine (a stored system
-        // row can arrive via an imported database); for user resources, none.
+        // row can arrive via an imported database). For user resources, the one
+        // system engine links the row the runtime actually resolves — the
+        // adopted is_default row IS what cacheFor/queueFor/vectorFor use, so
+        // its card shows "1 engine: Local Edge" (product linkage semantics).
         const engineData = isSystem
             ? { engine_count: 1, linked_engines: [systemLinkedEngine(systemEdge)] }
-            : { engine_count: 0, linked_engines: [] };
+            : linkedEngineId && String(row.id) === linkedEngineId
+                ? { engine_count: 1, linked_engines: [systemLinkedEngine(systemEdge)] }
+                : { engine_count: 0, linked_engines: [] };
 
         // Extract fields from base for explicit reconstruction to match product field order
         const baseFields = {
@@ -324,8 +342,9 @@ function reg(
                     linked_engines: linked,
                     supports_remote_delete: false,
                 };
+        const linkedEngineId = await linkedEngineIdFor(c.get('tenant'));
         return c.json(await Promise.all(
-            [...(local ? [local] : []), ...(await store.listEdgeResources(kind)).map((row) => serializeStored(store, row))],
+            [...(local ? [local] : []), ...(await store.listEdgeResources(kind)).map((row) => serializeStored(store, row, linkedEngineId))],
         ));
     });
 
@@ -384,7 +403,7 @@ function reg(
             provider: b.provider ?? 'local',
             created_at: now(),
             updated_at: now(),
-        });
+        }, await linkedEngineIdFor(c.get('tenant')));
         return c.json(response, 201);
     });
 
@@ -439,7 +458,7 @@ function reg(
             await store.setDefaultEdgeResource(kind, id, now());
         }
         onMutation?.(c.get('tenant'));
-        const response = await serializeStored(store, await store.getEdgeResource(id) ?? existing);
+        const response = await serializeStored(store, await store.getEdgeResource(id) ?? existing, await linkedEngineIdFor(c.get('tenant')));
         return c.json(response);
     });
 
@@ -475,8 +494,8 @@ function reg(
     });
 }
 
-export function registerEdgeGenericRoutes(app: App, p2: (t: string) => Phase2Store, secretCipher: SecretCipher, externalFetch: CompatFetch, now: () => string, systemResources: SystemResourcesDescriptor, systemEdge: SystemEdgeDescriptor, onMutation?: (tenant: string) => void): void {
-    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, '/api/edge-caches', 'cache', ':cache_id', '/test', 'cache_url');
-    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, '/api/edge-queues', 'queue', ':queue_id', '/test/', 'queue_url', { has_signing_key: false });
-    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, '/api/edge-vectors', 'vector', ':vector_id', '/test', 'vector_url');
+export function registerEdgeGenericRoutes(app: App, p2: (t: string) => Phase2Store, secretCipher: SecretCipher, externalFetch: CompatFetch, now: () => string, systemResources: SystemResourcesDescriptor, systemEdge: SystemEdgeDescriptor, onMutation?: (tenant: string) => void, resolveDefaultId?: (tenant: string, kind: string) => Promise<string | null>): void {
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, resolveDefaultId ? (t) => resolveDefaultId(t, 'cache') : undefined, '/api/edge-caches', 'cache', ':cache_id', '/test', 'cache_url');
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, resolveDefaultId ? (t) => resolveDefaultId(t, 'queue') : undefined, '/api/edge-queues', 'queue', ':queue_id', '/test/', 'queue_url', { has_signing_key: false });
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, resolveDefaultId ? (t) => resolveDefaultId(t, 'vector') : undefined, '/api/edge-vectors', 'vector', ':vector_id', '/test', 'vector_url');
 }

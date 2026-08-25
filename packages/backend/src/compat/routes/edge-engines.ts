@@ -66,6 +66,11 @@ export function registerEdgeEnginesRoutes(
      *  When provided it wins over the descriptor's static labels; a throw is
      *  swallowed — display falls back to the descriptor, never 5xx. */
     resolveSystemBindings?: (tenant: string) => Promise<{ cache?: string | null; queue?: string | null } | null>,
+    /** System-engine health (product /api/health semantics, computed locally —
+     *  the worker IS the engine): {status, provider, bindings:{stateDb,cache,
+     *  queue,…}} in the shape HealthCheckPopover renders. When omitted the
+     *  health-check route keeps its legacy behavior. */
+    systemHealth?: (tenant: string) => Promise<Record<string, unknown>>,
 ): void {
     // The system edge is the worker itself — synthesized per request with the live
     // origin so preview links resolve here. Listed FIRST everywhere so it is the
@@ -664,6 +669,11 @@ export function registerEdgeEnginesRoutes(
 
     // GET /api/edge-engines/{engine_id}/health-check
     app.get('/api/edge-engines/:engine_id/health-check', async (c) => {
+        // The system engine is THIS worker — the product proxies to a remote
+        // engine's /api/health; here the diagnostic is computed locally.
+        if (systemHealth && isSystemEngine(c.req.param('engine_id'))) {
+            return c.json(await systemHealth(c.get('tenant')));
+        }
         const engine = await p2(c.get('tenant')).getEdgeResource(c.req.param('engine_id'));
         if (!engine || engine.kind !== 'engine') {
             return c.json({ detail: 'Edge engine not found' }, 404);

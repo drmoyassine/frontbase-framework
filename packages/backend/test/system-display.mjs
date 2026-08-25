@@ -91,6 +91,81 @@ test('engine card: vector adoption stays in its own tab — never a card binding
     assert.ok(!('edge_vector_name' in card), 'the engine shape has no vector field (documented divergence)');
 });
 
+test('engine linkage: the adopted default row is the one the engine uses', async () => {
+    const h = await harness(undefined);
+    const first = await (await h.req('POST', '/api/edge-caches/', {
+        name: 'first-cache', provider: 'upstash', cache_url: 'https://first.upstash.io',
+    })).json();
+    const second = await (await h.req('POST', '/api/edge-caches/', {
+        name: 'second-cache', provider: 'upstash', cache_url: 'https://second.upstash.io',
+    })).json();
+    // First-of-kind auto-defaulted → the engine is linked to IT, not the second row.
+    let rows = await (await h.req('GET', '/api/edge-caches/')).json();
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+    assert.equal(byId[first.id].engine_count, 1, 'default row shows the engine link');
+    assert.equal(byId[first.id].linked_engines[0].name, 'Local Edge');
+    assert.equal(byId[first.id].linked_engines[0].provider, 'cloudflare');
+    assert.equal(byId[second.id].engine_count, 0, 'non-default row is unlinked');
+    assert.deepEqual(byId[second.id].linked_engines, []);
+    // Switching the default moves the link (the PUT path invalidates the
+    // resolver — like the console dialog, the body carries config fields).
+    await h.req('PUT', `/api/edge-caches/${second.id}`, {
+        name: 'second-cache', cache_url: 'https://second.upstash.io', is_default: true,
+    });
+    rows = await (await h.req('GET', '/api/edge-caches/')).json();
+    const after = Object.fromEntries(rows.map((r) => [r.id, r]));
+    assert.equal(after[second.id].engine_count, 1, 'the new default carries the link');
+    assert.equal(after[first.id].engine_count, 0, 'the old default loses it');
+    // Another tenant's list never sees this tenant's linkage.
+    h.setTenant('tenant-b');
+    const bRows = await (await h.req('GET', '/api/edge-caches/')).json();
+    assert.equal(bRows.length, 0);
+});
+
+test('engine linkage: created_at is a parseable timestamp (the +00:00Z fix)', async () => {
+    const h = await harness(undefined);
+    const row = await (await h.req('POST', '/api/edge-caches/', {
+        name: 'dated-cache', provider: 'upstash', cache_url: 'https://dated.upstash.io',
+    })).json();
+    assert.ok(!Number.isNaN(new Date(row.created_at).getTime()), `created_at parseable, got ${row.created_at}`);
+    assert.ok(!Number.isNaN(new Date(row.updated_at).getTime()));
+});
+
+test('system-engine health-check: bindings report the resolution truth', async () => {
+    const h = await harness({ cache: { provider: 'upstash', url: 'https://env.upstash.io', token: 'env-tok' } });
+    // Adopt a cache row so the cache binding reports the row's provider; the
+    // queue/vector kinds stay unwired (env queue absent, no vector rows).
+    await h.req('POST', '/api/edge-caches/', { name: 'prod-cache', provider: 'upstash', cache_url: 'https://prod.upstash.io' });
+    const health = await (await h.req('GET', '/api/edge-engines/local-edge/health-check')).json();
+    assert.equal(health.status, 'ok');
+    assert.equal(health.service, 'frontbase-edge');
+    assert.equal(health.provider, 'cloudflare');
+    assert.equal(health.bindings.stateDb.status, 'ok');
+    assert.equal(health.bindings.stateDb.provider, 'Cloudflare D1');
+    assert.equal(health.bindings.cache.status, 'ok');
+    assert.equal(health.bindings.cache.provider, 'upstash');
+    assert.equal(health.bindings.queue.status, 'not_configured');
+    assert.equal(health.bindings.queue.provider, 'none');
+    assert.equal(health.bindings.vector.status, 'not_configured');
+    assert.ok(!('uptime_seconds' in health), 'serverless platform → no uptime');
+
+    // An env-wired-only tenant sees the env cache binding and a configured
+    // queue reported healthy by configuration (product parity — QStash can't
+    // be pinged without publishing).
+    const b = await harness({
+        cache: { provider: 'upstash', url: 'https://env.upstash.io', token: 'env-tok' },
+        queue: { provider: 'qstash', token: 'q-tok', url: 'https://qstash.example.io' },
+    });
+    const bHealth = await (await b.req('GET', '/api/edge-engines/local-edge/health-check')).json();
+    assert.equal(bHealth.bindings.cache.provider, 'upstash', 'env-wired cache reports its provider');
+    assert.equal(bHealth.bindings.cache.status, 'ok');
+    assert.equal(bHealth.bindings.queue.status, 'ok', 'configured queue is healthy by configuration (product parity)');
+
+    // Unknown ids stay 404 (the legacy stored-engine path is unchanged).
+    const missing = await h.req('GET', '/api/edge-engines/no-such-engine/health-check');
+    assert.equal(missing.status, 404);
+});
+
 let failures = 0;
 for (const [name, fn] of tests) {
     try {

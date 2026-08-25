@@ -170,10 +170,40 @@ never appears in logs or error messages (failures surface the HTTP status).
   uses: adopted row name → env label (e.g. `Upstash Redis (env)`) → `null`.
   The card never claims a backing the worker lacks. No vector field on the
   engine shape (vector shows in its own tab).
+- **Resource linkage** — the adopted `is_default` row is the one the worker
+  actually consumes, so it carries `engine_count: 1` and
+  `linked_engines: [{name, provider}]` naming the system engine (the console
+  renders its "1 engine" badge + tooltip). Non-default rows stay unlinked;
+  switching the default moves the link. This is the product's linkage
+  semantics — the answer to "is the engine using this resource?" is "the row
+  with the badge is".
+- **System-engine health check** — `GET /api/edge-engines/local-edge/health-check`
+  (the console's edge-card heart button) returns the product `/api/health`
+  shape computed in-process — the worker IS the engine, so there is nothing to
+  proxy to:
+  `{status, service: 'frontbase-edge', provider, timestamp,
+  bindings: {stateDb, cache, queue, vector}}`. `stateDb` is a live round trip
+  (a real registry read); cache/queue/vector report the same resolution the
+  runtime consumes (`ok` + provider when a row or env wiring exists,
+  `not_configured` otherwise); queue is *configured-only* health exactly like
+  the product (QStash can't be pinged without publishing). Serverless
+  platforms omit `uptime_seconds` (cold starts make boot time noise); the
+  vector binding is a framework addition and renders generically in the
+  popover.
 - **Edge Resources tabs** — the platform-wired truth (bound D1 on CF; the
   local SQLite file on the self-host) renders as system cards; env-wired
   kinds render `(env)` cards; everything else renders the console's honest
   empty states. No rows are synthesized for services that aren't wired.
+
+### Timestamp divergence (deliberate)
+
+The product backend emits `datetime.now(UTC).isoformat() + "Z"` — aware
+`isoformat()` already ends in `+00:00`, so stored timestamps read
+`…+00:00Z`, which `new Date()` cannot parse (the console then renders its
+`'Invalid Date'` fallback). The framework normalizes such values (including
+pre-existing rows served from storage) to a single `Z` suffix, so console
+dates render. This is a documented divergence from the product's byte-level
+output, approved 2026-08-25.
 
 ---
 

@@ -379,6 +379,23 @@ await check('caches/queues/vectors synthesize no system rows (nothing platform-w
         return engines.status === 200 && card?.id === 'local-edge' && card.is_system === true
             && card.edge_cache_name === 'Upstash Redis (env)' && card.edge_queue_name === null;
     });
+    // The system-engine health check (product /api/health semantics, computed
+    // in-process — the worker IS the engine): bindings report the same
+    // resolution truth the runtime consumes, and a serverless platform reports
+    // no uptime.
+    await check('system-engine health-check reports the resolution truth (stateDb/cache ok, unwired kinds honest)', async () => {
+        const r = await ereq('/api/edge-engines/local-edge/health-check', { headers: { cookie } });
+        const health = await r.json() as {
+            status?: string; service?: string; provider?: string; uptime_seconds?: number;
+            bindings?: Record<string, { provider?: string; status?: string }>;
+        };
+        return r.status === 200 && health.status === 'ok' && health.service === 'frontbase-edge'
+            && health.provider === 'cloudflare' && !('uptime_seconds' in health)
+            && health.bindings?.stateDb?.status === 'ok' && health.bindings.stateDb.provider === 'Cloudflare D1'
+            && health.bindings?.cache?.status === 'ok' && health.bindings.cache.provider === 'upstash'
+            && health.bindings?.queue?.status === 'not_configured' && health.bindings.queue.provider === 'none'
+            && health.bindings?.vector?.status === 'not_configured' && health.bindings.vector.provider === 'none';
+    });
 }
 
 // ---- RAG pipeline: env-wired embedding + vector → upload → index → search E2E ----

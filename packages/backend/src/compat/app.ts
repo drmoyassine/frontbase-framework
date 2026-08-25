@@ -147,6 +147,9 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         ? await createSecretCipher(deps.sessionSecret)
         : noopCipher;
     const phase2For = storeCache((t: string) => new Phase2Store(runner, t, secretCipher));
+    // Isolate/app boot time — the uptime source for the system-engine health
+    // check (the product engine reports module-level startedAt the same way).
+    const bootedAt = Date.now();
     // System-service resolution (registry default row > env > memory). The
     // edge-resource mutation hooks below bump its memo so an adoption switch
     // takes effect on the next resolve, not after the TTL backstop.
@@ -361,9 +364,48 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // is_default row name → env label → null) — the same resolver the runtime
     // consumers use, so the card never claims a backing the worker lacks.
     registerEdgeEnginesRoutes(app, phase2For, kvFor, secretCipher, now, systemEdge,
-        (tenant) => serviceResolver.resolvedNames(tenant));
+        (tenant) => serviceResolver.resolvedNames(tenant),
+        // System-engine health (product /api/health semantics, computed here —
+        // the worker IS the engine). Bindings report the resolution truth the
+        // runtime uses; stateDb gets a live round trip; queue health is
+        // "configured" only, exactly like the product (QStash can't be pinged
+        // without publishing).
+        async (tenant) => {
+            const defaults = await serviceResolver.resolvedDefaults(tenant).catch(() => null);
+            let stateDb: Record<string, unknown>;
+            try {
+                await phase2For(tenant).listEdgeResources('cache');
+                stateDb = { provider: systemEdge.db ?? 'sqlite', status: 'ok' };
+            } catch (error) {
+                stateDb = { provider: systemEdge.db ?? 'sqlite', status: 'error', error: (error as Error).message.slice(0, 120) };
+            }
+            const binding = (b: { provider: string | null } | null, floor: string): Record<string, unknown> =>
+                b ? { provider: b.provider ?? 'unknown', status: 'ok' } : { provider: floor, status: 'not_configured' };
+            return {
+                status: 'ok',
+                service: 'frontbase-edge',
+                provider: systemEdge.provider,
+                // Serverless isolates cold-start constantly — boot-time uptime is
+                // noise there, so it is reported only on long-lived hosts.
+                ...(systemEdge.provider === 'cloudflare' ? {} : { uptime_seconds: Math.floor((Date.now() - bootedAt) / 1000) }),
+                timestamp: now(),
+                bindings: {
+                    stateDb,
+                    cache: binding(defaults?.cache ?? null, 'memory'),
+                    queue: binding(defaults?.queue ?? null, 'none'),
+                    vector: binding(defaults?.vector ?? null, 'none'),
+                },
+            };
+        });
     registerEdgeProvidersRoutes(app, phase2For, kvFor, secretCipher, externalFetch, now);
-    registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation);
+    registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation,
+        // The adopted is_default row is the one registry row the system engine
+        // actually uses — its card renders "1 engine: <Local Edge>" (product
+        // linkage semantics) while every other row stays unlinked.
+        async (tenant, kind) => {
+            const defaults = await serviceResolver.resolvedDefaults(tenant);
+            return (defaults as unknown as Record<string, { id: string | null } | undefined>)[kind]?.id ?? null;
+        });
     registerEdgeMiscRoutes(app, runner, phase2For, secretCipher, now);
     // Tenant self-surface (the console's plan signal) — framework-only op set.
     registerTenantsRoutes(app, phase2For, now);
