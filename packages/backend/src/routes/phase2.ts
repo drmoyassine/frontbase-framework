@@ -26,6 +26,11 @@ export function phase2Routes(
      *  and the dispatcher runs the workflow in the background, updating the record
      *  on completion. On CF, wire this to ctx.waitUntil. */
     dispatcher?: (work: () => Promise<void>) => void,
+    /** Optional durable-queue dispatcher (system services, Phase 3). Offered the
+     *  job AFTER the execution row is persisted; true → the route answers
+     *  'running' and the queue's redelivery completes the work via the receive
+     *  endpoint. False/throw → exactly the pre-queue path (dispatcher/direct). */
+    executionDispatcher?: (job: { tenant: string; executionId: string; workflowId: string }) => Promise<boolean>,
 ): Hono<{ Variables: ConsoleAuthVars }> {
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
 
@@ -102,6 +107,17 @@ export function phase2Routes(
         // immediately with 'running' and let the dispatcher complete the work.
         // Otherwise run synchronously (F3) and return the final status.
         const wfShape = { name: String(wf.name), nodes: String(wf.nodes), edges: String(wf.edges) };
+
+        // Durable queue first (Phase 3): the row is already persisted above, so a
+        // queue redelivery can complete (or idempotently skip) it. A refused or
+        // failed publish falls through to the local paths unchanged.
+        if (executionDispatcher) {
+            let queued = false;
+            try {
+                queued = await executionDispatcher({ tenant, executionId: execId, workflowId });
+            } catch { queued = false; }
+            if (queued) return c.json({ executionId: execId, status: 'running' });
+        }
 
         if (dispatcher) {
             // Don't await — the dispatcher schedules the work (ctx.waitUntil on CF,

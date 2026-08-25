@@ -8,8 +8,10 @@ import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
-import { serializeEdgeResource as serialize, batchResult, testResult } from './edge-shapes.js';
+import { serializeEdgeResource as serialize, batchResult, testResult, SYSTEM_CACHE_ID, SYSTEM_QUEUE_ID, SYSTEM_VECTOR_ID, systemLinkedEngine, type SystemEdgeDescriptor, type SystemResourceDescriptor, type SystemResourcesDescriptor } from './edge-shapes.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
+import { vectorAdapterFromConfig } from '../system-services.js';
+import { upstashCache } from '@frontbase/edge-infra';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -19,6 +21,10 @@ function reg(
     secretCipher: SecretCipher,
     externalFetch: CompatFetch,
     now: () => string,
+    systemResources: SystemResourcesDescriptor,
+    systemEdge: SystemEdgeDescriptor,
+    onMutation: ((tenant: string) => void) | undefined,
+    resolveLinkedEngineId: ((tenant: string) => Promise<string | null>) | undefined,
     pre: string,
     kind: string,
     idP: string,
@@ -83,26 +89,52 @@ function reg(
         provider_account_id: body.provider_account_id,
         provider: body.provider,
     });
+    /** A config payload we can stamp default semantics into — null when the body
+     *  carried a non-object config (stored as-is, default logic does not apply). */
+    const asConfigRecord = (config: unknown): Record<string, unknown> | null =>
+        config && typeof config === 'object' && !Array.isArray(config) ? config as Record<string, unknown> : null;
+    /** Decrypted is_default of a stored row — false when absent or unreadable. */
+    const resourceWasDefault = async (store: Phase2Store, id: string): Promise<boolean> => {
+        try { return Boolean((await store.getEdgeResourceConfig(id))?.is_default); } catch { return false; }
+    };
+    /** The registry row the runtime currently uses for this kind (the adopted
+     *  default), resolved through the same chain cacheFor et al. use. Its card
+     *  shows the system engine as linked; every other row shows none. */
+    const linkedEngineIdFor = async (tenant: string): Promise<string | null> => {
+        if (!resolveLinkedEngineId) return null;
+        try { return await resolveLinkedEngineId(tenant); } catch { return null; }
+    };
     const serializeStored = async (
         store: Phase2Store,
         row: Record<string, unknown>,
+        linkedEngineId?: string | null,
     ): Promise<Record<string, unknown>> => {
         const config = await store.getEdgeResourceConfig(String(row.id)) ?? {};
         const url = String(config.url ?? '');
         const isSystem = Boolean(row.is_system);
-        // Normalize timestamp: remove trailing Z/+00:00Z, then add +00:00Z for user resources
+        // Normalize timestamp to a single valid UTC suffix. The product's
+        // emitters append "Z" to an already-offset isoformat ("…+00:00Z"),
+        // which no JS Date can parse — the console rendered "Invalid Date".
+        // Deliberate divergence (user-approved 2026-08-25, product fixed in
+        // step): every timestamp leaves as a parseable single-suffix form.
         const formatTimestamp = (ts: unknown): string => {
             const str = String(ts ?? '');
             if (!str) return '';
-            // Remove timezone suffixes: prefer longer patterns first to avoid partial matches
-            // Handles: "Z+00:00", "+00:00Z", "+00:00", "Z" at end of string
+            // Remove any timezone suffixes: prefer longer patterns first to
+            // avoid partial matches ("Z+00:00", "+00:00Z", "+00:00", "Z").
             const normalized = str.replace(/Z\+00:00$|\+00:00Z$|\+00:00$|Z$/, '');
-            return isSystem ? normalized : normalized + '+00:00Z';
+            return isSystem ? normalized : normalized + 'Z';
         };
-        // For system resources, use the special local engine; for user resources, use empty defaults
+        // For system resources, link the real system edge engine (a stored system
+        // row can arrive via an imported database). For user resources, the one
+        // system engine links the row the runtime actually resolves — the
+        // adopted is_default row IS what cacheFor/queueFor/vectorFor use, so
+        // its card shows "1 engine: Local Edge" (product linkage semantics).
         const engineData = isSystem
-            ? { engine_count: 1, linked_engines: [{ id: 'a0f2ffa2-62a5-4437-aa88-833138b70421', name: 'Local Edge', provider: 'unknown' }] }
-            : { engine_count: 0, linked_engines: [] };
+            ? { engine_count: 1, linked_engines: [systemLinkedEngine(systemEdge)] }
+            : linkedEngineId && String(row.id) === linkedEngineId
+                ? { engine_count: 1, linked_engines: [systemLinkedEngine(systemEdge)] }
+                : { engine_count: 0, linked_engines: [] };
 
         // Extract fields from base for explicit reconstruction to match product field order
         const baseFields = {
@@ -172,11 +204,63 @@ function reg(
             return testResult(false, `Test not yet implemented for provider: ${provider}`);
         }
         if (!url) return testResult(false, `${kind} URL is required`);
+        // Vector real probe (Phase 4): supported providers exercise the full
+        // adapter round trip (DDL → upsert → search → delete) instead of a
+        // bare GET. Unsupported providers keep the legacy GET probe — their
+        // messages stay byte-identical.
+        if (kind === 'vector' && ['libsql', 'turso', 'cloudflare', 'vectorize'].includes(provider)) {
+            const adapter = vectorAdapterFromConfig(
+                config,
+                (input, init) => guardedExternalFetch(externalFetch, input instanceof Request ? input.url : input, init),
+                () => {},
+            );
+            if (adapter) {
+                try {
+                    await adapter.ensureTable('frontbase_test');
+                    await adapter.upsert('frontbase_test', [{
+                        id: 'frontbase_probe',
+                        vector: [0.1, 0.2],
+                        text: 'frontbase connection probe',
+                        metadata: { probe: true },
+                    }]);
+                    await adapter.search('frontbase_test', [0.1, 0.2], 1);
+                    await adapter.delete('frontbase_test', ['frontbase_probe']);
+                    return testResult(true, 'vector connection test successful', Date.now() - started);
+                } catch (error) {
+                    return testResult(false, `vector connection test failed: ${(error as Error).message}`, Date.now() - started);
+                }
+            }
+        }
+        // Upstash real probe: the REST endpoint answers ONLY POST command
+        // pipelines — a bare GET returns 400 even for a healthy endpoint, so
+        // the legacy probe reported working caches as broken. Route upstash
+        // rows through the same adapter the runtime uses (set → get → del);
+        // message strings stay identical to the legacy path.
+        if (kind === 'cache' && provider === 'upstash' && url && typeof config.token === 'string' && config.token) {
+            const adapter = upstashCache({
+                url,
+                token: config.token,
+                fetchImpl: (input, init) => guardedExternalFetch(externalFetch, String(input), init),
+            });
+            try {
+                await adapter.setex('frontbase_test', 60, 'probe');
+                await adapter.get('frontbase_test');
+                await adapter.del('frontbase_test');
+                return testResult(true, 'cache connection test successful', Date.now() - started);
+            } catch (error) {
+                return testResult(false, `cache connection test failed: ${(error as Error).message}`, Date.now() - started);
+            }
+        }
         try {
             const headers = typeof config.token === 'string' && config.token
                 ? { Authorization: `Bearer ${config.token}` }
                 : undefined;
-            const response = await guardedExternalFetch(externalFetch, url, { method: 'GET', headers });
+            // QStash: the API root rejects a bare GET, so ask for the topic
+            // list instead — an authorized, side-effect-free read.
+            const probeUrl = kind === 'queue' && provider === 'qstash' && url
+                ? url.replace(/\/+$/, '') + '/v2/topics'
+                : url;
+            const response = await guardedExternalFetch(externalFetch, probeUrl, { method: 'GET', headers });
             return testResult(response.ok, response.ok ? `${kind} connection test successful` : `${kind} returned ${response.status}`, Date.now() - started);
         } catch (error) {
             const result: Record<string, unknown> = {
@@ -190,66 +274,77 @@ function reg(
 
     app.get(pre + '/', async (c) => {
         const store = p2(c.get('tenant'));
-        const localEngine = { id: 'a0f2ffa2-62a5-4437-aa88-833138b70421', name: 'Local Edge', provider: 'unknown' };
-        // System resource timestamps: use a consistent format matching product
-        // Product returns timestamps like "2026-08-04T16:03:42.974590" (no timezone suffix)
-        const systemTimestamp = '2026-08-04T16:03:42.974590';
-        const local = kind === 'cache'
+        // Platform truth: a system card exists only when the host declared a
+        // backing service for this kind. None do today — the CF worker binds
+        // only D1 and the Node/Docker self-host runs a lone SQLite file — so
+        // these tabs render their honest empty states. (The old hardcoded
+        // "Local Redis"/"Local BullMQ"/"Local Vector (libSQL)" rows were copied
+        // from the product's self-host, where Redis genuinely runs; here they
+        // lied about every deployment.)
+        const desc: SystemResourceDescriptor | null = kind === 'cache'
+            ? systemResources.cache ?? null
+            : kind === 'queue'
+                ? systemResources.queue ?? null
+                : systemResources.vector ?? null;
+        const linked = [systemLinkedEngine(systemEdge)];
+        const ts = now();
+        const local = !desc ? null : kind === 'cache'
             ? {
-                id: '67d3c848-56cb-405f-a5f6-ed69bbeca48f',
-                name: 'Local Redis',
-                provider: 'redis',
-                cache_url: 'redis://redis:6379',
+                id: SYSTEM_CACHE_ID,
+                name: desc.name,
+                provider: desc.provider,
+                cache_url: desc.url ?? null,
                 has_token: false,
                 is_default: false,
                 is_system: true,
                 provider_account_id: null,
                 account_name: null,
-                created_at: systemTimestamp,
-                updated_at: systemTimestamp,
+                created_at: ts,
+                updated_at: ts,
                 engine_count: 1,
-                linked_engines: [localEngine],
+                linked_engines: linked,
                 warning: null,
                 supports_remote_delete: false,
             }
             : kind === 'queue'
                 ? {
-                    id: '429039c8-87a6-4f1e-91dc-48536fe865f7',
-                    name: 'Local BullMQ',
-                    provider: 'bullmq',
-                    queue_url: 'redis://redis:6379',
+                    id: SYSTEM_QUEUE_ID,
+                    name: desc.name,
+                    provider: desc.provider,
+                    queue_url: desc.url ?? null,
                     has_token: false,
                     has_signing_key: false,
                     is_default: false,
                     is_system: true,
                     provider_account_id: null,
                     account_name: null,
-                    created_at: systemTimestamp,
-                    updated_at: systemTimestamp,
+                    created_at: ts,
+                    updated_at: ts,
                     engine_count: 1,
-                    linked_engines: [localEngine],
+                    linked_engines: linked,
                     warning: null,
                     supports_remote_delete: false,
                 }
                 : {
-                    id: '7b2b3b88-0fd6-4ae6-bf30-343fff2784c6',
-                    name: 'Local Vector (libSQL)',
-                    provider: 'libsql_vector',
-                    vector_url: 'libsql://local-edge',
+                    id: SYSTEM_VECTOR_ID,
+                    name: desc.name,
+                    provider: desc.provider,
+                    vector_url: desc.url ?? null,
                     has_token: false,
                     is_default: false,
                     is_system: true,
                     provider_account_id: null,
                     account_name: null,
                     provider_config: null,
-                    created_at: systemTimestamp,
-                    updated_at: systemTimestamp,
+                    created_at: ts,
+                    updated_at: ts,
                     engine_count: 1,
-                    linked_engines: [localEngine],
+                    linked_engines: linked,
                     supports_remote_delete: false,
                 };
+        const linkedEngineId = await linkedEngineIdFor(c.get('tenant'));
         return c.json(await Promise.all(
-            [local, ...(await store.listEdgeResources(kind)).map((row) => serializeStored(store, row))],
+            [...(local ? [local] : []), ...(await store.listEdgeResources(kind)).map((row) => serializeStored(store, row, linkedEngineId))],
         ));
     });
 
@@ -266,9 +361,9 @@ function reg(
         // Prevent duplicate URLs - return 409 like product does
         const configFromBodyValue = configFromBody(b);
         const newUrl = configFromBodyValue.url as string | undefined;
+        const siblings = await store.listEdgeResources(kind);
         if (newUrl) {
-            const existing = await store.listEdgeResources(kind);
-            for (const row of existing) {
+            for (const row of siblings) {
                 const rowConfig = await store.getEdgeResourceConfig(String(row.id)) ?? {};
                 // Use == for URL comparison to handle undefined vs string
                 if (rowConfig.url == newUrl) {
@@ -283,14 +378,24 @@ function reg(
             }
         }
 
+        const config = b.config ?? configFromBodyValue;
+        const configRecord = asConfigRecord(config);
+        // Product parity: the first resource of a kind is automatically the
+        // default; creating any resource with is_default unsets the previous one.
+        if (siblings.length === 0 && configRecord) configRecord.is_default = true;
+
         const id = crypto.randomUUID();
         await store.upsertEdgeResource({
             id,
             kind,
             name: b.name ?? kind,
             provider: b.provider ?? 'local',
-            config: await encryptedConfig(b.config ?? configFromBodyValue),
+            config: await encryptedConfig(config),
         }, now());
+        if (siblings.length > 0 && configRecord?.is_default) {
+            await store.setDefaultEdgeResource(kind, id, now());
+        }
+        onMutation?.(c.get('tenant'));
         const row = await store.getEdgeResource(id);
         const response = await serializeStored(store, row ?? {
             id,
@@ -298,7 +403,7 @@ function reg(
             provider: b.provider ?? 'local',
             created_at: now(),
             updated_at: now(),
-        });
+        }, await linkedEngineIdFor(c.get('tenant')));
         return c.json(response, 201);
     });
 
@@ -307,14 +412,20 @@ function reg(
         const store = p2(c.get('tenant'));
         const done: string[] = [];
         const failed: unknown[] = [];
+        let anyDefaultDeleted = false;
         for (const id of b.ids ?? []) {
             try {
+                const wasDefault = await resourceWasDefault(store, id);
                 await store.deleteEdgeResource(id);
+                if (wasDefault) anyDefaultDeleted = true;
                 done.push(id);
             } catch (e) {
                 failed.push({ id, error: (e as Error).message });
             }
         }
+        // Product parity: if the batch removed the default, promote the next row.
+        if (anyDefaultDeleted) await store.promoteNextDefaultEdgeResource(kind, now());
+        if (done.length > 0) onMutation?.(c.get('tenant'));
         return c.json(batchResult(done, failed));
     });
 
@@ -331,16 +442,23 @@ function reg(
         if (!existing || existing.kind !== kind) {
             return c.json({ detail: notFoundDetail(id) }, 404);
         }
+        const incoming = b.config !== undefined || b[urlField] !== undefined || b[tokenField] !== undefined
+            ? b.config ?? configFromBody(b)
+            : null;
         await store.upsertEdgeResource({
             id,
             kind,
             name: b.name ?? String(existing.name),
             provider: b.provider ?? (existing.provider as string | undefined),
-            config: b.config !== undefined || b[urlField] !== undefined || b[tokenField] !== undefined
-                ? await encryptedConfig(b.config ?? configFromBody(b))
-                : existing.config as string | undefined,
+            config: incoming !== null ? await encryptedConfig(incoming) : existing.config as string | undefined,
         }, now());
-        const response = await serializeStored(store, await store.getEdgeResource(id) ?? existing);
+        // Product parity: switching is_default on update unsets the previous
+        // default (the store helper clears every row except this one).
+        if (asConfigRecord(incoming)?.is_default) {
+            await store.setDefaultEdgeResource(kind, id, now());
+        }
+        onMutation?.(c.get('tenant'));
+        const response = await serializeStored(store, await store.getEdgeResource(id) ?? existing, await linkedEngineIdFor(c.get('tenant')));
         return c.json(response);
     });
 
@@ -351,7 +469,11 @@ function reg(
         if (!existing || existing.kind !== kind) {
             return c.json({ detail: notFoundDetail(id) }, 404);
         }
+        // Product parity: deleting the default promotes the next resource of the kind.
+        const wasDefault = await resourceWasDefault(store, id);
         await store.deleteEdgeResource(id);
+        if (wasDefault) await store.promoteNextDefaultEdgeResource(kind, now());
+        onMutation?.(c.get('tenant'));
         const label = kind === 'vector' ? 'Vector store' : `Edge ${kind}`;
         return c.json({
             success: true,
@@ -372,8 +494,8 @@ function reg(
     });
 }
 
-export function registerEdgeGenericRoutes(app: App, p2: (t: string) => Phase2Store, secretCipher: SecretCipher, externalFetch: CompatFetch, now: () => string): void {
-    reg(app, p2, secretCipher, externalFetch, now, '/api/edge-caches', 'cache', ':cache_id', '/test', 'cache_url');
-    reg(app, p2, secretCipher, externalFetch, now, '/api/edge-queues', 'queue', ':queue_id', '/test/', 'queue_url', { has_signing_key: false });
-    reg(app, p2, secretCipher, externalFetch, now, '/api/edge-vectors', 'vector', ':vector_id', '/test', 'vector_url');
+export function registerEdgeGenericRoutes(app: App, p2: (t: string) => Phase2Store, secretCipher: SecretCipher, externalFetch: CompatFetch, now: () => string, systemResources: SystemResourcesDescriptor, systemEdge: SystemEdgeDescriptor, onMutation?: (tenant: string) => void, resolveDefaultId?: (tenant: string, kind: string) => Promise<string | null>): void {
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, resolveDefaultId ? (t) => resolveDefaultId(t, 'cache') : undefined, '/api/edge-caches', 'cache', ':cache_id', '/test', 'cache_url');
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, resolveDefaultId ? (t) => resolveDefaultId(t, 'queue') : undefined, '/api/edge-queues', 'queue', ':queue_id', '/test/', 'queue_url', { has_signing_key: false });
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, resolveDefaultId ? (t) => resolveDefaultId(t, 'vector') : undefined, '/api/edge-vectors', 'vector', ':vector_id', '/test', 'vector_url');
 }

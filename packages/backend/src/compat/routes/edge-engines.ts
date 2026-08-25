@@ -30,6 +30,30 @@ async function batchOver(body: unknown, run: (id: string) => Promise<void>): Pro
     return batchResult(done, failed);
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+    return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+/**
+ * Decode the `FBENG1.<base64>` envelope the export route mints (and the product
+ * console pastes). Returns the parsed manifest, or the failure kind so the
+ * route can answer with the product's 400 messages.
+ */
+function unsealBundle(bundle: unknown): Record<string, unknown> | 'corrupt' | 'version' {
+    if (typeof bundle !== 'string' || !bundle.startsWith('FBENG1.')) return 'corrupt';
+    let json: unknown;
+    try {
+        const binary = atob(bundle.slice('FBENG1.'.length));
+        json = JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, (ch) => ch.charCodeAt(0))));
+    } catch {
+        return 'corrupt';
+    }
+    if (!isRecord(json)) return 'corrupt';
+    const header = isRecord(json.h) ? json.h : undefined;
+    if (header?.v !== 1) return header === undefined ? 'corrupt' : 'version';
+    return json;
+}
+
 export function registerEdgeEnginesRoutes(
     app: App,
     p2: (t: string) => Phase2Store,
@@ -37,12 +61,38 @@ export function registerEdgeEnginesRoutes(
     secretCipher: SecretCipher,
     now: () => string,
     systemEdge: SystemEdgeDescriptor,
+    /** Phase 6 self-aware display: per-tenant resolved cache/queue names for the
+     *  system engine card (adopted is_default row name → env label → null).
+     *  When provided it wins over the descriptor's static labels; a throw is
+     *  swallowed — display falls back to the descriptor, never 5xx. */
+    resolveSystemBindings?: (tenant: string) => Promise<{ cache?: string | null; queue?: string | null } | null>,
+    /** System-engine health (product /api/health semantics, computed locally —
+     *  the worker IS the engine): {status, provider, bindings:{stateDb,cache,
+     *  queue,…}} in the shape HealthCheckPopover renders. When omitted the
+     *  health-check route keeps its legacy behavior. */
+    systemHealth?: (tenant: string) => Promise<Record<string, unknown>>,
 ): void {
     // The system edge is the worker itself — synthesized per request with the live
     // origin so preview links resolve here. Listed FIRST everywhere so it is the
     // default publish target.
-    const systemEngineFor = (c: { req: { url: string } }): Record<string, unknown> =>
-        buildSystemEngine(systemEdge, new URL(c.req.url).origin);
+    const systemEngineFor = async (tenant: string, url: string): Promise<Record<string, unknown>> => {
+        let bindings: { cache?: string | null; queue?: string | null } | null = null;
+        if (resolveSystemBindings) {
+            try {
+                bindings = await resolveSystemBindings(tenant);
+            } catch { /* display only — descriptor labels stand */ }
+        }
+        return buildSystemEngine(systemEdge, new URL(url).origin, bindings ?? undefined);
+    };
+    // Tier gate — the `engine_imports` plan feature flag (product LIMIT_REGISTRY
+    // `kind: 'bool'` convention, default False). Deliberately STRICT: unlike the
+    // product's other feature flags this one honors no self-host/master bypass —
+    // engine import is a paid differentiator on every deployment shape. Unlock:
+    // PUT /plans/:id with limits {"engine_imports": true}.
+    const importTierError = async (tenant: string): Promise<{ detail: string } | null> => {
+        const limits = await p2(tenant).getEffectiveLimits();
+        return limits?.engine_imports === true ? null : { detail: 'Engine import requires an upgraded plan' };
+    };
     // Generate a system key matching product's Fernet format (184 characters)
     // Product uses Fernet tokens: 137 bytes encoded as URL-safe base64 with padding
     // Structure: version(1) + timestamp(8) + IV(16) + ciphertext(80) + HMAC(32) = 137 bytes
@@ -118,7 +168,7 @@ export function registerEdgeEnginesRoutes(
     // which has no system edge. Removing it to "match product" destroyed the feature.
     app.get('/api/edge-engines/', async (c) => {
         const store = p2(c.get('tenant'));
-        const system = systemEngineFor(c);
+        const system = systemEngineFor(c.get('tenant'), c.req.url);
         return c.json(await Promise.all(
             [system, ...(await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row))],
         ));
@@ -135,6 +185,12 @@ export function registerEdgeEnginesRoutes(
         }
         const id = crypto.randomUUID();
         const store = p2(c.get('tenant'));
+        // Discovery imports (FetchEnginesDialog) create engines with is_imported —
+        // the tier gate applies to those, not to deploys (DeployEngineWizard).
+        if (b.is_imported === true) {
+            const denied = await importTierError(c.get('tenant'));
+            if (denied) return c.json(denied, 403);
+        }
         // Build config from body, inject system_key, store as JSON (parity with product)
         const rawConfig = configFromBody(b) as Record<string, unknown>;
         injectSystemKey(rawConfig);
@@ -192,24 +248,41 @@ export function registerEdgeEnginesRoutes(
         });
     });
 
-    // POST /api/edge-engines/import
+    // POST /api/edge-engines/import — the mirror of the export route above: the
+    // FBENG1.<base64> envelope the product console pastes in. Envelope errors use
+    // the product's 400 messages; ImportRequest is {bundle: string, passphrase:
+    // string} (the contract validator rejects other shapes with 422s first).
     app.post('/api/edge-engines/import', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { name?: string; bundle?: unknown };
-        if (typeof b.bundle !== 'object' || b.bundle === null || Array.isArray(b.bundle)) {
+        const b = await c.req.json().catch(() => ({})) as { bundle?: unknown };
+        const manifest = unsealBundle(b.bundle);
+        if (manifest === 'corrupt') {
             return c.json({ detail: 'Bundle is corrupt or has been tampered with' }, 400);
         }
+        if (manifest === 'version') {
+            return c.json({ detail: 'Bundle format version is not supported' }, 400);
+        }
+        const denied = await importTierError(c.get('tenant'));
+        if (denied) return c.json(denied, 403);
         const store = p2(c.get('tenant'));
         const id = crypto.randomUUID();
-        // Inject system_key into config for imported engine
-        const config = { system_key: generateSystemKey() };
+        // Fresh local identity — the product re-encrypts secrets with the local
+        // key on import, so the bundle's old system_key never carries over.
+        const config: Record<string, unknown> = {
+            ...(isRecord(manifest.config) ? manifest.config : {}),
+            system_key: generateSystemKey(),
+        };
         await store.upsertEdgeResource({
             id,
             kind: 'engine',
-            name: b.name ?? 'Imported Engine',
+            name: typeof manifest.name === 'string' && manifest.name ? manifest.name : 'Imported Engine',
             // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
             config: JSON.stringify(config),
         }, now());
-        return c.json({ success: true, engine_id: id, message: 'Engine imported successfully' });
+        // ImportEngineResult: the confirm secret (S) is what the console shows
+        // for the finalize-move handshake — token_urlsafe(18) parity.
+        const confirmSecret = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(18))))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        return c.json({ engine_id: id, summary: 'Engine imported', confirm_secret: confirmSecret });
     });
 
     // POST /api/edge-engines/batch/delete
@@ -241,7 +314,7 @@ export function registerEdgeEnginesRoutes(
     // publish dialogs default to it (it's the engine this worker runs on).
     app.get('/api/edge-engines/active/by-scope/:scope', async (c) => {
         const store = p2(c.get('tenant'));
-        const system = systemEngineFor(c);
+        const system = systemEngineFor(c.get('tenant'), c.req.url);
         return c.json(await Promise.all(
             [system, ...(await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row))],
         ));
@@ -250,7 +323,7 @@ export function registerEdgeEnginesRoutes(
     // GET /api/edge-engines/{engine_id}
     app.get('/api/edge-engines/:engine_id', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (isSystemEngine(engineId)) return c.json(systemEngineFor(c));
+        if (isSystemEngine(engineId)) return c.json(await systemEngineFor(c.get('tenant'), c.req.url));
         const store = p2(c.get('tenant'));
         const engine = await store.getEdgeResource(engineId);
         return engine
@@ -481,6 +554,7 @@ export function registerEdgeEnginesRoutes(
         const manifest = {
             h: { v: 1, mode: 'sealed', salt: '8H1rjv2iOeCuJ2MhFPkz7A==', wrapped_key: 'gAAAABqcUVMg182l50tssbORKqUKBXJjh...' },
             engineId: String(engine.id),
+            name: String(engine.name),
             source: { files: source.files ?? [] },
             config,
             metadata: {
@@ -595,6 +669,11 @@ export function registerEdgeEnginesRoutes(
 
     // GET /api/edge-engines/{engine_id}/health-check
     app.get('/api/edge-engines/:engine_id/health-check', async (c) => {
+        // The system engine is THIS worker — the product proxies to a remote
+        // engine's /api/health; here the diagnostic is computed locally.
+        if (systemHealth && isSystemEngine(c.req.param('engine_id'))) {
+            return c.json(await systemHealth(c.get('tenant')));
+        }
         const engine = await p2(c.get('tenant')).getEdgeResource(c.req.param('engine_id'));
         if (!engine || engine.kind !== 'engine') {
             return c.json({ detail: 'Edge engine not found' }, 404);

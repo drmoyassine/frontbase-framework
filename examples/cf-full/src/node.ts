@@ -19,7 +19,8 @@ import { existsSync, readFileSync, mkdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sqliteRunner, s3StorageProvider } from '@frontbase/edge-infra';
+import { sqliteRunner, s3StorageProvider, bullmqDriver } from '@frontbase/edge-infra';
+import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
 import { createCmsEngine } from './worker.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -111,6 +112,11 @@ const storageProvider = env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_K
     })
     : undefined;
 
+// System-service env (dual wiring): FRONTBASE_* JSON + legacy single vars,
+// parsed here (the host is where process.env exists) and injected as data.
+// Adopted is_default registry rows still take precedence at resolve time.
+const envServices = parseEnvServices(env);
+
 // migrateUp self-applies the schema at boot (worker.ts createCmsEngine); first
 // boot on a cold volume also seeds the homepage and, when ADMIN_* are set, the
 // first administrator (idempotent — a re-run with existing users never reseeds).
@@ -125,6 +131,18 @@ const engine = await createCmsEngine({
     storageProvider,
     // The edge-engines system card must describe THIS host, not Cloudflare.
     systemEdge: { provider: 'node', name: 'Self-host Edge', db: 'SQLite (libsql)' },
+    // Resource-tab truth for the same reason: the self-host runs a single
+    // service with a local SQLite file — no platform Redis/BullMQ/vector
+    // backend. Env-declared services (e.g. FRONTBASE_CACHE pointing at Upstash)
+    // surface their cards; a local file path, not a credential, so showing the
+    // database URL on the system card is safe.
+    systemResources: {
+        database: { provider: 'sqlite', name: 'SQLite (libsql)', url: APP_DB_URL },
+        cache: envServiceDescriptor(envServices.cache, ENV_CARD_LABELS.cache),
+        queue: envServiceDescriptor(envServices.queue, ENV_CARD_LABELS.queue),
+        vector: envServiceDescriptor(envServices.vector, ENV_CARD_LABELS.vector),
+    },
+    envServices,
 });
 
 const port = Number(env.PORT ?? 8787);
@@ -134,10 +152,44 @@ const server = serve(
     (info) => console.log(`[frontbase] CMS listening on http://${info.address}:${info.port} (db: ${APP_DB_URL})`),
 );
 
+// BullMQ consumer (node-only; env wiring decides). QStash delivers over HTTP by
+// itself, but a BullMQ queue needs a long-running Worker — and its jobs ride
+// the SAME receive endpoint, looped back over HTTP, so verification and
+// idempotency live in one place. Authentication is the shared callback secret
+// (in-process delivery carries no QStash signature). Without the secret the
+// receive route would 401 its own jobs, so a BullMQ env without it is a
+// misconfiguration — warn and stay direct-execution rather than fail the boot.
+let queueWorker: Awaited<ReturnType<typeof bullmqDriver>> | null = null;
+if (envServices.queue?.provider === 'bullmq' && envServices.queue.url) {
+    if (!envServices.queueCallbackSecret) {
+        console.warn('[frontbase] FRONTBASE_QUEUE=BullMQ without FRONTBASE_QUEUE_CALLBACK_SECRET — queue receive would reject its own jobs; staying direct-execution');
+    } else {
+        try {
+            const driver = await bullmqDriver({ redisUrl: envServices.queue.url });
+            await driver.start(async (job) => {
+                const res = await fetch(`http://127.0.0.1:${port}/api/system/queue/receive`, {
+                    method: 'POST',
+                    headers: {
+                        'content-type': 'application/json',
+                        'x-frontbase-callback-secret': envServices.queueCallbackSecret!,
+                    },
+                    body: JSON.stringify(job),
+                });
+                if (!res.ok) console.error(`[frontbase] queue receive answered ${res.status} — BullMQ will retry per its attempts policy`);
+            });
+            queueWorker = driver;
+            console.log('[frontbase] BullMQ consumer started (loop-back to /api/system/queue/receive)');
+        } catch (error) {
+            console.warn(`[frontbase] BullMQ consumer unavailable (${(error as Error)?.message ?? error}) — direct execution`);
+        }
+    }
+}
+
 // Graceful shutdown: stop accepting, let in-flight requests drain, then exit.
 // The bounded fallback exit covers a hung keep-alive connection.
 const shutdown = (sig: string) => {
     console.log(`[frontbase] ${sig} — shutting down`);
+    if (queueWorker) void queueWorker.close().catch(() => {});
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 5_000).unref();
 };

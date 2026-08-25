@@ -20,6 +20,60 @@ export interface StorageProvider {
     signedUrl(bucket: string, key: string, expiresInSeconds?: number): Promise<string>;
     /** A presigned URL the client can PUT bytes to directly (F4b, default 15 min). */
     signedUploadUrl(bucket: string, key: string, contentType?: string, expiresInSeconds?: number): Promise<string>;
+
+    // ---- bucket / object management (optional) ----
+    // Product parity: buckets and file listings live on the PROVIDER, not in the
+    // CMS database — the console's bucket list and file browser read them
+    // through the adapter. Providers without these ops (env-wired memory, the
+    // SDK-based s3StorageProvider) fall back to the store-simulated surface.
+    /** List buckets as they exist on the provider. */
+    listBuckets?(): Promise<BucketEntry[]>;
+    /** Create a bucket on the provider. Returns the created bucket record. */
+    createBucket?(opts: CreateBucketOpts): Promise<Record<string, unknown>>;
+    /** Fetch one bucket by id/name. */
+    getBucket?(id: string): Promise<BucketEntry>;
+    /** Update bucket settings (public flag, limits). */
+    updateBucket?(id: string, opts: { isPublic?: boolean; fileSizeLimit?: number; allowedMimeTypes?: string[] }): Promise<void>;
+    /** Delete a bucket (must be empty). */
+    deleteBucket?(id: string): Promise<void>;
+    /** Remove every object in a bucket. */
+    emptyBucket?(id: string): Promise<void>;
+    /** List the entries directly under a path (product list_files shape). */
+    listFiles?(bucket: string, path: string, opts?: { limit?: number; offset?: number; search?: string }): Promise<FileEntry[]>;
+    /** Create a folder (provider-specific marker). */
+    createFolder?(bucket: string, folderPath: string): Promise<void>;
+    /** Delete many objects in one call (product delete_files — Supabase prefixes batch). */
+    deleteFiles?(bucket: string, paths: string[]): Promise<void>;
+    /** Move/rename within a bucket, server-side (product move_file — no download). */
+    move?(bucket: string, sourceKey: string, destinationKey: string): Promise<void>;
+    /** The provider's inherent public URL for an object (product get_public_url). */
+    publicUrl?(bucket: string, key: string): string;
+}
+
+export interface BucketEntry {
+    id: string;
+    name: string;
+    public?: boolean;
+    created_at?: string;
+    updated_at?: string;
+    [key: string]: unknown;
+}
+
+export interface FileEntry {
+    name: string;
+    id?: string;
+    size?: number;
+    updated_at?: string | null;
+    mimetype?: string | null;
+    metadata?: unknown;
+    isFolder: boolean;
+}
+
+export interface CreateBucketOpts {
+    name: string;
+    isPublic?: boolean;
+    fileSizeLimit?: number;
+    allowedMimeTypes?: string[];
 }
 
 export interface PutOpts {
@@ -102,6 +156,533 @@ export function s3StorageProvider(opts: S3StorageOpts): StorageProvider {
     };
 }
 
+// ── SigV4 over plain fetch ──────────────────────────────────────────────────
+//
+// The AWS SDK is not bundleable in every host the framework ships (the cf-full
+// Worker artifact stubs @aws-sdk/* to stay under the 1 MB limit), so the S3
+// surface needed for CMS byte transfer — PUT/GET/DELETE + presigned GET/PUT —
+// is implemented directly against the S3 REST API with Web Crypto HMAC-SHA256.
+// Path-style addressing (endpoint/bucket/key) is used throughout: every
+// supported S3-compatible host (R2 account endpoints, B2, MinIO, AWS with an
+// explicit endpoint) accepts it.
+//
+// RULE 1: server-only — signing keys never enter a browser bundle.
+// RULE 4: errors surface the HTTP status; the caller maps them to a code.
+
+const subtle = globalThis.crypto.subtle;
+
+const EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+const hex = (bytes: Uint8Array): string =>
+    Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+
+const sha256Hex = async (data: Uint8Array | string): Promise<string> =>
+    hex(new Uint8Array(await subtle.digest('SHA-256', typeof data === 'string' ? new TextEncoder().encode(data) : data as BufferSource)));
+
+const hmac = async (key: Uint8Array | string, data: string): Promise<Uint8Array> =>
+    new Uint8Array(await subtle.sign(
+        'HMAC',
+        await subtle.importKey(
+            'raw',
+            typeof key === 'string' ? new TextEncoder().encode(key) : key as BufferSource,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign'],
+        ),
+        new TextEncoder().encode(data),
+    ));
+
+/** AWS `uriEncode`: percent-encode everything except A–Za–z0-9-._~ (and `/` when keepSlash). */
+const uriEncode = (value: string, keepSlash = false): string => {
+    let out = '';
+    for (const ch of value) {
+        if (/[A-Za-z0-9-._~]/.test(ch) || (keepSlash && ch === '/')) out += ch;
+        else for (const byte of new TextEncoder().encode(ch)) out += '%' + byte.toString(16).toUpperCase();
+    }
+    return out;
+};
+
+interface SigV4Context {
+    accessKeyId: string;
+    secretAccessKey: string;
+    endpoint: string;
+    region: string;
+}
+
+/** The SigV4 signing key chain — HMAC(secret, date) → region → service → terminator. */
+const signingKey = async (ctx: SigV4Context, dateStamp: string): Promise<Uint8Array> =>
+    hmac(await hmac(await hmac(await hmac('AWS4' + ctx.secretAccessKey, dateStamp), ctx.region), 's3'), 'aws4_request');
+
+interface SignArgs {
+    method: string;
+    /** Canonical path — already `/bucket/key` with the key URI-encoded (slashes kept). */
+    canonicalPath: string;
+    /** Query params (unencoded keys/values) — signed verbatim, sorted canonically. */
+    query?: Array<[string, string]>;
+    payloadHash: string;
+    /** Extra headers to send AND sign (e.g. content-type). Host/x-amz-* are added here. */
+    headers?: Record<string, string>;
+}
+
+const sign = async (ctx: SigV4Context, args: SignArgs): Promise<{ url: string; headers: Record<string, string> }> => {
+    const base = new URL(ctx.endpoint);
+    const now = new Date();
+    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, ''); // 20260824T101112Z
+    const dateStamp = amzDate.slice(0, 8);
+    const headersIn: Record<string, string> = { host: base.host, 'x-amz-date': amzDate, 'x-amz-content-sha256': args.payloadHash, ...(args.headers ?? {}) };
+    const headerNames = Object.keys(headersIn).sort();
+    const canonicalHeaders = headerNames.map((n) => `${n}:${headersIn[n]}\n`).join('');
+    const signedHeaders = headerNames.join(';');
+    const canonicalQuery = [...(args.query ?? [])]
+        .map(([k, v]) => [uriEncode(k), uriEncode(v)] as const)
+        .sort(([ak, av], [bk, bv]) => ak === bk ? (av < bv ? -1 : 1) : (ak < bk ? -1 : 1))
+        .map(([k, v]) => `${k}=${v}`)
+        .join('&');
+    const canonicalRequest = [args.method, args.canonicalPath, canonicalQuery, canonicalHeaders, signedHeaders, args.payloadHash].join('\n');
+    const scope = `${dateStamp}/${ctx.region}/s3/aws4_request`;
+    const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, await sha256Hex(canonicalRequest)].join('\n');
+    const signature = hex(await hmac(await signingKey(ctx, dateStamp), stringToSign));
+    const requestHeaders: Record<string, string> = {
+        ...headersIn,
+        Authorization: `AWS4-HMAC-SHA256 Credential=${ctx.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+    };
+    delete requestHeaders.host; // fetch derives it from the URL — must not be set manually
+    const search = canonicalQuery ? `?${canonicalQuery}` : '';
+    return { url: `${base.origin}${args.canonicalPath}${search}`, headers: requestHeaders };
+};
+
+/** Query-string (presigned) variant — credentials in the URL, no Authorization header. */
+const presign = async (
+    ctx: SigV4Context,
+    method: 'GET' | 'PUT',
+    canonicalPath: string,
+    expiresInSeconds: number,
+): Promise<string> => {
+    const base = new URL(ctx.endpoint);
+    const now = new Date();
+    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+    const dateStamp = amzDate.slice(0, 8);
+    const scope = `${dateStamp}/${ctx.region}/s3/aws4_request`;
+    const query: Array<[string, string]> = [
+        ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+        ['X-Amz-Credential', `${ctx.accessKeyId}/${scope}`],
+        ['X-Amz-Date', amzDate],
+        ['X-Amz-Expires', String(expiresInSeconds)],
+        ['X-Amz-SignedHeaders', 'host'],
+    ];
+    const canonicalQuery = query
+        .map(([k, v]) => [uriEncode(k), uriEncode(v)] as const)
+        .sort(([ak, av], [bk, bv]) => ak === bk ? (av < bv ? -1 : 1) : (ak < bk ? -1 : 1))
+        .map(([k, v]) => `${k}=${v}`)
+        .join('&');
+    const canonicalRequest = [method, canonicalPath, canonicalQuery, `host:${base.host}\n`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
+    const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, await sha256Hex(canonicalRequest)].join('\n');
+    const signature = hex(await hmac(await signingKey(ctx, dateStamp), stringToSign));
+    return `${base.origin}${canonicalPath}?${canonicalQuery}&X-Amz-Signature=${signature}`;
+};
+
+/** Path-style object path: `/bucket/uriEncodedKey` (slashes in the key preserved). */
+const objectPath = (bucket: string, key: string): string => `/${uriEncode(bucket)}/${uriEncode(key.replace(/^\/+/, ''), true)}`;
+
+// Minimal S3 XML extraction — ListBuckets/ListObjectsV2 responses use plain
+// (unprefixed) tags on every supported S3-compatible host, so regex access is
+// sufficient and keeps this dependency-free.
+const xmlTag = (tag: string, xml: string): string => {
+    const m = xml.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
+    return m?.[1] ?? '';
+};
+const xmlBlocks = (xml: string, tag: string): string[] => xml.match(new RegExp(`<${tag}>[\\s\\S]*?</${tag}>`, 'g')) ?? [];
+const xmlDecode = (value: string): string => value
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&amp;/g, '&');
+
+const assertOk = async (resp: Response, op: string): Promise<void> => {
+    if (!resp.ok) throw new Error(`s3_${op}_failed_${resp.status}`);
+};
+
+/** Build an S3-compatible StorageProvider with zero dependencies (fetch + Web Crypto).
+ *  Same contract as `s3StorageProvider`; use where the AWS SDK is unavailable or
+ *  undesired (edge bundles, minimal runtimes). */
+export function sigv4StorageProvider(opts: S3StorageOpts): StorageProvider {
+    const ctx: SigV4Context = {
+        accessKeyId: opts.accessKeyId,
+        secretAccessKey: opts.secretAccessKey,
+        endpoint: (opts.endpoint ?? 'https://s3.amazonaws.com').replace(/\/+$/, ''),
+        region: opts.region ?? 'auto',
+    };
+
+    return {
+        async put({ bucket, key, bytes, contentType }: PutOpts): Promise<{ key: string }> {
+            const payloadHash = await sha256Hex(bytes);
+            const { url, headers } = await sign(ctx, {
+                method: 'PUT',
+                canonicalPath: objectPath(bucket, key),
+                payloadHash,
+                ...(contentType ? { headers: { 'content-type': contentType } } : {}),
+            });
+            const resp = await fetch(url, { method: 'PUT', headers, body: bytes as BufferSource });
+            await assertOk(resp, 'put');
+            return { key };
+        },
+
+        async get(bucket: string, key: string) {
+            const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: objectPath(bucket, key), payloadHash: EMPTY_SHA256 });
+            const resp = await fetch(url, { method: 'GET', headers });
+            await assertOk(resp, 'get');
+            return { bytes: new Uint8Array(await resp.arrayBuffer()), contentType: resp.headers.get('content-type') ?? undefined };
+        },
+
+        async delete(bucket: string, key: string) {
+            const { url, headers } = await sign(ctx, { method: 'DELETE', canonicalPath: objectPath(bucket, key), payloadHash: EMPTY_SHA256 });
+            await assertOk(await fetch(url, { method: 'DELETE', headers }), 'delete');
+        },
+
+        async signedUrl(bucket: string, key: string, expiresInSeconds = 900): Promise<string> {
+            return presign(ctx, 'GET', objectPath(bucket, key), expiresInSeconds);
+        },
+
+        async signedUploadUrl(bucket: string, key: string, _contentType?: string, expiresInSeconds = 900): Promise<string> {
+            return presign(ctx, 'PUT', objectPath(bucket, key), expiresInSeconds);
+        },
+
+        async deleteFiles(bucket: string, paths: string[]) {
+            for (const key of paths) await this.delete(bucket, key);
+        },
+
+        async move(bucket: string, sourceKey: string, destinationKey: string) {
+            // S3 server-side copy + delete (cloudflare_adapter.py move_file) —
+            // no bytes transit the worker.
+            const { url, headers } = await sign(ctx, {
+                method: 'PUT',
+                canonicalPath: objectPath(bucket, destinationKey),
+                payloadHash: EMPTY_SHA256,
+                headers: { 'x-amz-copy-source': `/${bucket}/${sourceKey.replace(/^\/+/, '')}` },
+            });
+            await assertOk(await fetch(url, { method: 'PUT', headers }), 'copy');
+            await this.delete(bucket, sourceKey);
+        },
+
+        publicUrl(bucket: string, key: string): string {
+            // cloudflare_adapter.py get_public_url: the plain endpoint URL — not
+            // presigned (serving through it requires the bucket to be exposed).
+            return `${ctx.endpoint}/${uriEncode(bucket)}/${uriEncode(key.replace(/^\/+/, ''), true)}`;
+        },
+
+        // ---- management (S3 REST: PUT/DELETE bucket, ListBuckets/ListObjectsV2) ----
+
+        async listBuckets(): Promise<BucketEntry[]> {
+            const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: '/', payloadHash: EMPTY_SHA256 });
+            const resp = await fetch(url, { method: 'GET', headers });
+            await assertOk(resp, 'list_buckets');
+            const xml = await resp.text();
+            return xmlBlocks(xml, 'Bucket')
+                .map((block) => xmlDecode(xmlTag('Name', block)))
+                .filter(Boolean)
+                .map((name) => ({ id: name, name, public: false }));
+        },
+
+        async createBucket(opts: CreateBucketOpts): Promise<Record<string, unknown>> {
+            const name = opts.name;
+            const { url, headers } = await sign(ctx, { method: 'PUT', canonicalPath: `/${uriEncode(name)}`, payloadHash: EMPTY_SHA256 });
+            await assertOk(await fetch(url, { method: 'PUT', headers }), 'create_bucket');
+            return { id: name, name, public: opts.isPublic ?? false };
+        },
+
+        async getBucket(id: string): Promise<BucketEntry> {
+            const { url, headers } = await sign(ctx, { method: 'HEAD', canonicalPath: `/${uriEncode(id)}`, payloadHash: EMPTY_SHA256 });
+            await assertOk(await fetch(url, { method: 'HEAD', headers }), 'get_bucket');
+            return { id, name: id, public: false };
+        },
+
+        async deleteBucket(id: string): Promise<void> {
+            const { url, headers } = await sign(ctx, { method: 'DELETE', canonicalPath: `/${uriEncode(id)}`, payloadHash: EMPTY_SHA256 });
+            await assertOk(await fetch(url, { method: 'DELETE', headers }), 'delete_bucket');
+        },
+
+        async emptyBucket(id: string): Promise<void> {
+            for await (const key of listObjectKeys(ctx, id)) {
+                const { url, headers } = await sign(ctx, { method: 'DELETE', canonicalPath: objectPath(id, key), payloadHash: EMPTY_SHA256 });
+                await assertOk(await fetch(url, { method: 'DELETE', headers }), 'empty_bucket');
+            }
+        },
+
+        async listFiles(bucket: string, path: string, opts?: { limit?: number; offset?: number; search?: string }): Promise<FileEntry[]> {
+            const prefix = path.replace(/^\/+|\/+$/g, '') + (path ? '/' : '');
+            const query: Array<[string, string]> = [['list-type', '2'], ['prefix', prefix], ['delimiter', '/']];
+            if (opts?.limit) query.push(['max-keys', String(opts.limit)]);
+            const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: `/${uriEncode(bucket)}`, query, payloadHash: EMPTY_SHA256 });
+            const resp = await fetch(url, { method: 'GET', headers });
+            await assertOk(resp, 'list_files');
+            const xml = await resp.text();
+            const entries: FileEntry[] = [];
+            for (const block of xmlBlocks(xml, 'Contents')) {
+                const key = xmlDecode(xmlTag('Key', block));
+                const name = key.slice(prefix.length);
+                if (!name || name.endsWith('/')) continue; // the prefix itself / folder markers
+                entries.push({
+                    name,
+                    id: key,
+                    size: Number(xmlTag('Size', block) || 0),
+                    updated_at: xmlTag('LastModified', block) || null,
+                    mimetype: null,
+                    isFolder: false,
+                });
+            }
+            for (const block of xmlBlocks(xml, 'CommonPrefixes')) {
+                const common = xmlDecode(xmlTag('Prefix', block));
+                const name = common.slice(prefix.length).replace(/\/+$/, '');
+                if (!name) continue;
+                entries.push({ name, id: common, size: 0, mimetype: null, isFolder: true });
+            }
+            return entries;
+        },
+
+        async createFolder(bucket: string, folderPath: string): Promise<void> {
+            // S3 has no real folders — same marker object the product's adapters use.
+            await this.put({ bucket, key: `${folderPath.replace(/^\/+|\/+$/g, '')}/.folder`, bytes: new Uint8Array(0), contentType: 'application/x-directory' });
+        },
+    };
+}
+
+/** Recursively yield every object key in a bucket (paginated, no delimiter). */
+async function* listObjectKeys(ctx: SigV4Context, bucket: string): AsyncGenerator<string> {
+    let token = '';
+    do {
+        const query: Array<[string, string]> = [['list-type', '2'], ...(token ? [['continuation-token', token] as [string, string]] : [])];
+        const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: `/${uriEncode(bucket)}`, query, payloadHash: EMPTY_SHA256 });
+        const resp = await fetch(url, { method: 'GET', headers });
+        await assertOk(resp, 'list_keys');
+        const xml = await resp.text();
+        for (const block of xmlBlocks(xml, 'Contents')) {
+            const key = xmlDecode(xmlTag('Key', block));
+            if (key) yield key;
+        }
+        token = xmlTag('NextContinuationToken', xml);
+        if (xmlTag('IsTruncated', xml).trim() !== 'true') break;
+    } while (token);
+}
+
+// ── Supabase Storage REST ───────────────────────────────────────────────────
+//
+// The product's Supabase adapter is plain REST with the service-role key
+// (supabase_adapter.py): POST/GET /object/{bucket}/{path}, DELETE with a
+// prefixes body, /object/sign for signed URLs. No SDK — same fetch-only
+// constraints as the SigV4 provider above.
+//
+// RULE 1: server-only — the service key never enters a browser bundle.
+// RULE 4: errors surface the HTTP status; the caller maps them to a code.
+
+export interface SupabaseStorageOpts {
+    /** Project URL, e.g. https://<ref>.supabase.co */
+    apiUrl: string;
+    /** Service-role key (anon works only for public buckets). */
+    serviceRoleKey: string;
+}
+
+/** Build a Supabase StorageProvider over the Storage REST API (fetch + Bearer). */
+export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvider {
+    const origin = opts.apiUrl.replace(/\/+$/, '');
+    const base = `${origin}/storage/v1`;
+    const headers = { authorization: `Bearer ${opts.serviceRoleKey}`, apikey: opts.serviceRoleKey };
+    // Per-segment encoding, slashes preserved (the product's quote(path, safe="/")).
+    const safePath = (path: string) => path.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+    const assertOk = async (resp: Response, op: string): Promise<void> => {
+        if (!resp.ok) throw new Error(`supabase_${op}_failed_${resp.status}`);
+    };
+
+    return {
+        async put({ bucket, key, bytes, contentType }: PutOpts): Promise<{ key: string }> {
+            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(key)}`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': contentType ?? 'application/octet-stream' },
+                body: bytes as BufferSource,
+            });
+            await assertOk(resp, 'put');
+            return { key };
+        },
+
+        async get(bucket: string, key: string) {
+            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(key)}`, { headers });
+            await assertOk(resp, 'get');
+            return { bytes: new Uint8Array(await resp.arrayBuffer()), contentType: resp.headers.get('content-type') ?? undefined };
+        },
+
+        async delete(bucket: string, key: string) {
+            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}`, {
+                method: 'DELETE',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify({ prefixes: [key.replace(/^\/+/, '')] }),
+            });
+            await assertOk(resp, 'delete');
+        },
+
+        async deleteFiles(bucket: string, paths: string[]) {
+            // One batched request (supabase_adapter.py delete_files) — the whole
+            // paths array travels in a single prefixes body.
+            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}`, {
+                method: 'DELETE',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify({ prefixes: paths.map((p) => p.replace(/^\/+/, '')) }),
+            });
+            await assertOk(resp, 'delete_files');
+        },
+
+        async move(bucket: string, sourceKey: string, destinationKey: string) {
+            // Native server-side move (supabase_adapter.py move_file) — atomic,
+            // no bytes transit the worker.
+            const resp = await fetch(`${base}/object/move`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify({ bucketId: bucket, sourceKey, destinationKey }),
+            });
+            await assertOk(resp, 'move');
+        },
+
+        publicUrl(bucket: string, key: string): string {
+            return `${base}/object/public/${encodeURIComponent(bucket)}/${safePath(key)}`;
+        },
+
+        async signedUrl(bucket: string, key: string, expiresInSeconds = 900): Promise<string> {
+            const resp = await fetch(`${base}/object/sign/${encodeURIComponent(bucket)}/${safePath(key)}`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify({ expiresIn: expiresInSeconds }),
+            });
+            await assertOk(resp, 'sign');
+            const relative = (await resp.json())?.signedURL;
+            if (!relative) throw new Error('supabase_sign_failed_no_url');
+            // The API returns a path relative to the storage service root
+            // (/object/sign/...); some hosts return it host-relative or absolute.
+            // Normalize onto {origin}/storage/v1 before returning.
+            const asUrl = new URL(String(relative), `${origin}/storage/v1`);
+            if (!asUrl.pathname.startsWith('/storage/v1')) asUrl.pathname = `/storage/v1${asUrl.pathname}`;
+            return asUrl.toString();
+        },
+
+        async signedUploadUrl(bucket: string, key: string, _contentType?: string, expiresInSeconds = 900): Promise<string> {
+            const resp = await fetch(`${base}/upload/sign/${encodeURIComponent(bucket)}/${safePath(key)}`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify({ expiresIn: expiresInSeconds }),
+            });
+            await assertOk(resp, 'upload_sign');
+            const url = (await resp.json())?.url;
+            if (!url) throw new Error('supabase_upload_sign_failed_no_url');
+            return String(url);
+        },
+
+        // ---- management (product supabase_adapter.py shapes) ----
+
+        async listBuckets(): Promise<BucketEntry[]> {
+            const resp = await fetch(`${base}/bucket`, { headers });
+            await assertOk(resp, 'list_buckets');
+            const list = (await resp.json()) as Array<Record<string, unknown>>;
+            return list.map((b) => ({
+                id: String(b.id ?? b.name ?? ''),
+                name: String(b.name ?? b.id ?? ''),
+                public: Boolean(b.public),
+                created_at: b.created_at == null ? undefined : String(b.created_at),
+                updated_at: b.updated_at == null ? undefined : String(b.updated_at),
+                ...b,
+            }));
+        },
+
+        async createBucket(opts: CreateBucketOpts): Promise<Record<string, unknown>> {
+            const payload: Record<string, unknown> = { id: opts.name, name: opts.name, public: opts.isPublic ?? false };
+            if (opts.fileSizeLimit) payload.file_size_limit = opts.fileSizeLimit;
+            if (opts.allowedMimeTypes) payload.allowed_mime_types = opts.allowedMimeTypes;
+            const resp = await fetch(`${base}/bucket`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            await assertOk(resp, 'create_bucket');
+            const created = await resp.json().catch(() => ({})) as Record<string, unknown>;
+            return { id: opts.name, name: opts.name, public: opts.isPublic ?? false, ...created };
+        },
+
+        async getBucket(id: string): Promise<BucketEntry> {
+            const resp = await fetch(`${base}/bucket/${encodeURIComponent(id)}`, { headers });
+            await assertOk(resp, 'get_bucket');
+            const b = (await resp.json()) as Record<string, unknown>;
+            return { id: String(b.id ?? id), name: String(b.name ?? id), public: Boolean(b.public), ...b };
+        },
+
+        async updateBucket(id: string, opts: { isPublic?: boolean; fileSizeLimit?: number; allowedMimeTypes?: string[] }): Promise<void> {
+            const payload: Record<string, unknown> = { public: opts.isPublic ?? false };
+            if (opts.fileSizeLimit !== undefined) payload.file_size_limit = opts.fileSizeLimit;
+            if (opts.allowedMimeTypes !== undefined) payload.allowed_mime_types = opts.allowedMimeTypes;
+            const resp = await fetch(`${base}/bucket/${encodeURIComponent(id)}`, {
+                method: 'PUT',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            await assertOk(resp, 'update_bucket');
+        },
+
+        async deleteBucket(id: string): Promise<void> {
+            await assertOk(await fetch(`${base}/bucket/${encodeURIComponent(id)}`, { method: 'DELETE', headers }), 'delete_bucket');
+        },
+
+        async emptyBucket(id: string): Promise<void> {
+            const resp = await fetch(`${base}/bucket/${encodeURIComponent(id)}/empty`, { method: 'POST', headers });
+            await assertOk(resp, 'empty_bucket');
+        },
+
+        async listFiles(bucket: string, path: string, opts?: { limit?: number; offset?: number; search?: string }): Promise<FileEntry[]> {
+            const payload: Record<string, unknown> = {
+                prefix: path,
+                limit: opts?.limit ?? 100,
+                offset: opts?.offset ?? 0,
+                sortBy: { column: 'name', order: 'asc' },
+            };
+            if (opts?.search) payload.search = opts.search;
+            const resp = await fetch(`${base}/object/list/${encodeURIComponent(bucket)}`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            await assertOk(resp, 'list_files');
+            const entries = (await resp.json()) as Array<Record<string, unknown>>;
+            // Normalize exactly like the product: skip placeholder markers,
+            // dedupe folder entries Supabase repeats for nested subfolders.
+            const formatted: FileEntry[] = [];
+            const seenFolders = new Set<string>();
+            for (const entry of entries) {
+                const name = String(entry.name ?? '');
+                const metadata = entry.metadata as { size?: unknown; mimetype?: unknown } | null | undefined;
+                const isFolder = metadata === null || metadata === undefined;
+                if (name === '.emptyFolderPlaceholder' || name === '.folder') continue;
+                if (isFolder && seenFolders.has(name)) continue;
+                if (isFolder) seenFolders.add(name);
+                const rawTs = entry.updated_at ?? entry.last_accessed_at ?? entry.created_at;
+                formatted.push({
+                    name,
+                    id: String(entry.id ?? name),
+                    size: isFolder ? 0 : Number(metadata?.size ?? 0),
+                    updated_at: rawTs == null ? null : String(rawTs),
+                    mimetype: metadata?.mimetype == null ? null : String(metadata.mimetype),
+                    metadata,
+                    isFolder,
+                });
+            }
+            return formatted;
+        },
+
+        async createFolder(bucket: string, folderPath: string): Promise<void> {
+            const target = `${folderPath.replace(/\/+$/, '')}/.folder`;
+            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(target)}`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/x-directory' },
+                body: '',
+            });
+            await assertOk(resp, 'create_folder');
+        },
+    };
+}
+
 /** In-memory storage provider — for tests and dev. NOT durable. */
 export function memoryStorageProvider(): StorageProvider & { _store: Map<string, { bytes: Uint8Array; contentType?: string }> } {
     const store = new Map<string, { bytes: Uint8Array; contentType?: string }>();
@@ -111,6 +692,14 @@ export function memoryStorageProvider(): StorageProvider & { _store: Map<string,
         async put({ bucket, key, bytes, contentType }) { store.set(k(bucket, key), { bytes, contentType }); return { key }; },
         async get(bucket, key) { const v = store.get(k(bucket, key)); if (!v) throw new Error('not_found'); return { bytes: v.bytes, contentType: v.contentType }; },
         async delete(bucket, key) { store.delete(k(bucket, key)); },
+        async deleteFiles(bucket, paths) { for (const key of paths) store.delete(k(bucket, key)); },
+        async move(bucket, sourceKey, destinationKey) {
+            const v = store.get(k(bucket, sourceKey));
+            if (!v) throw new Error('not_found');
+            store.set(k(bucket, destinationKey), v);
+            store.delete(k(bucket, sourceKey));
+        },
+        publicUrl(bucket, key) { return `memory://public/${k(bucket, key)}`; },
         async signedUrl(bucket, key) { return `memory://${k(bucket, key)}`; },
         async signedUploadUrl(bucket, key) { return `memory://upload/${k(bucket, key)}`; },
     };

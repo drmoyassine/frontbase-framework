@@ -256,6 +256,9 @@ export function createEngine(opts: EngineOptions): Hono {
         const html = renderDocument(page, body, {
             environment,
             registerServiceWorker: environment === 'edge' && !!opts.swBundle,
+            // Same resolver the gated branch and navbarFavicon use — the host
+            // decides (product: project settings faviconUrl || default icon).
+            faviconUrl: (await engineConfig().resolveFaviconUrl()) || undefined,
         });
         return c.html(html, 200, {
             'x-rendered-by': environment,

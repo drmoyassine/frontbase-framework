@@ -14,3 +14,9 @@ export interface CacheProvider {
     incr(key: string): Promise<number>;
     expire(key: string, seconds: number): Promise<number>;
 }
+
+/** Injectable fetch for remote service adapters (Upstash cache, Vectorize,
+ *  embeddings …). Hosts bind it to their SSRF guard — the backend's
+ *  guardedExternalFetch — so provider URLs stay policy-checked. Structural, so
+ *  any guarded fetch can be passed without importing backend types. */
+export type ServiceFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;

@@ -9,7 +9,7 @@ import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
-import { serializeEdgeResource, batchResult, testResult } from './edge-shapes.js';
+import { serializeEdgeResource, batchResult, testResult, SYSTEM_DATABASE_ID, systemLinkedEngine, type SystemEdgeDescriptor, type SystemResourcesDescriptor } from './edge-shapes.js';
 import { datasourceRunner } from '../../db/datasource-runner.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 
@@ -32,6 +32,9 @@ export function registerEdgeDatabasesRoutes(
     secretCipher: SecretCipher,
     externalFetch: CompatFetch,
     now: () => string,
+    systemResources: SystemResourcesDescriptor,
+    systemEdge: SystemEdgeDescriptor,
+    onMutation?: (tenant: string) => void,
 ): void {
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
         if (config === undefined) return undefined;
@@ -47,6 +50,14 @@ export function registerEdgeDatabasesRoutes(
         provider_account_id: body.provider_account_id,
         provider: body.provider,
     });
+    /** A config payload we can stamp default semantics into — null when the body
+     *  carried a non-object config (stored as-is, default logic does not apply). */
+    const asConfigRecord = (config: unknown): Record<string, unknown> | null =>
+        config && typeof config === 'object' && !Array.isArray(config) ? config as Record<string, unknown> : null;
+    /** Decrypted is_default of a stored row — false when absent or unreadable. */
+    const resourceWasDefault = async (store: Phase2Store, id: string): Promise<boolean> => {
+        try { return Boolean((await store.getEdgeResourceConfig(id))?.is_default); } catch { return false; }
+    };
     type ValidationError = { type: string; loc: string[]; msg: string; input: unknown };
     const validateCreateRequest = (body: Record<string, unknown>): ValidationError[] => {
         const errors: ValidationError[] = [];
@@ -154,25 +165,35 @@ export function registerEdgeDatabasesRoutes(
     // GET /api/edge-databases/
     app.get('/api/edge-databases/', async (c) => {
         const store = phase2For(c.get('tenant'));
-        const local = asDatabase({
-            id: 'local-database',
-            name: 'Local SQLite',
-            provider: 'sqlite',
-            is_system: true,
-            created_at: '',
-            updated_at: '',
-            config: { url: 'file:local.db', is_default: false },
-        });
-        // Override asDatabase defaults for local database
-        Object.assign(local, {
-            target_count: 1,
-            linked_engines: [{ id: 'local-edge', name: 'Local Edge', provider: 'unknown' }],
-        });
+        // Platform truth: the system database card exists only when the host
+        // declared one (CF worker → bound D1; Node/Docker self-host → the local
+        // SQLite file; a host with neither → honest empty state). The old
+        // hardcoded "Local SQLite" row lied about every deployment.
+        const desc = systemResources.database ?? null;
+        const local = desc
+            ? (() => {
+                const row = asDatabase({
+                    id: SYSTEM_DATABASE_ID,
+                    name: desc.name,
+                    provider: desc.provider,
+                    is_system: true,
+                    created_at: now(),
+                    updated_at: now(),
+                    config: { url: desc.url ?? null, is_default: false },
+                });
+                // Override asDatabase defaults for local database
+                Object.assign(row, {
+                    target_count: 1,
+                    linked_engines: [systemLinkedEngine(systemEdge)],
+                });
+                return row;
+            })()
+            : null;
         // Product parity: append local database at the end, not at the beginning
         const userDatabases = await Promise.all(
             (await store.listEdgeResources('database')).map((row) => serializeStored(store, row))
         );
-        return c.json([...userDatabases, local]);
+        return c.json(local ? [...userDatabases, local] : userDatabases);
     });
 
     // POST /api/edge-databases/
@@ -184,13 +205,23 @@ export function registerEdgeDatabasesRoutes(
         }
         const id = crypto.randomUUID();
         const store = phase2For(c.get('tenant'));
+        const siblings = await store.listEdgeResources('database');
+        const config = b.config ?? configFromBody(b);
+        const configRecord = asConfigRecord(config);
+        // Product parity: the first resource of a kind is automatically the
+        // default; creating any resource with is_default unsets the previous one.
+        if (siblings.length === 0 && configRecord) configRecord.is_default = true;
         await store.upsertEdgeResource({
             id,
             kind: 'database',
             name: b.name ?? 'database',
             provider: String(b.provider),
-            config: await encryptedConfig(b.config ?? configFromBody(b)),
+            config: await encryptedConfig(config),
         }, now());
+        if (siblings.length > 0 && configRecord?.is_default) {
+            await store.setDefaultEdgeResource('database', id, now());
+        }
+        onMutation?.(c.get('tenant'));
         return c.json(await serializeStored(store, await store.getEdgeResource(id) ?? {
             id,
             name: b.name ?? 'database',
@@ -207,15 +238,22 @@ export function registerEdgeDatabasesRoutes(
         if (!existing || existing.kind !== 'database') {
             return c.json({ detail: `Edge database '${c.req.param('db_id')}' not found` }, 404);
         }
+        const incoming = b.config !== undefined || b.db_url !== undefined || b.db_token !== undefined
+            ? b.config ?? configFromBody(b)
+            : null;
         await store.upsertEdgeResource({
             id: c.req.param('db_id'),
             kind: 'database',
             name: b.name ?? String(existing.name),
             provider: b.provider ?? (existing.provider as string | undefined),
-            config: b.config !== undefined || b.db_url !== undefined || b.db_token !== undefined
-                ? await encryptedConfig(b.config ?? configFromBody(b))
-                : existing.config as string | undefined,
+            config: incoming !== null ? await encryptedConfig(incoming) : existing.config as string | undefined,
         }, now());
+        // Product parity: switching is_default on update unsets the previous
+        // default (the store helper clears every row except this one).
+        if (asConfigRecord(incoming)?.is_default) {
+            await store.setDefaultEdgeResource('database', c.req.param('db_id'), now());
+        }
+        onMutation?.(c.get('tenant'));
         return c.json(await serializeStored(store, await store.getEdgeResource(c.req.param('db_id')) ?? existing));
     });
 
@@ -227,7 +265,11 @@ export function registerEdgeDatabasesRoutes(
         if (!database || database.kind !== 'database') {
             return c.json({ detail: `Edge database '${databaseId}' not found` }, 404);
         }
+        // Product parity: deleting the default promotes the next resource of the kind.
+        const wasDefault = await resourceWasDefault(store, databaseId);
         await store.deleteEdgeResource(databaseId);
+        if (wasDefault) await store.promoteNextDefaultEdgeResource('database', now());
+        onMutation?.(c.get('tenant'));
         return c.json({
             success: true,
             message: `Edge database '${String(database.name)}' deleted`,
@@ -241,14 +283,20 @@ export function registerEdgeDatabasesRoutes(
         const store = phase2For(c.get('tenant'));
         const done: string[] = [];
         const failed: unknown[] = [];
+        let anyDefaultDeleted = false;
         for (const id of b.ids ?? []) {
             try {
+                const wasDefault = await resourceWasDefault(store, id);
                 await store.deleteEdgeResource(id);
+                if (wasDefault) anyDefaultDeleted = true;
                 done.push(id);
             } catch (e) {
                 failed.push({ id, error: (e as Error).message });
             }
         }
+        // Product parity: if the batch removed the default, promote the next row.
+        if (anyDefaultDeleted) await store.promoteNextDefaultEdgeResource('database', now());
+        if (done.length > 0) onMutation?.(c.get('tenant'));
         return c.json(batchResult(done, failed));
     });
 

@@ -20,7 +20,7 @@
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import type { PageEntry } from '@frontbase/edge-core';
-import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, type EnrichableDatasource, type SchemaColumnSnapshot } from '@frontbase/backend';
+import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { d1RunnerFromBinding, s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
@@ -47,6 +47,19 @@ export interface CmsEnv {
     STORAGE_SECRET_ACCESS_KEY?: string;
     STORAGE_ENDPOINT?: string;
     STORAGE_REGION?: string;
+    // System services (dual wiring): parsed host-side via parseEnvServices and
+    // injected as data — never read from process.env in library code. Adopted
+    // is_default registry rows take precedence over these.
+    FRONTBASE_CACHE?: string;
+    FRONTBASE_QUEUE?: string;
+    FRONTBASE_VECTOR?: string;
+    FRONTBASE_EMBEDDING?: string;
+    QSTASH_TOKEN?: string;
+    BULLMQ_REDIS_URL?: string;
+    FRONTBASE_CACHE_URL?: string;
+    FRONTBASE_CACHE_TOKEN?: string;
+    PUBLIC_URL?: string;
+    FRONTBASE_QUEUE_CALLBACK_SECRET?: string;
 }
 
 export interface CmsEngineOptions {
@@ -64,6 +77,26 @@ export interface CmsEngineOptions {
     /** Identity of the host this engine runs on (edge-engines system card).
      *  Defaults to the Cloudflare worker; the Node entry passes its own. */
     systemEdge?: { provider: string; name?: string; db?: string | null; cache?: string | null; queue?: string | null };
+    /** Platform truth for the Edge Resources tabs (database/cache/queue/vector
+     *  system cards). Defaults to the Cloudflare worker's reality: only D1 is
+     *  bound — async execution is waitUntil + the D1 executions ledger, so the
+     *  cache/queue/vector tabs render their honest empty states. The Node entry
+     *  overrides with its local SQLite truth. */
+    systemResources?: {
+        database?: { provider: string; name: string; url?: string | null } | null;
+        cache?: { provider: string; name: string; url?: string | null } | null;
+        queue?: { provider: string; name: string; url?: string | null } | null;
+        vector?: { provider: string; name: string; url?: string | null } | null;
+    };
+    /** Host-parsed service env (FRONTBASE_* JSON + legacy vars → parseEnvServices).
+     *  Drives the enrich-caches resolver and the env-derived system cards; a
+     *  tenant's adopted is_default row still wins at resolve time. */
+    envServices?: EnvServices;
+    /** Provider HTTP seam for the compat surface (guarded where tenant-controlled).
+     *  Production hosts use the platform default (globalThis.fetch); the smoke
+     *  injects a deterministic double — the documented escape hatch on
+     *  guardedExternalFetch, which still validates every URL it wraps. */
+    externalFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
 /**
@@ -121,32 +154,45 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // route enriches N layouts per request — without the cache each call
     // re-queries the datasource table.
     const enrichCipher = await createSecretCipher(opts.sessionSecret);
-    let enrichDsCache: { at: number; byTenant: Map<string, EnrichableDatasource[]> } | null = null;
+    // The worker's OWN system-service resolver for these caches (separate from
+    // the compat app's instance — the multi-store idiom this file already
+    // uses). Resolves adopted is_default row > env > memory per tenant; memory
+    // fallback keeps the 5s/30s caches working with zero configuration.
+    const enrichPhase2Stores = new Map<string, Phase2Store>();
+    const enrichPhase2For = (t: string): Phase2Store => {
+        let s = enrichPhase2Stores.get(t);
+        if (!s) { s = new Phase2Store(opts.runner, t, enrichCipher); enrichPhase2Stores.set(t, s); }
+        return s;
+    };
+    const enrichResolver = createSystemServiceResolver({
+        phase2For: enrichPhase2For,
+        env: opts.envServices ?? {},
+        externalFetch: (input, init) => globalThis.fetch(input, init),
+        log: (msg) => console.warn(msg),
+    });
     const datasourcesFor = async (tenant: string): Promise<EnrichableDatasource[]> => {
-        const at = Date.now();
-        if (!enrichDsCache || at - enrichDsCache.at > 5_000) enrichDsCache = { at, byTenant: new Map() };
-        let list = enrichDsCache.byTenant.get(tenant);
-        if (!list) {
-            list = [];
-            // Caller's tenant first; community single-tenant fallbacks preserve
-            // the original engine behavior ('_root' then '_default').
-            const order = tenant === '_root' ? [tenant, '_default'] : [tenant, '_root', '_default'];
-            for (const t of order) {
-                try {
-                    list = await new SyncStore(opts.runner, t, enrichCipher).listDatasources();
-                } catch { list = []; }
-                if (list.length > 0) break;
-            }
-            enrichDsCache.byTenant.set(tenant, list);
+        const cache = await enrichResolver.cacheFor(tenant);
+        const hit = await cache.get('enrich:datasources');
+        if (Array.isArray(hit)) return hit;
+        let list: EnrichableDatasource[] = [];
+        // Caller's tenant first; community single-tenant fallbacks preserve
+        // the original engine behavior ('_root' then '_default').
+        const order = tenant === '_root' ? [tenant, '_default'] : [tenant, '_root', '_default'];
+        for (const t of order) {
+            try {
+                list = await new SyncStore(opts.runner, t, enrichCipher).listDatasources();
+            } catch { list = []; }
+            if (list.length > 0) break;
         }
+        await cache.setex('enrich:datasources', 5, JSON.stringify(list));
         return list;
     };
     // Schema snapshots for the Form/InfoList `binding.columns` bake. Their edge
     // hooks have no schema endpoint to call — empty columns render "No schema
     // available for '<table>'. Try re-publishing" — so serve-time enrichment
     // bakes the column list alongside the dataRequest. Cached 30s per
-    // datasource+table (null = failed lookup; don't retry every request).
-    let enrichSchemaCache: { at: number; byKey: Map<string, SchemaColumnSnapshot[] | null> } | null = null;
+    // datasource+table, wrapped `{ok:true, snapshot}` so a cached failed lookup
+    // (null snapshot) is distinguishable from a miss (don't retry every request).
     const schemaSnapshotsFor = async (
         tenant: string,
         layout: unknown,
@@ -175,14 +221,14 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         };
         scan(layout);
         if (needed.size === 0) return undefined;
-        const at = Date.now();
-        if (!enrichSchemaCache || at - enrichSchemaCache.at > 30_000) enrichSchemaCache = { at, byKey: new Map() };
+        const cache = await enrichResolver.cacheFor(tenant);
         const out = new Map<string, SchemaColumnSnapshot[]>();
         const byId = new Map(datasources.map((d) => [d.id, d]));
         for (const key of needed) {
-            if (enrichSchemaCache.byKey.has(key)) {
-                const cached = enrichSchemaCache.byKey.get(key);
-                if (cached) out.set(key, cached);
+            const cacheKey = `enrich:schema:${key}`;
+            const wrapped = await cache.get(cacheKey) as { ok?: boolean; snapshot?: SchemaColumnSnapshot[] | null } | null | undefined;
+            if (wrapped && wrapped.ok === true) {
+                if (wrapped.snapshot) out.set(key, wrapped.snapshot);
                 continue;
             }
             const [dsId, table] = key.split('::');
@@ -196,7 +242,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
                     // getEdgeResourceConfig, exactly like app.ts's
                     // accountConfigFor for registerDataExecuteRoute.
                     const merged = await mergeAccountConfig(
-                        (t, accountId) => new Phase2Store(opts.runner, t, enrichCipher).getEdgeResourceConfig(accountId),
+                        (t, accountId) => enrichPhase2For(t).getEdgeResourceConfig(accountId),
                         (input, init) => globalThis.fetch(input, init),
                         tenant, ds.kind, ds.config ?? {},
                     ).catch(() => ds.config ?? {});
@@ -204,7 +250,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
                     snapshot = (await inspectTable(runner, dialectOf(ds.kind), table)).columns;
                 } catch { snapshot = null; }
             }
-            enrichSchemaCache.byKey.set(key, snapshot);
+            await cache.setex(cacheKey, 30, JSON.stringify({ ok: true, snapshot }));
             if (snapshot) out.set(key, snapshot);
         }
         return out;
@@ -242,6 +288,22 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // worker (bound D1); the Node/Docker entry overrides via opts.systemEdge
         // so self-hosts don't report "Cloudflare D1" they don't have.
         systemEdge: opts.systemEdge ?? { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' },
+        // Resource-tab truth for the same reason: this worker binds only D1 —
+        // no KV/Queues/Vectorize — so the database tab gets a system card and
+        // the other three render env-derived cards when FRONTBASE_* wiring
+        // declares them (absent → null → honest empty state).
+        systemResources: opts.systemResources ?? {
+            database: { provider: 'cloudflare', name: 'Cloudflare D1', url: 'd1://system-d1' },
+            cache: envServiceDescriptor(opts.envServices?.cache, ENV_CARD_LABELS.cache),
+            queue: envServiceDescriptor(opts.envServices?.queue, ENV_CARD_LABELS.queue),
+            vector: envServiceDescriptor(opts.envServices?.vector, ENV_CARD_LABELS.vector),
+        },
+        // Dual wiring: the parsed service env. Adopted is_default registry rows
+        // still take precedence at resolve time; this is the deploy-time floor.
+        envServices: opts.envServices,
+        // Host fetch seam — the smoke routes its local embedding mock through
+        // here; production omits it and gets globalThis.fetch.
+        externalFetch: opts.externalFetch,
         // Enrich console page reads so the admin SPA / builder surfaces hold a
         // dataRequest the hydration runtime can execute (canvas data preview).
         // Save paths strip it in PagesStore before persisting.
@@ -263,7 +325,27 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // to defaults on each call (its documented contract), so the edition/env
     // values are re-stated here alongside resolvePrincipal in ONE call — this
     // replaces the module-load `configureEngine({ edition, nodeEnv })`.
-    configureEngine({ edition: 'community', nodeEnv: 'production', resolvePrincipal });
+    // Branding seam: resolveFaviconUrl feeds the published-page <link rel=icon>
+    // and the Navbar project-logo injection (navbarFavicon.ts). It reads the
+    // console's project settings — faviconUrl set via POST /api/project/assets/upload/
+    // — falling back to the framework icon. Same single-tenant fallback order as
+    // datasource enrichment: the product serves branding globally (disk), so
+    // '_root' then '_default' approximates one namespace across the KV's rows.
+    const engineOverrides = {
+        edition: 'community' as const,
+        nodeEnv: 'production',
+        resolvePrincipal,
+        resolveFaviconUrl: async (): Promise<string> => {
+            let settings: Record<string, unknown> = {};
+            for (const tenant of ['_root', '_default']) {
+                settings = await readProjectSettings(opts.runner, tenant);
+                if (Object.keys(settings).length) break;
+            }
+            const url = settings.faviconUrl;
+            return typeof url === 'string' && url ? url : '/static/icon.png';
+        },
+    };
+    configureEngine(engineOverrides);
     // Auth gate for every builder route: no session → 302 to /frontbase-admin
     // (with a return URL). Passed INTO createBuilderEngine via `authMiddleware` so
     // it is registered as the FIRST handler — Hono dispatches in registration
@@ -373,6 +455,18 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
 
     const app = new Hono();
 
+    // engineConfig() state is MODULE-GLOBAL, and edge-core render paths read it
+    // at request time. A process hosting more than one engine — production is
+    // one engine per isolate, but the in-process smoke builds several — would
+    // otherwise have the LAST-created engine's resolvers answer every earlier
+    // engine's renders (a fresh engine's empty DB silently shadowing this one).
+    // Re-asserting per request keeps each engine self-consistent. Registered
+    // before any route, so it composes first for every handler below.
+    app.use('*', async (_c, next) => {
+        configureEngine(engineOverrides);
+        await next();
+    });
+
     const assetResponse = async (request: Request, cacheControl: string): Promise<Response | null> => {
         if (!opts.assets) return null;
         const response = await opts.assets.fetch(request);
@@ -433,6 +527,35 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             return new Response(asset.body, { status: asset.status, statusText: asset.statusText, headers });
         }
         return c.text('not_found', 404);
+    });
+    // Branding assets uploaded from the console (POST /api/project/assets/upload/)
+    // live in the settings KV — deliberately independent of any configured
+    // storage provider (product parity: branding survives broken provider
+    // credentials and works in both admin and SSR contexts). Served publicly and
+    // immutably: filenames carry 8 hex of randomness, so an address never
+    // changes bytes. The strict shape check IS the injection guard — the KV key
+    // is derived from this path segment.
+    app.get('/static/assets/:filename', async (c) => {
+        const filename = c.req.param('filename');
+        if (!/^(favicon|logo)-[0-9a-f]{8}\.(png|ico|svg|jpe?g)$/.test(filename)) return c.text('not_found', 404);
+        let asset: StoredProjectAsset | null = null;
+        for (const tenant of ['_root', '_default']) {
+            asset = await readProjectAsset(new KeyValueStore(opts.runner, tenant), filename);
+            if (asset) break;
+        }
+        if (!asset) return c.text('not_found', 404);
+        const headers: Record<string, string> = {
+            'Content-Type': asset.contentType,
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'X-Content-Type-Options': 'nosniff',
+        };
+        // SVG is the one uploadable format that can embed scripts — neutralize
+        // them when the file is navigated to directly. <img>/favicon embedding
+        // is unaffected by the SVG document's own CSP.
+        if (asset.contentType === 'image/svg+xml') {
+            headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'";
+        }
+        return new Response(asset.bytes, { status: 200, headers });
     });
     const consoleShell = async (c: any) => {
         if (await needsSetup()) return c.redirect('/setup', 302);
@@ -533,6 +656,9 @@ export default {
                     setupExpiresAt: env.SETUP_EXPIRES_AT,
                     admin: { email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD, role: env.ADMIN_ROLE },
                     assets: env.ASSETS,
+                    // Host-side env parse (Workers have no process.env). Memoized
+                    // on the raw strings — only actual secret changes recompute.
+                    envServices: parseEnvServices(env as unknown as Record<string, string | undefined>),
                     dispatcher: (work) => { if (currentCtx) currentCtx.waitUntil(work()); else void work(); },
                     storageProvider: env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_KEY
                         ? s3StorageProvider({

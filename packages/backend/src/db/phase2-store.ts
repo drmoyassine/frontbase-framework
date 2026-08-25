@@ -33,6 +33,18 @@ export interface BucketInput {
     config?: string;
 }
 
+/** A plans-table row (the subset used beyond limit enforcement). */
+export interface PlanRow {
+    id: string;
+    name: string;
+    price_cents?: number | null;
+    interval?: string | null;
+    limits?: string | null;
+    is_active?: number | null;
+    created_at?: string;
+    updated_at?: string;
+}
+
 export interface FileInput {
     id: string;
     bucketId: string;
@@ -236,6 +248,89 @@ export class Phase2Store {
         await this.runner.exec('DELETE FROM edge_resources WHERE id = ? AND tenant_slug = ?', [id, this.tenant]);
     }
 
+    // ============ EDGE RESOURCE DEFAULTS (product parity) ============
+    // The product's edge routers keep at most one is_default row per kind:
+    // first-of-kind auto-default, switch-on-create/update unsets the others,
+    // delete-of-default promotes the next. Here is_default lives INSIDE the
+    // encrypted config blob, so every mutation is decrypt → modify → re-encrypt
+    // (no SQL UPDATE can reach it).
+
+    /** The row of `kind` whose decrypted config has is_default truthy, in creation
+     *  order — or null when the kind has no default. */
+    async getDefaultEdgeResource(kind: string): Promise<{ id: string; name: string; provider: string | null } | null> {
+        for (const row of await this.rowsByCreation(kind)) {
+            const config = await this.configOrNull(row);
+            if (config?.is_default) {
+                return {
+                    id: String(row.id),
+                    name: String(row.name ?? ''),
+                    provider: row.provider == null ? null : String(row.provider),
+                };
+            }
+        }
+        return null;
+    }
+
+    /** Set is_default=true on `id`, false on every other row of `kind` (re-encrypts
+     *  the touched rows). Rows whose config fails to decrypt are skipped, never
+     *  thrown on — a corrupt sibling must not abort a default switch. */
+    async setDefaultEdgeResource(kind: string, id: string, now: string): Promise<void> {
+        for (const row of await this.rowsByCreation(kind)) {
+            const config = await this.configOrNull(row);
+            if (!config) continue;
+            const want = String(row.id) === id;
+            if (Boolean(config.is_default) === want) continue;
+            await this.upsertEdgeResource({
+                id: String(row.id),
+                kind,
+                name: String(row.name ?? ''),
+                provider: row.provider == null ? undefined : String(row.provider),
+                config: JSON.stringify({ ...config, is_default: want }),
+            }, now);
+        }
+    }
+
+    /** After deleting a default: promote the first remaining row of `kind` by
+     *  creation order. No-op when the kind is now empty. */
+    async promoteNextDefaultEdgeResource(kind: string, now: string): Promise<void> {
+        for (const row of await this.rowsByCreation(kind)) {
+            const config = await this.configOrNull(row);
+            if (!config) continue;
+            await this.setDefaultEdgeResource(kind, String(row.id), now);
+            return;
+        }
+    }
+
+    /** Rows of `kind` ordered by creation (created_at ASC, id ASC tiebreak) —
+     *  listEdgeResources orders by updated_at DESC, which default promotion
+     *  (and "first resource" semantics) must not depend on. */
+    private async rowsByCreation(kind: string): Promise<Record<string, unknown>[]> {
+        const rows = await this.listEdgeResources(kind);
+        return [...rows].sort((a, b) => {
+            const ca = String(a.created_at ?? '');
+            const cb = String(b.created_at ?? '');
+            if (ca !== cb) return ca < cb ? -1 : 1;
+            return String(a.id) < String(b.id) ? -1 : 1;
+        });
+    }
+
+    /** Decrypted config of a raw row, or null when it has none / fails to
+     *  decrypt / is not an object — callers skip rather than throw. */
+    private async configOrNull(row: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+        const raw = row.config;
+        if (raw === null || raw === undefined || raw === '') return null;
+        try {
+            if (!this.cipher.isEncrypted(String(raw))) return null;
+            const decrypted = await this.cipher.decrypt(String(raw));
+            const parsed = JSON.parse(decrypted) as unknown;
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+                ? parsed as Record<string, unknown>
+                : null;
+        } catch {
+            return null;
+        }
+    }
+
     // ============ STORAGE ============
 
     async listBuckets(): Promise<Record<string, unknown>[]> {
@@ -395,6 +490,15 @@ export class Phase2Store {
         return this.runner.query('SELECT id, name, price_cents, interval, limits, is_active, created_at, updated_at FROM plans WHERE tenant_slug = ? ORDER BY price_cents', [this.tenant]);
     }
 
+    /** One plan row by id (tenant-scoped), or null. */
+    async getPlan(id: string): Promise<PlanRow | null> {
+        const rows = await this.runner.query(
+            'SELECT id, name, price_cents, interval, limits, is_active, created_at, updated_at FROM plans WHERE tenant_slug = ? AND id = ?',
+            [this.tenant, id],
+        );
+        return (rows[0] as PlanRow | undefined) ?? null;
+    }
+
     async upsertPlan(input: { id: string; name: string; priceCents: number; interval: string; limits?: Record<string, unknown>; isActive?: boolean }, now: string): Promise<void> {
         await this.runner.exec(
             `INSERT INTO plans (id, tenant_slug, name, price_cents, interval, limits, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)
@@ -409,26 +513,34 @@ export class Phase2Store {
 
     // ============ PLAN-LIMIT ENFORCEMENT (Phase 3c / F8c) ============
 
+    /** The first active plan row — the same row getEffectiveLimits reads. */
+    async getActivePlan(): Promise<PlanRow | null> {
+        const rows = await this.runner.query(
+            'SELECT id, name, price_cents, limits, is_active, created_at, updated_at FROM plans WHERE tenant_slug = ? AND is_active = 1 ORDER BY updated_at DESC LIMIT 1',
+            [this.tenant],
+        );
+        return (rows[0] as PlanRow | undefined) ?? null;
+    }
+
     /**
      * The effective limits for this tenant. Resolution order:
      *   1. A `_limits` setting (JSON) — set when a plan is assigned to the tenant.
      *   2. The first active plan's `limits`.
      *   3. null → unlimited (no plan assigned).
-     * `-1` on any limit key means unlimited for that resource.
+     * `-1` on any limit key means unlimited for that resource; boolean values are
+     * plan feature flags (product LIMIT_REGISTRY `kind: 'bool'` — e.g.
+     * `engine_imports`), not quotas, and are skipped by enforceLimit.
      */
-    async getEffectiveLimits(): Promise<Record<string, number> | null> {
+    async getEffectiveLimits(): Promise<Record<string, number | boolean> | null> {
         // 1. Explicit assignment via settings.
         const assigned = await this.getSetting('_limits');
         if (assigned) {
             try { return JSON.parse(assigned); } catch { /* fall through */ }
         }
         // 2. First active plan's limits.
-        const rows = await this.runner.query(
-            "SELECT limits FROM plans WHERE tenant_slug = ? AND is_active = 1 AND limits IS NOT NULL ORDER BY updated_at DESC LIMIT 1",
-            [this.tenant],
-        );
-        if (rows[0]?.limits) {
-            try { return JSON.parse(String(rows[0].limits)); } catch { /* fall through */ }
+        const plan = await this.getActivePlan();
+        if (plan?.limits) {
+            try { return JSON.parse(String(plan.limits)); } catch { /* fall through */ }
         }
         return null;
     }
@@ -436,13 +548,13 @@ export class Phase2Store {
     /**
      * Check a named limit against a current count. Throws 'limit_exceeded' if the
      * count is at/over a positive limit. No-op when limits are null or the key is
-     * absent / unlimited (-1). Returns the limits for chaining.
+     * absent / unlimited (-1) / a boolean feature flag. Returns the limits for chaining.
      */
-    async enforceLimit(key: string, currentCount: number): Promise<Record<string, number> | null> {
+    async enforceLimit(key: string, currentCount: number): Promise<Record<string, number | boolean> | null> {
         const limits = await this.getEffectiveLimits();
         if (!limits) return null;
         const cap = limits[key];
-        if (cap === undefined || cap === -1) return limits; // unlimited
+        if (typeof cap !== 'number' || cap === -1) return limits; // unlimited or feature flag
         if (currentCount >= cap) throw new Error('limit_exceeded');
         return limits;
     }

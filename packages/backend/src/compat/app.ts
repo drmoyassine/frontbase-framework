@@ -13,7 +13,7 @@
  * with createConsole.
  */
 import { Hono } from 'hono';
-import type { DbRunner, StorageProvider } from '@frontbase/edge-infra';
+import type { DbRunner, ServiceFetch, StorageProvider } from '@frontbase/edge-infra';
 import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from '../mw/auth.js';
 import { fastApiErrorEnvelope, opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
@@ -28,17 +28,20 @@ import { registerSecurityEventsRoutes } from './routes/security-events.js';
 import { registerPagesRoutes } from './routes/pages.js';
 import { registerDatabaseRoutes } from './routes/database.js';
 import { registerRlsRoutes } from './routes/rls.js';
-import { registerStorageRoutes } from './routes/storage.js';
+import { registerStorageRoutes, createStorageClientResolver } from './routes/storage.js';
 import { registerEdgeDatabasesRoutes } from './routes/edge-databases.js';
 import { registerAuthFormsRoutes } from './routes/auth-forms.js';
 import { registerWorkflowsRoutes } from './routes/workflows.js';
 import { registerActionsRoutes } from './routes/actions.js';
 import { registerAuthCompatUnauthRoutes, registerAuthCompatAuthedRoutes } from './routes/auth-compat.js';
 import { registerEdgeEnginesRoutes } from './routes/edge-engines.js';
-import type { SystemEdgeDescriptor } from './routes/edge-shapes.js';
+import { registerTenantsRoutes } from './routes/tenants.js';
+import { registerAdminPlansRoutes } from './routes/admin-plans.js';
+import type { SystemEdgeDescriptor, SystemResourcesDescriptor } from './routes/edge-shapes.js';
 import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
 import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
 import { registerEdgeMiscRoutes } from './routes/edge-misc.js';
+import { registerSystemQueueRoutes } from './routes/system-queue.js';
 import { registerAgentCompatRoutes } from './routes/agent-compat.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerDataExecuteRoute } from './routes/data-execute.js';
@@ -49,7 +52,10 @@ import { Phase2Store } from '../db/phase2-store.js';
 import { createSecretCipher, noopCipher } from '../db/secret-cipher.js';
 import type { UserStore } from '../db/users.js';
 import { TenantStore } from '../db/tenants.js';
-import type { CompatFetch } from './external-http.js';
+import { guardedExternalFetch, type CompatFetch } from './external-http.js';
+import { createSystemServiceResolver, type EnvServices } from './system-services.js';
+import { embeddingFromEnv } from './rag/embedding.js';
+import { registerRagRoutes, runRagIndex, type RagRouteDeps } from './rag/routes.js';
 
 export interface CreateCompatAppDeps {
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */
@@ -82,6 +88,18 @@ export interface CreateCompatAppDeps {
      *  Deno/Vercel/Netlify entries later) and the real binding (D1). Defaults to a
      *  Cloudflare/D1 descriptor. */
     systemEdge?: SystemEdgeDescriptor;
+    /** Platform truth for the Edge Resources tabs (database/cache/queue/vector
+     *  system cards). Host-owned like systemEdge: it knows which services are
+     *  actually wired. `null`/omitted per kind → no system row → the console's
+     *  honest empty state. Defaults to the Cloudflare/D1 reality of the cf-full
+     *  worker (D1 bound; nothing else). */
+    systemResources?: SystemResourcesDescriptor;
+    /** Host-parsed service env (dual wiring, product-faithful): FRONTBASE_CACHE /
+     *  QUEUE / VECTOR (+ legacy QSTASH_TOKEN, BULLMQ_REDIS_URL,
+     *  FRONTBASE_CACHE_URL). Parsed host-side via parseEnvServices (Workers have
+     *  no process.env) and injected as data. Registry-adopted is_default rows
+     *  take precedence over these; memory/no-op is the floor. */
+    envServices?: EnvServices;
     /** Google Workspace Marketplace install URL for the Sheets connect add-on, surfaced
      *  by /api/sync/datasources/sheets/connect/issue/. Empty default => the SPA renders
      *  its bundled fallback (matches the product's FRONTBASE_SHEETS_ADDON_URL semantics). */
@@ -112,6 +130,10 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // the cf-full worker; the host overrides for other platforms.
     const systemEdge: SystemEdgeDescriptor = deps.systemEdge
         ?? { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' };
+    // Resource-tab truth stays consistent with the systemEdge default: the CF
+    // worker binds D1 and nothing else, so only the database tab gets a card.
+    const systemResources: SystemResourcesDescriptor = deps.systemResources
+        ?? { database: { provider: 'cloudflare', name: 'Cloudflare D1', url: 'd1://system-d1' } };
     const sheetsAddonUrl: string = deps.sheetsAddonUrl ?? '';
 
     // Per-tenant stores. Single-tenant in practice (community edition); the
@@ -125,6 +147,39 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         ? await createSecretCipher(deps.sessionSecret)
         : noopCipher;
     const phase2For = storeCache((t: string) => new Phase2Store(runner, t, secretCipher));
+    // Isolate/app boot time — the uptime source for the system-engine health
+    // check (the product engine reports module-level startedAt the same way).
+    const bootedAt = Date.now();
+    // System-service resolution (registry default row > env > memory). The
+    // edge-resource mutation hooks below bump its memo so an adoption switch
+    // takes effect on the next resolve, not after the TTL backstop.
+    const serviceResolver = createSystemServiceResolver({
+        phase2For,
+        env: deps.envServices ?? {},
+        externalFetch,
+        log: (msg) => console.warn(msg),
+    });
+    const onEdgeResourceMutation = (tenant: string): void => serviceResolver.invalidate(tenant);
+    // RAG pipeline (Phase 5): embedding over the guarded fetch (HTTPS-only —
+    // the API key never leaves the server), byte access through the SAME
+    // storage-client factory the storage routes resolve with. Null embedding
+    // (FRONTBASE_EMBEDDING absent) leaves the routes answering "not
+    // configured"; a null vector at resolve time does the same per-tenant.
+    const storageResolver = createStorageClientResolver({ phase2For, kvFor, storageProvider: deps.storageProvider });
+    const ragFetch: ServiceFetch = (input, init) =>
+        guardedExternalFetch(externalFetch, input instanceof Request ? input.url : input, init);
+    const ragDeps: RagRouteDeps = {
+        phase2For,
+        kvFor,
+        resolver: serviceResolver,
+        embedding: embeddingFromEnv(deps.envServices?.embedding, ragFetch, (msg) => console.warn(msg)),
+        resolveStorage: async (tenant, providerId) => {
+            const resolved = await storageResolver.resolveForOp(tenant, providerId);
+            return 'status' in resolved ? resolved : resolved.client;
+        },
+        now,
+        log: (msg) => console.warn(msg),
+    };
     const syncStoreFor = storeCache((t: string) => new SyncStore(runner, t, secretCipher));
     const invites = new CommunityInviteStore(runner);
     const passwordResets = new PasswordResetStore(runner);
@@ -185,6 +240,16 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId),
         resolvePrincipal,
     );
+    // 3. Queue receive (framework-only): the queue provider's redelivery target.
+    //    UNAUTHENTICATED by design — authentication is the inbound signature /
+    //    callback-secret verify inside the route (401 otherwise), and the job's
+    //    tenant-scoped store lookup is the isolation boundary.
+    registerSystemQueueRoutes(app, {
+        phase2For,
+        resolver: serviceResolver,
+        now,
+        runRagIndex: (tenant, bucketId) => runRagIndex(ragDeps, tenant, bucketId),
+    });
     // 3. UNAUTHENTICATED auth ops only (login/logout/signup/forgot/reset/invite/
     //    accept/check-slug) — a user can't present a session to log in. The
     //    AUTHENTICATED auth ops (me + security console) are registered AFTER the
@@ -230,6 +295,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
             '/api/edge-',
             '/api/cloudflare/',
             '/api/deno/',
+            '/api/admin/',
             '/api/database/rls/',
             '/api/storage/providers/',
             '/api/auth/security/',
@@ -285,16 +351,67 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
     registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now);
-    registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now);
+    // RAG routes are framework-only (outside the vendored 334-op surface) and
+    // console-authed like the storage routes they sit beside.
+    registerRagRoutes(app, ragDeps);
+    registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation);
     registerAuthFormsRoutes(app, runner, now);
     registerWorkflowsRoutes(app, phase2For);
     // Wave 3
     registerActionsRoutes(app, phase2For, now);
     // Wave 4 — edge domain (engines + providers + caches/queues/vectors + inspector + api-keys + gpu + deploy)
-    registerEdgeEnginesRoutes(app, phase2For, kvFor, secretCipher, now, systemEdge);
+    // The engine card's cache/queue binding names resolve per tenant (adopted
+    // is_default row name → env label → null) — the same resolver the runtime
+    // consumers use, so the card never claims a backing the worker lacks.
+    registerEdgeEnginesRoutes(app, phase2For, kvFor, secretCipher, now, systemEdge,
+        (tenant) => serviceResolver.resolvedNames(tenant),
+        // System-engine health (product /api/health semantics, computed here —
+        // the worker IS the engine). Bindings report the resolution truth the
+        // runtime uses; stateDb gets a live round trip; queue health is
+        // "configured" only, exactly like the product (QStash can't be pinged
+        // without publishing).
+        async (tenant) => {
+            const defaults = await serviceResolver.resolvedDefaults(tenant).catch(() => null);
+            let stateDb: Record<string, unknown>;
+            try {
+                await phase2For(tenant).listEdgeResources('cache');
+                stateDb = { provider: systemEdge.db ?? 'sqlite', status: 'ok' };
+            } catch (error) {
+                stateDb = { provider: systemEdge.db ?? 'sqlite', status: 'error', error: (error as Error).message.slice(0, 120) };
+            }
+            const binding = (b: { provider: string | null } | null, floor: string): Record<string, unknown> =>
+                b ? { provider: b.provider ?? 'unknown', status: 'ok' } : { provider: floor, status: 'not_configured' };
+            return {
+                status: 'ok',
+                service: 'frontbase-edge',
+                provider: systemEdge.provider,
+                // Serverless isolates cold-start constantly — boot-time uptime is
+                // noise there, so it is reported only on long-lived hosts.
+                ...(systemEdge.provider === 'cloudflare' ? {} : { uptime_seconds: Math.floor((Date.now() - bootedAt) / 1000) }),
+                timestamp: now(),
+                bindings: {
+                    stateDb,
+                    cache: binding(defaults?.cache ?? null, 'memory'),
+                    queue: binding(defaults?.queue ?? null, 'none'),
+                    vector: binding(defaults?.vector ?? null, 'none'),
+                },
+            };
+        });
     registerEdgeProvidersRoutes(app, phase2For, kvFor, secretCipher, externalFetch, now);
-    registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now);
+    registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation,
+        // The adopted is_default row is the one registry row the system engine
+        // actually uses — its card renders "1 engine: <Local Edge>" (product
+        // linkage semantics) while every other row stays unlinked.
+        async (tenant, kind) => {
+            const defaults = await serviceResolver.resolvedDefaults(tenant);
+            return (defaults as unknown as Record<string, { id: string | null } | undefined>)[kind]?.id ?? null;
+        });
     registerEdgeMiscRoutes(app, runner, phase2For, secretCipher, now);
+    // Tenant self-surface (the console's plan signal) — framework-only op set.
+    registerTenantsRoutes(app, phase2For, now);
+    // Master-admin plan editor (product /api/admin/plans) — the operator-facing
+    // unlock for plan-gated features like engine_imports.
+    registerAdminPlansRoutes(app, phase2For, now);
     // Wave 5 — workspace agent
     registerAgentCompatRoutes(app, runner, kvFor, secretCipher, externalFetch);
     // Work A — DB-Synchronizer (/api/sync/*)

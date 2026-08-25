@@ -37,18 +37,36 @@ export { consumeToken, rateLimitGuard, RATE_LIMITED_BODY } from './proxy/ratelim
 export type { RateLimitConfig, RateLimitResult } from './proxy/ratelimit.js';
 
 // cache
-export { memoryCache, nullCache, kvCache } from './cache/providers.js';
-export type { CacheProvider } from './cache/types.js';
+export { memoryCache, nullCache, kvCache, prefixedCache, resilientCache } from './cache/providers.js';
+export type { ResilientCacheOpts } from './cache/providers.js';
+export { upstashCache } from './cache/upstash.js';
+export type { UpstashCacheOpts } from './cache/upstash.js';
+export { ioredisCache } from './cache/ioredis-adapter.js';
+export type { IoredisCacheOpts } from './cache/ioredis-adapter.js';
+export type { CacheProvider, ServiceFetch } from './cache/types.js';
 
 // queue / durable workflow
 export { inProcessWorkflowProvider, qstashWorkflowProvider } from './queue/providers.js';
 // dispatchers (F3b-durable async dispatch — in-process + QStash redelivery)
 export { qstashDispatcher } from './queue/dispatchers.js';
 export type { Dispatcher, QstashDispatcherOpts } from './queue/dispatchers.js';
+// system-services queue (Phase 3): publish + signed receive (QStash), BullMQ driver (Node-only)
+export { qstashPublish, makeQstashReceiver } from './queue/qstash.js';
+export type { QstashPublishOpts, QstashReceiverOpts } from './queue/qstash.js';
+export { bullmqDriver } from './queue/bullmq.js';
+export type { BullmqDriver, BullmqDriverOpts } from './queue/bullmq.js';
+
+// vector (system services, Phase 4): libsql/Turso + Cloudflare Vectorize
+export { vectorTableName } from './vector/types.js';
+export type { VectorAdapter, VectorDocument, VectorMetadata, VectorSearchResult } from './vector/types.js';
+export { libsqlVectorAdapter } from './vector/libsql-vector.js';
+export type { LibsqlVectorOpts } from './vector/libsql-vector.js';
+export { vectorizeAdapter } from './vector/vectorize.js';
+export type { VectorizeOpts } from './vector/vectorize.js';
 
 // storage (S3-compatible — R2/S3/B2/MinIO; Phase 3a / F4)
-export { s3StorageProvider, memoryStorageProvider } from './storage/providers.js';
-export type { StorageProvider, PutOpts, S3StorageOpts } from './storage/providers.js';
+export { s3StorageProvider, sigv4StorageProvider, supabaseStorageProvider, memoryStorageProvider } from './storage/providers.js';
+export type { StorageProvider, PutOpts, S3StorageOpts, SupabaseStorageOpts, BucketEntry, FileEntry, CreateBucketOpts } from './storage/providers.js';
 
 // provisioning (CF Management API — D1/KV/Queues; Phase 3a / F5)
 export { cloudflareProvisioner, noopProvisioner } from './provisioning/cloudflare.js';
