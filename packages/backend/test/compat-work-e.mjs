@@ -50,6 +50,7 @@ async function harness(options = {}) {
         now: () => '2026-07-29T00:00:00.000Z',
         externalFetch: options.externalFetch,
         storageProvider: options.storageProvider,
+        systemResources: options.systemResources,
     });
     return {
         app,
@@ -466,6 +467,58 @@ test('system edge: self-aware Cloudflare engine is the default publish target fo
     // always-valid local target; everything else must resolve to a stored engine.
     assert.equal((await request(app, 'POST', `/api/pages/${pageId}/publish/does-not-exist/`)).status, 404);
     assert.equal((await request(app, 'POST', `/api/actions/drafts/${draftId}/publish/does-not-exist/`)).status, 404);
+});
+
+test('system resources: tabs reflect host-declared truth (CF default = D1 only, others empty)', async () => {
+    const { app } = await harness();
+
+    // Default descriptor = the Cloudflare worker's reality: the database tab
+    // carries a system card for the bound D1, appended LAST (product parity).
+    const databases = await (await request(app, 'GET', '/api/edge-databases/')).json();
+    assert.equal(databases.length, 1);
+    const systemDb = databases[databases.length - 1];
+    assert.equal(systemDb.id, 'local-database');
+    assert.equal(systemDb.is_system, true);
+    assert.equal(systemDb.provider, 'cloudflare');
+    assert.equal(systemDb.db_url, 'd1://system-d1');
+    assert.equal(systemDb.name, 'Cloudflare D1');
+    assert.equal(systemDb.target_count, 1);
+    assert.equal(systemDb.linked_engines[0].id, 'local-edge');
+    assert.equal(systemDb.linked_engines[0].provider, 'cloudflare'); // real engine, not 'unknown'
+
+    // No KV/Queues/Vectorize are bound on the worker → NO system cards → the
+    // console renders its honest empty states. (The old fixtures claimed
+    // "Local Redis"/"Local BullMQ"/"Local Vector (libSQL)" unconditionally.)
+    for (const path of ['/api/edge-caches/', '/api/edge-queues/', '/api/edge-vectors/']) {
+        const rows = await (await request(app, 'GET', path)).json();
+        assert.equal(Array.isArray(rows), true, path);
+        assert.ok(rows.every((row) => !row.is_system), `${path} must not synthesize system rows`);
+    }
+
+    // System rows are synthesized, never stored — single-op routes 404 on them.
+    assert.equal((await request(app, 'DELETE', '/api/edge-databases/local-database')).status, 404);
+});
+
+test('system resources: a host descriptor overrides the platform truth (node self-host)', async () => {
+    // The Node/Docker entry declares a local SQLite file and nothing else.
+    const { app } = await harness({
+        systemResources: {
+            database: { provider: 'sqlite', name: 'SQLite (libsql)', url: 'file:/data/app.db' },
+            cache: null,
+            queue: null,
+            vector: null,
+        },
+    });
+    const databases = await (await request(app, 'GET', '/api/edge-databases/')).json();
+    assert.equal(databases.length, 1);
+    assert.equal(databases[0].provider, 'sqlite');
+    assert.equal(databases[0].name, 'SQLite (libsql)');
+    assert.equal(databases[0].db_url, 'file:/data/app.db');
+    // And a host that declares NOTHING gets no database card at all — honest
+    // empty state on every tab.
+    const bare = await harness({ systemResources: {} });
+    const bareDatabases = await (await request(bare.app, 'GET', '/api/edge-databases/')).json();
+    assert.deepEqual(bareDatabases, []);
 });
 
 test('page layout persists across save + reload (PUT /api/pages/{id}/ carries layoutData)', async () => {

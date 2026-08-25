@@ -8,7 +8,7 @@ import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
-import { serializeEdgeResource as serialize, batchResult, testResult } from './edge-shapes.js';
+import { serializeEdgeResource as serialize, batchResult, testResult, SYSTEM_CACHE_ID, SYSTEM_QUEUE_ID, SYSTEM_VECTOR_ID, systemLinkedEngine, type SystemEdgeDescriptor, type SystemResourceDescriptor, type SystemResourcesDescriptor } from './edge-shapes.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
@@ -19,6 +19,8 @@ function reg(
     secretCipher: SecretCipher,
     externalFetch: CompatFetch,
     now: () => string,
+    systemResources: SystemResourcesDescriptor,
+    systemEdge: SystemEdgeDescriptor,
     pre: string,
     kind: string,
     idP: string,
@@ -99,9 +101,10 @@ function reg(
             const normalized = str.replace(/Z\+00:00$|\+00:00Z$|\+00:00$|Z$/, '');
             return isSystem ? normalized : normalized + '+00:00Z';
         };
-        // For system resources, use the special local engine; for user resources, use empty defaults
+        // For system resources, link the real system edge engine (a stored system
+        // row can arrive via an imported database); for user resources, none.
         const engineData = isSystem
-            ? { engine_count: 1, linked_engines: [{ id: 'a0f2ffa2-62a5-4437-aa88-833138b70421', name: 'Local Edge', provider: 'unknown' }] }
+            ? { engine_count: 1, linked_engines: [systemLinkedEngine(systemEdge)] }
             : { engine_count: 0, linked_engines: [] };
 
         // Extract fields from base for explicit reconstruction to match product field order
@@ -190,66 +193,76 @@ function reg(
 
     app.get(pre + '/', async (c) => {
         const store = p2(c.get('tenant'));
-        const localEngine = { id: 'a0f2ffa2-62a5-4437-aa88-833138b70421', name: 'Local Edge', provider: 'unknown' };
-        // System resource timestamps: use a consistent format matching product
-        // Product returns timestamps like "2026-08-04T16:03:42.974590" (no timezone suffix)
-        const systemTimestamp = '2026-08-04T16:03:42.974590';
-        const local = kind === 'cache'
+        // Platform truth: a system card exists only when the host declared a
+        // backing service for this kind. None do today — the CF worker binds
+        // only D1 and the Node/Docker self-host runs a lone SQLite file — so
+        // these tabs render their honest empty states. (The old hardcoded
+        // "Local Redis"/"Local BullMQ"/"Local Vector (libSQL)" rows were copied
+        // from the product's self-host, where Redis genuinely runs; here they
+        // lied about every deployment.)
+        const desc: SystemResourceDescriptor | null = kind === 'cache'
+            ? systemResources.cache ?? null
+            : kind === 'queue'
+                ? systemResources.queue ?? null
+                : systemResources.vector ?? null;
+        const linked = [systemLinkedEngine(systemEdge)];
+        const ts = now();
+        const local = !desc ? null : kind === 'cache'
             ? {
-                id: '67d3c848-56cb-405f-a5f6-ed69bbeca48f',
-                name: 'Local Redis',
-                provider: 'redis',
-                cache_url: 'redis://redis:6379',
+                id: SYSTEM_CACHE_ID,
+                name: desc.name,
+                provider: desc.provider,
+                cache_url: desc.url ?? null,
                 has_token: false,
                 is_default: false,
                 is_system: true,
                 provider_account_id: null,
                 account_name: null,
-                created_at: systemTimestamp,
-                updated_at: systemTimestamp,
+                created_at: ts,
+                updated_at: ts,
                 engine_count: 1,
-                linked_engines: [localEngine],
+                linked_engines: linked,
                 warning: null,
                 supports_remote_delete: false,
             }
             : kind === 'queue'
                 ? {
-                    id: '429039c8-87a6-4f1e-91dc-48536fe865f7',
-                    name: 'Local BullMQ',
-                    provider: 'bullmq',
-                    queue_url: 'redis://redis:6379',
+                    id: SYSTEM_QUEUE_ID,
+                    name: desc.name,
+                    provider: desc.provider,
+                    queue_url: desc.url ?? null,
                     has_token: false,
                     has_signing_key: false,
                     is_default: false,
                     is_system: true,
                     provider_account_id: null,
                     account_name: null,
-                    created_at: systemTimestamp,
-                    updated_at: systemTimestamp,
+                    created_at: ts,
+                    updated_at: ts,
                     engine_count: 1,
-                    linked_engines: [localEngine],
+                    linked_engines: linked,
                     warning: null,
                     supports_remote_delete: false,
                 }
                 : {
-                    id: '7b2b3b88-0fd6-4ae6-bf30-343fff2784c6',
-                    name: 'Local Vector (libSQL)',
-                    provider: 'libsql_vector',
-                    vector_url: 'libsql://local-edge',
+                    id: SYSTEM_VECTOR_ID,
+                    name: desc.name,
+                    provider: desc.provider,
+                    vector_url: desc.url ?? null,
                     has_token: false,
                     is_default: false,
                     is_system: true,
                     provider_account_id: null,
                     account_name: null,
                     provider_config: null,
-                    created_at: systemTimestamp,
-                    updated_at: systemTimestamp,
+                    created_at: ts,
+                    updated_at: ts,
                     engine_count: 1,
-                    linked_engines: [localEngine],
+                    linked_engines: linked,
                     supports_remote_delete: false,
                 };
         return c.json(await Promise.all(
-            [local, ...(await store.listEdgeResources(kind)).map((row) => serializeStored(store, row))],
+            [...(local ? [local] : []), ...(await store.listEdgeResources(kind)).map((row) => serializeStored(store, row))],
         ));
     });
 
@@ -372,8 +385,8 @@ function reg(
     });
 }
 
-export function registerEdgeGenericRoutes(app: App, p2: (t: string) => Phase2Store, secretCipher: SecretCipher, externalFetch: CompatFetch, now: () => string): void {
-    reg(app, p2, secretCipher, externalFetch, now, '/api/edge-caches', 'cache', ':cache_id', '/test', 'cache_url');
-    reg(app, p2, secretCipher, externalFetch, now, '/api/edge-queues', 'queue', ':queue_id', '/test/', 'queue_url', { has_signing_key: false });
-    reg(app, p2, secretCipher, externalFetch, now, '/api/edge-vectors', 'vector', ':vector_id', '/test', 'vector_url');
+export function registerEdgeGenericRoutes(app: App, p2: (t: string) => Phase2Store, secretCipher: SecretCipher, externalFetch: CompatFetch, now: () => string, systemResources: SystemResourcesDescriptor, systemEdge: SystemEdgeDescriptor): void {
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, '/api/edge-caches', 'cache', ':cache_id', '/test', 'cache_url');
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, '/api/edge-queues', 'queue', ':queue_id', '/test/', 'queue_url', { has_signing_key: false });
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, '/api/edge-vectors', 'vector', ':vector_id', '/test', 'vector_url');
 }

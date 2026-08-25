@@ -125,6 +125,16 @@ const engine = await createCmsEngine({
     storageProvider,
     // The edge-engines system card must describe THIS host, not Cloudflare.
     systemEdge: { provider: 'node', name: 'Self-host Edge', db: 'SQLite (libsql)' },
+    // Resource-tab truth for the same reason: the self-host runs a single
+    // service with a local SQLite file — no Redis/BullMQ/vector backend (the
+    // product's self-host does run Redis; this is not it). A local file path,
+    // not a credential, so showing it on the system card is safe.
+    systemResources: {
+        database: { provider: 'sqlite', name: 'SQLite (libsql)', url: APP_DB_URL },
+        cache: null,
+        queue: null,
+        vector: null,
+    },
 });
 
 const port = Number(env.PORT ?? 8787);

@@ -173,3 +173,53 @@ export function buildSystemEngine(desc: SystemEdgeDescriptor, origin: string): R
     engine.edge_queue_name = desc.queue ?? null;
     return engine;
 }
+
+/**
+ * Row ids for the system resource cards rendered in the Edge Resources tabs
+ * (database/cache/queue/vector). Constant, like SYSTEM_ENGINE_ID — rows are
+ * synthesized per-request from the host descriptor and never stored, so these
+ * ids only exist in list responses (PUT/DELETE/test on them 404 naturally).
+ */
+export const SYSTEM_DATABASE_ID = 'local-database';
+export const SYSTEM_CACHE_ID = 'local-cache';
+export const SYSTEM_QUEUE_ID = 'local-queue';
+export const SYSTEM_VECTOR_ID = 'local-vector';
+
+/**
+ * One platform-owned resource behind a system card (e.g. the worker's bound D1
+ * database). `provider` must be a key in the console's per-type provider
+ * registry (product edgeConstants.tsx) so the card renders a real label+icon —
+ * `cloudflare` / `sqlite` for databases. `url` becomes the card subtitle
+ * (db_url / cache_url / queue_url / vector_url).
+ */
+export interface SystemResourceDescriptor {
+    provider: string;
+    name: string;
+    url?: string | null;
+}
+
+/**
+ * What the platform itself runs on, per resource tab — the resource-tab twin of
+ * SystemEdgeDescriptor. The host (worker entry) owns it because it knows which
+ * services are actually wired (Cloudflare binds only D1 today; the Node/Docker
+ * self-host has a local SQLite file). `null`/omitted → NO system row → the
+ * console renders its honest empty state ("No Caches Connected", …) — the tabs
+ * stay usable as tenant-connected provider registries via their + Add flows.
+ * When a runtime adapter lands later (KV cache, CF Queues dispatcher,
+ * Vectorize), the host flips one field and the System card appears.
+ */
+export interface SystemResourcesDescriptor {
+    database?: SystemResourceDescriptor | null;
+    cache?: SystemResourceDescriptor | null;
+    queue?: SystemResourceDescriptor | null;
+    vector?: SystemResourceDescriptor | null;
+}
+
+/**
+ * The linked-engine chip shown on a system resource card: the system edge
+ * engine itself, from its descriptor (real id/name/provider — not the product's
+ * placeholder UUID/provider 'unknown' the old fixtures carried).
+ */
+export function systemLinkedEngine(desc: SystemEdgeDescriptor): { id: string; name: string; provider: string } {
+    return { id: SYSTEM_ENGINE_ID, name: desc.name ?? 'Local Edge', provider: desc.provider };
+}

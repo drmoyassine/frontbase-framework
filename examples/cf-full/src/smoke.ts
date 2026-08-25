@@ -314,6 +314,29 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
         && body[0]?.id === 'local-edge' && !!body[0]?.edge_db_id;
 });
 
+// ---- Edge Resources: host-declared platform truth ----
+// This worker binds only D1: the database tab carries a Cloudflare D1 system
+// card linked to the system edge; cache/queue/vector have no backing service,
+// so no rows are synthesized (the console renders its honest empty states).
+// Guards against the old unconditional "Local SQLite/Redis/BullMQ/libSQL"
+// fixtures, which described the product's self-host, not this deployment.
+await check('GET /api/edge-databases/ shows the Cloudflare D1 system card linked to local-edge', async () => {
+    const r = await req('/api/edge-databases/', { headers: { cookie: compatCookie } });
+    const rows = await r.json() as Array<{ id?: string; provider?: string; is_system?: boolean; db_url?: string; linked_engines?: Array<{ id?: string }> }>;
+    const system = Array.isArray(rows) ? rows.find((row) => row.is_system) : undefined;
+    return r.status === 200 && system?.id === 'local-database' && system.provider === 'cloudflare'
+        && system.db_url === 'd1://system-d1'
+        && system.linked_engines?.[0]?.id === 'local-edge';
+});
+await check('caches/queues/vectors synthesize no system rows (nothing platform-wired on CF)', async () => {
+    for (const path of ['/api/edge-caches/', '/api/edge-queues/', '/api/edge-vectors/']) {
+        const r = await req(path, { headers: { cookie: compatCookie } });
+        const rows = await r.json() as Array<{ is_system?: boolean }>;
+        if (r.status !== 200 || !Array.isArray(rows) || rows.some((row) => row.is_system)) return false;
+    }
+    return true;
+});
+
 // ---- engine import tier gate: the engine_imports plan feature flag ----
 // The framework ships gated by default (no plan → community): the paste-in
 // bundle path 403s until an operator assigns a plan carrying the flag. The

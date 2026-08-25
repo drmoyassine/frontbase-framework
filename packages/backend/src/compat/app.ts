@@ -37,7 +37,7 @@ import { registerAuthCompatUnauthRoutes, registerAuthCompatAuthedRoutes } from '
 import { registerEdgeEnginesRoutes } from './routes/edge-engines.js';
 import { registerTenantsRoutes } from './routes/tenants.js';
 import { registerAdminPlansRoutes } from './routes/admin-plans.js';
-import type { SystemEdgeDescriptor } from './routes/edge-shapes.js';
+import type { SystemEdgeDescriptor, SystemResourcesDescriptor } from './routes/edge-shapes.js';
 import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
 import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
 import { registerEdgeMiscRoutes } from './routes/edge-misc.js';
@@ -84,6 +84,12 @@ export interface CreateCompatAppDeps {
      *  Deno/Vercel/Netlify entries later) and the real binding (D1). Defaults to a
      *  Cloudflare/D1 descriptor. */
     systemEdge?: SystemEdgeDescriptor;
+    /** Platform truth for the Edge Resources tabs (database/cache/queue/vector
+     *  system cards). Host-owned like systemEdge: it knows which services are
+     *  actually wired. `null`/omitted per kind → no system row → the console's
+     *  honest empty state. Defaults to the Cloudflare/D1 reality of the cf-full
+     *  worker (D1 bound; nothing else). */
+    systemResources?: SystemResourcesDescriptor;
     /** Google Workspace Marketplace install URL for the Sheets connect add-on, surfaced
      *  by /api/sync/datasources/sheets/connect/issue/. Empty default => the SPA renders
      *  its bundled fallback (matches the product's FRONTBASE_SHEETS_ADDON_URL semantics). */
@@ -114,6 +120,10 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // the cf-full worker; the host overrides for other platforms.
     const systemEdge: SystemEdgeDescriptor = deps.systemEdge
         ?? { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' };
+    // Resource-tab truth stays consistent with the systemEdge default: the CF
+    // worker binds D1 and nothing else, so only the database tab gets a card.
+    const systemResources: SystemResourcesDescriptor = deps.systemResources
+        ?? { database: { provider: 'cloudflare', name: 'Cloudflare D1', url: 'd1://system-d1' } };
     const sheetsAddonUrl: string = deps.sheetsAddonUrl ?? '';
 
     // Per-tenant stores. Single-tenant in practice (community edition); the
@@ -288,7 +298,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
     registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now);
-    registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now);
+    registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge);
     registerAuthFormsRoutes(app, runner, now);
     registerWorkflowsRoutes(app, phase2For);
     // Wave 3
@@ -296,7 +306,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Wave 4 — edge domain (engines + providers + caches/queues/vectors + inspector + api-keys + gpu + deploy)
     registerEdgeEnginesRoutes(app, phase2For, kvFor, secretCipher, now, systemEdge);
     registerEdgeProvidersRoutes(app, phase2For, kvFor, secretCipher, externalFetch, now);
-    registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now);
+    registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge);
     registerEdgeMiscRoutes(app, runner, phase2For, secretCipher, now);
     // Tenant self-surface (the console's plan signal) — framework-only op set.
     registerTenantsRoutes(app, phase2For, now);

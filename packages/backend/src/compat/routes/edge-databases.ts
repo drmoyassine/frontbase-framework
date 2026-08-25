@@ -9,7 +9,7 @@ import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
-import { serializeEdgeResource, batchResult, testResult } from './edge-shapes.js';
+import { serializeEdgeResource, batchResult, testResult, SYSTEM_DATABASE_ID, systemLinkedEngine, type SystemEdgeDescriptor, type SystemResourcesDescriptor } from './edge-shapes.js';
 import { datasourceRunner } from '../../db/datasource-runner.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 
@@ -32,6 +32,8 @@ export function registerEdgeDatabasesRoutes(
     secretCipher: SecretCipher,
     externalFetch: CompatFetch,
     now: () => string,
+    systemResources: SystemResourcesDescriptor,
+    systemEdge: SystemEdgeDescriptor,
 ): void {
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
         if (config === undefined) return undefined;
@@ -154,25 +156,35 @@ export function registerEdgeDatabasesRoutes(
     // GET /api/edge-databases/
     app.get('/api/edge-databases/', async (c) => {
         const store = phase2For(c.get('tenant'));
-        const local = asDatabase({
-            id: 'local-database',
-            name: 'Local SQLite',
-            provider: 'sqlite',
-            is_system: true,
-            created_at: '',
-            updated_at: '',
-            config: { url: 'file:local.db', is_default: false },
-        });
-        // Override asDatabase defaults for local database
-        Object.assign(local, {
-            target_count: 1,
-            linked_engines: [{ id: 'local-edge', name: 'Local Edge', provider: 'unknown' }],
-        });
+        // Platform truth: the system database card exists only when the host
+        // declared one (CF worker → bound D1; Node/Docker self-host → the local
+        // SQLite file; a host with neither → honest empty state). The old
+        // hardcoded "Local SQLite" row lied about every deployment.
+        const desc = systemResources.database ?? null;
+        const local = desc
+            ? (() => {
+                const row = asDatabase({
+                    id: SYSTEM_DATABASE_ID,
+                    name: desc.name,
+                    provider: desc.provider,
+                    is_system: true,
+                    created_at: now(),
+                    updated_at: now(),
+                    config: { url: desc.url ?? null, is_default: false },
+                });
+                // Override asDatabase defaults for local database
+                Object.assign(row, {
+                    target_count: 1,
+                    linked_engines: [systemLinkedEngine(systemEdge)],
+                });
+                return row;
+            })()
+            : null;
         // Product parity: append local database at the end, not at the beginning
         const userDatabases = await Promise.all(
             (await store.listEdgeResources('database')).map((row) => serializeStored(store, row))
         );
-        return c.json([...userDatabases, local]);
+        return c.json(local ? [...userDatabases, local] : userDatabases);
     });
 
     // POST /api/edge-databases/

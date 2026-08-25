@@ -64,6 +64,17 @@ export interface CmsEngineOptions {
     /** Identity of the host this engine runs on (edge-engines system card).
      *  Defaults to the Cloudflare worker; the Node entry passes its own. */
     systemEdge?: { provider: string; name?: string; db?: string | null; cache?: string | null; queue?: string | null };
+    /** Platform truth for the Edge Resources tabs (database/cache/queue/vector
+     *  system cards). Defaults to the Cloudflare worker's reality: only D1 is
+     *  bound — async execution is waitUntil + the D1 executions ledger, so the
+     *  cache/queue/vector tabs render their honest empty states. The Node entry
+     *  overrides with its local SQLite truth. */
+    systemResources?: {
+        database?: { provider: string; name: string; url?: string | null } | null;
+        cache?: { provider: string; name: string; url?: string | null } | null;
+        queue?: { provider: string; name: string; url?: string | null } | null;
+        vector?: { provider: string; name: string; url?: string | null } | null;
+    };
 }
 
 /**
@@ -242,6 +253,14 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // worker (bound D1); the Node/Docker entry overrides via opts.systemEdge
         // so self-hosts don't report "Cloudflare D1" they don't have.
         systemEdge: opts.systemEdge ?? { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' },
+        // Resource-tab truth for the same reason: this worker binds only D1 —
+        // no KV/Queues/Vectorize — so only the database tab gets a system card.
+        systemResources: opts.systemResources ?? {
+            database: { provider: 'cloudflare', name: 'Cloudflare D1', url: 'd1://system-d1' },
+            cache: null,
+            queue: null,
+            vector: null,
+        },
         // Enrich console page reads so the admin SPA / builder surfaces hold a
         // dataRequest the hydration runtime can execute (canvas data preview).
         // Save paths strip it in PagesStore before persisting.
