@@ -85,6 +85,14 @@ function reg(
         provider_account_id: body.provider_account_id,
         provider: body.provider,
     });
+    /** A config payload we can stamp default semantics into — null when the body
+     *  carried a non-object config (stored as-is, default logic does not apply). */
+    const asConfigRecord = (config: unknown): Record<string, unknown> | null =>
+        config && typeof config === 'object' && !Array.isArray(config) ? config as Record<string, unknown> : null;
+    /** Decrypted is_default of a stored row — false when absent or unreadable. */
+    const resourceWasDefault = async (store: Phase2Store, id: string): Promise<boolean> => {
+        try { return Boolean((await store.getEdgeResourceConfig(id))?.is_default); } catch { return false; }
+    };
     const serializeStored = async (
         store: Phase2Store,
         row: Record<string, unknown>,
@@ -279,9 +287,9 @@ function reg(
         // Prevent duplicate URLs - return 409 like product does
         const configFromBodyValue = configFromBody(b);
         const newUrl = configFromBodyValue.url as string | undefined;
+        const siblings = await store.listEdgeResources(kind);
         if (newUrl) {
-            const existing = await store.listEdgeResources(kind);
-            for (const row of existing) {
+            for (const row of siblings) {
                 const rowConfig = await store.getEdgeResourceConfig(String(row.id)) ?? {};
                 // Use == for URL comparison to handle undefined vs string
                 if (rowConfig.url == newUrl) {
@@ -296,14 +304,23 @@ function reg(
             }
         }
 
+        const config = b.config ?? configFromBodyValue;
+        const configRecord = asConfigRecord(config);
+        // Product parity: the first resource of a kind is automatically the
+        // default; creating any resource with is_default unsets the previous one.
+        if (siblings.length === 0 && configRecord) configRecord.is_default = true;
+
         const id = crypto.randomUUID();
         await store.upsertEdgeResource({
             id,
             kind,
             name: b.name ?? kind,
             provider: b.provider ?? 'local',
-            config: await encryptedConfig(b.config ?? configFromBodyValue),
+            config: await encryptedConfig(config),
         }, now());
+        if (siblings.length > 0 && configRecord?.is_default) {
+            await store.setDefaultEdgeResource(kind, id, now());
+        }
         const row = await store.getEdgeResource(id);
         const response = await serializeStored(store, row ?? {
             id,
@@ -320,14 +337,19 @@ function reg(
         const store = p2(c.get('tenant'));
         const done: string[] = [];
         const failed: unknown[] = [];
+        let anyDefaultDeleted = false;
         for (const id of b.ids ?? []) {
             try {
+                const wasDefault = await resourceWasDefault(store, id);
                 await store.deleteEdgeResource(id);
+                if (wasDefault) anyDefaultDeleted = true;
                 done.push(id);
             } catch (e) {
                 failed.push({ id, error: (e as Error).message });
             }
         }
+        // Product parity: if the batch removed the default, promote the next row.
+        if (anyDefaultDeleted) await store.promoteNextDefaultEdgeResource(kind, now());
         return c.json(batchResult(done, failed));
     });
 
@@ -344,15 +366,21 @@ function reg(
         if (!existing || existing.kind !== kind) {
             return c.json({ detail: notFoundDetail(id) }, 404);
         }
+        const incoming = b.config !== undefined || b[urlField] !== undefined || b[tokenField] !== undefined
+            ? b.config ?? configFromBody(b)
+            : null;
         await store.upsertEdgeResource({
             id,
             kind,
             name: b.name ?? String(existing.name),
             provider: b.provider ?? (existing.provider as string | undefined),
-            config: b.config !== undefined || b[urlField] !== undefined || b[tokenField] !== undefined
-                ? await encryptedConfig(b.config ?? configFromBody(b))
-                : existing.config as string | undefined,
+            config: incoming !== null ? await encryptedConfig(incoming) : existing.config as string | undefined,
         }, now());
+        // Product parity: switching is_default on update unsets the previous
+        // default (the store helper clears every row except this one).
+        if (asConfigRecord(incoming)?.is_default) {
+            await store.setDefaultEdgeResource(kind, id, now());
+        }
         const response = await serializeStored(store, await store.getEdgeResource(id) ?? existing);
         return c.json(response);
     });
@@ -364,7 +392,10 @@ function reg(
         if (!existing || existing.kind !== kind) {
             return c.json({ detail: notFoundDetail(id) }, 404);
         }
+        // Product parity: deleting the default promotes the next resource of the kind.
+        const wasDefault = await resourceWasDefault(store, id);
         await store.deleteEdgeResource(id);
+        if (wasDefault) await store.promoteNextDefaultEdgeResource(kind, now());
         const label = kind === 'vector' ? 'Vector store' : `Edge ${kind}`;
         return c.json({
             success: true,

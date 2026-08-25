@@ -248,6 +248,89 @@ export class Phase2Store {
         await this.runner.exec('DELETE FROM edge_resources WHERE id = ? AND tenant_slug = ?', [id, this.tenant]);
     }
 
+    // ============ EDGE RESOURCE DEFAULTS (product parity) ============
+    // The product's edge routers keep at most one is_default row per kind:
+    // first-of-kind auto-default, switch-on-create/update unsets the others,
+    // delete-of-default promotes the next. Here is_default lives INSIDE the
+    // encrypted config blob, so every mutation is decrypt → modify → re-encrypt
+    // (no SQL UPDATE can reach it).
+
+    /** The row of `kind` whose decrypted config has is_default truthy, in creation
+     *  order — or null when the kind has no default. */
+    async getDefaultEdgeResource(kind: string): Promise<{ id: string; name: string; provider: string | null } | null> {
+        for (const row of await this.rowsByCreation(kind)) {
+            const config = await this.configOrNull(row);
+            if (config?.is_default) {
+                return {
+                    id: String(row.id),
+                    name: String(row.name ?? ''),
+                    provider: row.provider == null ? null : String(row.provider),
+                };
+            }
+        }
+        return null;
+    }
+
+    /** Set is_default=true on `id`, false on every other row of `kind` (re-encrypts
+     *  the touched rows). Rows whose config fails to decrypt are skipped, never
+     *  thrown on — a corrupt sibling must not abort a default switch. */
+    async setDefaultEdgeResource(kind: string, id: string, now: string): Promise<void> {
+        for (const row of await this.rowsByCreation(kind)) {
+            const config = await this.configOrNull(row);
+            if (!config) continue;
+            const want = String(row.id) === id;
+            if (Boolean(config.is_default) === want) continue;
+            await this.upsertEdgeResource({
+                id: String(row.id),
+                kind,
+                name: String(row.name ?? ''),
+                provider: row.provider == null ? undefined : String(row.provider),
+                config: JSON.stringify({ ...config, is_default: want }),
+            }, now);
+        }
+    }
+
+    /** After deleting a default: promote the first remaining row of `kind` by
+     *  creation order. No-op when the kind is now empty. */
+    async promoteNextDefaultEdgeResource(kind: string, now: string): Promise<void> {
+        for (const row of await this.rowsByCreation(kind)) {
+            const config = await this.configOrNull(row);
+            if (!config) continue;
+            await this.setDefaultEdgeResource(kind, String(row.id), now);
+            return;
+        }
+    }
+
+    /** Rows of `kind` ordered by creation (created_at ASC, id ASC tiebreak) —
+     *  listEdgeResources orders by updated_at DESC, which default promotion
+     *  (and "first resource" semantics) must not depend on. */
+    private async rowsByCreation(kind: string): Promise<Record<string, unknown>[]> {
+        const rows = await this.listEdgeResources(kind);
+        return [...rows].sort((a, b) => {
+            const ca = String(a.created_at ?? '');
+            const cb = String(b.created_at ?? '');
+            if (ca !== cb) return ca < cb ? -1 : 1;
+            return String(a.id) < String(b.id) ? -1 : 1;
+        });
+    }
+
+    /** Decrypted config of a raw row, or null when it has none / fails to
+     *  decrypt / is not an object — callers skip rather than throw. */
+    private async configOrNull(row: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+        const raw = row.config;
+        if (raw === null || raw === undefined || raw === '') return null;
+        try {
+            if (!this.cipher.isEncrypted(String(raw))) return null;
+            const decrypted = await this.cipher.decrypt(String(raw));
+            const parsed = JSON.parse(decrypted) as unknown;
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+                ? parsed as Record<string, unknown>
+                : null;
+        } catch {
+            return null;
+        }
+    }
+
     // ============ STORAGE ============
 
     async listBuckets(): Promise<Record<string, unknown>[]> {
