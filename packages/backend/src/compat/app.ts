@@ -13,7 +13,7 @@
  * with createConsole.
  */
 import { Hono } from 'hono';
-import type { DbRunner, StorageProvider } from '@frontbase/edge-infra';
+import type { DbRunner, ServiceFetch, StorageProvider } from '@frontbase/edge-infra';
 import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from '../mw/auth.js';
 import { fastApiErrorEnvelope, opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
@@ -28,7 +28,7 @@ import { registerSecurityEventsRoutes } from './routes/security-events.js';
 import { registerPagesRoutes } from './routes/pages.js';
 import { registerDatabaseRoutes } from './routes/database.js';
 import { registerRlsRoutes } from './routes/rls.js';
-import { registerStorageRoutes } from './routes/storage.js';
+import { registerStorageRoutes, createStorageClientResolver } from './routes/storage.js';
 import { registerEdgeDatabasesRoutes } from './routes/edge-databases.js';
 import { registerAuthFormsRoutes } from './routes/auth-forms.js';
 import { registerWorkflowsRoutes } from './routes/workflows.js';
@@ -52,8 +52,10 @@ import { Phase2Store } from '../db/phase2-store.js';
 import { createSecretCipher, noopCipher } from '../db/secret-cipher.js';
 import type { UserStore } from '../db/users.js';
 import { TenantStore } from '../db/tenants.js';
-import type { CompatFetch } from './external-http.js';
+import { guardedExternalFetch, type CompatFetch } from './external-http.js';
 import { createSystemServiceResolver, type EnvServices } from './system-services.js';
+import { embeddingFromEnv } from './rag/embedding.js';
+import { registerRagRoutes, runRagIndex, type RagRouteDeps } from './rag/routes.js';
 
 export interface CreateCompatAppDeps {
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */
@@ -155,6 +157,26 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         log: (msg) => console.warn(msg),
     });
     const onEdgeResourceMutation = (tenant: string): void => serviceResolver.invalidate(tenant);
+    // RAG pipeline (Phase 5): embedding over the guarded fetch (HTTPS-only —
+    // the API key never leaves the server), byte access through the SAME
+    // storage-client factory the storage routes resolve with. Null embedding
+    // (FRONTBASE_EMBEDDING absent) leaves the routes answering "not
+    // configured"; a null vector at resolve time does the same per-tenant.
+    const storageResolver = createStorageClientResolver({ phase2For, kvFor, storageProvider: deps.storageProvider });
+    const ragFetch: ServiceFetch = (input, init) =>
+        guardedExternalFetch(externalFetch, input instanceof Request ? input.url : input, init);
+    const ragDeps: RagRouteDeps = {
+        phase2For,
+        kvFor,
+        resolver: serviceResolver,
+        embedding: embeddingFromEnv(deps.envServices?.embedding, ragFetch, (msg) => console.warn(msg)),
+        resolveStorage: async (tenant, providerId) => {
+            const resolved = await storageResolver.resolveForOp(tenant, providerId);
+            return 'status' in resolved ? resolved : resolved.client;
+        },
+        now,
+        log: (msg) => console.warn(msg),
+    };
     const syncStoreFor = storeCache((t: string) => new SyncStore(runner, t, secretCipher));
     const invites = new CommunityInviteStore(runner);
     const passwordResets = new PasswordResetStore(runner);
@@ -219,7 +241,12 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     //    UNAUTHENTICATED by design — authentication is the inbound signature /
     //    callback-secret verify inside the route (401 otherwise), and the job's
     //    tenant-scoped store lookup is the isolation boundary.
-    registerSystemQueueRoutes(app, { phase2For, resolver: serviceResolver, now });
+    registerSystemQueueRoutes(app, {
+        phase2For,
+        resolver: serviceResolver,
+        now,
+        runRagIndex: (tenant, bucketId) => runRagIndex(ragDeps, tenant, bucketId),
+    });
     // 3. UNAUTHENTICATED auth ops only (login/logout/signup/forgot/reset/invite/
     //    accept/check-slug) — a user can't present a session to log in. The
     //    AUTHENTICATED auth ops (me + security console) are registered AFTER the
@@ -321,6 +348,9 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
     registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now);
+    // RAG routes are framework-only (outside the vendored 334-op surface) and
+    // console-authed like the storage routes they sit beside.
+    registerRagRoutes(app, ragDeps);
     registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation);
     registerAuthFormsRoutes(app, runner, now);
     registerWorkflowsRoutes(app, phase2For);

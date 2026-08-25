@@ -92,6 +92,11 @@ export interface CmsEngineOptions {
      *  Drives the enrich-caches resolver and the env-derived system cards; a
      *  tenant's adopted is_default row still wins at resolve time. */
     envServices?: EnvServices;
+    /** Provider HTTP seam for the compat surface (guarded where tenant-controlled).
+     *  Production hosts use the platform default (globalThis.fetch); the smoke
+     *  injects a deterministic double — the documented escape hatch on
+     *  guardedExternalFetch, which still validates every URL it wraps. */
+    externalFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
 /**
@@ -296,6 +301,9 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // Dual wiring: the parsed service env. Adopted is_default registry rows
         // still take precedence at resolve time; this is the deploy-time floor.
         envServices: opts.envServices,
+        // Host fetch seam — the smoke routes its local embedding mock through
+        // here; production omits it and gets globalThis.fetch.
+        externalFetch: opts.externalFetch,
         // Enrich console page reads so the admin SPA / builder surfaces hold a
         // dataRequest the hydration runtime can execute (canvas data preview).
         // Save paths strip it in PagesStore before persisting.

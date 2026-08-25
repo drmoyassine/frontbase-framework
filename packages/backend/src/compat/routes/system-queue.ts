@@ -19,11 +19,15 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { SystemServiceResolver } from '../system-services.js';
 import { runAndRecordAt } from '../../routes/phase2.js';
+import { RagConfigError } from '../rag/routes.js';
 
 export interface SystemQueueRouteDeps {
     phase2For: (tenant: string) => Phase2Store;
     resolver: SystemServiceResolver;
     now: () => string;
+    /** Run one RAG bucket index (the same runner the /api/rag/index route
+     *  uses inline). Absent → rag-index jobs are idempotent no-ops. */
+    runRagIndex?: (tenant: string, bucketId: string) => Promise<unknown>;
     log?: (msg: string) => void;
 }
 
@@ -51,8 +55,25 @@ export function registerSystemQueueRoutes(app: Hono<{ Variables: ConsoleAuthVars
             : false;
         if (!verified) return c.json({ detail: 'Authentication required' }, 401);
 
-        // Job union (Phase 5 adds 'rag-index'). Unknown types are idempotent
-        // no-ops — never 5xx, or the provider would redeliver forever.
+        // Job union ({type:'execution'} | {type:'rag-index'}). Unknown types are
+        // idempotent no-ops — never 5xx, or the provider would redeliver forever.
+        if (body.type === 'rag-index') {
+            const bucketId = typeof body.bucketId === 'string' ? body.bucketId : '';
+            if (!bucketId || !deps.runRagIndex) return c.json({ ok: true, skipped: true });
+            try {
+                const result = await deps.runRagIndex(tenant, bucketId);
+                return c.json({ ok: true, result });
+            } catch (error) {
+                if (error instanceof RagConfigError) {
+                    // Permanent misconfiguration — redelivery cannot fix it.
+                    (deps.log ?? (() => {}))(`[system-queue] rag-index skipped (${error.message})`);
+                    return c.json({ ok: true, skipped: true });
+                }
+                // Transient (storage/embed/vector transport): 503 so the provider retries.
+                (deps.log ?? (() => {}))(`[system-queue] rag-index failed: ${(error as Error)?.message ?? error}`);
+                return c.json({ detail: 'temporarily_unavailable' }, 503);
+            }
+        }
         if (body.type === 'execution') {
             const executionId = typeof body.executionId === 'string' ? body.executionId : '';
             const workflowId = typeof body.workflowId === 'string' ? body.workflowId : '';

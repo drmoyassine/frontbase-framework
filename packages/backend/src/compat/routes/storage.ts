@@ -15,47 +15,32 @@ import type { StorageProvider } from '@frontbase/edge-infra';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
-export function registerStorageRoutes(
-    app: App,
-    phase2For: (t: string) => Phase2Store,
-    kvFor: (t: string) => KeyValueStore,
-    secretCipher: SecretCipher,
-    storageProvider: StorageProvider | undefined,
-    now: () => string,
-): void {
-    const redactConfig = (record: Record<string, unknown>) => {
-        const { config: _config, config_ciphertext: _ciphertext, id, name, provider, provider_account_id, account_name, is_active, created_at, updated_at, ...rest } = record;
-        return {
-            id,
-            name,
-            provider,
-            provider_account_id,
-            account_name,
-            config: {},
-            is_active,
-            created_at,
-            updated_at: updated_at ?? created_at ?? '',
-        };
-    };
-    const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
-        if (config === undefined) return undefined;
-        const ciphertext = await secretCipher.encrypt(JSON.stringify(config));
-        if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
-        return ciphertext;
-    };
-    const hasStorageProvider = async (tenant: string, providerId: string) => {
-        const providers = await kvFor(tenant).getJson<Array<{ id?: string }>>('storage_providers', []);
-        return providers.some((provider) => provider.id === providerId);
-    };
+// ---- provider resolution (product parity: factory.py get_storage_adapter) ----
+// Byte-transfer ops resolve a live client per request from the storage_providers
+// record: credentials live on the CONNECTED ACCOUNT (EdgeResource kind
+// 'provider', encrypted at rest), not on the provider record itself (the
+// console's create payload only carries provider_account_id + netlify site_id).
+// Per-op resolution, no cross-request cache — rotated credentials take effect
+// immediately, exactly like the product.
+//
+// Exported as a factory so OTHER surfaces needing byte access (the RAG
+// pipeline's bucket indexer) resolve through the SAME credential logic instead
+// of a second, drifting copy of it.
+export type ResolvedStorage = { client: StorageProvider } | { status: 400 | 404 | 500 | 503; message: string };
 
-    // ---- provider resolution (product parity: factory.py get_storage_adapter) ----
-    // Byte-transfer ops resolve a live client per request from the storage_providers
-    // record: credentials live on the CONNECTED ACCOUNT (EdgeResource kind
-    // 'provider', encrypted at rest), not on the provider record itself (the
-    // console's create payload only carries provider_account_id + netlify site_id).
-    // Per-op resolution, no cross-request cache — rotated credentials take effect
-    // immediately, exactly like the product.
-    type ResolvedStorage = { client: StorageProvider } | { status: 400 | 404 | 500 | 503; message: string };
+/** Provider types with a ported REAL adapter. Management ops (bucket CRUD,
+ *  file listing, folders) read the provider directly for these; every other
+ *  supported type — 'local' above all, whose storage the framework simulates
+ *  in the store — keeps the store-simulated surface, exactly as the product's
+ *  local/filesystem adapter is served there. */
+const REAL_ADAPTER_TYPES = new Set(['cloudflare', 's3', 'r2', 'b2', 'supabase']);
+
+export function createStorageClientResolver(opts: {
+    phase2For: (t: string) => Phase2Store;
+    kvFor: (t: string) => KeyValueStore;
+    storageProvider: StorageProvider | undefined;
+}) {
+    const { phase2For, kvFor, storageProvider } = opts;
     const sha256Hex = async (value: string): Promise<string> => {
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
         return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -136,12 +121,6 @@ export function registerStorageRoutes(
         if (providerId) return resolveStorageClient(tenant, providerId);
         return storageProvider ? { client: storageProvider } : { status: 503, message: 'Storage provider is not configured' };
     };
-    // Provider types with a ported REAL adapter. Management ops (bucket CRUD,
-    // file listing, folders) read the provider directly for these; every other
-    // supported type — 'local' above all, whose storage the framework simulates
-    // in the store — keeps the store-simulated surface, exactly as the product's
-    // local/filesystem adapter is served there.
-    const REAL_ADAPTER_TYPES = new Set(['cloudflare', 's3', 'r2', 'b2', 'supabase']);
     /** Resolve a MANAGEMENT client, or undefined when the surface is
      *  store-simulated. Credential errors still surface for real-adapter types. */
     const resolveManaged = async (tenant: string, providerId: string): Promise<{ client: StorageProvider } | { client: undefined } | { status: 400 | 404 | 500 | 503; message: string }> => {
@@ -151,6 +130,45 @@ export function registerStorageRoutes(
         if (!REAL_ADAPTER_TYPES.has(String(record.provider ?? ''))) return { client: undefined };
         return resolveStorageClient(tenant, providerId);
     };
+    return { resolveForOp, resolveManaged };
+}
+
+export function registerStorageRoutes(
+    app: App,
+    phase2For: (t: string) => Phase2Store,
+    kvFor: (t: string) => KeyValueStore,
+    secretCipher: SecretCipher,
+    storageProvider: StorageProvider | undefined,
+    now: () => string,
+): void {
+    const redactConfig = (record: Record<string, unknown>) => {
+        const { config: _config, config_ciphertext: _ciphertext, id, name, provider, provider_account_id, account_name, is_active, created_at, updated_at, ...rest } = record;
+        return {
+            id,
+            name,
+            provider,
+            provider_account_id,
+            account_name,
+            config: {},
+            is_active,
+            created_at,
+            updated_at: updated_at ?? created_at ?? '',
+        };
+    };
+    const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
+        if (config === undefined) return undefined;
+        const ciphertext = await secretCipher.encrypt(JSON.stringify(config));
+        if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
+        return ciphertext;
+    };
+    const hasStorageProvider = async (tenant: string, providerId: string) => {
+        const providers = await kvFor(tenant).getJson<Array<{ id?: string }>>('storage_providers', []);
+        return providers.some((provider) => provider.id === providerId);
+    };
+
+    // Same factory the RAG pipeline resolves byte access through — one copy of
+    // the credential logic (see createStorageClientResolver above).
+    const { resolveForOp, resolveManaged } = createStorageClientResolver({ phase2For, kvFor, storageProvider });
     /** Product-shaped resolver failure (`{detail}`, matching _resolve_adapter's HTTPException). */
     const resolutionError = (c: Context<{ Variables: ConsoleAuthVars }>, resolved: { status: 400 | 404 | 500 | 503; message: string }) =>
         c.json({ detail: resolved.message }, resolved.status);

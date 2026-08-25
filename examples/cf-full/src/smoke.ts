@@ -4,11 +4,13 @@
  * retained console health/setup, explicit legacy-console retirement, the
  * product-compatible surface, and the /frontbase-admin SPA shell.
  */
-import { sqliteRunner } from '@frontbase/edge-infra';
+import { memoryStorageProvider, sqliteRunner } from '@frontbase/edge-infra';
+import { createSecretCipher, Phase2Store } from '@frontbase/backend';
 import { createCmsEngine } from './worker.js';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -366,6 +368,109 @@ await check('env-equipped engine shows the env cache system card; undeclared kin
     const queueRows = await queues.json() as Array<{ is_system?: boolean }>;
     return Array.isArray(queueRows) && !queueRows.some((row) => row.is_system);
 });
+
+// ---- RAG pipeline: env-wired embedding + vector → upload → index → search E2E ----
+// The full Phase 5 chain: FRONTBASE_EMBEDDING points at an OpenAI-compatible
+// /embeddings endpoint, FRONTBASE_VECTOR at a file: libsql store. The outbound
+// guard is HTTPS-only (a local http:// origin would be rejected before any
+// bytes move), so the engine takes the documented host fetch seam: the guard
+// still validates the https:// URL, and the injected fetch reroutes it to the
+// local mock server — the injection point production hosts use for
+// platform-specific egress, exercised here against real HTTP.
+{
+    const embedCalls: Array<{ authorization?: string; model?: string }> = [];
+    const embedMock = createServer((incoming, res) => {
+        const chunks: Buffer[] = [];
+        incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
+        incoming.on('end', () => {
+            const body = JSON.parse(Buffer.concat(chunks).toString() || '{}') as { model?: string; input?: string };
+            embedCalls.push({ authorization: incoming.headers.authorization, model: body.model });
+            // Deterministic word-count embedding — an "apple" query ranks the
+            // apple doc first by cosine similarity, no real provider involved.
+            const t = String(body.input ?? '').toLowerCase();
+            const embedding = [
+                (t.match(/apple/g) || []).length,
+                (t.match(/banana/g) || []).length,
+                (t.match(/cherry/g) || []).length,
+                1,
+            ];
+            res.writeHead(200, { 'content-type': 'application/json' })
+                .end(JSON.stringify({ data: [{ embedding }] }));
+        });
+    });
+    await new Promise<void>((resolve) => embedMock.listen(0, '127.0.0.1', resolve));
+    const embedOrigin = `http://127.0.0.1:${(embedMock.address() as AddressInfo).port}`;
+    const ragDir = mkdtempSync(join(tmpdir(), 'frontbase-smoke-rag-'));
+    try {
+        const ragRunner = sqliteRunner(':memory:');
+        const ragEngine = await createCmsEngine({
+            runner: ragRunner,
+            sessionSecret: 'rag-smoke-session-secret-not-for-prod',
+            admin: ADMIN,
+            now: () => '2026-01-01T00:00:00.000Z',
+            storageProvider: memoryStorageProvider(),
+            envServices: {
+                vector: { provider: 'libsql', url: `file:${join(ragDir, 'vectors.db')}` },
+                embedding: { provider: 'openai', apiKey: 'smoke-embed-key', model: 'smoke-embed-model', baseUrl: 'https://embed.smoke.example/v1' },
+            },
+            externalFetch: (input, init) => globalThis.fetch(
+                String(input).replace('https://embed.smoke.example', embedOrigin), init),
+        });
+        const rreq = (path: string, init?: RequestInit) => ragEngine.fetch(new Request('https://rag-smoke.local' + path, init));
+        const login = await rreq('/api/auth/login', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ email: ADMIN.email, password: ADMIN.password }),
+        });
+        const ragCookie = (login.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+
+        // A store-simulated bucket ('local' provider — the console's no-provider
+        // shape) plus one text file, seeded the way the storage panel would.
+        const cipher = await createSecretCipher('rag-smoke-session-secret-not-for-prod');
+        await new Phase2Store(ragRunner, '_root', cipher).upsertBucket(
+            { id: 'smoke-rag-docs', name: 'smoke-rag-docs' }, '2026-01-01T00:00:00.000Z');
+
+        await check('rag: text file uploads into the local bucket (env-fallback storage)', async () => {
+            const form = new FormData();
+            form.append('file', new File([new TextEncoder().encode('apple apple apple '.repeat(10))], 'apple.md', { type: 'text/markdown' }));
+            form.append('provider_id', '');
+            form.append('bucket', 'smoke-rag-docs');
+            form.append('path', 'docs/apple.md');
+            const r = await rreq('/api/storage/upload', { method: 'POST', headers: { cookie: ragCookie }, body: form });
+            const body = await r.json() as { success?: boolean; path?: string };
+            return r.status === 200 && body.success === true && body.path === 'docs/apple.md';
+        });
+        await check('rag: POST /api/rag/index runs inline (no queue) and indexes the chunk', async () => {
+            const r = await rreq('/api/rag/index', {
+                method: 'POST', headers: { 'content-type': 'application/json', cookie: ragCookie },
+                body: JSON.stringify({ bucketId: 'smoke-rag-docs' }),
+            });
+            const body = await r.json() as { success?: boolean; queued?: boolean; files_seen?: number; files_indexed?: number; chunks_indexed?: number };
+            return r.status === 200 && body.success === true && body.queued === false
+                && body.files_seen === 1 && body.files_indexed === 1 && body.chunks_indexed === 1;
+        });
+        await check('rag: POST /api/rag/search ranks the indexed chunk for the query', async () => {
+            const r = await rreq('/api/rag/search', {
+                method: 'POST', headers: { 'content-type': 'application/json', cookie: ragCookie },
+                body: JSON.stringify({ query: 'apple', limit: 5 }),
+            });
+            const body = await r.json() as { success?: boolean; results?: Array<{ chunk_id?: string; source?: { bucket?: string; path?: string }; metadata?: { tenant_id?: string } }> };
+            return r.status === 200 && body.success === true
+                && body.results?.length === 1
+                && body.results[0]?.chunk_id === 'docs_apple_md_chunk_0'
+                && body.results[0]?.source?.bucket === 'smoke-rag-docs'
+                && body.results[0]?.source?.path === 'docs/apple.md'
+                && body.results[0]?.metadata?.tenant_id === '_root';
+        });
+        await check('rag: the embedding wire carried the Bearer key and model (index + search)', async () =>
+            // Exactly two embeds: one chunk at index time, one query at search time.
+            embedCalls.length === 2
+            && embedCalls.every((c) => c.authorization === 'Bearer smoke-embed-key')
+            && embedCalls.every((c) => c.model === 'smoke-embed-model'));
+    } finally {
+        embedMock.close();
+        try { rmSync(ragDir, { recursive: true, force: true }); } catch { /* open libsql handle — tmpdir sweep */ }
+    }
+}
 
 // ---- engine import tier gate: the engine_imports plan feature flag ----
 // The framework ships gated by default (no plan → community): the paste-in
