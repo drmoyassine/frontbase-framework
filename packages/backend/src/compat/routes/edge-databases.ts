@@ -34,6 +34,7 @@ export function registerEdgeDatabasesRoutes(
     now: () => string,
     systemResources: SystemResourcesDescriptor,
     systemEdge: SystemEdgeDescriptor,
+    onMutation?: (tenant: string) => void,
 ): void {
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
         if (config === undefined) return undefined;
@@ -220,6 +221,7 @@ export function registerEdgeDatabasesRoutes(
         if (siblings.length > 0 && configRecord?.is_default) {
             await store.setDefaultEdgeResource('database', id, now());
         }
+        onMutation?.(c.get('tenant'));
         return c.json(await serializeStored(store, await store.getEdgeResource(id) ?? {
             id,
             name: b.name ?? 'database',
@@ -251,6 +253,7 @@ export function registerEdgeDatabasesRoutes(
         if (asConfigRecord(incoming)?.is_default) {
             await store.setDefaultEdgeResource('database', c.req.param('db_id'), now());
         }
+        onMutation?.(c.get('tenant'));
         return c.json(await serializeStored(store, await store.getEdgeResource(c.req.param('db_id')) ?? existing));
     });
 
@@ -266,6 +269,7 @@ export function registerEdgeDatabasesRoutes(
         const wasDefault = await resourceWasDefault(store, databaseId);
         await store.deleteEdgeResource(databaseId);
         if (wasDefault) await store.promoteNextDefaultEdgeResource('database', now());
+        onMutation?.(c.get('tenant'));
         return c.json({
             success: true,
             message: `Edge database '${String(database.name)}' deleted`,
@@ -292,6 +296,7 @@ export function registerEdgeDatabasesRoutes(
         }
         // Product parity: if the batch removed the default, promote the next row.
         if (anyDefaultDeleted) await store.promoteNextDefaultEdgeResource('database', now());
+        if (done.length > 0) onMutation?.(c.get('tenant'));
         return c.json(batchResult(done, failed));
     });
 

@@ -52,6 +52,7 @@ import { createSecretCipher, noopCipher } from '../db/secret-cipher.js';
 import type { UserStore } from '../db/users.js';
 import { TenantStore } from '../db/tenants.js';
 import type { CompatFetch } from './external-http.js';
+import { createSystemServiceResolver, type EnvServices } from './system-services.js';
 
 export interface CreateCompatAppDeps {
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */
@@ -90,6 +91,12 @@ export interface CreateCompatAppDeps {
      *  honest empty state. Defaults to the Cloudflare/D1 reality of the cf-full
      *  worker (D1 bound; nothing else). */
     systemResources?: SystemResourcesDescriptor;
+    /** Host-parsed service env (dual wiring, product-faithful): FRONTBASE_CACHE /
+     *  QUEUE / VECTOR (+ legacy QSTASH_TOKEN, BULLMQ_REDIS_URL,
+     *  FRONTBASE_CACHE_URL). Parsed host-side via parseEnvServices (Workers have
+     *  no process.env) and injected as data. Registry-adopted is_default rows
+     *  take precedence over these; memory/no-op is the floor. */
+    envServices?: EnvServices;
     /** Google Workspace Marketplace install URL for the Sheets connect add-on, surfaced
      *  by /api/sync/datasources/sheets/connect/issue/. Empty default => the SPA renders
      *  its bundled fallback (matches the product's FRONTBASE_SHEETS_ADDON_URL semantics). */
@@ -137,6 +144,16 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         ? await createSecretCipher(deps.sessionSecret)
         : noopCipher;
     const phase2For = storeCache((t: string) => new Phase2Store(runner, t, secretCipher));
+    // System-service resolution (registry default row > env > memory). The
+    // edge-resource mutation hooks below bump its memo so an adoption switch
+    // takes effect on the next resolve, not after the TTL backstop.
+    const serviceResolver = createSystemServiceResolver({
+        phase2For,
+        env: deps.envServices ?? {},
+        externalFetch,
+        log: (msg) => console.warn(msg),
+    });
+    const onEdgeResourceMutation = (tenant: string): void => serviceResolver.invalidate(tenant);
     const syncStoreFor = storeCache((t: string) => new SyncStore(runner, t, secretCipher));
     const invites = new CommunityInviteStore(runner);
     const passwordResets = new PasswordResetStore(runner);
@@ -298,7 +315,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
     registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now);
-    registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge);
+    registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation);
     registerAuthFormsRoutes(app, runner, now);
     registerWorkflowsRoutes(app, phase2For);
     // Wave 3
@@ -306,7 +323,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Wave 4 — edge domain (engines + providers + caches/queues/vectors + inspector + api-keys + gpu + deploy)
     registerEdgeEnginesRoutes(app, phase2For, kvFor, secretCipher, now, systemEdge);
     registerEdgeProvidersRoutes(app, phase2For, kvFor, secretCipher, externalFetch, now);
-    registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge);
+    registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation);
     registerEdgeMiscRoutes(app, runner, phase2For, secretCipher, now);
     // Tenant self-surface (the console's plan signal) — framework-only op set.
     registerTenantsRoutes(app, phase2For, now);

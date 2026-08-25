@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto';
 import { dirname, extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sqliteRunner, s3StorageProvider } from '@frontbase/edge-infra';
+import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
 import { createCmsEngine } from './worker.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -111,6 +112,11 @@ const storageProvider = env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_K
     })
     : undefined;
 
+// System-service env (dual wiring): FRONTBASE_* JSON + legacy single vars,
+// parsed here (the host is where process.env exists) and injected as data.
+// Adopted is_default registry rows still take precedence at resolve time.
+const envServices = parseEnvServices(env);
+
 // migrateUp self-applies the schema at boot (worker.ts createCmsEngine); first
 // boot on a cold volume also seeds the homepage and, when ADMIN_* are set, the
 // first administrator (idempotent — a re-run with existing users never reseeds).
@@ -126,15 +132,17 @@ const engine = await createCmsEngine({
     // The edge-engines system card must describe THIS host, not Cloudflare.
     systemEdge: { provider: 'node', name: 'Self-host Edge', db: 'SQLite (libsql)' },
     // Resource-tab truth for the same reason: the self-host runs a single
-    // service with a local SQLite file — no Redis/BullMQ/vector backend (the
-    // product's self-host does run Redis; this is not it). A local file path,
-    // not a credential, so showing it on the system card is safe.
+    // service with a local SQLite file — no platform Redis/BullMQ/vector
+    // backend. Env-declared services (e.g. FRONTBASE_CACHE pointing at Upstash)
+    // surface their cards; a local file path, not a credential, so showing the
+    // database URL on the system card is safe.
     systemResources: {
         database: { provider: 'sqlite', name: 'SQLite (libsql)', url: APP_DB_URL },
-        cache: null,
-        queue: null,
-        vector: null,
+        cache: envServiceDescriptor(envServices.cache, ENV_CARD_LABELS.cache),
+        queue: envServiceDescriptor(envServices.queue, ENV_CARD_LABELS.queue),
+        vector: envServiceDescriptor(envServices.vector, ENV_CARD_LABELS.vector),
     },
+    envServices,
 });
 
 const port = Number(env.PORT ?? 8787);

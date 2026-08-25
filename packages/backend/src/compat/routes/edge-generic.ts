@@ -21,6 +21,7 @@ function reg(
     now: () => string,
     systemResources: SystemResourcesDescriptor,
     systemEdge: SystemEdgeDescriptor,
+    onMutation: ((tenant: string) => void) | undefined,
     pre: string,
     kind: string,
     idP: string,
@@ -321,6 +322,7 @@ function reg(
         if (siblings.length > 0 && configRecord?.is_default) {
             await store.setDefaultEdgeResource(kind, id, now());
         }
+        onMutation?.(c.get('tenant'));
         const row = await store.getEdgeResource(id);
         const response = await serializeStored(store, row ?? {
             id,
@@ -350,6 +352,7 @@ function reg(
         }
         // Product parity: if the batch removed the default, promote the next row.
         if (anyDefaultDeleted) await store.promoteNextDefaultEdgeResource(kind, now());
+        if (done.length > 0) onMutation?.(c.get('tenant'));
         return c.json(batchResult(done, failed));
     });
 
@@ -381,6 +384,7 @@ function reg(
         if (asConfigRecord(incoming)?.is_default) {
             await store.setDefaultEdgeResource(kind, id, now());
         }
+        onMutation?.(c.get('tenant'));
         const response = await serializeStored(store, await store.getEdgeResource(id) ?? existing);
         return c.json(response);
     });
@@ -396,6 +400,7 @@ function reg(
         const wasDefault = await resourceWasDefault(store, id);
         await store.deleteEdgeResource(id);
         if (wasDefault) await store.promoteNextDefaultEdgeResource(kind, now());
+        onMutation?.(c.get('tenant'));
         const label = kind === 'vector' ? 'Vector store' : `Edge ${kind}`;
         return c.json({
             success: true,
@@ -416,8 +421,8 @@ function reg(
     });
 }
 
-export function registerEdgeGenericRoutes(app: App, p2: (t: string) => Phase2Store, secretCipher: SecretCipher, externalFetch: CompatFetch, now: () => string, systemResources: SystemResourcesDescriptor, systemEdge: SystemEdgeDescriptor): void {
-    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, '/api/edge-caches', 'cache', ':cache_id', '/test', 'cache_url');
-    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, '/api/edge-queues', 'queue', ':queue_id', '/test/', 'queue_url', { has_signing_key: false });
-    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, '/api/edge-vectors', 'vector', ':vector_id', '/test', 'vector_url');
+export function registerEdgeGenericRoutes(app: App, p2: (t: string) => Phase2Store, secretCipher: SecretCipher, externalFetch: CompatFetch, now: () => string, systemResources: SystemResourcesDescriptor, systemEdge: SystemEdgeDescriptor, onMutation?: (tenant: string) => void): void {
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, '/api/edge-caches', 'cache', ':cache_id', '/test', 'cache_url');
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, '/api/edge-queues', 'queue', ':queue_id', '/test/', 'queue_url', { has_signing_key: false });
+    reg(app, p2, secretCipher, externalFetch, now, systemResources, systemEdge, onMutation, '/api/edge-vectors', 'vector', ':vector_id', '/test', 'vector_url');
 }

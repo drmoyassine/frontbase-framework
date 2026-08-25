@@ -20,7 +20,7 @@
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import type { PageEntry } from '@frontbase/edge-core';
-import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset } from '@frontbase/backend';
+import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { d1RunnerFromBinding, s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
@@ -47,6 +47,19 @@ export interface CmsEnv {
     STORAGE_SECRET_ACCESS_KEY?: string;
     STORAGE_ENDPOINT?: string;
     STORAGE_REGION?: string;
+    // System services (dual wiring): parsed host-side via parseEnvServices and
+    // injected as data — never read from process.env in library code. Adopted
+    // is_default registry rows take precedence over these.
+    FRONTBASE_CACHE?: string;
+    FRONTBASE_QUEUE?: string;
+    FRONTBASE_VECTOR?: string;
+    FRONTBASE_EMBEDDING?: string;
+    QSTASH_TOKEN?: string;
+    BULLMQ_REDIS_URL?: string;
+    FRONTBASE_CACHE_URL?: string;
+    FRONTBASE_CACHE_TOKEN?: string;
+    PUBLIC_URL?: string;
+    FRONTBASE_QUEUE_CALLBACK_SECRET?: string;
 }
 
 export interface CmsEngineOptions {
@@ -75,6 +88,10 @@ export interface CmsEngineOptions {
         queue?: { provider: string; name: string; url?: string | null } | null;
         vector?: { provider: string; name: string; url?: string | null } | null;
     };
+    /** Host-parsed service env (FRONTBASE_* JSON + legacy vars → parseEnvServices).
+     *  Drives the enrich-caches resolver and the env-derived system cards; a
+     *  tenant's adopted is_default row still wins at resolve time. */
+    envServices?: EnvServices;
 }
 
 /**
@@ -132,32 +149,45 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // route enriches N layouts per request — without the cache each call
     // re-queries the datasource table.
     const enrichCipher = await createSecretCipher(opts.sessionSecret);
-    let enrichDsCache: { at: number; byTenant: Map<string, EnrichableDatasource[]> } | null = null;
+    // The worker's OWN system-service resolver for these caches (separate from
+    // the compat app's instance — the multi-store idiom this file already
+    // uses). Resolves adopted is_default row > env > memory per tenant; memory
+    // fallback keeps the 5s/30s caches working with zero configuration.
+    const enrichPhase2Stores = new Map<string, Phase2Store>();
+    const enrichPhase2For = (t: string): Phase2Store => {
+        let s = enrichPhase2Stores.get(t);
+        if (!s) { s = new Phase2Store(opts.runner, t, enrichCipher); enrichPhase2Stores.set(t, s); }
+        return s;
+    };
+    const enrichResolver = createSystemServiceResolver({
+        phase2For: enrichPhase2For,
+        env: opts.envServices ?? {},
+        externalFetch: (input, init) => globalThis.fetch(input, init),
+        log: (msg) => console.warn(msg),
+    });
     const datasourcesFor = async (tenant: string): Promise<EnrichableDatasource[]> => {
-        const at = Date.now();
-        if (!enrichDsCache || at - enrichDsCache.at > 5_000) enrichDsCache = { at, byTenant: new Map() };
-        let list = enrichDsCache.byTenant.get(tenant);
-        if (!list) {
-            list = [];
-            // Caller's tenant first; community single-tenant fallbacks preserve
-            // the original engine behavior ('_root' then '_default').
-            const order = tenant === '_root' ? [tenant, '_default'] : [tenant, '_root', '_default'];
-            for (const t of order) {
-                try {
-                    list = await new SyncStore(opts.runner, t, enrichCipher).listDatasources();
-                } catch { list = []; }
-                if (list.length > 0) break;
-            }
-            enrichDsCache.byTenant.set(tenant, list);
+        const cache = await enrichResolver.cacheFor(tenant);
+        const hit = await cache.get('enrich:datasources');
+        if (Array.isArray(hit)) return hit;
+        let list: EnrichableDatasource[] = [];
+        // Caller's tenant first; community single-tenant fallbacks preserve
+        // the original engine behavior ('_root' then '_default').
+        const order = tenant === '_root' ? [tenant, '_default'] : [tenant, '_root', '_default'];
+        for (const t of order) {
+            try {
+                list = await new SyncStore(opts.runner, t, enrichCipher).listDatasources();
+            } catch { list = []; }
+            if (list.length > 0) break;
         }
+        await cache.setex('enrich:datasources', 5, JSON.stringify(list));
         return list;
     };
     // Schema snapshots for the Form/InfoList `binding.columns` bake. Their edge
     // hooks have no schema endpoint to call — empty columns render "No schema
     // available for '<table>'. Try re-publishing" — so serve-time enrichment
     // bakes the column list alongside the dataRequest. Cached 30s per
-    // datasource+table (null = failed lookup; don't retry every request).
-    let enrichSchemaCache: { at: number; byKey: Map<string, SchemaColumnSnapshot[] | null> } | null = null;
+    // datasource+table, wrapped `{ok:true, snapshot}` so a cached failed lookup
+    // (null snapshot) is distinguishable from a miss (don't retry every request).
     const schemaSnapshotsFor = async (
         tenant: string,
         layout: unknown,
@@ -186,14 +216,14 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         };
         scan(layout);
         if (needed.size === 0) return undefined;
-        const at = Date.now();
-        if (!enrichSchemaCache || at - enrichSchemaCache.at > 30_000) enrichSchemaCache = { at, byKey: new Map() };
+        const cache = await enrichResolver.cacheFor(tenant);
         const out = new Map<string, SchemaColumnSnapshot[]>();
         const byId = new Map(datasources.map((d) => [d.id, d]));
         for (const key of needed) {
-            if (enrichSchemaCache.byKey.has(key)) {
-                const cached = enrichSchemaCache.byKey.get(key);
-                if (cached) out.set(key, cached);
+            const cacheKey = `enrich:schema:${key}`;
+            const wrapped = await cache.get(cacheKey) as { ok?: boolean; snapshot?: SchemaColumnSnapshot[] | null } | null | undefined;
+            if (wrapped && wrapped.ok === true) {
+                if (wrapped.snapshot) out.set(key, wrapped.snapshot);
                 continue;
             }
             const [dsId, table] = key.split('::');
@@ -207,7 +237,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
                     // getEdgeResourceConfig, exactly like app.ts's
                     // accountConfigFor for registerDataExecuteRoute.
                     const merged = await mergeAccountConfig(
-                        (t, accountId) => new Phase2Store(opts.runner, t, enrichCipher).getEdgeResourceConfig(accountId),
+                        (t, accountId) => enrichPhase2For(t).getEdgeResourceConfig(accountId),
                         (input, init) => globalThis.fetch(input, init),
                         tenant, ds.kind, ds.config ?? {},
                     ).catch(() => ds.config ?? {});
@@ -215,7 +245,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
                     snapshot = (await inspectTable(runner, dialectOf(ds.kind), table)).columns;
                 } catch { snapshot = null; }
             }
-            enrichSchemaCache.byKey.set(key, snapshot);
+            await cache.setex(cacheKey, 30, JSON.stringify({ ok: true, snapshot }));
             if (snapshot) out.set(key, snapshot);
         }
         return out;
@@ -254,13 +284,18 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // so self-hosts don't report "Cloudflare D1" they don't have.
         systemEdge: opts.systemEdge ?? { provider: 'cloudflare', name: 'Local Edge', db: 'Cloudflare D1' },
         // Resource-tab truth for the same reason: this worker binds only D1 —
-        // no KV/Queues/Vectorize — so only the database tab gets a system card.
+        // no KV/Queues/Vectorize — so the database tab gets a system card and
+        // the other three render env-derived cards when FRONTBASE_* wiring
+        // declares them (absent → null → honest empty state).
         systemResources: opts.systemResources ?? {
             database: { provider: 'cloudflare', name: 'Cloudflare D1', url: 'd1://system-d1' },
-            cache: null,
-            queue: null,
-            vector: null,
+            cache: envServiceDescriptor(opts.envServices?.cache, ENV_CARD_LABELS.cache),
+            queue: envServiceDescriptor(opts.envServices?.queue, ENV_CARD_LABELS.queue),
+            vector: envServiceDescriptor(opts.envServices?.vector, ENV_CARD_LABELS.vector),
         },
+        // Dual wiring: the parsed service env. Adopted is_default registry rows
+        // still take precedence at resolve time; this is the deploy-time floor.
+        envServices: opts.envServices,
         // Enrich console page reads so the admin SPA / builder surfaces hold a
         // dataRequest the hydration runtime can execute (canvas data preview).
         // Save paths strip it in PagesStore before persisting.
@@ -613,6 +648,9 @@ export default {
                     setupExpiresAt: env.SETUP_EXPIRES_AT,
                     admin: { email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD, role: env.ADMIN_ROLE },
                     assets: env.ASSETS,
+                    // Host-side env parse (Workers have no process.env). Memoized
+                    // on the raw strings — only actual secret changes recompute.
+                    envServices: parseEnvServices(env as unknown as Record<string, string | undefined>),
                     dispatcher: (work) => { if (currentCtx) currentCtx.waitUntil(work()); else void work(); },
                     storageProvider: env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_KEY
                         ? s3StorageProvider({

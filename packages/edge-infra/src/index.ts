@@ -37,8 +37,13 @@ export { consumeToken, rateLimitGuard, RATE_LIMITED_BODY } from './proxy/ratelim
 export type { RateLimitConfig, RateLimitResult } from './proxy/ratelimit.js';
 
 // cache
-export { memoryCache, nullCache, kvCache } from './cache/providers.js';
-export type { CacheProvider } from './cache/types.js';
+export { memoryCache, nullCache, kvCache, prefixedCache, resilientCache } from './cache/providers.js';
+export type { ResilientCacheOpts } from './cache/providers.js';
+export { upstashCache } from './cache/upstash.js';
+export type { UpstashCacheOpts } from './cache/upstash.js';
+export { ioredisCache } from './cache/ioredis-adapter.js';
+export type { IoredisCacheOpts } from './cache/ioredis-adapter.js';
+export type { CacheProvider, ServiceFetch } from './cache/types.js';
 
 // queue / durable workflow
 export { inProcessWorkflowProvider, qstashWorkflowProvider } from './queue/providers.js';

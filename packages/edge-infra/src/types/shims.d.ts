@@ -58,3 +58,23 @@ declare module '@upstash/qstash' {
         constructor(opts: { token: string });
     }
 }
+
+// ioredis — optional dependency (Node-only TCP Redis; absent on Cloudflare,
+// where the dynamic import throws and the resolver downgrades to memory).
+declare module 'ioredis' {
+    export interface RedisOptions {
+        connectTimeout?: number;
+        maxRetriesPerRequest?: number | null;
+    }
+    export class Redis {
+        constructor(url: string, opts?: RedisOptions);
+        get(key: string): Promise<string | null>;
+        set(key: string, value: string, mode?: 'EX', seconds?: number): Promise<unknown>;
+        del(...keys: string[]): Promise<number>;
+        keys(pattern: string): Promise<string[]>;
+        incr(key: string): Promise<number>;
+        expire(key: string, seconds: number): Promise<number>;
+        quit(): Promise<void>;
+    }
+    export default Redis;
+}

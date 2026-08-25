@@ -87,7 +87,9 @@ if (missing.length > 0) {
 // basic D1 CMS. Stubbed so the single-file artifact carries no dangling imports.
 // (@neondatabase/serverless is bundled for real: the edge-database Postgres
 // flows invoke it on demand, not behind an unused feature flag.)
-const OPTIONAL = ['ai', '@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@upstash/qstash', '@modelcontextprotocol/sdk', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'];
+// ioredis/bullmq are TCP-only (Node runtime); the worker's cache resolver
+// catches the stub's throw and falls back (warn + env/memory path).
+const OPTIONAL = ['ai', '@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@upstash/qstash', '@modelcontextprotocol/sdk', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner', 'ioredis', 'bullmq'];
 const optionalStub = {
     name: 'stub-optional-deps',
     setup(build) {

@@ -337,6 +337,36 @@ await check('caches/queues/vectors synthesize no system rows (nothing platform-w
     return true;
 });
 
+// ---- dual wiring: env-declared services surface as system cards ----
+// A second engine instance with FRONTBASE_CACHE-style wiring injected (the
+// host-side parseEnvServices output): the cache tab gains an "(env)" system
+// card, the undeclared queue tab stays honest. The default engine above (no
+// env) is the no-system-rows case already checked.
+await check('env-equipped engine shows the env cache system card; undeclared kinds stay empty', async () => {
+    const envEngine = await createCmsEngine({
+        runner: sqliteRunner(':memory:'),
+        sessionSecret: 'smoke-session-secret-not-for-prod',
+        admin: ADMIN,
+        assets: assetBinding,
+        now: () => '2026-01-01T00:00:00.000Z',
+        envServices: { cache: { provider: 'upstash', url: 'https://smoke-cache.upstash.io', token: 'smoke-token' } },
+    });
+    const ereq = (path: string, init?: RequestInit) => envEngine.fetch(new Request('https://smoke-env.local' + path, init));
+    const login = await ereq('/api/auth/login', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: ADMIN.email, password: ADMIN.password }),
+    });
+    const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+    const caches = await ereq('/api/edge-caches/', { headers: { cookie } });
+    const cacheRows = await caches.json() as Array<{ is_system?: boolean; name?: string; provider?: string; cache_url?: string }>;
+    const card = cacheRows.find((row) => row.is_system);
+    if (caches.status !== 200 || !card || card.name !== 'Upstash Redis (env)'
+        || card.provider !== 'upstash' || card.cache_url !== 'https://smoke-cache.upstash.io') return false;
+    const queues = await ereq('/api/edge-queues/', { headers: { cookie } });
+    const queueRows = await queues.json() as Array<{ is_system?: boolean }>;
+    return Array.isArray(queueRows) && !queueRows.some((row) => row.is_system);
+});
+
 // ---- engine import tier gate: the engine_imports plan feature flag ----
 // The framework ships gated by default (no plan → community): the paste-in
 // bundle path 403s until an operator assigns a plan carrying the flag. The

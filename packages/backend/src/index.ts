@@ -259,4 +259,9 @@ export { mergeAccountConfig } from './compat/providers/merge-account.js';
 // and served by the host at /static/assets/* — independent of storage providers.
 export { KeyValueStore } from './compat/store.js';
 export { saveProjectAsset, readProjectAsset, readProjectSettings } from './compat/assets.js';
+// System services — env parsing (host-side; Workers have no process.env) and the
+// per-tenant resolver (adopted is_default row > env JSON > memory) the hosts and
+// edge-resource tabs consume.
+export { parseEnvServices, createSystemServiceResolver, cacheAdapterFromConfig, envServiceDescriptor, ENV_CARD_LABELS } from './compat/system-services.js';
+export type { EnvServices, ServiceEnvConfig, ResolvedServiceNames, SystemServiceResolver, SystemServiceResolverDeps } from './compat/system-services.js';
 export * from './db/schema.js';
