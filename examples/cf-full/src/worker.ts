@@ -20,7 +20,7 @@
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import type { PageEntry } from '@frontbase/edge-core';
-import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, type EnrichableDatasource, type SchemaColumnSnapshot } from '@frontbase/backend';
+import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { d1RunnerFromBinding, s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
@@ -263,7 +263,27 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // to defaults on each call (its documented contract), so the edition/env
     // values are re-stated here alongside resolvePrincipal in ONE call — this
     // replaces the module-load `configureEngine({ edition, nodeEnv })`.
-    configureEngine({ edition: 'community', nodeEnv: 'production', resolvePrincipal });
+    // Branding seam: resolveFaviconUrl feeds the published-page <link rel=icon>
+    // and the Navbar project-logo injection (navbarFavicon.ts). It reads the
+    // console's project settings — faviconUrl set via POST /api/project/assets/upload/
+    // — falling back to the framework icon. Same single-tenant fallback order as
+    // datasource enrichment: the product serves branding globally (disk), so
+    // '_root' then '_default' approximates one namespace across the KV's rows.
+    const engineOverrides = {
+        edition: 'community' as const,
+        nodeEnv: 'production',
+        resolvePrincipal,
+        resolveFaviconUrl: async (): Promise<string> => {
+            let settings: Record<string, unknown> = {};
+            for (const tenant of ['_root', '_default']) {
+                settings = await readProjectSettings(opts.runner, tenant);
+                if (Object.keys(settings).length) break;
+            }
+            const url = settings.faviconUrl;
+            return typeof url === 'string' && url ? url : '/static/icon.png';
+        },
+    };
+    configureEngine(engineOverrides);
     // Auth gate for every builder route: no session → 302 to /frontbase-admin
     // (with a return URL). Passed INTO createBuilderEngine via `authMiddleware` so
     // it is registered as the FIRST handler — Hono dispatches in registration
@@ -373,6 +393,18 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
 
     const app = new Hono();
 
+    // engineConfig() state is MODULE-GLOBAL, and edge-core render paths read it
+    // at request time. A process hosting more than one engine — production is
+    // one engine per isolate, but the in-process smoke builds several — would
+    // otherwise have the LAST-created engine's resolvers answer every earlier
+    // engine's renders (a fresh engine's empty DB silently shadowing this one).
+    // Re-asserting per request keeps each engine self-consistent. Registered
+    // before any route, so it composes first for every handler below.
+    app.use('*', async (_c, next) => {
+        configureEngine(engineOverrides);
+        await next();
+    });
+
     const assetResponse = async (request: Request, cacheControl: string): Promise<Response | null> => {
         if (!opts.assets) return null;
         const response = await opts.assets.fetch(request);
@@ -433,6 +465,35 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             return new Response(asset.body, { status: asset.status, statusText: asset.statusText, headers });
         }
         return c.text('not_found', 404);
+    });
+    // Branding assets uploaded from the console (POST /api/project/assets/upload/)
+    // live in the settings KV — deliberately independent of any configured
+    // storage provider (product parity: branding survives broken provider
+    // credentials and works in both admin and SSR contexts). Served publicly and
+    // immutably: filenames carry 8 hex of randomness, so an address never
+    // changes bytes. The strict shape check IS the injection guard — the KV key
+    // is derived from this path segment.
+    app.get('/static/assets/:filename', async (c) => {
+        const filename = c.req.param('filename');
+        if (!/^(favicon|logo)-[0-9a-f]{8}\.(png|ico|svg|jpe?g)$/.test(filename)) return c.text('not_found', 404);
+        let asset: StoredProjectAsset | null = null;
+        for (const tenant of ['_root', '_default']) {
+            asset = await readProjectAsset(new KeyValueStore(opts.runner, tenant), filename);
+            if (asset) break;
+        }
+        if (!asset) return c.text('not_found', 404);
+        const headers: Record<string, string> = {
+            'Content-Type': asset.contentType,
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'X-Content-Type-Options': 'nosniff',
+        };
+        // SVG is the one uploadable format that can embed scripts — neutralize
+        // them when the file is navigated to directly. <img>/favicon embedding
+        // is unaffected by the SVG document's own CSP.
+        if (asset.contentType === 'image/svg+xml') {
+            headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'";
+        }
+        return new Response(asset.bytes, { status: 200, headers });
     });
     const consoleShell = async (c: any) => {
         if (await needsSetup()) return c.redirect('/setup', 302);

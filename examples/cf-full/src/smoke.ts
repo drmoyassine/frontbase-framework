@@ -699,6 +699,77 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
     }
 }
 
+// The live frontbase-site branding flow (console settings → navbar logo +
+// browser favicon). Branding bytes are stored in the settings KV — NOT the
+// configured storage provider — so the checks run without any provider.
+{
+    await check('branding: homepage falls back to the framework icon before any upload', async () => {
+        const r = await req('/');
+        return r.status === 200 && (await r.text()).includes('<link rel="icon" href="/static/icon.png">');
+    });
+    const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4, 5, 6, 7, 8]);
+    let assetUrl = '';
+    await check('branding: favicon upload returns the /static/assets publicUrl', async () => {
+        const form = new FormData();
+        form.append('file', new File([pngBytes], 'favicon.png', { type: 'image/png' }));
+        form.append('asset_type', 'favicon');
+        const r = await req('/api/project/assets/upload/', { method: 'POST', headers: { cookie: compatCookie }, body: form });
+        const body = await r.json() as { success?: boolean; publicUrl?: string; url?: string };
+        assetUrl = body.publicUrl ?? '';
+        return r.status === 200 && body.success === true && /^\/static\/assets\/favicon-[0-9a-f]{8}\.png$/.test(assetUrl)
+            && body.url === assetUrl;
+    });
+    await check('branding: asset is served publicly with exact bytes + immutable cache', async () => {
+        if (!assetUrl) return false;
+        const r = await req(assetUrl); // no cookie — public by design
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        return r.status === 200 && r.headers.get('content-type') === 'image/png'
+            && r.headers.get('cache-control') === 'public, max-age=31536000, immutable'
+            && bytes.length === pngBytes.length && bytes.every((b, i) => b === pngBytes[i]);
+    });
+    await check('branding: bad extension is rejected with the product 400', async () => {
+        const form = new FormData();
+        form.append('file', new File([new TextEncoder().encode('nope')], 'favicon.txt', { type: 'text/plain' }));
+        form.append('asset_type', 'favicon');
+        const r = await req('/api/project/assets/upload/', { method: 'POST', headers: { cookie: compatCookie }, body: form });
+        const body = await r.json() as { detail?: string };
+        return r.status === 400 && (body.detail ?? '').includes('Invalid file type for favicon');
+    });
+    await check('branding: oversize favicon is rejected with the product 413', async () => {
+        const form = new FormData();
+        form.append('file', new File([new Uint8Array(256 * 1024 + 1)], 'favicon.png', { type: 'image/png' }));
+        form.append('asset_type', 'favicon');
+        const r = await req('/api/project/assets/upload/', { method: 'POST', headers: { cookie: compatCookie }, body: form });
+        const body = await r.json() as { detail?: string };
+        return r.status === 413 && (body.detail ?? '').includes('256KB');
+    });
+    await check('branding: multi-chunk logo (over one KV chunk) round-trips byte-exact', async () => {
+        const big = new Uint8Array(150 * 1024).fill(7); // > 64KB b64 chunk boundary
+        const form = new FormData();
+        form.append('file', new File([big], 'logo.png', { type: 'image/png' }));
+        form.append('asset_type', 'logo');
+        const r = await req('/api/project/assets/upload/', { method: 'POST', headers: { cookie: compatCookie }, body: form });
+        const body = await r.json() as { publicUrl?: string };
+        if (r.status !== 200 || !body.publicUrl) return false;
+        const served = await req(body.publicUrl);
+        const bytes = new Uint8Array(await served.arrayBuffer());
+        return served.status === 200 && bytes.length === big.length && bytes.every((b, i) => b === big[i]);
+    });
+    await check('branding: faviconUrl from project settings reaches the published page head', async () => {
+        if (!assetUrl) return false;
+        const put = await req('/api/project/', {
+            method: 'PUT', headers: { 'content-type': 'application/json', cookie: compatCookie },
+            body: JSON.stringify({ faviconUrl: assetUrl }),
+        });
+        if (put.status !== 200) return false;
+        const home = await req('/');
+        const html = await home.text();
+        return home.status === 200
+            && html.includes(`<link rel="icon" href="${assetUrl}">`)
+            && html.includes(`<link rel="apple-touch-icon" href="${assetUrl}">`);
+    });
+}
+
 if (skipped > 0) console.log(`\n⚠ ${skipped} bundle-dependent check(s) skipped — this run did NOT verify the console bundles.`);
 console.log(failures === 0 ? '\ncf-full smoke: PASS ✅' : `\ncf-full smoke: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

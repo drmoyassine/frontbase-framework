@@ -18,6 +18,13 @@ export interface ShellOptions {
     registerServiceWorker: boolean;
     /** Minified behaviors runtime (M1.4 compiler emits it). Inlined before </body>. */
     behaviorsBundle?: string;
+    /**
+     * Favicon for the browser tab (host-resolved — EngineConfig.resolveFaviconUrl).
+     * Emitted ONLY when set: the golden-corpus defaults resolve '' and their
+     * byte-parity snapshots must not grow a link. Hosts that want the framework
+     * icon fallback pass it here (faviconUrl || '/static/icon.png').
+     */
+    faviconUrl?: string;
 }
 
 export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOptions): string {
@@ -26,6 +33,9 @@ export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOpt
         : '';
     const behaviors = opts.behaviorsBundle
         ? `<script>${opts.behaviorsBundle}</script>`
+        : '';
+    const faviconLinks = opts.faviconUrl
+        ? `<link rel="icon" href="${escapeHtml(opts.faviconUrl)}">\n<link rel="apple-touch-icon" href="${escapeHtml(opts.faviconUrl)}">\n`
         : '';
     return `<!DOCTYPE html>
 <html lang="en">
@@ -36,7 +46,7 @@ export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOpt
 <meta name="chimera-rendered-by" content="${escapeHtml(opts.environment)}">
 <title>${escapeHtml(page.title)}</title>
 ${page.description ? `<meta name="description" content="${escapeHtml(page.description)}">` : ''}
-<link rel="modulepreload" href="/static/react/hydrate.js?v=${HYDRATE_VERSION}">
+${faviconLinks}<link rel="modulepreload" href="/static/react/hydrate.js?v=${HYDRATE_VERSION}">
 <style>${page.cssBundle || FALLBACK_CSS}</style>
 </head>
 <body>

@@ -255,4 +255,8 @@ export { inspectTable } from './compat/routes/sync.js';
 export { datasourceRunner, dialectOf } from './db/datasource-runner.js';
 export { resolveDatasourceConfig } from './compat/credential-resolver.js';
 export { mergeAccountConfig } from './compat/providers/merge-account.js';
+// CF-22 P2 Wave 2: branding assets (favicon/logo) persisted in the settings KV
+// and served by the host at /static/assets/* — independent of storage providers.
+export { KeyValueStore } from './compat/store.js';
+export { saveProjectAsset, readProjectAsset, readProjectSettings } from './compat/assets.js';
 export * from './db/schema.js';
