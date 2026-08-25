@@ -314,6 +314,49 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
         && body[0]?.id === 'local-edge' && !!body[0]?.edge_db_id;
 });
 
+// ---- engine import tier gate: the engine_imports plan feature flag ----
+// The framework ships gated by default (no plan → community): the paste-in
+// bundle path 403s until an operator assigns a plan carrying the flag. The
+// unlock exercises the native /plans route on the same compat session.
+await check('GET /api/tenants/me/plan reports the community plan (MyPlanResponse shape)', async () => {
+    const r = await req('/api/tenants/me/plan', { headers: { cookie: compatCookie } });
+    const body = await r.json() as { plan?: { slug?: string }; limits?: Record<string, unknown>; pending_request?: unknown };
+    return r.status === 200 && body.plan?.slug === 'community'
+        && body.limits !== undefined && body.pending_request === null;
+});
+await check('engine import 403s on community, unlocks via the admin plans API', async () => {
+    const authed = { 'content-type': 'application/json', cookie: compatCookie } as const;
+    const created = await req('/api/edge-engines/', {
+        method: 'POST', headers: authed,
+        body: JSON.stringify({ name: 'Smoke Portable', url: 'https://engine.example' }),
+    });
+    if (created.status !== 201) return false;
+    const engineId = ((await created.json()) as { id?: string }).id;
+    const exported = await req(`/api/edge-engines/${engineId}/export`, {
+        method: 'POST', headers: authed, body: JSON.stringify({ passphrase: 'correct-horse' }),
+    });
+    const { bundle } = await exported.json() as { bundle?: string };
+    const deny = await req('/api/edge-engines/import', {
+        method: 'POST', headers: authed, body: JSON.stringify({ bundle, passphrase: 'correct-horse' }),
+    });
+    if (deny.status !== 403 || ((await deny.json()) as { detail?: string }).detail !== 'Engine import requires an upgraded plan') {
+        return false;
+    }
+    // Operator unlock: the product-shaped admin plans surface (the console's
+    // Subscription Plans editor talks to the same paths).
+    const unlock = await req('/api/admin/plans', {
+        method: 'POST', headers: authed,
+        body: JSON.stringify({ slug: 'pro', name: 'Pro', limits: { engine_imports: true } }),
+    });
+    if (unlock.status !== 201) return false;
+    const allow = await req('/api/edge-engines/import', {
+        method: 'POST', headers: authed, body: JSON.stringify({ bundle, passphrase: 'correct-horse' }),
+    });
+    const allowed = await allow.json() as { engine_id?: string; confirm_secret?: string };
+    return allow.status === 200 && typeof allowed.engine_id === 'string'
+        && typeof allowed.confirm_secret === 'string';
+});
+
 // ---- storage: provider-configured byte transfer (out-of-the-box S3/R2) ----
 // Regression guard for the 503-everywhere gap: byte-transfer ops must resolve a
 // live client from the storage_providers record (credentials live on the

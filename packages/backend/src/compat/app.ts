@@ -35,6 +35,8 @@ import { registerWorkflowsRoutes } from './routes/workflows.js';
 import { registerActionsRoutes } from './routes/actions.js';
 import { registerAuthCompatUnauthRoutes, registerAuthCompatAuthedRoutes } from './routes/auth-compat.js';
 import { registerEdgeEnginesRoutes } from './routes/edge-engines.js';
+import { registerTenantsRoutes } from './routes/tenants.js';
+import { registerAdminPlansRoutes } from './routes/admin-plans.js';
 import type { SystemEdgeDescriptor } from './routes/edge-shapes.js';
 import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
 import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
@@ -230,6 +232,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
             '/api/edge-',
             '/api/cloudflare/',
             '/api/deno/',
+            '/api/admin/',
             '/api/database/rls/',
             '/api/storage/providers/',
             '/api/auth/security/',
@@ -295,6 +298,11 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerEdgeProvidersRoutes(app, phase2For, kvFor, secretCipher, externalFetch, now);
     registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now);
     registerEdgeMiscRoutes(app, runner, phase2For, secretCipher, now);
+    // Tenant self-surface (the console's plan signal) — framework-only op set.
+    registerTenantsRoutes(app, phase2For, now);
+    // Master-admin plan editor (product /api/admin/plans) — the operator-facing
+    // unlock for plan-gated features like engine_imports.
+    registerAdminPlansRoutes(app, phase2For, now);
     // Wave 5 — workspace agent
     registerAgentCompatRoutes(app, runner, kvFor, secretCipher, externalFetch);
     // Work A — DB-Synchronizer (/api/sync/*)

@@ -32,7 +32,7 @@
  * an anchor stops matching, this script fails the build instead of silently
  * shipping an unpatched (or half-patched) bundle.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -108,7 +108,12 @@ export function patchHydrate() {
         }
         src = src.slice(0, first) + to + src.slice(first + from.length);
     }
-    for (const out of OUTS) writeFileSync(out, src);
+    for (const out of OUTS) {
+        // A fresh `fetch:console` may have re-created console-dist without the
+        // react/ subdir; writeFileSync cannot create parents.
+        mkdirSync(dirname(out), { recursive: true });
+        writeFileSync(out, src);
+    }
     return { patched: true, bytes: src.length, patches: PATCHES.length };
 }
 

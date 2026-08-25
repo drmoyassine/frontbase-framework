@@ -33,6 +33,18 @@ export interface BucketInput {
     config?: string;
 }
 
+/** A plans-table row (the subset used beyond limit enforcement). */
+export interface PlanRow {
+    id: string;
+    name: string;
+    price_cents?: number | null;
+    interval?: string | null;
+    limits?: string | null;
+    is_active?: number | null;
+    created_at?: string;
+    updated_at?: string;
+}
+
 export interface FileInput {
     id: string;
     bucketId: string;
@@ -395,6 +407,15 @@ export class Phase2Store {
         return this.runner.query('SELECT id, name, price_cents, interval, limits, is_active, created_at, updated_at FROM plans WHERE tenant_slug = ? ORDER BY price_cents', [this.tenant]);
     }
 
+    /** One plan row by id (tenant-scoped), or null. */
+    async getPlan(id: string): Promise<PlanRow | null> {
+        const rows = await this.runner.query(
+            'SELECT id, name, price_cents, interval, limits, is_active, created_at, updated_at FROM plans WHERE tenant_slug = ? AND id = ?',
+            [this.tenant, id],
+        );
+        return (rows[0] as PlanRow | undefined) ?? null;
+    }
+
     async upsertPlan(input: { id: string; name: string; priceCents: number; interval: string; limits?: Record<string, unknown>; isActive?: boolean }, now: string): Promise<void> {
         await this.runner.exec(
             `INSERT INTO plans (id, tenant_slug, name, price_cents, interval, limits, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)
@@ -409,26 +430,34 @@ export class Phase2Store {
 
     // ============ PLAN-LIMIT ENFORCEMENT (Phase 3c / F8c) ============
 
+    /** The first active plan row — the same row getEffectiveLimits reads. */
+    async getActivePlan(): Promise<PlanRow | null> {
+        const rows = await this.runner.query(
+            'SELECT id, name, price_cents, limits, is_active, created_at, updated_at FROM plans WHERE tenant_slug = ? AND is_active = 1 ORDER BY updated_at DESC LIMIT 1',
+            [this.tenant],
+        );
+        return (rows[0] as PlanRow | undefined) ?? null;
+    }
+
     /**
      * The effective limits for this tenant. Resolution order:
      *   1. A `_limits` setting (JSON) — set when a plan is assigned to the tenant.
      *   2. The first active plan's `limits`.
      *   3. null → unlimited (no plan assigned).
-     * `-1` on any limit key means unlimited for that resource.
+     * `-1` on any limit key means unlimited for that resource; boolean values are
+     * plan feature flags (product LIMIT_REGISTRY `kind: 'bool'` — e.g.
+     * `engine_imports`), not quotas, and are skipped by enforceLimit.
      */
-    async getEffectiveLimits(): Promise<Record<string, number> | null> {
+    async getEffectiveLimits(): Promise<Record<string, number | boolean> | null> {
         // 1. Explicit assignment via settings.
         const assigned = await this.getSetting('_limits');
         if (assigned) {
             try { return JSON.parse(assigned); } catch { /* fall through */ }
         }
         // 2. First active plan's limits.
-        const rows = await this.runner.query(
-            "SELECT limits FROM plans WHERE tenant_slug = ? AND is_active = 1 AND limits IS NOT NULL ORDER BY updated_at DESC LIMIT 1",
-            [this.tenant],
-        );
-        if (rows[0]?.limits) {
-            try { return JSON.parse(String(rows[0].limits)); } catch { /* fall through */ }
+        const plan = await this.getActivePlan();
+        if (plan?.limits) {
+            try { return JSON.parse(String(plan.limits)); } catch { /* fall through */ }
         }
         return null;
     }
@@ -436,13 +465,13 @@ export class Phase2Store {
     /**
      * Check a named limit against a current count. Throws 'limit_exceeded' if the
      * count is at/over a positive limit. No-op when limits are null or the key is
-     * absent / unlimited (-1). Returns the limits for chaining.
+     * absent / unlimited (-1) / a boolean feature flag. Returns the limits for chaining.
      */
-    async enforceLimit(key: string, currentCount: number): Promise<Record<string, number> | null> {
+    async enforceLimit(key: string, currentCount: number): Promise<Record<string, number | boolean> | null> {
         const limits = await this.getEffectiveLimits();
         if (!limits) return null;
         const cap = limits[key];
-        if (cap === undefined || cap === -1) return limits; // unlimited
+        if (typeof cap !== 'number' || cap === -1) return limits; // unlimited or feature flag
         if (currentCount >= cap) throw new Error('limit_exceeded');
         return limits;
     }
