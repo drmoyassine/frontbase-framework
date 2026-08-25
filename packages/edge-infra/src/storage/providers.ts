@@ -42,6 +42,12 @@ export interface StorageProvider {
     listFiles?(bucket: string, path: string, opts?: { limit?: number; offset?: number; search?: string }): Promise<FileEntry[]>;
     /** Create a folder (provider-specific marker). */
     createFolder?(bucket: string, folderPath: string): Promise<void>;
+    /** Delete many objects in one call (product delete_files — Supabase prefixes batch). */
+    deleteFiles?(bucket: string, paths: string[]): Promise<void>;
+    /** Move/rename within a bucket, server-side (product move_file — no download). */
+    move?(bucket: string, sourceKey: string, destinationKey: string): Promise<void>;
+    /** The provider's inherent public URL for an object (product get_public_url). */
+    publicUrl?(bucket: string, key: string): string;
 }
 
 export interface BucketEntry {
@@ -341,6 +347,29 @@ export function sigv4StorageProvider(opts: S3StorageOpts): StorageProvider {
             return presign(ctx, 'PUT', objectPath(bucket, key), expiresInSeconds);
         },
 
+        async deleteFiles(bucket: string, paths: string[]) {
+            for (const key of paths) await this.delete(bucket, key);
+        },
+
+        async move(bucket: string, sourceKey: string, destinationKey: string) {
+            // S3 server-side copy + delete (cloudflare_adapter.py move_file) —
+            // no bytes transit the worker.
+            const { url, headers } = await sign(ctx, {
+                method: 'PUT',
+                canonicalPath: objectPath(bucket, destinationKey),
+                payloadHash: EMPTY_SHA256,
+                headers: { 'x-amz-copy-source': `/${bucket}/${sourceKey.replace(/^\/+/, '')}` },
+            });
+            await assertOk(await fetch(url, { method: 'PUT', headers }), 'copy');
+            await this.delete(bucket, sourceKey);
+        },
+
+        publicUrl(bucket: string, key: string): string {
+            // cloudflare_adapter.py get_public_url: the plain endpoint URL — not
+            // presigned (serving through it requires the bucket to be exposed).
+            return `${ctx.endpoint}/${uriEncode(bucket)}/${uriEncode(key.replace(/^\/+/, ''), true)}`;
+        },
+
         // ---- management (S3 REST: PUT/DELETE bucket, ListBuckets/ListObjectsV2) ----
 
         async listBuckets(): Promise<BucketEntry[]> {
@@ -487,6 +516,32 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
                 body: JSON.stringify({ prefixes: [key.replace(/^\/+/, '')] }),
             });
             await assertOk(resp, 'delete');
+        },
+
+        async deleteFiles(bucket: string, paths: string[]) {
+            // One batched request (supabase_adapter.py delete_files) — the whole
+            // paths array travels in a single prefixes body.
+            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}`, {
+                method: 'DELETE',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify({ prefixes: paths.map((p) => p.replace(/^\/+/, '')) }),
+            });
+            await assertOk(resp, 'delete_files');
+        },
+
+        async move(bucket: string, sourceKey: string, destinationKey: string) {
+            // Native server-side move (supabase_adapter.py move_file) — atomic,
+            // no bytes transit the worker.
+            const resp = await fetch(`${base}/object/move`, {
+                method: 'POST',
+                headers: { ...headers, 'content-type': 'application/json' },
+                body: JSON.stringify({ bucketId: bucket, sourceKey, destinationKey }),
+            });
+            await assertOk(resp, 'move');
+        },
+
+        publicUrl(bucket: string, key: string): string {
+            return `${base}/object/public/${encodeURIComponent(bucket)}/${safePath(key)}`;
         },
 
         async signedUrl(bucket: string, key: string, expiresInSeconds = 900): Promise<string> {
@@ -637,6 +692,14 @@ export function memoryStorageProvider(): StorageProvider & { _store: Map<string,
         async put({ bucket, key, bytes, contentType }) { store.set(k(bucket, key), { bytes, contentType }); return { key }; },
         async get(bucket, key) { const v = store.get(k(bucket, key)); if (!v) throw new Error('not_found'); return { bytes: v.bytes, contentType: v.contentType }; },
         async delete(bucket, key) { store.delete(k(bucket, key)); },
+        async deleteFiles(bucket, paths) { for (const key of paths) store.delete(k(bucket, key)); },
+        async move(bucket, sourceKey, destinationKey) {
+            const v = store.get(k(bucket, sourceKey));
+            if (!v) throw new Error('not_found');
+            store.set(k(bucket, destinationKey), v);
+            store.delete(k(bucket, sourceKey));
+        },
+        publicUrl(bucket, key) { return `memory://public/${k(bucket, key)}`; },
         async signedUrl(bucket, key) { return `memory://${k(bucket, key)}`; },
         async signedUploadUrl(bucket, key) { return `memory://upload/${k(bucket, key)}`; },
     };

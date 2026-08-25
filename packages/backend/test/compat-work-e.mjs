@@ -267,7 +267,15 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
             const chunks = [];
             incoming.on('data', (chunk) => chunks.push(chunk));
             incoming.on('end', () => {
-                objects.set(key, Buffer.concat(chunks));
+                // CopyObject (server-side move) — body unused, source in the header.
+                const copySource = incoming.headers['x-amz-copy-source'];
+                if (typeof copySource === 'string') {
+                    const src = objects.get(copySource.replace(/^\/+/, ''));
+                    if (!src) { res.writeHead(404).end('NoSuchKey'); return; }
+                    objects.set(key, src);
+                } else {
+                    objects.set(key, Buffer.concat(chunks));
+                }
                 res.writeHead(200).end();
             });
         } else if (incoming.method === 'GET') {
@@ -326,7 +334,7 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
             },
         );
         const bucket = await bucketResponse.json();
-        assert.equal(bucketResponse.status, 201, JSON.stringify(bucket));
+        assert.equal(bucketResponse.status, 200, JSON.stringify(bucket));
         const sourceBucket = bucket.bucket.id;
 
         const form = new FormData();
@@ -343,46 +351,59 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
         // Resolved through the account, NOT the env-wired provider.
         assert.equal(storage._store.size, 0);
 
+        // Console shape (FileBrowser api.ts): sourceKey/destinationKey + both
+        // buckets — no file id, no `bucket` key. Server-side copy + delete.
         const moved = await request(app, 'POST', '/api/storage/move', {
             provider_id: provider.id,
-            file_id: uploaded.id,
-            bucket_id: sourceBucket,
-            from_path: 'docs/original.txt',
-            to_path: 'docs/moved.txt',
+            sourceKey: 'docs/original.txt',
+            destinationKey: 'docs/moved.txt',
+            sourceBucket: sourceBucket,
+            destBucket: sourceBucket,
         });
+        const movedBody = await moved.json();
         assert.equal(moved.status, 200);
+        assert.equal(movedBody.success, true);
+        assert.equal(movedBody.message, 'File moved');
         assert.equal(objectText(sourceBucket, 'docs/original.txt'), undefined);
         assert.equal(objectText(sourceBucket, 'docs/moved.txt'), 'provider-backed-content');
 
+        // Console shape: flat product response — no data wrapper, no job.
         const cross = await (await request(app, 'POST', '/api/storage/move-cross', {
             source_provider_id: provider.id,
+            source_bucket: sourceBucket,
+            source_key: 'docs/moved.txt',
             dest_provider_id: provider.id,
-            file_id: uploaded.id,
-            source_bucket_id: sourceBucket,
-            target_bucket_id: 'target-bucket',
+            dest_bucket: 'target-bucket',
+            dest_key: 'docs/moved.txt',
         })).json();
         assert.equal(cross.success, true);
+        assert.equal(cross.source, `${sourceBucket}/docs/moved.txt`);
+        assert.equal(cross.destination, 'target-bucket/docs/moved.txt');
+        assert.equal(cross.bytes, 'provider-backed-content'.length);
+        assert.equal(cross.data, undefined);
         assert.equal(objectText('target-bucket', 'docs/moved.txt'), 'provider-backed-content');
-        const status = await (await request(
-            app,
-            'GET',
-            `/api/storage/move-status/${cross.data.job_id}`,
-        )).json();
-        assert.equal(status.data.status, 'completed');
+        const status = await request(app, 'GET', '/api/storage/move-status/00000000-0000-4000-8000-000000000000');
+        assert.equal(status.status, 404);
+        assert.equal((await status.json()).detail, 'Move job not found');
 
         const signed = await (await request(
             app,
             'GET',
             `/api/storage/signed-url?provider_id=${provider.id}&bucket=target-bucket&path=docs%2Fmoved.txt`,
         )).json();
-        assert.ok(signed.url.startsWith(s3Endpoint), `unexpected signed url ${signed.url}`);
-        assert.match(signed.url, /X-Amz-Signature=/);
+        assert.ok(signed.signedUrl.startsWith(s3Endpoint), `unexpected signed url ${signed.signedUrl}`);
+        assert.match(signed.signedUrl, /X-Amz-Signature=/);
 
+        // Console shape: {paths, bucket, provider_id} → bare {success: true}.
         const deleted = await request(app, 'DELETE', '/api/storage/delete', {
             provider_id: provider.id,
-            file_id: uploaded.id,
+            paths: ['docs/moved.txt'],
+            bucket: 'target-bucket',
         });
+        const deletedBody = await deleted.json();
         assert.equal(deleted.status, 200);
+        assert.equal(deletedBody.success, true);
+        assert.equal(deletedBody.message, undefined);
         assert.equal(objectText('target-bucket', 'docs/moved.txt'), undefined);
 
         setTenant('tenant-b');

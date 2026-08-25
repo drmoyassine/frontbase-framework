@@ -334,11 +334,20 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
             const chunks: Buffer[] = [];
             incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
             incoming.on('end', () => {
-                objects.set(key, {
-                    bytes: new Uint8Array(Buffer.concat(chunks)),
-                    contentType: incoming.headers['content-type'],
-                    authorization: incoming.headers.authorization,
-                });
+                // CopyObject (server-side move) — x-amz-copy-source carries the
+                // source, the body is unused.
+                const copySource = incoming.headers['x-amz-copy-source'];
+                if (typeof copySource === 'string') {
+                    const src = objects.get(copySource.replace(/^\/+/, ''));
+                    if (!src) { res.writeHead(404).end('NoSuchKey'); return; }
+                    objects.set(key, src);
+                } else {
+                    objects.set(key, {
+                        bytes: new Uint8Array(Buffer.concat(chunks)),
+                        contentType: incoming.headers['content-type'],
+                        authorization: incoming.headers.authorization,
+                    });
+                }
                 res.writeHead(200).end();
             });
         } else if (incoming.method === 'GET' && url.searchParams.get('list-type') === '2') {
@@ -411,7 +420,7 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
                 body: JSON.stringify({ name: 'smoke-bucket', public: false }),
             });
             const body = await r.json() as { success?: boolean; bucket?: { id?: string } };
-            return r.status === 201 && body.success === true && body.bucket?.id === 'smoke-bucket' && buckets.has('smoke-bucket');
+            return r.status === 200 && body.success === true && body.bucket?.id === 'smoke-bucket' && buckets.has('smoke-bucket');
         });
         await check('storage: s3 bucket list parses the ListBuckets XML', async () => {
             if (!providerId) return false;
@@ -426,11 +435,12 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
             form.append('file', new File([new TextEncoder().encode('storage-smoke-bytes')], 'hello.txt', { type: 'text/plain' }));
             form.append('provider_id', providerId);
             form.append('bucket', 'smoke-bucket');
-            form.append('path', '/smoke/hello.txt');
+            // Console shape (useStorageMutations): bucket-relative, no leading slash.
+            form.append('path', 'smoke/hello.txt');
             const r = await req('/api/storage/upload', { method: 'POST', headers: { cookie: compatCookie }, body: form });
             const body = await r.json() as { success?: boolean; path?: string; publicUrl?: string };
-            return r.status === 200 && body.success === true && body.path === '/smoke/hello.txt'
-                && typeof body.publicUrl === 'string' && body.publicUrl.includes('X-Amz-Signature');
+            return r.status === 200 && body.success === true && body.path === 'smoke/hello.txt'
+                && body.publicUrl === `${s3Endpoint}/smoke-bucket/smoke/hello.txt`;
         });
         await check('storage: the upload reached the S3 host as a SigV4-signed PUT', async () => {
             const obj = objects.get('smoke-bucket/smoke/hello.txt');
@@ -456,14 +466,40 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
             return nested.status === 200
                 && nestedBody.files?.some((f) => f.name === 'hello.txt' && f.isFolder === false && f.size === 'storage-smoke-bytes'.length) === true;
         });
-        await check('storage: console-shape delete removes the object and the metadata row', async () => {
+        await check('storage: console-shape move is a server-side copy+delete and the folder opens', async () => {
             if (!providerId) return false;
+            // Exactly the FileBrowser's payload: {sourceKey, destinationKey,
+            // sourceBucket, destBucket, provider_id} — no `bucket` key, no file id.
+            const r = await req('/api/storage/move', {
+                method: 'POST', headers: authed,
+                body: JSON.stringify({
+                    sourceKey: 'smoke/hello.txt', destinationKey: 'smoke/moved.txt',
+                    sourceBucket: 'smoke-bucket', destBucket: 'smoke-bucket', provider_id: providerId,
+                }),
+            });
+            const body = await r.json() as { success?: boolean; message?: string };
+            if (r.status !== 200 || body.success !== true || body.message !== 'File moved') return false;
+            if (objects.has('smoke-bucket/smoke/hello.txt') || !objects.has('smoke-bucket/smoke/moved.txt')) return false;
+            // The moved bytes must survive the copy (not an empty overwrite).
+            if (new TextDecoder().decode(objects.get('smoke-bucket/smoke/moved.txt')!.bytes) !== 'storage-smoke-bytes') return false;
+            // Folder-open: list with path=smoke shows the renamed file.
+            const nested = await req(`/api/storage/list?bucket=smoke-bucket&path=smoke&provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const nestedBody = await nested.json() as { files?: Array<{ name?: string }> };
+            return nested.status === 200 && nestedBody.files?.some((f) => f.name === 'moved.txt') === true;
+        });
+        await check('storage: console-shape delete uses the list response id (bucket-relative key)', async () => {
+            if (!providerId) return false;
+            // Single delete sends [file.id] — the id from the list response.
+            const listed = await req(`/api/storage/list?bucket=smoke-bucket&path=smoke&provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const entry = ((await listed.json() as { files?: Array<{ id?: string; name?: string }> }).files ?? []).find((f) => f.name === 'moved.txt');
+            if (!entry?.id) return false;
             const r = await req('/api/storage/delete', {
                 method: 'DELETE', headers: authed,
-                body: JSON.stringify({ paths: ['/smoke/hello.txt'], bucket: 'smoke-bucket', provider_id: providerId }),
+                body: JSON.stringify({ paths: [entry.id], bucket: 'smoke-bucket', provider_id: providerId }),
             });
-            if (r.status !== 200) return false;
-            const probe = await fetch(`${s3Endpoint}/smoke-bucket/smoke/hello.txt`);
+            const body = await r.json() as { success?: boolean; message?: string };
+            if (r.status !== 200 || body.success !== true || body.message !== undefined) return false;
+            const probe = await fetch(`${s3Endpoint}/smoke-bucket/smoke/moved.txt`);
             return probe.status === 404;
         });
         await check('storage: unknown provider_id → 404 with the product detail', async () => {
@@ -557,14 +593,30 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
                     if (prefix && !rel.startsWith(`${prefix}/`)) continue;
                     const rest = prefix ? rel.slice(prefix.length + 1) : rel;
                     if (rest.includes('/')) { folders.add(rest.split('/')[0]); continue; }
+                    // Real Supabase shape: id is the BUCKET-RELATIVE key — the
+                    // console's single-delete and folder navigation rely on it.
                     entries.push({
-                        name: rest, id: k,
+                        name: rest, id: rel,
                         updated_at: '2026-01-01T00:00:00Z', created_at: '2026-01-01T00:00:00Z',
                         metadata: { size: obj.bytes.length, mimetype: obj.contentType ?? 'application/octet-stream' },
                     });
                 }
-                for (const f of folders) entries.push({ name: f, id: `${prefix ? `${prefix}/` : ''}${f}` });
+                // Folder ids carry a trailing slash (the console deletes folders by id).
+                for (const f of folders) entries.push({ name: f, id: `${prefix ? `${prefix}/` : ''}${f}/` });
                 json(200, entries);
+            });
+        } else if (incoming.method === 'POST' && path === '/storage/v1/object/move') {
+            void readBody().then((buf) => {
+                const { bucketId, sourceKey, destinationKey } = JSON.parse(buf.toString() || '{}') as {
+                    bucketId?: string; sourceKey?: string; destinationKey?: string;
+                };
+                if (!bucketId || !sourceKey || !destinationKey) { json(400, { message: 'missing fields' }); return; }
+                const from = `${bucketId}/${sourceKey.replace(/^\/+/, '')}`;
+                const to = `${bucketId}/${destinationKey.replace(/^\/+/, '')}`;
+                if (!objects.has(from)) { json(404, { message: 'Object not found' }); return; }
+                objects.set(to, objects.get(from)!);
+                objects.delete(from);
+                json(200, { message: 'Successfully moved' });
             });
         } else if (incoming.method === 'POST' && path.startsWith('/storage/v1/object/sign/')) {
             res.writeHead(200, { 'content-type': 'application/json' })
@@ -578,6 +630,12 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
                 });
                 res.writeHead(200).end();
             });
+        } else if (incoming.method === 'GET' && path.startsWith('/storage/v1/object/public/')) {
+            // Public object serving: /object/public/{bucket}/{key}
+            const key = objectKey('/storage/v1/object/public/');
+            const obj = objects.get(key);
+            if (!obj) { res.writeHead(404).end(); return; }
+            res.writeHead(200, { 'content-type': obj.contentType ?? 'application/octet-stream' }).end(obj.bytes);
         } else if (incoming.method === 'GET' && (path.startsWith('/storage/v1/object/sign/') || path.startsWith('/storage/v1/object/'))) {
             const key = path.startsWith('/storage/v1/object/sign/')
                 ? objectKey('/storage/v1/object/sign/')
@@ -589,7 +647,18 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
             void readBody().then((buf) => {
                 const prefixes = (JSON.parse(buf.toString() || '{}') as { prefixes?: string[] }).prefixes ?? [];
                 const bucket = objectKey('/storage/v1/object/');
-                for (const prefix of prefixes) objects.delete(`${bucket}/${prefix.replace(/^\/+/, '')}`);
+                for (const rawPrefix of prefixes) {
+                    const prefix = rawPrefix.replace(/^\/+/, '');
+                    // Real Supabase semantics: a trailing slash deletes the subtree.
+                    if (prefix.endsWith('/')) {
+                        const base = `${bucket}/${prefix.slice(0, -1)}`;
+                        for (const k of [...objects.keys()]) {
+                            if (k === base || k.startsWith(`${base}/`)) objects.delete(k);
+                        }
+                    } else {
+                        objects.delete(`${bucket}/${prefix}`);
+                    }
+                }
                 res.writeHead(200).end();
             });
         } else {
@@ -624,7 +693,7 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
                 body: JSON.stringify({ name: 'frontbase-assets', public: true }),
             });
             const body = await r.json() as { success?: boolean; bucket?: { id?: string } };
-            return r.status === 201 && body.success === true && body.bucket?.id === 'frontbase-assets' && buckets.has('frontbase-assets');
+            return r.status === 200 && body.success === true && body.bucket?.id === 'frontbase-assets' && buckets.has('frontbase-assets');
         });
         await check('storage: supabase bucket list comes from the provider (labeled)', async () => {
             if (!providerId) return false;
@@ -640,21 +709,37 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
             form.append('file', new File([new TextEncoder().encode('supabase-smoke-bytes')], 'hello.txt', { type: 'text/plain' }));
             form.append('provider_id', providerId);
             form.append('bucket', 'frontbase-assets');
-            form.append('path', '/smoke/hello.txt');
+            // Console shape (useStorageMutations): bucket-relative, no leading slash.
+            form.append('path', 'smoke/hello.txt');
             const r = await req('/api/storage/upload', { method: 'POST', headers: { cookie: compatCookie }, body: form });
             const body = await r.json() as { success?: boolean; path?: string; publicUrl?: string };
             publicUrl = body.publicUrl ?? '';
-            return r.status === 200 && body.success === true && body.path === '/smoke/hello.txt'
-                && publicUrl.startsWith(supaOrigin);
+            return r.status === 200 && body.success === true && body.path === 'smoke/hello.txt'
+                && publicUrl === `${supaOrigin}/storage/v1/object/public/frontbase-assets/smoke/hello.txt`;
         });
         await check('storage: supabase PUT carried the Bearer service key and exact bytes', async () => {
             const obj = objects.get('frontbase-assets/smoke/hello.txt');
             return !!obj && new TextDecoder().decode(obj.bytes) === 'supabase-smoke-bytes'
                 && obj.authorization === 'Bearer smoke-service-key';
         });
-        await check('storage: supabase signed URL is absolutized and round-trips', async () => {
+        await check('storage: supabase public URL round-trips through /object/public', async () => {
             if (!publicUrl) return false;
             const direct = await fetch(publicUrl);
+            return direct.status === 200 && (await direct.text()) === 'supabase-smoke-bytes';
+        });
+        await check('storage: supabase public-url endpoint returns the product shape', async () => {
+            if (!providerId) return false;
+            const r = await req(`/api/storage/public-url?provider_id=${providerId}&bucket=frontbase-assets&path=${encodeURIComponent('smoke/hello.txt')}`, { headers: { cookie: compatCookie } });
+            const body = await r.json() as { success?: boolean; publicUrl?: string };
+            return r.status === 200 && body.success === true
+                && body.publicUrl === `${supaOrigin}/storage/v1/object/public/frontbase-assets/smoke/hello.txt`;
+        });
+        await check('storage: supabase signed-url endpoint returns the product shape', async () => {
+            if (!providerId) return false;
+            const r = await req(`/api/storage/signed-url?provider_id=${providerId}&bucket=frontbase-assets&path=${encodeURIComponent('smoke/hello.txt')}`, { headers: { cookie: compatCookie } });
+            const body = await r.json() as { success?: boolean; signedUrl?: string };
+            if (r.status !== 200 || body.success !== true || !body.signedUrl?.startsWith(supaOrigin)) return false;
+            const direct = await fetch(body.signedUrl);
             return direct.status === 200 && (await direct.text()) === 'supabase-smoke-bytes';
         });
         await check('storage: supabase file list reflects provider objects', async () => {
@@ -679,13 +764,119 @@ await check('GET /api/edge-engines/active/by-scope/full lists the system edge as
             return r.status === 200
                 && !!marker && marker.bytes.length === 0 && marker.contentType === 'application/x-directory';
         });
-        await check('storage: supabase delete uses the prefixes shape', async () => {
+        // ---- the live console flow, replayed with the console's exact payloads ----
+        // (FileBrowser: create folder → upload at root → move into folder → open
+        // folder → delete by the list response's id)
+        await check('storage: console flow — move file into folder, then the folder opens', async () => {
             if (!providerId) return false;
+            const folder = await req('/api/storage/create-folder', {
+                method: 'POST', headers: authed,
+                body: JSON.stringify({ bucket: 'frontbase-assets', folderPath: 'docs', provider_id: providerId }),
+            });
+            if (folder.status !== 200) return false;
+            const form = new FormData();
+            form.append('file', new File([new TextEncoder().encode('greeting-bytes')], 'greeting.txt', { type: 'text/plain' }));
+            form.append('provider_id', providerId);
+            form.append('bucket', 'frontbase-assets');
+            form.append('path', 'greeting.txt'); // root upload — the console's no-prefix shape
+            const upload = await req('/api/storage/upload', { method: 'POST', headers: { cookie: compatCookie }, body: form });
+            if (upload.status !== 200) return false;
+            // The FileBrowser's move payload: sourceKey/destinationKey plus BOTH
+            // buckets — no `bucket` key, no file id.
+            const move = await req('/api/storage/move', {
+                method: 'POST', headers: authed,
+                body: JSON.stringify({
+                    sourceKey: 'greeting.txt', destinationKey: 'docs/greeting.txt',
+                    sourceBucket: 'frontbase-assets', destBucket: 'frontbase-assets', provider_id: providerId,
+                }),
+            });
+            const moveBody = await move.json() as { success?: boolean; message?: string };
+            if (move.status !== 200 || moveBody.success !== true || moveBody.message !== 'File moved') return false;
+            if (objects.has('frontbase-assets/greeting.txt') || !objects.has('frontbase-assets/docs/greeting.txt')) return false;
+            // Folder open: list with path=docs must show the moved file.
+            const open = await req(`/api/storage/list?bucket=frontbase-assets&path=docs&provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const openBody = await open.json() as { success?: boolean; files?: Array<{ name?: string; id?: string; isFolder?: boolean }> };
+            const entry = openBody.files?.find((f) => f.name === 'greeting.txt');
+            return open.status === 200 && openBody.success === true
+                && !!entry && entry.isFolder === false && entry.id === 'docs/greeting.txt';
+        });
+        await check('storage: console flow — single delete sends [file.id] and the object disappears', async () => {
+            if (!providerId) return false;
+            const listed = await req(`/api/storage/list?bucket=frontbase-assets&path=docs&provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const entry = ((await listed.json() as { files?: Array<{ id?: string; name?: string }> }).files ?? []).find((f) => f.name === 'greeting.txt');
+            if (!entry?.id) return false;
             const r = await req('/api/storage/delete', {
                 method: 'DELETE', headers: authed,
-                body: JSON.stringify({ paths: ['/smoke/hello.txt'], bucket: 'frontbase-assets', provider_id: providerId }),
+                body: JSON.stringify({ paths: [entry.id], bucket: 'frontbase-assets', provider_id: providerId }),
             });
-            return r.status === 200 && !objects.has('frontbase-assets/smoke/hello.txt');
+            const body = await r.json() as { success?: boolean; message?: string };
+            return r.status === 200 && body.success === true && body.message === undefined
+                && !objects.has('frontbase-assets/docs/greeting.txt');
+        });
+        await check('storage: console flow — folder delete by trailing-slash id removes the subtree', async () => {
+            if (!providerId) return false;
+            // Put something inside new-folder first, then delete the folder by id.
+            const form = new FormData();
+            form.append('file', new File([new TextEncoder().encode('nested')], 'nested.txt', { type: 'text/plain' }));
+            form.append('provider_id', providerId);
+            form.append('bucket', 'frontbase-assets');
+            form.append('path', 'new-folder/nested.txt');
+            const upload = await req('/api/storage/upload', { method: 'POST', headers: { cookie: compatCookie }, body: form });
+            if (upload.status !== 200) return false;
+            const listed = await req(`/api/storage/list?bucket=frontbase-assets&provider_id=${providerId}`, { headers: { cookie: compatCookie } });
+            const folder = ((await listed.json() as { files?: Array<{ id?: string; name?: string; isFolder?: boolean }> }).files ?? []).find((f) => f.name === 'new-folder' && f.isFolder);
+            if (!folder?.id) return false;
+            const r = await req('/api/storage/delete', {
+                method: 'DELETE', headers: authed,
+                body: JSON.stringify({ paths: [folder.id], bucket: 'frontbase-assets', provider_id: providerId }),
+            });
+            if (r.status !== 200) return false;
+            return !objects.has('frontbase-assets/new-folder/nested.txt') && !objects.has('frontbase-assets/new-folder/.folder');
+        });
+        await check('storage: compute-size walks the provider recursively, then caches', async () => {
+            if (!providerId) return false;
+            const form = new FormData();
+            form.append('file', new File([new TextEncoder().encode('report-bytes')], 'report.txt', { type: 'text/plain' }));
+            form.append('provider_id', providerId);
+            form.append('bucket', 'frontbase-assets');
+            form.append('path', 'docs/report.txt');
+            const upload = await req('/api/storage/upload', { method: 'POST', headers: { cookie: compatCookie }, body: form });
+            if (upload.status !== 200) return false;
+            const first = await req(`/api/storage/compute-size?provider_id=${providerId}&bucket=frontbase-assets&path=docs`, { headers: { cookie: compatCookie } });
+            const firstBody = await first.json() as { success?: boolean; bucket?: string; path?: string; size?: number; cached?: boolean };
+            if (first.status !== 200 || firstBody.success !== true || firstBody.bucket !== 'frontbase-assets' || firstBody.path !== 'docs') return false;
+            if (firstBody.cached !== false || firstBody.size !== 'report-bytes'.length) return false;
+            const second = await req(`/api/storage/compute-size?provider_id=${providerId}&bucket=frontbase-assets&path=docs`, { headers: { cookie: compatCookie } });
+            const secondBody = await second.json() as { size?: number; cached?: boolean };
+            return second.status === 200 && secondBody.cached === true && secondBody.size === 'report-bytes'.length;
+        });
+        await check('storage: move-cross returns the flat product shape and moves the bytes', async () => {
+            if (!providerId || !accountId) return false;
+            const second = await req('/api/storage/providers/', {
+                method: 'POST', headers: authed,
+                body: JSON.stringify({ provider_account_id: accountId, name: 'Smoke Supabase Archive' }),
+            });
+            const secondId = (await second.json() as { id?: string }).id;
+            if (!secondId) return false;
+            await req(`/api/storage/buckets?provider_id=${secondId}`, {
+                method: 'POST', headers: authed,
+                body: JSON.stringify({ name: 'frontbase-archive', public: false }),
+            });
+            const r = await req('/api/storage/move-cross', {
+                method: 'POST', headers: authed,
+                body: JSON.stringify({
+                    source_provider_id: providerId, source_bucket: 'frontbase-assets', source_key: 'smoke/hello.txt',
+                    dest_provider_id: secondId, dest_bucket: 'frontbase-archive', dest_key: 'smoke/hello.txt',
+                }),
+            });
+            const body = await r.json() as { success?: boolean; source?: string; destination?: string; bytes?: number; data?: unknown };
+            if (r.status !== 200 || body.success !== true || body.data !== undefined) return false;
+            if (body.source !== 'frontbase-assets/smoke/hello.txt' || body.destination !== 'frontbase-archive/smoke/hello.txt') return false;
+            if (body.bytes !== 'supabase-smoke-bytes'.length) return false;
+            if (objects.has('frontbase-assets/smoke/hello.txt') || !objects.has('frontbase-archive/smoke/hello.txt')) return false;
+            const status = await req('/api/storage/move-status/00000000-0000-4000-8000-000000000000', { headers: { cookie: compatCookie } });
+            const statusBody = await status.json() as { detail?: string };
+            return status.status === 404 && statusBody.detail === 'Move job not found';
         });
         await check('storage: supabase bucket delete reaches the real API', async () => {
             if (!providerId) return false;
