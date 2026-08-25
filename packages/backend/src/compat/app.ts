@@ -41,6 +41,7 @@ import type { SystemEdgeDescriptor, SystemResourcesDescriptor } from './routes/e
 import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
 import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
 import { registerEdgeMiscRoutes } from './routes/edge-misc.js';
+import { registerSystemQueueRoutes } from './routes/system-queue.js';
 import { registerAgentCompatRoutes } from './routes/agent-compat.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerDataExecuteRoute } from './routes/data-execute.js';
@@ -214,6 +215,11 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId),
         resolvePrincipal,
     );
+    // 3. Queue receive (framework-only): the queue provider's redelivery target.
+    //    UNAUTHENTICATED by design — authentication is the inbound signature /
+    //    callback-secret verify inside the route (401 otherwise), and the job's
+    //    tenant-scoped store lookup is the isolation boundary.
+    registerSystemQueueRoutes(app, { phase2For, resolver: serviceResolver, now });
     // 3. UNAUTHENTICATED auth ops only (login/logout/signup/forgot/reset/invite/
     //    accept/check-slug) — a user can't present a session to log in. The
     //    AUTHENTICATED auth ops (me + security console) are registered AFTER the

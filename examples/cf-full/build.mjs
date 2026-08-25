@@ -89,7 +89,9 @@ if (missing.length > 0) {
 // flows invoke it on demand, not behind an unused feature flag.)
 // ioredis/bullmq are TCP-only (Node runtime); the worker's cache resolver
 // catches the stub's throw and falls back (warn + env/memory path).
-const OPTIONAL = ['ai', '@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@upstash/qstash', '@modelcontextprotocol/sdk', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner', 'ioredis', 'bullmq'];
+// @upstash/qstash is bundled FOR REAL (Phase 3): Receiver.verify runs on the
+// worker — stubbing it would break inbound signature authentication.
+const OPTIONAL = ['ai', '@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@modelcontextprotocol/sdk', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner', 'ioredis', 'bullmq'];
 const optionalStub = {
     name: 'stub-optional-deps',
     setup(build) {

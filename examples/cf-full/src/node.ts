@@ -19,7 +19,7 @@ import { existsSync, readFileSync, mkdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sqliteRunner, s3StorageProvider } from '@frontbase/edge-infra';
+import { sqliteRunner, s3StorageProvider, bullmqDriver } from '@frontbase/edge-infra';
 import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
 import { createCmsEngine } from './worker.js';
 
@@ -152,10 +152,44 @@ const server = serve(
     (info) => console.log(`[frontbase] CMS listening on http://${info.address}:${info.port} (db: ${APP_DB_URL})`),
 );
 
+// BullMQ consumer (node-only; env wiring decides). QStash delivers over HTTP by
+// itself, but a BullMQ queue needs a long-running Worker — and its jobs ride
+// the SAME receive endpoint, looped back over HTTP, so verification and
+// idempotency live in one place. Authentication is the shared callback secret
+// (in-process delivery carries no QStash signature). Without the secret the
+// receive route would 401 its own jobs, so a BullMQ env without it is a
+// misconfiguration — warn and stay direct-execution rather than fail the boot.
+let queueWorker: Awaited<ReturnType<typeof bullmqDriver>> | null = null;
+if (envServices.queue?.provider === 'bullmq' && envServices.queue.url) {
+    if (!envServices.queueCallbackSecret) {
+        console.warn('[frontbase] FRONTBASE_QUEUE=BullMQ without FRONTBASE_QUEUE_CALLBACK_SECRET — queue receive would reject its own jobs; staying direct-execution');
+    } else {
+        try {
+            const driver = await bullmqDriver({ redisUrl: envServices.queue.url });
+            await driver.start(async (job) => {
+                const res = await fetch(`http://127.0.0.1:${port}/api/system/queue/receive`, {
+                    method: 'POST',
+                    headers: {
+                        'content-type': 'application/json',
+                        'x-frontbase-callback-secret': envServices.queueCallbackSecret!,
+                    },
+                    body: JSON.stringify(job),
+                });
+                if (!res.ok) console.error(`[frontbase] queue receive answered ${res.status} — BullMQ will retry per its attempts policy`);
+            });
+            queueWorker = driver;
+            console.log('[frontbase] BullMQ consumer started (loop-back to /api/system/queue/receive)');
+        } catch (error) {
+            console.warn(`[frontbase] BullMQ consumer unavailable (${(error as Error)?.message ?? error}) — direct execution`);
+        }
+    }
+}
+
 // Graceful shutdown: stop accepting, let in-flight requests drain, then exit.
 // The bounded fallback exit covers a hung keep-alive connection.
 const shutdown = (sig: string) => {
     console.log(`[frontbase] ${sig} — shutting down`);
+    if (queueWorker) void queueWorker.close().catch(() => {});
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 5_000).unref();
 };

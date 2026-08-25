@@ -53,9 +53,29 @@ declare module '@ai-sdk/openai' { export const openai: (model: string) => unknow
 declare module '@ai-sdk/anthropic' { export const anthropic: (model: string) => unknown; }
 declare module '@ai-sdk/google' { export const google: (model: string) => unknown; }
 
-declare module '@upstash/qstash' {
-    export class Client {
-        constructor(opts: { token: string });
+// @upstash/qstash is a REAL dependency since Phase 3 (Receiver verification
+// runs everywhere) — its own types apply; no shim. 'bullmq' below joins the
+// ioredis class: Node-only TCP, dynamic-imported, absent on Cloudflare.
+
+// bullmq — optional dependency (Node-only TCP Redis queue; the worker bundle
+// stubs it and the resolver downgrades with a warning).
+declare module 'bullmq' {
+    export interface JobsOptions {
+        attempts?: number;
+        removeOnComplete?: boolean | number;
+    }
+    export class Queue {
+        constructor(name: string, opts?: { connection: { url: string } });
+        add(name: string, data: unknown, opts?: JobsOptions): Promise<{ id?: string }>;
+        close(): Promise<void>;
+    }
+    export class Worker {
+        constructor(
+            name: string,
+            processor: (job: { data: unknown }) => Promise<void>,
+            opts?: { connection: { url: string } },
+        );
+        close(): Promise<void>;
     }
 }
 

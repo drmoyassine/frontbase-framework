@@ -50,6 +50,11 @@ export { inProcessWorkflowProvider, qstashWorkflowProvider } from './queue/provi
 // dispatchers (F3b-durable async dispatch — in-process + QStash redelivery)
 export { qstashDispatcher } from './queue/dispatchers.js';
 export type { Dispatcher, QstashDispatcherOpts } from './queue/dispatchers.js';
+// system-services queue (Phase 3): publish + signed receive (QStash), BullMQ driver (Node-only)
+export { qstashPublish, makeQstashReceiver } from './queue/qstash.js';
+export type { QstashPublishOpts, QstashReceiverOpts } from './queue/qstash.js';
+export { bullmqDriver } from './queue/bullmq.js';
+export type { BullmqDriver, BullmqDriverOpts } from './queue/bullmq.js';
 
 // storage (S3-compatible — R2/S3/B2/MinIO; Phase 3a / F4)
 export { s3StorageProvider, sigv4StorageProvider, supabaseStorageProvider, memoryStorageProvider } from './storage/providers.js';

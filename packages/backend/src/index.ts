@@ -83,6 +83,13 @@ export interface CreateConsoleDeps {
      *  async (fire-and-track). On CF, wire to ctx.waitUntil; in-process tests can
      *  use queueMicrotask. Default: synchronous. */
     dispatcher?: (work: () => Promise<void>) => void;
+    /** Durable-queue dispatcher (system services, Phase 3). Offered each
+     *  execution AFTER its row is persisted; true → the execute route answers
+     *  'running' and the queue's redelivery completes it via the compat app's
+     *  POST /api/system/queue/receive. false/throw → the local path. Build from
+     *  a system-service resolver: `(job) => resolver.queueFor(job.tenant)
+     *  .then((q) => q?.publishExecution(job) ?? false)`. */
+    executionDispatcher?: (job: { tenant: string; executionId: string; workflowId: string }) => Promise<boolean>;
     /** CF-22 production cutover: retain only health + first-run setup under
      * /api/console and return 410 for every legacy console API route. */
     retireLegacyApi?: boolean;
@@ -203,7 +210,7 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     } else {
         provisioner = noopProvisioner;
     }
-    app.route('/', phase2Routes(phase2StoreFor, now, storageProvider, provisioner, deps.dispatcher));
+    app.route('/', phase2Routes(phase2StoreFor, now, storageProvider, provisioner, deps.dispatcher, deps.executionDispatcher));
     app.route('/', usersRoutes(userStoreFor, now, phase2StoreFor));
     // Phase 3b: Data Studio (datasources + introspection) + Plans
     app.route('/', dataStudioRoutes(phase2StoreFor, now));

@@ -16,7 +16,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node test/password.mjs && node test/session.mjs && node test/runners.mjs && node test/supabase-rpc-parse.mjs && node test/providers.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/cache-remote.mjs && node test/workflow-durable.mjs && node test/ratelimit.mjs && node test/no-leak.mjs",
+    "test": "tsc -p tsconfig.json && node test/password.mjs && node test/session.mjs && node test/runners.mjs && node test/supabase-rpc-parse.mjs && node test/providers.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/cache-remote.mjs && node test/qstash.mjs && node test/workflow-durable.mjs && node test/ratelimit.mjs && node test/no-leak.mjs",
     "test:mutation": "node test/mutation.mjs"
   },
   "peerDependencies": {
@@ -27,7 +27,8 @@
     "@aws-sdk/s3-request-presigner": "^3.1085.0",
     "@libsql/client": "^0.17.4",
     "@neondatabase/serverless": "^1.1.0",
-    "@supabase/postgrest-js": "^2.110.2"
+    "@supabase/postgrest-js": "^2.110.2",
+    "@upstash/qstash": "^2.11.3"
   },
   "optionalDependencies": {
     "ioredis": "^5.6.0"
