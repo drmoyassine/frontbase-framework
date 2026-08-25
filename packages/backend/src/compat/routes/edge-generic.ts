@@ -11,6 +11,7 @@ import type { SecretCipher } from '../../db/secret-cipher.js';
 import { serializeEdgeResource as serialize, batchResult, testResult, SYSTEM_CACHE_ID, SYSTEM_QUEUE_ID, SYSTEM_VECTOR_ID, systemLinkedEngine, type SystemEdgeDescriptor, type SystemResourceDescriptor, type SystemResourcesDescriptor } from './edge-shapes.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 import { vectorAdapterFromConfig } from '../system-services.js';
+import { upstashCache } from '@frontbase/edge-infra';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -212,11 +213,36 @@ function reg(
                 }
             }
         }
+        // Upstash real probe: the REST endpoint answers ONLY POST command
+        // pipelines — a bare GET returns 400 even for a healthy endpoint, so
+        // the legacy probe reported working caches as broken. Route upstash
+        // rows through the same adapter the runtime uses (set → get → del);
+        // message strings stay identical to the legacy path.
+        if (kind === 'cache' && provider === 'upstash' && url && typeof config.token === 'string' && config.token) {
+            const adapter = upstashCache({
+                url,
+                token: config.token,
+                fetchImpl: (input, init) => guardedExternalFetch(externalFetch, String(input), init),
+            });
+            try {
+                await adapter.setex('frontbase_test', 60, 'probe');
+                await adapter.get('frontbase_test');
+                await adapter.del('frontbase_test');
+                return testResult(true, 'cache connection test successful', Date.now() - started);
+            } catch (error) {
+                return testResult(false, `cache connection test failed: ${(error as Error).message}`, Date.now() - started);
+            }
+        }
         try {
             const headers = typeof config.token === 'string' && config.token
                 ? { Authorization: `Bearer ${config.token}` }
                 : undefined;
-            const response = await guardedExternalFetch(externalFetch, url, { method: 'GET', headers });
+            // QStash: the API root rejects a bare GET, so ask for the topic
+            // list instead — an authorized, side-effect-free read.
+            const probeUrl = kind === 'queue' && provider === 'qstash' && url
+                ? url.replace(/\/+$/, '') + '/v2/topics'
+                : url;
+            const response = await guardedExternalFetch(externalFetch, probeUrl, { method: 'GET', headers });
             return testResult(response.ok, response.ok ? `${kind} connection test successful` : `${kind} returned ${response.status}`, Date.now() - started);
         } catch (error) {
             const result: Record<string, unknown> = {

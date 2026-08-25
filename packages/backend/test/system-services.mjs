@@ -316,6 +316,114 @@ test('vector test-connection: probe failure surfaces the adapter error; legacy G
     assert.equal(gate.error_code, 'INVALID_URL');
 });
 
+// ---- cache/queue test-connection: real probes for REST-only endpoints ----
+// Upstash answers ONLY POST command pipelines (a bare GET is a 400 even when
+// the endpoint is healthy), and QStash's root rejects GET — so both kinds now
+// probe through the wire format the runtime actually uses.
+
+test('cache test-connection: upstash runs the real adapter probe (POST pipeline, not GET)', async () => {
+    const runner = sqliteRunner(':memory:');
+    await migrateUp(runner);
+    const calls = [];
+    const app = await createCompatApp({
+        makeRunner: async () => runner,
+        resolvePrincipal: async () => ({ user: { id: 'u1', role: 'master_admin' }, tenant: 'tenant-a' }),
+        sessionSecret: 'cache-probe-secret',
+        now: () => new Date(0).toISOString(),
+        externalFetch: async (input, init) => {
+            calls.push({ url: String(input), init });
+            return new Response('"OK"', { status: 200 });
+        },
+    });
+    const post = (bodyJson) => app.fetch(new Request('http://t.local/api/edge-caches/test-connection', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(bodyJson),
+    }));
+    const ok = await (await post({ name: 'probe-cache', provider: 'upstash', cache_url: 'https://probe.example/cache', cache_token: 'tok_c' })).json();
+    assert.equal(ok.success, true);
+    assert.equal(ok.message, 'cache connection test successful');
+    assert.ok(typeof ok.latency_ms === 'number');
+    // set → get → del, every one a POST pipeline with the Bearer token.
+    assert.deepEqual(calls.map((c) => JSON.parse(c.init.body)[0]), ['set', 'get', 'del']);
+    assert.ok(calls.every((c) => c.init.method === 'POST'));
+    assert.ok(calls.every((c) => c.init.headers.Authorization === 'Bearer tok_c'));
+
+    // Legacy path: a non-upstash provider keeps the single GET probe byte-identically.
+    const legacyApp = await createCompatApp({
+        makeRunner: async () => runner,
+        resolvePrincipal: async () => ({ user: { id: 'u1', role: 'master_admin' }, tenant: 'tenant-a' }),
+        sessionSecret: 'cache-probe-secret',
+        now: () => new Date(0).toISOString(),
+        externalFetch: async (input, init) => {
+            calls.push({ url: String(input), init });
+            return new Response('denied', { status: 401 });
+        },
+    });
+    calls.length = 0;
+    const legacy = await (await legacyApp.fetch(new Request('http://t.local/api/edge-caches/test-connection', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'probe-cache', provider: 'redis', cache_url: 'https://probe.example/cache', cache_token: 'tok_c' }),
+    }))).json();
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].init.method, 'GET');
+    assert.equal(legacy.message, 'cache returned 401');
+});
+
+test('cache test-connection: unhealthy upstash reports the adapter failure', async () => {
+    const runner = sqliteRunner(':memory:');
+    await migrateUp(runner);
+    const app = await createCompatApp({
+        makeRunner: async () => runner,
+        resolvePrincipal: async () => ({ user: { id: 'u1', role: 'master_admin' }, tenant: 'tenant-a' }),
+        sessionSecret: 'cache-probe-secret',
+        now: () => new Date(0).toISOString(),
+        externalFetch: async () => new Response('{"error":"unauthorized"}', { status: 401 }),
+    });
+    const body = await (await app.fetch(new Request('http://t.local/api/edge-caches/test-connection', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'probe-cache', provider: 'upstash', cache_url: 'https://probe.example/cache', cache_token: 'tok_c' }),
+    }))).json();
+    assert.equal(body.success, false);
+    assert.equal(body.message, 'cache connection test failed: upstash_http_401');
+});
+
+test('queue test-connection: qstash probes GET /v2/topics with the Bearer token', async () => {
+    const runner = sqliteRunner(':memory:');
+    await migrateUp(runner);
+    const calls = [];
+    const app = await createCompatApp({
+        makeRunner: async () => runner,
+        resolvePrincipal: async () => ({ user: { id: 'u1', role: 'master_admin' }, tenant: 'tenant-a' }),
+        sessionSecret: 'queue-probe-secret',
+        now: () => new Date(0).toISOString(),
+        externalFetch: async (input, init) => {
+            calls.push({ url: String(input), init });
+            return new Response('[]', { status: 200 });
+        },
+    });
+    const post = (bodyJson, a = app) => a.fetch(new Request('http://t.local/api/edge-queues/test-connection', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(bodyJson),
+    }));
+    const ok = await (await post({ provider: 'qstash', queue_url: 'https://qstash.example', queue_token: 'tok_q' })).json();
+    assert.equal(ok.success, true);
+    assert.equal(ok.message, 'queue connection test successful');
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, 'https://qstash.example/v2/topics');
+    assert.equal(calls[0].init.method, 'GET');
+    assert.equal(calls[0].init.headers.Authorization, 'Bearer tok_q');
+
+    // Non-ok answers keep the legacy message shape.
+    const badApp = await createCompatApp({
+        makeRunner: async () => runner,
+        resolvePrincipal: async () => ({ user: { id: 'u1', role: 'master_admin' }, tenant: 'tenant-a' }),
+        sessionSecret: 'queue-probe-secret',
+        now: () => new Date(0).toISOString(),
+        externalFetch: async () => new Response('denied', { status: 403 }),
+    });
+    const bad = await (await post({ provider: 'qstash', queue_url: 'https://qstash.example', queue_token: 'tok_q' }, badApp)).json();
+    assert.equal(bad.success, false);
+    assert.equal(bad.message, 'queue returned 403');
+});
+
 let failures = 0;
 for (const [name, fn] of tests) {
     try {
