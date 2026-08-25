@@ -10,6 +10,7 @@ import type { Phase2Store } from '../../db/phase2-store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
 import { serializeEdgeResource as serialize, batchResult, testResult, SYSTEM_CACHE_ID, SYSTEM_QUEUE_ID, SYSTEM_VECTOR_ID, systemLinkedEngine, type SystemEdgeDescriptor, type SystemResourceDescriptor, type SystemResourcesDescriptor } from './edge-shapes.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
+import { vectorAdapterFromConfig } from '../system-services.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -184,6 +185,33 @@ function reg(
             return testResult(false, `Test not yet implemented for provider: ${provider}`);
         }
         if (!url) return testResult(false, `${kind} URL is required`);
+        // Vector real probe (Phase 4): supported providers exercise the full
+        // adapter round trip (DDL → upsert → search → delete) instead of a
+        // bare GET. Unsupported providers keep the legacy GET probe — their
+        // messages stay byte-identical.
+        if (kind === 'vector' && ['libsql', 'turso', 'cloudflare', 'vectorize'].includes(provider)) {
+            const adapter = vectorAdapterFromConfig(
+                config,
+                (input, init) => guardedExternalFetch(externalFetch, input instanceof Request ? input.url : input, init),
+                () => {},
+            );
+            if (adapter) {
+                try {
+                    await adapter.ensureTable('frontbase_test');
+                    await adapter.upsert('frontbase_test', [{
+                        id: 'frontbase_probe',
+                        vector: [0.1, 0.2],
+                        text: 'frontbase connection probe',
+                        metadata: { probe: true },
+                    }]);
+                    await adapter.search('frontbase_test', [0.1, 0.2], 1);
+                    await adapter.delete('frontbase_test', ['frontbase_probe']);
+                    return testResult(true, 'vector connection test successful', Date.now() - started);
+                } catch (error) {
+                    return testResult(false, `vector connection test failed: ${(error as Error).message}`, Date.now() - started);
+                }
+            }
+        }
         try {
             const headers = typeof config.token === 'string' && config.token
                 ? { Authorization: `Bearer ${config.token}` }

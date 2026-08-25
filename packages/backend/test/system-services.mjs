@@ -6,10 +6,14 @@
  * vars + malformed input) and env-derived system cards.
  */
 import { strict as assert } from 'node:assert';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { sqliteRunner } from '@frontbase/edge-infra';
 import { migrateUp } from '../dist/db/migrations.js';
 import { Phase2Store } from '../dist/db/phase2-store.js';
 import { createSecretCipher } from '../dist/db/secret-cipher.js';
+import { createCompatApp } from '../dist/compat/app.js';
 import {
     createSystemServiceResolver,
     parseEnvServices,
@@ -188,6 +192,128 @@ test('envServiceDescriptor: cards only for complete env wiring', async () => {
     assert.equal(card.name, 'Upstash Redis (env)');
     assert.equal(card.provider, 'upstash');
     assert.equal(envServiceDescriptor({ provider: 'weird', url: 'https://x' }, ENV_CARD_LABELS.cache).name, 'weird (env)');
+});
+
+// ---- vector (Phase 4): adapters, resolution, real test-connection probe -----
+
+test('vectorFor: env floor resolves a real libsql adapter (ping round-trips a file: db)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'frontbase-sysvec-'));
+    try {
+        const { resolver } = await harness({ vector: { provider: 'libsql', url: `file:${join(dir, 'v.db')}` } });
+        const adapter = await resolver.vectorFor('tenant-a');
+        assert.ok(adapter, 'env-declared vector resolves');
+        await adapter.ping();
+        assert.equal((await resolver.resolvedNames('tenant-a')).vector, 'LibSQL Vector (env)');
+    } finally {
+        try { rmSync(dir, { recursive: true, force: true }); } catch { /* open handle — tmpdir sweep */ }
+    }
+});
+
+test('vectorFor: registry adoption + env floor + empty → null (resolution chain)', async () => {
+    const cipher = await createSecretCipher('system-services-test-secret');
+    const { resolver, phase2For, fetchCalls, now } = await harness({
+        vector: { provider: 'vectorize', cfAccountId: 'env-acct', cfApiToken: 'env-tok', url: 'https://env.example/idx' },
+    });
+    const encrypt = async (obj) => cipher.encrypt(JSON.stringify(obj));
+    await phase2For('tenant-a').upsertEdgeResource({
+        id: 'vec-1', kind: 'vector', name: 'prod-vector', provider: 'vectorize',
+        config: await encrypt({
+            provider: 'vectorize',
+            url: 'https://row.example/row-idx',
+            provider_config: { cf_account_id: 'row-acct', cf_api_token: 'row-tok', index_name: 'row_idx' },
+            is_default: true,
+        }),
+    }, now());
+    resolver.invalidate('tenant-a');
+    // Probe the adopted adapter through a recorded search (harness fetch answers 200 'OK').
+    const adopted = await resolver.vectorFor('tenant-a');
+    assert.ok(adopted);
+    await adopted.search('docs', [0.1], 1).catch(() => {});
+    assert.ok(fetchCalls.at(-1).url.includes('/accounts/row-acct/vectorize/indexes/row_idx'), fetchCalls.at(-1).url);
+
+    // tenant-b has no rows → the env adapter (different account).
+    const envAdapter = await resolver.vectorFor('tenant-b');
+    assert.ok(envAdapter);
+    await envAdapter.search('docs', [0.1], 1).catch(() => {});
+    assert.ok(fetchCalls.at(-1).url.includes('/accounts/env-acct/'));
+
+    // No env, no rows → null (RAG unavailable).
+    const bare = await harness({});
+    assert.equal(await bare.resolver.vectorFor('tenant-a'), null);
+});
+
+test('vector test-connection: supported provider runs the real probe through the route', async () => {
+    const runner = sqliteRunner(':memory:');
+    await migrateUp(runner);
+    const calls = [];
+    const app = await createCompatApp({
+        makeRunner: async () => runner,
+        resolvePrincipal: async () => ({ user: { id: 'u1', role: 'master_admin' }, tenant: 'tenant-a' }),
+        sessionSecret: 'vector-probe-secret',
+        now: () => new Date(0).toISOString(),
+        externalFetch: async (input, init) => {
+            calls.push({ url: String(input), init });
+            const u = String(input);
+            if (u.endsWith('/upsert')) return new Response('{"result":{}}', { status: 200 });
+            if (u.endsWith('/query')) return new Response('{"result":{"matches":[{"id":"p","score":1,"metadata":{"text":"probe"}}]}}', { status: 200 });
+            if (u.endsWith('/delete_by_ids')) return new Response('{"result":{}}', { status: 200 });
+            return new Response('{}', { status: 200 });
+        },
+    });
+    const res = await app.fetch(new Request('http://t.local/api/edge-vectors/test-connection', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+            provider: 'vectorize',
+            vector_url: 'https://probe.example/vector',
+            provider_config: { cf_account_id: 'acct_9', cf_api_token: 'tok_9', index_name: 'idx_9' },
+        }),
+    }));
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(body.success, true);
+    assert.equal(body.message, 'vector connection test successful');
+    assert.ok(typeof body.latency_ms === 'number');
+    assert.deepEqual(calls.map((c) => c.url.split('/').at(-1)), ['upsert', 'query', 'delete_by_ids']);
+    assert.ok(calls.every((c) => c.url.includes('/accounts/acct_9/vectorize/indexes/idx_9')));
+    assert.equal(calls[0].init.headers.Authorization, 'Bearer tok_9');
+});
+
+test('vector test-connection: probe failure surfaces the adapter error; legacy GET path intact for unknown providers', async () => {
+    const runner = sqliteRunner(':memory:');
+    await migrateUp(runner);
+    const calls = [];
+    const app = await createCompatApp({
+        makeRunner: async () => runner,
+        resolvePrincipal: async () => ({ user: { id: 'u1', role: 'master_admin' }, tenant: 'tenant-a' }),
+        sessionSecret: 'vector-probe-secret',
+        now: () => new Date(0).toISOString(),
+        externalFetch: async (input, init) => {
+            calls.push({ url: String(input), init });
+            return new Response('denied', { status: 403 });
+        },
+    });
+    const post = (bodyJson) => app.fetch(new Request('http://t.local/api/edge-vectors/test-connection', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(bodyJson),
+    }));
+    // Supported provider: the probe fails with the Vectorize error.
+    const failed = await (await post({
+        provider: 'vectorize', vector_url: 'https://probe.example/vector',
+        provider_config: { cf_account_id: 'a', cf_api_token: 't', index_name: 'i' },
+    })).json();
+    assert.equal(failed.success, false);
+    assert.match(failed.message, /vector connection test failed: Vectorize upsert failed: 403/);
+    // Unknown provider keeps the legacy single GET probe (byte-identical path).
+    calls.length = 0;
+    const legacy = await (await post({ provider: 'pgvector', vector_url: 'https://db.example/x' })).json();
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].init.method, 'GET');
+    assert.equal(legacy.message, 'vector returned 403');
+    // URL-format gate stays first and unchanged.
+    const gate = await (await post({ provider: 'libsql', vector_url: 'weird-scheme://x' })).json();
+    assert.equal(gate.success, false);
+    assert.equal(gate.message, 'Invalid URL format: must start with one of postgres://, postgresql://, https://, http://, libsql://');
+    assert.equal(gate.error_code, 'INVALID_URL');
 });
 
 let failures = 0;

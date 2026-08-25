@@ -56,6 +56,14 @@ export type { QstashPublishOpts, QstashReceiverOpts } from './queue/qstash.js';
 export { bullmqDriver } from './queue/bullmq.js';
 export type { BullmqDriver, BullmqDriverOpts } from './queue/bullmq.js';
 
+// vector (system services, Phase 4): libsql/Turso + Cloudflare Vectorize
+export { vectorTableName } from './vector/types.js';
+export type { VectorAdapter, VectorDocument, VectorMetadata, VectorSearchResult } from './vector/types.js';
+export { libsqlVectorAdapter } from './vector/libsql-vector.js';
+export type { LibsqlVectorOpts } from './vector/libsql-vector.js';
+export { vectorizeAdapter } from './vector/vectorize.js';
+export type { VectorizeOpts } from './vector/vectorize.js';
+
 // storage (S3-compatible — R2/S3/B2/MinIO; Phase 3a / F4)
 export { s3StorageProvider, sigv4StorageProvider, supabaseStorageProvider, memoryStorageProvider } from './storage/providers.js';
 export type { StorageProvider, PutOpts, S3StorageOpts, SupabaseStorageOpts, BucketEntry, FileEntry, CreateBucketOpts } from './storage/providers.js';
