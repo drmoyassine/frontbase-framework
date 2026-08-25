@@ -24,6 +24,7 @@ const SETUP = 'packages/backend/src/routes/setup.ts';
 const BACKEND_INDEX = 'packages/backend/src/index.ts';
 const PHASE2STORE = 'packages/backend/src/db/phase2-store.ts';
 const COMPAT_EDGE_MISC = 'packages/backend/src/compat/routes/edge-misc.ts';
+const COMPAT_EDGE_GENERIC = 'packages/backend/src/compat/routes/edge-generic.ts';
 const COMPAT_STORE = 'packages/backend/src/compat/store.ts';
 const COMPAT_APP = 'packages/backend/src/compat/app.ts';
 
@@ -41,6 +42,7 @@ for (const g of [
     'compat-behavior-auth',
     'compat-negative',
     'compat-tenant-matrix',
+    'edge-defaults',
 ]) {
     const args = g === 'compat-behavior-auth' ? ['--gate'] : [];
     if (runGate(pkgDir, `test/${g}.mjs`, args) !== 0) {
@@ -238,6 +240,20 @@ await withSourceMutation(
     async () => {
         buildPackage(PKG);
         expectRed('negative sweep: goes red when request validation is removed', runGate(pkgDir, 'test/compat-negative.mjs'));
+    },
+);
+
+// 16. is_default enforcement (Phase 1) — create-with-default no longer unsets
+//     the previous default → two defaults coexist. edge-defaults' "creating
+//     with is_default unsets the previous default" assertion → RED.
+await withSourceMutation(
+    'edge-defaults: create unsets the previous default',
+    COMPAT_EDGE_GENERIC,
+    "        if (siblings.length > 0 && configRecord?.is_default) {\n            await store.setDefaultEdgeResource(kind, id, now());\n        }",
+    '        /* MUTATION: create no longer unsets the previous default */',
+    async () => {
+        buildPackage(PKG);
+        expectRed('edge-defaults: goes red when create stops unsetting the previous default', runGate(pkgDir, 'test/edge-defaults.mjs'));
     },
 );
 

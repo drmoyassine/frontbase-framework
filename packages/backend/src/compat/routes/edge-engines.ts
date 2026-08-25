@@ -61,12 +61,24 @@ export function registerEdgeEnginesRoutes(
     secretCipher: SecretCipher,
     now: () => string,
     systemEdge: SystemEdgeDescriptor,
+    /** Phase 6 self-aware display: per-tenant resolved cache/queue names for the
+     *  system engine card (adopted is_default row name → env label → null).
+     *  When provided it wins over the descriptor's static labels; a throw is
+     *  swallowed — display falls back to the descriptor, never 5xx. */
+    resolveSystemBindings?: (tenant: string) => Promise<{ cache?: string | null; queue?: string | null } | null>,
 ): void {
     // The system edge is the worker itself — synthesized per request with the live
     // origin so preview links resolve here. Listed FIRST everywhere so it is the
     // default publish target.
-    const systemEngineFor = (c: { req: { url: string } }): Record<string, unknown> =>
-        buildSystemEngine(systemEdge, new URL(c.req.url).origin);
+    const systemEngineFor = async (tenant: string, url: string): Promise<Record<string, unknown>> => {
+        let bindings: { cache?: string | null; queue?: string | null } | null = null;
+        if (resolveSystemBindings) {
+            try {
+                bindings = await resolveSystemBindings(tenant);
+            } catch { /* display only — descriptor labels stand */ }
+        }
+        return buildSystemEngine(systemEdge, new URL(url).origin, bindings ?? undefined);
+    };
     // Tier gate — the `engine_imports` plan feature flag (product LIMIT_REGISTRY
     // `kind: 'bool'` convention, default False). Deliberately STRICT: unlike the
     // product's other feature flags this one honors no self-host/master bypass —
@@ -151,7 +163,7 @@ export function registerEdgeEnginesRoutes(
     // which has no system edge. Removing it to "match product" destroyed the feature.
     app.get('/api/edge-engines/', async (c) => {
         const store = p2(c.get('tenant'));
-        const system = systemEngineFor(c);
+        const system = systemEngineFor(c.get('tenant'), c.req.url);
         return c.json(await Promise.all(
             [system, ...(await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row))],
         ));
@@ -297,7 +309,7 @@ export function registerEdgeEnginesRoutes(
     // publish dialogs default to it (it's the engine this worker runs on).
     app.get('/api/edge-engines/active/by-scope/:scope', async (c) => {
         const store = p2(c.get('tenant'));
-        const system = systemEngineFor(c);
+        const system = systemEngineFor(c.get('tenant'), c.req.url);
         return c.json(await Promise.all(
             [system, ...(await store.listEdgeResources('engine')).map((row) => serializeStoredEngine(store, row))],
         ));
@@ -306,7 +318,7 @@ export function registerEdgeEnginesRoutes(
     // GET /api/edge-engines/{engine_id}
     app.get('/api/edge-engines/:engine_id', async (c) => {
         const engineId = c.req.param('engine_id');
-        if (isSystemEngine(engineId)) return c.json(systemEngineFor(c));
+        if (isSystemEngine(engineId)) return c.json(await systemEngineFor(c.get('tenant'), c.req.url));
         const store = p2(c.get('tenant'));
         const engine = await store.getEdgeResource(engineId);
         return engine

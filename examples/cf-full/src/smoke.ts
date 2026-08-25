@@ -344,7 +344,7 @@ await check('caches/queues/vectors synthesize no system rows (nothing platform-w
 // host-side parseEnvServices output): the cache tab gains an "(env)" system
 // card, the undeclared queue tab stays honest. The default engine above (no
 // env) is the no-system-rows case already checked.
-await check('env-equipped engine shows the env cache system card; undeclared kinds stay empty', async () => {
+{
     const envEngine = await createCmsEngine({
         runner: sqliteRunner(':memory:'),
         sessionSecret: 'smoke-session-secret-not-for-prod',
@@ -359,15 +359,27 @@ await check('env-equipped engine shows the env cache system card; undeclared kin
         body: JSON.stringify({ email: ADMIN.email, password: ADMIN.password }),
     });
     const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
-    const caches = await ereq('/api/edge-caches/', { headers: { cookie } });
-    const cacheRows = await caches.json() as Array<{ is_system?: boolean; name?: string; provider?: string; cache_url?: string }>;
-    const card = cacheRows.find((row) => row.is_system);
-    if (caches.status !== 200 || !card || card.name !== 'Upstash Redis (env)'
-        || card.provider !== 'upstash' || card.cache_url !== 'https://smoke-cache.upstash.io') return false;
-    const queues = await ereq('/api/edge-queues/', { headers: { cookie } });
-    const queueRows = await queues.json() as Array<{ is_system?: boolean }>;
-    return Array.isArray(queueRows) && !queueRows.some((row) => row.is_system);
-});
+    await check('env-equipped engine shows the env cache system card; undeclared kinds stay empty', async () => {
+        const caches = await ereq('/api/edge-caches/', { headers: { cookie } });
+        const cacheRows = await caches.json() as Array<{ is_system?: boolean; name?: string; provider?: string; cache_url?: string }>;
+        const card = cacheRows.find((row) => row.is_system);
+        if (caches.status !== 200 || !card || card.name !== 'Upstash Redis (env)'
+            || card.provider !== 'upstash' || card.cache_url !== 'https://smoke-cache.upstash.io') return false;
+        const queues = await ereq('/api/edge-queues/', { headers: { cookie } });
+        const queueRows = await queues.json() as Array<{ is_system?: boolean }>;
+        return Array.isArray(queueRows) && !queueRows.some((row) => row.is_system);
+    });
+    // Phase 6 self-aware display: the SAME env wiring names the system engine
+    // card's cache binding (env label — nothing is adopted in the registry),
+    // while the undeclared queue binding stays null. The card can never claim a
+    // backing the worker lacks.
+    await check('env cache also names the system engine card binding; queue stays null', async () => {
+        const engines = await ereq('/api/edge-engines/', { headers: { cookie } });
+        const card = (await engines.json() as Array<{ id?: string; is_system?: boolean; edge_cache_name?: string | null; edge_queue_name?: string | null }>)[0];
+        return engines.status === 200 && card?.id === 'local-edge' && card.is_system === true
+            && card.edge_cache_name === 'Upstash Redis (env)' && card.edge_queue_name === null;
+    });
+}
 
 // ---- RAG pipeline: env-wired embedding + vector → upload → index → search E2E ----
 // The full Phase 5 chain: FRONTBASE_EMBEDDING points at an OpenAI-compatible

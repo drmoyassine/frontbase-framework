@@ -153,8 +153,20 @@ export interface SystemEdgeDescriptor {
 /**
  * Build the system edge engine for the current request. `origin` is the live
  * worker origin (from `c.req.url`) so page preview links resolve to this worker.
+ *
+ * `bindings` (Phase 6 self-aware display) carries the PER-TENANT resolved
+ * cache/queue names from the system-service resolver — adopted is_default row
+ * name → env label ('Upstash Redis (env)') → null. When a host wires the
+ * resolver it wins over the descriptor's static labels, which stay the fallback
+ * for hosts declaring platform truth directly. No vector binding: the engine
+ * shape has no vector field (vector surfaces in its own Edge Resources tab) —
+ * same documented divergence as the self-aware `provider`.
  */
-export function buildSystemEngine(desc: SystemEdgeDescriptor, origin: string): Record<string, unknown> {
+export function buildSystemEngine(
+    desc: SystemEdgeDescriptor,
+    origin: string,
+    bindings?: { cache?: string | null; queue?: string | null },
+): Record<string, unknown> {
     const engine = serializeEngine({
         id: SYSTEM_ENGINE_ID,
         name: desc.name ?? 'Local Edge',
@@ -169,8 +181,8 @@ export function buildSystemEngine(desc: SystemEdgeDescriptor, origin: string): R
     // so the card reflects THIS deployment (D1) rather than product defaults.
     engine.provider = desc.provider;  // self-aware of its provider (cloudflare) — framework feature
     engine.edge_db_name = desc.db ?? null;
-    engine.edge_cache_name = desc.cache ?? null;
-    engine.edge_queue_name = desc.queue ?? null;
+    engine.edge_cache_name = bindings && bindings.cache !== undefined ? bindings.cache : desc.cache ?? null;
+    engine.edge_queue_name = bindings && bindings.queue !== undefined ? bindings.queue : desc.queue ?? null;
     return engine;
 }
 

@@ -104,6 +104,13 @@ Technology stack: Hono + isomorphic JSX for all published pages, React confined 
 
 ---
 
+### [system-services.md](./system-services.md)
+**Status**: v1 — Cache · Queue · Vector · Embedding runtime
+
+The dual-wired backing-service layer (adopted `is_default` registry row > `FRONTBASE_*` env JSON > floor): env reference and JSON shapes, queue receive endpoint auth and redelivery semantics, the RAG pipeline and its documented divergences, SSRF posture, per-tenant cache isolation, optional-dependency bundling, and the host capability matrix.
+
+---
+
 ### Public release
 
 #### [PUBLIC-RELEASE-STRATEGY.md](./PUBLIC-RELEASE-STRATEGY.md)

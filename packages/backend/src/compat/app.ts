@@ -357,7 +357,11 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Wave 3
     registerActionsRoutes(app, phase2For, now);
     // Wave 4 — edge domain (engines + providers + caches/queues/vectors + inspector + api-keys + gpu + deploy)
-    registerEdgeEnginesRoutes(app, phase2For, kvFor, secretCipher, now, systemEdge);
+    // The engine card's cache/queue binding names resolve per tenant (adopted
+    // is_default row name → env label → null) — the same resolver the runtime
+    // consumers use, so the card never claims a backing the worker lacks.
+    registerEdgeEnginesRoutes(app, phase2For, kvFor, secretCipher, now, systemEdge,
+        (tenant) => serviceResolver.resolvedNames(tenant));
     registerEdgeProvidersRoutes(app, phase2For, kvFor, secretCipher, externalFetch, now);
     registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation);
     registerEdgeMiscRoutes(app, runner, phase2For, secretCipher, now);
