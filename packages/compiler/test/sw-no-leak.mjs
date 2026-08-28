@@ -45,7 +45,18 @@ const res = await emitSwBundle({ entry: join(dir, 'src', 'sw.js'), projectRoot: 
 
 check('SW bundle does NOT contain the secret value', !res.code.includes(SECRET));
 check('SW bundle does NOT contain the DB_PASSWORD identifier', !res.code.includes('DB_PASSWORD'));
-check('SW bundle does NOT contain the word "execute"', !res.code.includes('execute'));
+// Executor canary, shape-aware: the engine's edge data proxy reserves the
+// queryId "execute" for the compat layer's batch endpoint (engine.ts
+// `if (queryId === 'execute')`), so the quoted string literal legitimately
+// appears in every routed SW bundle. A LEAK looks different — esbuild keeps
+// property names and call sites, so a bundled executor surfaces as `execute:`
+// or `execute(`, which never matches the quoted-literal form. Requiring every
+// occurrence to be quoted therefore stays lethal for real leakage while
+// tolerating the one reserved literal (and prose strings, which are data).
+const executeHits = (res.code.match(/execute/g) ?? []).length;
+const quotedExecuteHits = (res.code.match(/['"]execute['"]/g) ?? []).length;
+check(`SW bundle carries no executor (every "execute" is a string literal: ${executeHits} hit(s), ${quotedExecuteHits} quoted)`,
+    executeHits === quotedExecuteHits);
 check('SW bundle still boots (has SW primitives)', res.code.includes('addEventListener'));
 
 if (res.code.includes(SECRET)) {
