@@ -23,21 +23,20 @@ query — Supabase, Neon, HTTP-flavored libsql — connect exactly as on Workers
 ## Prerequisites
 
 - Docker (any recent Docker Desktop / Engine), **or** Node ≥ 20 for bare metal.
-- The console artifacts, staged from this repo's own `packages/console` source
-  (the SPA bundles and hydration vendor are never committed):
+- The console + hydration artifacts, staged from this repo's own source
+  (`packages/console` + `packages/hydrate` — never committed):
 
   ```bash
   pnpm install
-  pnpm console:build && pnpm fetch:hydrate
+  pnpm console:build && pnpm --filter @frontbase/example-cf-full build
   ```
 
   `pnpm console:build` builds the SPA and stages `examples/cf-full/console-dist/`;
-  `pnpm fetch:hydrate` stages `examples/cf-full/public/react/hydrate.vendor.js`
-  from the product checkout at the vendored commit. A fresh clone needs both once;
-  the cf-full build applies the hydrate patches itself. The Docker build runs
-  `scripts/docker-gate.mjs` FIRST and fails fast with the remedy if either is
-  missing — a missing vendor would otherwise silently skip `patch-hydrate.mjs`
-  and ship dead client hydration.
+  the cf-full build re-stages it (reusing the dist) and copies the hydration
+  bundle from `packages/hydrate/dist` to `console-dist/react/`. A fresh clone
+  needs both once. The Docker build runs `scripts/docker-gate.mjs` FIRST and
+  fails fast with the remedy if either is missing — without the staged bundles
+  the image would ship a shell pointing at 404s and dead client hydration.
 
 ## Run with Docker
 
@@ -89,8 +88,9 @@ runs — useful for quick iteration without a rebuild.
   (`/data/app.db`). Back up by stopping the container and copying the file —
   sqlite's single-file property makes this trivial. `docker compose down`
   keeps the volume; `down -v` destroys it.
-- **Upgrades:** `git pull` → `pnpm install` → `pnpm console:build` →
-  `docker compose up -d --build`. Migrations apply automatically at boot.
+- **Upgrades:** `git pull` → `pnpm install` → `pnpm console:build && pnpm
+  --filter @frontbase/example-cf-full build` → `docker compose up -d --build`.
+  Migrations apply automatically at boot.
 - **Behind a reverse proxy:** the engine builds URLs from the request URL; pass
   `Host` through (nginx `proxy_set_header Host $host;`). `X-Forwarded-*` is not
   trusted by default — terminate TLS at the proxy and proxy plain HTTP, or host
@@ -107,7 +107,7 @@ operation, not routine.
 ## Troubleshooting
 
 - **Build fails at `docker-gate.mjs`** — run `pnpm console:build && pnpm
-  fetch:hydrate` (see Prerequisites).
+  --filter @frontbase/example-cf-full build` (see Prerequisites).
 - **Context upload errors on Windows (OneDrive paths)** — cloud-sync
   placeholders can break the context; build from a local (non-synced) clone.
 - **`libsql` native module errors** — the runtime stage installs per-platform

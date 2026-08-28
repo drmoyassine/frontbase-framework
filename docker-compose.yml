@@ -1,9 +1,8 @@
 # Backendless single-container Frontbase CMS — the same Hono engine the
 # Cloudflare Worker runs, on a local sqlite file in a named volume.
 #
-#   1. Stage the console + hydrate artifacts (in-repo source; hydrate needs a
-#      product checkout sibling until consolidation phase 2):
-#        pnpm console:build && pnpm fetch:hydrate
+#   1. Stage the console + hydration artifacts (both build from in-repo source):
+#        pnpm console:build && pnpm --filter @frontbase/example-cf-full build
 #   2. Create .env next to this file (see .env.example — SESSION_SECRET required)
 #   3. docker compose up -d --build
 #   4. http://127.0.0.1:8787/frontbase-admin  (or set ADMIN_* in .env to seed

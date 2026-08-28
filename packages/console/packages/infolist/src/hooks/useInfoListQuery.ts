@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { InfoListBinding } from '../types';
+import { isBuilderCanvas } from '@frontbase/types';
 
 interface UseInfoListQueryProps {
     mode: 'builder' | 'edge';
@@ -27,8 +28,11 @@ export function useInfoListQuery({
                 return { record: null, columns: [] };
             }
 
-            // In Builder mode, we call FastAPI directly to get schema and data
-            if (mode === 'builder') {
+            // In Builder mode, we call the sync data path directly to get schema
+            // and data. Canvas quirk (consolidation A-23, was a byte-level
+            // patch): same empty-columns canvas fallback as form/useFormQuery —
+            // explicit parens, precedence load-bearing.
+            if (mode === 'builder' || ((binding.columns ?? []).length === 0 && isBuilderCanvas())) {
                 const dataSourceId = binding.dataSourceId;
                 
                 // 1. Fetch main table schema

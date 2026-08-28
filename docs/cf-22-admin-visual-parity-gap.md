@@ -1,11 +1,14 @@
 # CF-22 — Admin Console 100% Visual + Functional Parity
 
-> **🗄️ CONSOLE MECHANISM SUPERSEDED 2026-08-28 (A-22).** The console below is
-> described as it was when written: built from the product repo, vendored at a
-> `CONSOLE_PIN`. That mechanism is retired — the console source now lives in this
-> workspace (`packages/console`, decision A-22 in DECISIONS.md); stage it with
-> `pnpm console:build`, and the hydrate vendor with `pnpm fetch:hydrate`. The
-> body is preserved as the historical record of the pin-era design.
+> **🗄️ PIN-ERA MECHANISMS SUPERSEDED 2026-08-28 (A-22, then A-23).** The console
+> below is described as it was when written: built from the product repo,
+> vendored at a `CONSOLE_PIN`. Both pin-era mechanisms are retired — the console
+> source lives in this workspace (`packages/console`, A-22; stage with
+> `pnpm console:build`), and consolidation A-23 (same day) inverted the
+> contract (framework-owned, pins/sync/drift retired) and consolidated the
+> hydration bundle source (`packages/hydrate`; no more `fetch:hydrate` /
+> `patch-hydrate`). The body is preserved as the historical record of the
+> pin-era design; every pin/sync/drift reference below is retired machinery.
 
 > **🛑 WORK PAUSED 2026-08-06 (owner decision) — reactive only.**
 > Automated/proactive framework↔product parity work was stopped; CF-22 will only be revisited to fix regressions the owner personally hits. The remaining gap (the ~34 VIOLATES / 5 UNREACHABLE in the live conformance gate, plus the 2026-07-29 differential run) is **accepted last-mile residue**, not an active target — the live gate is informational only.

@@ -16,8 +16,8 @@
  *
  * The stage is a wipe, not a merge: stale hashed chunks from a previous build
  * must not survive (Static Assets would happily serve them forever), and the
- * wipe orphans console-dist/react/hydrate.js — cf-full's build re-derives it
- * from public/react/ via patch-hydrate.mjs afterwards.
+ * wipe orphans console-dist/react/ — cf-full's build re-stages it from
+ * packages/hydrate/dist afterwards.
  *
  * Nothing here is committed: everything under console-dist/ is gitignored
  * except .assetsignore (tracked). No CONSOLE_PIN — the pin retired with the

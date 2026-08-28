@@ -103,7 +103,7 @@ export interface CmsEngineOptions {
 /**
  * Assemble the full CMS engine. The routing order is:
  *   1. /api/auth/login, /api/auth/logout, /api/auth/signup, etc. (UNAUTHENTICATED compat)
- *   2. /api/* — the 334-operation product-compatible surface
+ *   2. /api/* — the 334-operation community-compatible surface
  *      → behind defaultDenyAuth (except documented unauth auth/callback routes)
  *   3. /frontbase-admin assets + shell (Static Assets binding in production;
  *      validated inline fallback in the Node smoke)
@@ -483,19 +483,20 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
     };
 
-    // ── Client hydration assets (product parity) ─────────────────────────────
-    // These are bundled from the product's built hydrate.js (vendor:console-dist).
-    // In production, the ASSETS binding serves them from public/react/*; in dev
-    // (no binding), we return a clear 404 rather than serving a broken file.
+    // ── Client hydration assets ──────────────────────────────────────────────
+    // Built in-repo from packages/hydrate and staged to console-dist/react/ by
+    // the cf-full build (consolidation A-23 — no more vendored product bundle).
+    // The ASSETS binding serves them from console-dist/react/*; without a
+    // binding (dev), we return a clear 404 rather than serving a broken file.
     // The framework's htmlDocument.ts unconditionally loads these at
     // /static/react/hydrate.js?v=<version> and /static/icon.png — the bundle
     // MUST exist for DataTable/Form/etc. client hydration.
     app.get('/static/react/hydrate.js', async (c) => {
         const url = new URL(c.req.url);
         url.pathname = '/react/hydrate.js';
-        // NOT immutable: this bundle is patched locally (scripts/patch-hydrate.mjs)
-        // while the version query stays pinned by the vendored console/SW html —
-        // revalidate via ETag so patched bytes reach browsers that already cached
+        // NOT immutable: the bundle is rebuilt on every deploy (packages/hydrate)
+        // while the version query stays pinned by the staged console/SW html —
+        // revalidate via ETag so new bytes reach browsers that already cached
         // the URL (a conditional GET 304s when unchanged, so the cost is one
         // round trip per canvas load).
         const asset = await assetResponse(new Request(url, c.req.raw), 'no-cache, must-revalidate');

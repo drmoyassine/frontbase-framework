@@ -904,6 +904,32 @@ Move the console source into this workspace as `packages/console` (`@frontbase/c
 
 ---
 
+## Decision A-23: Contract Inversion & Hydrate Source Consolidation (Phase 2 of framework-only)
+
+**Date**: 2026-08-28
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+
+### Context
+
+A-22 left two live product inputs. The vendored community contract was pinned by `contracts/PRODUCT_COMMIT` + `CONTRACT_SHA256`, refreshed by `scripts/sync-contract.mjs` from a product checkout, and guarded by a drift gate (`scripts/contract-diff.mjs`) that compared the framework against the frozen product doc forever. The hydration bundle (`examples/cf-full/public/react/hydrate.vendor.js`) was `git show`-ed out of the product repo at that same pinned commit and byte-patched by `scripts/patch-hydrate.mjs` — six exact-once patches keyed on MINIFIED product identifiers to restore the builder-canvas data fallbacks. With the framework-only direction locked (2026-08-28), both product flows had to die: the framework becomes the single source of truth.
+
+### Decision
+
+1. **Contract inversion** — the framework owns its contract. `packages/backend/contracts/openapi.community.json` (334 ops / 349 schemas / 36 tags) stays the contract and gate denominator, content unchanged this phase, but in-place edits are now legitimate: `contracts:emit --check` staleness is the only guard (the behavior-ledger gate catches a dropped declaration — ledger entries ≠ measured ops). `openapi.full.json` (389 ops / 415 schemas) is vendored alongside as the console client-generation input until Phase 4 implements the 55 cloud-only ops. Deleted: `PRODUCT_COMMIT`, `CONTRACT_SHA256`, `sync-contract.mjs`, the drift gate (root script + backend test + CI step + its mutation proof), `differential.expected.json` (orphan), and the live-product tooling (`compat-live-conformance.mjs`, `differential-parity.mjs`, the byte-duplicate `compat-legacy-conformance.mjs`; `conformance:legacy` renames to `conformance`). The behavior ledger and the CF22_A3 `PRODUCT_VERIFIED_REFUSAL` reader are untouched — they consume committed historical artifacts (provenance, not a live dependency).
+2. **Client generation in-repo** — `packages/console` gains `openapi-ts.config.ts` (`@hey-api/openapi-ts` 0.99.0 exact; input = the vendored full spec) + `client:generate`. The committed `src/client` regenerates byte-identically (verified at execution; the only deltas vs the product-committed output were two inert one-liners in `client.gen.ts`/`types.gen.ts` — the baked `baseURL`, overridden at runtime by `src/lib/api-client.ts`). CI gains two gates: regeneration staleness (`client:generate` → `git diff --exit-code`) and byte-equality of the console client's `zod.gen.ts` with the worker-embedded compat copy (`scripts/check-client-sync.mjs` — one generator, one spec).
+3. **Hydrate source consolidation** — new `packages/hydrate` (`@frontbase/hydrate`, private; vite 7.3.1 + @vitejs/plugin-react 5.1.2 + react 19.2.3, all exact) builds `dist/hydrate.js` + `entry-*.css` from the ported product sources (`services/edge/src/client`: entry.tsx, globals.css, the UnifiedDataTable edge wrapper + 5 thin re-export wrappers, `repeater/*`), aliasing the 8 console sub-packages — verifiably the same sources the vendor was built from (the vendor's embedded `.tsx` paths name them). The six byte-patches become source-level: the five canvas fallbacks share one `isBuilderCanvas()` gate in `@frontbase/types` (a function called at bail time — the per-query re-evaluation is semantics, never hoist it to a module const), and the ui-event-trigger init is deferred to a macrotask in `entry.tsx`. The cf-full build stages `packages/hydrate/dist` → `console-dist/react/` (the only served location); the vendor's silent-skip paths are gone (a missing dist fails the build loudly). Smoke hydrate checks are unconditional: served ≡ built, the `chimera-rendered-by` gate literal present, CSS immutable — plus six source-anchor assertions (one per translated patch). Deleted: `fetch-hydrate.mjs`, `patch-hydrate.mjs`, `public/react/`, the `requireHydrateVendor`/`contractOnly` modes in the validator (replaced by `requireHydrate` on the staged tree — the deploy gate now judges the post-build tree it actually ships). Zero product references remain in build, test, deploy, CI, or Docker.
+4. **Product archive** — the product repo (`drmoyassine/frontbase-dbsync`) becomes reference-only; no framework code path may reach it. Its GitHub archival is the user's action at phase end.
+
+### Consequences
+
+- The last vendored hydrate bundle was a **development-mode build** (292 jsxDEV annotations, 289 embedded `.tsx` source paths, dev React with full warning strings). The framework build is production React 19.2.3 — ~25% smaller (~770 KB vs ~1,027 KB minified) with a 1:1 content census (recharts/liquidjs/react-query/component registry markers equal). Behavior-equivalent for the hydration path; the regression net is the e2e builder-canvas flow in a real browser against workerd.
+- The console SPA bundles changed bytes (the shared component sources gained the gate), but SPA behavior is unchanged: its components mount with default `mode='builder'` (gates 1–3 unreachable) and its `index.html` has no `chimera-rendered-by` meta (gates 4–5 reduce to the prior condition) — only `edge-core/src/shell.ts` stamps that meta, on published/canvas documents.
+- Legitimate contract evolution now requires re-running `contracts:emit`; the staleness gate catches an edit that skips re-emission. The 334-op community denominator and all conformance-gate logic are unchanged.
+- The console's vitest/vite-6 exclusion from the root test filter (A-22) was left as-is in this phase; it is build-parity hygiene, not a product dependency.
+
+---
+
 ## Decision History
 
 | Date | Decision | Status |
@@ -929,12 +955,13 @@ Move the console source into this workspace as `packages/console` (`@frontbase/c
 | 2026-08-13 | A-20: Public Release Positioning and Gated Rollout | ✅ Approved |
 | 2026-08-22 | A-21: Backendless Node/Docker Self-Host Adapter | ✅ Approved |
 | 2026-08-28 | A-22: Console Source Consolidation (Phase 1 of framework-only) | ✅ Approved |
+| 2026-08-28 | A-23: Contract Inversion & Hydrate Source Consolidation (Phase 2 of framework-only) | ✅ Approved |
 
 ---
 
 ## Document Metadata
 
-**Version**: 2.1
+**Version**: 2.2
 **Status**: Active — Chimera architecture adopted; public-release rollout governed by A-20
 **Owner**: Architecture Team
 **Next Review**: As new decisions are made

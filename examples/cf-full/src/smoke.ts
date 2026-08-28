@@ -7,7 +7,7 @@
 import { memoryStorageProvider, sqliteRunner } from '@frontbase/edge-infra';
 import { createSecretCipher, Phase2Store } from '@frontbase/backend';
 import { createCmsEngine } from './worker.js';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -46,23 +46,16 @@ const check = async (label: string, fn: () => Promise<boolean>) => {
     catch (e) { failures++; console.log(`  ❌ ${label} — threw: ${(e as Error).message}`); }
 };
 
-// The SPA shell is committed; the hashed bundles it loads are not (posture B), so
-// checks that read real bundle BYTES cannot run from a bare checkout or in CI.
-// They are skipped loudly rather than quietly weakened — a skip is visible in the
-// log and counted in the summary, so "green" never means "these silently passed".
+// The SPA shell is committed; the hashed bundles it loads are not, so checks
+// that read real bundle BYTES cannot run from a bare checkout or in CI. They
+// are skipped loudly rather than quietly weakened — a skip is visible in the
+// log and counted in the summary, so "green" never means "these silently
+// passed". (The hydration checks below have no such skip: `pnpm smoke` runs
+// the cf-full build first, which always stages console-dist/react/.)
 const bundlesPresent = existsSync(join(consoleRoot, 'assets'));
-// The patched hydration bundle derives from the untracked
-// public/react/hydrate.vendor.js (staged from the product checkout by
-// `pnpm fetch:hydrate`). Without it the /static/react/hydrate.js route 404s
-// exactly as it did before staging — skip loudly rather than fail.
-const hydrateVendorPresent = existsSync(join(here, '..', 'public', 'react', 'hydrate.vendor.js'));
 let skipped = 0;
 const checkBundles = async (label: string, fn: () => Promise<boolean>) => {
     if (!bundlesPresent) { skipped++; console.log(`  ⏭️  ${label} — SKIPPED (no console bundles; run \`pnpm console:build\`)`); return; }
-    await check(label, fn);
-};
-const checkHydrate = async (label: string, fn: () => Promise<boolean>) => {
-    if (!hydrateVendorPresent) { skipped++; console.log(`  ⏭️  ${label} — SKIPPED (no hydrate vendor; run \`pnpm fetch:hydrate\`)`); return; }
     await check(label, fn);
 };
 
@@ -126,20 +119,48 @@ await checkBundles('builder-sw.js is served from the staged console root', async
     return r.status === 200 && r.headers.get('content-type')?.includes('javascript') === true
         && (await r.text()).length > 10_000;
 });
-// The hydration bundle must be the PATCHED build: `chimera-rendered-by` occurs
-// in it only via patch-hydrate's canvas-fallback patches (a staged-but-unpatched
-// vendor fails here — that unpatched bundle is the fresh-drop canvas bug).
-await checkHydrate('GET /static/react/hydrate.js serves the patched bundle (both copies identical)', async () => {
+// The hydration bundle is built from packages/hydrate (consolidation A-23 —
+// the vendored+patched product bundle is gone) and staged to console-dist/react/
+// by the cf-full build that always precedes this smoke. `chimera-rendered-by`
+// is in the bundle at source level: it is the meta the builder-canvas gate
+// (isBuilderCanvas in @frontbase/types) reads — a bundle built without the
+// gate fails this probe.
+await check('GET /static/react/hydrate.js serves the in-repo build (staged ≡ built, gate compiled in)', async () => {
     const r = await req('/static/react/hydrate.js');
     const body = await r.text();
     if (r.status !== 200 || r.headers.get('content-type')?.includes('javascript') !== true
         || !body.includes('chimera-rendered-by')) return false;
-    // patch-hydrate writes public/react/ AND console-dist/react/ (the ASSETS
-    // root — a sibling of frontbase-admin/, not nested in it) from the same
-    // bytes — the source-of-record copy and the served copy must stay identical.
-    const sourceOfRecord = readFileSync(join(here, '..', 'public', 'react', 'hydrate.js'));
+    // Staging fidelity: the served bytes must be exactly the @frontbase/hydrate
+    // dist build — no stale console-dist/react copy from an older build.
+    const built = readFileSync(join(here, '..', '..', '..', 'packages', 'hydrate', 'dist', 'hydrate.js'));
     const served = readFileSync(join(here, '..', 'console-dist', 'react', 'hydrate.js'));
-    return sourceOfRecord.equals(served);
+    return served.equals(built);
+});
+await check('GET /static/react/entry-*.css serves the staged hydration stylesheet (immutable)', async () => {
+    const staged = readdirSync(join(here, '..', 'console-dist', 'react')).find((f) => /^entry-.+\.css$/.test(f));
+    if (!staged) return false;
+    const r = await req(`/static/react/${staged}`);
+    return r.status === 200 && r.headers.get('content-type')?.includes('text/css') === true
+        && r.headers.get('cache-control') === 'public, max-age=31536000, immutable';
+});
+// Patch-translation anchors (A-23): the six byte-level product patches are now
+// source-level gates. Minification leaves no per-gate literal in the bundle —
+// all five hooks call the one shared isBuilderCanvas function, whose single
+// 'chimera-rendered-by' string is asserted above — so the per-fallback guard
+// asserts the anchors in SOURCE: a silently dropped gate REDs here.
+await check('hydrate source anchors: all six translated patch sites are present', async () => {
+    const repoRoot = join(here, '..', '..', '..');
+    const bail = 'isBuilderCanvas() ? fetchFromBuilder(binding) : []';
+    const modeGate = "mode === 'builder' || ((binding.columns ?? []).length === 0 && isBuilderCanvas())";
+    const anchors: Array<[string, string]> = [
+        ['packages/console/packages/chart/src/hooks/useChartQuery.ts', bail],
+        ['packages/console/packages/kpicard/src/hooks/useKPICardQuery.ts', bail],
+        ['packages/console/packages/grid/src/hooks/useGridQuery.ts', bail],
+        ['packages/console/packages/form/src/hooks/useFormQuery.ts', modeGate],
+        ['packages/console/packages/infolist/src/hooks/useInfoListQuery.ts', modeGate],
+        ['packages/hydrate/src/entry.tsx', 'setTimeout(() => initUIEventTriggers(store))'],
+    ];
+    return anchors.every(([rel, needle]) => readFileSync(join(repoRoot, rel), 'utf8').includes(needle));
 });
 
 await check('fresh instance redirects console to existing setup surface', async () => {

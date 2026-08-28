@@ -351,7 +351,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
     registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now);
-    // RAG routes are framework-only (outside the vendored 334-op surface) and
+    // RAG routes are framework-only (outside the 334-op community surface) and
     // console-authed like the storage routes they sit beside.
     registerRagRoutes(app, ragDeps);
     registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation);

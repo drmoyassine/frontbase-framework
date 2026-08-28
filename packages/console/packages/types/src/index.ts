@@ -240,3 +240,19 @@ export function resolveDateOperator(filter: { column: string; op?: string; value
             return null;
     }
 }
+
+/**
+ * True when this document was rendered by the builder canvas (SW path or
+ * shell path) — `edge-core`'s shell stamps the environment into
+ * `meta[name="chimera-rendered-by"]`, and only canvas documents carry
+ * content="builder". The SPA shell has no such meta, so this is always false
+ * there.
+ *
+ * MUST be called at bail time, not module-eval time: canvas documents can be
+ * re-stamped by the SW mid-session, so the probe is deliberately re-evaluated
+ * on every query run. (Consolidation A-23: this replaces the byte-level
+ * patch-hydrate.mjs canvas fallbacks with a shared source-level gate.)
+ */
+export function isBuilderCanvas(): boolean {
+    return document.querySelector('meta[name="chimera-rendered-by"]')?.content === 'builder';
+}

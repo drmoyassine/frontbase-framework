@@ -1,5 +1,5 @@
 /**
- * RAG routes (framework-only; NOT part of the vendored 334-op product surface).
+ * RAG routes (framework-only; NOT part of the 334-op community surface).
  *
  *   POST /api/rag/index   {bucketId} — console-authed. Enqueues a
  *                         {type:'rag-index'} job on the resolved queue; with no

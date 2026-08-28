@@ -65,25 +65,28 @@ const opts = {
     d1DatabaseId: value('d1-database-id'),
 };
 
-// ---- 0. Deploy-level console gate. The console artifact is built from the
-//         in-repo @frontbase/console package and staged by `pnpm console:build`;
-//         the hydrate vendor is staged by `pnpm fetch:hydrate`. Shipping requires
-//         the real staged bytes — the Worker serves them via Static Assets, so
-//         without them /frontbase-admin deploys as a shell pointing at 404s.
-//         This is the check that must hold. ----
-try {
-    validateStagedConsole(repoRoot, { requireHydrateVendor: true });
-} catch (error) {
-    console.error(`✗ ${error.message}`);
-    console.error('\n✗ refusing to deploy without a verified console artifact.');
-    process.exit(1);
-}
-
-// ---- 1. Build cf-full (its own build.mjs — inlines SW + admin SPA) ----
+// ---- 0. Build cf-full (its own build.mjs — inlines SW + admin SPA, and
+//         stages the console + hydration artifacts this deploy serves via
+//         Static Assets) ----
 console.log('→ building examples/cf-full (engine + console + admin console, one artifact)...');
 const build = spawnSync('node', ['build.mjs'], { cwd: cfFullDir, stdio: 'inherit' });
 if (build.status !== 0) {
     console.error('\n✗ build failed — fix the error above before deploying.');
+    process.exit(1);
+}
+
+// ---- 1. Deploy-grade gate on exactly what this deploy will ship. The console
+//         and hydration artifacts are build outputs staged by the build above;
+//         validating the post-build tree (rather than pre-existing local
+//         state) means nothing needs to be staged in advance and the gate can
+//         never bless stale bytes — it judges the tree that is about to ship.
+//         Without these files /frontbase-admin deploys as a shell pointing at
+//         404s and /static/react/hydrate.js 404s (dead client hydration). ----
+try {
+    validateStagedConsole(repoRoot, { requireHydrate: true });
+} catch (error) {
+    console.error(`✗ ${error.message}`);
+    console.error('\n✗ refusing to deploy without a verified console artifact.');
     process.exit(1);
 }
 

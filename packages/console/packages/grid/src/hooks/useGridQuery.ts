@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ComponentDataBinding } from '../types';
+import { isBuilderCanvas } from '@frontbase/types';
 
 interface UseGridQueryProps {
     mode: 'builder' | 'edge';
@@ -75,7 +76,11 @@ async function fetchFromBuilder(binding: ComponentDataBinding) {
 async function fetchFromEdge(binding: ComponentDataBinding) {
     const dataRequest = binding.dataRequest;
     if (!dataRequest) {
-        return [];
+        // Builder canvas fallback — see chart/useChartQuery.ts for the gate's
+        // provenance and invariants (evaluated per call, never cached). The
+        // Repeater mounts this hook edge-mode even in canvas contexts, so this
+        // bail is its live-data path.
+        return isBuilderCanvas() ? fetchFromBuilder(binding) : [];
     }
 
     const queryConfig = dataRequest.queryConfig;

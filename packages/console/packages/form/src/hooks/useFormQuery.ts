@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import type { FormBinding, ColumnSchema } from '../types';
+import { isBuilderCanvas } from '@frontbase/types';
 
 interface UseFormQueryProps {
     mode: 'builder' | 'edge';
@@ -33,8 +34,14 @@ export function useFormQuery({
                 return { record: null, columns: binding.columns || [] };
             }
 
-            // In Builder mode, we call FastAPI directly to get schema and data
-            if (mode === 'builder') {
+            // In Builder mode, we call the sync data path directly to get schema
+            // and data. Canvas quirk (consolidation A-23, was a byte-level
+            // patch): a published-style edge binding that carries NO columns
+            // can't render on the canvas at all, so when the document is the
+            // builder canvas we take the builder path too. Precedence is
+            // load-bearing: `a || (b && c)` — entering this branch returns from
+            // it, skipping the edge branches below exactly as the old patch did.
+            if (mode === 'builder' || ((binding.columns ?? []).length === 0 && isBuilderCanvas())) {
                 const dataSourceId = binding.dataSourceId;
 
                 // 1. Fetch table schema

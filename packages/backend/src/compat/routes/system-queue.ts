@@ -1,6 +1,6 @@
 /**
  * POST /api/system/queue/receive — the queue provider's redelivery target
- * (framework-only; NOT part of the vendored 334-op product surface).
+ * (framework-only; NOT part of the 334-op community surface).
  *
  * Registered in the UNAUTHENTICATED block: QStash has no browser session.
  * Authentication is the inbound verify (QStash signature JWT over the raw

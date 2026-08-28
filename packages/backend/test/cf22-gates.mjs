@@ -5,7 +5,6 @@
 import { spawnSync } from 'node:child_process';
 
 const gates = [
-    ['contract drift', 'contract-diff.mjs', []],
     ['route registration', 'routed-ops.mjs', []],
     ['Work E Tier-1 semantics', 'compat-work-e.mjs', []],
     ['response + behavior', 'compat-conformance.mjs', [

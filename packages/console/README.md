@@ -18,9 +18,12 @@ the single source of truth; the console artifact is built and staged by
   a real `@frontbase/builder`; this console never imports one (comments only),
   and an alias would shadow the framework's package.
 - **`src/client/`** is a committed generated API client (hey-api) from the
-  product's FastAPI spec. It still works (runtime base URL is overridden in
-  `src/lib/api-client.ts`); regeneration moves to the framework in phase 2 of
-  the consolidation, when the contract inverts.
+  framework-owned spec (`packages/backend/contracts/openapi.full.json`,
+  `openapi-ts.config.ts`). It must regenerate **byte-identically**
+  (`pnpm --filter @frontbase/console client:generate` → clean `git diff`; CI
+  enforces this, and `scripts/check-client-sync.mjs` asserts the zod schemas
+  stay byte-equal to the worker's compat copy). Never hand-edit generated
+  files; the runtime base URL is overridden in `src/lib/api-client.ts`.
 - **`src/sw/builder-sw.ts`** imports `@frontbase/edge-core` — a real workspace
   dependency of this package (`"workspace:*"`), resolved at build time to the
   compiled dist. Build edge-core first (`pnpm -r build` does this for you).
@@ -30,8 +33,8 @@ the single source of truth; the console artifact is built and staged by
 | Command (from framework root) | What it does |
 |---|---|
 | `pnpm console:build` | Build this package (`vite build --mode community` → base `/frontbase-admin/`) and stage dist → `examples/cf-full/console-dist/frontbase-admin` |
-| `pnpm console:check` | Validate the staged artifact + vendored contract hash |
-| `pnpm fetch:hydrate` | Stage `hydrate.vendor.js` + `entry-*.css` from the product checkout (transition-only; retires in phase 2) |
+| `pnpm console:check` | Validate the staged artifact (shell ↔ bundles, builder-sw.js, `.assetsignore`; `--require-hydrate` adds the staged hydration bundle) |
+| `pnpm --filter @frontbase/console client:generate` | Regenerate `src/client` from `packages/backend/contracts/openapi.full.json` (must commit byte-identical) |
 | `pnpm --filter @frontbase/console dev` | Vite dev server (proxies `/api`, `/static`, `/builder` → wrangler dev :8787) |
 
 The staged `console-dist/` output is untracked — nothing under it gets

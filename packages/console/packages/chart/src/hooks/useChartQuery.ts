@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ComponentDataBinding } from '../types';
-import { resolveDateOperator } from '@frontbase/types';
+import { resolveDateOperator, isBuilderCanvas } from '@frontbase/types';
 
 interface UseChartQueryProps {
     mode: 'builder' | 'edge';
@@ -200,7 +200,11 @@ async function fetchFromBuilder(binding: ComponentDataBinding) {
 async function fetchFromEdge(binding: ComponentDataBinding) {
     const dataRequest = binding.dataRequest;
     if (!dataRequest) {
-        return [];
+        // Builder canvas: an unbaked edge binding falls back to the builder
+        // data path so the canvas still renders live data. Published pages
+        // always bake dataRequest, and the SPA never reaches this bail (it
+        // mounts in builder mode). Gate is evaluated per call, never cached.
+        return isBuilderCanvas() ? fetchFromBuilder(binding) : [];
     }
 
     const queryConfig = dataRequest.queryConfig;

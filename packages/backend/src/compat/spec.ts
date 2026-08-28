@@ -1,17 +1,21 @@
 /**
- * CF-22 P1 / D2-D3 — product contract loading + framework spec assembly.
+ * CF-22 — community contract loading + framework spec assembly.
  *
  * The framework emits its OWN OpenAPI spec for the product-compatible surface.
- * It is built by DECLARING every vendored community operation (so removing a
- * declaration → a missing endpoint the drift gate catches), marking each
- * `x-implemented` (false = 501 stub; true = real handler), and carrying the
- * vendored schemas verbatim (the contract IS the source — both stubs and
- * implemented routes validate against the same vendored Zod, so their emitted
- * schemas match the product by construction; the drift gate verifies that).
+ * It is built by DECLARING every community operation (so removing a
+ * declaration → the behavior-ledger gate reports the count drift against
+ * contracts/behavior.ledger.json), marking each `x-implemented` (false = 501
+ * stub; true = real handler), and carrying the community schemas verbatim (the
+ * contract IS the source — both stubs and implemented routes validate against
+ * the same Zod, so their emitted schemas match the declared shapes by
+ * construction; the staleness gate verifies the emission is fresh).
  *
- * Vendored inputs (packages/backend/contracts/, pinned via PRODUCT_COMMIT):
- *   - openapi.community.json  (286 ops / 202 schemas / 31 tags)
- *   - zod.gen.ts              (zod v3 — runtime validation in the routes)
+ * Framework-owned inputs (packages/backend/contracts/, consolidation A-23):
+ *   - openapi.community.json  (334 ops / 349 schemas / 36 tags — the served
+ *                             compat surface and every gate's denominator)
+ *   - openapi.full.json       (389 ops — client-generation input until phase 4)
+ *   - zod.gen.ts              (zod v3 — runtime validation in the routes;
+ *                             byte-sync-checked against the console's copy)
  */
 import SPEC from './community-spec.js';
 
@@ -52,7 +56,9 @@ export function productTag(method: string, path: string): string {
  * carried from the vendored spec (the contract); implemented ops are marked true.
  *
  * Removing a declaration here (or in the stub registry) removes the op from the
- * emitted spec → the drift gate (contract-diff.mjs) reports it MISSING.
+ * emitted spec → the behavior-ledger gate reports the count drift
+ * (ledger entries ≠ measured ops) and `contracts:check` forces a visible
+ * re-emission of framework.openapi.json.
  */
 export function buildFrameworkSpec(implemented: Set<OpKey>): any {
     const product = productSpec();
