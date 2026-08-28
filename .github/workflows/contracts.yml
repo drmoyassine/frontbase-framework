@@ -53,9 +53,13 @@ jobs:
       # paths the contract does not declare verbatim, and only a browser sees that.
       # Unconditional since the console moved in-repo: the artifact is always
       # staged by the step above.
+      # wrangler is a global tool (the e2e webServer shells out to `wrangler dev`);
+      # the browser must be the one the workspace's own @playwright/test expects —
+      # `npx playwright` would fetch latest and mismatch the browser revision.
       - name: Console acceptance (browser)
         run: |
-          npx playwright install --with-deps chromium
+          npm install -g wrangler@4.125.0
+          pnpm --filter @frontbase/example-cf-full exec playwright install --with-deps chromium
           pnpm --filter @frontbase/example-cf-full e2e
       - name: Upload acceptance failures
         if: failure()
