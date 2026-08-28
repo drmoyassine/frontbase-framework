@@ -10,7 +10,7 @@ No hydration mismatches. No server/client render drift. No separate backend to s
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-> **Status**: CF-22 (serve the product's community console from the framework worker) is **in progress, not complete.** The contract pipeline and 285-op route/shape coverage exist and the console is locally integrated, but behavior, security (known blockers include plaintext API-key storage and a no-op password reset), cross-repo pin sync, and real-deploy/owner acceptance remain open. See the single source of truth: [docs/cf-22-admin-visual-parity-gap.md](docs/cf-22-admin-visual-parity-gap.md).
+> **Status**: CF-22 is consolidated into this repo (2026-08-28, decisions A-22/A-23): the admin console, the page-hydration bundle, and the product-compatible API surface (334-op contract) are all framework-owned source — nothing is fetched from a product repo. The remaining open gate is real-deploy/owner acceptance. Runbook: [docs/cf-22-handover.md](docs/cf-22-handover.md); historical parity analysis: [docs/cf-22-admin-visual-parity-gap.md](docs/cf-22-admin-visual-parity-gap.md).
 
 ---
 

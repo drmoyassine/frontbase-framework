@@ -66,14 +66,14 @@ pnpm -r build && pnpm --filter @frontbase/backend test
 | Conformance report + unreachable list | `node packages/backend/test/compat-conformance.mjs --verbose` |
 | Auth/security behavior gate | `pnpm --filter @frontbase/backend run behavior:auth` |
 | Spec staleness gate | `pnpm --filter @frontbase/backend run contracts:check` |
-| Drift gate (missing / divergent) | `pnpm run contracts:diff` |
+| Console client ↔ compat zod sync | `node scripts/check-client-sync.mjs` |
 | Console artifact staged + valid | `pnpm console:build` then `pnpm run console:check` |
 | Deployable worker, end to end | `pnpm --filter @frontbase/example-cf-full smoke` |
 | Console in a real browser (Gate 4) | `pnpm --filter @frontbase/example-cf-full e2e` |
 | Mutation gates (all must go RED on break) | `pnpm -r test:mutation` |
-| Re-vendor the contract | `node scripts/sync-contract.mjs --commit <sha>` |
+| Regenerate the console API client | `pnpm --filter @frontbase/console client:generate` (must commit byte-identical) |
 | Re-stage the console (source is in-repo) | `pnpm console:build` |
-| Re-stage the hydrate vendor (from product checkout) | `pnpm fetch:hydrate` |
+| Re-stage the hydration bundle (source is in-repo, `packages/hydrate`) | `pnpm --filter @frontbase/example-cf-full build` |
 
 ## 4. Traps — each of these cost real time to find
 
@@ -132,7 +132,7 @@ Rationale for this sequencing is in §8 *Sequencing (revised 2026-07-27)*.
 |---|---|
 | `packages/backend/src/compat/` | The whole compat surface: `app.ts` (assembly), `spec.ts` (derivation), `stubs.ts`, `routes/*` |
 | `packages/backend/src/compat/routes/edge-shapes.ts` | Shared response shapes — fix once, lands everywhere |
-| `packages/backend/contracts/` | Vendored product contract + `PRODUCT_COMMIT` pin + emitted `framework.openapi.json` |
+| `packages/backend/contracts/` | Framework-owned contract: `openapi.community.json` (the 334-op denominator), `openapi.full.json` (client-generation input) + emitted `framework.openapi.json` |
 | `packages/backend/test/compat-conformance.mjs` | The conformance probe/gate |
 | `packages/backend/test/compat-behavior-auth.mjs` | Derived authentication/security round-trip gate |
 | `packages/backend/contracts/behavior.auth.json` | Gated, generated auth/security classification |
@@ -145,8 +145,10 @@ Rationale for this sequencing is in §8 *Sequencing (revised 2026-07-27)*.
 | `examples/cf-full/` | The deployable worker + smoke suite |
 | `packages/console/` | The console SPA **source** (consolidated 2026-08-28, A-22) |
 | `examples/cf-full/console-dist/` | Staged console bundles (gitignored except `.assetsignore`) — built by `pnpm console:build` |
-| `scripts/console-pin.mjs` | Staged-artifact validation (`validateStagedConsole`) + the vendored contract-hash guard |
+| `scripts/console-pin.mjs` | Staged-artifact validation (`validateStagedConsole`; `requireHydrate` adds the staged hydration bundle for deploy/Docker) |
+| `packages/hydrate/` | The hydration bundle **source** (consolidated 2026-08-28, A-23) — built to `dist/`, staged to `console-dist/react/` by the cf-full build |
+| `packages/console/src/client/` | Committed generated API client (hey-api, from `openapi.full.json`) — `client:generate` must reproduce it byte-identically |
 
-The product repo is a **local sibling checkout** (`../Frontbase-`, default). The
-contract and the hydrate vendor come from it at the vendored commit; the console
-itself now builds from this repo. No network fetch anywhere.
+The product repo is **reference-only** (consolidation A-23): the contract is
+framework-owned, and the console + hydration bundle build from this repo. No
+framework code path reads `../Frontbase-`; no network fetch anywhere.

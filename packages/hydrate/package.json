@@ -1,0 +1,22 @@
+{
+  "name": "@frontbase/hydrate",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Client-hydration bundle for published pages and the builder canvas (hydrate.js + entry-*.css). Built from the same data-component sources the console SPA uses; React 19 pins match the bundle those pages have always loaded.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.90.17",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.8",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.2",
+    "vite": "7.3.1"
+  }
+}

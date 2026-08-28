@@ -1,5 +1,14 @@
 # CF-22 — Closure Plan
 
+> **🗄️ PIN-ERA MECHANISMS SUPERSEDED 2026-08-28 (A-22, then A-23).** This plan was
+> written when the contract was vendored from the product repo (`scripts/sync-contract.mjs`,
+> `PRODUCT_COMMIT`/`CONTRACT_SHA256` pins, the drift gate) and the hydration bundle was
+> fetched + byte-patched (`fetch:hydrate` / `patch-hydrate`). All of that machinery is
+> retired: the contract is framework-owned, the console source lives in
+> `packages/console` (A-22), and the hydrate bundle builds from `packages/hydrate` (A-23).
+> References to `sync-contract.mjs`, pins, vendor fetches, or product checkouts below are
+> historical; the body is preserved as the record of the closure-era design.
+
 **Purpose:** everything that must happen for CF-22 to close with **no follow-ups and no
 leftovers**. Written to be executed by someone who has not been in the prior sessions.
 

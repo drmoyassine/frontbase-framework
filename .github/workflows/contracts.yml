@@ -1,15 +1,20 @@
 name: contracts
 
 # CF-22 P1 — the product-compat surface is a committed, generated artifact.
-# These gates fail the build when the vendored product contract drifts, the
-# framework's emitted spec goes stale, or an implemented op diverges from the
-# product shape. The drift gate's burn-down table IS P2's worklist.
+# Since consolidation phase 2 (A-23) the contract is framework-owned: the
+# community spec (334 ops) is the contract and gate denominator, the full spec
+# (389 ops) is the console client-generation input, and the product pins/sync/
+# drift machinery is retired. These gates fail the build when a generated
+# artifact goes stale, the generated console client desyncs from the compat
+# copy, or an implemented op diverges from the committed contract.
 #
 # - spec-staleness: framework.openapi.json must match a fresh emission.
-# - drift-gate:     0 missing ops, 0 divergent implemented ops (stubs are the
-#                   burn-down, not a failure).
-# - test:           the full backend suite incl. compat-variables (proof tag) and
-#                   contract-diff (the gate + its mutation proof).
+# - client-gen:     packages/console/src/client must regenerate byte-identical
+#                   from the vendored full spec (the toolchain is pinned exact).
+# - client-sync:    the console client's zod.gen.ts ≡ the compat copy embedded
+#                   in the worker (one generator, one spec — byte-for-byte).
+# - test:           the full backend suite incl. compat-variables (proof tag)
+#                   and compat-conformance --gate.
 #
 # Since consolidation phase 1 the console is framework source: the artifact is
 # built and staged in-repo (`pnpm console:build`), validated structurally
@@ -72,12 +77,25 @@ jobs:
           if-no-files-found: ignore
       - name: Spec staleness gate
         run: pnpm --filter @frontbase/backend run contracts:check
-      - name: Contract drift gate (missing / divergent)
-        run: pnpm run contracts:diff
+      # The console client is generated from packages/backend/contracts/
+      # openapi.full.json with a pinned-exact toolchain — regeneration must be a
+      # no-op. A diff here means the committed client no longer matches the spec
+      # (or the generator config changed): re-run `pnpm --filter
+      # @frontbase/console client:generate` and commit; never hand-edit
+      # generated files.
+      - name: Client generation staleness gate
+        run: |
+          pnpm --filter @frontbase/console client:generate
+          git diff --exit-code -- packages/console/src/client
+      # The worker embeds a compat copy of the generated Zod schemas; both files
+      # come from the same generator and the same spec, so they must stay
+      # byte-equal — a divergence means one side was regenerated alone.
+      - name: Client ↔ compat zod sync gate
+        run: node scripts/check-client-sync.mjs
       # Includes compat-conformance --gate: every documented 2xx response is
-      # validated against the vendored Zod. Unlike the drift gate (which compares
-      # the contract to itself) this fails when a HANDLER diverges.
-      - name: Backend suite (incl. compat-variables, contract-diff, conformance)
+      # validated against the committed Zod. This fails when a HANDLER diverges
+      # from the contract.
+      - name: Backend suite (incl. compat-variables, conformance)
         run: pnpm --filter @frontbase/backend test
       - name: Mutation gates
         run: pnpm -r test:mutation

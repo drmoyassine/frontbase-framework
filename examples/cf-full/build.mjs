@@ -15,12 +15,11 @@
  */
 import * as esbuild from 'esbuild';
 import { gzipSync } from 'node:zlib';
-import { existsSync, readFileSync, statSync, mkdirSync, copyFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { validateStagedConsole } from '../../scripts/console-pin.mjs';
-import { patchHydrate } from './scripts/patch-hydrate.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 mkdirSync(join(here, 'dist'), { recursive: true });
@@ -49,6 +48,10 @@ const DEP_PKGS = [
     // Assets — but it belongs here so a fresh clone builds its dist before the
     // staging step below reuses it (--skip-build).
     { name: '@frontbase/console', artifact: 'dist/index.html' },
+    // Same story as the console: not imported by the worker (served as Static
+    // Assets from console-dist/react/), built here so the staging step below
+    // always has a dist to copy.
+    { name: '@frontbase/hydrate', artifact: 'dist/hydrate.js' },
 ];
 const missing = DEP_PKGS.filter((p) => !existsSync(join(pkgDir(p.name), p.artifact)));
 if (missing.length > 0) {
@@ -95,16 +98,23 @@ try {
 const CONSOLE_ROOT = join(here, 'console-dist', 'frontbase-admin');
 const CONSOLE_INDEX_PATH = join(CONSOLE_ROOT, 'index.html');
 
-// Regenerate the served hydration bundle from the vendored product build.
+// Stage the hydration bundle (packages/hydrate/dist → console-dist/react/).
 // Runs AFTER console staging: staging wipes console-dist/ (including the
-// derived console-dist/react/hydrate.js), and patch-hydrate writes both the
-// public/ and served copies back. Throws when the vendor bytes drift and a
-// patch anchor stops matching — never ship a silently unpatched bundle
-// (see scripts/patch-hydrate.mjs).
-const hydratePatch = patchHydrate();
-if (hydratePatch.patched) {
-    console.log(`→ hydrate.js: ${hydratePatch.patches} canvas-fallback patches applied (${hydratePatch.bytes} bytes)`);
+// served react/ copy). The worker routes /static/react/* to this directory;
+// the CSS hash is free to change (the serving route globs entry-*.css).
+// There is no silent-skip path: a missing/incomplete dist exits loudly (the
+// self-heal above builds @frontbase/hydrate first; pre-consolidation this was
+// a vendored product bundle + byte-level patches — scripts/patch-hydrate.mjs).
+const HYDRATE_DIST = join(pkgDir('@frontbase/hydrate'), 'dist');
+const REACT_STAGE = join(here, 'console-dist', 'react');
+mkdirSync(REACT_STAGE, { recursive: true });
+const hydrateFiles = readdirSync(HYDRATE_DIST).filter((f) => f === 'hydrate.js' || /^entry-.+\.css$/.test(f));
+if (!hydrateFiles.includes('hydrate.js') || !hydrateFiles.some((f) => /^entry-.+\.css$/.test(f))) {
+    console.error('✗ @frontbase/hydrate dist incomplete — expected hydrate.js + entry-*.css. Run `pnpm --filter @frontbase/hydrate build`.');
+    process.exit(1);
 }
+for (const f of hydrateFiles) copyFileSync(join(HYDRATE_DIST, f), join(REACT_STAGE, f));
+console.log(`→ staged hydration bundle: ${hydrateFiles.join(', ')} → console-dist/react/`);
 
 // Optional deps that are dynamic-imported behind feature flags — not part of a
 // basic D1 CMS. Stubbed so the single-file artifact carries no dangling imports.

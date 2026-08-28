@@ -113,8 +113,8 @@ work runs inline.
 
 ## Queue receive endpoint
 
-`POST /api/system/queue/receive` — framework-only (outside the vendored
-334-op product surface), registered in the unauthenticated block; auth is
+`POST /api/system/queue/receive` — framework-only (outside the
+334-op community surface), registered in the unauthenticated block; auth is
 either a valid `upstash-signature` (verified against the resolved queue's
 signing keys) or the shared callback secret (constant-time compare). 401
 otherwise.

@@ -14,12 +14,10 @@
     "check": "pnpm -r check",
     "test:mutation": "pnpm -r test:mutation",
     "deploy:cf-full": "node scripts/deploy.mjs",
-    "contracts:sync": "node scripts/sync-contract.mjs",
-    "contracts:diff": "node scripts/contract-diff.mjs",
+    "contracts:embed": "node scripts/embed-community-spec.mjs",
     "console:build": "node scripts/build-console.mjs",
     "console:stage": "node scripts/build-console.mjs --skip-build",
-    "console:check": "node scripts/validate-console-pin.mjs",
-    "fetch:hydrate": "node scripts/fetch-hydrate.mjs"
+    "console:check": "node scripts/validate-console-pin.mjs"
   },
   "devDependencies": {
     "c8": "^11.0.0",

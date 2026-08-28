@@ -11,12 +11,6 @@ e2e/report/
 e2e/test-results/
 test-results/
 
-# Product-derived edge hydration assets (the one remaining product input):
-# `pnpm fetch:hydrate` stages public/react/hydrate.vendor.js from the product
-# checkout, and the cf-full build derives public/react/hydrate.js (patched)
-# from it. Nothing under public/ is source — do not commit.
-public/
-
 # Docker compose reads live secrets from .env (SESSION_SECRET, ADMIN_PASSWORD).
 # .env.example is the committed template; .env itself never enters git.
 .env

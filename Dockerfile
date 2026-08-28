@@ -6,11 +6,12 @@
 #   docker compose build        (from examples/cf-full — compose sets the context)
 #   docker build -f examples/cf-full/Dockerfile .   (from the repo root)
 #
-# Prerequisite: `pnpm console:build` already staged console-dist/ bundles +
-# `pnpm fetch:hydrate` staged public/react/hydrate.vendor.js (untracked). The
-# console builds from packages/console source in this repo. The pre-install
-# gate exists so a broken stage fails the image build in seconds, not after
-# pnpm install: without it the failure surfaces only inside `pnpm -r build`.
+# Prerequisite: the staged console + hydration artifacts under
+# examples/cf-full/console-dist/ — `pnpm console:build && pnpm --filter
+# @frontbase/example-cf-full build` (both build from in-repo source; the
+# artifacts are gitignored build outputs). The pre-install gate exists so a
+# broken stage fails the image build in seconds, not after pnpm install:
+# without it the failure surfaces only inside `pnpm -r build`.
 
 # ---- build: full workspace, all packages compiled ---------------------------
 FROM node:22-slim AS build
@@ -21,7 +22,8 @@ COPY . .
 RUN node scripts/docker-gate.mjs
 RUN pnpm install --frozen-lockfile
 # -r runs every workspace package's build (root excluded by default), including
-# examples/cf-full's build.mjs → dist/node.mjs + the patched console-dist/react.
+# examples/cf-full's build.mjs → dist/node.mjs + the staged console-dist/react
+# (hydration bundle from packages/hydrate).
 RUN pnpm -r build
 
 # ---- runtime: prod deps + built artifacts, non-root -------------------------
@@ -41,7 +43,7 @@ RUN pnpm install --prod --frozen-lockfile
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/examples/cf-full ./examples/cf-full
 RUN test -f examples/cf-full/dist/node.mjs && test -f examples/cf-full/console-dist/react/hydrate.js \
-    || { echo "✗ build artifacts incomplete (node.mjs / patched hydrate.js missing)"; exit 1; }
+    || { echo "✗ build artifacts incomplete (node.mjs / staged hydrate.js missing)"; exit 1; }
 USER node
 WORKDIR /app/examples/cf-full
 EXPOSE 8787

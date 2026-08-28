@@ -3,85 +3,52 @@
  * in-repo @frontbase/console package (`pnpm console:build`).
  *
  * History: this module used to validate a CONSOLE_PIN provenance file naming
- * the product-repo commit the console bundles were vendored from (posture B,
- * `pnpm run fetch:console`). The console moved into this workspace on
- * 2026-08-28 (consolidation phase 1): the artifact is now built from source,
- * the pin is retired, and validation is purely structural — the staged shell
- * must reference exactly the bundles on disk (both directions), the builder SW
- * must be present at the staged root, and nothing stale may linger in the
- * stage. `pnpm console:build` runs the same checks after staging, so a green
- * build implies a green validate; this module remains the independent judge
- * for deploy, Docker and CI.
- *
- * The contract guard below is the surviving half of the old Gate 0 (which
- * compared CONSOLE_PIN.commit with contracts/PRODUCT_COMMIT). The vendored
- * contract is STILL product-derived, so detecting in-place edits of
- * openapi.community.json remains load-bearing — and this check is its only
- * enforcer: contracts:check verifies spec staleness against a product
- * checkout, contracts:diff verifies op coverage, but neither re-hashes the
- * committed bytes.
+ * the product-repo commit the console bundles were vendored from, and — after
+ * consolidation phase 1 — the vendored product contract hash (the surviving
+ * half of the old Gate 0). Consolidation phase 2 (A-23, 2026-08-28) inverted
+ * the contract: the specs under packages/backend/contracts/ are
+ * framework-owned (`contracts:check` staleness is their guard) and the
+ * hydration bundle is built in-repo (packages/hydrate) instead of vendored and
+ * byte-patched. What remains here is purely structural: the staged shell must
+ * reference exactly the bundles on disk (both directions), the builder SW
+ * must sit at the staged root, nothing stale may linger, and — deploy-grade —
+ * the staged hydration bundle must be present. `pnpm console:build` runs the
+ * same checks after staging, so a green build implies a green validate; this
+ * module remains the independent judge for deploy, Docker and CI.
  *
  * Options:
- *   { contractOnly: true }        run only the contract guard — for CI jobs
- *                                 that have not built/staged the console.
- *   { requireHydrateVendor: true } additionally require
- *                                 examples/cf-full/public/react/hydrate.vendor.js —
- *                                 used by the deploy and Docker paths, because
- *                                 patch-hydrate.mjs SILENTLY SKIPS when the
- *                                 vendor is absent (it must, so fresh clones
- *                                 can build), which would ship a worker whose
- *                                 /static/react/hydrate.js 404s — dead client
- *                                 hydration, green build.
+ *   { requireHydrate: true }  additionally require the staged hydration bundle
+ *                             (console-dist/react/hydrate.js + an entry-*.css)
+ *                             — used by the deploy and Docker paths, because
+ *                             without it the deployment 404s at
+ *                             /static/react/hydrate.js (dead client
+ *                             hydration). cf-full's build stages those files
+ *                             itself right after its own (non-deploy-grade)
+ *                             validation, so the build-time call omits this.
  *
- * Legacy call sites may pass { level: 'pin'|'shell'|'deploy' } or
- * { formatOnly: true }; the levels collapsed when the pin retired — every
- * spelling now runs the same staged-artifact check.
+ * Legacy call sites may pass { level: 'pin'|'shell'|'deploy' },
+ * { contractOnly: true } or { formatOnly: true }; every retired spelling
+ * collapses into the single staged-artifact check (requireHydrate is set only
+ * by the explicit option).
  */
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 export const EXPECTED_BASE_PATH = '/frontbase-admin/';
 
-export function hydrateVendorPresent(rootDir) {
-    return existsSync(resolve(rootDir, 'examples', 'cf-full', 'public', 'react', 'hydrate.vendor.js'));
-}
-
-/** True when any staged console bundles exist at all (pre-check before deploy). */
-export function consoleBundlesPresent(rootDir) {
-    return existsSync(resolve(rootDir, 'examples', 'cf-full', 'console-dist', 'frontbase-admin', 'assets'));
+/** True when a hydration bundle is staged at console-dist/react/ (deploy-grade pre-check). */
+export function hydrateStagedPresent(rootDir) {
+    const reactDir = resolve(rootDir, 'examples', 'cf-full', 'console-dist', 'react');
+    if (!existsSync(join(reactDir, 'hydrate.js'))) return false;
+    return readdirSync(reactDir).some((f) => /^entry-.+\.css$/.test(f));
 }
 
 export function validateStagedConsole(rootDir, options = {}) {
-    const contractOnly = options.contractOnly ?? false;
-    const requireHydrateVendor = options.requireHydrateVendor ?? false;
+    const requireHydrate = options.requireHydrate ?? false;
     const consoleDist = resolve(rootDir, 'examples', 'cf-full', 'console-dist');
     const consoleRoot = join(consoleDist, 'frontbase-admin');
 
-    // ---- 1. Contract guard (the old Gate 0's surviving half) ----
-    const contractsDir = resolve(rootDir, 'packages', 'backend', 'contracts');
-    const productCommitPath = join(contractsDir, 'PRODUCT_COMMIT');
-    if (!existsSync(productCommitPath)) throw new Error('contracts/PRODUCT_COMMIT missing: run `node scripts/sync-contract.mjs`');
-    const productCommit = readFileSync(productCommitPath, 'utf8').trim();
-    const shaPath = join(contractsDir, 'CONTRACT_SHA256');
-    const contractPath = join(contractsDir, 'openapi.community.json');
-    if (!existsSync(shaPath) || !existsSync(contractPath)) {
-        throw new Error('vendored contract files missing: run `node scripts/sync-contract.mjs`');
-    }
-    const recorded = readFileSync(shaPath, 'utf8').trim();
-    const actual = createHash('sha256')
-        .update(readFileSync(contractPath, 'utf8').replace(/\r\n/g, '\n'))
-        .digest('hex');
-    if (recorded !== actual) {
-        throw new Error(
-            'vendored contract does not match CONTRACT_SHA256 — it was edited in place after being ' +
-            `vendored from ${productCommit.slice(0, 12)}, so nothing describes it any more. ` +
-            'Re-run `node scripts/sync-contract.mjs` against a committed product revision.',
-        );
-    }
-    if (contractOnly) return { productCommit };
-
-    // ---- 2. Staged shell + base path ----
+    // ---- 1. Staged shell + base path ----
     const indexPath = join(consoleRoot, 'index.html');
     if (!existsSync(indexPath)) throw new Error('console shell (console-dist/frontbase-admin/index.html) missing: run `pnpm console:build`');
     const html = readFileSync(indexPath, 'utf8');
@@ -92,7 +59,7 @@ export function validateStagedConsole(rootDir, options = {}) {
         );
     }
 
-    // ---- 3. Two-way shell ↔ disk agreement ----
+    // ---- 2. Two-way shell ↔ disk agreement ----
     // The stage is a build output now, so nothing pins the expected bundle
     // names — agreement with reality is the guarantee: a stale shell loading
     // assets that are no longer staged (or bundles no shell can reach) must
@@ -115,7 +82,7 @@ export function validateStagedConsole(rootDir, options = {}) {
         );
     }
 
-    // ---- 4. builder-sw.js at the staged root ----
+    // ---- 3. builder-sw.js at the staged root ----
     // registerBuilderSw.ts registers `${import.meta.env.BASE_URL}builder-sw.js`
     // — a hashed assets/ name would never be addressed, so the SW must sit at
     // the dist root. Size floor catches a silently-truncated esbuild pass.
@@ -127,14 +94,14 @@ export function validateStagedConsole(rootDir, options = {}) {
         throw new Error('builder-sw.js is suspiciously small (<10 KB) — the esbuild SW pass likely failed. Re-run `pnpm console:build`.');
     }
 
-    // ---- 5. .assetsignore — wrangler must not upload sourcemaps ----
+    // ---- 4. .assetsignore — wrangler must not upload sourcemaps ----
     const assetsIgnorePath = join(consoleDist, '.assetsignore');
     if (!existsSync(assetsIgnorePath)) throw new Error('console-dist/.assetsignore missing: run `pnpm console:build`');
     if (readFileSync(assetsIgnorePath, 'utf8') !== '**/*.map\n') {
         throw new Error('console-dist/.assetsignore has unexpected contents — expected exactly "**/*.map\\n". Re-run `pnpm console:build`.');
     }
 
-    // ---- 6. No leftovers: retired pin file, stray sourcemaps ----
+    // ---- 5. No leftovers: retired pin file, stray sourcemaps ----
     if (existsSync(join(consoleDist, 'CONSOLE_PIN'))) {
         throw new Error('stray CONSOLE_PIN found — the pin retired with the product fetch; delete it (wrangler would upload it).');
     }
@@ -143,29 +110,17 @@ export function validateStagedConsole(rootDir, options = {}) {
         throw new Error(`sourcemaps staged (${maps.join(', ')}) — vite runs with sourcemap: false; rebuild. Re-run \`pnpm console:build\`.`);
     }
 
-    // ---- 7. Hydrate vendor (deploy/Docker only) ----
-    if (requireHydrateVendor && !hydrateVendorPresent(rootDir)) {
+    // ---- 6. Staged hydration bundle (deploy/Docker only) ----
+    if (requireHydrate && !hydrateStagedPresent(rootDir)) {
         throw new Error(
-            'examples/cf-full/public/react/hydrate.vendor.js is absent — patch-hydrate.mjs would silently skip and the ' +
-            'deployment would 404 at /static/react/hydrate.js (dead client hydration). Run `pnpm fetch:hydrate`.',
+            'the hydration bundle is not staged (console-dist/react/hydrate.js + entry-*.css) — the deployment would ' +
+            '404 at /static/react/hydrate.js (dead client hydration). Run any examples/cf-full build ' +
+            '(e.g. `pnpm --filter @frontbase/example-cf-full build`), which stages it from packages/hydrate.',
         );
     }
 
     return {
-        productCommit,
         jsBundles: onDisk.filter((f) => f.endsWith('.js')),
         cssBundles: onDisk.filter((f) => f.endsWith('.css')),
     };
-}
-
-/**
- * Back-compat alias: the pre-consolidation name. `level`/`formatOnly` collapse
- * into the single staged check (see header).
- */
-export function validateConsoleArtifact(rootDir, options = {}) {
-    const contractOnly = options.contractOnly ?? Boolean(options.level === 'pin' || options.formatOnly);
-    return validateStagedConsole(rootDir, {
-        contractOnly,
-        requireHydrateVendor: options.requireHydrateVendor ?? options.level === 'deploy',
-    });
 }
