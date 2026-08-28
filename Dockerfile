@@ -6,9 +6,11 @@
 #   docker compose build        (from examples/cf-full — compose sets the context)
 #   docker build -f examples/cf-full/Dockerfile .   (from the repo root)
 #
-# Prerequisite: `pnpm run fetch:console` already staged console-dist/ bundles +
-# public/react/hydrate.vendor.js (untracked, posture B). scripts/docker-gate.mjs
-# fails the build fast with the remedy if not.
+# Prerequisite: `pnpm console:build` already staged console-dist/ bundles +
+# `pnpm fetch:hydrate` staged public/react/hydrate.vendor.js (untracked). The
+# console builds from packages/console source in this repo. The pre-install
+# gate exists so a broken stage fails the image build in seconds, not after
+# pnpm install: without it the failure surfaces only inside `pnpm -r build`.
 
 # ---- build: full workspace, all packages compiled ---------------------------
 FROM node:22-slim AS build

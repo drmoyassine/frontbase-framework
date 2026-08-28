@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitAny": false,
+    "noFallthroughCasesInSwitch": false,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@frontbase/types": ["./packages/types/src/index.ts"],
+      "@frontbase/datatable": ["./packages/datatable/src/index.ts"],
+      "@frontbase/datatable/*": ["./packages/datatable/src/*"],
+      "@frontbase/infolist": ["./packages/infolist/src/index.ts"],
+      "@frontbase/infolist/*": ["./packages/infolist/src/*"],
+      "@frontbase/form": ["./packages/form/src/index.ts"],
+      "@frontbase/form/*": ["./packages/form/src/*"],
+      "@frontbase/chart": ["./packages/chart/src/index.ts"],
+      "@frontbase/chart/*": ["./packages/chart/src/*"],
+      "@frontbase/kpicard": ["./packages/kpicard/src/index.ts"],
+      "@frontbase/kpicard/*": ["./packages/kpicard/src/*"],
+      "@frontbase/grid": ["./packages/grid/src/index.ts"],
+      "@frontbase/grid/*": ["./packages/grid/src/*"],
+      "@frontbase/liquid-core": ["./packages/liquid-core/src/index.ts"],
+      "@frontbase/liquid-core/*": ["./packages/liquid-core/src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["src/**/_archive/**"]
+}

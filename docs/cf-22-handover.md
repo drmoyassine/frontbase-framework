@@ -67,11 +67,13 @@ pnpm -r build && pnpm --filter @frontbase/backend test
 | Auth/security behavior gate | `pnpm --filter @frontbase/backend run behavior:auth` |
 | Spec staleness gate | `pnpm --filter @frontbase/backend run contracts:check` |
 | Drift gate (missing / divergent) | `pnpm run contracts:diff` |
-| Console artifact + pin agreement | `pnpm run console:check` |
+| Console artifact staged + valid | `pnpm console:build` then `pnpm run console:check` |
 | Deployable worker, end to end | `pnpm --filter @frontbase/example-cf-full smoke` |
+| Console in a real browser (Gate 4) | `pnpm --filter @frontbase/example-cf-full e2e` |
 | Mutation gates (all must go RED on break) | `pnpm -r test:mutation` |
 | Re-vendor the contract | `node scripts/sync-contract.mjs --commit <sha>` |
-| Re-fetch the console bundle | `pnpm run fetch:console` |
+| Re-stage the console (source is in-repo) | `pnpm console:build` |
+| Re-stage the hydrate vendor (from product checkout) | `pnpm fetch:hydrate` |
 
 ## 4. Traps — each of these cost real time to find
 
@@ -141,8 +143,10 @@ Rationale for this sequencing is in §8 *Sequencing (revised 2026-07-27)*.
 | `docs/cf-22-no-schema-audit.md` | Per-operation ledger for the closed `NO_SCHEMA 85` |
 | `packages/backend/test/routed-ops.mjs` | Proves `x-implemented` is derived |
 | `examples/cf-full/` | The deployable worker + smoke suite |
-| `examples/cf-full/console-dist/` | Console shell (committed) + bundles (gitignored) — see §6a of the source of truth |
-| `scripts/console-pin.mjs` | Three-level artifact validation (`pin` / `shell` / `deploy`) |
+| `packages/console/` | The console SPA **source** (consolidated 2026-08-28, A-22) |
+| `examples/cf-full/console-dist/` | Staged console bundles (gitignored except `.assetsignore`) — built by `pnpm console:build` |
+| `scripts/console-pin.mjs` | Staged-artifact validation (`validateStagedConsole`) + the vendored contract-hash guard |
 
-The product repo is a **local sibling checkout** (`../Frontbase-`, default). Several
-scripts need it; there is no network fetch.
+The product repo is a **local sibling checkout** (`../Frontbase-`, default). The
+contract and the hydrate vendor come from it at the vendored commit; the console
+itself now builds from this repo. No network fetch anywhere.

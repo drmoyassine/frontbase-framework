@@ -54,7 +54,7 @@ volume, console from disk, no sidecars. The `Dockerfile` and
 workspace), so from the repo root:
 
 ```bash
-pnpm run fetch:console -- --product-dir ../Frontbase-   # console artifacts (once)
+pnpm console:build              # stage the console from packages/console source (once)
 cp .env.example .env            # set SESSION_SECRET (+ optional ADMIN_* seeds)
 docker compose up -d --build    # http://127.0.0.1:8787/frontbase-admin
 ```
@@ -66,8 +66,8 @@ Full reference: [docs/guides/self-host-docker.md](../../docs/guides/self-host-do
 ## Deploy (your machine — needs a Cloudflare account)
 
 ```bash
-# 0. Fetch the product console and build the artifact
-pnpm run fetch:console -- --product-dir ../Frontbase-
+# 0. Stage the console (from packages/console source) and build the artifact
+pnpm console:build
 pnpm --filter @frontbase/example-cf-full build
 
 cd examples/cf-full

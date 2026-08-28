@@ -51,9 +51,18 @@ const check = async (label: string, fn: () => Promise<boolean>) => {
 // They are skipped loudly rather than quietly weakened — a skip is visible in the
 // log and counted in the summary, so "green" never means "these silently passed".
 const bundlesPresent = existsSync(join(consoleRoot, 'assets'));
+// The patched hydration bundle derives from the untracked
+// public/react/hydrate.vendor.js (staged from the product checkout by
+// `pnpm fetch:hydrate`). Without it the /static/react/hydrate.js route 404s
+// exactly as it did before staging — skip loudly rather than fail.
+const hydrateVendorPresent = existsSync(join(here, '..', 'public', 'react', 'hydrate.vendor.js'));
 let skipped = 0;
 const checkBundles = async (label: string, fn: () => Promise<boolean>) => {
-    if (!bundlesPresent) { skipped++; console.log(`  ⏭️  ${label} — SKIPPED (no console bundles; run \`pnpm run fetch:console\`)`); return; }
+    if (!bundlesPresent) { skipped++; console.log(`  ⏭️  ${label} — SKIPPED (no console bundles; run \`pnpm console:build\`)`); return; }
+    await check(label, fn);
+};
+const checkHydrate = async (label: string, fn: () => Promise<boolean>) => {
+    if (!hydrateVendorPresent) { skipped++; console.log(`  ⏭️  ${label} — SKIPPED (no hydrate vendor; run \`pnpm fetch:hydrate\`)`); return; }
     await check(label, fn);
 };
 
@@ -108,6 +117,29 @@ await checkBundles('hashed console asset is real + immutable', async () => {
     const r = await req(path);
     return r.status === 200 && r.headers.get('content-type')?.includes('javascript') === true
         && r.headers.get('cache-control') === 'public, max-age=31536000, immutable';
+});
+// The builder canvas SW ships at the staged console ROOT (registerBuilderSw
+// fetches `${BASE_URL}builder-sw.js`) — the validator's >10 KB floor, replayed
+// through the actual dispatch: a file path outside /assets/ → 1 h cache.
+await checkBundles('builder-sw.js is served from the staged console root', async () => {
+    const r = await req('/frontbase-admin/builder-sw.js');
+    return r.status === 200 && r.headers.get('content-type')?.includes('javascript') === true
+        && (await r.text()).length > 10_000;
+});
+// The hydration bundle must be the PATCHED build: `chimera-rendered-by` occurs
+// in it only via patch-hydrate's canvas-fallback patches (a staged-but-unpatched
+// vendor fails here — that unpatched bundle is the fresh-drop canvas bug).
+await checkHydrate('GET /static/react/hydrate.js serves the patched bundle (both copies identical)', async () => {
+    const r = await req('/static/react/hydrate.js');
+    const body = await r.text();
+    if (r.status !== 200 || r.headers.get('content-type')?.includes('javascript') !== true
+        || !body.includes('chimera-rendered-by')) return false;
+    // patch-hydrate writes public/react/ AND console-dist/react/ (the ASSETS
+    // root — a sibling of frontbase-admin/, not nested in it) from the same
+    // bytes — the source-of-record copy and the served copy must stay identical.
+    const sourceOfRecord = readFileSync(join(here, '..', 'public', 'react', 'hydrate.js'));
+    const served = readFileSync(join(here, '..', 'console-dist', 'react', 'hydrate.js'));
+    return sourceOfRecord.equals(served);
 });
 
 await check('fresh instance redirects console to existing setup surface', async () => {

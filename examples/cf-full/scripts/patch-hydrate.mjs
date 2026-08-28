@@ -1,7 +1,7 @@
 /**
  * Regenerate public/react/hydrate.js from the vendored product build
  * (public/react/hydrate.vendor.js, staged from the product checkout by
- * `pnpm run fetch:console` — services/edge/public/react/hydrate.js).
+ * `pnpm fetch:hydrate` — services/edge/public/react/hydrate.js).
  *
  * WHY THIS EXISTS — the fresh-drop canvas bug:
  * The product console registers a service worker (console-dist/frontbase-admin/
@@ -109,7 +109,7 @@ export function patchHydrate() {
         src = src.slice(0, first) + to + src.slice(first + from.length);
     }
     for (const out of OUTS) {
-        // A fresh `fetch:console` may have re-created console-dist without the
+        // A fresh `console:build` may have re-created console-dist without the
         // react/ subdir; writeFileSync cannot create parents.
         mkdirSync(dirname(out), { recursive: true });
         writeFileSync(out, src);

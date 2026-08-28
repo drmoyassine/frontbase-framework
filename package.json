@@ -10,20 +10,34 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "test": "pnpm -r test",
+    "test": "pnpm -r --filter=!@frontbase/console test",
     "check": "pnpm -r check",
     "test:mutation": "pnpm -r test:mutation",
     "deploy:cf-full": "node scripts/deploy.mjs",
     "contracts:sync": "node scripts/sync-contract.mjs",
     "contracts:diff": "node scripts/contract-diff.mjs",
-    "test:contract-drift": "node scripts/test-contract-drift.mjs",
-    "fetch:console": "node scripts/fetch-console.mjs",
-    "console:check": "node scripts/validate-console-pin.mjs"
+    "console:build": "node scripts/build-console.mjs",
+    "console:stage": "node scripts/build-console.mjs --skip-build",
+    "console:check": "node scripts/validate-console-pin.mjs",
+    "fetch:hydrate": "node scripts/fetch-hydrate.mjs"
   },
   "devDependencies": {
     "c8": "^11.0.0",
     "esbuild": "^0.28.1",
     "jsdom": "^29.1.1",
     "typescript": "^6.0.3"
+  },
+  "pnpm": {
+    "//": "Fidelity pins: the console SPA must build byte-comparably to the product build it replaces. The console's own devDependencies are exact-pinned; these overrides hold the only remaining resolution drift that reaches its output — the 7 runtime libs bundled into the SPA (floating-ui stack via radix popper, scroll-lock pair, monaco loader) and rollup, vite's chunk codegen, whose patch releases change emitted bytes.",
+    "overrides": {
+      "@floating-ui/core": "1.7.2",
+      "@floating-ui/dom": "1.7.2",
+      "@floating-ui/react-dom": "2.1.4",
+      "@floating-ui/utils": "0.2.10",
+      "@monaco-editor/loader": "1.5.0",
+      "aria-hidden": "1.2.4",
+      "react-remove-scroll": "2.7.1",
+      "rollup": "4.59.0"
+    }
   }
 }

@@ -881,6 +881,29 @@ A FastAPI A/B parity stack (product stack beside this container for differential
 
 ---
 
+## Decision A-22: Console Source Consolidation (Phase 1 of framework-only)
+
+**Date**: 2026-08-28
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+
+### Context
+
+The console SPA was built from the product repo by `scripts/fetch-console.mjs` and vendored at a pinned product SHA (`console-dist/CONSOLE_PIN`), while the product's Docker cloned this framework for `@frontbase/edge-core` — a bidirectional pin dance. The framework-only direction (2026-08-28) retires the product repo entirely, starting with the console.
+
+### Decision
+
+Move the console source into this workspace as `packages/console` (`@frontbase/console`, private; the 8 product sub-packages nest as alias-resolved source dirs). Zero behavior change: `builder-sw.js` is **byte-identical** to the product build, the SPA module graph is equivalent, and the CSS chunk hash matches. `CONSOLE_PIN` and `fetch:console` are retired; the validator slims to a staged-filesystem check (`validateStagedConsole`) plus the surviving contract-hash guard. `fetch:hydrate` replaces the product fetch for the hydration vendor only (Phase 2 will consolidate that source too). All 100 console devDependencies are pinned to exact product-resolved versions, with `pnpm.overrides` holding the 7 bundled runtime libs + rollup at product versions. The console's vitest is excluded from the root `pnpm test` filter (vitest 4 needs vite ^6; the build pins vite 5.4.21 for byte parity — revisit in Phase 2), and its `check` script scopes to `src/sw` + `src/client` (full-src tsc was never a product gate). CI browser acceptance becomes unconditional: the old `hashFiles(console-dist/assets/*.js)` gate was always false, so e2e never ran remotely — a coverage hole now closed.
+
+### Consequences
+
+- Fresh clones self-heal: the console builds from source; nothing product-built is committed.
+- The product's shipped bundle accidentally bundled a **second React (19.2.3)** from a stray `packages/datatable/node_modules` install that its committed lockfile does not reproduce; the framework build resolves datatable to the shared React 18.3.1 — matching datatable's own `^18 || ^19` peer range. This is the only module-graph difference and it is deliberate (the stray install is excluded from the copy).
+- The residual SPA size delta vs the last product build (−50 kB) is esbuild minified-identifier allocation noise seeded by that React difference — the programs are structurally identical.
+- `examples/cf-full/e2e/playwright.config.ts` gained quoting on its `--var` values: playwright shells the command, and the space-containing default passphrase was being split, seeding `ADMIN_PASSWORD=correct` (found via the newly-run e2e; latent since CF-22).
+
+---
+
 ## Decision History
 
 | Date | Decision | Status |
@@ -904,6 +927,8 @@ A FastAPI A/B parity stack (product stack beside this container for differential
 | 2026-07-11 | A-18: Identity & Provisioning Layer | ✅ Approved |
 | 2026-07-11 | A-19: Console DB Unification & CF D1 Default | ✅ Approved |
 | 2026-08-13 | A-20: Public Release Positioning and Gated Rollout | ✅ Approved |
+| 2026-08-22 | A-21: Backendless Node/Docker Self-Host Adapter | ✅ Approved |
+| 2026-08-28 | A-22: Console Source Consolidation (Phase 1 of framework-only) | ✅ Approved |
 
 ---
 

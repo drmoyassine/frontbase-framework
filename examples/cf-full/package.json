@@ -15,6 +15,7 @@
         "@frontbase/admin-console": "workspace:*",
         "@frontbase/backend": "workspace:*",
         "@frontbase/builder": "workspace:*",
+        "@frontbase/console": "workspace:*",
         "@frontbase/edge-core": "workspace:*",
         "@frontbase/edge-infra": "workspace:*",
         "@hono/node-server": "^1.14.0",
