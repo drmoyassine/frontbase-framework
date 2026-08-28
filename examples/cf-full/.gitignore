@@ -2,27 +2,17 @@ dist/
 .wrangler/
 node_modules/
 
-# Posture B: the product console's hashed JS/CSS bundles (~1.2 MB) stay out of
-# this repo — `pnpm run fetch:console` produces them from a product checkout.
+# The console artifact is built from the in-repo @frontbase/console package
+# (`pnpm console:build`) and verified by `pnpm console:check`. Nothing under
+# console-dist/ is tracked except .assetsignore (wrangler's upload exclusion).
 console-dist/*
-!console-dist/CONSOLE_PIN
 !console-dist/.assetsignore
-
-# The SPA shell is the exception, deliberately. It is 1.7 KB of meta tags plus
-# references to the hashed bundle filenames CONSOLE_PIN already commits — no
-# product code. Committing it is what lets CI build and smoke-test the deployable
-# Worker without the proprietary bundles; without it `pnpm -r build` cannot
-# succeed in a fresh clone. CONSOLE_PIN pins the shell's asset references, so a
-# shell that outlives its bundles is a hard error, not a silent stale artifact.
-!console-dist/frontbase-admin/
-console-dist/frontbase-admin/*
-!console-dist/frontbase-admin/index.html
 e2e/report/
 e2e/test-results/
 test-results/
 
-# Product-derived edge hydration assets, same posture as console-dist:
-# fetch:console stages public/react/hydrate.vendor.js from the product
+# Product-derived edge hydration assets (the one remaining product input):
+# `pnpm fetch:hydrate` stages public/react/hydrate.vendor.js from the product
 # checkout, and the cf-full build derives public/react/hydrate.js (patched)
 # from it. Nothing under public/ is source — do not commit.
 public/

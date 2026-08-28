@@ -56,9 +56,13 @@ export default defineConfig({
         command: [
             'wrangler dev',
             `--port ${PORT}`,
-            '--var SESSION_SECRET:e2e-secret-not-for-prod-0123456789abcdef',
-            `--var ADMIN_EMAIL:${ADMIN.email}`,
-            `--var ADMIN_PASSWORD:${ADMIN.password}`,
+            '--var "SESSION_SECRET:e2e-secret-not-for-prod-0123456789abcdef"',
+            `--var "ADMIN_EMAIL:${ADMIN.email}"`,
+            // Quoted: playwright runs this string through a shell, and an
+            // unquoted space-containing value (the default passphrase) gets
+            // split at the first space — the worker then seeds
+            // ADMIN_PASSWORD=correct and every login 401s.
+            `--var "ADMIN_PASSWORD:${ADMIN.password}"`,
         ].join(' '),
         cwd: '..',
         url: `http://127.0.0.1:${PORT}/api/console/health`,

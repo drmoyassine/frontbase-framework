@@ -3,8 +3,9 @@
  * (@frontbase/edge-core) + the login-gated admin console (@frontbase/backend),
  * over a Cloudflare D1 binding (@frontbase/edge-infra).
  *
- * CF-22: the product's community console SPA is served from console-dist/
- * (built by scripts/fetch-console.mjs). The framework SPA is setup-only at
+ * CF-22: the community console SPA is served from console-dist/ (built and
+ * staged from the in-repo @frontbase/console package by `pnpm console:build`).
+ * The framework SPA is setup-only at
  * /setup, /console redirects to the product console, and the legacy
  * /api/console surface is retired except for health and first-run setup.
  * The vendored GET / operation remains owned by the eSSR engine.

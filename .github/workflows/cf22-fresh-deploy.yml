@@ -39,21 +39,29 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - name: Check out the pinned product console source
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The console artifact is built from the in-repo @frontbase/console
+      # package. The hydrate vendor is the one remaining product-derived input:
+      # fetch:hydrate reads it via `git show` from the product checkout at the
+      # vendored contracts/PRODUCT_COMMIT, so the clone must be FULL-DEPTH (the
+      # default depth-1 checkout would not contain that older object). This
+      # checkout retires with the product in consolidation phase 2.
+      - name: Check out the product hydration vendor source
         uses: actions/checkout@v4
         with:
           repository: drmoyassine/frontbase-dbsync
           token: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          fetch-depth: 0
           path: .product
-          ref: 7fbc0b9b6183ab8d02dca4216f37840cdb948df3
 
-      - name: Install framework and product dependencies
+      - name: Build and stage console + hydrate artifacts
+        env:
+          FRONTBASE_PRODUCT: ${{ github.workspace }}/.product
         run: |
-          pnpm install --frozen-lockfile
-          npm ci --prefix .product
-
-      - name: Build the pinned console artifact
-        run: pnpm run fetch:console -- --product-dir .product
+          pnpm console:build
+          pnpm fetch:hydrate
 
       - name: Build and deploy an unused Worker and D1 database
         id: deploy

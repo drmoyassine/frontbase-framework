@@ -35,6 +35,7 @@ examples/cf-full/e2e/test-results
 docs
 
 # Deliberately NOT ignored: examples/cf-full/console-dist/** and
-# examples/cf-full/public/** — gitignored (posture B: product artifacts staged
-# by `pnpm run fetch:console`) but they ARE the deploy payload the gate checks.
+# examples/cf-full/public/** — gitignored (console artifacts staged from the
+# in-repo source by `pnpm console:build`, hydrate vendor by `pnpm fetch:hydrate`)
+# but they ARE the deploy payload the gate checks.
 # (`**/dist` above does not match `console-dist` — different path segment.)

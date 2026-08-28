@@ -1,0 +1,9 @@
+// Section Templates - Barrel Export
+export { heroTemplate } from './heroTemplate';
+export { featuresTemplate } from './featuresTemplate';
+export { pricingTemplate } from './pricingTemplate';
+export { ctaTemplate } from './ctaTemplate';
+export { navbarTemplate } from './navbarTemplate';
+export { faqTemplate } from './faqTemplate';
+export { logoCloudTemplate } from './logoCloudTemplate';
+export { footerTemplate } from './footerTemplate';

@@ -29,10 +29,10 @@ pnpm install
 pnpm build
 ```
 
-Fetch the pinned product console, then deploy the full example CMS to your Cloudflare account:
+Build the console from its in-repo source (`packages/console`), then deploy the full example CMS to your Cloudflare account:
 
 ```bash
-pnpm run fetch:console -- --product-dir ../Frontbase-
+pnpm console:build
 wrangler login
 pnpm run deploy:cf-full -- --app-name <my_app_name>
 ```

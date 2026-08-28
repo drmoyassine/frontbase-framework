@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.app.json",
+  "//": "Phase-1 scope: src/sw + src/client only. The full src tree carries pre-existing product type debt (WorkflowCanvas, EdgeDatabasesForm, WordPress steps, ...) that was never gated in the product and is out of scope for a zero-behavior consolidation phase. src/sw is gated because it is the byte-parity-critical builder canvas SW.",
+  "include": ["src/vite-env.d.ts", "src/sw", "src/client"]
+}

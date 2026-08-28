@@ -19,7 +19,7 @@ import { existsSync, readFileSync, statSync, mkdirSync, copyFileSync } from 'nod
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { validateConsoleArtifact, consoleBundlesPresent } from '../../scripts/console-pin.mjs';
+import { validateStagedConsole } from '../../scripts/console-pin.mjs';
 import { patchHydrate } from './scripts/patch-hydrate.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -37,31 +37,7 @@ const REPO_ROOT = (function findRoot(dir) {
     }
     return dir;
 })(here);
-// The Worker bundle embeds only the SPA shell (see consoleShellPlugin below); the
-// hashed bundles are served by Workers Static Assets and are never bundled. So the
-// build validates at level 'shell' — everything it actually consumes, all of it
-// committed, so this succeeds in a fresh clone and in CI. The bundle bytes are a
-// DEPLOY requirement, enforced at level 'deploy' by scripts/deploy.mjs; building a
-// worker without them is fine, shipping one is not.
-try {
-    validateConsoleArtifact(REPO_ROOT, { level: 'shell' });
-} catch (error) {
-    console.error(`✗ ${error.message}`);
-    process.exit(1);
-}
-const CONSOLE_ROOT = join(here, 'console-dist', 'frontbase-admin');
-const CONSOLE_INDEX_PATH = join(CONSOLE_ROOT, 'index.html');
-if (!consoleBundlesPresent(REPO_ROOT)) {
-    console.log('⚠ console bundles absent — building against the committed shell only.');
-    console.log('  This artifact is NOT deployable; run `pnpm run fetch:console` before deploying.');
-}
-// Regenerate the served hydration bundle from the vendored product build.
-// Throws when the vendor bytes drift and a patch anchor stops matching —
-// never ship a silently unpatched bundle (see scripts/patch-hydrate.mjs).
-const hydratePatch = patchHydrate();
-if (hydratePatch.patched) {
-    console.log(`→ hydrate.js: ${hydratePatch.patches} canvas-fallback patches applied (${hydratePatch.bytes} bytes)`);
-}
+function pkgDir(name) { return join(REPO_ROOT, 'packages', name.replace(/^@frontbase\//, '')); }
 const DEP_PKGS = [
     { name: '@frontbase/edge-core', artifact: 'dist/index.js' },
     { name: '@frontbase/edge-infra', artifact: 'dist/index.js' },
@@ -69,8 +45,11 @@ const DEP_PKGS = [
     { name: '@frontbase/backend', artifact: 'dist/index.js' },
     { name: '@frontbase/builder', artifact: 'dist/index.js' },
     { name: '@frontbase/admin-console', artifact: 'dist/spa.js' },
+    // The console is NOT imported by the worker — it is served as Static
+    // Assets — but it belongs here so a fresh clone builds its dist before the
+    // staging step below reuses it (--skip-build).
+    { name: '@frontbase/console', artifact: 'dist/index.html' },
 ];
-function pkgDir(name) { return join(REPO_ROOT, 'packages', name.replace(/^@frontbase\//, '')); }
 const missing = DEP_PKGS.filter((p) => !existsSync(join(pkgDir(p.name), p.artifact)));
 if (missing.length > 0) {
     console.log(`→ building ${missing.length} unbuilt workspace package(s): ${missing.map((p) => p.name).join(', ')}`);
@@ -81,6 +60,50 @@ if (missing.length > 0) {
         process.exit(1);
     }
     console.log('→ workspace packages built\n');
+}
+
+// Stage the console artifact when it is missing (fresh clone) or stale on
+// demand (--refresh-console). `pnpm -r build` / the self-heal above produce
+// packages/console/dist, so staging reuses it via --skip-build instead of
+// building the SPA twice. After a console source edit WITHOUT rebuilding,
+// pass --refresh-console or run `pnpm console:build` explicitly.
+const STAGED_SHELL = join(here, 'console-dist', 'frontbase-admin', 'index.html');
+if (!existsSync(STAGED_SHELL) || process.argv.includes('--refresh-console')) {
+    const skip = existsSync(join(pkgDir('@frontbase/console'), 'dist', 'index.html'));
+    console.log(`→ staging console artifact (${skip ? 'dist exists, skipping console build' : 'building console first'})...`);
+    // process.execPath, NOT shell:true: with a shell, Node joins args unquoted
+    // and a repo path containing spaces ('OneDrive - ...') shatters the script
+    // path at the first space (MODULE_NOT_FOUND). execPath needs no shell.
+    const r = spawnSync(process.execPath, [join(REPO_ROOT, 'scripts', 'build-console.mjs'), ...(skip ? ['--skip-build'] : [])],
+        { cwd: here, stdio: 'inherit' });
+    if (r.status !== 0) {
+        console.error('\n✗ console staging failed — run `pnpm console:build` manually for details.');
+        process.exit(1);
+    }
+}
+// Validate the stage that this build actually consumes: shell ↔ bundle
+// agreement, builder-sw.js, .assetsignore, plus the vendored-contract hash.
+// (Pre-consolidation this validated a committed shell before anything was
+// staged, at a lower level; now staging always precedes validation, so the
+// full check is affordable everywhere — including fresh clones and CI.)
+try {
+    validateStagedConsole(REPO_ROOT);
+} catch (error) {
+    console.error(`✗ ${error.message}`);
+    process.exit(1);
+}
+const CONSOLE_ROOT = join(here, 'console-dist', 'frontbase-admin');
+const CONSOLE_INDEX_PATH = join(CONSOLE_ROOT, 'index.html');
+
+// Regenerate the served hydration bundle from the vendored product build.
+// Runs AFTER console staging: staging wipes console-dist/ (including the
+// derived console-dist/react/hydrate.js), and patch-hydrate writes both the
+// public/ and served copies back. Throws when the vendor bytes drift and a
+// patch anchor stops matching — never ship a silently unpatched bundle
+// (see scripts/patch-hydrate.mjs).
+const hydratePatch = patchHydrate();
+if (hydratePatch.patched) {
+    console.log(`→ hydrate.js: ${hydratePatch.patches} canvas-fallback patches applied (${hydratePatch.bytes} bytes)`);
 }
 
 // Optional deps that are dynamic-imported behind feature flags — not part of a
@@ -106,6 +129,8 @@ const optionalStub = {
 
 // Resolve workspace @frontbase/* packages to their dist directories.
 // This ensures esbuild can find workspace packages even when they're not in node_modules.
+// Deliberately never resolves @frontbase/console: the worker does not import
+// it — it is served as Static Assets from console-dist/.
 const workspaceResolver = {
     name: 'workspace-resolver',
     setup(build) {

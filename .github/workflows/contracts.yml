@@ -10,6 +10,13 @@ name: contracts
 #                   burn-down, not a failure).
 # - test:           the full backend suite incl. compat-variables (proof tag) and
 #                   contract-diff (the gate + its mutation proof).
+#
+# Since consolidation phase 1 the console is framework source: the artifact is
+# built and staged in-repo (`pnpm console:build`), validated structurally
+# (`pnpm console:check`), and the browser acceptance gate runs on every push.
+# (Pre-consolidation the acceptance gate keyed on hashFiles of gitignored
+# console bundles, which is always empty on a fresh checkout — the browser
+# gate silently never ran in CI. That coverage hole is closed here.)
 
 on:
   push:
@@ -30,22 +37,23 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm -r build
-      # The deployable Worker, exercised in-process against a memory runner. This
-      # is new coverage: cf-full's build demanded the gitignored console bundles,
-      # so from the console cutover until the artifact split it could not build in
-      # CI at all. It now builds from the committed shell; the two checks that read
-      # real bundle bytes report SKIPPED here and run on the deploy path.
+      # Build + stage the console artifact from in-repo source (also verifies
+      # the staged tree structurally — shell ↔ bundle agreement, builder-sw.js).
+      - name: Console artifact (build + stage)
+        run: pnpm console:build
+      - name: Console artifact gate
+        run: pnpm console:check
+      # The deployable Worker, exercised in-process against a memory runner.
       - name: cf-full smoke (deployable worker)
         run: pnpm --filter @frontbase/example-cf-full smoke
-      - name: Console artifact split guarantees
+      - name: Console artifact guarantees
         run: node examples/cf-full/test/console-pin.mjs
       # Gate 4: the console in a real browser against the real Worker on workerd.
       # This catches what in-process gates structurally cannot — the console calls
       # paths the contract does not declare verbatim, and only a browser sees that.
-      # Needs the console bundles, which posture B keeps out of the repo, so it is
-      # skipped here and runs locally / on the deploy job. See §6a.
+      # Unconditional since the console moved in-repo: the artifact is always
+      # staged by the step above.
       - name: Console acceptance (browser)
-        if: hashFiles('examples/cf-full/console-dist/frontbase-admin/assets/*.js') != ''
         run: |
           npx playwright install --with-deps chromium
           pnpm --filter @frontbase/example-cf-full e2e
@@ -62,10 +70,6 @@ jobs:
         run: pnpm --filter @frontbase/backend run contracts:check
       - name: Contract drift gate (missing / divergent)
         run: pnpm run contracts:diff
-      - name: Console pin format gate
-        run: node scripts/validate-console-pin.mjs --format-only
-      - name: Scheduled drift RED-on-break proof
-        run: pnpm run test:contract-drift
       # Includes compat-conformance --gate: every documented 2xx response is
       # validated against the vendored Zod. Unlike the drift gate (which compares
       # the contract to itself) this fails when a HANDLER diverges.
