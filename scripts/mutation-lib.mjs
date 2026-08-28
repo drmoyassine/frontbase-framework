@@ -16,8 +16,9 @@
  * Source originals are restored in a `finally` so a crash never leaves a package
  * broken. After all mutations, the package is rebuilt once to confirm green.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const FW = fileURLToPath(new URL('../', import.meta.url));
@@ -50,7 +51,18 @@ export function buildPackage(pkg) {
     const args = process.platform === 'win32' && pnpmCli
         ? [pnpmCli, '--filter', pkg, 'build']
         : ['--filter', pkg, 'build'];
-    const r = spawnSync(executable, args, { cwd: FW, encoding: 'utf8' });
+    let r = spawnSync(executable, args, { cwd: FW, encoding: 'utf8' });
+    if (r.error && process.platform === 'win32' && !pnpmCli) {
+        // pnpm 10 on Windows does not always carry npm_execpath into children,
+        // and spawnSync cannot exec the `pnpm` cmd shim directly — retry via
+        // node + the standard npm-global pnpm.cjs.
+        const globalCli = process.env.APPDATA
+            ? join(process.env.APPDATA, 'npm', 'node_modules', 'pnpm', 'bin', 'pnpm.cjs')
+            : '';
+        if (globalCli && existsSync(globalCli)) {
+            r = spawnSync(process.execPath, [globalCli, '--filter', pkg, 'build'], { cwd: FW, encoding: 'utf8' });
+        }
+    }
     if (r.status !== 0) {
         const detail = r.error?.message || r.stderr || r.stdout || `exit ${String(r.status)}`;
         console.error(`build failed for ${pkg}: ${String(detail).trim()}`);

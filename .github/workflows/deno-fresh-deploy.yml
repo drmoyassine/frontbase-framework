@@ -1,0 +1,129 @@
+name: Deno fresh deploy (A-24)
+
+# Dispatch-only live gate for the Deno Deploy host (the PR gate is the
+# credential-free `smoke:host` + config gates in contracts.yml). Creates a
+# SCRATCH project named dn-<run_id>-<attempt>, patches its project env vars
+# through the Deno API, deploys the self-contained deno-dist tree with
+# deployctl, runs the browser acceptance suite against it, then deletes the
+# project. Never runs on push/PR; nothing here touches shared infrastructure.
+#
+# Required secrets: DENO_DEPLOY_TOKEN, DN_ADMIN_EMAIL, DN_ADMIN_PASSWORD and a
+# state db — TURSO_DATABASE_URL + TURSO_AUTH_TOKEN (HRANA is the practical Deno
+# app db) or the D1-over-REST trio.
+#
+# Execution-time verify points (E5, E6 in the A-24 plan) resolve on the first
+# dispatch: node:fs file reads on Deno Deploy, the Deno API env-var endpoint
+# shape, and deployctl's ignore-file behavior. deployctl runs unpinned (npx)
+# until then; pin the exact version that first passed.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deno-fresh-deploy-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  fresh-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
+      DN_ADMIN_EMAIL: ${{ secrets.DN_ADMIN_EMAIL }}
+      DN_ADMIN_PASSWORD: ${{ secrets.DN_ADMIN_PASSWORD }}
+      TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      APP_DB_D1_ACCOUNT_ID: ${{ secrets.APP_DB_D1_ACCOUNT_ID }}
+      APP_DB_D1_DATABASE_ID: ${{ secrets.APP_DB_D1_DATABASE_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PROJECT: dn-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require live-gate credentials
+        run: |
+          test -n "$DENO_DEPLOY_TOKEN"
+          test -n "$DN_ADMIN_EMAIL"
+          test -n "$DN_ADMIN_PASSWORD"
+          if [ -n "$TURSO_DATABASE_URL" ]; then
+            test -n "$TURSO_AUTH_TOKEN"
+          elif [ -n "$APP_DB_D1_ACCOUNT_ID" ]; then
+            test -n "$APP_DB_D1_DATABASE_ID"
+            test -n "$CLOUDFLARE_API_TOKEN"
+          else
+            echo "::error::no state-db credentials — set TURSO_DATABASE_URL+TURSO_AUTH_TOKEN, or the D1-over-REST trio (APP_DB_D1_ACCOUNT_ID, APP_DB_D1_DATABASE_ID, CLOUDFLARE_API_TOKEN)"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and stage console artifact
+        run: pnpm console:build
+
+      # Create the scratch project (idempotent on name) and resolve its id —
+      # the deploy script's env patch addresses projects by id (E6: the exact
+      # API shape is confirmed on the first dispatch).
+      - name: Create the scratch Deno project
+        run: |
+          set -o pipefail
+          resp="$(curl -s -X POST https://api.deno.com/v1/projects \
+            -H "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
+            -H "content-type: application/json" \
+            -d "{\"name\":\"$PROJECT\"}")"
+          project_id="$(printf '%s' "$resp" | jq -r '.id // empty')"
+          if [ -z "$project_id" ]; then
+            project_id="$(curl -s https://api.deno.com/v1/projects \
+              -H "Authorization: Bearer $DENO_DEPLOY_TOKEN" \
+              | jq -r --arg name "$PROJECT" '(.projects // .)[]? | select(.name == $name) | .id' | head -1)"
+          fi
+          test -n "$project_id" || { echo "::error::could not create or resolve project $PROJECT (E6)"; printf '%s\n' "$resp"; exit 1; }
+          echo "DENO_PROJECT_ID=$project_id" >> "$GITHUB_ENV"
+
+      - name: Patch env, gate and deploy to the scratch project
+        id: deploy
+        env:
+          APP_DB_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          APP_DB_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          ADMIN_EMAIL: ${{ secrets.DN_ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.DN_ADMIN_PASSWORD }}
+        run: |
+          set -o pipefail
+          pnpm run deploy:deno -- --project "$PROJECT" | tee deploy.log
+          echo "deploy_url=https://$PROJECT.deno.dev" >> "$GITHUB_OUTPUT"
+
+      - name: Run browser acceptance against the deployed artifact
+        env:
+          E2E_BASE_URL: ${{ steps.deploy.outputs.deploy_url }}
+          E2E_ADMIN_EMAIL: ${{ secrets.DN_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.DN_ADMIN_PASSWORD }}
+        run: pnpm --filter @frontbase/example-cf-full e2e
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deno-fresh-deploy-${{ github.run_id }}
+          path: |
+            deploy.log
+            examples/cf-full/e2e/report
+            examples/cf-full/e2e/test-results
+          if-no-files-found: ignore
+
+      - name: Delete the scratch Deno project
+        if: always()
+        run: |
+          curl -s -X DELETE "https://api.deno.com/v1/projects/$DENO_PROJECT_ID" \
+            -H "Authorization: Bearer $DENO_DEPLOY_TOKEN" || true

@@ -1,8 +1,10 @@
 /**
- * frontbase deploy (M2.4.2). Wraps `wrangler deploy` (primary) and `deployctl`
- * (Deno, secondary). `--dry-run` composes the worker artifact in-process, runs
- * the routing smoke, and reports the size + the /sw.js-no-server-code boundary —
- * the RULE 5 end-to-end gate (a real composed worker, not just unit tests).
+ * frontbase deploy (M2.4.2). Wraps `wrangler deploy` — provisions Cloudflare
+ * only (D1 + secrets + setup link); `--target vercel|deno` refuses with the
+ * supported per-host script path (A-24). `--dry-run` composes the worker
+ * artifact in-process, runs the routing smoke, and reports the size + the
+ * /sw.js-no-server-code boundary — the RULE 5 end-to-end gate (a real composed
+ * worker, not just unit tests).
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
@@ -20,7 +22,10 @@ export type WranglerRunner = (args: string[], opts: { cwd: string; stdin?: strin
 
 export interface DeployOptions {
     dryRun?: boolean;
-    target?: 'cloudflare' | 'deno';
+    /** Live provisioning target. Only 'cloudflare' is wired here (D1
+     *  provisioning + wrangler secrets + setup link); 'vercel'/'deno' refuse
+     *  with the supported deploy-script path (A-24). */
+    target?: 'cloudflare' | 'vercel' | 'deno';
     outDir?: string;
     cwd?: string;
     /**
@@ -75,10 +80,10 @@ export interface DeployOptions {
 /** Default runner: spawn the binary, pipe the secret value via stdin (never argv).
  *
  *  `shell: true` is required on Windows: globally-installed npm binaries like
- *  `wrangler`/`deployctl` are `.cmd` shims that plain `spawn()` cannot resolve
- *  (fails with ENOENT). Safe here — `bin` is always 'wrangler' or 'deployctl'
- *  and `args` are fixed literals ('deploy', 'secret', 'put', <name>) built by
- *  our own code; the secret VALUE never appears in args (stdin only). */
+ *  `wrangler` are `.cmd` shims that plain `spawn()` cannot resolve (fails with
+ *  ENOENT). Safe here — `bin` is always 'wrangler' and `args` are fixed
+ *  literals ('deploy', 'secret', 'put', <name>) built by our own code; the
+ *  secret VALUE never appears in args (stdin only). */
 /** Parse the worker URL from wrangler deploy stdout.
  *  Wrangler outputs: "  https://<worker-name>.<subdomain>.workers.dev"
  */
@@ -148,8 +153,24 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
         return { ok: false, summary: '--setup-ttl-minutes must be between 5 and 1440' };
     }
 
-    const isCf = opts.target !== 'deno';
-    const bin = isCf ? 'wrangler' : 'deployctl';
+    // A-24: live deploys are per-host. THIS command provisions Cloudflare (D1,
+    // wrangler secrets, setup link). Vercel/Deno have their own deploy scripts
+    // (build + gates + host CLI); routing them through here would deploy the
+    // SCAFFOLD artifact with no provisioning and no secrets — the old
+    // `--target deno` behavior — so refuse with the supported path instead.
+    if (opts.target === 'vercel' || opts.target === 'deno') {
+        const host = opts.target;
+        const script = host === 'vercel' ? 'deploy:vercel' : 'deploy:deno';
+        return {
+            ok: false,
+            summary: `frontbase deploy provisions Cloudflare only. For ${host} use: pnpm run ${script}`,
+            details: {
+                hint: `${script} builds the ${host} artifact, runs the deploy gates, and drives the host CLI (--dry-run makes no host calls). See docs/guides/console-and-deploy.md.`,
+            },
+        };
+    }
+
+    const bin = 'wrangler';
     const runWrangler = opts.runWrangler ?? defaultRunWrangler(bin);
     const runWranglerCheck: WranglerCheckRunner = runWrangler; // structurally compatible (no stdin needed for these calls)
     const genSecret = opts.genSecret ?? (() => randomBytes(32).toString('base64'));
@@ -163,57 +184,50 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
     // decides redeploy-in-place-reusing-its-D1 vs. fresh-provision.
     let appName: string;
     let appExisted = false;
-    if (isCf) {
-        try {
-            if (opts.appName) {
-                appName = sanitizeAppName(opts.appName);
-                appExisted = await workerExists(appName, cwd, runWranglerCheck);
-            } else {
-                // No --app-name: ALWAYS a fresh deployment (per spec) — generate a
-                // name already verified not to collide with an existing worker.
-                appName = sanitizeAppName(await generateFreeAppName(cwd, runWranglerCheck, { rand }));
-                appExisted = false;
-            }
-        } catch (e) {
-            return { ok: false, summary: `could not determine app identity: ${(e as Error).message}` };
+    try {
+        if (opts.appName) {
+            appName = sanitizeAppName(opts.appName);
+            appExisted = await workerExists(appName, cwd, runWranglerCheck);
+        } else {
+            // No --app-name: ALWAYS a fresh deployment (per spec) — generate a
+            // name already verified not to collide with an existing worker.
+            appName = sanitizeAppName(await generateFreeAppName(cwd, runWranglerCheck, { rand }));
+            appExisted = false;
         }
-    } else {
-        appName = sanitizeAppName(opts.appName ?? basename(cwd)); // Deno path: D1/existence-check not wired (unchanged)
+    } catch (e) {
+        return { ok: false, summary: `could not determine app identity: ${(e as Error).message}` };
     }
 
-    // Live deploy — CF: provision D1 (idempotent — reuse if the app already
+    // Live deploy — provision D1 (idempotent — reuse if the app already
     // existed, create fresh otherwise), then wrangler deploy --name <appName>,
-    // then push secrets (stdin, never argv). Deno: deployctl (D1/secrets not wired).
-    if (isCf) {
-        try {
-            let databaseId = opts.d1DatabaseId;
-            if (appExisted && !databaseId) {
-                // The app already exists on Cloudflare — look up ITS real D1 id
-                // (by the same naming convention provisionD1 uses: `${appName}-db`)
-                // so this redeploy reuses it instead of trying to create a
-                // database that already exists under that name.
-                const found = await lookupExistingD1(`${appName}-db`, cwd, runWranglerCheck);
-                if (!found) {
-                    return {
-                        ok: false,
-                        summary: `app "${appName}" exists on Cloudflare, but no D1 database named "${appName}-db" was found`,
-                        details: { hint: 'pass --d1-database-id <uuid> explicitly to bind the correct database' },
-                    };
-                }
-                databaseId = found;
+    // then push secrets (stdin, never argv).
+    try {
+        let databaseId = opts.d1DatabaseId;
+        if (appExisted && !databaseId) {
+            // The app already exists on Cloudflare — look up ITS real D1 id
+            // (by the same naming convention provisionD1 uses: `${appName}-db`)
+            // so this redeploy reuses it instead of trying to create a
+            // database that already exists under that name.
+            const found = await lookupExistingD1(`${appName}-db`, cwd, runWranglerCheck);
+            if (!found) {
+                return {
+                    ok: false,
+                    summary: `app "${appName}" exists on Cloudflare, but no D1 database named "${appName}-db" was found`,
+                    details: { hint: 'pass --d1-database-id <uuid> explicitly to bind the correct database' },
+                };
             }
-            // `run: runWrangler` wires provisionD1's `wrangler d1 create` through
-            // the SAME runner (real or test-mocked) as every other wrangler call
-            // in this function — without it, provisionD1 falls back to its own
-            // default (the real `wrangler` binary), which is invisible to tests
-            // and to `--target deno`'s `deployctl` substitution.
-            const r = await provisionD1(cwd, { appName, databaseId, run: runWrangler });
-            // provisionD1 writes the [[d1_databases]] binding; the worker builds its
-            // DbRunner from env.DB at boot (the lazy getEngine — BLOCKER-1).
-            void r; // result reported in deploy output below
-        } catch (e) {
-            return { ok: false, summary: `D1 provisioning failed: ${(e as Error).message}` };
+            databaseId = found;
         }
+        // `run: runWrangler` wires provisionD1's `wrangler d1 create` through
+        // the SAME runner (real or test-mocked) as every other wrangler call
+        // in this function — without it, provisionD1 falls back to its own
+        // default (the real `wrangler` binary), invisible to tests.
+        const r = await provisionD1(cwd, { appName, databaseId, run: runWrangler });
+        // provisionD1 writes the [[d1_databases]] binding; the worker builds its
+        // DbRunner from env.DB at boot (the lazy getEngine — BLOCKER-1).
+        void r; // result reported in deploy output below
+    } catch (e) {
+        return { ok: false, summary: `D1 provisioning failed: ${(e as Error).message}` };
     }
 
     // Push secrets over stdin FIRST — the VALUES never appear in argv (process
@@ -232,37 +246,35 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
     const secretsSet: string[] = [];
     let setupToken: string | undefined;
     let setupExpiresAt: string | undefined;
-    if (isCf) {
-        const sessionSecret = opts.sessionSecret ?? (appExisted ? undefined : genSecret());
-        const shouldGenerateSetupLink = !opts.adminEmail && (!appExisted || opts.setupLink === true);
-        setupToken = opts.setupToken ?? (shouldGenerateSetupLink ? genSetupToken() : undefined);
-        if (setupToken && !opts.adminEmail) {
-            const ttlMinutes = opts.setupTtlMinutes ?? 30;
-            setupExpiresAt = new Date(nowMs() + ttlMinutes * 60_000).toISOString();
-        }
-        const toSet: Array<[string, string | undefined]> = [
-            ['SESSION_SECRET', sessionSecret],
-            ['ADMIN_EMAIL', opts.adminEmail],
-            ['ADMIN_PASSWORD', opts.adminPassword],
-            ['ADMIN_ROLE', opts.adminEmail ? (opts.adminRole ?? 'master_admin') : undefined],
-            ['SETUP_TOKEN', setupToken],
-            ['SETUP_EXPIRES_AT', setupExpiresAt],
-        ];
-        for (const [name, value] of toSet) {
-            if (value === undefined) continue;
-            const res = await runWrangler(isCf ? ['secret', 'put', name, '--name', appName] : ['secret', 'put', name], { cwd, stdin: value });
-            if (res.code !== 0) return { ok: false, summary: `failed to set secret ${name}`, details: { stderr: res.stderr, secretsSet } };
-            secretsSet.push(name);
-        }
+    const sessionSecret = opts.sessionSecret ?? (appExisted ? undefined : genSecret());
+    const shouldGenerateSetupLink = !opts.adminEmail && (!appExisted || opts.setupLink === true);
+    setupToken = opts.setupToken ?? (shouldGenerateSetupLink ? genSetupToken() : undefined);
+    if (setupToken && !opts.adminEmail) {
+        const ttlMinutes = opts.setupTtlMinutes ?? 30;
+        setupExpiresAt = new Date(nowMs() + ttlMinutes * 60_000).toISOString();
+    }
+    const toSet: Array<[string, string | undefined]> = [
+        ['SESSION_SECRET', sessionSecret],
+        ['ADMIN_EMAIL', opts.adminEmail],
+        ['ADMIN_PASSWORD', opts.adminPassword],
+        ['ADMIN_ROLE', opts.adminEmail ? (opts.adminRole ?? 'master_admin') : undefined],
+        ['SETUP_TOKEN', setupToken],
+        ['SETUP_EXPIRES_AT', setupExpiresAt],
+    ];
+    for (const [name, value] of toSet) {
+        if (value === undefined) continue;
+        const res = await runWrangler(['secret', 'put', name, '--name', appName], { cwd, stdin: value });
+        if (res.code !== 0) return { ok: false, summary: `failed to set secret ${name}`, details: { stderr: res.stderr, secretsSet } };
+        secretsSet.push(name);
     }
 
     // Deploy the script under the resolved app name (overrides wrangler.toml's
     // `name`, if any — this is what makes a single wrangler.toml reusable across
     // multiple named/generated app deployments).
-    const dep = await runWrangler(isCf ? ['deploy', '--name', appName] : ['deploy'], { cwd });
+    const dep = await runWrangler(['deploy', '--name', appName], { cwd });
     if (dep.code !== 0) return { ok: false, summary: `${bin} deploy failed`, details: { stderr: dep.stderr } };
 
-    const workerUrl = isCf ? parseWorkerUrl(dep.stdout) : undefined;
+    const workerUrl = parseWorkerUrl(dep.stdout);
     if (workerUrl && setupToken && setupExpiresAt && !opts.adminEmail) {
         opts.onSetupLink?.({
             // Keep the capability inside the fragment so it never reaches Worker
@@ -280,7 +292,7 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
             appName,
             appExisted,
             secretsSet, // NAMES only — never values
-            sessionSecretGenerated: isCf && !appExisted && !opts.sessionSecret,
+            sessionSecretGenerated: !appExisted && !opts.sessionSecret,
             setupLinkGenerated: Boolean(workerUrl && setupToken && setupExpiresAt && !opts.adminEmail),
             setupExpiresAt,
             workerUrl,

@@ -51,6 +51,18 @@ Use the **product backend** (Python/FastAPI, full container with TCP via
 `asyncpg`/`aiomysql`) for self-hosted Postgres/MySQL datasources. The framework
 worker is for the HTTP-reachable, runtime-portable surface only.
 
+## Addendum 2026-08-28 (A-24)
+
+The four-host deploy matrix (Cloudflare, Docker, Vercel Edge, Deno Deploy) does
+not change this gap: the new state-db resolver (`examples/cf-full/src/state-db.ts`)
+deliberately exposes ONLY the SQLite-family adapters that exist (D1 binding,
+D1-over-REST, Turso/libsql, `file:`, `:memory:`) and refuses half-configured
+setups at boot — credential-gated ≠ coverage gap (A-17 pattern). Postgres/MySQL
+as the APP database remains unclosable on fetch-only runtimes for exactly the
+reasons below; Supabase Postgres is still a *datasource* runner (PostgREST RPC),
+not an app-DB option. (The "use the product backend" recommendation in the next
+section is itself retired as of A-23 — the product repo is reference-only.)
+
 ## Related
 
 - Memory: `community-worker-unclosable-parity`.

@@ -65,6 +65,28 @@ All configuration is runtime environment (see `.env.example`):
 Nothing secret is ever baked into the image; the build context
 (`.dockerignore`) excludes `.dev.vars`, `.env`, and `*.secret`.
 
+### Choose the app database (A-24)
+
+The state DB is pluggable on every host, resolved from the environment with a
+fixed precedence (`APP_DB_URL` → D1-over-REST trio → host default). On Docker
+the default is the volume-backed SQLite file; you can move it without touching
+the container layout:
+
+| Set this | State DB |
+|---|---|
+| *(nothing)* | **`file:/data/app.db`** — the Docker default, on the persisted volume |
+| `APP_DB_URL=:memory:` | In-memory SQLite (ephemeral — testing only) |
+| `APP_DB_URL=file:/data/app.db` | Same as the default (explicit) |
+| `APP_DB_URL=libsql://…` + `APP_DB_AUTH_TOKEN` | Turso / self-hosted sqld over HRANA — the DB now lives outside the container |
+| `APP_DB_D1_ACCOUNT_ID` + `APP_DB_D1_DATABASE_ID` + `CLOUDFLARE_API_TOKEN` | Cloudflare D1 over REST — D1 without Cloudflare-hosting the worker |
+
+A HALF-configured set fails at boot naming the exact missing variable — never a
+silent fallback. The system card (Edge Resources → Databases) always names the
+RESOLVED backend, and `APP_DB_AUTH_TOKEN` (when you set one) never appears in
+any label, card, or error message. Dialect limit: the app-DB menu is
+SQLite-family (A-24) — Postgres/MySQL app DBs remain the
+[documented unclosable gap](../unclosable-postgres-mysql-parity.md).
+
 ## Run bare-metal (no Docker)
 
 ```bash

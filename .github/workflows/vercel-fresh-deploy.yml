@@ -1,0 +1,118 @@
+name: Vercel fresh deploy (A-24)
+
+# Dispatch-only live gate for the Vercel Edge host (the PR gate is the
+# credential-free `smoke:host` + config gates in contracts.yml). Deploys a
+# SCRATCH project named vz-<run_id>-<attempt> with Turso or D1-over-REST as the
+# state db, runs the browser acceptance suite against it, then deletes the
+# project. Never runs on push/PR; nothing here touches shared infrastructure.
+#
+# Required secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VZ_ADMIN_EMAIL, VZ_ADMIN_PASSWORD
+# and exactly ONE complete state-db set:
+#   TURSO_DATABASE_URL + TURSO_AUTH_TOKEN          (preferred — HRANA over fetch)
+#   APP_DB_D1_ACCOUNT_ID + APP_DB_D1_DATABASE_ID + CLOUDFLARE_API_TOKEN  (D1 over REST)
+#
+# Execution-time verify points (E1–E4 in the A-24 plan) resolve on the first
+# dispatch: header/rewrite behavior, edge-runtime engagement, runtime env
+# visibility. `vercel` is installed unpinned until then; pin the exact version
+# that first passed.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-fresh-deploy-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  fresh-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VZ_ADMIN_EMAIL: ${{ secrets.VZ_ADMIN_EMAIL }}
+      VZ_ADMIN_PASSWORD: ${{ secrets.VZ_ADMIN_PASSWORD }}
+      TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      APP_DB_D1_ACCOUNT_ID: ${{ secrets.APP_DB_D1_ACCOUNT_ID }}
+      APP_DB_D1_DATABASE_ID: ${{ secrets.APP_DB_D1_DATABASE_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PROJECT: vz-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require live-gate credentials
+        run: |
+          test -n "$VERCEL_TOKEN"
+          test -n "$VERCEL_ORG_ID"
+          test -n "$VZ_ADMIN_EMAIL"
+          test -n "$VZ_ADMIN_PASSWORD"
+          if [ -n "$TURSO_DATABASE_URL" ]; then
+            test -n "$TURSO_AUTH_TOKEN"
+          elif [ -n "$APP_DB_D1_ACCOUNT_ID" ]; then
+            test -n "$APP_DB_D1_DATABASE_ID"
+            test -n "$CLOUDFLARE_API_TOKEN"
+          else
+            echo "::error::no state-db credentials — set TURSO_DATABASE_URL+TURSO_AUTH_TOKEN, or the D1-over-REST trio (APP_DB_D1_ACCOUNT_ID, APP_DB_D1_DATABASE_ID, CLOUDFLARE_API_TOKEN)"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The console + hydration artifacts build from in-repo source; staging
+      # here fails fast, before the deploy build (which reuses the staged
+      # console dist).
+      - name: Build and stage console artifact
+        run: pnpm console:build
+
+      - name: Build, gate and deploy to a scratch Vercel project
+        id: deploy
+        env:
+          # State-db + admin secrets flow through the environment pool the
+          # deploy script reads — values never appear in argv.
+          APP_DB_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          APP_DB_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          ADMIN_EMAIL: ${{ secrets.VZ_ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.VZ_ADMIN_PASSWORD }}
+        run: |
+          set -o pipefail
+          npm install -g vercel@latest
+          pnpm run deploy:vercel -- --project "$PROJECT" | tee deploy.log
+          deploy_url="$(grep -Eo 'https://[A-Za-z0-9.-]+\.vercel\.app' deploy.log | tail -1)"
+          test -n "$deploy_url"
+          echo "deploy_url=$deploy_url" >> "$GITHUB_OUTPUT"
+
+      - name: Run browser acceptance against the deployed artifact
+        env:
+          E2E_BASE_URL: ${{ steps.deploy.outputs.deploy_url }}
+          E2E_ADMIN_EMAIL: ${{ secrets.VZ_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.VZ_ADMIN_PASSWORD }}
+        run: pnpm --filter @frontbase/example-cf-full e2e
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-fresh-deploy-${{ github.run_id }}
+          path: |
+            deploy.log
+            examples/cf-full/e2e/report
+            examples/cf-full/e2e/test-results
+          if-no-files-found: ignore
+
+      - name: Delete the scratch Vercel project
+        if: always()
+        run: vercel project rm "$PROJECT" --yes || true

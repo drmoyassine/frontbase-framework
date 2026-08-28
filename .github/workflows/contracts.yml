@@ -51,6 +51,18 @@ jobs:
       # The deployable Worker, exercised in-process against a memory runner.
       - name: cf-full smoke (deployable worker)
         run: pnpm --filter @frontbase/example-cf-full smoke
+      # Deploy matrix (A-24), credential-free on every PR: the Vercel/Deno edge
+      # entries driven over a real engine through d1RunnerFromRest with a stubbed
+      # fetch (in-memory SQLite behind it), the disk-ASSETS shim contract, the
+      # bundle artifact gates, and the state-db resolver contract (precedence,
+      # fail-loud half-configs, no-leak). Live deploys stay in the dispatch-only
+      # *-fresh-deploy workflows — never here.
+      - name: Per-host smoke (vercel/deno entries + artifact gates)
+        run: pnpm --filter @frontbase/example-cf-full smoke:host
+      - name: State-db resolver contract
+        run: pnpm --filter @frontbase/example-cf-full test:state-db
+      - name: vercel.json routing contract
+        run: pnpm --filter @frontbase/example-cf-full test:vercel-config
       - name: Console artifact guarantees
         run: node examples/cf-full/test/console-pin.mjs
       # Gate 4: the console in a real browser against the real Worker on workerd.

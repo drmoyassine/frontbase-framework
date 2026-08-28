@@ -60,11 +60,13 @@ await withSourceMutation(
 // 3. SOURCE — CF-19 no-argv-leak. Secret values must travel on stdin only. If the
 //    value is added to the wrangler argv (process-list leak), deploy-seed's
 //    "NO secret value leaked to argv" check fires → the gate goes red.
+//    (A-24: the secrets block is unconditional — deploy is Cloudflare-only —
+//    so the mutated call no longer carries the old isCf ternary.)
 await withSourceMutation(
     'deploy-seed: secret value on argv (process-list leak)',
     DEPLOY,
-    "const res = await runWrangler(isCf ? ['secret', 'put', name, '--name', appName] : ['secret', 'put', name], { cwd, stdin: value });",
-    "const res = await runWrangler(isCf ? ['secret', 'put', name, value, '--name', appName] : ['secret', 'put', name, value], { cwd, stdin: value });",
+    "const res = await runWrangler(['secret', 'put', name, '--name', appName], { cwd, stdin: value });",
+    "const res = await runWrangler(['secret', 'put', name, value, '--name', appName], { cwd, stdin: value });",
     async () => {
         buildPackage(PKG);
         const exit = runGate(pkgDir, 'test/deploy-seed.mjs');

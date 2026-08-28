@@ -1,7 +1,8 @@
 /**
  * Cloudflare Worker entry — the FULL CMS as ONE worker: the eSSR engine
  * (@frontbase/edge-core) + the login-gated admin console (@frontbase/backend),
- * over a Cloudflare D1 binding (@frontbase/edge-infra).
+ * over a pluggable state database (@frontbase/edge-infra runners, chosen by
+ * ./state-db — D1 binding by default; APP_DB_* selects Turso/SQLite/D1-REST).
  *
  * CF-22: the community console SPA is served from console-dist/ (built and
  * staged from the in-repo @frontbase/console package by `pnpm console:build`).
@@ -24,7 +25,8 @@ import type { PageEntry } from '@frontbase/edge-core';
 import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
-import { d1RunnerFromBinding, s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
+import { s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
+import { resolveStateDb, StateDbConfigError, type ResolvedStateDb } from './state-db.js';
 import { manifest } from './manifest.js';
 import SW_BUNDLE from 'virtual:sw-bundle';
 import CLIENT_BUNDLE from 'virtual:builder-client-bundle';
@@ -646,13 +648,25 @@ export default {
             if (!env.SESSION_SECRET) {
                 return new Response('SESSION_SECRET is not configured — run: wrangler secret put SESSION_SECRET', { status: 500 });
             }
-            if (!env.DB) {
-                return new Response('D1 binding "DB" is not configured — check wrangler.toml [[d1_databases]] binding="DB" and a REAL database_id (not the placeholder)', { status: 500 });
-            }
             currentCtx = ctx;
             if (!enginePromise) {
+                // A-24: the state DB is the operator's choice (./state-db) — D1
+                // binding by default; APP_DB_* selects Turso / SQLite / D1-REST.
+                // A HALF-configured choice fails here, at boot, naming the
+                // missing var — never at first write.
+                let stateDb: ResolvedStateDb;
+                try {
+                    stateDb = resolveStateDb({ env: env as unknown as Record<string, string | undefined>, d1Binding: env.DB, host: 'cloudflare' });
+                } catch (e) {
+                    if (e instanceof StateDbConfigError) return new Response(e.message, { status: 500 });
+                    throw e;
+                }
+                const envServices = parseEnvServices(env as unknown as Record<string, string | undefined>);
+                if (stateDb.kind !== 'd1-binding') {
+                    console.log(`[cf-full] state db override: ${stateDb.kind} (${stateDb.displayUrl})`);
+                }
                 enginePromise = createCmsEngine({
-                    runner: d1RunnerFromBinding(env.DB),
+                    runner: stateDb.runner,
                     sessionSecret: env.SESSION_SECRET,
                     setupToken: env.SETUP_TOKEN,
                     setupExpiresAt: env.SETUP_EXPIRES_AT,
@@ -660,7 +674,7 @@ export default {
                     assets: env.ASSETS,
                     // Host-side env parse (Workers have no process.env). Memoized
                     // on the raw strings — only actual secret changes recompute.
-                    envServices: parseEnvServices(env as unknown as Record<string, string | undefined>),
+                    envServices,
                     dispatcher: (work) => { if (currentCtx) currentCtx.waitUntil(work()); else void work(); },
                     storageProvider: env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_KEY
                         ? s3StorageProvider({
@@ -670,6 +684,20 @@ export default {
                             region: env.STORAGE_REGION,
                         })
                         : undefined,
+                    // When the operator overrode the D1 binding via APP_DB_*, the
+                    // engine's Cloudflare-D1 default cards would lie — restate the
+                    // database card from the resolved truth (cache/queue/vector keep
+                    // the engine default's env-derived derivation). With the plain
+                    // d1-binding default these stay omitted → engine defaults.
+                    ...(stateDb.kind !== 'd1-binding' ? {
+                        systemEdge: { provider: 'cloudflare', name: 'Local Edge', db: stateDb.label },
+                        systemResources: {
+                            database: stateDb.card,
+                            cache: envServiceDescriptor(envServices.cache, ENV_CARD_LABELS.cache),
+                            queue: envServiceDescriptor(envServices.queue, ENV_CARD_LABELS.queue),
+                            vector: envServiceDescriptor(envServices.vector, ENV_CARD_LABELS.vector),
+                        },
+                    } : {}),
                 }).catch((e) => { enginePromise = null; throw e; });
             }
             const engine = await enginePromise;

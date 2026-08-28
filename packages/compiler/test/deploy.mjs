@@ -77,5 +77,26 @@ const res2 = await composeWorker({ swEntry: join(project, 'src', 'sw.ts'), worke
 check('composition is deterministic (same hashes)', res2.worker.hash === res.worker.hash && res2.sw.hash === res.sw.hash);
 
 console.log(`  (worker ${budget.gzipKb.toFixed(1)} KB · sw ${(res.sw.bytesMinGzip / 1024).toFixed(1)} KB gzip)`);
+
+// A-24: live deploys are per-host. `--target vercel|deno` must REFUSE with the
+// supported script path — no wrangler call, no silently-deployed scaffold (the
+// old behavior deployed composeWorker's scaffold with no provisioning/secrets).
+{
+    const { deployCommand } = await import('../dist/cli/deploy.js');
+    let wranglerCalls = 0;
+    const runWrangler = async () => { wranglerCalls++; return { code: 0, stdout: '', stderr: '' }; };
+    const refuse = async (target, script) => {
+        wranglerCalls = 0;
+        const r = await deployCommand(project, { target, runWrangler });
+        return r.ok === false
+            && r.summary.includes('provisions Cloudflare only')
+            && r.summary.includes(script)
+            && typeof r.details?.hint === 'string' && r.details.hint.length > 20
+            && wranglerCalls === 0;
+    };
+    check('--target vercel refuses, pointing at deploy:vercel (zero wrangler calls)', await refuse('vercel', 'deploy:vercel'));
+    check('--target deno refuses, pointing at deploy:deno (zero wrangler calls)', await refuse('deno', 'deploy:deno'));
+}
+
 console.log(failures === 0 ? '\ndeploy: PASS ✅' : `\ndeploy: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);
