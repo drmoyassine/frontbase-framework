@@ -70,6 +70,35 @@ pnpm run deploy:cf-full -- --dry-run
 
 Full reference: [docs/guides/console-and-deploy.md](docs/guides/console-and-deploy.md).
 
+### Deploying to Vercel or Deno Deploy (A-24)
+
+The same CMS deploys to four hosts. `frontbase deploy` provisions Cloudflare only —
+the other hosts use their own scripts, which build, gate, and drive the host CLI:
+
+```bash
+# Vercel Edge — static matrix in vercel.json, function owns state routes
+vercel login   # or set VERCEL_TOKEN
+pnpm run deploy:vercel -- --project <my_app_name>
+
+# Deno Deploy — self-contained deno-dist/ tree via deployctl
+export DENO_DEPLOY_TOKEN=...
+pnpm run deploy:deno -- --project <my_app_name>
+```
+
+Both scripts read secrets from the environment (or stdin JSON with `--secrets-json`) —
+never from argv — and refuse to deploy without exactly one complete state-db set:
+
+| Variable(s) | Meaning |
+|---|---|
+| `SESSION_SECRET` | HS256 session key (auto-generated when absent) |
+| `APP_DB_URL` [+ `APP_DB_AUTH_TOKEN`] | Turso/self-hosted sqld (`libsql://` or `https://`) — the practical edge-host state DB |
+| `APP_DB_D1_ACCOUNT_ID` + `APP_DB_D1_DATABASE_ID` + `CLOUDFLARE_API_TOKEN` | D1 over REST — Cloudflare's D1 from any host |
+| `ADMIN_EMAIL` + `ADMIN_PASSWORD` | seed the first admin (instead of a setup link) |
+
+On Cloudflare, none of these are required — the D1 binding is the default. On Vercel/Deno,
+a half-configured set fails the deploy naming the missing variable. Precedence and the
+honest SQLite-dialect limit: [docs/DECISIONS.md](docs/DECISIONS.md) (A-24).
+
 ### Starting your own project
 
 ```bash

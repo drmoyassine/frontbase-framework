@@ -36,12 +36,15 @@ property panels are generated from a compiler `ComponentManifest`.
 
 ## Deploy (`frontbase deploy`)
 
-Composes engine + console + proxy + builder SW into one CF Worker.
+Composes engine + console + proxy + builder SW into one CF Worker. The CLI
+provisions **Cloudflare only** (A-24) — D1, wrangler secrets, the setup link.
+`--target vercel` / `--target deno` are accepted but REFUSE with the supported
+script path (`pnpm run deploy:vercel` / `pnpm run deploy:deno`); the other
+hosts' provisioning is script-owned (see [Deploying to other hosts](#deploying-to-other-hosts-vercel-deno-deploy)).
 
 ```bash
 npx @frontbase/compiler deploy --dry-run   # compose + routing smoke + size budget
-npx @frontbase/compiler deploy             # wrangler deploy (primary)
-npx @frontbase/compiler deploy --target deno
+npx @frontbase/compiler deploy             # wrangler deploy (Cloudflare provisioning)
 ```
 
 **The composition boundary (RULE 1):** the served `/sw.js` is the
@@ -115,3 +118,42 @@ pnpm run deploy:cf-full -- --dry-run   # build + size-budget check only, no wran
 is named `deploy:cf-full` and invoked via `pnpm run` to avoid any ambiguity.)
 
 Source: [`scripts/deploy.mjs`](../../scripts/deploy.mjs).
+
+### Deploying to other hosts (Vercel, Deno Deploy)
+
+A-24 ships the same full-CMS app on four hosts from `examples/cf-full`. Each
+non-CF deploy runs the same gauntlet before any host call: the cf-full build,
+the staged-console validator, and the per-host artifact gate
+([`scripts/verify-host-artifact.mjs`](../../scripts/verify-host-artifact.mjs)
+— bundle invariants (web libsql client pinned, no `node:` imports on Edge,
+edge-runtime directive, `Deno.serve`), the config contract, and the staged
+statics — judged on the post-build tree, so stale bytes can't be blessed).
+
+```bash
+pnpm run deploy:vercel -- --project <my_app_name>            # vercel.json + api/cms.mjs + console-dist CDN tree
+pnpm run deploy:vercel -- --project <my_app_name> --dry-run  # build + gates only — no host calls
+pnpm run deploy:deno   -- --project <my_app_name>            # deno-dist/ (deno.mjs + deno.json + console-dist) via deployctl
+pnpm run deploy:deno   -- --project <my_app_name> --dry-run
+```
+
+**Secrets** come from the environment (or stdin JSON via `--secrets-json`) —
+never argv. Both scripts require exactly one complete state-db set and validate
+it through the same resolver the deployed edge entry uses at boot:
+
+| Variable(s) | State DB |
+|---|---|
+| `APP_DB_URL` [+ `APP_DB_AUTH_TOKEN`] | Turso / self-hosted sqld (`libsql://` or `https://`) |
+| `APP_DB_D1_ACCOUNT_ID` + `APP_DB_D1_DATABASE_ID` + `CLOUDFLARE_API_TOKEN` | Cloudflare D1 over REST — D1 from any host |
+| `SESSION_SECRET` | always required (generated when absent) |
+| `ADMIN_EMAIL` + `ADMIN_PASSWORD` | optional admin seeding (else a one-time setup link is printed) |
+
+`:memory:`/`file:` are refused on the edge hosts (isolates share no memory and
+expose no writable filesystem); Docker keeps the `file:` default. A
+half-configured set fails the deploy naming the exact missing variable.
+Precedence, the fail-loud rule, and the SQLite-dialect limit are decision
+[A-24](../DECISIONS.md); the resolver contract is unit-proven in
+[`examples/cf-full/test/state-db.mjs`](../../examples/cf-full/test/state-db.mjs).
+
+Live verification for both hosts runs in the dispatch-only workflows
+(`vercel-fresh-deploy.yml`, `deno-fresh-deploy.yml`) — scratch-named projects,
+browser acceptance against the deployed URL, `always()` teardown.

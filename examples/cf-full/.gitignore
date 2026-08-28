@@ -2,6 +2,15 @@ dist/
 .wrangler/
 node_modules/
 
+# Vercel: the api/ function is a byte copy of dist/vercel.mjs (build.mjs), and
+# vercel's local output lands in .vercel/.
+api/
+.vercel/
+
+# Deno Deploy: the self-contained deploy root assembled by build.mjs (bundled
+# deno.mjs + deno.json + a fresh console-dist copy).
+deno-dist/
+
 # The console artifact is built from the in-repo @frontbase/console package
 # (`pnpm console:build`) and verified by `pnpm console:check`. Nothing under
 # console-dist/ is tracked except .assetsignore (wrangler's upload exclusion).

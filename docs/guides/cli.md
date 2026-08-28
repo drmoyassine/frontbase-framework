@@ -84,3 +84,34 @@ npx @frontbase/compiler emit-sw src/sw.ts --out dist --json
 
 Emits `dist/sw.<hash>.js`; the hash changes iff the bundle content changes.
 Budget: < 150 KB min+gzip.
+
+## `deploy [path]`
+
+Compose + provision + deploy the single-worker CMS. **This command provisions
+Cloudflare only** (A-24): D1, wrangler secrets, and the one-time setup link.
+
+```bash
+npx @frontbase/compiler deploy --dry-run      # compose + routing smoke + size budget; no deploy
+npx @frontbase/compiler deploy --interactive  # login check + prompted admin creds + deploy
+npx @frontbase/compiler deploy \
+  --app-name my-app \
+  --admin-email owner@example.com --admin-password 'a real password'
+```
+
+Key flags: `--app-name` (app identity — drives the Worker + D1 names; if the
+name already exists on Cloudflare it redeploys in place reusing its D1, omitted
+means a fresh deployment under a generated verified-unused name),
+`--d1-database-id` (bind an existing D1 instead of creating one),
+`--admin-email`/`--admin-password` (seed the first admin — pushed as wrangler
+secrets over stdin, never argv), `--setup-link` (rotate the browser setup link).
+
+`--target` accepts `cloudflare` (default), `vercel`, or `deno` — but the
+non-CF targets are NOT wired here. They refuse with the supported path rather
+than deploying an unprovisioned artifact:
+
+```
+frontbase deploy provisions Cloudflare only. For deno use: pnpm run deploy:deno
+```
+
+Vercel/Deno deploys go through the per-host scripts — see
+[console-and-deploy](./console-and-deploy.md#deploying-to-other-hosts-vercel-deno-deploy).

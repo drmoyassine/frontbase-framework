@@ -357,14 +357,29 @@ test('user can create page', async ({ page }) => {
 
 **Principle #1: the entire CMS deploys as ONE edge worker.** `npx @frontbase/compiler deploy` packages the engine, product-compatible API, data proxy, and static assets into a single deployment.
 
-### Edge Platforms (Single-Worker)
+### Edge Platforms (Single-Worker) — the A-24 matrix
 
-| Platform | Status | Bindings Used | Rationale |
-|----------|--------|---------------|-----------|
-| **Cloudflare Workers** | ✅ Primary | Static Assets, D1, KV, R2, Queues, Hyperdrive | Largest edge network; free tier hosts the full CMS |
-| **Deno Deploy** | ✅ Secondary | Deno KV, Turso | Native TypeScript alternative |
+One Hono app, per-host entries, a pluggable state DB. The full-CMS worker binds only what its host
+declares; every OTHER platform service resolves over HTTPS from `env` (Upstash cache, QStash
+queues, vector stores, OpenAI-compatible embedding — see the edge-resources wiring).
 
-**Worker size budget**: engine < 70 KB min+gzip; worker script (engine + console + proxy) < 400 KB; builder SPA and `sw.js` served as static assets (excluded from script limits). Hard limit: 1 MB gzip (CF free) / 10 MB (paid).
+| Platform | Status | Host surface | App DB (state) — default in bold |
+|----------|--------|--------------|----------------------------------|
+| **Cloudflare Workers** | ✅ Primary (A-24) | Static Assets binding + ASSETS shell routes; `ctx.waitUntil` | **D1 binding** · D1-over-REST · Turso · `file:`/`:memory:` |
+| **Vercel Edge** | ✅ A-24 (live gate pending) | No bindings — static matrix in `vercel.json`, function owns every state/redirect route | **Turso** · D1-over-REST (`APP_DB_D1_*` trio + `CLOUDFLARE_API_TOKEN`) |
+| **Deno Deploy** | ✅ A-24 (live gate pending) | Disk-shim ASSETS over the deployed (read-only) files; `Deno.serve`; no BullMQ (TCP) | **Turso** · D1-over-REST |
+| **Node.js / Docker** | ✅ A-21/A-24 | Disk ASSETS over `console-dist/`; node http server | **`file:/data/app.db`** · Turso · D1-over-REST · `:memory:` |
+
+**Dialect constraint (honest limit)**: the app-DB menu is SQLite-family by construction — the 19
+migrations are SQLite DDL with `sqlite_master` introspection. A Postgres/MySQL app DB remains the
+[documented unclosable gap](./unclosable-postgres-mysql-parity.md); Supabase Postgres is a
+*datasource* runner, not an app-DB option. Precedence is `APP_DB_URL` → D1-over-REST trio → host
+default; a half-configured set fails at boot naming the missing variable (never a silent fallback).
+Deno KV is not a cache provider (deliberate no-op, as are cloudflare-KV cache adapters).
+
+**Worker size budget**: full-CMS worker ≈ 482 KB min+gzip on every host (edge bundles share the
+worker's content; the A-24 build gates Vercel at the 4 MB Edge ceiling). Builder SPA and `sw.js`
+are served as static assets (excluded from script limits).
 
 ### The Third "Platform": the Browser Service Worker
 
@@ -374,7 +389,7 @@ The engine also deploys **into every visitor's browser** as the eSSR service wor
 
 | Platform | Status | Capabilities | Rationale |
 |----------|--------|--------------|-----------|
-| **Node.js / Docker** | ✅ Supported | `frontbase simulate`; container hosting of the same worker code | Local development & enterprise on-prem |
+| **Node.js / Docker** | ✅ Supported | `frontbase simulate`; container hosting of the same worker code (`pnpm run start:node` in cf-full) | Local development & enterprise on-prem |
 
 ---
 

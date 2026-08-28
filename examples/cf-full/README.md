@@ -126,3 +126,47 @@ curl -i https://<your-worker>.workers.dev/api/auth/login \
 
 The product console itself uses `/api/auth/login` and is available at
 `https://<your-worker>.workers.dev/frontbase-admin`.
+
+---
+
+## Deploy matrix (A-24): the same app on four hosts
+
+This example is the deploy-matrix home. One Hono app, per-host entries in
+`src/`, a pluggable SQLite-family state DB resolved by
+[`src/state-db.ts`](src/state-db.ts):
+
+| Host | Entry | Statics | Default state DB | Deploy |
+|---|---|---|---|---|
+| Cloudflare | `src/worker.ts` → `dist/worker.mjs` | Workers Static Assets | **D1 binding** | `pnpm run deploy:cf-full` (root) |
+| Node/Docker | `src/node.ts` → `dist/node.mjs` | `src/assets-disk.ts` over `console-dist/` | **`file:/data/app.db`** | `docker compose up -d --build` |
+| Vercel Edge | `src/vercel.ts` → `dist/vercel.mjs` ≡ `api/cms.mjs` | `vercel.json` CDN matrix | **Turso** (or D1-over-REST) | `pnpm run deploy:vercel -- --project <name>` |
+| Deno Deploy | `src/deno.ts` → `deno-dist/deno.mjs` | disk shim over `deno-dist/console-dist/` | **Turso** (or D1-over-REST) | `pnpm run deploy:deno -- --project <name>` |
+
+State-db precedence on every host: `APP_DB_URL` (Turso/`:memory:`/`file:`) → the
+D1-over-REST trio (`APP_DB_D1_ACCOUNT_ID` + `APP_DB_D1_DATABASE_ID` +
+`CLOUDFLARE_API_TOKEN`) → host default. A half-configured set fails at boot
+naming the missing variable; credentials never appear on any system card or
+error. The menu is SQLite-family by design — see A-24 in
+[`docs/DECISIONS.md`](../../docs/DECISIONS.md).
+
+### Route ownership (what the function owns vs. the static layer)
+
+Function-owned on EVERY host (needs state or is a redirect): `/` and `/<slug>`
+eSSR, `/api/*`, `/static/assets/:filename` (KV branding assets),
+`/frontbase-admin` + SPA fallbacks (the `needsSetup` 302 must run server-side),
+`/setup`, `/frontbase-setup/spa.js`, `/sw.js`, `/builder/client.js`, `/console`
+(301). Static-owned: `/frontbase-admin/assets/*` (hashed, immutable),
+`/static/react/*` (hydration bundle), `/static/icon.png`. On Cloudflare the
+ASSETS binding serves them; on Vercel `vercel.json`'s rewrite phases translate
+engine-emitted URLs onto the CDN tree; on Deno/Docker the disk shim serves them
+from the deployed `console-dist/`.
+
+### `deno-dist/` layout
+
+The Deno deploy root is self-contained (deployctl ships this tree):
+`deno.mjs` (byte-identical to `dist/deno.mjs`), `deno.json`
+(`compilerOptions.lib: ["deno.window", "esnext"]`), and a fresh `console-dist/`
+copy including the root `icon.png`. It is gitignored and rebuilt by
+`node build.mjs`; the artifact gate
+([`scripts/verify-host-artifact.mjs`](../../scripts/verify-host-artifact.mjs))
+asserts the staged entry ≡ the dist entry before any deploy.

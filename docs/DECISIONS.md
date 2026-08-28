@@ -928,6 +928,35 @@ A-22 left two live product inputs. The vendored community contract was pinned by
 - Legitimate contract evolution now requires re-running `contracts:emit`; the staleness gate catches an edit that skips re-emission. The 334-op community denominator and all conformance-gate logic are unchanged.
 - The console's vitest/vite-6 exclusion from the root test filter (A-22) was left as-is in this phase; it is build-parity hygiene, not a product dependency.
 
+## Decision A-24: Four-Host Deploy Matrix & Pluggable State DB (Phase 3 of framework-only)
+
+- **Date**: 2026-08-28
+- **Status**: ✅ Approved
+- **Related**: A-13 (single-edge-worker deployment), A-19 (console DB unification & CF D1 default), A-21 (Node/Docker self-host adapter), A-23 (Phase 2)
+
+### Context
+
+A-21's host-surface analysis showed `examples/cf-full` couples three capabilities directly to Cloudflare — the D1 binding (the engine's `runner`), the ASSETS binding, and `ctx.waitUntil` — while everything else already travels (system services resolve over HTTPS; `createCmsEngine` takes the host surface as constructor data). The locked go-live direction requires the same one-Hono-app CMS on Docker, Cloudflare, Vercel, and Deno Deploy, with the state database pluggable from adapters that already exist ("for CF deployment a D1 is the default choice, but the user should be able to deploy with whatever we do have adapters for"). Honest constraint: migrations are SQLite-dialect (DDL + `sqlite_master` introspection), so the app-DB menu is exactly the SQLite-family runners; Postgres-family stays the documented unclosable gap (A-17 lineage).
+
+### Decision
+
+1. **Four hosts, one example** — Cloudflare Workers (existing), Node/Docker (existing), **Vercel Edge** (new `src/vercel.ts`: `hono/vercel handle`, no `assets` — `vercel.json` owns the static matrix, the function owns every route needing state or a redirect, `config = { runtime: 'edge' }`), and **Deno Deploy** (new `src/deno.ts`: `Deno.serve` after engine init, the disk-ASSETS shim shared with node via new `src/assets-disk.ts`). All entries live in `examples/cf-full`; no new example dir.
+2. **State-db resolver** — new `src/state-db.ts` with `describeStateDb` (pure decision table) + `resolveStateDb` (describe + construct; the libsql native client opens `file:` connections eagerly, so tests assert on the pure layer). Precedence, first match wins: `APP_DB_URL` (libsql/`:memory:`/`file:`, with `file:` refused on the no-filesystem hosts) → the complete `APP_DB_D1_ACCOUNT_ID`+`APP_DB_D1_DATABASE_ID`+`CLOUDFLARE_API_TOKEN` trio → `d1RunnerFromRest` (D1 itself is a choice on ANY host) → CF's `d1Binding` → node's `file:/data/app.db` Docker default. Any PARTIAL configuration throws at boot naming the exact missing variable(s) — never a silent fallback. A half-configured DB must fail at boot, not at first write. `displayUrl`/`label` (system cards) never carry a credential. This split also fixes the pre-existing `node.ts` authToken drop (`sqliteRunner(APP_DB_URL)` → the token now travels).
+3. **Self-contained edge bundles** — `build.mjs` factors `emitEdgeArtifact` and adds an `edgeAlias` esbuild plugin for the NEW emits only: `@libsql/client` → its `lib-esm/web.js` (fetch-transport client; resolved through the importing package's own symlink realpath — version-agnostic, no `.pnpm` store walking). **`@upstash/qstash` is deliberately NOT re-pinned**: the `./cloudflare` subpath exports only `serve`, not `Receiver`; the `Receiver` used for signature verification lives in the main entry (bundled either way), and the dead computed `import(\`node:${m}\`)` template sits in the SHARED chunk both entries import — no alias could remove it, it has never executed on fetch-only hosts, and the worker bundle always shipped it. Proof obligations shift to the bundle gates (web-libsql marker present, native platform binaries absent, qstash endpoint literal present).
+4. **Vercel routing is config-pinned** — `vercel.json` (phase-object rewrites): `beforeFiles` sends the `/frontbase-admin` shell to `/api/cms` (the function must own the `needsSetup` 302), `afterFiles` translates engine-emitted `/static/react/*` + `/static/icon.png` onto the CDN tree (a real file wins without a function invocation), `fallback` catch-alls to `/api/cms`; header rules pin hydrate (no-cache), hashed console assets (immutable) and the broad shell rule — ordered AFTER the assets rule so merge order cannot flatten the immutable cache. `api/cms.mjs` is a byte copy of `dist/vercel.mjs` (Vercel discovers `api/*` at the project root regardless of `outputDirectory`).
+5. **Deploy tooling is per-host; the CLI stays Cloudflare-only** — `frontbase deploy` provisions Cloudflare (D1 + wrangler secrets + setup link) BY DESIGN; `--target vercel|deno` now REFUSES with `{ok:false, details:{hint}}` pointing at `pnpm run deploy:vercel|deploy:deno`, replacing the old silently-deploys-scaffold branch (deployctl deploying the scaffold artifact with no provisioning and no secrets). The new root scripts mirror `deploy.mjs`: build → `validateStagedConsole` → new shared gate `scripts/verify-host-artifact.mjs` (bundle + config + staged files, judged post-build so stale bytes can't be blessed) → secrets from env or stdin JSON, NEVER argv → host CLI. The scripts validate the state db through the deployed `describeStateDb` contract itself and refuse `:memory:`/`file:` on the edge hosts.
+6. **Gates** — `src/smoke-host.ts` (per-host CLI): artifact gates, the disk-shim contract over the real staged console-dist, and a route matrix driving BOTH new entries over a real engine whose D1-REST calls are answered by stubbed fetch backed by in-memory SQLite — the same code path a real D1-over-REST deployment uses, credential-free. `test/state-db.mjs` (22 checks: precedence, fail-loud, host honesty, no-leak). `test/vercel-config.mjs` (the vercel.json contract). CI runs all three on every PR; live deploys stay in dispatch-only `vercel-fresh-deploy.yml` / `deno-fresh-deploy.yml` (scratch-named projects, fail-fast secrets, `always()` teardown, cloned from the CF-22 pattern).
+7. **Pre-existing gap fixed in passing** — `/static/icon.png` was a live 404 on every host (the engine rewrites the favicon link to a root path nothing staged). The build stages `console-dist/icon.png`; smoke asserts served ≡ staged bytes on CF and Deno, the CDN header rule covers Vercel, and the Docker gate curls it.
+
+### Consequences (limits stated as limits)
+
+- **The app-DB menu is SQLite-dialect** (D1 binding / D1-over-REST / `file:` / `:memory:` / Turso-`libsql://` HRANA). Postgres/MySQL as the app DB remains the unclosable gap; `supabaseRunner` is a *datasource* runner, not an app-DB option. The resolver exposes exactly what exists — credential-gated ≠ coverage gap (A-17 pattern).
+- **Deno Deploy**: no writable filesystem (state must be remote) and no BullMQ (TCP) — warn-and-skip. **Vercel Edge**: no filesystem at all; the static matrix lives in `vercel.json`, and two platform behaviors (header merge order, rewrite phase precedence) are pinned by the config gate and confirmed live by the dispatch workflow.
+- **D1-over-REST is one round trip per statement, no transactions** — documented, not batched away.
+- **Docker behavior is unchanged except two honest fixes**: `APP_DB_AUTH_TOKEN` now reaches the libsql client, and the system cards name the RESOLVED backend (a Turso-backed self-host no longer claims `file:` SQLite). `APP_DB_URL=file:/data/app.db` (the Dockerfile default) resolves identically.
+- **CF-13 is retracted as written**: the old "deployctl path wired, blocker is credentials only" claim described the scaffold-deploying branch this decision deletes. Deno Deploy live support arrives with the deno-fresh-deploy workflow + `deploy:deno` script, not the compiler CLI.
+- The edge bundles each grew by the shared-chunk content (≈482 KB min+gzip vs 481.6 KB for worker.mjs) — far under the 4 MB Vercel Edge ceiling, gated at build time.
+
 ---
 
 ## Decision History
@@ -956,6 +985,7 @@ A-22 left two live product inputs. The vendored community contract was pinned by
 | 2026-08-22 | A-21: Backendless Node/Docker Self-Host Adapter | ✅ Approved |
 | 2026-08-28 | A-22: Console Source Consolidation (Phase 1 of framework-only) | ✅ Approved |
 | 2026-08-28 | A-23: Contract Inversion & Hydrate Source Consolidation (Phase 2 of framework-only) | ✅ Approved |
+| 2026-08-28 | A-24: Four-Host Deploy Matrix & Pluggable State DB (Phase 3 of framework-only) | ✅ Approved |
 
 ---
 

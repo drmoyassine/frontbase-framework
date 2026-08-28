@@ -112,9 +112,9 @@ export function createProgram(): Command {
         });
 
     program.command('deploy [path]')
-        .description('Compose + deploy the single-worker CMS (wrangler primary, deployctl secondary)')
+        .description('Compose + deploy the single-worker CMS (provisions Cloudflare; other hosts have their own deploy scripts)')
         .option('--dry-run', 'compose + routing smoke + size budget; no deploy')
-        .option('--target <target>', 'cloudflare | deno', 'cloudflare')
+        .option('--target <target>', 'cloudflare (live provisioning target; vercel|deno refuse and point at deploy:vercel|deploy:deno)', 'cloudflare')
         .option('--out <dir>', 'output directory', 'dist')
         .option('--admin-email <email>', 'seed the first admin (with --admin-password) via wrangler secrets')
         .option('--admin-password <password>', 'first admin password (fed to wrangler over stdin, never argv)')
@@ -127,7 +127,7 @@ export function createProgram(): Command {
         .option('--d1-database-id <id>', 'bind to an EXISTING D1 database instead of creating one')
         .option('--interactive', 'check login, prompt for admin email/password, then deploy')
         .option('--json', 'JSON output')
-        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'deno'; out: string; adminEmail?: string; adminPassword?: string; adminRole?: string; setupToken?: string; setupLink?: boolean; setupTtlMinutes?: string; sessionSecret?: string; appName?: string; d1DatabaseId?: string; interactive?: boolean; json?: boolean }) => {
+        .action(async (path: string, opts: { dryRun?: boolean; target: 'cloudflare' | 'vercel' | 'deno'; out: string; adminEmail?: string; adminPassword?: string; adminRole?: string; setupToken?: string; setupLink?: boolean; setupTtlMinutes?: string; sessionSecret?: string; appName?: string; d1DatabaseId?: string; interactive?: boolean; json?: boolean }) => {
             let adminEmail = opts.adminEmail;
             let adminPassword = opts.adminPassword;
             const cwd = resolve(path || '.');

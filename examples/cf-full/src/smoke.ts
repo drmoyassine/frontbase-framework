@@ -7,6 +7,7 @@
 import { memoryStorageProvider, sqliteRunner } from '@frontbase/edge-infra';
 import { createSecretCipher, Phase2Store } from '@frontbase/backend';
 import { createCmsEngine } from './worker.js';
+import { resolveStateDb, StateDbConfigError } from './state-db.js';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -142,6 +143,42 @@ await check('GET /static/react/entry-*.css serves the staged hydration styleshee
     const r = await req(`/static/react/${staged}`);
     return r.status === 200 && r.headers.get('content-type')?.includes('text/css') === true
         && r.headers.get('cache-control') === 'public, max-age=31536000, immutable';
+});
+// The shell advertises /static/icon.png via <link rel="icon">; before A-24 the
+// engine rewrote it to a root ASSETS path nothing staged — a live 404 on every
+// host. The cf-full build now stages console-dist/icon.png; this asserts the
+// route end-to-end, including staging fidelity (served ≡ staged bytes).
+await check('GET /static/icon.png serves the staged favicon (staged ≡ served, 1 d cache)', async () => {
+    const r = await req('/static/icon.png');
+    const body = Buffer.from(await r.arrayBuffer());
+    if (r.status !== 200 || r.headers.get('content-type') !== 'image/png'
+        || r.headers.get('cache-control') !== 'public, max-age=86400') return false;
+    const staged = readFileSync(join(here, '..', 'console-dist', 'icon.png'));
+    return body.equals(staged);
+});
+
+// ---- state-db resolver wiring (A-24): the two kinds the runner menu adds to
+// the worker's D1 default, resolved positively (never connected) ----
+const RESOLVER_TOKEN = 'smoke-resolver-token-not-a-credential';
+await check('resolver: libsql:// + APP_DB_AUTH_TOKEN → libsql-remote, token never on the card', () => {
+    const r = resolveStateDb({
+        env: { APP_DB_URL: 'libsql://smoke.turso.io', APP_DB_AUTH_TOKEN: RESOLVER_TOKEN },
+        host: 'vercel',
+    });
+    return r.kind === 'libsql-remote' && r.displayUrl === 'libsql://smoke.turso.io'
+        && typeof r.runner.query === 'function' && typeof r.runner.exec === 'function'
+        && !JSON.stringify({ l: r.label, u: r.displayUrl, c: r.card }).includes(RESOLVER_TOKEN);
+});
+await check('resolver: :memory: → sqlite-memory (the engine this smoke boots on)', () =>
+    resolveStateDb({ env: { APP_DB_URL: ':memory:' }, host: 'node' }).kind === 'sqlite-memory');
+await check('resolver: half-configured trio fails loud naming the missing var', () => {
+    try {
+        resolveStateDb({ env: { APP_DB_D1_ACCOUNT_ID: 'a' }, host: 'vercel' });
+        return false;
+    } catch (e) {
+        return e instanceof StateDbConfigError && e.message.includes('APP_DB_D1_DATABASE_ID')
+            && e.message.includes('CLOUDFLARE_API_TOKEN');
+    }
 });
 // Patch-translation anchors (A-23): the six byte-level product patches are now
 // source-level gates. Minification leaves no per-gate literal in the bundle —

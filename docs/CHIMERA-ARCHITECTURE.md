@@ -166,6 +166,16 @@ app.get('*', essrRenderHandler);
 
 **Size budget**: the worker must fit platform limits (1 MB gzip on CF free, 10 MB paid). Targets: engine core < 70 KB min+gzip; engine + console API + data proxy < 400 KB; builder SPA assets served as static files (not counted against script size).
 
+> **Addendum 2026-08-28 (A-24)**: the CMS now ships on FOUR hosts — Cloudflare,
+> Node/Docker, Vercel Edge, Deno Deploy — from one Hono app with per-host
+> entries in `examples/cf-full` and a pluggable SQLite-family state DB
+> (`describeStateDb`/`resolveStateDb`: D1 binding, D1-over-REST, Turso, `file:`,
+> `:memory:`). The table above describes the ADAPTER MENU of `@frontbase/edge-infra`,
+> not what the deployable worker binds: the full-CMS worker binds only its host's
+> surface (CF: Static Assets + D1; Vercel: none; Deno/Docker: the disk shim), and
+> platform services resolve over HTTPS. "Vercel Blob" above is a storage-adapter
+> reference, not a hosting target.
+
 ### Package Mapping
 
 | Concern | Package |

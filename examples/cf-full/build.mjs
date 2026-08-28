@@ -15,7 +15,7 @@
  */
 import * as esbuild from 'esbuild';
 import { gzipSync } from 'node:zlib';
-import { existsSync, readFileSync, readdirSync, statSync, mkdirSync, copyFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, mkdirSync, copyFileSync, cpSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -116,6 +116,19 @@ if (!hydrateFiles.includes('hydrate.js') || !hydrateFiles.some((f) => /^entry-.+
 for (const f of hydrateFiles) copyFileSync(join(HYDRATE_DIST, f), join(REACT_STAGE, f));
 console.log(`→ staged hydration bundle: ${hydrateFiles.join(', ')} → console-dist/react/`);
 
+// Stage the admin console's favicon at the ASSETS root: the engine rewrites
+// /static/icon.png → /icon.png (worker.ts), and before A-24 nothing staged a
+// root copy — that route 404'd on every host while the shell advertised it via
+// <link rel="icon">. Copy (not move): the shell's own /frontbase-admin/icon.png
+// keeps working. No .assetsignore change — the file is a served asset.
+const ICON_SRC = join(CONSOLE_ROOT, 'icon.png');
+if (!existsSync(ICON_SRC)) {
+    console.error('✗ console-dist/frontbase-admin/icon.png missing — rebuild the console (pnpm console:build).');
+    process.exit(1);
+}
+copyFileSync(ICON_SRC, join(here, 'console-dist', 'icon.png'));
+console.log('→ staged console-dist/icon.png (serves /static/icon.png)');
+
 // Optional deps that are dynamic-imported behind feature flags — not part of a
 // basic D1 CMS. Stubbed so the single-file artifact carries no dangling imports.
 // (@neondatabase/serverless is bundled for real: the edge-database Postgres
@@ -193,6 +206,67 @@ const shared = {
     define: { 'process.env.NODE_ENV': '"production"' },
 };
 
+// A-24: pin the per-host EDGE bundles' library entries. Applied ONLY to the new
+// emits (vercel.mjs / deno.mjs) — the verified worker/node/smoke builds keep
+// their existing resolution untouched.
+//   @libsql/client → the pure-web client (lib-esm/web.js: zero node: imports;
+//     HRANA over fetch). Necessary for Deno: 0.17.4's exports map resolves the
+//     `deno` condition to the NATIVE node entry (lib-esm/node.js), which
+//     cannot run on Deno Deploy. file:/wss: are not web-client schemes — the
+//     state-db resolver refuses them on edge hosts, and the per-host smoke
+//     asserts the web build via its URL_SCHEME_NOT_SUPPORTED marker.
+//   @upstash/qstash is deliberately NOT re-pinned. Its published ./cloudflare
+//     subpath exports only the workflow `serve` helper — Receiver (inbound
+//     signature verification, what queue/qstash.ts uses) lives in the main
+//     entry. The main entry's dead local-dev helpers (a computed
+//     `import(\`node:${t}\`)` inside startDevServer) ship in the SHARED chunk
+//     that every entry imports — the worker artifact has always carried them,
+//     the code path never executes on a fetch-only host, and esbuild leaves
+//     computed dynamic imports unresolved (so no bundling error). Harmless
+//     inert bytes on both new hosts, proven by the existing qstash receiver
+//     suites.
+// The pin resolves to the SAME physical package the bundle would otherwise
+// import: the pnpm symlink inside @frontbase/edge-infra's own node_modules
+// (the package that imports it), followed to its real store path — falling
+// back to the example's own tree. NOT a .pnpm store walk: the store can hold
+// several versions of one package (a transitive dep pins
+// @libsql/client@0.14.0 alongside our 0.17.4) and readdir order is not
+// version order. A missing pin fails the build loudly rather than silently
+// resolving the native entry.
+function linkedPkgDir(name, fromDir) {
+    const link = join(fromDir, 'node_modules', ...name.split('/'));
+    try { return realpathSync(link); } catch { return null; }
+}
+const EDGE_INFRA_PKG = join(REPO_ROOT, 'packages', 'edge-infra');
+const LIBSQL_WEB = (() => {
+    const d = linkedPkgDir('@libsql/client', EDGE_INFRA_PKG) ?? linkedPkgDir('@libsql/client', here);
+    const p = d ? join(d, 'lib-esm', 'web.js') : null;
+    return p && existsSync(p) ? p : null;
+})();
+const edgeAlias = {
+    name: 'edge-alias',
+    setup(build) {
+        build.onResolve({ filter: /^@libsql\/client(\/.*)?$/ }, () => {
+            if (!LIBSQL_WEB) throw new Error('edge-alias: @libsql/client/lib-esm/web.js not resolvable from @frontbase/edge-infra — cannot pin the web client for the edge bundles');
+            return { path: LIBSQL_WEB };
+        });
+    },
+};
+
+// One emit shape for every self-contained edge artifact (the worker and the new
+// per-host bundles): fully bundled (workspaceResolver), same virtual inlines,
+// optional-dep stubs, minified ESM.
+async function emitEdgeArtifact({ entry, outfile, extraPlugins = [], external }) {
+    await esbuild.build({
+        ...shared,
+        entryPoints: [entry],
+        outfile: join(here, outfile),
+        minify: true,
+        ...(external ? { external } : {}),
+        plugins: [workspaceResolver, inlineSwPlugin, consoleShellPlugin, optionalStub, inlineClientPlugin, ...extraPlugins],
+    });
+}
+
 // 1. The service-worker bundle (browser engine, edge-core only).
 const swResult = await esbuild.build({
     ...shared,
@@ -256,13 +330,37 @@ const inlineClientPlugin = {
     },
 };
 
-await esbuild.build({
-    ...shared,
-    entryPoints: ['src/worker.ts'],
-    outfile: join(here, 'dist', 'worker.mjs'),
-    minify: true,
-    plugins: [workspaceResolver, inlineSwPlugin, consoleShellPlugin, optionalStub, inlineClientPlugin],
-});
+// 2e. A-24: the per-host edge bundles — one self-contained ESM artifact per
+//     fetch-only host, mirroring the worker emit above. Resolution changes are
+//     SCOPED to these emits via edgeAlias (worker/node/smoke stay as verified).
+//       vercel.mjs  — Vercel Edge function (api/cms.mjs is a byte copy below);
+//                     platform browser, fully bundled, zero node: imports.
+//       deno.mjs    — Deno Deploy entry; node:* stays EXTERNAL so the shared
+//                     disk ASSETS shim's node:fs/path/url imports resolve via
+//                     Deno's node compat at runtime (R1: keep the literal
+//                     `node:` specifier form).
+await emitEdgeArtifact({ entry: 'src/worker.ts', outfile: 'dist/worker.mjs' });
+await emitEdgeArtifact({ entry: 'src/vercel.ts', outfile: 'dist/vercel.mjs', extraPlugins: [edgeAlias] });
+await emitEdgeArtifact({ entry: 'src/deno.ts', outfile: 'dist/deno.mjs', extraPlugins: [edgeAlias], external: ['node:*'] });
+
+// Vercel discovers functions under api/ at the PROJECT ROOT regardless of
+// outputDirectory — stage the byte-identical copy the deploy consumes.
+// src/vercel.ts exports `config = { runtime: 'edge' }` (verify point E3).
+const API_STAGE = join(here, 'api');
+mkdirSync(API_STAGE, { recursive: true });
+copyFileSync(join(here, 'dist', 'vercel.mjs'), join(API_STAGE, 'cms.mjs'));
+
+// Deno Deploy deploy root: the bundled entry + a deno.json (deployctl honors
+// ignore files and console-dist/ is gitignored, so the root carries a FRESH,
+// un-ignored console-dist copy — rebuilt every build, never stale).
+const DENO_STAGE = join(here, 'deno-dist');
+rmSync(DENO_STAGE, { recursive: true, force: true });
+mkdirSync(join(DENO_STAGE, 'console-dist'), { recursive: true });
+copyFileSync(join(here, 'dist', 'deno.mjs'), join(DENO_STAGE, 'deno.mjs'));
+writeFileSync(join(DENO_STAGE, 'deno.json'), JSON.stringify({
+    compilerOptions: { lib: ['deno.window', 'esnext'] },
+}, null, '    ') + '\n');
+cpSync(join(here, 'console-dist'), join(DENO_STAGE, 'console-dist'), { recursive: true });
 
 // 3. Node smoke build (unminified, importable) — the SAME worker + a memory
 //    runner. platform:'node' with packages:'external' so @libsql/client's NATIVE
@@ -308,6 +406,26 @@ await esbuild.build({
     plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
 });
 
+// 5. A-24 node-side support emits (platform node, packages external — the
+//    native libsql binding stays runtime-resolved):
+//      state-db.mjs   — the resolver, importable by test/state-db.mjs
+//                       (precedence matrix + no-leak gate).
+//      smoke-host.mjs — the per-host smoke (src/smoke-host.ts): disk-shim
+//                       contract, state-db wiring, artifact gates, and
+//                       route-matrix parity for the NEW entries' handlers.
+for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/smoke-host.ts', 'smoke-host.mjs']]) {
+    await esbuild.build({
+        ...shared,
+        platform: 'node',
+        packages: 'external',
+        target: 'node22',
+        entryPoints: [entry],
+        outfile: join(here, 'dist', outfile),
+        minify: false,
+        plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
+    });
+}
+
 const raw = statSync(join(here, 'dist', 'worker.mjs')).size;
 const gz = gzipSync(readFileSync(join(here, 'dist', 'worker.mjs')), { level: 9 }).length;
 const clientGz = gzipSync(CLIENT_SOURCE, { level: 9 }).length;
@@ -316,6 +434,19 @@ console.log(`worker.mjs min:      ${(raw / 1024).toFixed(1)} KB`);
 console.log(`worker.mjs min+gzip: ${(gz / 1024).toFixed(1)} KB  (CF free limit 1024 KB — ${gz <= 1024 * 1024 ? 'PASS ✅' : 'FAIL ❌'})`);
 console.log(`  includes inlined /sw.js: ${(SW_SOURCE.length / 1024).toFixed(1)} KB`);
 console.log(`  includes inlined editing client: ${(CLIENT_SOURCE.length / 1024).toFixed(1)} KB (gzip: ${(clientGz / 1024).toFixed(1)} KB)`);
+
+// A-24 per-host artifacts. The Vercel Edge limit is a HARD ceiling (fail the
+// build); Deno Deploy's limit varies by plan — print-only, no invented gate.
+const VERCEL_EDGE_LIMIT = 4 * 1024 * 1024;
+const vercelGz = gzipSync(readFileSync(join(here, 'dist', 'vercel.mjs')), { level: 9 }).length;
+const denoGz = gzipSync(readFileSync(join(here, 'dist', 'deno.mjs')), { level: 9 }).length;
+console.log('=== per-host edge artifacts (A-24) ===');
+console.log(`vercel.mjs min+gzip: ${(vercelGz / 1024).toFixed(1)} KB  (Vercel Edge limit 4096 KB — ${vercelGz <= VERCEL_EDGE_LIMIT ? 'PASS ✅' : 'FAIL ❌'})`);
+console.log(`deno.mjs   min+gzip: ${(denoGz / 1024).toFixed(1)} KB  (Deno Deploy limit varies by plan — informational)`);
+if (vercelGz > VERCEL_EDGE_LIMIT) {
+    console.error('✗ dist/vercel.mjs exceeds the Vercel Edge bundle limit — shrink the bundle (see docs/STACK.md A-24) before deploying.');
+    process.exit(1);
+}
 
 // Verification: Check that client bundle contains no prohibited symbols
 const PROHIBITED = ['renderPage', 'globalRegistry', 'liquid', 'iconMap'];
