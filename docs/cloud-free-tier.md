@@ -1,13 +1,13 @@
 # Cloud multi-tenant free tier (`app.<zone>`)
 
-**Status**: Shipped (A-25, 2026-08-29) · **Scope**: free tier only · **Deploy**: `pnpm run deploy:cf-full -- --mode cloud --base-domain <zone>`
+**Status**: Shipped 2026-08-29 · **Scope**: free tier only · **Deploy**: `pnpm run deploy:cf-full -- --mode cloud --base-domain <zone>`
 
 The framework's single worker also runs the managed cloud: public self-serve signup,
 site building in the console, publishing, and each site live at `<slug>.frontbase.dev`.
-It is one shared community worker — signup provisions database rows only (tenant + owner
+It is one shared worker — signup provisions database rows only (tenant + owner
 + `free` plan + homepage), and the serving worker resolves the tenant from the **Host
-header prefix alone**. The product's two-worker+VPS split collapses into the A-13
-single-worker architecture.
+header prefix alone**. No second process: the same single-worker architecture that
+serves self-host serves the cloud.
 
 ## Opting in — and staying out
 
@@ -65,7 +65,7 @@ first-visit certificate-provisioning window for a never-before-seen slug.
 |---|---|
 | `app.<zone>` | the platform: signup + the `/admin` cloud console; `/` 302s to `/admin` |
 | `<slug>.<zone>` | that tenant's published site; admin surfaces (incl. `/admin`) 404 |
-| unregistered slug | **404 workspace-not-found** — unregistered slugs are never served (a deliberate fix beyond product fidelity; negatives are never cached) |
+| unregistered slug | **404 workspace-not-found** — unregistered slugs are never served (deliberate hardening; negatives are never cached) |
 | reserved labels (`www`, `api`, `status`, …) | 404 |
 | apex / foreign hosts | apex 302s to the app host; foreign hosts are not ours |
 
@@ -90,8 +90,8 @@ must not change). `tenants.plan` is a soft FK onto that catalog.
 
 `-1` means unlimited, null limits are inert, and `master_admin` bypasses every gate.
 The platform admin's Plans manager edits the `_global` catalog — the rows enforcement
-actually resolves against (`adminPlansTenant` re-namespaces the `/api/admin/plans*`
-router); per-tenant plan rows still take precedence for a tenant that has one. Tenants
+actually resolves against (the `/api/admin/plans*` router is re-namespaced onto it);
+per-tenant plan rows still take precedence for a tenant that has one. Tenants
 read their own plan at `GET /api/tenants/me/plan`.
 
 ## What this phase does not include
@@ -99,7 +99,7 @@ read their own plan at `GET /api/tenants/me/plan`.
 Per-tenant engines · managed/BYO custom domains · per-tenant workers · Stripe billing ·
 `remove_branding` enforcement · email verification · captcha · usage metering beyond the
 counts above · admin impersonation · hard tenant delete/data export · per-plan rate-limit
-quotas. All Phase-5 machinery.
+quotas. All planned follow-on work.
 
 The cloud console's agent-analytics/credit/addons widgets call the `admin_agents_*` op
 family, which is a framework stub — in the cloud build those widgets show error states.
@@ -107,7 +107,7 @@ Nothing else depends on them.
 
 ## Abuse surface (honest limits)
 
-Signup, login, and forgot-password are rate limited (CF-16: a D1-backed fixed-window
+Signup, login, and forgot-password are rate limited (a D1-backed fixed-window
 counter keyed on `CF-Connecting-IP`, falling back to left-most `X-Forwarded-For` —
 spoofable, so the limit degrades to best effort). There is **no email verification and
 no captcha** in this phase; rate limiting is the only abuse control. Counts are not

@@ -7,7 +7,7 @@
  *              URL on a volume by default (/data/app.db), with APP_DB_AUTH_TOKEN
  *              (Turso libsql://), :memory:, or the D1-over-REST trio as choices
  *              (A-24). Generic PG/MySQL as the APP db is a documented unclosable
- *              gap (docs/unclosable-postgres-mysql-parity.md).
+ *              gap (docs/known-limitation-postgres-mysql.md).
  *   console  : a disk-backed ASSETS shim over ./console-dist — the same layout
  *              wrangler's [assets] directory serves, satisfying the identical
  *              { fetch(Request) → Promise<Response> } binding contract.

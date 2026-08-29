@@ -1,19 +1,19 @@
-# Golden Corpus (M1.1 byte-parity fixtures)
+# Golden Corpus (byte-identical rendering fixtures)
 
-**Status: GENERATED 2026-07-07** — 14 deterministic body-HTML snapshots from the
-production renderer (`services/edge/src/ssr/PageRenderer.ts#renderPage` in the
-product repo). See `manifest.json` for the source commit, the pinned render
-context (which the parity suite must rebuild exactly), and per-page SHA-256.
+**Status: GENERATED 2026-07-07** — 14 deterministic body-HTML snapshots of the
+engine's page renderer. Each fixture is a frozen known-good rendering; see
+`manifest.json` for the pinned render context (which the parity suite must
+rebuild exactly) and the per-page SHA-256.
 
-**Coverage**: all 12 real case-study builder exports (incl. the Frontbase
-homepage `homee`) + 2 synthetic spike pages exercising the Liquid-templating
-and registered-query records path.
+**Coverage**: 12 real-world page-layout exports (including a full production
+homepage) + 2 synthetic pages exercising the Liquid-templating and
+registered-query records path.
 
 **Snapshot surface**: `renderPage()` body HTML only — deliberately NOT the
-document shell, which legitimately changes in M1.1 (styling seam).
+document shell, which legitimately changed when the styling seam was
+introduced.
 
-**The M1.1 gate** (Decision A-15 §5): `@frontbase/edge-core` must render every
-layout byte-identically against these fixtures. No cross-repo code imports —
-regenerate only deliberately, via the generator in the product repo:
-`docs/frontbase-framework/spike/src/golden-corpus.ts`
-(`node build.mjs && node dist/golden-corpus.mjs` from the spike dir).
+**The gate**: `@frontbase/edge-core` must render every layout byte-identically
+against these fixtures (`packages/edge-core` parity suite). Fixtures are
+immutable — regenerate only deliberately, and record the regeneration in the
+manifest.

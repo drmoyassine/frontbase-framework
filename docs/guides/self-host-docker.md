@@ -16,7 +16,7 @@ reseeded, so restarts are safe.
 
 There is no second process, no Python, no Redis: **backendless by design**.
 Generic Postgres/MySQL as the *app* database remains a documented unclosable
-constraint ([docs/unclosable-postgres-mysql-parity.md](../unclosable-postgres-mysql-parity.md)) —
+constraint ([docs/known-limitation-postgres-mysql.md](../known-limitation-postgres-mysql.md)) —
 sqlite on a volume is the design, not a compromise. (Datasources your pages
 query — Supabase, Neon, HTTP-flavored libsql — connect exactly as on Workers.)
 
@@ -65,7 +65,7 @@ All configuration is runtime environment (see `.env.example`):
 Nothing secret is ever baked into the image; the build context
 (`.dockerignore`) excludes `.dev.vars`, `.env`, and `*.secret`.
 
-### Choose the app database (A-24)
+### Choose the app database
 
 The state DB is pluggable on every host, resolved from the environment with a
 fixed precedence (`APP_DB_URL` → D1-over-REST trio → host default). On Docker
@@ -84,8 +84,8 @@ A HALF-configured set fails at boot naming the exact missing variable — never 
 silent fallback. The system card (Edge Resources → Databases) always names the
 RESOLVED backend, and `APP_DB_AUTH_TOKEN` (when you set one) never appears in
 any label, card, or error message. Dialect limit: the app-DB menu is
-SQLite-family (A-24) — Postgres/MySQL app DBs remain the
-[documented unclosable gap](../unclosable-postgres-mysql-parity.md).
+SQLite-family — Postgres/MySQL app DBs remain the
+[documented unclosable gap](../known-limitation-postgres-mysql.md).
 
 ## Run bare-metal (no Docker)
 
@@ -137,12 +137,3 @@ operation, not routine.
   `buildx --platform a,b` without configuring pnpm `supportedArchitectures`).
 - **First boot is slow to go healthy** — cold volume runs all migrations;
   `start_period=30s` covers it, extend on slow disks.
-
-## Future: FastAPI A/B parity stack (not built)
-
-A longer-term goal (2026-08-21): a parallel compose that stands up the
-product's own stack — FastAPI backend (pip), product edge, console, postgres/
-redis — **next to** this container for side-by-side differential testing as the
-framework moves toward being the contract source. The framework's Hono app
-implements its own full API, so the two stacks are peers (two ports), never a
-frontend/backend pair. Intentionally out of scope for now.

@@ -1,6 +1,6 @@
 # Full CMS on one Cloudflare Worker (`cf-full`)
 
-The Frontbase CMS — the eSSR engine (`@frontbase/edge-core`), the
+The Frontbase CMS — the SSR engine (`@frontbase/edge-core`), the
 login-gated admin console (`@frontbase/backend`), and a Cloudflare **D1** binding
 (`@frontbase/edge-infra`) — deployed as one Worker plus Workers Static Assets.
 
@@ -11,10 +11,10 @@ identity, storage, and the console API.
 GET  /                     public page, server-rendered on the edge
 GET  /about                public page
 GET  /sw.js                the browser engine (service-worker handover)
-GET  /frontbase-admin      product community console
+GET  /frontbase-admin      admin console
 GET  /setup                first-admin setup only; initialized apps redirect to /frontbase-admin/dashboard
-POST /api/auth/login       product-compatible login → frontbase_session cookie
-GET  /api/auth/me          product-compatible current user
+POST /api/auth/login       login → frontbase_session cookie
+GET  /api/auth/me          current user
 GET  /api/console/health   public
 GET  /api/console/setup/*  retained first-run initialization surface
 ANY  /api/console/*        410 Gone for every other legacy route
@@ -23,8 +23,8 @@ ANY  /api/console/*        410 Gone for every other legacy route
 ## What deploys
 
 `build.mjs` pre-bundles the workspace packages into `dist/worker.mjs`
-(about **233 KB gzip**, under CF's 1 MB limit), with the service-worker bundle
-inlined and `wrangler.toml` set to `no_bundle = true`. The product console stays
+(about **489 KB min+gzip**, under CF's 1 MB limit), with the service-worker bundle
+inlined and `wrangler.toml` set to `no_bundle = true`. The console stays
 outside the Worker under `console-dist/frontbase-admin/` and Wrangler uploads it
 through the `ASSETS` binding. The request path is pure Web-standard (Web Crypto for
 PBKDF2 + the HS256 session JWT; the D1 binding for storage) — **no** `nodejs_compat`.
@@ -82,7 +82,7 @@ wrangler d1 create frontbase-full-cms
 
 # 3. Set secrets (NEVER put these in wrangler.toml or git) when deploying manually
 wrangler secret put SESSION_SECRET     # 32+ random bytes, base64
-wrangler secret put ADMIN_EMAIL        # seed the first product master admin…
+wrangler secret put ADMIN_EMAIL        # seed the first master admin…
 wrangler secret put ADMIN_PASSWORD     # …idempotent, only if users table is empty
 # Browser setup also needs SETUP_TOKEN + SETUP_EXPIRES_AT. Prefer the CLI below,
 # which generates both safely and prints the one-time setup link.
@@ -124,12 +124,12 @@ curl -i https://<your-worker>.workers.dev/api/auth/login \
 # → 200 + Set-Cookie: frontbase_session=…
 ```
 
-The product console itself uses `/api/auth/login` and is available at
+The console itself uses `/api/auth/login` and is available at
 `https://<your-worker>.workers.dev/frontbase-admin`.
 
 ---
 
-## Deploy matrix (A-24): the same app on four hosts
+## Deploy matrix: the same app on four hosts
 
 This example is the deploy-matrix home. One Hono app, per-host entries in
 `src/`, a pluggable SQLite-family state DB resolved by
@@ -146,13 +146,13 @@ State-db precedence on every host: `APP_DB_URL` (Turso/`:memory:`/`file:`) → t
 D1-over-REST trio (`APP_DB_D1_ACCOUNT_ID` + `APP_DB_D1_DATABASE_ID` +
 `CLOUDFLARE_API_TOKEN`) → host default. A half-configured set fails at boot
 naming the missing variable; credentials never appear on any system card or
-error. The menu is SQLite-family by design — see A-24 in
-[`docs/DECISIONS.md`](../../docs/DECISIONS.md).
+error. The menu is SQLite-family by design — see
+[`docs/known-limitation-postgres-mysql.md`](../../docs/known-limitation-postgres-mysql.md).
 
 ### Route ownership (what the function owns vs. the static layer)
 
 Function-owned on EVERY host (needs state or is a redirect): `/` and `/<slug>`
-eSSR, `/api/*`, `/static/assets/:filename` (KV branding assets),
+SSR, `/api/*`, `/static/assets/:filename` (KV branding assets),
 `/frontbase-admin` + SPA fallbacks (the `needsSetup` 302 must run server-side),
 `/setup`, `/frontbase-setup/spa.js`, `/sw.js`, `/builder/client.js`, `/console`
 (301). Static-owned: `/frontbase-admin/assets/*` (hashed, immutable),

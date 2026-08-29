@@ -1,20 +1,22 @@
-# Frontbase Framework: Consolidated Package Structure (Chimera)
+# Frontbase Package Structure
 
-**Version**: 2.0
-**Status**: Approved — 6 packages under the Chimera (Universal eSSR) architecture
-**Last Updated**: 2026-07-06
+**Status**: Current — 9 packages
+**Last Updated**: 2026-08-29
 
 ---
 
 ## Overview
 
-This document defines the complete package structure for the Frontbase modular framework under the **Chimera architecture** ([CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md)). The original 35-package proposal was consolidated to **6 packages** (Decisions A-3…A-10, A-14), and every package role is now defined by the three guiding principles:
+This document defines the workspace packages and their dependency rules. Every
+package role serves the three guiding principles (see
+[ARCHITECTURE.md](./ARCHITECTURE.md)):
 
-1. **Single-edge deployment** — all runtime packages compose into ONE deployable worker.
-2. **Universal eSSR** — one engine, one set of isomorphic components, three execution environments.
-3. **Six npm packages** — fixed surface; new capabilities extend existing packages rather than adding new ones.
+1. **Single-worker deployment** — all runtime packages compose into ONE deployable worker.
+2. **Universal SSR** — one engine, one set of isomorphic components, three execution environments.
+3. **Strict boundaries** — server-only packages never enter a browser bundle; browser-only packages never import server code (enforced by no-leak gates + mutation proofs).
 
-`npx @frontbase/compiler init my-app --full` scaffolds **100% of the self-hosted Frontbase CMS** as a single-worker project.
+`npx @frontbase/compiler init my-app --full` scaffolds a single-worker project
+(engine + compiler + components + builder/backend wiring placeholders).
 
 ---
 
@@ -22,159 +24,190 @@ This document defines the complete package structure for the Frontbase modular f
 
 ```mermaid
 graph TD
-    subgraph "Core Framework (Required)"
-        A["@frontbase/edge-core<br/>The Chimera Engine"]
-        B["@frontbase/compiler"]
-        C["@frontbase/ui-components"]
+    subgraph "Engine (isomorphic runtime)"
+        A["@frontbase/edge-core"]
     end
 
-    subgraph "Optional Features"
-        D["@frontbase/builder"]
+    subgraph "Dev-time tooling"
+        B["@frontbase/compiler"]
+    end
+
+    subgraph "Server-only"
         E["@frontbase/edge-infra"]
         F["@frontbase/backend"]
     end
 
-    B -->|compiles for| A
-    C -->|renders via| A
-    D -->|previews via| A
-    D --> C
-    E -->|injects providers into| A
+    subgraph "Browser-only"
+        D["@frontbase/builder"]
+        G["@frontbase/console"]
+        H["@frontbase/hydrate"]
+        J["@frontbase/admin-console"]
+    end
+
+    C["@frontbase/ui-components"]
+
+    B -->|"compiles for"| A
+    C -->|"rendered by"| A
+    E -->|"injects providers"| A
     F --> E
+    D --> A
+    G -.->|"HTTP"| F
+    J -.->|"HTTP"| F
+    H -.->|"loads with published pages"| A
 ```
 
 ---
 
-## Core Packages (Required)
+## The Packages
 
-### 1. `@frontbase/edge-core` — The Chimera Engine
+### 1. `@frontbase/edge-core` — the engine
 
-**Description**: The single isomorphic runtime that renders every Frontbase page in all three environments (cloud edge worker, browser service worker, builder canvas). Pure runtime — zero dev tooling, zero concrete persistence.
+The single isomorphic runtime that renders every Frontbase page in all three
+environments (edge worker, browser service worker, builder canvas). Pure
+runtime — zero dev tooling, zero concrete persistence.
 
-**Includes**:
-- **Unified Hono Router**: priority-mounted single-worker routing (assets → product console shell → product-compatible API → retained setup/health → data proxy → workflows → eSSR catch-all) with adapters for Cloudflare Workers and Deno Deploy.
-- **eSSR Renderer**: isomorphic JSX → HTML string rendering with LiquidJS filter integration. Seeded from the existing `services/edge/src/ssr/` string renderers.
-- **Data Provider Contract (DI)**: `DataProvider` interface + built-in `proxyProvider` (registered-query fetch). Concrete `directProvider`/`localDraftProvider` implementations live in edge-infra/builder.
-- **Workflow Execution Engine**: stateless runner, node executors, checkpoint/rate-limit/queue **interfaces** with in-memory defaults; durable adapters injected from `@frontbase/edge-infra`.
-- **Client Behaviors Runtime** (~10 KB): declarative `data-fb-*` interactivity for published pages (toggle, tabs, modal, forms, workflow triggers). No React on published pages.
-- **SW Synchronization Primitives**: engine bootstrapping inside a service worker, versioned bundle handshake, manifest revalidation, IndexedDB data cache.
-- **Core Types**: shared TypeScript interfaces (`packages/types/` merges here).
+**Includes**: unified priority-mounted Hono router; the SSR renderer
+(isomorphic JSX → HTML strings with LiquidJS filter integration); the
+`DataProvider` contract + built-in `proxyProvider` (registered-query fetch);
+the workflow execution engine (node executors, checkpoint/rate-limit/queue
+interfaces with in-memory defaults); the client behaviors runtime (declarative
+`data-fb-*` interactivity — no React on published pages); service-worker
+synchronization primitives (bootstrapping, versioned bundle handshake, manifest
+revalidation, IndexedDB data cache); shared core types.
 
-**Dependencies**: None
-**Bundle Size Target**: **< 70 KB min+gzip** (enforced in CI)
+**Dependencies**: none
 
 ---
 
 ### 2. `@frontbase/compiler`
 
-**Description**: Dev-time compiler, schema extractor, and CLI (devDependency). Makes the Chimera invisible: developers write plain JSX; the compiler produces engine components, manifests, registered queries, and the service-worker bundle.
+Dev-time compiler, schema extractor, and CLI (devDependency). Developers write
+plain JSX; the compiler produces manifests, registered queries, deployable
+worker artifacts, and the service-worker bundle.
 
-**Includes**:
-- **CLI Binary** (`bin/frontbase.js`): `init` (scaffold with `--pure/--with-infra/--full`), `check`/`lint` (JSON diagnostics for agents), `simulate` (boot the engine locally in any of the three provider modes), `deploy` (single-worker deployment wrapping wrangler/deployctl).
-- **Vite Plugin**: AST transformation compiling TSX components into engine-renderable components + behavior scripts.
-- **Zod Schema Extractor**: scans components for `Schema` exports; generates manifests for builder property panels and agent diagnostics.
-- **Query Registrar**: compiles data bindings into named registered queries (`queryId` + Zod param schema + tenant scope) consumed by the Edge Data Proxy.
-- **SW Bundle Emitter**: packages the engine + site manifest into the versioned `sw.js` artifact.
-- **TypeScript Type Generator**: schema → type declarations.
+**Includes**: the CLI binary (`init` with `--pure/--with-infra/--full`,
+`check`/`lint` JSON diagnostics, `simulate` local boot in any provider mode,
+`deploy` wrapping wrangler with D1 provisioning + secrets + setup link); the
+Vite plugin; the Zod schema extractor (component `Schema` exports → manifests
+for builder property panels and agent diagnostics); the query registrar
+(data bindings → named registered queries); the worker composer + SW bundle
+emitter; TypeScript type generation.
 
-**Dependencies**: `@frontbase/edge-core`
-**Installation**: `devDependencies`
+**Dependencies**: `@frontbase/edge-core` · **Installation**: devDependencies
 
 ---
 
 ### 3. `@frontbase/ui-components`
 
-**Description**: The single set of **isomorphic page components** (engine JSX) plus client auth primitives. One implementation per component — rendered identically by the engine on the edge, in the service worker, and in the builder preview.
+The single set of **isomorphic page components** (engine JSX) plus client auth
+primitives. One implementation per component — rendered identically by the
+engine on the edge, in the service worker, and in the builder preview.
 
-**Includes**:
-- **Basic Components**: Text, Heading, Image, Badge, Divider, Icon, Button, Link, etc. (engine JSX; consolidates the current `static.ts`/`interactive.ts` renderers).
-- **Layout Renderers**: Container, Row, Column, Grid, Section — recursive layout-tree rendering.
-- **Data Components**: DataTable, Chart, KPICard, InfoList, Forms — bound to registered queries via the data-provider contract (consolidates the current `data.ts` + `packages/{datatable,chart,form,grid,infolist,kpicard}`).
-- **Landing Components**: Hero, Features, Pricing, Testimonials, FAQ, CTA.
-- **Behavior Scripts**: per-component client interactivity registered with the behaviors runtime.
-- **Auth Primitives**: login/signup/reset flows, session helpers, and protected-route gates rendered by the engine; client SDK adapters (Supabase Auth, Clerk, SuperTokens).
+**Includes**: basic components (Text, Heading, Image, Badge, Button, Link, …);
+layout renderers (Container, Row, Column, Grid, Section — recursive
+layout-tree rendering); data components (DataTable, Chart, KPICard, InfoList,
+Forms) bound to registered queries; landing components (Hero, Features,
+Pricing, Testimonials, FAQ, CTA); per-component behavior scripts; auth
+primitives (login/signup/reset flows, session helpers, protected-route gates).
 
-**Explicitly NOT here**: React components. The builder's own React UI chrome lives in `@frontbase/builder`.
-
-**Dependencies**: `@frontbase/edge-core`
-
----
-
-## Optional Feature Packages
-
-### 4. `@frontbase/builder`
-
-**Description**: The visual design workspace — a React application shell whose preview pane is the production engine running in a local service worker against a local draft database. WYSIWYG fidelity is exact because there is no second renderer.
-
-**Includes**:
-- **Builder Canvas Shell** (React): layers tree, drag-and-drop controls, responsive grid tools, template catalog.
-- **Local Draft Database**: SQLite WASM in-browser store for layouts, workflow drafts, and sync mappings; `localDraftProvider` implementation for the engine.
-- **Canvas ↔ SW Preview Bridge**: iframe `/preview` rendering through the local engine (CHIMERA §6.3).
-- **Visual Workflow Editor**: React-Flow canvas for workflow sequences.
-- **Sync Configuration Dashboard**: column-mapping canvas, conflict settings, job logs.
-- **Properties Inspectors**: dynamic forms generated from component/workflow/sync Zod manifests.
-
-**Dependencies**: `@frontbase/edge-core`, `@frontbase/ui-components`
-**Size note**: served as static assets from the worker — does not count against the worker script size limit.
-
----
-
-### 5. `@frontbase/edge-infra`
-
-**Description**: Concrete infrastructure adapters injected into the engine — everything that touches secrets, persistence, or third-party systems. Edge-native first.
-
-**Includes**:
-- **Direct Data Providers**: Cloudflare D1, Turso/LibSQL, PostgreSQL (Hyperdrive), SQLite — implementing the engine's `DataProvider` contract with edge-held secrets.
-- **Edge Data Proxy**: the `/api/data/:queryId` Hono sub-router — session validation, Zod param validation, tenant scoping, registered-query execution (CHIMERA §2).
-- **Edge Caching**: Workers KV, Deno KV, Redis (self-host).
-- **Background Queues**: Cloudflare Queues, Upstash QStash, BullMQ (self-host) — implementing the engine's workflow durability interfaces.
-- **Security Vault**: AES-GCM secrets encryption, key rotation, versioning, audits.
-- **Edge Auth Gates**: JWT validation, token parsing, Hono session middlewares.
-- **Data Sync Engine & Adapters**: cron sync engine + source adapters (MySQL, PostgreSQL, Neon, Supabase, Google Sheets, WordPress, REST).
-- **Blob Storage**: Cloudflare R2, Supabase Storage, Vercel Blob.
+**Explicitly NOT here**: React console/builder chrome — that lives in
+`@frontbase/console` and `@frontbase/builder`.
 
 **Dependencies**: `@frontbase/edge-core`
 
 ---
 
-### 6. `@frontbase/backend`
+### 4. `@frontbase/edge-infra` (server-only)
 
-**Description**: The CMS backend inside the same worker as the engine
-(Principle #1). It serves the product-compatible `/api/*` surface. Production
-retains only health and first-run setup under `/api/console`; all other legacy
-console paths return `410 Gone`. There is no separate backend deployment.
+Concrete infrastructure adapters injected into the engine — everything that
+touches secrets, persistence, or third-party systems.
 
-**Includes**:
-- **Product-Compatible API**: tenant-scoped pages, sync, auth, storage, workflow,
-  project, and administration operations consumed by the pinned product console.
-- **Bootstrap Sub-Router**: health plus capability-gated first-admin setup under
-  `/api/console`; legacy routes can be enabled only for backward-compatible
-  package/library use.
-- **Drizzle Schemas & Migrations**: the single source of truth for CMS persistence, executed against the edge-infra database adapters.
-- **Publish Pipeline**: layout validation → manifest versioning → SW bundle version bump → cache invalidation.
+**Includes**: direct data providers (SQLite, Cloudflare D1, Turso/libsql,
+Supabase Postgres, Neon Postgres) implementing the `DataProvider` contract;
+Edge Data Proxy auth; cache/queue/vector adapters (Upstash REST, QStash,
+BullMQ/ioredis on Node, libsql vector, Cloudflare Vectorize); AES-GCM secrets
+vault; R2/S3-compatible blob storage; Cloudflare + Supabase resource
+provisioning.
 
-**Explicitly NOT here** (Decision A-13, supersedes A-11): the Python/FastAPI backend. It remains the legacy self-hosted product's runtime and migration source, but it is **not an npm package and not part of the framework deploy**.
+**Dependencies**: `@frontbase/edge-core`
+
+---
+
+### 5. `@frontbase/backend` (server-only)
+
+The CMS backend inside the same worker as the engine
+([Principle 1](./ARCHITECTURE.md)). It serves the tenant-scoped `/api/*`
+admin API consumed by the console, plus the retained first-run setup and
+health routes. There is no separate backend deployment.
+
+**Includes**: the admin API (tenant-scoped pages, auth, storage, workflows,
+datasources, edge resources, plans, tenants, administration operations);
+default-deny auth middleware; Drizzle schemas & migrations (the single source
+of truth for CMS persistence, executed against the edge-infra database
+adapters); the publish pipeline (layout validation → manifest versioning →
+cache invalidation).
 
 **Dependencies**: `@frontbase/edge-infra`
+
+---
+
+### 6. `@frontbase/builder` (browser-only)
+
+The visual canvas primitives — the drag/drop model, the local SQLite WASM
+draft database, and the `localDraftProvider` implementation. WYSIWYG fidelity
+is exact because the canvas preview is the production engine.
+
+**Dependencies**: `@frontbase/edge-core`, `@frontbase/ui-components` ·
+**Size note**: served as static assets from the worker — never counted against
+the worker script size limit.
+
+---
+
+### 7. `@frontbase/console` (browser-only)
+
+The admin console SPA, built from this repo's source. Two builds from one
+package: the self-host build staged at `/frontbase-admin` and the cloud build
+staged at `/admin`. Talks to the backend over HTTP only.
+
+**Dependencies**: React, TanStack Query, React Flow (editor chrome) — never
+imports server-only packages.
+
+---
+
+### 8. `@frontbase/hydrate` (browser-only)
+
+The client hydration runtime for published pages — the `/static/react/*`
+bundle loaded by pages that opt into client-side hydration.
+
+**Dependencies**: React — never imports server-only packages.
+
+---
+
+### 9. `@frontbase/admin-console` (browser-only)
+
+The setup-only React SPA served at `/setup` for first-admin bootstrap. Carries
+no dashboard routes and no server code.
+
+**Dependencies**: React
 
 ---
 
 ## CLI Bootstrapping Flags
 
 ```bash
-# Pattern A: Pure Framework (code-first)
+# Pattern A: pure framework (code-first)
 npx @frontbase/compiler init my-app --pure
-# Scaffolds: edge-core, compiler, ui-components
-# eSSR + programmatic workflows fully functional (in-memory providers)
+# Scaffolds: edge-core, compiler, ui-components (in-memory providers)
 
-# Pattern B: Full CMS (single-worker self-hosted stack)
+# Pattern B: full CMS (single-worker project)
 npx @frontbase/compiler init my-app --full
-# Scaffolds: all 6 packages → ONE deployable edge worker
+# --pure + builder/backend wiring placeholders
 
-# Pattern C: Selective
+# Pattern C: selective
 npx @frontbase/compiler init my-app --with-infra
-# Scaffolds: core + edge-infra (durable workflows, data proxy, vault, auth gates)
+# --pure + edge-infra wiring placeholders (durable workflows, data proxy, vault)
 
-# Deploy the whole CMS
+# Compose + provision + deploy the worker (Cloudflare: D1, secrets, setup link)
 npx @frontbase/compiler deploy
 ```
 
@@ -182,24 +215,19 @@ npx @frontbase/compiler deploy
 
 ## Success Criteria
 
-- [ ] `@frontbase/edge-core` production bundle < 70 KB min+gzip (CI-gated).
-- [ ] The full CMS deploys as **one** worker within platform script limits (≤ 1 MB gzip target).
-- [ ] Every page component has exactly **one** implementation, rendered byte-identically on edge, in SW, and in builder preview.
-- [ ] The Edge Data Proxy rejects any request that is not a registered query with valid params.
-- [ ] Programmatic workflows execute without builder or infra packages (in-memory mode).
+- [x] Every page component has exactly **one** implementation, rendered
+      byte-identically on the edge, in the service worker, and in the builder
+      preview (enforced by the [golden corpus](../golden-corpus/README.md)).
+- [x] The full CMS deploys as **one** worker within platform script limits
+      (measured 488.8 KB min+gzip vs the 1 MB Cloudflare free-tier ceiling).
+- [x] The Edge Data Proxy rejects any request that is not a registered query
+      with valid params.
+- [x] Every server/browser boundary has a no-leak gate with a mutation proof.
 - [ ] Scaffolding flags produce working projects for all three patterns.
 
 ---
 
-## Document Metadata
+## Related Documents
 
-- **Version**: 2.0
-- **Status**: Approved (Chimera)
-- **Created**: 2026-06-30
-- **Last Updated**: 2026-07-06
-- **Owner**: Architecture Team
-- **Related Documents**:
-  - [CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md) — Canonical architecture
-  - [DECISIONS.md](./DECISIONS.md) — A-12, A-13, A-14
-  - [ARCHITECTURE-SPLIT.md](./ARCHITECTURE-SPLIT.md) — Modular split details
-  - [MILESTONES.md](./MILESTONES.md) — Roadmap
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — canonical architecture
+- [STACK.md](./STACK.md) — technology choices in detail

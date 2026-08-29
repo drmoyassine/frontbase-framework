@@ -1,9 +1,9 @@
-# Product Console & Single-Worker Deploy
+# Admin Console & Single-Worker Deploy
 
 ## Production API (`@frontbase/backend`)
 
-The product community console is served at `/frontbase-admin` and calls the
-product-compatible `/api/*` surface from `createCompatApp()`. Protected routes
+The admin console is served at `/frontbase-admin` and calls the
+`/api/*` surface from `createCompatApp()`. Protected routes
 are **default-DENY** and tenant-scoped. Drizzle remains the single persistence
 source of truth and errors remain opaque.
 
@@ -37,7 +37,7 @@ property panels are generated from a compiler `ComponentManifest`.
 ## Deploy (`frontbase deploy`)
 
 Composes engine + console + proxy + builder SW into one CF Worker. The CLI
-provisions **Cloudflare only** (A-24) — D1, wrangler secrets, the setup link.
+provisions **Cloudflare only** — D1, wrangler secrets, the setup link.
 `--target vercel` / `--target deno` are accepted but REFUSE with the supported
 script path (`pnpm run deploy:vercel` / `pnpm run deploy:deno`); the other
 hosts' provisioning is script-owned (see [Deploying to other hosts](#deploying-to-other-hosts-vercel-deno-deploy)).
@@ -50,7 +50,7 @@ npx @frontbase/compiler deploy             # wrangler deploy (Cloudflare provisi
 **The composition boundary (RULE 1):** the served `/sw.js` is the
 execute-stripped browser projection — it contains no server secret and no
 edge-infra driver. The worker's server code lives only in the fetch handler.
-Worker budget: < 400 KB min+gzip (measured ~55 KB).
+Worker budget: < 1 MB min+gzip (measured ~489 KB).
 
 ### One-command deploy (login + D1 + admin seed + deploy)
 
@@ -83,7 +83,7 @@ project to a different database.
    echoes to the terminal, min 8 characters), re-prompting on invalid input.
 3. Calls the same deploy path as the non-interactive flags above — the
    credentials never touch argv, an env var, or shell history; they're pushed
-   to `wrangler secret put` over **stdin** (CF-19).
+   to `wrangler secret put` over **stdin**.
 
 `--interactive` and `--admin-email`/`--admin-password` are mutually exclusive
 in intent — if you pass both, the interactively-prompted values win (the flags
@@ -121,7 +121,7 @@ Source: [`scripts/deploy.mjs`](../../scripts/deploy.mjs).
 
 ### Deploying to other hosts (Vercel, Deno Deploy)
 
-A-24 ships the same full-CMS app on four hosts from `examples/cf-full`. Each
+The same full-CMS app ships on four hosts from `examples/cf-full`. Each
 non-CF deploy runs the same gauntlet before any host call: the cf-full build,
 the staged-console validator, and the per-host artifact gate
 ([`scripts/verify-host-artifact.mjs`](../../scripts/verify-host-artifact.mjs)
@@ -150,8 +150,9 @@ it through the same resolver the deployed edge entry uses at boot:
 `:memory:`/`file:` are refused on the edge hosts (isolates share no memory and
 expose no writable filesystem); Docker keeps the `file:` default. A
 half-configured set fails the deploy naming the exact missing variable.
-Precedence, the fail-loud rule, and the SQLite-dialect limit are decision
-[A-24](../DECISIONS.md); the resolver contract is unit-proven in
+Precedence, the fail-loud rule, and the SQLite-dialect limit (see
+[docs/known-limitation-postgres-mysql.md](../known-limitation-postgres-mysql.md))
+are unit-proven in
 [`examples/cf-full/test/state-db.mjs`](../../examples/cf-full/test/state-db.mjs).
 
 Live verification for both hosts runs in the dispatch-only workflows

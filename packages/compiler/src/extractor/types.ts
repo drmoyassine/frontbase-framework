@@ -1,6 +1,6 @@
 /**
  * Manifest model — what the extractor emits for the builder property panels and
- * agent diagnostics. Mirrors technical-specification.md ComponentManifest shape.
+ * agent diagnostics. Mirrors docs/history/technical-specification.md ComponentManifest shape.
  */
 export type ZodKind = 'string' | 'number' | 'boolean' | 'enum' | 'array' | 'object' | 'unknown';
 

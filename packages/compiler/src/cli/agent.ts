@@ -1,6 +1,6 @@
 /**
  * AgentFormatter — serializes a CommandResult to the agent JSON output shape
- * (technical-specification.md §Agent Integration). Stable key order, no
+ * (docs/history/technical-specification.md §Agent Integration). Stable key order, no
  * timestamps in the issues array (deterministic for snapshot testing).
  */
 import type { CommandResult, Issue } from './types.js';

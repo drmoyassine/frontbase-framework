@@ -11,7 +11,7 @@ adopted is_default registry row  >  FRONTBASE_* env JSON  >  floor
   card, flip the edit-dialog **"Set as default"** Switch (the Default badge).
   First resource of a kind auto-defaults; switching unsets the previous
   default; deleting the default promotes the next row by creation order.
-- **Env half** — the deploy-time floor the product also uses
+- **Env half** — the deploy-time floor
   (`FRONTBASE_CACHE` / `_QUEUE` / `_VECTOR` / `_EMBEDDING` JSON), parsed
   host-side (Workers have no `process.env`) and injected as data.
 
@@ -88,7 +88,7 @@ and degrades to "unset" — a malformed secret never crashes the worker.
 - `cloudflare` (alias `vectorize`) — Cloudflare Vectorize over the REST API
   (Bearer `cf_api_token`); `index_name` defaults to `rag_documents`.
 - Registry rows carry the same fields under `provider_config`, with the row's
-  `url` holding the index name for Vectorize (product parity).
+  `url` holding the index name for Vectorize.
 
 ### `FRONTBASE_EMBEDDING`
 
@@ -113,8 +113,8 @@ work runs inline.
 
 ## Queue receive endpoint
 
-`POST /api/system/queue/receive` — framework-only (outside the
-334-op community surface), registered in the unauthenticated block; auth is
+`POST /api/system/queue/receive` — framework-only, registered in the
+unauthenticated block; auth is
 either a valid `upstash-signature` (verified against the resolved queue's
 signing keys) or the shared callback secret (constant-time compare). 401
 otherwise.
@@ -138,21 +138,19 @@ Console-authed endpoints (framework-only):
   both paths; last-run stamp in the tenant KV (`rag:last-index`).
 - `POST /api/rag/search {query, table?, limit?}` — embeds the query, searches
   the tenant's vector table with a **mandatory `tenant_id` filter**,
-  over-fetches limit×2 then trims (product semantics). Optional `table`
+  over-fetches limit×2 then trims. Optional `table`
   passes an identifier gate (injection-shaped names → 400).
 
 Pipeline: bucket file inventory (tenant-scoped `storage_files`) → text-like
 gate (`text/*` MIME or known text extension; images/PDF **skipped, no OCR in
-v1**) → product chunking (size 1000, overlap 200, sentence-boundary breaks) →
+v1**) → chunking (size 1000, overlap 200, sentence-boundary breaks) →
 embedding per chunk → upsert into the per-tenant table `rag_{tenant}` with
 stable chunk ids (re-index replaces, never duplicates).
 
-Divergences from the product (deliberate, documented):
-- configured via `FRONTBASE_EMBEDDING`, not the product's `CLOUDFLARE_` /
-  `OLLAMA_` variables;
+Deliberate design choices:
+- configured via `FRONTBASE_EMBEDDING` (one JSON env for any OpenAI-compatible endpoint);
 - no OCR — text-like files only, skipped files are counted;
-- per-tenant tables + store-row inventory where the product uses one shared
-  table;
+- per-tenant tables + store-row inventory (isolation by construction, not by filter alone);
 - **localhost embedding endpoints are unreachable by design** — every
   embedding call goes through the SSRF guard (below). Expose Ollama/LM Studio
   over a public HTTPS hostname instead.
@@ -174,19 +172,18 @@ never appears in logs or error messages (failures surface the HTTP status).
   actually consumes, so it carries `engine_count: 1` and
   `linked_engines: [{name, provider}]` naming the system engine (the console
   renders its "1 engine" badge + tooltip). Non-default rows stay unlinked;
-  switching the default moves the link. This is the product's linkage
-  semantics — the answer to "is the engine using this resource?" is "the row
-  with the badge is".
+  switching the default moves the link. The answer to "is the engine using
+  this resource?" is "the row with the badge is".
 - **System-engine health check** — `GET /api/edge-engines/local-edge/health-check`
-  (the console's edge-card heart button) returns the product `/api/health`
+  (the console's edge-card heart button) returns the `/api/health`
   shape computed in-process — the worker IS the engine, so there is nothing to
   proxy to:
   `{status, service: 'frontbase-edge', provider, timestamp,
   bindings: {stateDb, cache, queue, vector}}`. `stateDb` is a live round trip
   (a real registry read); cache/queue/vector report the same resolution the
   runtime consumes (`ok` + provider when a row or env wiring exists,
-  `not_configured` otherwise); queue is *configured-only* health exactly like
-  the product (QStash can't be pinged without publishing). Serverless
+  `not_configured` otherwise); queue is *configured-only* health
+  (QStash can't be pinged without publishing). Serverless
   platforms omit `uptime_seconds` (cold starts make boot time noise); the
   vector binding is a framework addition and renders generically in the
   popover.
@@ -195,15 +192,13 @@ never appears in logs or error messages (failures surface the HTTP status).
   kinds render `(env)` cards; everything else renders the console's honest
   empty states. No rows are synthesized for services that aren't wired.
 
-### Timestamp divergence (deliberate)
+### Timestamp normalization (deliberate)
 
-The product backend emits `datetime.now(UTC).isoformat() + "Z"` — aware
-`isoformat()` already ends in `+00:00`, so stored timestamps read
-`…+00:00Z`, which `new Date()` cannot parse (the console then renders its
-`'Invalid Date'` fallback). The framework normalizes such values (including
-pre-existing rows served from storage) to a single `Z` suffix, so console
-dates render. This is a documented divergence from the product's byte-level
-output, approved 2026-08-25.
+Some stored timestamps (including rows written by earlier versions of the
+platform) carry a double suffix like `…+00:00Z`, which `new Date()` cannot
+parse (the console then renders its `'Invalid Date'` fallback). The framework
+normalizes such values to a single `Z` suffix, so console dates render.
+Approved 2026-08-25.
 
 ---
 

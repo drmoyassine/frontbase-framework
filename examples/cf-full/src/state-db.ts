@@ -19,7 +19,7 @@
  *                  sqld; HRANA over fetch)                   https://
  *
  * Postgres-family stays the documented unclosable gap
- * (docs/unclosable-postgres-mysql-parity.md) and supabaseRunner is a
+ * (docs/known-limitation-postgres-mysql.md) and supabaseRunner is a
  * datasource runner (PostgREST RPC against real Postgres) — neither can run
  * the SQLite-dialect schema, so the resolver refuses to pretend otherwise.
  *

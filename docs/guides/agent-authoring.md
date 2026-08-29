@@ -49,7 +49,7 @@ Add a page at <path> to the site manifest (buildSiteManifest). It has:
 Navigation between pages is <a href> (Link component), never data-navigate-to.
 ```
 
-## Template 3 — Define a query (Decision A-16)
+## Template 3 — Define a query
 
 ```
 Define a registered data query (code-first). The browser sees {queryId, hasParams,
@@ -64,7 +64,7 @@ export const queries = defineQueries({
         scope: 'public' | 'tenant' | 'user', // tenant/user require a resolved principal
         ttlSeconds: 60,
         execute: async (params, ctx) => {
-            // A-17/RULE 2: ALWAYS filter by ctx.tenant for tenant-scoped data.
+            // ALWAYS filter by ctx.tenant for tenant-scoped data.
             return ctx.db.query('SELECT ... WHERE tenant = ?', [ctx.tenant]);
         },
     },

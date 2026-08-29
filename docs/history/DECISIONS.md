@@ -587,7 +587,7 @@ npm install @frontbase/builder
 
 ### Decision
 
-**Adopt the Chimera (Universal eSSR)** as the canonical rendering architecture. See [CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md).
+**Adopt the Chimera (Universal eSSR)** as the canonical rendering architecture. See [CHIMERA-ARCHITECTURE.md](../ARCHITECTURE.md).
 
 1. One Hono-based engine (`@frontbase/edge-core`) renders every page in three environments: cloud edge worker (first load/SEO), browser service worker (subsequent navigations, private pages, offline), and builder canvas (design-time preview).
 2. Page components are **isomorphic Hono/JSX functions** rendered to HTML strings. Published pages ship **no React**; interactivity comes from a ~10 KB declarative client-behaviors runtime.

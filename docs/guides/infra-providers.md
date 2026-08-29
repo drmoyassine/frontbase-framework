@@ -6,7 +6,7 @@ service-worker bundle). It wires the concrete implementations behind the seams
 
 ## Database providers
 
-Decision **A-17**: tenant isolation is **application-level** — every registered
+Tenant isolation is **application-level** — every registered
 query's `execute` writes `WHERE tenant = ctx.tenant` (tenant from `resolvePrincipal`
 only). Provider-native isolation (Postgres/Supabase RLS, D1 bindings) is
 **defense-in-depth**, never the primary control. So the SQLite test is

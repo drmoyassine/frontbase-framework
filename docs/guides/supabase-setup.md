@@ -1,15 +1,15 @@
-# Supabase Database Setup (CF-20)
+# Supabase Database Setup
 
 **Status:** ✅ COMPLETE (2026-07-12) — `supabaseRunner()` shipped in `@frontbase/edge-infra`
 
 ## Overview
 
-The framework now supports **Supabase Postgres** as a database backend via the `supabaseRunner()` DbRunner factory. This enables the Chimera CMS to run on Supabase alongside D1, Turso, and SQLite.
+The framework supports **Supabase Postgres** as a database backend via the `supabaseRunner()` DbRunner factory. This enables the CMS to run on Supabase alongside D1, Turso, and SQLite.
 
 **What shipped:**
 - `supabaseRunner(opts: SupabaseOpts): DbRunner` in `@frontbase/edge-infra/providers/runners.ts`
 - PostgREST client integration (edge-safe HTTP adapter)
-- Parameterized isolation tests (A-17) — runs on SQLite (authoritative) + Supabase (if creds provided)
+- Parameterized isolation tests — run on SQLite (authoritative) + Supabase (if creds provided)
 - No-leak gate — Supabase runner is server-only, never browser-importable
 
 ## Quick Start
@@ -151,7 +151,7 @@ pnpm --filter @frontbase/edge-infra test
 pnpm --filter @frontbase/edge-infra test
 ```
 
-**Isolation tests (A-17):**
+**Isolation tests:**
 The parameterized isolation suite runs on:
 - SQLite (authoritative, always runs)
 - Supabase (if `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` are set)
@@ -209,7 +209,7 @@ const runner = supabaseRunner({
 
 ## Next Steps
 
-**For CF-18 Phase 2+ (Data Studio):**
+**For Data Studio:**
 1. Add Supabase to the datasources UI
 2. Wire up table browser using `supabaseRunner()`
 3. Enable SQL query editor via `execute_query`
@@ -268,6 +268,4 @@ between tenants, use separate Supabase projects (out of scope for this seam).
 ---
 
 **Related docs:**
-- [CF-21 Edge Parity Audit](../cf-21-edge-parity-audit.md) — Full infrastructure mapping
-- [Database Runners Guide](./infra.md) — All DbRunner factories
-- [Migration Guide](./migrations.md) — DbRunner-based migrations
+- [Edge Infrastructure Guide](./infra-providers.md) — All DbRunner factories
