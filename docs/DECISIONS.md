@@ -959,6 +959,41 @@ A-21's host-surface analysis showed `examples/cf-full` couples three capabilitie
 
 ---
 
+## Decision A-25: Cloud Multi-Tenant Free Tier on app.frontbase.dev (Phase 4 of framework-only)
+
+- **Date**: 2026-08-29
+- **Status**: ✅ Approved
+- **Related**: A-13 (single-edge-worker deployment), A-17 (tenant-isolation layer), A-22/A-23/A-24 (Phases 1–3), A-18 (identity & provisioning)
+
+### Context
+
+Phases 1–3 made the framework the single source of truth. Phase 4 ships the locked go-live: **public self-serve signup → build in the console → publish → live at `<slug>.frontbase.dev`** — on ONE shared community worker in the operator's Cloudflare account. The reference model is the product's cloud mode (read-only audit): a shared-rows SaaS where signup provisions DB rows only (tenant + owner + plan + default page, no infra), the serving worker resolves the tenant from the **Host header prefix alone**, the platform admin is a master-admin-only API, and a global plan catalog with `tenants.plan` as a soft FK gates features. Scope is **free tier only** (user decision): the product's free plan has `edge_engines: 0`, so per-tenant engines, custom domains, and Stripe are structurally Phase-5 machinery. The framework collapses the product's two-worker+VPS split into its single worker (A-13 — there is no separate control plane to split).
+
+Two deliberate security fixes go beyond product fidelity: (1) **unregistered slugs are 404'd, not served** (the product served unknown-tenant pages); (2) **signup/login/forgot get the CF-16 rate limiter** (the product had none). Negative tenant lookups are never cached; positives hold 15 s in-isolate.
+
+### Decision
+
+1. **One artifact, env-gated** — `FRONTBASE_DEPLOYMENT_MODE=cloud` + `FRONTBASE_BASE_DOMAIN` activate tenancy; unset means byte-identical self-host (existing smoke green, unmodified). The two values ride `wrangler deploy --var` (non-secret, argv-safe) and are **never written to wrangler.toml** — a committed mode var would flip every self-host reusing the file into cloud boot.
+2. **Serving plane** — `tenancy/host.ts` (pure host parsing: `tenant|app|reserved|apex|foreign`; reserved set = operational labels ∪ product signup slugs ∪ internal namespaces; 3–50-char slug) + `tenancy/serving.ts` (tenant-scoped page resolution, tenant-host state, `scopePrincipalToHost`). `resolvePrincipal` is wrapped so a session belonging to another tenant's member is anonymous on this host — closing a real cross-tenant hole in private-page gating (login is a cross-tenant email scan). Enrichment resolves from the host tenant only (the self-host `[_root, _default]` fallback is the leak, not the caches). edge-core hooks (`resolvePublishedPage`, `enrichLayout`, `resolveFaviconUrl`) take an optional `req` — fewer-args call sites stay valid.
+3. **Signup & email** — signup validates the slug (reserved + format), 409s collisions, provisions tenant `plan='free' status='active'` + owner + `ensureHomepage` in one transaction with compensating delete; `/api/auth/me` populates `tenant_id`/`tenant_slug`. Resend carries password-reset links (`RESEND_API_KEY` secret, env/stdin only); failures stay non-enumerating. **Honest limits**: no email verification, no captcha — rate limiting is the only abuse control this phase.
+4. **Platform admin** — `/api/admin/tenants*` (master_admin per handler, not the any-admin prefix guard) + the `/admin` cloud console (a second vite build, `--mode cloud`, base `/admin/`, staged to `console-dist/admin`). `/admin` on a TENANT host is a 404 by design: a login form on someone else's domain is a phishing surface. The app-host PlansManager edits the **`_global` catalog** (`adminPlansTenant` dep re-namespaces the `/api/admin/plans*` router) — without it the operator would edit rows nothing reads, since `tenants.plan` enforcement resolves `_global`. Per-tenant plan rows still win precedence; the default (no dep) router is untouched.
+5. **Plan catalog & gates** — `seedPlanCatalog` idempotently seeds `free` into the existing `plans` table under `_global` **at cloud boot, not migration** (a migration-seeded catalog would change self-host, where "no plan ⇒ unlimited" is the tested contract). Enforcement fires only when limits resolve: counts → 402 `limit_exceeded` (pages, deploys_monthly — calendar-month Published-row approximation, team_members, edge_engines), flags → 403 (private_pages, api_access). `-1` unlimited, null inert, master_admin bypass preserved. **Counts are not metering** — no ledger, no cron; shared D1 capacity is the operator's concern.
+6. **Rate limiting** — the existing `rateLimitGuard` gains a D1-backed CacheProvider (fixed-window `rate_limit_counters` table) and a synthetic `rl-anon` principal keyed on `CF-Connecting-IP` (left-most XFF fallback, documented spoofable → best effort). Cloud only; opaque 429.
+7. **Deploy** — `deploy.mjs --mode cloud --base-domain` stays the single entry: stages BOTH console trees, gates on both (`requireCloud`), pushes `SESSION_SECRET`/`ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_ROLE`/`RESEND_API_KEY` stdin-only, and attaches `app.<zone>` + `*.<zone>` as Workers Custom Domains via the CF API (`cloud-domains.ts`, idempotent upsert, token header-only, per-hostname failure rows; missing creds → loud skip + dashboard path, API refusal → fail with remediation).
+
+### Gates
+
+Six backend suites (`tenant-host`, `cloud-serving`, `cloud-signup`, `admin-tenants`, `cloud-plan-gates`, `cloud-rate-limit`) + `smoke:cloud` (composed worker over Host headers, /admin served through the real Static-Assets path) + seven RULE 8 mutation proofs + the `console-pin` cloud-stage harness (29 fixtures) + compiler `cloud-domains`/`deploy-cloud` seams. Console unit + check gates stay green; self-host smoke untouched.
+
+### Consequences (limits stated as limits)
+
+- **The 11 `admin_agents_*` ops are framework stubs** — the cloud console's agent-analytics/credit/addons widgets degrade to error states. Phase-5 machinery (agent credits/metering are out of scope by plan §5).
+- **Phase-5 boundary**: per-tenant engines, managed/BYO custom domains, per-tenant workers, Stripe, `remove_branding` server-side flip, email verification, captcha, metering beyond counts, admin impersonation, apex marketing site, hard tenant delete/data export, per-plan rate-limit quotas, per-tenant D1/regions.
+- **Wildcards**: first visit to an unseen slug may hit a cert-provisioning window (platform behavior, documented); Custom Domains attach for `*.<zone>` depends on the zone's plan (dashboard fallback documented).
+- **Self-host invariance is load-bearing**: every cloud code path is behind `cloudMode`/env gates, and the unmodified self-host smoke + plan-limits contract prove it each run.
+
+---
+
 ## Decision History
 
 | Date | Decision | Status |
@@ -986,12 +1021,13 @@ A-21's host-surface analysis showed `examples/cf-full` couples three capabilitie
 | 2026-08-28 | A-22: Console Source Consolidation (Phase 1 of framework-only) | ✅ Approved |
 | 2026-08-28 | A-23: Contract Inversion & Hydrate Source Consolidation (Phase 2 of framework-only) | ✅ Approved |
 | 2026-08-28 | A-24: Four-Host Deploy Matrix & Pluggable State DB (Phase 3 of framework-only) | ✅ Approved |
+| 2026-08-29 | A-25: Cloud Multi-Tenant Free Tier on app.frontbase.dev (Phase 4 of framework-only) | ✅ Approved |
 
 ---
 
 ## Document Metadata
 
-**Version**: 2.2
+**Version**: 2.3
 **Status**: Active — Chimera architecture adopted; public-release rollout governed by A-20
 **Owner**: Architecture Team
 **Next Review**: As new decisions are made

@@ -272,3 +272,37 @@ export { saveProjectAsset, readProjectAsset, readProjectSettings } from './compa
 export { parseEnvServices, createSystemServiceResolver, cacheAdapterFromConfig, envServiceDescriptor, ENV_CARD_LABELS } from './compat/system-services.js';
 export type { EnvServices, ServiceEnvConfig, ResolvedServiceNames, SystemServiceResolver, SystemServiceResolverDeps } from './compat/system-services.js';
 export * from './db/schema.js';
+// A-25 Phase 4 cloud: pure tenancy modules (host resolution + tenant-scoped serving).
+export {
+    SLUG_RE, SLUG_MIN, SLUG_MAX, PRODUCT_RESERVED_SLUGS, FRAMEWORK_RESERVED_SLUGS, RESERVED_SLUGS,
+    extractTenantSlug, normalizeHost, slugValid, slugError, resolveTenantFromHost,
+} from './tenancy/host.js';
+export type { HostKind, HostResolution } from './tenancy/host.js';
+export {
+    resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost,
+} from './tenancy/serving.js';
+export type { PublishedPageRow, ResolvePublishedPageOptions, TenantHostState } from './tenancy/serving.js';
+// A-25 Phase 4 cloud: the global plan catalog (cloud-boot seed + reads).
+export {
+    PLAN_CATALOG_TENANT, FREE_PLAN_ID, FREE_PLAN_LIMITS, PLAN_CATALOG,
+    seedPlanCatalog, catalogPlanLimits, tenantPlanId,
+} from './compat/plans/catalog.js';
+export type { CatalogPlan } from './compat/plans/catalog.js';
+// A-25 Phase 4 cloud: the free-tier enforcement gates (RULE 8 mutation surface).
+export {
+    planLimitsForCaller, principalRole, publishGate, engineCapExceeded,
+    teamCapExceeded, privatePagesBlocked, apiAccessBlocked, startOfMonth, deploysThisMonth,
+} from './compat/plans/gates.js';
+export type { PlanLimits } from './compat/plans/gates.js';
+// A-25 Phase 4 cloud: password-reset email delivery (Resend).
+export {
+    RESEND_ENDPOINT, passwordResetLink, resetEmailHtml, createResendPasswordResetDelivery,
+} from './compat/email/resend.js';
+export type { ResendDeliveryOptions } from './compat/email/resend.js';
+// A-25 Phase 4 cloud: platform-admin tenant management (master_admin surface).
+export { registerAdminTenantsRoutes } from './compat/routes/admin-tenants.js';
+// A-25 Phase 4 cloud: durable (D1) rate limiting for the cloud auth surface.
+export {
+    createD1RateLimitCache, authRateLimitMiddleware, AUTH_RATE_LIMIT_BUCKETS,
+} from './compat/rate-limit-store.js';
+export type { AuthRateLimitBucket } from './compat/rate-limit-store.js';

@@ -32,14 +32,18 @@ export interface EngineOptions {
     console?: Hono;
     /** Resolve a published page by URL path. When set, dynamic CMS pages override
      *  the baked manifest (the manifest becomes a last-resort fallback). Injected
-     *  by the host so the engine stays DB-blind. Returns null when no such page. */
-    resolvePublishedPage?: (path: string) => Promise<PageEntry | null>;
+     *  by the host so the engine stays DB-blind. Returns null when no such page.
+     *  A-25: the raw Request is threaded (optional) so cloud hosts can resolve
+     *  the page per HOST TENANT — the engine never parses tenancy itself. */
+    resolvePublishedPage?: (path: string, request?: Request) => Promise<PageEntry | null>;
     /** Enrich a page layout at serve time (product parity: FastAPI public.py →
      *  convert_component adds binding.dataRequest before the edge renders).
      *  Host-injected so the engine stays DB-blind; runs on the NORMAL render
      *  path only — the gated preview renders the raw layout so an
-     *  unauthenticated visitor never triggers a datasource fetch. */
-    enrichLayout?: (layout: unknown) => Promise<unknown>;
+     *  unauthenticated visitor never triggers a datasource fetch.
+     *  A-25: optional raw Request so cloud hosts enrich from the HOST TENANT's
+     *  datasources only (never a cross-tenant fallback). */
+    enrichLayout?: (layout: unknown, request?: Request) => Promise<unknown>;
 }
 
 /**
@@ -180,7 +184,7 @@ export function createEngine(opts: EngineOptions): Hono {
         // Dynamic-first: a published page resolved by the host (e.g. from the CMS
         // database) overrides the baked manifest; the manifest is the last-resort
         // fallback (demo pages, or a homepage the user deleted).
-        let page = opts.resolvePublishedPage ? await opts.resolvePublishedPage(path) : undefined;
+        let page = opts.resolvePublishedPage ? await opts.resolvePublishedPage(path, c.req.raw) : undefined;
         if (!page) page = manifest.pages[path];
         if (!page) return c.notFound();
 
@@ -204,7 +208,7 @@ export function createEngine(opts: EngineOptions): Hono {
             const principal = await engineConfig().resolvePrincipal(c.req.raw);
             if (!principal.user) {
                 const body = await renderPage(page.layout, buildContext(page, path, [], opts));
-                const faviconUrl = await engineConfig().resolveFaviconUrl();
+                const faviconUrl = await engineConfig().resolveFaviconUrl(c.req.raw);
                 const gatedHtml = generateGatedPageDocument(
                     toHtmlPageData(page, path),
                     body,
@@ -227,7 +231,7 @@ export function createEngine(opts: EngineOptions): Hono {
         // the raw layout, so enrichment/data fetches never happen behind the
         // auth overlay.
         if (opts.enrichLayout) {
-            page = { ...page, layout: await opts.enrichLayout(page.layout) as PageEntry['layout'] };
+            page = { ...page, layout: await opts.enrichLayout(page.layout, c.req.raw) as PageEntry['layout'] };
         }
 
         // Page data goes through the SAME scope enforcement + tenant threading as
@@ -258,7 +262,7 @@ export function createEngine(opts: EngineOptions): Hono {
             registerServiceWorker: environment === 'edge' && !!opts.swBundle,
             // Same resolver the gated branch and navbarFavicon use — the host
             // decides (product: project settings faviconUrl || default icon).
-            faviconUrl: (await engineConfig().resolveFaviconUrl()) || undefined,
+            faviconUrl: (await engineConfig().resolveFaviconUrl(c.req.raw)) || undefined,
         });
         return c.html(html, 200, {
             'x-rendered-by': environment,

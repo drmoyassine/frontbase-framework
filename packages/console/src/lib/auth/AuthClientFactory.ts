@@ -17,6 +17,7 @@ import type { AuthClient, AuthClientConfig } from './AuthClient.interface';
 import { CookieAuthClient } from './CookieAuthClient';
 import { SuperTokensAuthClient } from './SuperTokensAuthClient';
 import { SupabaseAuthClient } from './SupabaseAuthClient';
+import { FrameworkAuthClient } from './FrameworkAuthClient';
 import { isCloud } from '@/lib/edition';
 
 /**
@@ -48,7 +49,11 @@ export function createAuthClient(config?: Partial<AuthClientConfig>): AuthClient
     persistSession: true,
     storageKey: 'frontbase-auth',
     debug: import.meta.env.DEV,
-    enableSuperTokens: isCloud(),
+    // A-25 Phase 4: the framework's cloud worker speaks the plain
+    // /api/auth/* cookie-session contract (frontbase_session HttpOnly cookie),
+    // not SuperTokens SDK routes — so cloud defaults OFF. Only an explicit
+    // VITE_AUTH_PROVIDER=supertokens build turns it back on.
+    enableSuperTokens: false,
   };
 
   const finalConfig = { ...defaultConfig, ...config };
@@ -65,8 +70,14 @@ export function createAuthClient(config?: Partial<AuthClientConfig>): AuthClient
     return new SupabaseAuthClient(finalConfig);
   }
 
-  // Default to SuperTokens (SuperTokensAuthClient) for cloud mode
-  return new SuperTokensAuthClient(finalConfig);
+  // SuperTokens stays reachable for an explicit VITE_AUTH_PROVIDER=supertokens
+  // build; the framework cloud default is the plain /api/auth/* client.
+  if (authProvider === 'supertokens') {
+    return new SuperTokensAuthClient({ ...finalConfig, enableSuperTokens: true });
+  }
+
+  // Default cloud client: the framework's own session contract.
+  return new FrameworkAuthClient(finalConfig);
 }
 
 /**
@@ -117,10 +128,11 @@ export function isSupabaseAuth(): boolean {
 /**
  * Check if SuperTokens authentication is enabled
  *
- * @returns true if SuperTokens is the auth provider (or default cloud mode)
+ * @returns true only when SuperTokens is the EXPLICIT auth provider — the
+ * framework cloud default is FrameworkAuthClient, not SuperTokens
  */
 export function isSuperTokensAuth(): boolean {
-  return isCloud() && (getAuthProvider() === 'supertokens' || getAuthProvider() === undefined);
+  return isCloud() && getAuthProvider() === 'supertokens';
 }
 
 /**

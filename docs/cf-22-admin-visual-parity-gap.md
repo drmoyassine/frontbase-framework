@@ -624,6 +624,20 @@ Working order is now **Gate 4**. Gates 1c, 2, and 3 are closed locally.
 - Deleting legacy `/api/console/*` routes by name/association — only after the consumer map + browser suite prove them unused.
 - Source-level shared console package (option C) — revisit post-launch only if artifact reuse proves insufficient.
 
+> **2026-08-29 addendum (A-25 supersedes the first two non-goals).** The framework shipped
+> its own cloud multi-tenant free tier (`docs/DECISIONS.md` A-25, `docs/cloud-free-tier.md`),
+> built framework-first rather than by porting the product's cloud edition: host-tenant
+> serving, self-serve signup, `/api/admin/tenants*`, a tenants directory + plans manager in
+> the new `/admin` cloud console build, and a `_global` plan catalog with enforcement. Two
+> non-goals above are therefore retired as written: **cloud edition** (tenants directory and
+> plans manager shipped 2026-08-29; billing and agent chat/quota remain out of scope — see
+> A-25's limits) and the **`--multi-tenant` flag** (the shipped equivalent is
+> `deploy.mjs --mode cloud --base-domain`, with the tenant-isolation acceptance this file
+> asked for delivered as the A-25 suites + mutation proofs). The remaining non-goals are
+> unchanged. Phases 1–2 (A-22/A-23) also retired this file's console/contract *pin*
+> machinery — the pins it describes are framework-owned now; the structural guidance above
+> (x-implemented derivation, capture order, auth-surface config dependence) still holds.
+
 ## 11. Document history
 
 This file is the **sole** CF-22 status/plan document. The following were folded in and

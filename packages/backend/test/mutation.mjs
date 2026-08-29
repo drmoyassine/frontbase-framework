@@ -27,6 +27,10 @@ const COMPAT_EDGE_MISC = 'packages/backend/src/compat/routes/edge-misc.ts';
 const COMPAT_EDGE_GENERIC = 'packages/backend/src/compat/routes/edge-generic.ts';
 const COMPAT_STORE = 'packages/backend/src/compat/store.ts';
 const COMPAT_APP = 'packages/backend/src/compat/app.ts';
+const TENANCY_SERVING = 'packages/backend/src/tenancy/serving.ts';
+const COMPAT_ADMIN_TENANTS = 'packages/backend/src/compat/routes/admin-tenants.ts';
+const COMPAT_RATE_LIMIT = 'packages/backend/src/compat/rate-limit-store.ts';
+const COMPAT_GATES = 'packages/backend/src/compat/plans/gates.ts';
 
 console.log('— backend mutation harness —\n');
 if (!buildPackage(PKG)) { console.log('baseline build failed'); process.exit(2); }
@@ -43,6 +47,10 @@ for (const g of [
     'compat-negative',
     'compat-tenant-matrix',
     'edge-defaults',
+    'admin-tenants',
+    'cloud-serving',
+    'cloud-plan-gates',
+    'cloud-rate-limit',
 ]) {
     const args = g === 'compat-behavior-auth' ? ['--gate'] : [];
     if (runGate(pkgDir, `test/${g}.mjs`, args) !== 0) {
@@ -254,6 +262,101 @@ await withSourceMutation(
     async () => {
         buildPackage(PKG);
         expectRed('edge-defaults: goes red when create stops unsetting the previous default', runGate(pkgDir, 'test/edge-defaults.mjs'));
+    },
+);
+
+// ---- A-25 Phase 4 cloud (WA7) — the seven new-surface proofs ----
+
+// C1. Serving isolation — drop the cloud by-slug query's `tenant_slug`
+//     predicate → a tenant host resolves ANOTHER tenant's page.
+await withSourceMutation(
+    'cloud serving: tenant_slug predicate on the by-slug query',
+    TENANCY_SERVING,
+    'WHERE tenant_slug = ? AND slug = ? AND is_published = 1 AND deleted_at IS NULL LIMIT 1',
+    'WHERE slug = ? AND is_published = 1 AND deleted_at IS NULL LIMIT 1',
+    async () => {
+        buildPackage(PKG);
+        expectRed('cloud-serving: goes red when the by-slug tenant predicate is dropped', runGate(pkgDir, 'test/cloud-serving.mjs'));
+    },
+);
+
+// C2. Principal scoping — pass-through lets a member of tenant A satisfy
+//     tenant B's private-page gate on B's own host (correction 2's hole).
+await withSourceMutation(
+    'cloud serving: scopePrincipalToHost strips foreign principals',
+    TENANCY_SERVING,
+    "    if (principal.tenant === hostTenant) return principal;\n    return { ...principal, user: null, tenant: undefined } as T;",
+    '    return principal;',
+    async () => {
+        buildPackage(PKG);
+        expectRed('cloud-serving: goes red when scoping passes foreign principals through', runGate(pkgDir, 'test/cloud-serving.mjs'));
+    },
+);
+
+// C3. Registration gate — an unregistered slug reports found:true → the
+//     worker middleware would serve (instead of 404) unknown workspaces.
+await withSourceMutation(
+    'cloud serving: tenantHostState existence check',
+    TENANCY_SERVING,
+    'if (!row) return { found: false };',
+    'if (!row) return { found: true };',
+    async () => {
+        buildPackage(PKG);
+        expectRed('cloud-serving: goes red when unknown slugs report found:true', runGate(pkgDir, 'test/cloud-serving.mjs'));
+    },
+);
+
+// C4. Platform-admin gate — relaxing master_admin to owner lets ANY tenant
+//     owner list every other workspace.
+await withSourceMutation(
+    'admin tenants: per-handler master gate',
+    COMPAT_ADMIN_TENANTS,
+    "if (user.role !== 'master_admin')",
+    "if (user.role !== 'owner')",
+    async () => {
+        buildPackage(PKG);
+        expectRed('admin-tenants: goes red when the master gate admits owners', runGate(pkgDir, 'test/admin-tenants.mjs'));
+    },
+);
+
+// C5. Cloud rate limiter — removing the guard call stops every 429.
+await withSourceMutation(
+    'cloud rate limit: rateLimitGuard invocation',
+    COMPAT_RATE_LIMIT,
+    'const denial = await rateLimitGuard(cfg, rlAnonPrincipal(ip));',
+    'const denial = null as Awaited<ReturnType<typeof rateLimitGuard>>;',
+    async () => {
+        buildPackage(PKG);
+        expectRed('cloud-rate-limit: goes red when the guard call is removed', runGate(pkgDir, 'test/cloud-rate-limit.mjs'));
+    },
+);
+
+// C6. Free-tier quotas — publishGate always inert → pages/deploys_monthly
+//     402s vanish while everything else keeps working. (The replacement must
+//     TYPECHECK: a semantic-only tsc error still emits and keeps the proof
+//     real, but a future noEmitOnError flip would hollow it into a stale-dist
+//     false pass.)
+await withSourceMutation(
+    'cloud plan gates: publishGate quota checks',
+    COMPAT_GATES,
+    '    if (!limits) return null;\n    const pages = limits.pages;\n    if (typeof pages === \'number\' && pages !== -1 && pageCount > pages) {\n        return { detail: \'limit_exceeded\', limit: \'pages\' };\n    }\n    const deploys = limits.deploys_monthly;\n    if (typeof deploys === \'number\' && deploys !== -1 && deploysThisMonth >= deploys) {\n        return { detail: \'limit_exceeded\', limit: \'deploys_monthly\' };\n    }',
+    '    if (!limits) return null;\n    return null; /* MUTATION: both publish quotas inert */',
+    async () => {
+        buildPackage(PKG);
+        expectRed('cloud-plan-gates: goes red when publish quotas are inert', runGate(pkgDir, 'test/cloud-plan-gates.mjs'));
+    },
+);
+
+// C7. Feature flags — private_pages never blocks → a free tenant can flip a
+//     page private.
+await withSourceMutation(
+    'cloud plan gates: private_pages flag',
+    COMPAT_GATES,
+    'return limits?.private_pages === false;',
+    'return false;',
+    async () => {
+        buildPackage(PKG);
+        expectRed('cloud-plan-gates: goes red when private_pages never blocks', runGate(pkgDir, 'test/cloud-plan-gates.mjs'));
     },
 );
 

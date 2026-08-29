@@ -12,6 +12,10 @@ import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { PagesStore, serializePage, type CompatPageRow, type CompatVersionRow } from '../pages-store.js';
 import { isSystemEngine } from './edge-shapes.js';
+import {
+    deploysThisMonth, planLimitsForCaller, principalRole, privatePagesBlocked,
+    publishGate, type PlanLimits,
+} from '../plans/gates.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -132,7 +136,21 @@ export function registerPagesRoutes(
      * nothing enriched ever persists into stored layouts.
      */
     enrichLayout?: (tenant: string, layout: unknown) => Promise<unknown>,
+    /**
+     * A-25 WA5: the tenant's effective plan limits (cloud wiring). Absent
+     * (self-host / pure fixtures) ⇒ unlimited ⇒ every plan gate is inert.
+     */
+    planLimitsFor?: (tenant: string) => Promise<PlanLimits | null>,
 ): void {
+    /** The caller's effective limits — null when unbounded (no accessor wired,
+     *  or the caller is the master admin, who bypasses every plan gate). */
+    const callerLimits = async (c: {
+        get(name: 'principal'): unknown;
+        get(name: 'tenant'): string;
+    }): Promise<PlanLimits | null> => {
+        if (!planLimitsFor) return null;
+        return await planLimitsForCaller(planLimitsFor, c.get('tenant'), principalRole(c));
+    };
     /** Enrich a serialized envelope's layoutData in place (non-fatal). */
     const enrichData = async (tenant: string, data: Record<string, unknown> | null): Promise<Record<string, unknown> | null> => {
         if (!enrichLayout || !data || data.layoutData === undefined || data.layoutData === null) return data;
@@ -154,8 +172,16 @@ export function registerPagesRoutes(
     });
     // POST /api/pages/
     app.post('/api/pages/', async (c) => {
-        const body = await c.req.json().catch(() => null) as { name?: string; slug?: string; title?: string; description?: string; layoutData?: unknown; layout_data?: unknown } | null;
+        const body = await c.req.json().catch(() => null) as { name?: string; slug?: string; title?: string; description?: string; isPublic?: unknown; is_public?: unknown; layoutData?: unknown; layout_data?: unknown } | null;
         if (!body?.name || !body.slug) return c.json({ success: false, error: 'name and slug are required' }, 422);
+        // A-25 WA5 plan gate: `private_pages`. The store's create path cannot
+        // make a private page, so a request asking for one is refused honestly
+        // rather than silently returning a public page.
+        if (body.isPublic === false || body.is_public === false) {
+            if (privatePagesBlocked(await callerLimits(c))) {
+                return c.json({ detail: 'Private pages are not available on your current plan' }, 403);
+            }
+        }
         const store = storeFor(c.get('tenant'));
         // Check for duplicate slug before creating (product parity: 400 on conflict)
         const existing = await store.getBySlug(body.slug);
@@ -203,6 +229,15 @@ export function registerPagesRoutes(
     // PUT /api/pages/{page_id}/
     app.put('/api/pages/:page_id/', async (c) => {
         const body = await c.req.json().catch(() => ({}));
+        // A-25 WA5 plan gate: `private_pages` — the only write path that can
+        // actually set privacy (store.update's isPublic patch field). Refuse
+        // the flip BEFORE it lands; already-public pages are never unpubliced
+        // retroactively by a plan change.
+        const wantsPrivate = (body as { isPublic?: unknown; is_public?: unknown }).isPublic === false
+            || (body as { is_public?: unknown }).is_public === false;
+        if (wantsPrivate && privatePagesBlocked(await callerLimits(c))) {
+            return c.json({ detail: 'Private pages are not available on your current plan' }, 403);
+        }
         const row = await storeFor(c.get('tenant')).update(c.req.param('page_id'), body, now());
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
         return c.json({ success: true, data: serializePage(row), message: null, error: null });
@@ -255,6 +290,16 @@ export function registerPagesRoutes(
         // accepting the legacy 'local' id for back-compat.
         if (engineId !== 'local' && !isSystemEngine(engineId)) {
             return c.json({ detail: `Engine not found: ${engineId}` }, 404);
+        }
+        // A-25 WA5 plan gates at publish: `pages` (over-cap footprint cannot go
+        // further live) + `deploys_monthly` (calendar-month publish budget).
+        // Counted only when the caller is actually gated (limits non-null).
+        if (planLimitsFor) {
+            const limits = await planLimitsForCaller(planLimitsFor, tenant, principalRole(c));
+            const pageCount = (await store.list(false)).length;
+            const deploys = runner ? await deploysThisMonth(runner, tenant, now()) : 0;
+            const blocked = publishGate(limits, pageCount, deploys);
+            if (blocked) return c.json(blocked, 402);
         }
         const res = await store.publish(pageId, engineId, now());
         if (!res.success) return c.json(res, 404);

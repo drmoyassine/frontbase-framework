@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { isCloud } from '@/lib/edition';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -86,51 +85,28 @@ export default function ResetPasswordPage() {
         setErrorMessage(null);
 
         try {
-            if (isCloud()) {
-                // Cloud mode: SuperTokens reset password API
-                const response = await fetch(`/api/auth/user/password/reset`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'rid': 'emailpassword'
-                    },
-                    body: JSON.stringify({
-                        formFields: [{ id: 'password', value: password }],
-                        token: token,
-                        website,
-                        turnstile_token: turnstileToken || undefined
-                    })
-                });
+            // Both editions talk to the SAME framework endpoint now: the cloud
+            // worker serves /api/auth/reset-password itself (hashed single-use
+            // token + session-generation bump). The old SuperTokens-shaped
+            // cloud branch (`/api/auth/user/password/reset`) never existed on
+            // the framework and is gone with the consolidation.
+            const response = await fetch(`/api/auth/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email,
+                    token,
+                    password,
+                    website,
+                    turnstile_token: turnstileToken || undefined
+                })
+            });
 
-                const data = await response.json();
-                if (!response.ok || data.status !== 'OK') {
-                    const detail = data.status === 'RESET_PASSWORD_INVALID_TOKEN_ERROR' 
-                        ? 'The reset link has expired or is invalid.' 
-                        : (data.formFields?.[0]?.error || 'Failed to reset password.');
-                    setErrorMessage(detail);
-                } else {
-                    setSuccessMessage('Your password has been successfully reset.');
-                }
+            const data = await response.json();
+            if (!response.ok) {
+                setErrorMessage(data.detail || 'Failed to reset password.');
             } else {
-                // Self-Hosted mode: custom reset-password API
-                const response = await fetch(`/api/auth/reset-password`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email,
-                        token,
-                        password,
-                        website,
-                        turnstile_token: turnstileToken || undefined
-                    })
-                });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    setErrorMessage(data.detail || 'Failed to reset password.');
-                } else {
-                    setSuccessMessage(data.message || 'Your password has been successfully reset.');
-                }
+                setSuccessMessage(data.message || 'Your password has been successfully reset.');
             }
         } catch (err) {
             setErrorMessage(err instanceof Error ? err.message : 'Network error');

@@ -36,6 +36,8 @@ import {
 } from '../zod.gen.js';
 import { hashPassword, verifyPassword, issueSession } from '@frontbase/edge-infra';
 import { fastApiValidationError } from '../request-validation.js';
+import { slugError } from '../../tenancy/host.js';
+import type { PagesStore } from '../pages-store.js';
 
 // A well-formed PBKDF2 hash of a random value — verified against on unknown-email
 // logins so response time doesn't reveal whether the email exists (MED-5). Iters
@@ -112,6 +114,10 @@ export function registerAuthCompatUnauthRoutes(
     now: () => string,
     deliverPasswordReset?: (email: string, token: string) => Promise<void>,
     cloudMode = false,
+    /** CLOUD signup provisions the workspace's homepage (PagesStore) so the
+     *  site is live the moment the signup returns. Optional so pure-auth
+     *  fixtures can mount these routes without a page store. */
+    pagesFor?: (tenant: string) => PagesStore,
 ): void {
     // Product contract includes explicit preflight operations for these routes.
     app.options('/api/auth/login', async (c) => {
@@ -181,22 +187,37 @@ export function registerAuthCompatUnauthRoutes(
         c.header('Set-Cookie', CLEAR_COOKIE);
         return c.json({ message: 'Logged out successfully' });
     });
-    // POST /api/auth/signup — community-local account + workspace identity.
+    // POST /api/auth/signup — cloud self-serve provisioning (A-25): ONE request
+    // creates the tenant (plan='free', status='active'), the owner account, and
+    // the published homepage — the workspace is LIVE at <slug>.<zone> when this
+    // returns. No infra, no projects table (plan correction 3): rows only.
+    // Validation order (product parity + plan pin): slug grammar/reserved (400,
+    // validate_slug messages verbatim) → slug collision (409) → email
+    // collision (409). Every failure after the tenant INSERT compensates by
+    // removing the tenant + any created user (the product wraps this in one
+    // transaction; the compat surface best-efforts the same guarantee).
     app.post('/api/auth/signup', async (c) => {
         const input = await c.req.json().catch(() => null);
         const parsed = zSignupRequest.safeParse(input);
         if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
         if (!cloudMode) return c.json({ detail: 'Signup only available in cloud mode' }, 400);
         const email = parsed.data.email.trim().toLowerCase();
-        const tenantSlug = parsed.data.slug.trim().toLowerCase();
-        if ((await userStoreFor('_default').findByEmailAnyTenant(email)).length > 0) {
-            return c.json({ detail: 'An account with this email already exists' }, 409);
-        }
+        // Validate the RAW slug FIRST (product parity: 'Newco' bounces with the
+        // lowercase message rather than silently normalizing), THEN canonicalize
+        // for storage/lookups (tenants are lowercase).
+        const rawSlug = parsed.data.slug.trim();
+        const slugProblem = slugError(rawSlug);
+        if (slugProblem) return c.json({ detail: slugProblem }, 400);
+        const tenantSlug = rawSlug.toLowerCase();
         if (await tenants.tenantExists(tenantSlug)) {
             return c.json({ detail: `Slug '${tenantSlug}' is already taken` }, 409);
         }
+        if ((await userStoreFor('_default').findByEmailAnyTenant(email)).length > 0) {
+            return c.json({ detail: 'An account with this email already exists' }, 409);
+        }
         const timestamp = now();
         await tenants.createTenant(tenantSlug, parsed.data.workspace_name, timestamp);
+        await tenants.updateTenant(tenantSlug, { plan: 'free', status: 'active' });
         let user;
         try {
             user = await userStoreFor(tenantSlug).createUser({
@@ -207,7 +228,17 @@ export function registerAuthCompatUnauthRoutes(
                 tenantSlug,
                 now: timestamp,
             });
+            // The live homepage (product: the default project's index page).
+            // Idempotent and always published — the serving plane gates on it.
+            await pagesFor?.(tenantSlug).ensureHomepage(timestamp);
         } catch (error) {
+            // Compensate: drop the partial workspace. Users first (their
+            // tenant_slug would otherwise orphan), then the tenant row.
+            try {
+                for (const u of await userStoreFor(tenantSlug).findByEmailAnyTenant(email)) {
+                    await userStoreFor(tenantSlug).deleteUser(u.id);
+                }
+            } catch { /* best-effort */ }
             await tenants.deleteTenant(tenantSlug);
             throw error;
         }
@@ -217,12 +248,17 @@ export function registerAuthCompatUnauthRoutes(
             tenant: { id: tenantSlug, slug: tenantSlug, name: parsed.data.workspace_name },
         });
     });
-    // GET /api/auth/check-slug/{slug}
+    // GET /api/auth/check-slug/{slug} — availability probe for the signup form.
+    // Invalid slugs surface the SAME product validate_slug message the signup
+    // would reject them with, so the form's live check never lies.
     app.get('/api/auth/check-slug/:slug', async (c) => {
         const parsed = zAuthenticationCheckSlugPath.safeParse({ slug: c.req.param('slug') });
         if (!parsed.success) return c.json(fastApiValidationError('path', { slug: c.req.param('slug') }, parsed.error.issues), 422);
         if (!cloudMode) return c.json({ detail: 'Not available in self-host mode' }, 400);
-        const slug = parsed.data.slug.trim().toLowerCase();
+        const rawSlug = parsed.data.slug.trim();
+        const slugProblem = slugError(rawSlug);
+        if (slugProblem) return c.json({ detail: slugProblem }, 400);
+        const slug = rawSlug.toLowerCase();
         return c.json({ available: !await tenants.tenantExists(slug), slug });
     });
     // POST /api/auth/forgot-password — opaque/non-enumerating response. A host
@@ -397,7 +433,7 @@ export function registerAuthCompatAuthedRoutes(
     app.get('/api/auth/me', (c) => {
         const auth = requireValidAuth(c);
         if (!auth) return c.json({ detail: 'Not authenticated' }, 401);
-        const { u } = auth;
+        const { u, tenantSlug } = auth;
         return c.json({
             user: {
                 id: u.id,
@@ -407,8 +443,10 @@ export function registerAuthCompatAuthedRoutes(
                 username: null,
                 created_at: '',
                 updated_at: '',
-                tenant_id: null,
-                tenant_slug: null,
+                // A-25 (plan correction 7): the cloud console's TenantInfo reads
+                // these. The principal's OWN tenant only — never a probe target.
+                tenant_id: tenantSlug ?? null,
+                tenant_slug: tenantSlug ?? null,
             },
             message: null,
             tenant: null,

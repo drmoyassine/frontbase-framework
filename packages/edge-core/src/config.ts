@@ -28,8 +28,10 @@ export interface EngineConfig {
     licenseKey?: string;
     /** Runtime label surfaced in the system template context. */
     nodeEnv: string;
-    /** Favicon lookup (was the storage-layer coupling — the only render-path impurity). */
-    resolveFaviconUrl: () => Promise<string>;
+    /** Favicon lookup (was the storage-layer coupling — the only render-path impurity).
+     *  A-25: the raw Request is optional so cloud hosts resolve the favicon per
+     *  HOST TENANT; existing no-arg resolvers stay valid. */
+    resolveFaviconUrl: (request?: Request) => Promise<string>;
     /** Session→user resolution (was the auth-provider coupling). Hosts wire edge-infra here. */
     resolveUser: (request: Request, tenantSlug?: string) => Promise<UserContext | null>;
     /**

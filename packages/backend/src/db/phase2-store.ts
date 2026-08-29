@@ -7,6 +7,7 @@
  */
 import type { DbRunner } from '@frontbase/edge-infra';
 import { noopCipher, type SecretCipher } from './secret-cipher.js';
+import { catalogPlanLimits, tenantPlanId } from '../compat/plans/catalog.js';
 
 // ---- Types ----
 export interface WorkflowInput {
@@ -541,6 +542,14 @@ export class Phase2Store {
         const plan = await this.getActivePlan();
         if (plan?.limits) {
             try { return JSON.parse(String(plan.limits)); } catch { /* fall through */ }
+        }
+        // 3. A-25 cloud: the `_global` catalog row for the tenant's `tenants.plan`
+        // (signup assigns 'free'). Only fires when the column is set — NULL
+        // (self-host) stays unlimited, which test/plan-limits.mjs pins.
+        const planId = await tenantPlanId(this.runner, this.tenant).catch(() => null);
+        if (planId) {
+            const catalog = await catalogPlanLimits(this.runner, planId).catch(() => null);
+            if (catalog) return catalog;
         }
         return null;
     }

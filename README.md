@@ -99,6 +99,26 @@ On Cloudflare, none of these are required — the D1 binding is the default. On 
 a half-configured set fails the deploy naming the missing variable. Precedence and the
 honest SQLite-dialect limit: [docs/DECISIONS.md](docs/DECISIONS.md) (A-24).
 
+### Cloud multi-tenant hosting (A-25)
+
+The same worker also runs the managed cloud: public self-serve signup, site building in
+the console, and each site live at `<slug>.frontbase.dev`. Opt-in via the deploy mode —
+self-host behavior is byte-identical when it's unset:
+
+```bash
+export RESEND_API_KEY=...            # password-reset email (env only, never a CLI flag)
+export CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=...   # Custom Domains attach
+pnpm run deploy:cf-full -- --mode cloud --base-domain frontbase.dev \
+  --app-name frontbase-cloud --admin-email owner@example.com --admin-password '…'
+```
+
+That stages both console builds (self-host + cloud `/admin`), boots the worker in cloud
+mode via `wrangler deploy --var` (never wrangler.toml), attaches `app.<zone>` + `*.<zone>`
+as Workers Custom Domains, and gates the deploy on both console artifacts. Free tier only:
+counts/flags are gated by the `_global` plan catalog; per-tenant engines, custom domains,
+and billing are Phase 5. Full contract, honest limits, and the dashboard fallback:
+[docs/cloud-free-tier.md](docs/cloud-free-tier.md).
+
 ### Starting your own project
 
 ```bash
@@ -156,6 +176,12 @@ pnpm test:mutation    # mutation-proof gates — proves the security/correctness
 ```
 
 See [docs/testing-plan.md](docs/testing-plan.md) for the automated / credential-gated / manual test tiers.
+
+**Windows + OneDrive checkouts**: OneDrive holds transient handles on directories mid-sync,
+so `pnpm console:build`'s staged wipe can die with `EPERM` (the script retries with
+backoff, but a stale `wrangler dev` from an earlier session can pin
+`examples/cf-full/console-dist` for good). If the stage fails: kill leftover
+`workerd.exe` / `wrangler dev` processes, then re-run the build.
 
 Extraction source: the production renderer in the private Frontbase product repo. Parity is enforced by the [golden corpus](golden-corpus/README.md) — byte-identical HTML against snapshots of the production renderer, including the real Frontbase homepage validated in Phase 0 (spike evidence: `docs/spike/README.md`, `docs/spike-cf/README.md`; spike *code* remains in the product repo).
 

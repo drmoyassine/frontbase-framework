@@ -19,6 +19,10 @@
  *   5. Deploy-grade checks (requireHydrate) fail closed without a staged
  *      hydration bundle — the Worker serves console-dist/react/ via Static
  *      Assets, and a missing bundle is a dead /static/react/hydrate.js.
+ *   6. The cloud console stage (A-25, console-dist/admin/) gets the SAME
+ *      shell↔disk/SW/hygiene scrutiny whenever it is present — a stale cloud
+ *      stage must fail a default validation too — and requireCloud makes it
+ *      mandatory (cloud-mode deploys).
  *
  * Every case runs against a throwaway fixture tree — the real repo is never touched.
  */
@@ -63,6 +67,28 @@ function fixture(opts = {}) {
         writeFileSync(join(consoleDist, '.assetsignore'), opts.assetsIgnore ?? '**/*.map\n');
     }
     if (opts.strayPin) writeFileSync(join(consoleDist, 'CONSOLE_PIN'), '{}');
+    // A-25: an optional staged cloud console (console-dist/admin/, vite
+    // --mode cloud, base /admin/) with the same shape as the self-host stage.
+    if (opts.stagedCloud) {
+        const cloudRoot = join(consoleDist, 'admin');
+        const cloudAssets = join(cloudRoot, 'assets');
+        mkdirSync(cloudAssets, { recursive: true });
+        const cloudBase = opts.cloudBase ?? '/admin/';
+        const cloudRefs = opts.cloudNoRefs ? [] : [
+            `<script type="module" src="${cloudBase}assets/${opts.cloudShellJs ?? JS}"></script>`,
+            `<link rel="stylesheet" href="${cloudBase}assets/${opts.cloudShellCss ?? CSS}">`,
+        ];
+        writeFileSync(join(cloudRoot, 'index.html'),
+            `<!doctype html><html><head>${cloudRefs.join('')}</head><body><div id="root"></div></body></html>`);
+        writeFileSync(join(cloudAssets, JS), 'console.log(1)');
+        writeFileSync(join(cloudAssets, CSS), 'body{}');
+        if (opts.cloudExtraDisk) writeFileSync(join(cloudAssets, opts.cloudExtraDisk), 'console.log("orphan")');
+        if (opts.cloudSourcemap) writeFileSync(join(cloudAssets, JS.replace(/\.js$/, '.js.map')), '{"version":3}');
+        if (!opts.cloudNoBuilderSw) {
+            writeFileSync(join(cloudRoot, 'builder-sw.js'),
+                opts.cloudSmallBuilderSw ? 'console.log(1)' : `/* builder SW */\n${'x'.repeat(12 * 1024)}`);
+        }
+    }
     // The staged hydration bundle: hydrate.js + one hashed entry css (the same
     // shape the cf-full build stages from packages/hydrate/dist).
     if (opts.stagedHydrate) {
@@ -116,6 +142,23 @@ expect('deploy-grade check without a staged hydration bundle → RED', fixture()
 expect('deploy-grade check with the hydration bundle staged → GREEN', fixture({ stagedHydrate: true }), { requireHydrate: true }, true);
 expect('hydrated stage without hydrate.js (css only) → RED', fixture({ stagedHydrate: 'css-only' }), { requireHydrate: true }, false);
 expect('hydrated stage without entry css (js only) → RED', fixture({ stagedHydrate: 'js-only' }), { requireHydrate: true }, false);
+
+// 6. Cloud console stage (A-25): same scrutiny as the self-host stage,
+//    automatically whenever present; mandatory under requireCloud.
+expect('staged cloud console passes a default validation', fixture({ stagedCloud: true }), {}, true);
+expect('cloud console absent + no requireCloud → no opinion', fixture(), {}, true);
+expect('requireCloud without a cloud stage → RED', fixture(), { requireCloud: true }, false);
+expect('requireCloud with the cloud stage staged → GREEN', fixture({ stagedCloud: true }), { requireCloud: true }, true);
+expect('cloud shell naming a bundle that is not staged → RED', fixture({ stagedCloud: true, cloudShellJs: 'stale-9999.js' }), {}, false);
+expect('staged cloud asset the cloud shell never references → RED', fixture({ stagedCloud: true, cloudExtraDisk: 'orphan-777.js' }), {}, false);
+expect('cloud shell with no asset references → RED', fixture({ stagedCloud: true, cloudNoRefs: true }), {}, false);
+expect('cloud stage missing builder-sw.js → RED', fixture({ stagedCloud: true, cloudNoBuilderSw: true }), {}, false);
+expect('cloud stage undersized builder-sw.js → RED', fixture({ stagedCloud: true, cloudSmallBuilderSw: true }), {}, false);
+expect('cloud shell built with the self-host base → RED', fixture({ stagedCloud: true, cloudBase: '/frontbase-admin/' }), {}, false);
+expect('sourcemap staged under cloud assets/ → RED', fixture({ stagedCloud: true, cloudSourcemap: true }), {}, false);
+// A broken cloud stage must poison even a deploy-grade self-host validation —
+// both stages ship in the same wrangler upload.
+expect('broken cloud stage fails a requireHydrate validation → RED', fixture({ stagedCloud: true, cloudShellJs: 'stale-9999.js', stagedHydrate: true }), { requireHydrate: true }, false);
 
 console.log(failures === 0 ? '\nconsole artifact: PASS ✅' : `\nconsole artifact: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

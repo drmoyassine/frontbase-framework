@@ -6,6 +6,7 @@ import type { DbRunner } from '@frontbase/edge-infra';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
 import { zApiKeyCreate, zApiKeyUpdate } from '../zod.gen.js';
+import { apiAccessBlocked, planLimitsForCaller, principalRole } from '../plans/gates.js';
 
 async function sha256Hex(value: string): Promise<string> {
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
@@ -116,6 +117,15 @@ export function registerEdgeMiscRoutes(
         }
         if (!['user', 'management', 'all'].includes(parsed.data.scope)) {
             return c.json({ detail: 'invalid_scope' }, 400);
+        }
+        // A-25 WA5 plan gate: `api_access`. The edge keys minted here are
+        // programmatic engine credentials — a paid-tier feature (product parity:
+        // the free plan ships api_access False). Inert without effective
+        // limits; the master_admin bypass applies.
+        if (apiAccessBlocked(await planLimitsForCaller(
+            (t) => p2(t).getEffectiveLimits(), c.get('tenant'), principalRole(c),
+        ))) {
+            return c.json({ detail: 'API access is not available on your current plan' }, 403);
         }
         const id = crypto.randomUUID();
         // Match product: secrets.token_hex(24) = 48 hex chars

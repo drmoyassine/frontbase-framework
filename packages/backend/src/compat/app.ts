@@ -34,9 +34,11 @@ import { registerAuthFormsRoutes } from './routes/auth-forms.js';
 import { registerWorkflowsRoutes } from './routes/workflows.js';
 import { registerActionsRoutes } from './routes/actions.js';
 import { registerAuthCompatUnauthRoutes, registerAuthCompatAuthedRoutes } from './routes/auth-compat.js';
+import { authRateLimitMiddleware } from './rate-limit-store.js';
 import { registerEdgeEnginesRoutes } from './routes/edge-engines.js';
 import { registerTenantsRoutes } from './routes/tenants.js';
 import { registerAdminPlansRoutes } from './routes/admin-plans.js';
+import { registerAdminTenantsRoutes } from './routes/admin-tenants.js';
 import type { SystemEdgeDescriptor, SystemResourcesDescriptor } from './routes/edge-shapes.js';
 import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
 import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
@@ -78,6 +80,11 @@ export interface CreateCompatAppDeps {
     /** Match the product deployment mode. Cloud-only signup and slug checks are
      * disabled by default because the framework worker is self-hosted. */
     cloudMode?: boolean;
+    /** Map the store namespace for the /api/admin/plans* router. Cloud-only:
+     * the app-host PlansManager must manage the `_global` catalog — the rows
+     * `tenants.plan` resolves against (A-25 WA5) — not the operator tenant's
+     * own namespace. Default identity keeps self-host byte-identical. */
+    adminPlansTenant?: (tenant: string) => string;
     /** Guarded provider HTTP seam. Production defaults to global fetch; tests can
      * inject a deterministic provider double without replacing route logic. */
     externalFetch?: CompatFetch;
@@ -110,6 +117,10 @@ export interface CreateCompatAppDeps {
      *  Read paths only — the pages save routes strip the enrichment back off,
      *  so nothing enriched persists into stored layouts. */
     enrichPageLayout?: (tenant: string, layout: unknown) => Promise<unknown>;
+    /** A-25 cloud: tenant for ANONYMOUS calls to the public data routes — the
+     *  request's host tenant. Absent (self-host) ⇒ the `_root` fallback.
+     *  Authenticated callers always use their principal's tenant first. */
+    requestTenant?: (req: Request) => Promise<string | undefined>;
 }
 
 /** Build a per-tenant store cache. */
@@ -239,6 +250,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         app, runner, syncStoreFor, kvFor, externalFetch, now,
         (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId),
         resolvePrincipal,
+        deps.requestTenant,
     );
     // 3. Queue receive (framework-only): the queue provider's redelivery target.
     //    UNAUTHENTICATED by design — authentication is the inbound signature /
@@ -250,6 +262,15 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         now,
         runRagIndex: (tenant, bucketId) => runRagIndex(ragDeps, tenant, bucketId),
     });
+    // A-25 WA6 — cloud-only per-IP rate limiting on the unauthenticated auth
+    // ops (signup 5/hour, login 10/15min, forgot 5/hour). Durable D1 counters
+    // behind the CF-16 guard; synthetic `rl-anon` principal keyed on
+    // CF-Connecting-IP (no header ⇒ shared 'unknown' bucket — documented
+    // degradation). Mounted BEFORE the auth routes so invalid attempts count.
+    if (deps.cloudMode) {
+        app.use('/api/auth/*', authRateLimitMiddleware(runner, { now: () => Date.parse(now()) }));
+    }
+
     // 3. UNAUTHENTICATED auth ops only (login/logout/signup/forgot/reset/invite/
     //    accept/check-slug) — a user can't present a session to log in. The
     //    AUTHENTICATED auth ops (me + security console) are registered AFTER the
@@ -266,6 +287,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
             now,
             deps.passwordResetDelivery,
             deps.cloudMode ?? false,
+            pagesFor,
         );
     }
 
@@ -339,11 +361,18 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
             return user !== null;
         }
         : undefined;
-    registerSettingsRoutes(app, kvFor, invites, secretCipher, externalFetch, now, userExists);
+    registerSettingsRoutes(app, kvFor, invites, secretCipher, externalFetch, now, userExists,
+        // A-25 WA5 cloud plan gates: the team_members invite cap. No limits ⇒ inert.
+        deps.userStoreFor ? (t) => phase2For(t).getEffectiveLimits() : undefined,
+        deps.userStoreFor ? (t) => deps.userStoreFor!(t).countUsers() : undefined);
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
     registerSecurityEventsRoutes(app, secEventsFor);
-    registerPagesRoutes(app, pagesFor, now, runner, deps.enrichPageLayout);
+    // A-25 WA5: the cloud plan gates ride the same accessor getEffectiveLimits
+    // exposes (settings → per-tenant plan → `_global` catalog row). Null
+    // limits (self-host) leaves every gate inert.
+    registerPagesRoutes(app, pagesFor, now, runner, deps.enrichPageLayout,
+        (t) => phase2For(t).getEffectiveLimits());
     registerDatabaseRoutes(
         app, runner, syncStoreFor, kvFor, externalFetch, now,
         (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId),
@@ -408,14 +437,21 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         });
     registerEdgeMiscRoutes(app, runner, phase2For, secretCipher, now);
     // Tenant self-surface (the console's plan signal) — framework-only op set.
-    registerTenantsRoutes(app, phase2For, now);
+    // A-25 WA5: the runner unlocks the catalog-plan + usage resolution.
+    registerTenantsRoutes(app, phase2For, now, runner);
     // Master-admin plan editor (product /api/admin/plans) — the operator-facing
-    // unlock for plan-gated features like engine_imports.
-    registerAdminPlansRoutes(app, phase2For, now);
+    // unlock for plan-gated features like engine_imports. CLOUD: the router is
+    // re-namespaced onto the `_global` catalog (A-25 WA5) so the app-host
+    // PlansManager edits the rows `tenants.plan` enforcement resolves against;
+    // default identity = self-host byte-identical.
+    registerAdminPlansRoutes(app, (t) => phase2For(deps.adminPlansTenant?.(t) ?? t), now);
     // Wave 5 — workspace agent
     registerAgentCompatRoutes(app, runner, kvFor, secretCipher, externalFetch);
     // Work A — DB-Synchronizer (/api/sync/*)
     registerSyncRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now, sheetsAddonUrl, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId));
+    // A-25 WA4 — platform-admin tenant management (master_admin per handler).
+    // Registered before routedOps() so the six ops count as implemented.
+    registerAdminTenantsRoutes(app, runner, tenants, deps.userStoreFor, pagesFor, now);
 
     // Derive what is implemented from the routes just registered, rather than
     // from a parallel hand-maintained list. Everything else in the contract gets a

@@ -11,6 +11,7 @@ import type { Phase2Store } from '../../db/phase2-store.js';
 import type { KeyValueStore } from '../store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
 import { serializeEngine, buildSystemEngine, isSystemEngine, batchResult, testResult, type SystemEdgeDescriptor } from './edge-shapes.js';
+import { engineCapExceeded, planLimitsForCaller, principalRole, type PlanLimits } from '../plans/gates.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -92,6 +93,23 @@ export function registerEdgeEnginesRoutes(
     const importTierError = async (tenant: string): Promise<{ detail: string } | null> => {
         const limits = await p2(tenant).getEffectiveLimits();
         return limits?.engine_imports === true ? null : { detail: 'Engine import requires an upgraded plan' };
+    };
+    // A-25 WA5 — the `edge_engines` COUNT cap (product LIMIT_REGISTRY 'count'
+    // kind): creating one MORE stored engine must stay within the plan. Free
+    // tier allows 0, so every stored-engine create is refused while the system
+    // edge (synthesized, never stored) stays available. Unlike the import flag
+    // this honors the master_admin bypass and is inert without effective
+    // limits (self-host ⇒ no catalog ⇒ unlimited).
+    const engineCapError = async (c: {
+        get(name: 'principal'): unknown;
+        get(name: 'tenant'): string;
+    }): Promise<{ detail: string; limit: string } | null> => {
+        const limits: PlanLimits | null = await planLimitsForCaller(
+            (t) => p2(t).getEffectiveLimits(), c.get('tenant'), principalRole(c),
+        );
+        if (!limits) return null;
+        const stored = await p2(c.get('tenant')).listEdgeResources('engine');
+        return engineCapExceeded(limits, stored.length) ? { detail: 'limit_exceeded', limit: 'edge_engines' } : null;
     };
     // Generate a system key matching product's Fernet format (184 characters)
     // Product uses Fernet tokens: 137 bytes encoded as URL-safe base64 with padding
@@ -191,6 +209,8 @@ export function registerEdgeEnginesRoutes(
             const denied = await importTierError(c.get('tenant'));
             if (denied) return c.json(denied, 403);
         }
+        const capDenied = await engineCapError(c);
+        if (capDenied) return c.json(capDenied, 402);
         // Build config from body, inject system_key, store as JSON (parity with product)
         const rawConfig = configFromBody(b) as Record<string, unknown>;
         injectSystemKey(rawConfig);
@@ -230,6 +250,8 @@ export function registerEdgeEnginesRoutes(
         if (!provider || provider.kind !== 'provider') {
             return c.json({ detail: 'Provider account not found' }, 400);
         }
+        const capDenied = await engineCapError(c);
+        if (capDenied) return c.json(capDenied, 402);
         const id = crypto.randomUUID();
         // Inject system_key into config for deployed engine
         const config = { system_key: generateSystemKey() };

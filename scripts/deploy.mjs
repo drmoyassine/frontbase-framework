@@ -29,6 +29,29 @@
  *   pnpm run deploy:cf-full -- --admin-email you@x.com --admin-password 'pw' --d1-database-id <uuid>
  *   pnpm run deploy:cf-full -- --dry-run                                    # build only, no wrangler calls
  *
+ * CLOUD multi-tenant deploy (A-25 WA9) — the app.frontbase.dev platform:
+ *   pnpm run deploy:cf-full -- --mode cloud --base-domain frontbase.dev \
+ *       --app-name frontbase-cloud --admin-email … --admin-password …
+ *
+ *   --mode cloud            stages BOTH console trees (self-host + cloud /admin),
+ *                           gates the deploy on both, and boots the worker in
+ *                           cloud mode via `wrangler deploy --var`
+ *                           FRONTBASE_DEPLOYMENT_MODE/FRONTBASE_BASE_DOMAIN
+ *                           (non-secret, argv-safe — never wrangler.toml).
+ *   --base-domain <zone>    REQUIRED with --mode cloud: the zone tenant hosts
+ *                           are served under (e.g. frontbase.dev).
+ *   --attach-domains /      attach `app.<zone>` + `*.<zone>` as Workers Custom
+ *   --no-domains            Domains via the CF API (default: attach). Needs
+ *                           CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in the
+ *                           environment (token scopes: Zone Read, Workers
+ *                           Scripts Edit, Workers Routes Edit). Missing creds →
+ *                           loud skip + dashboard instructions; API refusal →
+ *                           deploy fails with the per-hostname remediation.
+ *   RESEND_API_KEY          password-reset email delivery. Read from the
+ *                           ENVIRONMENT only — never a CLI flag (secret values
+ *                           must not sit in shell history / process lists).
+ *                           Absent → resets stay non-enumerating no-ops.
+ *
  * --app-name is the app's identity: it drives BOTH the Cloudflare Worker name
  * and the D1 database name. Cloudflare (not the local wrangler.toml) is asked
  * whether an app under that name already exists — if so this REDEPLOYS it in
@@ -63,11 +86,41 @@ const opts = {
     sessionSecret: value('session-secret'),
     appName: value('app-name'),
     d1DatabaseId: value('d1-database-id'),
+    // A-25 cloud multi-tenant deploy:
+    mode: value('mode'),
+    baseDomain: value('base-domain'),
+    attachDomains: flag('no-domains') ? false : true, // default: attach
 };
+const cloud = opts.mode === 'cloud';
+if (opts.mode && !cloud) {
+    console.error(`✗ unknown --mode "${opts.mode}" (only "cloud" is defined; omit the flag for self-host).`);
+    process.exit(1);
+}
+if (cloud && !opts.baseDomain) {
+    console.error('✗ --mode cloud requires --base-domain <zone> (e.g. frontbase.dev) — host-tenant resolution has nothing to strip without it.');
+    process.exit(1);
+}
+// Secret from the ENVIRONMENT only — never argv (shell history / process list).
+const resendApiKey = process.env.RESEND_API_KEY;
+if (cloud && !resendApiKey) {
+    console.error('⚠ RESEND_API_KEY is not set — password-reset email will be a non-enumerating no-op. Export it and re-run to enable email delivery.');
+}
 
 // ---- 0. Build cf-full (its own build.mjs — inlines SW + admin SPA, and
 //         stages the console + hydration artifacts this deploy serves via
-//         Static Assets) ----
+//         Static Assets). CLOUD: the console build runs FIRST with --cloud so
+//         BOTH console trees exist (console-dist/frontbase-admin + admin);
+//         cf-full's build.mjs then re-stages react over the fresh stage. ----
+if (cloud) {
+    console.log('→ building BOTH console stages (community + cloud /admin)...');
+    const consoleBuild = spawnSync('node', [join('scripts', 'build-console.mjs'), '--cloud'], {
+        cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32',
+    });
+    if (consoleBuild.status !== 0) {
+        console.error('\n✗ console build failed — fix the error above before deploying.');
+        process.exit(1);
+    }
+}
 console.log('→ building examples/cf-full (engine + console + admin console, one artifact)...');
 const build = spawnSync('node', ['build.mjs'], { cwd: cfFullDir, stdio: 'inherit' });
 if (build.status !== 0) {
@@ -81,9 +134,11 @@ if (build.status !== 0) {
 //         state) means nothing needs to be staged in advance and the gate can
 //         never bless stale bytes — it judges the tree that is about to ship.
 //         Without these files /frontbase-admin deploys as a shell pointing at
-//         404s and /static/react/hydrate.js 404s (dead client hydration). ----
+//         404s and /static/react/hydrate.js 404s (dead client hydration).
+//         CLOUD: the gate additionally demands the /admin stage and hydrate —
+//         a cloud deploy without the platform console is a broken platform. ----
 try {
-    validateStagedConsole(repoRoot, { requireHydrate: true });
+    validateStagedConsole(repoRoot, cloud ? { requireHydrate: true, requireCloud: true } : { requireHydrate: true });
 } catch (error) {
     console.error(`✗ ${error.message}`);
     console.error('\n✗ refusing to deploy without a verified console artifact.');
@@ -127,6 +182,8 @@ const result = await deployCommand('.', {
     sessionSecret: opts.sessionSecret,
     appName: opts.appName,
     d1DatabaseId: opts.d1DatabaseId,
+    // A-25 cloud mode: the --var pair + the env-sourced Resend secret.
+    ...(cloud ? { cloud: true, baseDomain: opts.baseDomain, resendApiKey } : {}),
     onSetupLink: (link) => { setupLink = link; },
 });
 
@@ -140,6 +197,41 @@ console.log(`\n✓ ${result.summary}`);
 if (result.details?.secretsSet?.length) {
     console.log(`  secrets set: ${result.details.secretsSet.join(', ')}`);
 }
+
+// ---- 4. CLOUD: attach the app host + wildcard as Workers Custom Domains
+//         (idempotent upsert — re-running the deploy is safe). The API token
+//         travels only inside attachWorkerDomains (Authorization header) and is
+//         never printed. ----
+if (cloud) {
+    const zone = opts.baseDomain;
+    if (!opts.attachDomains) {
+        console.log(`\n⚠ domains NOT attached (--no-domains): attach app.${zone} and *.${zone} as Workers Custom Domains in the dashboard, or re-run without --no-domains.`);
+    } else if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
+        console.log(`\n⚠ CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are not set — domains were NOT attached.`);
+        console.log(`  The worker is live on its workers.dev origin, but ${zone} tenants will not resolve.`);
+        console.log(`  Fix: export both, then re-run this command (attach is an idempotent upsert), or attach`);
+        console.log(`  app.${zone} and *.${zone} as Workers Custom Domains in the Cloudflare dashboard.`);
+    } else {
+        console.log(`\n→ attaching Custom Domains on ${zone} (app host + wildcard)...`);
+        const { attachWorkerDomains, cloudHostnames } = await import(pathToFileURL(join(compilerCliDir, 'cloud-domains.js')).href);
+        const domains = await attachWorkerDomains(
+            process.env.CLOUDFLARE_ACCOUNT_ID,
+            process.env.CLOUDFLARE_API_TOKEN,
+            zone,
+            cloudHostnames(zone),
+            result.details.appName,
+        );
+        if (domains.attached.length) console.log(`  attached: ${domains.attached.join(', ')}`);
+        if (domains.failed.length) {
+            console.error(`\n✗ ${domains.failed.length} of ${domains.attached.length + domains.failed.length} domain attaches refused:`);
+            for (const f of domains.failed) console.error(`  ${f.hostname}: ${f.detail}`);
+            console.error(`  Fallback: attach them as Workers Custom Domains in the Cloudflare dashboard`);
+            console.error(`  (Wildcards may need a zone route + proxied wildcard DNS record on some plans).`);
+            process.exit(1);
+        }
+    }
+}
+
 if (result.details?.workerUrl) {
     console.log(`  worker URL: ${result.details.workerUrl}`);
     if (setupLink) {
@@ -147,9 +239,13 @@ if (result.details?.workerUrl) {
         console.log(`  ${setupLink.url}`);
         console.log(`  expires: ${setupLink.expiresAt}`);
         console.log('  The claim is removed from browser history when the setup page opens.');
+    } else if (cloud) {
+        console.log(`  next steps: visit ${result.details.workerUrl}/admin to log in to the platform console`);
     } else {
         console.log(`  next steps: visit ${result.details.workerUrl}/frontbase-admin to log in`);
     }
+} else if (cloud) {
+    console.log('  visit your worker URL, then /admin to log in to the platform console.');
 } else {
     console.log('  visit your worker URL, then /frontbase-admin to log in.');
 }
