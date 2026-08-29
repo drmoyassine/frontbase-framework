@@ -2,11 +2,11 @@
 
 Frontbase is an open-source, edge-native platform for building and deploying AI-powered apps with no code — a visual builder whose published sites, admin console, and API all ship as **one deployable worker**.
 
-**Chimera (Universal eSSR)** — one Hono engine, three render environments, byte-identical output. No hydration mismatches. No server/client render drift. No separate backend to stand up. Public pages render server-side (edge or service worker) from the *same* engine that runs the visual builder's canvas. The worker measures **488.8 KB min+gzip** (Cloudflare free-tier limit: 1 MB); the admin console is served through Workers Static Assets.
+**Universal SSR** — one Hono engine, three render environments, byte-identical output. No hydration mismatches. No server/client render drift. No separate backend to stand up. Public pages render server-side (edge or service worker) from the *same* engine that runs the visual builder's canvas. The worker measures **488.8 KB min+gzip** (Cloudflare free-tier limit: 1 MB); the admin console is served through Workers Static Assets.
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-> **Status**: framework-only consolidation is complete through Phase 4 (decisions [A-22 → A-25](docs/DECISIONS.md)) — the admin console, the page-hydration bundle, the product-compatible API surface (334-op contract), the four-host deploy matrix, and the cloud multi-tenant free tier are all framework-owned source. Nothing is fetched from a product repo. The remaining open gate is real-deploy/owner acceptance (host credentials are operator-side). See [Milestones](docs/MILESTONES.md).
+> **Status**: actively developed (pre-1.0). The admin console, the hydration runtime, the admin API, the four-host deploy matrix, and the managed-cloud free tier are all maintained in this repository — no code is fetched from outside at build or run time.
 
 ---
 
@@ -32,8 +32,6 @@ Every nav area is implemented end-to-end, not a placeholder:
 | **File Storage** | R2/S3-compatible upload (base64 JSON or multipart) and presigned URLs |
 | **Plans** | Tiered limits (e.g. pages/users) enforced server-side, not just displayed |
 | **Users / Tenants** | Multi-tenant provisioning, role management, secret variables encrypted at rest |
-
-Full deviations/follow-ups ledger — what shipped, what's deferred, and why: [docs/phase-3-consolidated-delivery.md](docs/phase-3-consolidated-delivery.md).
 
 ## Quick start (self-host on Cloudflare)
 
@@ -104,9 +102,9 @@ The Vercel/Deno scripts read secrets from the environment (or stdin JSON with `-
 | `APP_DB_D1_ACCOUNT_ID` + `APP_DB_D1_DATABASE_ID` + `CLOUDFLARE_API_TOKEN` | D1 over REST — Cloudflare's D1 from any host |
 | `ADMIN_EMAIL` + `ADMIN_PASSWORD` | seed the first admin (instead of a setup link) |
 
-On Cloudflare, none of these are required — the D1 binding is the default. On Vercel/Deno, a half-configured set fails the deploy naming the missing variable. Precedence and the honest SQLite-dialect limit: [docs/DECISIONS.md](docs/DECISIONS.md) (A-24).
+On Cloudflare, none of these are required — the D1 binding is the default. On Vercel/Deno, a half-configured set fails the deploy naming the missing variable. Precedence and the honest SQLite-dialect limit: [docs/guides/self-host-docker.md](docs/guides/self-host-docker.md).
 
-## Cloud multi-tenant hosting (A-25)
+## Cloud multi-tenant hosting
 
 The same worker also runs the managed cloud: public self-serve signup, site building in the console, and each site live at `<slug>.frontbase.dev`. Opt in via the deploy mode — self-host behavior is byte-identical when it's unset:
 
@@ -121,9 +119,9 @@ That stages both console builds (self-host + cloud `/admin`), boots the worker i
 
 ## Architecture
 
-Canonical spec: [docs/CHIMERA-ARCHITECTURE.md](docs/CHIMERA-ARCHITECTURE.md) · stack detail: [docs/STACK.md](docs/STACK.md).
+Canonical spec: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · stack detail: [docs/STACK.md](docs/STACK.md).
 
-One Hono engine (`@frontbase/edge-core`), three render environments — edge, service worker, builder canvas — with a unified priority router, eSSR renderer, and DataProvider DI. Published pages ship zero React. Bundle facts (measured by `deploy:cf-full -- --dry-run`):
+One Hono engine (`@frontbase/edge-core`), three render environments — edge, service worker, builder canvas — with a unified priority router, SSR renderer, and DataProvider DI. Published pages ship zero React. Bundle facts (measured by `deploy:cf-full -- --dry-run`):
 
 | Artifact | Size (min+gzip) | Limit |
 |---|---|---|
@@ -134,40 +132,39 @@ One Hono engine (`@frontbase/edge-core`), three render environments — edge, se
 Three non-negotiable principles:
 
 1. **Single-edge deployment** — the whole CMS, including the admin console, ships as one worker; the console's hashed bundles are served as static assets and never enter the script budget.
-2. **Universal eSSR** — one engine, three hosts, byte-identical output. No React on published pages; no hydration drift.
+2. **Universal SSR** — one engine, three hosts, byte-identical output. No React on published pages; no hydration drift.
 3. **RULE 1 (no-leak)** — server code (drivers, secrets, auth) never enters a browser bundle. Enforced by a no-leak gate + mutation proof in every package with a browser-facing build.
 
 ## Packages
 
 | Package | Role |
 |---|---|
-| [`@frontbase/edge-core`](packages/edge-core) | The Chimera Engine — unified priority router, eSSR renderer, DataProvider DI, workflow engine, client behaviors runtime, SW primitives |
+| [`@frontbase/edge-core`](packages/edge-core) | The engine — unified priority router, SSR renderer, DataProvider DI, workflow engine, client behaviors runtime, SW primitives |
 | [`@frontbase/compiler`](packages/compiler) | Zod schema extraction → manifests/types, query registrar, SW bundle emitter, CLI (`init`/`check`/`lint`/`simulate`/`deploy`) |
 | [`@frontbase/ui-components`](packages/ui-components) | The single set of isomorphic page components (no React on published pages) |
 | [`@frontbase/edge-infra`](packages/edge-infra) | Concrete DataProviders (SQLite/D1/Turso/Supabase/Postgres), Edge Data Proxy auth, cache/queue/vault, CF + Supabase resource provisioning. Server-only |
-| [`@frontbase/backend`](packages/backend) | The in-worker product-compatible `/api/*` backend plus retained first-run setup/health routes. Server-only |
+| [`@frontbase/backend`](packages/backend) | The in-worker tenant-scoped `/api/*` admin API plus retained first-run setup/health routes. Server-only |
 | [`@frontbase/builder`](packages/builder) | The visual canvas primitives — drag/drop model, preview↔published parity. Browser-only; never imports server code |
-| [`@frontbase/console`](packages/console) | The admin console SPA — self-host build at `/frontbase-admin`, cloud build at `/admin` (A-22) |
-| [`@frontbase/hydrate`](packages/hydrate) | The client hydration runtime for published pages (A-23) |
+| [`@frontbase/console`](packages/console) | The admin console SPA — self-host build at `/frontbase-admin`, cloud build at `/admin` |
+| [`@frontbase/hydrate`](packages/hydrate) | The client hydration runtime for published pages |
 | [`@frontbase/admin-console`](packages/admin-console) | The setup-only React SPA served at `/setup`. Browser-only |
 
 ## Documentation
 
-**Start here**: [docs/CHIMERA-ARCHITECTURE.md](docs/CHIMERA-ARCHITECTURE.md) — the engine, the three render environments, and the size budgets.
+**Start here**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — the engine, the three render environments, and the size budgets.
 
 | Doc | What it covers |
 |---|---|
 | [docs/guides/console-and-deploy.md](docs/guides/console-and-deploy.md) | Deploying the full CMS (flags, secrets, setup wizard) |
 | [docs/guides/self-host-docker.md](docs/guides/self-host-docker.md) | The single-container Docker path |
 | [docs/guides/cli.md](docs/guides/cli.md) | The `@frontbase/compiler` CLI |
-| [docs/cloud-free-tier.md](docs/cloud-free-tier.md) | The managed-cloud mode (A-25): opt-in, plans, limits |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | The decision log (A-1 … A-25) — *why* the framework is shaped this way |
-| [docs/MILESTONES.md](docs/MILESTONES.md) | Implementation status per milestone |
+| [docs/cloud-free-tier.md](docs/cloud-free-tier.md) | The managed-cloud mode: opt-in, plans, limits |
 | [docs/testing-plan.md](docs/testing-plan.md) | Automated / credential-gated / manual test tiers |
 | [docs/PACKAGE-STRUCTURE.md](docs/PACKAGE-STRUCTURE.md) | Package boundaries and dependency rules |
-| [golden-corpus/README.md](golden-corpus/README.md) | Byte-identical render parity enforcement |
+| [golden-corpus/README.md](golden-corpus/README.md) | The byte-identical rendering regression corpus |
 | [docs/guides/authoring-components.md](docs/guides/authoring-components.md) · [docs/guides/agent-authoring.md](docs/guides/agent-authoring.md) | Writing page components; agent-oriented authoring |
 | [docs/guides/infra-providers.md](docs/guides/infra-providers.md) · [docs/guides/supabase-setup.md](docs/guides/supabase-setup.md) | Infra providers; Supabase provisioning |
+| [docs/history/README.md](docs/history/README.md) | Project history — decision log, milestones, delivery reports |
 
 ## Development
 
@@ -185,11 +182,9 @@ See [docs/testing-plan.md](docs/testing-plan.md) for the automated / credential-
 
 **Windows + OneDrive checkouts**: OneDrive holds transient handles on directories mid-sync, so `pnpm console:build`'s staged wipe can die with `EPERM` (the script retries with backoff, but a stale `wrangler dev` from an earlier session can pin `examples/cf-full/console-dist` for good). If the stage fails: kill leftover `workerd.exe` / `wrangler dev` processes, then re-run the build.
 
-Extraction provenance: the production renderer was extracted from the private Frontbase product repo; parity against it is enforced by the golden corpus — byte-identical HTML against snapshots of the production renderer, including the real Frontbase homepage validated in Phase 0 (spike evidence: `docs/spike/README.md`, `docs/spike-cf/README.md`).
-
 ## Honest limits
 
-What the framework does **not** yet do (tracked, not hidden): per-tenant edge engines, managed/BYO custom domains, and Stripe billing are future phases (the [A-25](docs/DECISIONS.md) boundary); the AppSumo redemption-code system is planned but not built; the cloud console's agent-analytics widgets degrade to error states (their `admin_agents_*` contract ops are stubs); plan limits are enforced counts, not usage metering.
+What the framework does **not** yet do (tracked, not hidden): per-tenant edge engines, managed/BYO custom domains, and Stripe billing are future phases; the redemption-code system (e.g. for marketplace launches) is planned but not built; the cloud console's agent-analytics widgets degrade to error states (their `admin_agents_*` API ops are stubs); plan limits are enforced counts, not usage metering.
 
 ## License
 

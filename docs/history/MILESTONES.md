@@ -187,7 +187,7 @@ Guiding principles (all milestones serve these):
 ### Milestone 1.5: Integration & Testing
 
 **Target**: Weeks 9–10
-**Status**: 🟢 **COMPLETE (2026-07-09)** — Phase 1 sign-off. Full report: [`docs/delivery/phase1-delivery-report.md`](../delivery/phase1-delivery-report.md).
+**Status**: 🟢 **COMPLETE (2026-07-09)** — Phase 1 sign-off. Full report: [`docs/delivery/phase1-delivery-report.md`](./delivery/phase1-delivery-report.md).
 
 **Acceptance Criteria**:
 - [x] E2E green on edge path and SW path — byte-parity both (records data included), `test/e2e-parity.mjs`.
@@ -488,8 +488,8 @@ npx @frontbase/compiler deploy                    # ship it
 **Owner**: Architecture Team
 **Next Review**: After Phase 3 M3.0 (hardening) completion
 **Related Documents**:
-- [CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md)
-- [PACKAGE-STRUCTURE.md](./PACKAGE-STRUCTURE.md)
+- [CHIMERA-ARCHITECTURE.md](../ARCHITECTURE.md)
+- [PACKAGE-STRUCTURE.md](../PACKAGE-STRUCTURE.md)
 - [OPENQUESTIONS.md](./OPENQUESTIONS.md)
 - [DECISIONS.md](./DECISIONS.md)
 - Sprint plans: [Phase 1](./plans/phase1-compiler-cli-sprint.md) · [Phase 2](./plans/phase2-cms-sprint.md) · [Phase 3](./plans/phase3-agent-experience-sprint.md)

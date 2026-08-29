@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document describes the modular split of the Frontbase Framework under the **Chimera architecture** ([CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md) is canonical for rendering/deployment; [PACKAGE-STRUCTURE.md](./PACKAGE-STRUCTURE.md) for package contents).
+This document describes the modular split of the Frontbase Framework under the **Chimera architecture** ([CHIMERA-ARCHITECTURE.md](../ARCHITECTURE.md) is canonical for rendering/deployment; [PACKAGE-STRUCTURE.md](../PACKAGE-STRUCTURE.md) for package contents).
 
 Two layers, six packages:
 
@@ -171,7 +171,7 @@ npx @frontbase/compiler init my-app --with-infra
 **Status**: Approved
 **Owner**: Architecture Team
 **Related Documents**:
-- [CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md) (canonical)
-- [PACKAGE-STRUCTURE.md](./PACKAGE-STRUCTURE.md)
+- [CHIMERA-ARCHITECTURE.md](../ARCHITECTURE.md) (canonical)
+- [PACKAGE-STRUCTURE.md](../PACKAGE-STRUCTURE.md)
 - [DECISIONS.md](./DECISIONS.md)
-- [STACK.md](./STACK.md)
+- [STACK.md](../STACK.md)

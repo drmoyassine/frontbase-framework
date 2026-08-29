@@ -1,6 +1,6 @@
 # Frontbase Framework — Testing Plan
 
-**Date:** 2026-07-13 · **Scope:** everything in `frontbase-framework` as it stands today (Phases 0-2 + the CF-18 admin-console arc: 3a/3b/3c + two follow-up sprints).
+**Date:** 2026-07-13 (updated 2026-08-29) · **Scope:** everything in `frontbase-framework` as it stands today.
 
 This is a practical, run-it-yourself plan across three tiers: **automated** (what CI already proves), **credential-gated** (automated but needs your accounts/keys), and **manual** (things only a human clicking through the app can verify). Each section says exactly what to run and what "pass" looks like.
 
@@ -14,7 +14,7 @@ This is the bulk of the safety net. Every package has its own `test` + `test:mut
 
 ```bash
 pnpm -r build          # must be clean before testing (tests import from dist/)
-pnpm -r test            # ~57+ suites across 6 packages
+pnpm -r test            # ~57+ suites across the workspace packages
 pnpm -r test:mutation   # proves the security/correctness gates fire RED when broken
 ```
 
@@ -29,10 +29,10 @@ That's expected, not a gap.
 
 | Package | What it proves | Command |
 |---|---|---|
-| `edge-core` | Engine renders byte-identically edge/proxy/draft; workflow engine executes real graphs; tenant scoping on the eSSR path | `pnpm --filter @frontbase/edge-core test` |
+| `edge-core` | Engine renders byte-identically edge/proxy/draft; workflow engine executes real graphs; tenant scoping on the SSR path | `pnpm --filter @frontbase/edge-core test` |
 | `compiler` | Zod extraction, manifest assembly, CLI (`init`/`check`/`lint`/`simulate`/`deploy`), SW emitter, agent success-rate (18/18), perf budgets | `pnpm --filter @frontbase/compiler test` |
 | `edge-infra` | DbRunner contract (SQLite/D1/Turso/Supabase/Postgres), auth, vault crypto, cache, rate limiting, cross-tenant isolation, no-leak | `pnpm --filter @frontbase/edge-infra test` |
-| `backend` | Console API, default-deny auth, migrations (v1-v6), publish pipeline, Phase 2/3 features (automations/storage/provisioning/data-studio/plans/limits/durable execution) | `pnpm --filter @frontbase/backend test` |
+| `backend` | Console API, default-deny auth, migrations, publish pipeline, automations/storage/provisioning/data-studio/plans/limits/durable execution | `pnpm --filter @frontbase/backend test` |
 | `builder` | Canvas model, drag/drop perf (<100ms), preview↔published parity, no-leak | `pnpm --filter @frontbase/builder test` |
 | `admin-console` | SPA bundle carries no server code (RULE 1) | `pnpm --filter @frontbase/admin-console test` |
 
@@ -42,7 +42,7 @@ That's expected, not a gap.
 pnpm -r test:mutation
 ```
 
-Each package deliberately breaks one of its own security/correctness guarantees and asserts the test suite catches it (goes RED). **Expect:** every gate reports "N/N gates proven RED on break." Currently: backend 8/8, builder 1/1, admin-console 1/1, plus edge-core/compiler/edge-infra gates. If a gate reports fewer proofs than expected, a test regressed into a false-positive — that's a real bug in the test, not the feature.
+Each package deliberately breaks one of its own security/correctness guarantees and asserts the test suite catches it (goes RED). **Expect:** every gate reports "N/N gates proven RED on break." If a gate reports fewer proofs than expected, a test regressed into a false-positive — that's a real bug in the test, not the feature.
 
 ### 1.4 Single-worker deploy artifact (size + composition)
 
@@ -52,7 +52,7 @@ pnpm --filter @frontbase/example-cf-full smoke
 
 Builds the entire CMS (engine + console + admin SPA + D1 runner) into one `dist/worker.mjs`, then boots it in-process against an in-memory SQLite runner and exercises: public page render, `/sw.js` handover, `/console` SPA shell, health check, default-deny on `/me`, login → session cookie, wrong-password rejection, idempotent re-seed.
 
-**Expect:** `10/10 checks PASS`, worker size **< 1024 KB gzip** (currently ~390 KB). This is your pre-deploy gate — if this fails, don't deploy.
+**Expect:** `10/10 checks PASS`, worker size **< 1024 KB gzip** (currently ~489 KB). This is your pre-deploy gate — if this fails, don't deploy.
 
 ---
 
@@ -85,7 +85,7 @@ pnpm --filter @frontbase/backend test        # postgres-datasource.mjs, supabase
 ```
 
 **What this proves beyond Tier 1:**
-- The identical parameterized tenant-isolation suite (A-17) passes on real D1/Turso/Postgres, not just SQLite.
+- The identical parameterized tenant-isolation suite passes on real D1/Turso/Postgres, not just SQLite.
 - `supabaseRunner` executes real SQL over PostgREST.
 - The F5c Supabase provisioner does real `CREATE SCHEMA` / `DROP SCHEMA CASCADE` DDL and cleans up after itself — **check your Supabase project afterward for orphaned `frontbase_*` schemas** if a run crashes mid-test (best-effort cleanup, not guaranteed under a hard kill).
 - `storage-live.mjs` needs `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY` / `STORAGE_ENDPOINT` / `STORAGE_BUCKET` (R2 or S3) — round-trips real bytes, then deletes.
@@ -145,7 +145,7 @@ wrangler d1 create frontbase-full-cms
 
 wrangler secret put SESSION_SECRET      # any random 32+ byte string
 wrangler secret put ADMIN_EMAIL         # e.g. you@example.com
-wrangler secret put ADMIN_PASSWORD      # a real password — this logs you into /console
+wrangler secret put ADMIN_PASSWORD      # a real password — this logs you into /frontbase-admin
 
 wrangler deploy
 ```
@@ -158,18 +158,18 @@ wrangler deploy
 |---|---|---|
 | 1 | Public page renders | `https://<your-worker>.workers.dev/` |
 | 2 | SW handover — nav to a second page, confirm `rendered-by=service-worker` in devtools/response, no edge round-trip on subsequent navs | any internal link |
-| 3 | Login | `/console` → log in with `ADMIN_EMAIL`/`ADMIN_PASSWORD` |
-| 4 | Dashboard loads | `/console/dashboard` |
-| 5 | **Pages** — visual WYSIWYG canvas: add a component from the palette, edit its properties, see the live preview update, save draft, publish, confirm the published page renders the change | `/console/pages` |
-| 6 | **Tenants** — create a new tenant, confirm a temp password is shown once | `/console/tenants` |
-| 7 | **Automations** — React Flow canvas: drag a node, connect an edge, save, run, watch execution history flip to `completed` | `/console/automations` |
-| 8 | **Edge Resources** — create a `database`/`cache`/`vector` resource (needs CF creds configured on the worker — `provisioning` deploy config), confirm status flips to `provisioned`, delete it, confirm de-provisioning (check the CF dashboard that the KV/D1/Vectorize resource is actually gone, not just the row) | `/console/edge` |
-| 9 | **File Storage** — create a bucket, upload a file (needs `storage` deploy config for real bytes), download it back, delete it, confirm the object is gone from R2 (not just the console list) | `/console/storage` |
-| 10 | **Settings/Variables** — add a secret variable, confirm it's masked in the list, confirm a plaintext setting is not | `/console/settings` |
-| 11 | **App Users** — invite a user, confirm the temp password shows once, change their role, delete them | `/console/users` |
-| 12 | **Data Studio** — connect a datasource (sqlite/turso/d1/supabase/postgres), browse its tables, run a read-only `SELECT`, confirm a non-SELECT query is rejected | `/console/data-studio` |
-| 13 | **Plans** — create a plan with a `pages` limit of 1, publish a 2nd new page as a tenant on that plan, confirm it's rejected with a clear "limit reached" message (not a raw 500) | `/console/plans` + `/console/pages` |
-| 14 | Logout works and re-visiting `/console` redirects to login | `/console` |
+| 3 | Login | `/frontbase-admin` → log in with `ADMIN_EMAIL`/`ADMIN_PASSWORD` |
+| 4 | Dashboard loads | `/frontbase-admin/dashboard` |
+| 5 | **Pages** — visual WYSIWYG canvas: add a component from the palette, edit its properties, see the live preview update, save draft, publish, confirm the published page renders the change | `/frontbase-admin/pages` |
+| 6 | **Tenants** — create a new tenant, confirm a temp password is shown once | `/frontbase-admin/tenants` |
+| 7 | **Automations** — React Flow canvas: drag a node, connect an edge, save, run, watch execution history flip to `completed` | `/frontbase-admin/automations` |
+| 8 | **Edge Resources** — create a `database`/`cache`/`vector` resource (needs CF creds configured on the worker — `provisioning` deploy config), confirm status flips to `provisioned`, delete it, confirm de-provisioning (check the CF dashboard that the KV/D1/Vectorize resource is actually gone, not just the row) | `/frontbase-admin/edge` |
+| 9 | **File Storage** — create a bucket, upload a file (needs `storage` deploy config for real bytes), download it back, delete it, confirm the object is gone from R2 (not just the console list) | `/frontbase-admin/storage` |
+| 10 | **Settings/Variables** — add a secret variable, confirm it's masked in the list, confirm a plaintext setting is not | `/frontbase-admin/settings` |
+| 11 | **App Users** — invite a user, confirm the temp password shows once, change their role, delete them | `/frontbase-admin/users` |
+| 12 | **Data Studio** — connect a datasource (sqlite/turso/d1/supabase/postgres), browse its tables, run a read-only `SELECT`, confirm a non-SELECT query is rejected | `/frontbase-admin/data-studio` |
+| 13 | **Plans** — create a plan with a `pages` limit of 1, publish a 2nd new page as a tenant on that plan, confirm it's rejected with a clear "limit reached" message (not a raw 500) | `/frontbase-admin/plans` + `/frontbase-admin/pages` |
+| 14 | Logout works and re-visiting `/frontbase-admin` redirects to login | `/frontbase-admin` |
 
 ### 3.4 Durability check (optional, harder to trigger manually)
 
@@ -196,5 +196,5 @@ The console is React SPA — no framework-level responsive/browser-matrix testin
 
 - **No load/perf testing** beyond the micro-benchmarks already in `compiler/test/perf.mjs` (extractor p50, render p50) and the builder canvas-perf test. No concurrency/soak testing exists.
 - **No cross-browser automated testing** (Playwright/Cypress etc. — not present in this repo).
-- **F8b Stripe billing** is deferred/unbuilt — nothing to test yet.
+- **Stripe billing** is deferred/unbuilt — nothing to test yet.
 - **The QStash redelivery path is thin by design** (§ durable-execution architecture notes) — it proves enqueue, not a full crash-and-recover cycle against a live worker; `durable-execution.mjs` (Tier 1) is the actual correctness proof for recovery logic.

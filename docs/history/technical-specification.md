@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document provides the technical specification for implementing the Frontbase Framework Evolution under the **Chimera architecture** ([CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md) is canonical): detailed component designs, compiler/CLI specifications, the engine runtime (DataProvider DI, Edge Data Proxy, service-worker host), and agent integration points.
+This document provides the technical specification for implementing the Frontbase Framework Evolution under the **Chimera architecture** ([CHIMERA-ARCHITECTURE.md](../ARCHITECTURE.md) is canonical): detailed component designs, compiler/CLI specifications, the engine runtime (DataProvider DI, Edge Data Proxy, service-worker host), and agent integration points.
 
 ---
 

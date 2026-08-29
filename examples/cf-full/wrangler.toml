@@ -3,8 +3,8 @@ main = "dist/worker.mjs"
 compatibility_date = "2026-01-01"
 no_bundle = true
 
-# Product community console. Exact files under /frontbase-admin/* are served
-# before the Worker; API, eSSR, SW, and unmatched SPA navigation routes fall
+# Admin console. Exact files under /frontbase-admin/* are served
+# before the Worker; API, SSR, SW, and unmatched SPA navigation routes fall
 # through to the Worker. The staged directory mirrors the URL prefix.
 [assets]
 directory = "./console-dist"

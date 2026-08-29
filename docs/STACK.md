@@ -1,20 +1,21 @@
-# Frontbase Framework: Technology Stack (Chimera)
+# Frontbase: Technology Stack
 
-**Version**: 2.0
-**Status**: Current — updated for the Chimera (Universal eSSR) architecture
-**Last Updated**: 2026-07-06
+**Status**: Current
+**Last Updated**: 2026-08-29
 
 ---
 
 ## Overview
 
-This document details the technology stack for the Frontbase Framework Evolution under the **Chimera architecture** ([CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md)): one Hono engine rendering isomorphic JSX in three environments (cloud edge, browser service worker, builder canvas), the whole CMS deployed as a single edge worker.
+This document details the technology stack of the Frontbase framework under the
+universal SSR architecture ([ARCHITECTURE.md](./ARCHITECTURE.md)): one Hono
+engine rendering isomorphic JSX in three environments (cloud edge, browser
+service worker, builder canvas), the whole CMS deployed as a single worker.
 
-**Headline stack changes under the Chimera (Decision A-12/A-13):**
-- Published pages are rendered by **Hono + isomorphic JSX → HTML strings** (with LiquidJS filters). They ship **no React** — interactivity comes from the ~10 KB client behaviors runtime.
-- **React is confined to the builder application shell** (`@frontbase/builder`): panels, layers tree, dialogs. Page previews are iframes rendered by the engine in a local service worker.
-- New toolchain members: **Service Worker runtime** (engine host), **SQLite WASM** (builder draft DB), **Drizzle ORM** (console persistence), **Workers Static Assets** (builder SPA hosting).
-- The Python/FastAPI backend is out of framework scope (legacy product only).
+**Headline stack facts:**
+- Published pages are rendered by **Hono + isomorphic JSX → HTML strings** (with LiquidJS filters). They ship **no React** — interactivity comes from the small client behaviors runtime (plus the optional `@frontbase/hydrate` runtime).
+- **React is confined to the console and builder shells** (`@frontbase/console`, `@frontbase/builder`): panels, layers tree, dialogs. Page previews are iframes rendered by the engine in a local service worker.
+- Key toolchain members: **service worker runtime** (engine host), **SQLite WASM** (builder draft DB), **Drizzle ORM** (console persistence), **Workers Static Assets** (console SPA hosting).
 
 ---
 
@@ -44,17 +45,17 @@ This document details the technology stack for the Frontbase Framework Evolution
 | **TypeScript** | 5.3+ | Type Safety | Zod integration, better DX for agents |
 | **SQLite WASM** | Latest | Builder local draft database | Zero-latency design-time data; `localDraftProvider` for the engine |
 
-**Why one Hono/JSX renderer instead of React SSR?** (Decision A-12)
-- One implementation per component — eliminates the current React-plus-string-renderer duplication
+**Why one Hono/JSX renderer instead of React SSR?**
+- One implementation per component — no parallel renderer to keep in sync
 - Byte-identical output across edge, service worker, and builder preview (exact WYSIWYG)
-- No hydration → no hydration-mismatch bug class, ~10 KB client JS instead of ~140 KB React
-- Small enough to run inside a service worker (the defining Chimera capability)
+- No hydration by default → no hydration-mismatch bug class, ~10 KB client JS instead of ~140 KB React
+- Small enough to run inside a service worker
 
 ---
 
 ### State Management
 
-> **Chimera scope note**: the React state layers below apply to the **builder shell** (`@frontbase/builder`) only. Published pages have no React state — their state lives in engine render context (server/SW side) and the declarative behaviors runtime (client side).
+> **Scope note**: the React state layers below apply to the **console and builder shells** (`@frontbase/console`, `@frontbase/builder`) only. Published pages have no React state — their state lives in engine render context (server/SW side) and the declarative behaviors runtime (client side).
 
 | Technology | Current Version | Proposed Evolution | Rationale |
 |-------------|-----------------|-------------------|-----------|
@@ -114,17 +115,15 @@ const { register, handleSubmit } = useForm({
 **Routing Architecture (single worker)**:
 ```typescript
 // Priority-mounted unified router (@frontbase/edge-core):
-// 1. /sw.js + /assets/*      → engine bundle + static assets
-// 2. /frontbase-admin/*      → pinned product console static assets
-// 3. /api/*                  → product-compatible, tenant-scoped backend
-// 4. /api/console/health     → retained liveness
-// 5. /api/console/setup/*    → retained first-admin bootstrap
-// 6. other /api/console/*    → 410 Gone
-// 7. /api/data/:queryId      → Edge Data Proxy (registered queries)
-// 8. *                       → published pages (eSSR catch-all)
-
-// Development adds file-system routes (dev-only):
-src/dev-routes/dashboard.tsx → /dev/dashboard
+// 1. /sw.js + /static/*          → engine bundle + static assets
+// 2. /frontbase-admin/*          → admin console static assets (cloud build: /admin)
+// 3. /setup                      → first-admin setup SPA
+// 4. /api/*                      → tenant-scoped admin API (incl. /api/data/:queryId —
+//                                  the Edge Data Proxy, registered queries only)
+// 5. /api/console/health         → retained liveness
+// 6. /api/console/setup/*        → retained first-admin bootstrap
+// 7. other /api/console/*        → 410 Gone
+// 8. *                           → published pages (SSR catch-all)
 ```
 
 ---
@@ -161,27 +160,20 @@ src/dev-routes/dashboard.tsx → /dev/dashboard
 
 ### Authentication
 
-| Technology | Version | Purpose | Rationale |
-|-------------|---------|---------|-----------|
-| **Supabase Auth** | Latest | Primary Auth Provider | Multi-tenant, Row-Level Security, OAuth |
-| **JWT** | (Standard) | Token Format | Stateless, edge-compatible |
+| Technology | Purpose | Rationale |
+|-------------|---------|-----------|
+| **PBKDF2** (Web Crypto) | Password hashing | Edge-compatible, no native deps |
+| **HS256 session JWT** (cookie) | Stateless sessions | Signed with `SESSION_SECRET`; edge-compatible |
+| **Default-deny middleware** | Route protection | Every admin route requires an authenticated, tenant-scoped principal |
+| **Capability tokens** | Setup links, password resets, API keys | Expiring, single-use where it matters; API keys stored hashed |
 
 **Authentication Flow**:
 ```typescript
-// 1. Client: Supabase Auth SDK
-const { data, error } = await supabase.auth.signInWithPassword({
-  email,
-  password,
-});
-
-// 2. Backend: JWT validation
-const user = await verifyJWT(token);
-
-// 3. Edge: Tenant context injection
-app.use('*', tenantContextMiddleware);
-
-// 4. Database: Row-Level Security
-// All queries scoped to tenant_id
+// 1. Client: POST /api/auth/login { email, password }
+// 2. Backend: PBKDF2 verify → sign HS256 session JWT → Set-Cookie (HttpOnly, SameSite=Strict)
+// 3. Every /api/* request: default-deny middleware resolves the principal
+//    (invalid/absent session ⇒ 401) and binds the tenant scope
+// 4. All queries run scoped to the principal's tenant
 ```
 
 ---
@@ -260,12 +252,15 @@ TSX Source → AST Parser → Schema Extractor → Code Generator → SSR/Client
 ```
 frontbase/
 ├── packages/
-│   ├── @frontbase/edge-core/      # The Chimera Engine — router, eSSR renderer, DataProvider DI, workflows, behaviors, SW primitives
-│   ├── @frontbase/compiler/       # Vite plugin, schema extraction, query registrar, SW bundle emitter, CLI
+│   ├── @frontbase/edge-core/      # The engine — router, SSR renderer, DataProvider DI, workflows, behaviors, SW primitives
+│   ├── @frontbase/compiler/       # Vite plugin, schema extraction, query registrar, worker composer, SW bundle emitter, CLI
 │   ├── @frontbase/ui-components/  # THE single set of isomorphic page components + auth primitives (no React)
-│   ├── @frontbase/builder/        # React shell, SQLite WASM draft DB, canvas↔SW preview bridge, visual editors
-│   ├── @frontbase/edge-infra/     # Data providers, Edge Data Proxy, caches, queues, vault, auth gates, sync
-│   └── @frontbase/backend/        # Product-compatible API + retained setup/health + Drizzle
+│   ├── @frontbase/builder/        # Canvas primitives, SQLite WASM draft DB, canvas↔SW preview bridge
+│   ├── @frontbase/edge-infra/     # Data providers, Edge Data Proxy auth, caches, queues, vault, provisioning
+│   ├── @frontbase/backend/        # The tenant-scoped /api/* admin API + retained setup/health + Drizzle
+│   ├── @frontbase/console/        # The admin console SPA (self-host /frontbase-admin, cloud /admin)
+│   ├── @frontbase/hydrate/        # Client hydration runtime for published pages
+│   └── @frontbase/admin-console/  # The setup-only SPA at /setup
 ```
 
 ### Package Manager
@@ -355,35 +350,35 @@ test('user can create page', async ({ page }) => {
 
 ## Deployment Targets
 
-**Principle #1: the entire CMS deploys as ONE edge worker.** `npx @frontbase/compiler deploy` packages the engine, product-compatible API, data proxy, and static assets into a single deployment.
+**Principle #1: the entire CMS deploys as ONE worker.** `npx @frontbase/compiler deploy` packages the engine, admin API, data proxy, and static assets into a single deployment.
 
-### Edge Platforms (Single-Worker) — the A-24 matrix
+### Supported Hosts (single worker on each)
 
 One Hono app, per-host entries, a pluggable state DB. The full-CMS worker binds only what its host
 declares; every OTHER platform service resolves over HTTPS from `env` (Upstash cache, QStash
-queues, vector stores, OpenAI-compatible embedding — see the edge-resources wiring).
+queues, vector stores, OpenAI-compatible embedding — see [system-services.md](./system-services.md)).
 
 | Platform | Status | Host surface | App DB (state) — default in bold |
 |----------|--------|--------------|----------------------------------|
-| **Cloudflare Workers** | ✅ Primary (A-24) | Static Assets binding + ASSETS shell routes; `ctx.waitUntil` | **D1 binding** · D1-over-REST · Turso · `file:`/`:memory:` |
-| **Vercel Edge** | ✅ A-24 (live gate pending) | No bindings — static matrix in `vercel.json`, function owns every state/redirect route | **Turso** · D1-over-REST (`APP_DB_D1_*` trio + `CLOUDFLARE_API_TOKEN`) |
-| **Deno Deploy** | ✅ A-24 (live gate pending) | Disk-shim ASSETS over the deployed (read-only) files; `Deno.serve`; no BullMQ (TCP) | **Turso** · D1-over-REST |
-| **Node.js / Docker** | ✅ A-21/A-24 | Disk ASSETS over `console-dist/`; node http server | **`file:/data/app.db`** · Turso · D1-over-REST · `:memory:` |
+| **Cloudflare Workers** | ✅ Primary | Static Assets binding + ASSETS shell routes; `ctx.waitUntil` | **D1 binding** · D1-over-REST · Turso · `file:`/`:memory:` |
+| **Vercel Edge** | ✅ (live-deploy gate pending) | No bindings — static matrix in `vercel.json`, function owns every state/redirect route | **Turso** · D1-over-REST (`APP_DB_D1_*` trio + `CLOUDFLARE_API_TOKEN`) |
+| **Deno Deploy** | ✅ (live-deploy gate pending) | Disk-shim ASSETS over the deployed (read-only) files; `Deno.serve`; no BullMQ (TCP) | **Turso** · D1-over-REST |
+| **Node.js / Docker** | ✅ | Disk ASSETS over `console-dist/`; node http server | **`file:/data/app.db`** · Turso · D1-over-REST · `:memory:` |
 
-**Dialect constraint (honest limit)**: the app-DB menu is SQLite-family by construction — the 19
+**Dialect constraint (honest limit)**: the app-DB menu is SQLite-family by construction — the
 migrations are SQLite DDL with `sqlite_master` introspection. A Postgres/MySQL app DB remains the
-[documented unclosable gap](./unclosable-postgres-mysql-parity.md); Supabase Postgres is a
+[documented limitation](./known-limitation-postgres-mysql.md); Supabase Postgres is a
 *datasource* runner, not an app-DB option. Precedence is `APP_DB_URL` → D1-over-REST trio → host
 default; a half-configured set fails at boot naming the missing variable (never a silent fallback).
 Deno KV is not a cache provider (deliberate no-op, as are cloudflare-KV cache adapters).
 
-**Worker size budget**: full-CMS worker ≈ 482 KB min+gzip on every host (edge bundles share the
-worker's content; the A-24 build gates Vercel at the 4 MB Edge ceiling). Builder SPA and `sw.js`
+**Worker size budget**: full-CMS worker ≈ 488.8 KB min+gzip on every host (edge bundles share the
+worker's content; the Vercel build gates at the 4 MB Edge ceiling). Console SPA and `sw.js`
 are served as static assets (excluded from script limits).
 
 ### The Third "Platform": the Browser Service Worker
 
-The engine also deploys **into every visitor's browser** as the eSSR service worker (< 150 KB min+gzip incl. components), enabling zero-latency navigation, private-page local rendering, and offline mode. Fallback-by-design: browsers without SW support always render from the edge.
+The engine also deploys **into every visitor's browser** as a service worker (~108 KB min+gzip incl. components, inlined at `/sw.js`), enabling zero-latency navigation, private-page local rendering, and offline mode. Fallback-by-design: browsers without SW support always render from the edge.
 
 ### Self-Hosted / Development
 
@@ -543,11 +538,11 @@ docker --version # 20.x+
 
 ## Document Metadata
 
-**Version**: 2.0
-**Status**: Current (Chimera)
+**Status**: Current
 **Owner**: Architecture Team
 **Next Review**: Quarterly or when major stack changes are considered
 
 **Change Log**:
 - 2026-06-29: Initial stack documentation created
-- 2026-07-06: Chimera update — Hono/JSX renderer for all published pages; React confined to builder shell; SW runtime, SQLite WASM, Drizzle, single-worker deployment targets; FastAPI removed from framework scope
+- 2026-07-06: Hono/JSX renderer for all published pages; React confined to console/builder shells; SW runtime, SQLite WASM, Drizzle, single-worker deployment targets
+- 2026-08-29: Refreshed for the four-host deploy matrix, the 9-package workspace, and standard terminology

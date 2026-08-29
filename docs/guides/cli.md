@@ -62,7 +62,7 @@ npx @frontbase/compiler simulate src/manifest.ts --serve --port 3000
 Provider modes: `direct` (edge), `proxy` (SW's HTTP data path), `draft` (in-memory).
 The same page renders byte-identically across all three.
 
-> **`--serve` optional dependency (CF-5).** One-shot `simulate` (render + exit) needs
+> **`--serve` optional dependency.** One-shot `simulate` (render + exit) needs
 > nothing extra. The long-running `--serve` mode starts an HTTP server via
 > [`@hono/node-server`](https://www.npmjs.com/package/@hono/node-server), which is a
 > **peer/optional dep** — it is *not* installed with the compiler. Install it only if
@@ -88,7 +88,7 @@ Budget: < 150 KB min+gzip.
 ## `deploy [path]`
 
 Compose + provision + deploy the single-worker CMS. **This command provisions
-Cloudflare only** (A-24): D1, wrangler secrets, and the one-time setup link.
+Cloudflare only**: D1, wrangler secrets, and the one-time setup link.
 
 ```bash
 npx @frontbase/compiler deploy --dry-run      # compose + routing smoke + size budget; no deploy

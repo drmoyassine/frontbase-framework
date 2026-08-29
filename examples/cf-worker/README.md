@@ -2,7 +2,7 @@
 
 The whole demo CMS as ONE worker, built entirely on `@frontbase/edge-core`
 (no hand-rolled engine — contrast the Phase 0 spike). Proves the package boots
-on all three Chimera hosts: Node (smoke), CF Worker (`dist/worker.mjs`), and the
+on all three hosts: Node (smoke), CF Worker (`dist/worker.mjs`), and the
 browser service worker (inlined `/sw.js`). This is the M1.1 SW-boot criterion.
 
 ```bash

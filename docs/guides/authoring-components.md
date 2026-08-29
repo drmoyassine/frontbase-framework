@@ -6,7 +6,7 @@ function. At build time `@frontbase/compiler` extracts the `Schema` into a manif
 engine renders the component to an HTML string — on the edge, in the browser service
 worker, and in the builder canvas, all from the same code.
 
-> **No React on published pages.** Components render to strings (eSSR). The render
+> **No React on published pages.** Components render to strings (SSR). The render
 > function body is not on the published-page hot path; only the `Schema` is extracted.
 
 ## The convention
@@ -79,7 +79,7 @@ The extractor rebuilds a Zod schema from the manifest and verifies it accepts/re
 exactly what your original schema does. If you see a round-trip mismatch, it's an
 extractor bug — report it.
 
-## Data bindings (Decision A-16)
+## Data bindings
 
 Components declare data via registered queries, authored code-first:
 

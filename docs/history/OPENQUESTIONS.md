@@ -325,6 +325,6 @@ backend (console)                    → Free core, paid multi-tenant/enterprise
 **Owner**: Architecture Team
 **Next Review**: Weekly during Phase 0, bi-weekly during implementation
 **Related Documents**:
-- [CHIMERA-ARCHITECTURE.md](./CHIMERA-ARCHITECTURE.md)
+- [CHIMERA-ARCHITECTURE.md](../ARCHITECTURE.md)
 - [DECISIONS.md](./DECISIONS.md)
 - [MILESTONES.md](./MILESTONES.md)
