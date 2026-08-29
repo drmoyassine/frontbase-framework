@@ -37,10 +37,12 @@ property panels are generated from a compiler `ComponentManifest`.
 ## Deploy (`frontbase deploy`)
 
 Composes engine + console + proxy + builder SW into one CF Worker. The CLI
-provisions **Cloudflare only** — D1, wrangler secrets, the setup link.
-`--target vercel` / `--target deno` are accepted but REFUSE with the supported
-script path (`pnpm run deploy:vercel` / `pnpm run deploy:deno`); the other
-hosts' provisioning is script-owned (see [Deploying to other hosts](#deploying-to-other-hosts-vercel-deno-deploy)).
+provisions **Cloudflare** — D1, wrangler secrets, the setup link.
+`--target vercel` / `--target deno` dispatch to the per-host scripts
+(`pnpm run deploy:vercel` / `pnpm run deploy:deno`) with the same flag surface
+— secrets over stdin, exit code propagated — from inside this repo; outside it
+they refuse honestly. The hosts' provisioning itself stays script-owned
+(see [Deploying to other hosts](#deploying-to-other-hosts-vercel-deno-deploy)).
 
 ```bash
 npx @frontbase/compiler deploy --dry-run   # compose + routing smoke + size budget
