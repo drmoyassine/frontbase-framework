@@ -78,24 +78,69 @@ check('composition is deterministic (same hashes)', res2.worker.hash === res.wor
 
 console.log(`  (worker ${budget.gzipKb.toFixed(1)} KB · sw ${(res.sw.bytesMinGzip / 1024).toFixed(1)} KB gzip)`);
 
-// A-24: live deploys are per-host. `--target vercel|deno` must REFUSE with the
-// supported script path — no wrangler call, no silently-deployed scaffold (the
-// old behavior deployed composeWorker's scaffold with no provisioning/secrets).
+// A-24 (addendum 2026-08-30): `--target vercel|deno` DISPATCHES to the
+// framework repo's per-host scripts — same flag surface, secrets over stdin
+// JSON, exit code propagated. Outside the repo it refuses honestly (the
+// scripts build examples/cf-full and ship with the repo, not the published
+// CLI). The stdin-not-argv assertion below is the mutation gate for the
+// secret-handling rule: swapping stdin for an argv element fails this suite.
 {
-    const { deployCommand } = await import('../dist/cli/deploy.js');
+    const { deployCommand, findHostDeployScript } = await import('../dist/cli/deploy.js');
     let wranglerCalls = 0;
     const runWrangler = async () => { wranglerCalls++; return { code: 0, stdout: '', stderr: '' }; };
-    const refuse = async (target, script) => {
-        wranglerCalls = 0;
-        const r = await deployCommand(project, { target, runWrangler });
-        return r.ok === false
-            && r.summary.includes('provisions Cloudflare only')
-            && r.summary.includes(script)
-            && typeof r.details?.hint === 'string' && r.details.hint.length > 20
-            && wranglerCalls === 0;
-    };
-    check('--target vercel refuses, pointing at deploy:vercel (zero wrangler calls)', await refuse('vercel', 'deploy:vercel'));
-    check('--target deno refuses, pointing at deploy:deno (zero wrangler calls)', await refuse('deno', 'deploy:deno'));
+
+    // The walk-up locator.
+    const vScript = findHostDeployScript(FW, 'vercel');
+    check('locator finds scripts/deploy-vercel.mjs from the repo root', vScript !== null && /deploy-vercel\.mjs$/.test(vScript));
+    check('locator walks up from a package dir', /deploy-deno\.mjs$/.test(findHostDeployScript(join(FW, 'packages', 'compiler'), 'deno') ?? ''));
+    check('locator returns null outside the repo (tmpdir)', findHostDeployScript(tmpdir(), 'vercel') === null);
+
+    // Dispatch: flags map, secrets ride stdin, never argv.
+    let calls = 0;
+    let seen = null;
+    const execHostScript = async (bin, args, opts) => { calls++; seen = { bin, args, stdin: opts.stdin, cwd: opts.cwd }; return { code: 0 }; };
+    const r = await deployCommand('.', {
+        cwd: FW, target: 'vercel', dryRun: true, appName: 'my-app',
+        adminEmail: 'owner@example.com', adminPassword: 'DISPATCH_PW_hunter2', sessionSecret: 'DISPATCH_SS_hunter2',
+        execHostScript, runWrangler,
+    });
+    check('dispatch spawns the per-host script exactly once, via node', calls === 1 && seen?.bin === 'node' && /deploy-vercel\.mjs$/.test(seen?.args?.[0] ?? ''));
+    check("--app-name maps to the script's --project", seen?.args?.includes('--project') === true && seen?.args?.[seen.args.indexOf('--project') + 1] === 'my-app');
+    check('--dry-run forwards (script: build + gates, no host calls)', seen?.args?.includes('--dry-run') === true);
+    check('--secrets-json flag present', seen?.args?.includes('--secrets-json') === true);
+    const stdin = JSON.parse(seen?.stdin ?? '{}');
+    check('secrets ride stdin (email/password/session secret)', stdin.ADMIN_EMAIL === 'owner@example.com' && stdin.ADMIN_PASSWORD === 'DISPATCH_PW_hunter2' && stdin.SESSION_SECRET === 'DISPATCH_SS_hunter2');
+    check('RULE 8: secret VALUES never in argv', !JSON.stringify(seen?.args).includes('DISPATCH_PW_hunter2') && !JSON.stringify(seen?.args).includes('DISPATCH_SS_hunter2') && !JSON.stringify(seen?.args).includes('owner@example.com'));
+    check('exit 0 → ok (dry-run summary names the mode)', r.ok === true && r.summary.includes('finished') && r.summary.includes('dry-run'));
+    check('dispatch makes zero wrangler calls', wranglerCalls === 0);
+    // Dispatch precedes the src/sw.ts + src/worker.ts entry check: the repo
+    // root has neither file, yet the dispatch above ran (calls === 1).
+    check('dispatch precedes the project-entry check (repo root has no src/)', calls === 1);
+
+    // Deno target: --deno-project-id forwards.
+    let denoArgs = null;
+    await deployCommand('.', { cwd: FW, target: 'deno', denoProjectId: 'proj-123', execHostScript: async (b, a) => { denoArgs = a; return { code: 0 }; }, runWrangler });
+    check('--deno-project-id forwards on the deno target', denoArgs?.includes('--deno-project-id') === true && denoArgs[denoArgs.indexOf('--deno-project-id') + 1] === 'proj-123');
+
+    // Nonzero script exit propagates.
+    const rFail = await deployCommand('.', { cwd: FW, target: 'deno', execHostScript: async () => ({ code: 3 }), runWrangler });
+    check('nonzero script exit → ok:false with the code', rFail.ok === false && rFail.summary.includes('exit 3'));
+
+    // CF-only options fail loud (never silently ignored), before any exec.
+    let guarded = 0;
+    const rCf = await deployCommand('.', { cwd: FW, target: 'vercel', d1DatabaseId: 'db-id', execHostScript: async () => { guarded++; return { code: 0 }; }, runWrangler });
+    check('--d1-database-id refused for --target vercel', rCf.ok === false && rCf.summary.includes('--d1-database-id') && guarded === 0);
+
+    // Half an admin seed fails on every target, before any exec.
+    let halfSeeded = 0;
+    const rPair = await deployCommand('.', { cwd: FW, target: 'vercel', adminEmail: 'x@y.z', execHostScript: async () => { halfSeeded++; return { code: 0 }; }, runWrangler });
+    check('--admin-email without --admin-password fails before dispatch', rPair.ok === false && rPair.summary.includes('must be given together') && halfSeeded === 0);
+
+    // Outside the repo: honest refusal, zero host calls of either kind.
+    calls = 0; wranglerCalls = 0;
+    const rOut = await deployCommand(project, { target: 'vercel', runWrangler, execHostScript: async () => { calls++; return { code: 0 }; } });
+    check('outside the repo the dispatch refuses honestly (repo-owned scripts)', rOut.ok === false && rOut.summary.includes('deploy-vercel.mjs') && rOut.summary.includes('framework repo'));
+    check('refusal makes zero wrangler + zero script calls', wranglerCalls === 0 && calls === 0);
 }
 
 console.log(failures === 0 ? '\ndeploy: PASS ✅' : `\ndeploy: FAIL ❌ (${failures})`);

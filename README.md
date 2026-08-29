@@ -79,7 +79,7 @@ Full reference: [docs/guides/console-and-deploy.md](docs/guides/console-and-depl
 
 ## Deploy to four hosts
 
-The same CMS deploys to four hosts. `frontbase deploy` provisions Cloudflare only — the other hosts use their own scripts, which build, gate, and drive the host CLI:
+The same CMS deploys to four hosts. `frontbase deploy` provisions Cloudflare; `--target vercel` / `--target deno` dispatch to the per-host scripts below (from inside this repo) with the same flags — secrets over stdin, exit code propagated. The scripts build, gate, and drive the host CLI:
 
 ```bash
 # Vercel Edge — static matrix in vercel.json, function owns state routes

@@ -1,10 +1,16 @@
 /**
  * frontbase deploy (M2.4.2). Wraps `wrangler deploy` — provisions Cloudflare
- * only (D1 + secrets + setup link); `--target vercel|deno` refuses with the
- * supported per-host script path (A-24). `--dry-run` composes the worker
- * artifact in-process, runs the routing smoke, and reports the size + the
- * /sw.js-no-server-code boundary — the RULE 5 end-to-end gate (a real composed
- * worker, not just unit tests).
+ * (D1 + secrets + setup link). `--target vercel|deno` DISPATCHES to the
+ * framework repo's per-host scripts (scripts/deploy-{vercel,deno}.mjs) with
+ * the same flag surface — `--app-name` becomes the script's `--project`,
+ * secret values ride stdin JSON (`--secrets-json`, never argv), and the
+ * script's exit code is propagated; outside the repo (no script found above
+ * cwd) it refuses honestly, since the scripts build examples/cf-full and
+ * ship with the repo, not the published CLI (A-24, addendum 2026-08-30).
+ * `--dry-run` (Cloudflare target) composes the worker artifact in-process,
+ * runs the routing smoke, and reports the size + the /sw.js-no-server-code
+ * boundary — the RULE 5 end-to-end gate (a real composed worker, not just
+ * unit tests).
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
@@ -20,11 +26,17 @@ import { basename } from 'node:path';
  *  stdin — NEVER as an argv element (which would leak it to the process list). */
 export type WranglerRunner = (args: string[], opts: { cwd: string; stdin?: string }) => Promise<{ code: number; stdout: string; stderr: string }>;
 
+/** Exec the per-host deploy script (the `--target vercel|deno` dispatch).
+ *  Same stdin rule as WranglerRunner: secret VALUES ride stdin, never argv. */
+export type HostScriptRunner = (bin: string, args: string[], opts: { cwd: string; stdin?: string }) => Promise<{ code: number }>;
+
 export interface DeployOptions {
     dryRun?: boolean;
-    /** Live provisioning target. Only 'cloudflare' is wired here (D1
-     *  provisioning + wrangler secrets + setup link); 'vercel'/'deno' refuse
-     *  with the supported deploy-script path (A-24). */
+    /** 'cloudflare' (default) provisions D1 + wrangler secrets + setup link.
+     *  'vercel'/'deno' DISPATCH to the framework repo's per-host deploy
+     *  scripts (same flag surface; secrets over stdin JSON), refusing
+     *  honestly when no script is found above cwd (A-24, addendum
+     *  2026-08-30). */
     target?: 'cloudflare' | 'vercel' | 'deno';
     outDir?: string;
     cwd?: string;
@@ -46,6 +58,9 @@ export interface DeployOptions {
     /** Bind to an EXISTING D1 database instead of creating one — skips
      *  `wrangler d1 create` entirely. Ignored if wrangler.toml already has a binding. */
     d1DatabaseId?: string;
+    /** Deno Deploy project id — forwarded to the deno deploy script
+     *  (`--deno-project-id`). Only meaningful with `--target deno`. */
+    denoProjectId?: string;
     /** Seed the first admin on the deployed CMS (CF-19). Both are required together;
      *  pushed as the ADMIN_EMAIL/ADMIN_PASSWORD wrangler secrets (stdin, never argv). */
     adminEmail?: string;
@@ -76,6 +91,10 @@ export interface DeployOptions {
     resendApiKey?: string;
     /** Test seam: run wrangler. Default spawns the real binary (stdin-fed secrets). */
     runWrangler?: WranglerRunner;
+    /** Test seam: exec the per-host deploy script (the --target vercel|deno
+     *  dispatch). Default spawns `node <script>` (output inherited, secrets
+     *  over stdin). */
+    execHostScript?: HostScriptRunner;
     /** Test seam: generate the session secret. Default: 32 random bytes, base64. */
     genSecret?: () => string;
     /** Test seam: generate the URL-safe setup capability. */
@@ -126,8 +145,103 @@ const defaultRunWrangler = (bin: string): WranglerRunner => (args, { cwd, stdin 
         child.stdin.end();
     });
 
+/** Locate the framework repo's per-host deploy script by walking up from cwd
+ *  (works from the repo root, examples/cf-full, or any package dir). The
+ *  scripts ship with the REPO, not the published CLI package — outside a
+ *  checkout there is nothing to dispatch to, and the caller refuses rather
+ *  than fake a deploy. */
+export function findHostDeployScript(cwd: string, host: 'vercel' | 'deno'): string | null {
+    let dir = resolve(cwd);
+    for (;;) {
+        const candidate = join(dir, 'scripts', `deploy-${host}.mjs`);
+        if (existsSync(candidate)) return candidate;
+        const parent = dirname(dir);
+        if (parent === dir) return null;
+        dir = parent;
+    }
+}
+
+/** Default dispatch runner: spawn `node <script>` with inherited output so the
+ *  script's build/gate/host-CLI output streams live. No shell — `node` is a
+ *  real executable (unlike .cmd shims) and the script path may contain spaces
+ *  (this repo's own path does); an argv array needs no shell quoting. stdin is
+ *  piped because --secrets-json values ride it (never argv); an EPIPE there
+ *  (the script exited before reading stdin, e.g. a failed build) is swallowed
+ *  — the child's exit code is the honest result. */
+const defaultExecHostScript: HostScriptRunner = (bin, args, callOpts) =>
+    new Promise((resolve) => {
+        const child = spawn(bin, args, { cwd: callOpts.cwd, stdio: ['pipe', 'inherit', 'inherit'] });
+        child.stdin.on('error', () => { /* EPIPE: the script exited before reading stdin */ });
+        if (callOpts.stdin !== undefined) child.stdin.write(callOpts.stdin);
+        child.stdin.end();
+        child.on('error', () => resolve({ code: 1 }));
+        child.on('close', (code) => resolve({ code: code ?? 1 }));
+    });
+
 export async function deployCommand(projectPath: string, opts: DeployOptions = {}): Promise<{ ok: boolean; summary: string; details?: Record<string, unknown> }> {
     const cwd = resolve(opts.cwd ?? process.cwd(), projectPath);
+
+    // CF-19: admin seeding needs BOTH email and password (one alone is a
+    // mistake) — on every target (the per-host scripts enforce the same rule).
+    if ((opts.adminEmail ? 1 : 0) + (opts.adminPassword ? 1 : 0) === 1) {
+        return { ok: false, summary: '--admin-email and --admin-password must be given together' };
+    }
+
+    // A-24 (addendum 2026-08-30): per-host targets DISPATCH to the framework
+    // repo's own deploy scripts — same pipeline (build → gates → secrets →
+    // host CLI), same flag surface. The branch sits BEFORE the src/sw.ts +
+    // src/worker.ts check: the scripts build and deploy examples/cf-full
+    // themselves; the invoking project's entries don't take part.
+    if (opts.target === 'vercel' || opts.target === 'deno') {
+        const host = opts.target;
+        // Fail loud on options that belong to another target — never ignore.
+        const unsupported: string[] = [];
+        if (opts.d1DatabaseId) unsupported.push('--d1-database-id (Cloudflare D1 provisioning)');
+        if (opts.setupLink) unsupported.push('--setup-link (edge hosts always emit a setup link when no admin is seeded)');
+        if (opts.setupTtlMinutes !== undefined) unsupported.push('--setup-ttl-minutes (edge hosts fix the setup-link lifetime at 30 minutes)');
+        if (opts.cloud || opts.baseDomain) unsupported.push('cloud mode (Cloudflare multi-tenant only)');
+        if (opts.denoProjectId && host !== 'deno') unsupported.push('--deno-project-id (Deno Deploy only)');
+        if (opts.outDir && opts.outDir !== 'dist') unsupported.push('--out (the per-host scripts stage their own artifacts)');
+        if (unsupported.length) {
+            return { ok: false, summary: `options not supported for --target ${host}: ${unsupported.join('; ')}` };
+        }
+        const script = findHostDeployScript(cwd, host);
+        if (!script) {
+            return {
+                ok: false,
+                summary: `no scripts/deploy-${host}.mjs found above ${cwd} — the per-host deploy scripts ship with the framework repo, not the published CLI`,
+                details: {
+                    hint: `run from inside a frontbase-framework checkout (repo root, examples/cf-full, or any package dir). The script builds examples/cf-full, runs the deploy gates, and drives the host CLI (--dry-run makes no host calls). See docs/guides/console-and-deploy.md.`,
+                },
+            };
+        }
+        // Map the shared flags onto the script's interface. Secret VALUES
+        // never ride argv (world-readable process list): secret-valued flags
+        // are serialized into the stdin JSON the script reads via
+        // --secrets-json.
+        const args: string[] = [];
+        if (opts.dryRun) args.push('--dry-run');
+        if (opts.appName) args.push('--project', opts.appName);
+        if (host === 'deno' && opts.denoProjectId) args.push('--deno-project-id', opts.denoProjectId);
+        const secretsJson: Record<string, string> = {};
+        if (opts.adminEmail) secretsJson.ADMIN_EMAIL = opts.adminEmail;
+        if (opts.adminPassword) secretsJson.ADMIN_PASSWORD = opts.adminPassword;
+        if (opts.adminEmail && opts.adminRole) secretsJson.ADMIN_ROLE = opts.adminRole;
+        if (opts.sessionSecret) secretsJson.SESSION_SECRET = opts.sessionSecret;
+        if (opts.setupToken) secretsJson.SETUP_TOKEN = opts.setupToken;
+        const secretsPayload = Object.keys(secretsJson).length ? JSON.stringify(secretsJson) : undefined;
+        if (secretsPayload !== undefined) args.push('--secrets-json');
+        const runHostScript = opts.execHostScript ?? defaultExecHostScript;
+        const r = await runHostScript('node', [script, ...args], { cwd, stdin: secretsPayload });
+        return {
+            ok: r.code === 0,
+            summary: r.code === 0
+                ? `${host} deploy script finished${opts.dryRun ? ' (dry-run: build + gates, no host calls)' : ''}`
+                : `${host} deploy script failed (exit ${r.code})`,
+            details: { script, args, exitCode: r.code, secretsViaStdin: secretsPayload !== undefined },
+        };
+    }
+
     const swEntry = join(cwd, 'src', 'sw.ts');
     const workerEntry = join(cwd, 'src', 'worker.ts');
     if (!existsSync(swEntry) || !existsSync(workerEntry)) {
@@ -156,10 +270,6 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
         };
     }
 
-    // CF-19: admin seeding needs BOTH email and password (one alone is a mistake).
-    if ((opts.adminEmail ? 1 : 0) + (opts.adminPassword ? 1 : 0) === 1) {
-        return { ok: false, summary: '--admin-email and --admin-password must be given together' };
-    }
     // A-25: cloud mode is meaningless without the base domain — host-tenant
     // resolution would have nothing to strip, so every host would be foreign.
     if (opts.cloud && !opts.baseDomain) {
@@ -168,23 +278,6 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
     if (opts.setupTtlMinutes !== undefined
         && (!Number.isFinite(opts.setupTtlMinutes) || opts.setupTtlMinutes < 5 || opts.setupTtlMinutes > 1440)) {
         return { ok: false, summary: '--setup-ttl-minutes must be between 5 and 1440' };
-    }
-
-    // A-24: live deploys are per-host. THIS command provisions Cloudflare (D1,
-    // wrangler secrets, setup link). Vercel/Deno have their own deploy scripts
-    // (build + gates + host CLI); routing them through here would deploy the
-    // SCAFFOLD artifact with no provisioning and no secrets — the old
-    // `--target deno` behavior — so refuse with the supported path instead.
-    if (opts.target === 'vercel' || opts.target === 'deno') {
-        const host = opts.target;
-        const script = host === 'vercel' ? 'deploy:vercel' : 'deploy:deno';
-        return {
-            ok: false,
-            summary: `frontbase deploy provisions Cloudflare only. For ${host} use: pnpm run ${script}`,
-            details: {
-                hint: `${script} builds the ${host} artifact, runs the deploy gates, and drives the host CLI (--dry-run makes no host calls). See docs/guides/console-and-deploy.md.`,
-            },
-        };
     }
 
     const bin = 'wrangler';

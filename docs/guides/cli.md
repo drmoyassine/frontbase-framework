@@ -87,8 +87,8 @@ Budget: < 150 KB min+gzip.
 
 ## `deploy [path]`
 
-Compose + provision + deploy the single-worker CMS. **This command provisions
-Cloudflare only**: D1, wrangler secrets, and the one-time setup link.
+Compose + provision + deploy the single-worker CMS. The default target
+provisions **Cloudflare**: D1, wrangler secrets, and the one-time setup link.
 
 ```bash
 npx @frontbase/compiler deploy --dry-run      # compose + routing smoke + size budget; no deploy
@@ -105,13 +105,26 @@ means a fresh deployment under a generated verified-unused name),
 `--admin-email`/`--admin-password` (seed the first admin — pushed as wrangler
 secrets over stdin, never argv), `--setup-link` (rotate the browser setup link).
 
-`--target` accepts `cloudflare` (default), `vercel`, or `deno` — but the
-non-CF targets are NOT wired here. They refuse with the supported path rather
-than deploying an unprovisioned artifact:
+### `--target vercel` / `--target deno` — dispatch to the per-host scripts
 
-```
-frontbase deploy provisions Cloudflare only. For deno use: pnpm run deploy:deno
-```
+The non-CF targets run the framework repo's own deploy scripts
+(`scripts/deploy-vercel.mjs` / `scripts/deploy-deno.mjs`) — the same pipeline
+(build → gates → secrets → host CLI) behind the same flag surface:
 
-Vercel/Deno deploys go through the per-host scripts — see
-[console-and-deploy](./console-and-deploy.md#deploying-to-other-hosts-vercel-deno-deploy).
+- `--app-name` becomes the script's `--project` (the Vercel/Deno project name);
+- `--dry-run` runs the script's build + gates only (no host calls);
+- secret-valued flags (`--admin-email`, `--admin-password`, `--admin-role`,
+  `--session-secret`, `--setup-token`) are serialized into the stdin JSON the
+  script reads via `--secrets-json` — secret values never ride argv;
+- `--deno-project-id` forwards to the Deno script;
+- the script's exit code becomes the command's exit code.
+
+CF-only options (`--d1-database-id`, `--setup-link`, `--setup-ttl-minutes`,
+`--out`, cloud mode) fail loud under a non-CF target instead of being silently
+ignored. The scripts build and gate `examples/cf-full`, so they ship with the
+framework repo, not the published CLI: dispatch works from inside a checkout
+(repo root, `examples/cf-full`, or any package dir) — outside it the command
+refuses honestly rather than fake a deploy.
+
+The scripts' own interface (env/stdin secrets, state-db validation) is covered
+in [console-and-deploy](./console-and-deploy.md#deploying-to-other-hosts-vercel-deno-deploy).
