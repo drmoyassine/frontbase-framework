@@ -174,8 +174,12 @@ export default defineConfig(({ mode }) => {
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
 
-  // Edition-aware base path: cloud → /admin/, self-host → /frontbase-admin/
-  const deploymentMode = env.VITE_DEPLOYMENT_MODE || 'self-host';
+  // Edition-aware base path: cloud → /admin/, self-host → /frontbase-admin/.
+  // The `cloud` vite MODE (build:cloud → `vite build --mode cloud`, A-25
+  // Phase 4) implies the cloud edition — `--mode` alone only picks which .env
+  // files load, so without this the cloud build silently kept the self-host
+  // base. An explicit VITE_DEPLOYMENT_MODE in an env file still wins.
+  const deploymentMode = env.VITE_DEPLOYMENT_MODE || (mode === 'cloud' ? 'cloud' : 'self-host');
   const basePath = deploymentMode === 'cloud' ? '/admin/' : '/frontbase-admin/';
 
   return {

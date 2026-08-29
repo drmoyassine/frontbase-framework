@@ -106,19 +106,27 @@ export function registerDataExecuteRoute(
     _now: () => string,
     accountConfigFor?: AccountConfigFor,
     resolvePrincipal?: (req: Request) => Promise<{ user: unknown; tenant?: string }>,
+    requestTenant?: (req: Request) => Promise<string | undefined>,
 ): void {
+    // Tenant context for these PUBLIC routes (registered before
+    // defaultDenyAuth, so the tenant context middleware never runs): a
+    // builder/admin canvas call carries the session cookie (real tenant); an
+    // anonymous published-page visitor falls back to the request's host tenant
+    // (CLOUD) or the deployment's own tenant ('_root', self-host). Tenant
+    // isolation for the data itself is the datasource-ownership checks below.
+    const principalForRequest = async (req: Request): Promise<{
+        principal: { user: unknown; tenant?: string } | null;
+        tenant: string;
+    }> => {
+        const principal = resolvePrincipal ? await resolvePrincipal(req).catch(() => null) : null;
+        const tenant = principal?.tenant
+            ?? (requestTenant ? (await requestTenant(req).catch(() => undefined)) : undefined)
+            ?? '_root';
+        return { principal, tenant };
+    };
     app.post('/api/data/execute', async (c) => {
         try {
-            // PUBLIC route (product parity) — registered before defaultDenyAuth, so
-            // the tenant context middleware never runs. Resolve the principal
-            // best-effort: a builder/admin canvas call carries the session cookie
-            // (real tenant); an anonymous published-page visitor falls back to the
-            // deployment's own tenant ('_root'). Tenant isolation for the data
-            // itself is the datasource-ownership check below.
-            const principal = resolvePrincipal
-                ? await resolvePrincipal(c.req.raw).catch(() => null)
-                : null;
-            const tenant = principal?.tenant ?? '_root';
+            const { principal, tenant } = await principalForRequest(c.req.raw);
             const body = await c.req.json().catch(() => ({}));
             // Two wire shapes reach this route (product parity): the Grid/KPI
             // hooks wrap as {dataRequest}, the InfoList record load and the
@@ -469,8 +477,8 @@ export function registerDataExecuteRoute(
 
     app.get('/api/data/:table/:recordId', async (c) => {
         try {
-            const principal = resolvePrincipal ? await resolvePrincipal(c.req.raw).catch(() => null) : null;
-            const res = await datasourceAndRunner(principal?.tenant ?? '_root', c.req.param('table'));
+            const { tenant } = await principalForRequest(c.req.raw);
+            const res = await datasourceAndRunner(tenant, c.req.param('table'));
             if ('error' in res) return c.json({ detail: res.detail }, res.error);
             const rows = await res.runner.query(
                 `SELECT * FROM ${quoteTable(res.schema.table)} WHERE ${quoteTable(res.pk)} = ${ph(res.dialect, 1)} LIMIT 1`,
@@ -486,8 +494,8 @@ export function registerDataExecuteRoute(
 
     app.post('/api/data/:table', async (c) => {
         try {
-            const principal = resolvePrincipal ? await resolvePrincipal(c.req.raw).catch(() => null) : null;
-            const res = await datasourceAndRunner(principal?.tenant ?? '_root', c.req.param('table'));
+            const { tenant } = await principalForRequest(c.req.raw);
+            const res = await datasourceAndRunner(tenant, c.req.param('table'));
             if ('error' in res) return c.json({ detail: res.detail }, res.error);
             const payload = pickColumns(await c.req.json().catch(() => ({})), res.schema.columns.map((column) => column.name));
             const keys = Object.keys(payload);
@@ -510,8 +518,8 @@ export function registerDataExecuteRoute(
 
     app.patch('/api/data/:table/:recordId', async (c) => {
         try {
-            const principal = resolvePrincipal ? await resolvePrincipal(c.req.raw).catch(() => null) : null;
-            const res = await datasourceAndRunner(principal?.tenant ?? '_root', c.req.param('table'));
+            const { tenant } = await principalForRequest(c.req.raw);
+            const res = await datasourceAndRunner(tenant, c.req.param('table'));
             if ('error' in res) return c.json({ detail: res.detail }, res.error);
             const payload = pickColumns(
                 await c.req.json().catch(() => ({})),

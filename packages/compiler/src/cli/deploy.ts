@@ -62,6 +62,18 @@ export interface DeployOptions {
     /** HS256 session key (SESSION_SECRET secret). Auto-generated (32 random bytes,
      *  base64) when omitted so the deployment is never left without a key. */
     sessionSecret?: string;
+    /** A-25 cloud multi-tenant mode. Emits FRONTBASE_DEPLOYMENT_MODE=cloud via
+     *  `wrangler deploy --var` — NEVER wrangler.toml, which is committed and
+     *  would flip every self-host reusing the file into cloud boot. Requires
+     *  `baseDomain`. */
+    cloud?: boolean;
+    /** The cloud base domain (e.g. frontbase.dev) — FRONTBASE_BASE_DOMAIN via
+     *  the same `--var` pair. Host-tenant resolution reads it at boot. */
+    baseDomain?: string;
+    /** Resend API key for password-reset email (RESEND_API_KEY secret, stdin
+     *  only — like every secret, never argv). Omitted = resets stay
+     *  capability-less (non-enumerating no-op delivery). */
+    resendApiKey?: string;
     /** Test seam: run wrangler. Default spawns the real binary (stdin-fed secrets). */
     runWrangler?: WranglerRunner;
     /** Test seam: generate the session secret. Default: 32 random bytes, base64. */
@@ -147,6 +159,11 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
     // CF-19: admin seeding needs BOTH email and password (one alone is a mistake).
     if ((opts.adminEmail ? 1 : 0) + (opts.adminPassword ? 1 : 0) === 1) {
         return { ok: false, summary: '--admin-email and --admin-password must be given together' };
+    }
+    // A-25: cloud mode is meaningless without the base domain — host-tenant
+    // resolution would have nothing to strip, so every host would be foreign.
+    if (opts.cloud && !opts.baseDomain) {
+        return { ok: false, summary: 'cloud mode requires --base-domain (the zone tenant hosts are served under, e.g. frontbase.dev)' };
     }
     if (opts.setupTtlMinutes !== undefined
         && (!Number.isFinite(opts.setupTtlMinutes) || opts.setupTtlMinutes < 5 || opts.setupTtlMinutes > 1440)) {
@@ -260,6 +277,9 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
         ['ADMIN_ROLE', opts.adminEmail ? (opts.adminRole ?? 'master_admin') : undefined],
         ['SETUP_TOKEN', setupToken],
         ['SETUP_EXPIRES_AT', setupExpiresAt],
+        // A-25: Resend delivery for password-reset email (cloud mode). Values
+        // ride stdin like every secret — only the NAME is reported.
+        ['RESEND_API_KEY', opts.resendApiKey],
     ];
     for (const [name, value] of toSet) {
         if (value === undefined) continue;
@@ -270,8 +290,18 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
 
     // Deploy the script under the resolved app name (overrides wrangler.toml's
     // `name`, if any — this is what makes a single wrangler.toml reusable across
-    // multiple named/generated app deployments).
-    const dep = await runWrangler(['deploy', '--name', appName], { cwd });
+    // multiple named/generated app deployments). CLOUD: the two non-secret
+    // deployment-mode values ride `--var` (correction 12) — argv-safe by
+    // design, and kept OFF wrangler.toml so a committed file can never boot a
+    // self-host into cloud mode.
+    const deployArgs = ['deploy', '--name', appName];
+    if (opts.cloud) {
+        deployArgs.push(
+            '--var', 'FRONTBASE_DEPLOYMENT_MODE:cloud',
+            '--var', `FRONTBASE_BASE_DOMAIN:${opts.baseDomain}`,
+        );
+    }
+    const dep = await runWrangler(deployArgs, { cwd });
     if (dep.code !== 0) return { ok: false, summary: `${bin} deploy failed`, details: { stderr: dep.stderr } };
 
     const workerUrl = parseWorkerUrl(dep.stdout);

@@ -263,6 +263,31 @@ export const MIGRATIONS: Migration[] = [
         up: [`ALTER TABLE compat_pages ADD COLUMN primary_auth_form TEXT`],
         down: [],
     },
+    {
+        // A-25 Phase 4 cloud: plan/status columns for the tenants row. NULLABLE
+        // with NO defaults — self-host tenants keep plan=NULL ⇒ unlimited
+        // (test/plan-limits.mjs asserts exactly that), and only cloud mode ever
+        // writes 'free'/'active'. down is empty: SQLite can't drop a column
+        // without rebuilding the table, and a nullable extra column is harmless.
+        version: 20,
+        name: 'tenants_plan_status',
+        up: [
+            `ALTER TABLE tenants ADD COLUMN plan TEXT`,
+            `ALTER TABLE tenants ADD COLUMN status TEXT`,
+        ],
+        down: [],
+    },
+    {
+        // A-25 Phase 4 cloud: durable fixed-window rate-limit counters (CF-16
+        // backing store when the free tier has no KV/Redis). One row per
+        // bucket key; the window start moves forward when expired.
+        version: 21,
+        name: 'rate_limit_counters',
+        up: [
+            `CREATE TABLE IF NOT EXISTS rate_limit_counters (bucket_key TEXT PRIMARY KEY, window_start TEXT NOT NULL, count INTEGER NOT NULL)`,
+        ],
+        down: [`DROP TABLE IF EXISTS rate_limit_counters`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

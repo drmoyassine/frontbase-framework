@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { isCloud } from '@/lib/edition';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -70,52 +69,32 @@ export default function ForgotPasswordPage() {
         setDevLink(null);
 
         try {
-            if (isCloud()) {
-                // Cloud mode: SuperTokens password reset token API
-                const response = await fetch(`/api/auth/user/password/reset/token`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'rid': 'emailpassword'
-                    },
-                    body: JSON.stringify({
-                        formFields: [{ id: 'email', value: email }],
-                        website,
-                        turnstile_token: turnstileToken || undefined
-                    })
-                });
-                
-                const data = await response.json();
-                if (!response.ok || data.status !== 'OK') {
-                    const detail = data.formFields?.[0]?.error || 'Failed to send reset link';
-                    setErrorMessage(detail);
-                } else {
-                    setSuccessMessage('A password reset link has been sent to your email.');
+            // Both editions talk to the SAME framework endpoint now: the cloud
+            // worker serves /api/auth/forgot-password itself (Resend delivery,
+            // non-enumerating response). The old SuperTokens-shaped cloud
+            // branch (`/api/auth/user/password/reset/token`) never existed on
+            // the framework and is gone with the consolidation.
+            const response = await fetch(`/api/auth/forgot-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email,
+                    website,
+                    turnstile_token: turnstileToken || undefined
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                setErrorMessage(data.detail || 'Failed to request password reset');
+            } else if (data.success === false && data.error_code === 'NO_EMAIL_PROVIDER') {
+                // No email provider is configured
+                setWarningMessage(data.message || 'No email provider is configured on this instance.');
+                if (data.dev_link) {
+                    setDevLink(data.dev_link);
                 }
             } else {
-                // Self-Hosted mode: custom forgot-password API
-                const response = await fetch(`/api/auth/forgot-password`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email,
-                        website,
-                        turnstile_token: turnstileToken || undefined
-                    })
-                });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    setErrorMessage(data.detail || 'Failed to request password reset');
-                } else if (data.success === false && data.error_code === 'NO_EMAIL_PROVIDER') {
-                    // No email provider is configured
-                    setWarningMessage(data.message || 'No email provider is configured on this instance.');
-                    if (data.dev_link) {
-                        setDevLink(data.dev_link);
-                    }
-                } else {
-                    setSuccessMessage(data.message || 'A password reset link has been sent to your email.');
-                }
+                setSuccessMessage(data.message || 'A password reset link has been sent to your email.');
             }
         } catch (err) {
             setErrorMessage(err instanceof Error ? err.message : 'Network error');

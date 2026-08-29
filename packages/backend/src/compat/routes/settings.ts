@@ -10,6 +10,7 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
 import type { CommunityInviteStore, KeyValueStore } from '../store.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
+import { planLimitsForCaller, principalRole, teamCapExceeded, type PlanLimits } from '../plans/gates.js';
 import {
     zAdminInviteRequest,
     zGeneralSettings,
@@ -73,6 +74,11 @@ export function registerSettingsRoutes(
     externalFetch: CompatFetch,
     now: () => string,
     userExists?: (email: string, tenant: string) => Promise<boolean>,
+    /** A-25 WA5 cloud wiring: the tenant's effective plan limits (the
+     *  `team_members` invite cap). Absent ⇒ unlimited ⇒ the gate is inert. */
+    planLimitsFor?: (tenant: string) => Promise<PlanLimits | null>,
+    /** Current member count for the invite cap. Wired with planLimitsFor. */
+    memberCountFor?: (tenant: string) => Promise<number>,
 ): void {
     const domainRoutes: [string, string][] = [
         ['general', '/api/settings/general'],
@@ -243,6 +249,16 @@ export function registerSettingsRoutes(
             const exists = await userExists(parsed.data.email, c.get('tenant'));
             if (exists) {
                 return c.json({ success: false, message: 'User already exists' });
+            }
+        }
+
+        // A-25 WA5 plan gate: `team_members` — inviting would add a member, so
+        // a tenant already at the cap is refused with 402. Inert without
+        // effective limits (self-host); the master_admin bypass applies.
+        if (planLimitsFor && memberCountFor) {
+            const limits = await planLimitsForCaller(planLimitsFor, c.get('tenant'), principalRole(c));
+            if (teamCapExceeded(limits, await memberCountFor(c.get('tenant')))) {
+                return c.json({ detail: 'limit_exceeded', limit: 'team_members' }, 402);
             }
         }
 

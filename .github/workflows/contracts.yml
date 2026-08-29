@@ -51,6 +51,12 @@ jobs:
       # The deployable Worker, exercised in-process against a memory runner.
       - name: cf-full smoke (deployable worker)
         run: pnpm --filter @frontbase/example-cf-full smoke
+      # Cloud serving plane (A-25): stage the cloud console (second vite build,
+      # base /admin/) then drive the same worker with explicit Host headers —
+      # tenant isolation, registered-slug gate, /admin confinement, app-host
+      # console. Fails closed if the cloud stage is missing.
+      - name: Cloud smoke (tenancy serving plane)
+        run: pnpm console:build -- --cloud && pnpm --filter @frontbase/example-cf-full smoke:cloud
       # Deploy matrix (A-24), credential-free on every PR: the Vercel/Deno edge
       # entries driven over a real engine through d1RunnerFromRest with a stubbed
       # fetch (in-memory SQLite behind it), the disk-ASSETS shim contract, the

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build --mode community",
+    "build:cloud": "vite build --mode cloud",
     "build:dev": "vite build --mode development",
     "check": "tsc -p tsconfig.check.json --noEmit",
     "lint": "eslint .",

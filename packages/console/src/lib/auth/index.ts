@@ -32,6 +32,7 @@ export {
 // Implementations
 export { CookieAuthClient } from './CookieAuthClient';
 export { SuperTokensAuthClient } from './SuperTokensAuthClient';
+export { FrameworkAuthClient } from './FrameworkAuthClient';
 
 // Factory and utilities
 export {

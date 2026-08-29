@@ -242,9 +242,11 @@ export interface AuthClient {
    *
    * @param token - Password reset token
    * @param newPassword - New password
+   * @param email - Account email (framework resets consume the (email, token)
+   * pair the e-mailed link carried — optional where the provider doesn't need it)
    * @returns Promise<AuthResult> - Reset result
    */
-  resetPassword(token: string, newPassword: string): Promise<AuthResult>;
+  resetPassword(token: string, newPassword: string, email?: string): Promise<AuthResult>;
 
   /**
    * Update user password

@@ -8,6 +8,7 @@
         "e2e": "node build.mjs && playwright test -c e2e/playwright.config.ts",
         "e2e:report": "playwright show-report e2e/report",
         "smoke": "node build.mjs && node dist/smoke.mjs",
+        "smoke:cloud": "node build.mjs && node dist/smoke-cloud.mjs",
         "smoke:host": "node build.mjs && node dist/smoke-host.mjs",
         "start:node": "node dist/node.mjs",
         "test": "node test/console-pin.mjs",

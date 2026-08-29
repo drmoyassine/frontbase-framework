@@ -22,11 +22,12 @@
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import type { PageEntry } from '@frontbase/edge-core';
-import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
+import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
 import { resolveStateDb, StateDbConfigError, type ResolvedStateDb } from './state-db.js';
+import { tenantMiddleware, hostTenantOf, hostKindOf } from './tenancy.js';
 import { manifest } from './manifest.js';
 import SW_BUNDLE from 'virtual:sw-bundle';
 import CLIENT_BUNDLE from 'virtual:builder-client-bundle';
@@ -63,6 +64,14 @@ export interface CmsEnv {
     FRONTBASE_CACHE_TOKEN?: string;
     PUBLIC_URL?: string;
     FRONTBASE_QUEUE_CALLBACK_SECRET?: string;
+    // A-25 Phase 4 cloud mode (set via `wrangler deploy --var`, NEVER in the
+    // committed wrangler.toml — a self-host reusing that file must not boot
+    // cloud). Absent ⇒ self-host, byte-identical behavior.
+    FRONTBASE_DEPLOYMENT_MODE?: string;
+    /** Required when mode === 'cloud': the tenant zone (e.g. frontbase.dev). */
+    FRONTBASE_BASE_DOMAIN?: string;
+    /** Optional: enables email delivery of password-reset links (Resend). */
+    RESEND_API_KEY?: string;
 }
 
 export interface CmsEngineOptions {
@@ -100,6 +109,14 @@ export interface CmsEngineOptions {
      *  injects a deterministic double — the documented escape hatch on
      *  guardedExternalFetch, which still validates every URL it wraps. */
     externalFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+    /** A-25 Phase 4 cloud mode. Absent ⇒ self-host (byte-identical behavior).
+     *  When set, the worker resolves tenants from the Host header, confines
+     *  admin surfaces to the app host, 404s unregistered slugs, seeds the
+     *  global plan catalog, and skips the self-host `_root` homepage seed. */
+    cloud?: { baseDomain: string; appLabel?: string };
+    /** Resend credentials for password-reset email. Absent ⇒ reset delivery
+     *  stays host-injected-capable but silent (non-enumerating response). */
+    resend?: { apiKey: string; from?: string };
 }
 
 /**
@@ -115,11 +132,28 @@ export interface CmsEngineOptions {
  */
 export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     const now = opts.now ?? (() => new Date().toISOString());
+    // Cloud mode is computed once at engine creation: every tenancy decision
+    // below (homepage seed, enrichment order, principal scoping, host routing)
+    // branches on this + the base domain. No per-request env reads.
+    const cloud = opts.cloud
+        ? { baseDomain: opts.cloud.baseDomain, appLabel: opts.cloud.appLabel ?? 'app' }
+        : null;
     await migrateUp(opts.runner, now);
-    // Fresh-deploy homepage template: a real, editable page that is live at '/'
-    // (is_homepage=1, is_published=1). Idempotent — only seeds when no homepage
-    // exists, so the user can edit/delete/replace it freely.
-    await new PagesStore(opts.runner, '_root').ensureHomepage(now());
+    if (cloud) {
+        // Cloud boot: seed the global plan catalog ('_global' rows, idempotent —
+        // a re-boot never resets an operator-tuned plan). NEVER in MIGRATIONS:
+        // a migration-seeded catalog would change self-host semantics (the
+        // plan-limits contract is "no plan ⇒ unlimited").
+        const seeded = await seedPlanCatalog(opts.runner, now());
+        if (seeded.length) console.log(`[cf-full] cloud: seeded plan catalog: ${seeded.join(', ')}`);
+    } else {
+        // Fresh-deploy homepage template: a real, editable page that is live at
+        // '/' (is_homepage=1, is_published=1). Idempotent — only seeds when no
+        // homepage exists, so the user can edit/delete/replace it freely.
+        // SKIPPED in cloud: tenants get their own homepage at signup; the
+        // operator's `_root` marketing homepage is a self-host concept.
+        await new PagesStore(opts.runner, '_root').ensureHomepage(now());
+    }
     if (opts.admin?.email && opts.admin?.password) {
         const role = opts.admin.role ?? 'master_admin';
         const tenantSlug = role === 'master_admin' ? '_root' : '_default';
@@ -179,8 +213,13 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         if (Array.isArray(hit)) return hit;
         let list: EnrichableDatasource[] = [];
         // Caller's tenant first; community single-tenant fallbacks preserve
-        // the original engine behavior ('_root' then '_default').
-        const order = tenant === '_root' ? [tenant, '_default'] : [tenant, '_root', '_default'];
+        // the original engine behavior ('_root' then '_default'). CLOUD: the
+        // host tenant ONLY — falling back to `_root` would enrich a tenant
+        // page with the operator's datasources (cross-tenant leak; the caches
+        // are already tenant-keyed, the ORDER was the leak).
+        const order = cloud
+            ? [tenant]
+            : tenant === '_root' ? [tenant, '_default'] : [tenant, '_root', '_default'];
         for (const t of order) {
             try {
                 list = await new SyncStore(opts.runner, t, enrichCipher).listDatasources();
@@ -274,19 +313,43 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     const enrichForCanvas = async (layout: any): Promise<any> =>
         await enrichWithDatasources('_root', stripLayoutEnrichment(layout)) as any;
 
+    // A-25: the tenancy fact for one request — the HOST TENANT label, or
+    // undefined for every other host kind. Cloud-only: self-host passes
+    // undefined everywhere and keeps today's behavior byte-identical. Defined
+    // before the compat app because the anonymous data plane consumes it too.
+    const hostTenantFor = (req?: Request): string | undefined =>
+        cloud && req ? hostTenantOf(req, cloud.baseDomain, cloud.appLabel) : undefined;
+
     // CF-22 P3: the compat /api/* surface (the eSSR engine owns vendored GET /).
     // Sits BEFORE the engine catch-all so /api/auth/login, /api/pages/, etc.
     // are served by the framework, not shadowed by the eSSR proxy.
+    // The session resolver is created ONCE and shared: the compat app, the
+    // builder gate, and the engine overrides all resolve the SAME way.
+    // CLOUD: every consumer wraps it with scopePrincipalToHost (correction 2)
+    // — a session belonging to another tenant's member is anonymous here.
+    // Self-host: the raw resolver, byte-identical.
+    const rawResolvePrincipal = (await import('@frontbase/edge-infra')).createResolvePrincipal({
+        jwtSecret: opts.sessionSecret,
+        jwtCookie: 'frontbase_session',
+    });
+    const scopedResolvePrincipal = cloud
+        ? async (req: Request) => scopePrincipalToHost(await rawResolvePrincipal(req), hostTenantFor(req))
+        : rawResolvePrincipal;
     const compatApp = await createCompatApp({
         makeRunner: () => opts.runner,
-        resolvePrincipal: (await import('@frontbase/edge-infra')).createResolvePrincipal({
-            jwtSecret: opts.sessionSecret,
-            jwtCookie: 'frontbase_session',
-        }) as (req: Request) => Promise<any>,
+        resolvePrincipal: scopedResolvePrincipal as (req: Request) => Promise<any>,
         sessionSecret: opts.sessionSecret,
         userStoreFor: (t: string) => new UserStore(opts.runner, t),
         now,
         storageProvider: opts.storageProvider,
+        // CLOUD: anonymous public-data calls resolve to the request's host
+        // tenant (a published Form/InfoList reads ITS tenant's datasources).
+        // Self-host: omitted ⇒ the `_root` fallback, byte-identical.
+        ...(cloud ? { requestTenant: async (req: Request) => hostTenantFor(req) } : {}),
+        // CLOUD: the app-host PlansManager edits the `_global` catalog — the
+        // rows `tenants.plan` enforcement resolves against (A-25 WA5) — not
+        // the operator tenant's own plan rows. Self-host: omitted ⇒ identity.
+        ...(cloud ? { adminPlansTenant: () => PLAN_CATALOG_TENANT } : {}),
         // The system edge is THIS process. The default describes the Cloudflare
         // worker (bound D1); the Node/Docker entry overrides via opts.systemEdge
         // so self-hosts don't report "Cloudflare D1" they don't have.
@@ -311,16 +374,26 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // dataRequest the hydration runtime can execute (canvas data preview).
         // Save paths strip it in PagesStore before persisting.
         enrichPageLayout: (tenant, layout) => enrichWithDatasources(tenant, layout),
+        // A-25 cloud: self-serve signup + slug checks live on the app host only,
+        // and password-reset mail flows through Resend when the operator set a
+        // key (absent ⇒ delivery stays silent; the response is non-enumerating
+        // either way). Failures are swallowed inside the route.
+        ...(cloud ? { cloudMode: true } : {}),
+        ...(cloud && opts.resend
+            ? {
+                passwordResetDelivery: createResendPasswordResetDelivery({
+                    apiKey: opts.resend.apiKey,
+                    baseUrl: `https://app.${cloud.baseDomain}`,
+                }),
+            }
+            : {}),
     });
 
     // Phase 1: Wire the framework eSSR BuilderEngine as the real builder canvas.
     // The builder uses PagesStore for persistence and is mounted behind auth.
     const pagesStore = new PagesStore(opts.runner, '_root');
     await registerComponents(); // Populate the component registry
-    const resolvePrincipal = (await import('@frontbase/edge-infra')).createResolvePrincipal({
-        jwtSecret: opts.sessionSecret,
-        jwtCookie: 'frontbase_session',
-    });
+    const resolvePrincipal = rawResolvePrincipal;
     // Wire the visitor session resolver into the eSSR engine so private-page
     // gating decides the SAME way the compat /api surface and the builder gate
     // do: a valid frontbase_session JWT → authenticated user; otherwise anonymous (and
@@ -337,10 +410,22 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     const engineOverrides = {
         edition: 'community' as const,
         nodeEnv: 'production',
-        resolvePrincipal,
-        resolveFaviconUrl: async (): Promise<string> => {
+        // CLOUD (correction 2): a principal whose tenant ≠ the host tenant is
+        // stripped of its user identity. Login is a cross-tenant email scan, so
+        // tenant A's member authenticates fine on tenant B's host — without the
+        // scoping their cookie would satisfy B's private-page gate (edge-core
+        // gates on principal.user truthiness) and thread A's tenant into data
+        // queries. Self-host: the raw resolver, unchanged.
+        resolvePrincipal: scopedResolvePrincipal,
+        resolveFaviconUrl: async (req?: Request): Promise<string> => {
+            // CLOUD: the host tenant's own branding first; the operator's
+            // `_root`/`_default` only for non-tenant hosts (app/foreign).
+            // Self-host: unchanged `_root`-then-`_default` order.
+            const tenants = cloud
+                ? [hostTenantFor(req) ?? '_root', '_default']
+                : ['_root', '_default'];
             let settings: Record<string, unknown> = {};
-            for (const tenant of ['_root', '_default']) {
+            for (const tenant of tenants) {
                 settings = await readProjectSettings(opts.runner, tenant);
                 if (Object.keys(settings).length) break;
             }
@@ -410,50 +495,48 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         console: consoleApp,
         // Serve published Builder pages (dynamic-first — they override the baked
         // demo). '/' → the homepage (is_homepage=1); '/<slug>' → by slug. Only
-        // published, non-deleted pages. Community single-tenant: read across tenants.
-        resolvePublishedPage: async (path) => {
-            const rows = path === '/'
-                ? await opts.runner.query('SELECT name, slug, description, layout_data, is_public, primary_auth_form FROM compat_pages WHERE is_homepage = 1 AND is_published = 1 AND deleted_at IS NULL LIMIT 1')
-                : await opts.runner.query('SELECT name, slug, description, layout_data, is_public, primary_auth_form FROM compat_pages WHERE slug = ? AND is_published = 1 AND deleted_at IS NULL LIMIT 1', [decodeURIComponent(path).replace(/^\/+|\/+$/g, '')]);
-            const row = rows[0];
-            if (!row) return null;
-            let layout;
-            try { layout = JSON.parse(String(row.layout_data)); } catch { layout = { content: [], root: {} }; }
-            // Surface the page's visibility flag so the eSSR engine can gate
-            // private pages. is_public is INTEGER (0/1) in compat_pages; coerce
-            // to a boolean, defaulting to public when absent (NULL → public),
-            // matching the product's `isPublic` semantics.
-            const isPublic = row.is_public == null ? undefined : Number(row.is_public) !== 0;
-            // primary_auth_form is the project's primary auth-form config baked at
-            // publish (migration v19) — a TEXT column holding a JSON AuthFormConfig.
-            // The engine threads page._primaryAuthForm into generateGatedPageDocument
-            // so a private page's overlay skins from real config. NULL/invalid →
-            // undefined → the overlay falls back to its built-in defaults.
-            let primaryAuthForm: PageEntry['_primaryAuthForm'];
-            if (row.primary_auth_form != null && String(row.primary_auth_form) !== '') {
-                try {
-                    const parsed = JSON.parse(String(row.primary_auth_form));
-                    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                        primaryAuthForm = parsed as PageEntry['_primaryAuthForm'];
-                    }
-                } catch { /* malformed JSON → fall back to overlay defaults */ }
+        // published, non-deleted pages. The SELECT moved into the framework
+        // (tenancy/serving.ts) so RULE 8 can mutate the tenant_slug predicate.
+        // CLOUD: the HOST TENANT only — no cross-tenant read ever runs (a
+        // tenant host serves that tenant; the app host serves no site; foreign
+        // hosts serve the operator's `_root`). Self-host: `_root` +
+        // crossTenantFallback = today's community single-tenant read.
+        resolvePublishedPage: async (path, req) => {
+            // CLOUD, non-tenant hosts: no site renders. The app host is the
+            // console; apex/reserved never reach here (middleware 404/302);
+            // FOREIGN hosts (canonical *.workers.dev origin) keep the
+            // operator's `_root` site so the canonical origin stays useful.
+            let tenant = hostTenantFor(req);
+            if (cloud) {
+                if (!tenant) {
+                    const kind = req ? hostKindOf(req, cloud.baseDomain, cloud.appLabel) : 'foreign';
+                    if (kind !== 'foreign') return null;
+                }
+                tenant = tenant ?? '_root';
             }
+            const page = await resolvePublishedPageForTenant(
+                opts.runner,
+                tenant ?? '_root',
+                path,
+                cloud ? {} : { crossTenantFallback: true },
+            );
+            if (!page) return null;
             return {
-                title: String(row.name ?? row.slug ?? 'Page'),
-                slug: String(row.slug ?? ''),
-                description: row.description ? String(row.description) : undefined,
-                layout,
-                ...(isPublic !== undefined ? { isPublic } : {}),
-                ...(primaryAuthForm ? { _primaryAuthForm: primaryAuthForm } : {}),
+                title: page.title,
+                slug: page.slug,
+                description: page.description,
+                layout: page.layout as PageEntry['layout'],
+                ...(page.isPublic !== undefined ? { isPublic: page.isPublic } : {}),
+                ...(page.primaryAuthForm ? { _primaryAuthForm: page.primaryAuthForm as PageEntry['_primaryAuthForm'] } : {}),
             };
         },
         // Serve-time binding enrichment (product parity: FastAPI public.py →
         // convert_component bakes binding.dataRequest so client hydration has a
         // request to execute). Attaches proxy-strategy dataRequests — only
         // datasourceId is baked into the page; credentials resolve server-side
-        // at /api/data/execute. Shared helper (TTL-cached datasource list),
-        // same '_root'-then-'_default' fallback as before.
-        enrichLayout: (layout) => enrichWithDatasources('_root', layout),
+        // at /api/data/execute. Shared helper (TTL-cached datasource list).
+        // CLOUD: enriches from the HOST TENANT's datasources only.
+        enrichLayout: (layout, req) => enrichWithDatasources(hostTenantFor(req) ?? '_root', layout),
     });
 
     const app = new Hono();
@@ -469,6 +552,18 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         configureEngine(engineOverrides);
         await next();
     });
+
+    // A-25 cloud serving plane: host-kind routing + the registered-tenant gate.
+    // Registered immediately after the configureEngine re-assert so it composes
+    // before every route below (admin surfaces, compat API, engine catch-all).
+    // Self-host: never registered (cloud == null) → byte-identical behavior.
+    if (cloud) {
+        app.use('*', tenantMiddleware({
+            baseDomain: cloud.baseDomain,
+            appLabel: cloud.appLabel,
+            tenantState: (slug) => tenantHostState(opts.runner, slug),
+        }));
+    }
 
     const assetResponse = async (request: Request, cacheControl: string): Promise<Response | null> => {
         if (!opts.assets) return null;
@@ -542,8 +637,16 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     app.get('/static/assets/:filename', async (c) => {
         const filename = c.req.param('filename');
         if (!/^(favicon|logo)-[0-9a-f]{8}\.(png|ico|svg|jpe?g)$/.test(filename)) return c.text('not_found', 404);
+        // CLOUD: the HOST TENANT's own branding only — falling back to the
+        // operator's `_root` assets would render operator branding on tenant
+        // sites. Non-tenant hosts (app/foreign) use the operator order.
+        // Self-host: unchanged `_root`, `_default` order.
+        const hostTenant = hostTenantFor(c.req.raw);
+        const order = cloud
+            ? (hostTenant ? [hostTenant] : ['_root', '_default'])
+            : ['_root', '_default'];
         let asset: StoredProjectAsset | null = null;
-        for (const tenant of ['_root', '_default']) {
+        for (const tenant of order) {
             asset = await readProjectAsset(new KeyValueStore(opts.runner, tenant), filename);
             if (asset) break;
         }
@@ -586,6 +689,46 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
 
     // 2. /console → 301 redirect to /frontbase-admin (continuity).
     app.get('/console', (c) => c.redirect('/frontbase-admin', 301));
+
+    // 2b. Cloud console (A-25): the platform admin SPA served at /admin from
+    //     console-dist/admin/ (staged by `pnpm console:build -- --cloud`).
+    //     run_worker_first = true means the WORKER owns every /admin byte, so
+    //     the routes mirror /frontbase-admin/* exactly: hashed bundles
+    //     immutable, other real files hourly, SPA fallback → the shell.
+    //     Cloud-mode only — self-host keeps answering /admin with the engine
+    //     (a published page may legally live there). The tenancy middleware
+    //     has already confined /admin to the app host; on this host it can
+    //     only be the console.
+    if (cloud) {
+        const adminShell = async (c: any) => {
+            const url = new URL(c.req.url);
+            url.pathname = '/admin/index.html';
+            const asset = await assetResponse(new Request(url, c.req.raw), 'no-cache');
+            if (asset) return asset;
+            // No ASSETS binding (bare in-process smokes) or stage missing: fail
+            // loudly rather than render a broken shell — the deploy path
+            // requires the stage (validateStagedConsole requireCloud).
+            return c.html(
+                '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Frontbase Cloud</title></head>' +
+                '<body style="font-family:ui-sans-serif,system-ui,sans-serif;padding:2rem">' +
+                '<h1>Cloud console not staged</h1>' +
+                '<p>This deployment serves its admin console from console-dist/admin/, which is missing here. ' +
+                'Run <code>pnpm console:build -- --cloud</code> and redeploy.</p></body></html>',
+                503, { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+        };
+        app.get('/admin', adminShell);
+        app.get('/admin/*', async (c) => {
+            const path = new URL(c.req.url).pathname;
+            if (path.includes('/assets/') || /\.[a-z0-9]+$/i.test(path)) {
+                const cache = path.includes('/assets/')
+                    ? 'public, max-age=31536000, immutable'
+                    : 'public, max-age=3600';
+                const asset = await assetResponse(c.req.raw, cache);
+                if (asset) return asset;
+            }
+            return adminShell(c);
+        });
+    }
 
     // WordPress-style first-run setup surface. It is setup-only: after the first
     // admin exists the server leaves /setup before any retired SPA hash can load.
@@ -665,6 +808,20 @@ export default {
                 if (stateDb.kind !== 'd1-binding') {
                     console.log(`[cf-full] state db override: ${stateDb.kind} (${stateDb.displayUrl})`);
                 }
+                // A-25 cloud mode: opt-in via `wrangler deploy --var FRONTBASE_DEPLOYMENT_MODE:cloud`
+                // (NEVER the committed wrangler.toml — a self-host reusing that file must
+                // not boot cloud). Cloud REQUIRES the tenant zone; a half-configured
+                // boot fails here, naming the missing var — never at first request.
+                const isCloud = env.FRONTBASE_DEPLOYMENT_MODE === 'cloud';
+                if (isCloud && !env.FRONTBASE_BASE_DOMAIN) {
+                    return new Response(
+                        'FRONTBASE_DEPLOYMENT_MODE=cloud requires FRONTBASE_BASE_DOMAIN (the tenant zone, e.g. frontbase.dev) — set it via: wrangler deploy --var FRONTBASE_BASE_DOMAIN:…',
+                        { status: 500 },
+                    );
+                }
+                if (isCloud) {
+                    console.log(`[cf-full] cloud mode: zone ${env.FRONTBASE_BASE_DOMAIN}`);
+                }
                 enginePromise = createCmsEngine({
                     runner: stateDb.runner,
                     sessionSecret: env.SESSION_SECRET,
@@ -672,6 +829,9 @@ export default {
                     setupExpiresAt: env.SETUP_EXPIRES_AT,
                     admin: { email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD, role: env.ADMIN_ROLE },
                     assets: env.ASSETS,
+                    // A-25 cloud wiring (absent ⇒ self-host byte-identical).
+                    ...(isCloud ? { cloud: { baseDomain: env.FRONTBASE_BASE_DOMAIN as string } } : {}),
+                    ...(env.RESEND_API_KEY ? { resend: { apiKey: env.RESEND_API_KEY } } : {}),
                     // Host-side env parse (Workers have no process.env). Memoized
                     // on the raw strings — only actual secret changes recompute.
                     envServices,

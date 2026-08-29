@@ -66,16 +66,29 @@ describe('AuthClientFactory', () => {
       expect(client).toBeInstanceOf(SuperTokensAuthClient);
     });
 
-    it('should return SuperTokensAuthClient as default in cloud mode when provider not set', async () => {
+    it('should return FrameworkAuthClient as default in cloud mode when provider not set', async () => {
       mockIsCloud.mockReturnValue(true);
-      // Don't set AUTH_PROVIDER - should default to SuperTokens (SuperTokensAuthClient)
+      // Don't set AUTH_PROVIDER - the framework's /api/auth cookie-session
+      // client is the cloud default (A-25 Phase 4; SuperTokens only via an
+      // explicit VITE_AUTH_PROVIDER=supertokens build).
 
       const { createAuthClient } = await import('../AuthClientFactory');
-      const { SuperTokensAuthClient } = await import('../SuperTokensAuthClient');
+      const { FrameworkAuthClient } = await import('../FrameworkAuthClient');
 
       const client = createAuthClient();
 
-      expect(client).toBeInstanceOf(SuperTokensAuthClient);
+      expect(client).toBeInstanceOf(FrameworkAuthClient);
+    });
+
+    it('should not enable SuperTokens in the cloud default config', async () => {
+      mockIsCloud.mockReturnValue(true);
+
+      const { createAuthClient } = await import('../AuthClientFactory');
+
+      // The factory builds the client with the shared default config; the
+      // framework client never touches the SuperTokens SDK either way.
+      const client = createAuthClient() as any;
+      expect(client.config?.enableSuperTokens ?? false).toBe(false);
     });
 
     it('should merge custom config with defaults', async () => {
@@ -250,13 +263,13 @@ describe('AuthClientFactory', () => {
       expect(isSuperTokensAuth()).toBe(true);
     });
 
-    it('should return true in cloud mode when provider not set (default)', async () => {
+    it('should return false in cloud mode when provider not set (framework default)', async () => {
       mockIsCloud.mockReturnValue(true);
       vi.unstubAllEnvs();
 
       const { isSuperTokensAuth } = await import('../AuthClientFactory');
 
-      expect(isSuperTokensAuth()).toBe(true);
+      expect(isSuperTokensAuth()).toBe(false);
     });
 
     it('should return false in self-host mode', async () => {
