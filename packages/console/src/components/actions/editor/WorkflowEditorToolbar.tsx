@@ -226,7 +226,7 @@ export function WorkflowEditorToolbar({
                                                     title={synced ? "Up to date" : "Needs publish"}
                                                 />
                                                 {engine.url && (() => {
-                                                    const originUrl = resolveEngineOrigin(engine.url, engine.is_shared, useAuthStore.getState().tenant?.slug || useAuthStore.getState().user?.tenant_slug);
+                                                    const originUrl = resolveEngineOrigin(engine.url, engine.is_shared, useAuthStore.getState().tenant?.slug || useAuthStore.getState().user?.tenant_slug, engine.is_system);
                                                     if (!originUrl) return null;
                                                     return (
                                                         <a

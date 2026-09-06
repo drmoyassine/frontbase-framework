@@ -14,13 +14,22 @@
  */
 
 import { useEdgeEngines } from '@/hooks/useEdgeInfrastructure';
+import { resolveEngineOrigin } from '@/lib/edgeUtils';
 
 export function useSystemEdgeUrl(): string | undefined {
     const { data: engines = [] } = useEdgeEngines();
-    // Prefer an active system engine; pick the first match.
-    const system = engines.find((e) => e.is_system && e.is_active);
-    if (system?.url) return system.url;
-    // Fall back to any system engine if none is active.
-    const anySystem = engines.find((e) => e.is_system);
-    return anySystem?.url ?? undefined;
+    // Prefer an active system engine; pick the first match. Fall back to any
+    // system engine if none is active.
+    const system = engines.find((e) => e.is_system && e.is_active)
+        ?? engines.find((e) => e.is_system);
+    // Resolve through resolveEngineOrigin(isSystem) — NEVER hand back the raw
+    // stored url: the backend synthesizes the system engine's url from the
+    // REQUEST origin, which behind a TLS-terminating proxy (Easypanel, nginx →
+    // plain HTTP) is http:// — fetching it from the https console is blocked
+    // mixed content. In production it resolves to the browser origin (same
+    // host the console is served from); in Vite dev it still prefers the
+    // configured engine URL.
+    if (!system) return undefined;
+    const resolved = resolveEngineOrigin(system.url, undefined, undefined, true);
+    return resolved || undefined;
 }

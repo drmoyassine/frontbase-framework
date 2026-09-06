@@ -226,7 +226,6 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
             // fall straight through.
             const variant = canonicalSlashVariant(url.pathname);
             if (variant) {
-                url.pathname = variant;
                 // Drain the body before responding. Redirecting a POST without
                 // consuming its stream tears down the workerd isolate, so the
                 // client's replayed request lands on a dying isolate and gets 503
@@ -236,7 +235,13 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
                     try { await c.req.raw.arrayBuffer(); } catch { /* already consumed */ }
                 }
                 // 307 preserves method and body — a POST/PUT is not downgraded to GET.
-                return c.redirect(url.toString(), 307);
+                // Root-RELATIVE Location on purpose: the request URL's scheme is the
+                // LAST HOP's scheme, which behind a TLS-terminating proxy (Easypanel,
+                // nginx → plain HTTP) is http:// — an absolute Location would send an
+                // https page's replay to http:// and the browser blocks it as mixed
+                // content (axios surfaces it as a bare "Network Error"). Relative
+                // resolves against the browser origin on every host shape.
+                return c.redirect(variant, 307);
             }
         }
         return next();
