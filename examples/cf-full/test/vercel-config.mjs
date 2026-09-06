@@ -107,5 +107,21 @@ const denoCfg = existsSync(join(denoDist, 'deno.json'))
 check('staged deno.json targets deno.window (no node types at top level)',
     denoCfg.compilerOptions?.lib?.includes('deno.window') === true);
 
+console.log('=== deno deploy config: committed entrypoint shim ===');
+// Deno Deploy validates the entrypoint against the WORKING DIRECTORY before
+// any build runs — a build output (deno-dist/deno.mjs) can never satisfy that
+// check on a fresh clone. The committed shim exists pre-build and hands off
+// to the bundle post-build.
+const entryShimPath = join(exampleRoot, 'deno-entry.mjs');
+const appDenoJson = JSON.parse(readFileSync(join(exampleRoot, 'deno.json'), 'utf8'));
+check('deno.json declares deploy install/build + dynamic runtime',
+    appDenoJson.deploy?.install === 'pnpm install'
+    && appDenoJson.deploy?.build === 'pnpm -r build'
+    && appDenoJson.deploy?.runtime?.type === 'dynamic');
+check('deploy.runtime.entrypoint is the COMMITTED shim (exists in a fresh clone)',
+    appDenoJson.deploy?.runtime?.entrypoint === './deno-entry.mjs' && existsSync(entryShimPath));
+check('shim imports the built bundle (hand-off after the build)',
+    readFileSync(entryShimPath, 'utf8').includes("import './deno-dist/deno.mjs';"));
+
 console.log(`\n=== deploy config gates: ${failures === 0 ? 'ALL PASSED ✅' : `${failures} FAILURE(S) ❌`} ===`);
 process.exit(failures === 0 ? 0 : 1);
