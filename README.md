@@ -77,6 +77,22 @@ pnpm run deploy:cf-full -- --dry-run
 
 Full reference: [docs/guides/console-and-deploy.md](docs/guides/console-and-deploy.md).
 
+## One-click deploy
+
+Deploy the full CMS from a fresh fork/clone without a local toolchain — each button clones this repo into your Git host and walks you through the host's project-creation flow (the build compiles the console + engine from source; nothing is pre-built in the repo):
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdrmoyassine%2Ffrontbase-framework&project-name=frontbase-cms&root-directory=examples%2Fcf-full&env=SESSION_SECRET)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Fdrmoyassine%2Ffrontbase-framework)
+[![Deploy on Deno](https://deno.com/button)](https://console.deno.com/new?clone=https%3A%2F%2Fgithub.com%2Fdrmoyassine%2Ffrontbase-framework&app_directory=examples%2Fcf-full&install=pnpm%20install&build=pnpm%20-r%20build)
+
+**Vercel** — Root Directory is preset to `examples/cf-full` (the workspace install runs at the repo root; the build is the package's own `node build.mjs`), and `SESSION_SECRET` is prompted at creation. After creation add exactly one complete state-db set to Environment Variables (see the table in [Deploy to four hosts](#deploy-to-four-hosts) — `APP_DB_URL` + `APP_DB_AUTH_TOKEN` for Turso, or the D1-over-REST trio), then Redeploy. Admin seeding: `ADMIN_EMAIL` + `ADMIN_PASSWORD`, or the browser setup flow.
+
+**Cloudflare** — build/deploy commands are pre-filled from the root `package.json` (`pnpm -r build`, then `npx wrangler deploy --config examples/cf-full/wrangler.toml`), and the D1 database is provisioned for you (accept or rename `frontbase-site-db`). Secrets are prompted from the repo's `.env.example` — `SESSION_SECRET` is required; `ADMIN_EMAIL`/`ADMIN_PASSWORD` optionally seed the first administrator. Requires a **public** repo.
+
+**Deno** — `app_directory` is preset to `examples/cf-full` with `pnpm install` + `pnpm -r build` pre-filled; set the entrypoint to **`deno-dist/deno.mjs`** (produced by that build). After creation set `SESSION_SECRET` plus one complete state-db set (Deno Deploy has no D1 binding — Turso is the practical choice) in the project's environment variables, then trigger a new deployment.
+
+Prefer the CLI, or want the gated flow (size budgets, staged-console checks, generated setup links)? Use the per-host scripts below — they deploy the same artifact with secrets over stdin instead of host dashboards.
+
 ## Deploy to four hosts
 
 The same CMS deploys to four hosts. `frontbase deploy` provisions Cloudflare; `--target vercel` / `--target deno` dispatch to the per-host scripts below (from inside this repo) with the same flags — secrets over stdin, exit code propagated. The scripts build, gate, and drive the host CLI:

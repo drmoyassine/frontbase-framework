@@ -9,11 +9,13 @@
     "pnpm": ">=8"
   },
   "scripts": {
+    "//": "`deploy` (no suffix) exists so Cloudflare's Deploy Button pre-fills a working command — the wrangler config lives under examples/cf-full, not at the workspace root. Run the gated flow via deploy:cf-full instead.",
     "build": "pnpm -r build",
     "test": "pnpm -r --filter=!@frontbase/console test",
     "check": "pnpm -r check",
     "test:mutation": "pnpm -r test:mutation",
     "deploy:cf-full": "node scripts/deploy.mjs",
+    "deploy": "npx --yes wrangler deploy --config examples/cf-full/wrangler.toml",
     "deploy:vercel": "node scripts/deploy-vercel.mjs",
     "deploy:deno": "node scripts/deploy-deno.mjs",
     "contracts:embed": "node scripts/embed-community-spec.mjs",
