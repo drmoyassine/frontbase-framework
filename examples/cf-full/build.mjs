@@ -346,9 +346,22 @@ await emitEdgeArtifact({ entry: 'src/deno.ts', outfile: 'dist/deno.mjs', extraPl
 // Vercel discovers functions under api/ at the PROJECT ROOT regardless of
 // outputDirectory — stage the byte-identical copy the deploy consumes.
 // src/vercel.ts exports `config = { runtime: 'edge' }` (verify point E3).
+// Vercel git-integration collects api/ functions from the UPLOADED source —
+// the zero-config function glob runs BEFORE the build command (vercel build
+// emits builds.json listing only @vercel/static-build even though this file
+// exists on disk post-build; static files DO keep post-build collection).
+// So the function must be TRACKED. Write-if-changed: consecutive builds can
+// differ by ~50 bytes of minifier styling inside the inlined client bundle;
+// an unchanged engine must not dirty git. The byte-sync gate
+// (test:vercel-config) fails when this file and dist/vercel.mjs drift apart.
 const API_STAGE = join(here, 'api');
 mkdirSync(API_STAGE, { recursive: true });
-copyFileSync(join(here, 'dist', 'vercel.mjs'), join(API_STAGE, 'cms.mjs'));
+const apiCmsPath = join(API_STAGE, 'cms.mjs');
+const apiCmsBundle = readFileSync(join(here, 'dist', 'vercel.mjs'));
+if (!existsSync(apiCmsPath) || !apiCmsBundle.equals(readFileSync(apiCmsPath))) {
+    writeFileSync(apiCmsPath, apiCmsBundle);
+    console.log('→ api/cms.mjs updated (tracked Vercel edge function)');
+}
 
 // Deno Deploy deploy root: the bundled entry + a deno.json (deployctl honors
 // ignore files and console-dist/ is gitignored, so the root carries a FRESH,

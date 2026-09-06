@@ -2,13 +2,44 @@ import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import fs from "node:fs";
+import crypto from "node:crypto";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { build as esbuildBuild } from "esbuild";
 import { componentTagger } from "lovable-tagger";
 
-// Cache busting timestamp - update this to force browser cache invalidation
-const BUILD_TIMESTAMP = new Date().getTime();
+// Cache-busting epoch embedded in every asset filename. Content-DERIVED, not
+// wall-clock: a clock stamp changed every build, which made every artifact
+// that embeds the asset names (the inlined SW precache → dist/worker.mjs,
+// vercel.mjs, deno.mjs) differ byte-for-byte between consecutive builds —
+// uncommittable and unreproducible. Hashing the console source (paths +
+// contents) keeps the property that matters — a source change still changes
+// the stamp and busts caches (the [hash] in the names is the first line of
+// defense; this epoch is the aggressive second) — while identical sources now
+// build to identical bytes. FRONTBASE_BUILD_TIMESTAMP overrides, escaping an
+// otherwise-stuck stamp without touching source.
+function contentEpoch(): number {
+  const override = Number(process.env.FRONTBASE_BUILD_TIMESTAMP);
+  if (Number.isFinite(override) && override > 0) return override;
+  const root = path.join(fileURLToPath(new URL("./src", import.meta.url)));
+  const hash = crypto.createHash("sha256");
+  const walk = (dir: string): void => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else {
+        hash.update(path.relative(root, p));
+        hash.update(fs.readFileSync(p));
+      }
+    }
+  };
+  walk(root);
+  // 12 hex chars → stays in the same digit-count neighborhood as the old
+  // ms-timestamp, so cached URL shapes don't change character.
+  return parseInt(hash.digest("hex").slice(0, 12), 16);
+}
+
+const BUILD_TIMESTAMP = contentEpoch();
 
 // ---------------------------------------------------------------------------
 // Builder-scoped Service Worker build pass.

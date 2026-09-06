@@ -2,9 +2,9 @@ dist/
 .wrangler/
 node_modules/
 
-# Vercel: the api/ function is a byte copy of dist/vercel.mjs (build.mjs), and
-# vercel's local output lands in .vercel/.
-api/
+# Vercel: api/cms.mjs IS tracked (see below — Vercel's function glob snapshots
+# the source upload, not the post-build tree). vercel's local output lands in
+# .vercel/.
 .vercel/
 
 # Deno Deploy: the self-contained deploy root assembled by build.mjs (bundled
@@ -23,3 +23,5 @@ test-results/
 # Docker compose reads live secrets from .env (SESSION_SECRET, ADMIN_PASSWORD).
 # .env.example is the committed template; .env itself never enters git.
 .env
+
+.vercel
