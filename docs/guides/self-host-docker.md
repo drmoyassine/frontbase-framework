@@ -42,7 +42,7 @@ stage after `git pull` (see Upgrades).
 ## Run with Docker
 
 ```bash
-cp .env.example .env        # repo root, next to docker-compose.yml — SESSION_SECRET is required
+cp .env.example .env        # repo root, next to docker-compose.yml (optional — SESSION_SECRET is recommended)
 docker compose up -d --build
 docker compose ps           # wait for (healthy)
 ```
@@ -55,7 +55,7 @@ All configuration is runtime environment (see `.env.example`):
 
 | Variable | Required | Notes |
 |---|---|---|
-| `SESSION_SECRET` | **yes** | Signs sessions AND derives the at-rest cipher for secret variables — see rotation below. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `SESSION_SECRET` | recommended | Signs sessions AND derives the at-rest cipher for secret variables — see rotation below. When unset, a strong secret is generated on first boot and **persisted in the state DB** (`settings['_system']`), so sessions survive restarts; setting it explicitly keeps the at-rest cipher out of the database. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `APP_DB_URL` | no | Default `file:/data/app.db`. Keep it on `/data` (the volume). |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_ROLE` | no | First-admin seed at boot; idempotent |
 | `SETUP_TOKEN` / `SETUP_EXPIRES_AT` | no | Browser setup flow (alternative to seeding) |
@@ -126,6 +126,11 @@ encryption of stored secret variables (the cipher is derived from it,
 `packages/backend/src/index.ts`). After a rotation, sessions re-login and
 previously stored secrets must be re-entered. Treat it as a break-glass
 operation, not routine.
+
+A boot-generated secret (no `SESSION_SECRET` set) is never rotated by the
+system — it persists in the state DB and is reused verbatim. Setting an
+explicit `SESSION_SECRET` later replaces it, with exactly the rotation
+caveats above.
 
 ## Troubleshooting
 

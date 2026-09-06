@@ -43,8 +43,16 @@ const die = (msg: string): never => {
     process.exit(1);
 };
 const env = process.env;
-const SESSION_SECRET = env.SESSION_SECRET
-    ?? die('SESSION_SECRET is not configured — pass it as a runtime env var (docker compose / shell). Never bake it into the image.');
+// SESSION_SECRET is OPTIONAL: when absent, the engine generates a strong
+// secret on first boot and persists it in the state DB (resolveSessionSecret)
+// — on the default file:/data/app.db volume it survives every restart. Setting
+// it explicitly still wins, and keeps the at-rest cipher OUT of the database
+// (the generated mode stores it in settings['_system']) — recommended, not
+// required. Never bake it into the image either way.
+const SESSION_SECRET = env.SESSION_SECRET || undefined;
+if (!SESSION_SECRET) {
+    console.warn('[frontbase] SESSION_SECRET not set — a secret will be generated and persisted in the state DB on first boot (set SESSION_SECRET to control it explicitly).');
+}
 
 // A-24: the state DB is the operator's choice (./state-db) — file:/data/app.db
 // by default; APP_DB_AUTH_TOKEN unlocks Turso (libsql://), :memory: and the

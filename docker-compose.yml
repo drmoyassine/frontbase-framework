@@ -1,7 +1,9 @@
 # Backendless single-container Frontbase CMS — the same Hono engine the
 # Cloudflare Worker runs, on a local sqlite file in a named volume.
 #
-#   1. Create .env next to this file (see .env.example — SESSION_SECRET required)
+#   1. (Optional) create .env next to this file (see .env.example) — SESSION_SECRET
+#      auto-generates and persists in the state DB when unset; set it explicitly
+#      to keep the at-rest cipher out of the database (recommended, not required)
 #   2. docker compose up -d --build   (a clean checkout builds as-is: the image
 #      stages the console + hydration artifacts from in-repo source itself)
 #   3. http://127.0.0.1:8787/frontbase-admin  (or set ADMIN_* in .env to seed
@@ -18,7 +20,7 @@ services:
       dockerfile: Dockerfile
     image: frontbase-cms:local
     environment:
-      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required — set it in .env next to docker-compose.yml (see .env.example)}
+      SESSION_SECRET: ${SESSION_SECRET:-}   # optional — auto-generated + persisted in the state DB when unset (see .env.example)
       APP_DB_URL: ${APP_DB_URL:-file:/data/app.db}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
