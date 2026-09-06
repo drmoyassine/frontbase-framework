@@ -54,11 +54,13 @@ volume, console from disk, no sidecars. The `Dockerfile` and
 workspace), so from the repo root:
 
 ```bash
-pnpm console:build                                # stage the console from packages/console source (once)
-pnpm --filter @frontbase/example-cf-full build    # stage the hydration bundle (console-dist/react) for the Docker gate
 cp .env.example .env                              # set SESSION_SECRET (+ optional ADMIN_* seeds)
 docker compose up -d --build                      # http://127.0.0.1:8787/frontbase-admin
 ```
+
+No pre-build needed: the image runs `pnpm -r build`, which stages the console
+(`packages/console` source → `console-dist/frontbase-admin`) and the hydration
+bundle (`console-dist/react`) itself.
 
 Bare metal works too: `pnpm --filter @frontbase/example-cf-full build` then
 `SESSION_SECRET=… node dist/node.mjs` (npm script `start:node`).

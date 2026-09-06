@@ -23,20 +23,21 @@ query — Supabase, Neon, HTTP-flavored libsql — connect exactly as on Workers
 ## Prerequisites
 
 - Docker (any recent Docker Desktop / Engine), **or** Node ≥ 20 for bare metal.
-- The console + hydration artifacts, staged from this repo's own source
-  (`packages/console` + `packages/hydrate` — never committed):
+- Nothing pre-built: the console + hydration artifacts are staged from this
+  repo's own source (`packages/console` + `packages/hydrate` — never committed)
+  **inside the image build**, so a clean checkout (git archive, CI, a VPS)
+  builds as-is.
 
-  ```bash
-  pnpm install
-  pnpm console:build && pnpm --filter @frontbase/example-cf-full build
-  ```
-
-  `pnpm console:build` builds the SPA and stages `examples/cf-full/console-dist/`;
-  the cf-full build re-stages it (reusing the dist) and copies the hydration
-  bundle from `packages/hydrate/dist` to `console-dist/react/`. A fresh clone
-  needs both once. The Docker build runs `scripts/docker-gate.mjs` FIRST and
-  fails fast with the remedy if either is missing — without the staged bundles
-  the image would ship a shell pointing at 404s and dead client hydration.
+`pnpm -r build` → examples/cf-full's `build.mjs` stages
+`examples/cf-full/console-dist/` (self-healing a missing stage on a fresh
+clone) and copies the hydration bundle from `packages/hydrate/dist` to
+`console-dist/react/`. After the build, `scripts/docker-gate.mjs` verifies the
+staged tree — shell ↔ bundles agreement + hydration present — the same check
+`scripts/deploy.mjs` runs post-build, so the image cannot ship a shell
+pointing at 404s or dead client hydration. Pre-building locally
+(`pnpm console:build && pnpm --filter @frontbase/example-cf-full build`) is
+optional warm-up; the one case it still matters is refreshing a stale local
+stage after `git pull` (see Upgrades).
 
 ## Run with Docker
 
@@ -128,8 +129,11 @@ operation, not routine.
 
 ## Troubleshooting
 
-- **Build fails at `docker-gate.mjs`** — run `pnpm console:build && pnpm
-  --filter @frontbase/example-cf-full build` (see Prerequisites).
+- **Build fails at `docker-gate.mjs`** — the `pnpm -r build` step above it
+  failed to stage a complete console artifact (this should be near-impossible:
+  that step validates its own staging). Reproduce locally with `pnpm install
+  && pnpm -r build`; if a stale local stage is the cause, `pnpm console:build`
+  refreshes it.
 - **Context upload errors on Windows (OneDrive paths)** — cloud-sync
   placeholders can break the context; build from a local (non-synced) clone.
 - **`libsql` native module errors** — the runtime stage installs per-platform
