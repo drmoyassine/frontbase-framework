@@ -5,16 +5,23 @@
  * (smoke:host) cannot see these (it drives the function only); this is the
  * complementary half, credential-free and file-only:
  *
- *   1. Routing order — the shell MUST reach the function even though a real
- *      index.html exists on the CDN (beforeFiles beat the filesystem); the
- *      engine-emitted /static/* URLs must translate onto the staged layout
- *      ONLY as afterFiles rewrites (a real file wins); the catch-all fallback
- *      must be last. /static/assets/:filename (KV branding) must NOT be
- *      rewritten into the static tree.
+ *   1. Routing order — vercel.json `rewrites` MUST be an ARRAY (the object
+ *      beforeFiles/afterFiles/fallback form is invalid vercel.json: Vercel's
+ *      Deploy Button project-creation flow rejects it outright — "rewrites
+ *      should be array" — and array rewrites apply only AFTER the filesystem
+ *      check). The pinned consequence: the staged shell at
+ *      /frontbase-admin(+ /index.html) serves ITSELF from the CDN — exactly
+ *      the Cloudflare behavior (exact /frontbase-admin/* files are Static
+ *      Assets served ahead of the worker) — with no-cache headers so a stale
+ *      shell never pins old hashed chunks. The engine-emitted /static/* URLs
+ *      translate onto the staged layout as rewrites (a real file still wins),
+ *      /static/assets/:filename (KV branding) must NOT be rewritten into the
+ *      static tree, and the catch-all → function must be last.
  *   2. Header policy — hydrate.js no-cache (the canvas must always revalidate
  *      — the disk shim's ETag covers the cost), entry css + hashed console
- *      assets immutable, icon 1 d, broad shell rule 1 h and listed AFTER the
- *      assets rule (merge order = which cache-control a shell asset gets).
+ *      assets immutable, icon 1 d, exact shell rules no-cache and listed
+ *      BEFORE the broad shell rule (first matching rule wins a header key),
+ *      broad shell rule 1 h.
  *   3. outputDirectory is console-dist (the staged layout) — plus trailing
  *      slash/cleanUrls OFF so engine-emitted URLs never get redirected.
  *   4. The Deno deploy root (deno-dist) is a self-contained staging of entry +
@@ -40,24 +47,24 @@ check('trailingSlash off (engine URLs never redirected)', vercel.trailingSlash =
 check('cleanUrls off (no .html mangling)', vercel.cleanUrls === false);
 
 console.log('=== vercel.json: routing order ===');
-const before = vercel.rewrites?.beforeFiles ?? [];
-const after = vercel.rewrites?.afterFiles ?? [];
-const fallback = vercel.rewrites?.fallback ?? [];
+const rewrites = vercel.rewrites ?? [];
 
-check('beforeFiles: /frontbase-admin → the function (beats the staged index.html)',
-    JSON.stringify(before[0]) === JSON.stringify({ source: '/frontbase-admin', destination: '/api/cms' }));
-check('beforeFiles: /frontbase-admin/index.html → the function too',
-    JSON.stringify(before[1]) === JSON.stringify({ source: '/frontbase-admin/index.html', destination: '/api/cms' }));
-check('afterFiles: /static/react/:file* → /react/:file* (hydration stage)',
-    JSON.stringify(after.find((r) => r.source === '/static/react/:file*'))
+check('rewrites is an ARRAY (the object form is invalid vercel.json — the Deploy Button rejects it)',
+    Array.isArray(rewrites));
+check('no /frontbase-admin rewrite: the staged shell serves itself (Cloudflare Static-Assets parity)',
+    rewrites.every((r) => !r.source.startsWith('/frontbase-admin')));
+check('/static/react/:file* → /react/:file* (hydration stage)',
+    JSON.stringify(rewrites.find((r) => r.source === '/static/react/:file*'))
         === JSON.stringify({ source: '/static/react/:file*', destination: '/react/:file*' }));
-check('afterFiles: /static/icon.png → /icon.png (A-24 staged root copy)',
-    JSON.stringify(after.find((r) => r.source === '/static/icon.png'))
+check('/static/icon.png → /icon.png (A-24 staged root copy)',
+    JSON.stringify(rewrites.find((r) => r.source === '/static/icon.png'))
         === JSON.stringify({ source: '/static/icon.png', destination: '/icon.png' }));
-check('afterFiles: /static/assets/ is NOT rewritten (KV branding stays on the function)',
-    after.every((r) => !r.source.startsWith('/static/assets')));
-check('fallback: catch-all → the function, listed last',
-    fallback.length === 1 && fallback[0].source === '/:path*' && fallback[0].destination === '/api/cms');
+check('/static/assets/ is NOT rewritten (KV branding stays on the function)',
+    rewrites.every((r) => !r.source.startsWith('/static/assets')));
+check('rewrites are exactly: hydration stage + icon + catch-all (nothing else shadows the filesystem)',
+    rewrites.length === 3);
+check('catch-all → the function, listed last',
+    rewrites[rewrites.length - 1].source === '/:path*' && rewrites[rewrites.length - 1].destination === '/api/cms');
 
 console.log('=== vercel.json: header policy ===');
 const headers = vercel.headers ?? [];
@@ -77,10 +84,17 @@ check('icon.png: 1 d cache + png content-type',
     && valueOf('/icon.png', 'Content-Type') === 'image/png');
 check('hashed console assets: immutable',
     valueOf('/frontbase-admin/assets/(.*)', 'Cache-Control') === 'public, max-age=31536000, immutable');
+check('exact shell rules: no-cache, must-revalidate (a stale CDN shell must never pin old chunks)',
+    valueOf('/frontbase-admin', 'Cache-Control') === 'no-cache, must-revalidate'
+    && valueOf('/frontbase-admin/index.html', 'Cache-Control') === 'no-cache, must-revalidate');
 check('broad shell rule: 1 h', valueOf('/frontbase-admin/(.*)', 'Cache-Control') === 'public, max-age=3600');
 check('merge order: the immutable assets rule is listed BEFORE the broad shell rule',
     headers.findIndex((h) => h.source === '/frontbase-admin/assets/(.*)')
     < headers.findIndex((h) => h.source === '/frontbase-admin/(.*)'));
+check('merge order: exact shell no-cache rules listed BEFORE the broad shell rule (first match wins)',
+    headers.findIndex((h) => h.source === '/frontbase-admin') >= 0
+    && headers.findIndex((h) => h.source === '/frontbase-admin') < headers.findIndex((h) => h.source === '/frontbase-admin/(.*)')
+    && headers.findIndex((h) => h.source === '/frontbase-admin/index.html') < headers.findIndex((h) => h.source === '/frontbase-admin/(.*)'));
 
 console.log('=== deno-dist: self-contained deploy root shape (staged by build.mjs) ===');
 const denoDist = join(exampleRoot, 'deno-dist');

@@ -12,7 +12,10 @@
  * The vendored GET / operation remains owned by the eSSR engine.
  *
  * Deploy secrets (wrangler secret put — never in wrangler.toml, never in git):
- *   SESSION_SECRET  (required) HS256 key for the frontbase_session JWT cookie
+ *   SESSION_SECRET  (optional) HS256 key for the frontbase_session JWT cookie;
+ *                   when absent a strong secret is generated on first boot and
+ *                   persisted in the state DB (resolveSessionSecret) — set it
+ *                   explicitly to override (rotation caveat applies)
  *   SETUP_TOKEN     (optional) enables the first-run /setup wizard
  *   SETUP_EXPIRES_AT (optional) ISO expiry for the deploy-generated setup link
  *   ADMIN_EMAIL     (optional) seed the first owner on first boot …
@@ -27,6 +30,7 @@ import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
 import { resolveStateDb, StateDbConfigError, type ResolvedStateDb } from './state-db.js';
+import { resolveSessionSecret } from './session-secret.js';
 import { tenantMiddleware, hostTenantOf, hostKindOf } from './tenancy.js';
 import { manifest } from './manifest.js';
 import SW_BUNDLE from 'virtual:sw-bundle';
@@ -76,7 +80,11 @@ export interface CmsEnv {
 
 export interface CmsEngineOptions {
     runner: DbRunner;
-    sessionSecret: string;
+    /** SESSION_SECRET from the environment. Optional since the one-click
+     * deploys: when unset the engine generates a strong secret on first boot
+     * and persists it in the state DB (resolveSessionSecret), so every
+     * isolate agrees. An explicit env value always wins. */
+    sessionSecret?: string;
     setupToken?: string;
     setupExpiresAt?: string;
     admin?: { email?: string; password?: string; role?: string };
@@ -139,6 +147,10 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         ? { baseDomain: opts.cloud.baseDomain, appLabel: opts.cloud.appLabel ?? 'app' }
         : null;
     await migrateUp(opts.runner, now);
+    // The session secret every consumer below shares (console sessions, the
+    // at-rest cipher, JWT verify). env wins; one-click deploys without one
+    // generate + persist on this first boot (see resolveSessionSecret).
+    const sessionSecret = await resolveSessionSecret(opts.runner, opts.sessionSecret);
     if (cloud) {
         // Cloud boot: seed the global plan catalog ('_global' rows, idempotent —
         // a re-boot never resets an operator-tuned plan). NEVER in MIGRATIONS:
@@ -173,7 +185,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // other /api/console/* route with 410 Gone.
     const consoleApp = await createConsole({
         makeRunner: () => opts.runner,
-        sessionSecret: opts.sessionSecret,
+        sessionSecret,
         setupToken: opts.setupToken,
         setupExpiresAt: opts.setupExpiresAt,
         seedRole: opts.admin?.role ?? 'master_admin',
@@ -190,7 +202,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // enrich path runs on every page view / canvas load, and the pages-list
     // route enriches N layouts per request — without the cache each call
     // re-queries the datasource table.
-    const enrichCipher = await createSecretCipher(opts.sessionSecret);
+    const enrichCipher = await createSecretCipher(sessionSecret);
     // The worker's OWN system-service resolver for these caches (separate from
     // the compat app's instance — the multi-store idiom this file already
     // uses). Resolves adopted is_default row > env > memory per tenant; memory
@@ -329,7 +341,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // — a session belonging to another tenant's member is anonymous here.
     // Self-host: the raw resolver, byte-identical.
     const rawResolvePrincipal = (await import('@frontbase/edge-infra')).createResolvePrincipal({
-        jwtSecret: opts.sessionSecret,
+        jwtSecret: sessionSecret,
         jwtCookie: 'frontbase_session',
     });
     const scopedResolvePrincipal = cloud
@@ -338,7 +350,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     const compatApp = await createCompatApp({
         makeRunner: () => opts.runner,
         resolvePrincipal: scopedResolvePrincipal as (req: Request) => Promise<any>,
-        sessionSecret: opts.sessionSecret,
+        sessionSecret,
         userStoreFor: (t: string) => new UserStore(opts.runner, t),
         now,
         storageProvider: opts.storageProvider,

@@ -44,15 +44,15 @@ function engine(): Promise<Hono> {
     if (!enginePromise) {
         enginePromise = (async () => {
             const env = process.env as unknown as Record<string, string | undefined>;
-            if (!env.SESSION_SECRET) {
-                throw new StateDbConfigError('SESSION_SECRET is not configured — add it in the Vercel project settings (Environment Variables) and redeploy.');
-            }
+            // SESSION_SECRET is NOT required: when unset the engine generates +
+            // persists one in the state DB on first boot (resolveSessionSecret) —
+            // one-click deploys boot without it. Setting it explicitly overrides.
             const stateDb = resolveStateDb({ env, host: 'vercel' });
             console.log(`[frontbase] state db: ${stateDb.kind} (${stateDb.displayUrl})`);
             const envServices = parseEnvServices(env);
             return createCmsEngine({
                 runner: stateDb.runner,
-                sessionSecret: env.SESSION_SECRET!,
+                sessionSecret: env.SESSION_SECRET,
                 setupToken: env.SETUP_TOKEN || undefined,
                 setupExpiresAt: env.SETUP_EXPIRES_AT || undefined,
                 admin: { email: env.ADMIN_EMAIL || undefined, password: env.ADMIN_PASSWORD || undefined, role: env.ADMIN_ROLE || undefined },

@@ -410,13 +410,15 @@ await esbuild.build({
 //    native libsql binding stays runtime-resolved):
 //      state-db.mjs   — the resolver, importable by test/state-db.mjs
 //                       (precedence matrix + no-leak gate).
+//      session-secret.mjs — the boot secret resolver, importable by
+//                       test/session-secret.mjs (env-wins / persist / reuse).
 //      smoke-host.mjs — the per-host smoke (src/smoke-host.ts): disk-shim
 //                       contract, state-db wiring, artifact gates, and
 //                       route-matrix parity for the NEW entries' handlers.
 //      smoke-cloud.mjs — the A-25 cloud smoke (src/smoke-cloud.ts): the SAME
 //                       worker booted with cloud:{baseDomain}, driven with
 //                       explicit Host headers across every host kind.
-for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/smoke-host.ts', 'smoke-host.mjs'], ['src/smoke-cloud.ts', 'smoke-cloud.mjs']]) {
+for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/session-secret.ts', 'session-secret.mjs'], ['src/smoke-host.ts', 'smoke-host.mjs'], ['src/smoke-cloud.ts', 'smoke-cloud.mjs']]) {
     await esbuild.build({
         ...shared,
         platform: 'node',

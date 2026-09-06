@@ -13,6 +13,7 @@
         "start:node": "node dist/node.mjs",
         "test": "node test/console-pin.mjs",
         "test:state-db": "node build.mjs && node test/state-db.mjs",
+        "test:session-secret": "node build.mjs && node test/session-secret.mjs",
         "test:vercel-config": "node test/vercel-config.mjs"
     },
     "dependencies": {

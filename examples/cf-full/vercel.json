@@ -3,19 +3,11 @@
     "outputDirectory": "console-dist",
     "trailingSlash": false,
     "cleanUrls": false,
-    "rewrites": {
-        "beforeFiles": [
-            { "source": "/frontbase-admin", "destination": "/api/cms" },
-            { "source": "/frontbase-admin/index.html", "destination": "/api/cms" }
-        ],
-        "afterFiles": [
-            { "source": "/static/react/:file*", "destination": "/react/:file*" },
-            { "source": "/static/icon.png", "destination": "/icon.png" }
-        ],
-        "fallback": [
-            { "source": "/:path*", "destination": "/api/cms" }
-        ]
-    },
+    "rewrites": [
+        { "source": "/static/react/:file*", "destination": "/react/:file*" },
+        { "source": "/static/icon.png", "destination": "/icon.png" },
+        { "source": "/:path*", "destination": "/api/cms" }
+    ],
     "headers": [
         {
             "source": "/react/hydrate.js",
@@ -32,11 +24,24 @@
                 { "key": "Content-Type", "value": "text/css; charset=utf-8" }
             ]
         },
+
         {
             "source": "/icon.png",
             "headers": [
                 { "key": "Cache-Control", "value": "public, max-age=86400" },
                 { "key": "Content-Type", "value": "image/png" }
+            ]
+        },
+        {
+            "source": "/frontbase-admin",
+            "headers": [
+                { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+            ]
+        },
+        {
+            "source": "/frontbase-admin/index.html",
+            "headers": [
+                { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
             ]
         },
         {
