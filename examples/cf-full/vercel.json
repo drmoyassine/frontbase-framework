@@ -4,6 +4,7 @@
     "trailingSlash": false,
     "cleanUrls": false,
     "rewrites": [
+        { "source": "/", "destination": "/api/cms" },
         { "source": "/static/react/:file*", "destination": "/react/:file*" },
         { "source": "/static/icon.png", "destination": "/icon.png" },
         { "source": "/:path*", "destination": "/api/cms" }

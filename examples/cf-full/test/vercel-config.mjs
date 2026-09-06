@@ -61,8 +61,10 @@ check('/static/icon.png → /icon.png (A-24 staged root copy)',
         === JSON.stringify({ source: '/static/icon.png', destination: '/icon.png' }));
 check('/static/assets/ is NOT rewritten (KV branding stays on the function)',
     rewrites.every((r) => !r.source.startsWith('/static/assets')));
-check('rewrites are exactly: hydration stage + icon + catch-all (nothing else shadows the filesystem)',
-    rewrites.length === 3);
+check('rewrites are exactly: root + hydration stage + icon + catch-all (nothing else shadows the filesystem)',
+    rewrites.length === 4);
+check('the root path is rewritten EXPLICITLY (no reliance on :path* zero-segment matching for /)',
+    rewrites[0].source === '/' && rewrites[0].destination === '/api/cms');
 check('catch-all → the function, listed last',
     rewrites[rewrites.length - 1].source === '/:path*' && rewrites[rewrites.length - 1].destination === '/api/cms');
 
