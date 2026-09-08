@@ -34,6 +34,12 @@ export class ZoneNotFoundError extends Error {
     }
 }
 
+export interface AttachWorkerDomainsOptions {
+    /** Worker that owns the tenant wildcard route. Defaults to the app
+     *  service. Framework Cloud uses a separate public/community engine. */
+    wildcardService?: string;
+}
+
 /** Resolve the zone id for `zoneName`, then attach every hostname in
  *  `hostnames` to the worker `service`. Partial failure does not abort the
  *  remaining hostnames — the result carries per-hostname outcomes so the
@@ -45,6 +51,7 @@ export async function attachWorkerDomains(
     hostnames: string[],
     service: string,
     fetchSeam: FetchLike = defaultFetch,
+    options: AttachWorkerDomainsOptions = {},
 ): Promise<AttachDomainsResult> {
     if (!accountId) throw new Error('accountId is required');
     if (!apiToken) throw new Error('apiToken is required');
@@ -63,10 +70,11 @@ export async function attachWorkerDomains(
     // 2. Attach each hostname (upsert — safe to re-run).
     const attached: string[] = [];
     const failed: AttachDomainsResult['failed'] = [];
+    const wildcardService = options.wildcardService ?? service;
     for (const hostname of hostnames) {
         // Custom Domains do not accept wildcards; tenant hosts need a zone route.
         if (hostname.startsWith('*.')) {
-            const failure = await attachWildcardRoute(zoneId, apiToken, hostname, service, fetchSeam);
+            const failure = await attachWildcardRoute(zoneId, apiToken, hostname, wildcardService, fetchSeam);
             if (failure) failed.push({ hostname, ...failure });
             else attached.push(hostname);
             continue;

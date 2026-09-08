@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
-import { PLAN_CATALOG, catalogPlan } from '../plans/catalog.js';
+import { PLAN_CATALOG, catalogPlan, type CatalogPlan } from '../plans/catalog.js';
 import { serializePlan } from './tenants.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
@@ -77,13 +77,22 @@ function stringValue(value: unknown): string | undefined {
     return typeof value === 'string' && value ? value : undefined;
 }
 
+function planByPriceId(priceId?: string): CatalogPlan | undefined {
+    return priceId ? PLAN_CATALOG.find((plan) => plan.stripePriceId === priceId) : undefined;
+}
+
 export function registerBillingWebhookRoute(app: App, runner: DbRunner, config: StripeBillingConfig, now: () => string): void {
     app.post('/api/billing/webhooks/:provider', async (c) => {
         if (c.req.param('provider') !== 'stripe') return c.json({ detail: 'Unsupported billing provider' }, 404);
         const payload = await c.req.text();
         const signature = c.req.header('stripe-signature') ?? '';
         if (!await verifyStripeSignature(payload, signature, config.webhookSecret)) return c.json({ detail: 'Invalid webhook signature' }, 400);
-        const event = JSON.parse(payload) as { id?: string; type?: string; data?: { object?: Record<string, unknown> } };
+        let event: { id?: string; type?: string; data?: { object?: Record<string, unknown> } };
+        try {
+            event = JSON.parse(payload) as typeof event;
+        } catch {
+            return c.json({ detail: 'Invalid webhook payload' }, 400);
+        }
         if (!event.id || !event.type || !event.data?.object) return c.json({ detail: 'Invalid webhook event' }, 400);
         const eventId = event.id;
         const eventType = event.type;
@@ -98,11 +107,18 @@ export function registerBillingWebhookRoute(app: App, runner: DbRunner, config: 
             const object = eventObject;
             const metadata = object.metadata && typeof object.metadata === 'object' ? object.metadata as Record<string, unknown> : {};
             const customerId = stringValue(object.customer);
-            const subscriptionId = eventType.startsWith('customer.subscription.') ? stringValue(object.id) : stringValue(object.subscription);
+            const subscriptionId = eventType.startsWith('customer.subscription.')
+                ? stringValue(object.id)
+                : stringValue(object.subscription);
             const store = new BillingStore(tx);
             const existing = await store.byExternal(customerId, subscriptionId);
             const tenant = stringValue(metadata.tenant_slug) ?? stringValue(existing?.tenant_slug);
-            const planId = stringValue(metadata.plan_slug) ?? stringValue(existing?.plan_id);
+            const items = (object.items as { data?: unknown } | undefined)?.data;
+            const firstItem = Array.isArray(items) ? items[0] as { price?: unknown } | undefined : undefined;
+            const price = firstItem?.price as Record<string, unknown> | undefined;
+            const planId = stringValue(metadata.plan_slug)
+                ?? planByPriceId(stringValue(price?.id))?.id
+                ?? stringValue(existing?.plan_id);
             if (!tenant || !customerId) return true;
 
             if (eventType === 'customer.subscription.deleted') {
@@ -117,6 +133,9 @@ export function registerBillingWebhookRoute(app: App, runner: DbRunner, config: 
             } else if (eventType === 'invoice.payment_failed') {
                 await store.save({ tenant, customerId, subscriptionId, planId, status: 'past_due' }, now());
                 await tx.exec("UPDATE tenants SET status = 'past_due' WHERE slug = ?", [tenant]);
+            } else if (eventType === 'invoice.payment_succeeded') {
+                await store.save({ tenant, customerId, subscriptionId, planId, status: 'active' }, now());
+                await tx.exec("UPDATE tenants SET status = 'active' WHERE slug = ? AND status = 'past_due'", [tenant]);
             }
             return true;
         };
@@ -135,9 +154,15 @@ export function registerBillingRoutes(app: App, runner: DbRunner, config: Stripe
         return c.json({ plans: detailed.map((plan) => ({ slug: plan.slug, name: plan.name, price_display: plan.price_display, price_period: plan.price_period })), detailed });
     });
     app.post('/api/billing/checkout', async (c) => {
-        const principal = c.get('principal') as { user?: { email?: string } } | undefined;
+        const principal = c.get('principal') as { user?: { email?: string }; role?: string } | undefined;
         const tenant = c.get('tenant');
-        const body = await c.req.json().catch(() => ({})) as { plan_slug?: string };
+        const body = await c.req.json().catch(() => ({})) as { plan_slug?: string; add_ons?: unknown };
+        if (!tenant || principal?.role === 'master_admin' || (principal?.role && !['owner', 'admin'].includes(principal.role))) {
+            return c.json({ detail: 'Only workspace owners or admins can manage billing' }, 403);
+        }
+        if (Array.isArray(body.add_ons) && body.add_ons.length > 0) {
+            return c.json({ detail: 'Paid add-ons are not available in this launch' }, 400);
+        }
         const plan = body.plan_slug ? catalogPlan(body.plan_slug) : undefined;
         if (!plan?.stripePriceId) return c.json({ detail: 'This plan is not available for online checkout' }, 400);
         let account = await store.byTenant(tenant);
@@ -155,11 +180,12 @@ export function registerBillingRoutes(app: App, runner: DbRunner, config: Stripe
         const session = await stripeRequest(config, 'checkout/sessions', {
             mode: 'subscription', customer: customerId,
             'line_items[0][price]': plan.stripePriceId, 'line_items[0][quantity]': '1',
+            client_reference_id: tenant,
             'metadata[tenant_slug]': tenant, 'metadata[plan_slug]': plan.id,
             'subscription_data[metadata][tenant_slug]': tenant,
             'subscription_data[metadata][plan_slug]': plan.id,
-            success_url: `${origin}/frontbase-admin/settings?billing=success`,
-            cancel_url: `${origin}/frontbase-admin/settings?billing=cancelled`,
+            success_url: `${origin}/admin/settings?billing=success`,
+            cancel_url: `${origin}/admin/settings?billing=cancelled`,
         });
         const url = stringValue(session.url);
         if (!url) throw new Error('stripe_checkout_missing_url');
@@ -172,7 +198,7 @@ export function registerBillingRoutes(app: App, runner: DbRunner, config: Stripe
         if (!customerId) return c.json({ detail: 'No billing account exists for this workspace' }, 400);
         const session = await stripeRequest(config, 'billing_portal/sessions', {
             customer: customerId,
-            return_url: `https://app.${config.baseDomain}/frontbase-admin/settings`,
+            return_url: `https://app.${config.baseDomain}/admin/settings`,
         });
         const url = stringValue(session.url);
         if (!url) throw new Error('stripe_portal_missing_url');

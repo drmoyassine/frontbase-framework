@@ -1,7 +1,7 @@
 # Frontbase Cloud paid launch
 
-**Updated:** 2026-09-08
-**Status:** Deployed staging signup, login and session journey verified; paid checkout, webhook and operations acceptance remain open.
+**Updated:** 2026-09-09
+**Status:** Deployed signup/login, community-edge topology and checkout/portal APIs verified; live paid checkout completion and webhook delivery remain owner/payment-gated.
 **Owner direction:** [A-26](history/DECISIONS.md#decision-a-26-paid-cloud-launch-from-the-framework-with-supabase).
 **Recommended release label:** Frontbase Cloud paid beta, only after the gates below pass. Framework npm/public release remains a separate developer-preview candidate under R0-R4.
 
@@ -19,7 +19,7 @@ No new paid plan, price, entitlement, or fallback identity provider is approved 
 | Application storage | [PostgreSQL state adapter](../packages/edge-infra/src/providers/postgres-state.ts), [state resolver](../examples/cf-full/src/state-db.ts), and migrations through v22 | Deployed through Cloudflare Hyperdrive in `frontbase_cloud`; live migration/idempotency and two-tenant rollback isolation pass |
 | PostgreSQL transport | `postgresStateRunner` now uses a short-lived `pg.Client` per query/transaction, letting Hyperdrive own global pooling | Fixes Worker-local pool timeouts. Local edge-infra gates and deployed auth/signup queries pass |
 | Tenant identity | [Supabase Cloud Auth adapter](../packages/backend/src/compat/supabase-cloud-auth.ts) and framework auth/provisioning routes | Three deployed signup → password login → authenticated-session cycles passed 200/200/200. Each created free tenant, owner and published homepage; test identities and rows were removed |
-| Billing UI/API | [billing routes](../packages/backend/src/compat/routes/billing.ts), v22 billing tables and existing console client | Basic and Pro catalog mappings restored; checkout, portal, signed webhook, idempotency, cancellation and failed-payment behavior pass deterministic tests. Live controlled payment and webhook endpoint registration remain open |
+| Billing UI/API | [billing routes](../packages/backend/src/compat/routes/billing.ts), v22 billing tables and existing console client | Basic/Pro checkout requests and customer portal URLs return live Stripe hosts; signed webhook lifecycle is transactional and idempotent. Covers activation, payment failure, recovery and cancellation. Unsupported add-ons are rejected rather than silently sold |
 | Product reference | Original `Frontbase-/fastapi-backend/app/routers/billing.py`, `app/services/stripe_provider.py`, `app/auth/providers/supabase.py`, `app/auth/tenant_provisioning.py`, `app/database/config.py` inspected | Useful contracts, not permission for blind copying. Reference Stripe handler lacks durable event deduplication; subscription update focuses on add-ons and omits payment-failure lifecycle. Supabase verifier assumes HS256 and disables audience checking |
 | Host routing | [cloud-domains.ts](../packages/compiler/src/cli/cloud-domains.ts), [tests](../packages/compiler/test/cloud-domains.mjs) | Fixed locally: app uses Custom Domain; wildcard uses Workers route over existing proxied DNS. No DNS mutation or takeover of conflicting routes. Live TLS/hostname proof remains open |
 | Browser journey | [Playwright config](../examples/cf-full/e2e/playwright.config.ts) and [composed Cloud smoke](../examples/cf-full/src/smoke-cloud.ts) exist | Test signup, verified identity, checkout, entitlement update, edit/save/publish, reload, public tenant page on real staging. Existing manual-only wording in testing-plan.md is stale: Playwright exists |
@@ -41,6 +41,13 @@ No new paid plan, price, entitlement, or fallback identity provider is approved 
 | CL-7 | Operations and paid beta release | CL-6 | Secret configuration; Supabase backup/restore drill; rollback rehearsal; error monitoring; support/contact; owner reviews exact running edition; then live-mode billing and production deployment with named resources | Not ready |
 
 Custom domains, dedicated engines, branding removal, agent credits and other catalog benefits must be compared to actual plan contents at CL-3. They are not silently dropped, silently promised, or bundled into an unrestricted parity sprint.
+
+## 2026-09-09 community topology and billing progress
+
+* `public-community-engine` now runs the deployed framework artifact with the staging Hyperdrive binding and cloud variables. The framework helper is `pnpm run deploy:community-edge -- --base-domain frontbase.dev`; wildcard routing remains separate from `app.frontbase.dev` and must only be claimed after proxied wildcard DNS exists.
+* Domain attachment tests pin the split topology: `app.<zone>` attaches to the platform Worker, while `*.<zone>/*` belongs to `public-community-engine`. The helper still refuses to overwrite another Worker's route or create DNS.
+* A dedicated live Stripe endpoint is enabled for `https://app.frontbase.dev/api/billing/webhooks/stripe`, covering checkout completion, subscription creation/update/deletion, payment failure, and successful recovery payment. Its signing secret is stored only as a Worker secret.
+* A temporary live signup created a customer and returned valid `checkout.stripe.com` and `billing.stripe.com` URLs without completing payment. Focused deterministic tests cover checkout/portal creation, activation, payment failure, recovery, cancellation, idempotency, malformed payload rejection and unsupported add-on rejection. The temporary tenant was removed.
 
 ## Staging credentials
 

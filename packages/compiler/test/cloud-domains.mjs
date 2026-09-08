@@ -34,7 +34,7 @@ function fixture(options = {}) {
                 return { ...res, json: async () => ({ success: true, result: options.pages ? options.pages[page - 1] : routes, result_info: { total_pages: options.pages?.length ?? 1 } }) };
             }
             assert.equal(method, 'POST', 'existing routes must NEVER be overwritten');
-            assert.deepEqual(body, { pattern: '*.frontbase.dev/*', script: 'cloud' });
+            assert.deepEqual(body, { pattern: '*.frontbase.dev/*', script: 'public-community-engine' });
             if (options.createFail) return { ok: false, status: 502, json: async () => { throw new Error('non-JSON'); } };
             routes.push(body);
             return reply({ id: 'route' });
@@ -43,7 +43,7 @@ function fixture(options = {}) {
     };
     return { calls, routes, fetcher };
 }
-const attach = (f) => attachWorkerDomains('account', TOKEN, 'frontbase.dev', HOSTS, 'cloud', f.fetcher);
+const attach = (f) => attachWorkerDomains('account', TOKEN, 'frontbase.dev', HOSTS, 'cloud', f.fetcher, { wildcardService: 'public-community-engine' });
 const posts = (f) => f.calls.filter((c) => c.method === 'POST');
 let count = 0;
 async function test(name, run) { await run(); count++; console.log(`PASS ${name}`); }
@@ -90,7 +90,7 @@ await test('zone failure is explicit', async () => {
 await test('missing required inputs make no API calls', async () => {
     const f = fixture();
     for (const args of [['', TOKEN, HOSTS, 'cloud'], ['account', '', HOSTS, 'cloud'], ['account', TOKEN, [], 'cloud'], ['account', TOKEN, HOSTS, '']]) {
-        await assert.rejects(attachWorkerDomains(args[0], args[1], 'frontbase.dev', args[2], args[3], f.fetcher));
+        await assert.rejects(attachWorkerDomains(args[0], args[1], 'frontbase.dev', args[2], args[3], f.fetcher, { wildcardService: 'public-community-engine' }));
     }
     assert.equal(f.calls.length, 0);
 });

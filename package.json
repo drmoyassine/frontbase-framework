@@ -15,6 +15,7 @@
     "check": "pnpm -r check",
     "test:mutation": "pnpm -r test:mutation",
     "deploy:cf-full": "node scripts/deploy.mjs",
+    "deploy:community-edge": "node scripts/deploy-community.mjs",
     "deploy": "npx --yes wrangler deploy --config examples/cf-full/wrangler.toml",
     "deploy:vercel": "node scripts/deploy-vercel.mjs",
     "deploy:deno": "node scripts/deploy-deno.mjs",

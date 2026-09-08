@@ -240,6 +240,7 @@ if (cloud) {
             zone,
             cloudHostnames(zone),
             result.details.appName,
+            { wildcardService: 'public-community-engine' },
         );
         if (domains.attached.length) console.log(`  attached: ${domains.attached.join(', ')}`);
         if (domains.failed.length) {

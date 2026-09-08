@@ -3,7 +3,7 @@
  * Integrates with Stripe Checkout for paid plans or automatically provisions free/default plans.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,20 +27,7 @@ function fmtLimit(v: number | boolean): string {
 export const PlanUsageSection: React.FC = () => {
     const queryClient = useQueryClient();
     const [pickerOpen, setPickerOpen] = useState(false);
-    const [selectedAddons, setSelectedAddons] = useState<Record<string, number>>({});
 
-    const handleAddonChange = (type: string, delta: number) => {
-        setSelectedAddons(prev => {
-            const current = prev[type] || 0;
-            const next = Math.max(0, current + delta);
-            if (next === 0) {
-                const copy = { ...prev };
-                delete copy[type];
-                return copy;
-            }
-            return { ...prev, [type]: next };
-        });
-    };
 
     const { data, isLoading } = useQuery({
         queryKey: ['my-plan'],
@@ -67,8 +54,7 @@ export const PlanUsageSection: React.FC = () => {
 
     const checkoutMutation = useMutation({
         mutationFn: (slug: string) => {
-            const addonsPayload = Object.entries(selectedAddons).map(([type, qty]) => ({ addon_type: type, quantity: qty }));
-            return billingApi.createCheckoutSession(slug, addonsPayload.length > 0 ? addonsPayload : undefined);
+            return billingApi.createCheckoutSession(slug);
         },
         onSuccess: (data) => {
             window.location.href = data.url;
@@ -232,35 +218,7 @@ export const PlanUsageSection: React.FC = () => {
                                 })}
                             </div>
                         )}
-                        
-                        {publicData && (
-                            <div className="mt-8 border-t pt-6">
-                                <h4 className="font-semibold mb-4">Optional Add-ons</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {[
-                                        { type: 'managed_edge_db', label: 'Managed Edge DB' },
-                                        { type: 'managed_cache', label: 'Managed Cache' },
-                                        { type: 'managed_queue', label: 'Managed Queue' },
-                                        { type: 'managed_domain', label: 'Custom Domain' },
-                                    ].map(addon => (
-                                        <div key={addon.type} className="flex items-center justify-between p-3 border rounded-lg">
-                                            <span className="text-sm font-medium">{addon.label}</span>
-                                            <div className="flex items-center gap-2">
-                                                <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => handleAddonChange(addon.type, -1)} disabled={!selectedAddons[addon.type]}>-</Button>
-                                                <span className="text-sm w-4 text-center">{selectedAddons[addon.type] || 0}</span>
-                                                <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => handleAddonChange(addon.type, 1)}>+</Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                {Object.keys(selectedAddons).length > 0 && (
-                                    <p className="text-xs text-muted-foreground mt-4">
-                                        Add-ons will be included in the checkout session.
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                    </CardContent>
+                        \n                    </CardContent>
                 </Card>
             )}
         </div>

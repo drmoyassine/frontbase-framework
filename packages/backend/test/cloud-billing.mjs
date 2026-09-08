@@ -68,6 +68,11 @@ assert.deepEqual(await new TenantStore(runner).getTenant('acme'), { slug: 'acme'
 assert.equal((await (await signedEvent(completedEvent)).json()).duplicate, true);
 assert.equal((await signedEvent({ id: 'evt_2', type: 'customer.subscription.deleted', data: { object: { id: 'sub_1', customer: 'cus_acme', metadata: { tenant_slug: 'acme' } } } })).status, 200);
 assert.equal((await new TenantStore(runner).getTenant('acme')).plan, 'free');
+assert.equal((await request('/api/billing/checkout', { plan_slug: 'basic', add_ons: [{ addon_type: 'managed_cache', quantity: 1 }] })).status, 400);
+assert.equal((await signedEvent({ id: 'evt_3', type: 'invoice.payment_failed', data: { object: { customer: 'cus_acme', subscription: 'sub_2', metadata: { tenant_slug: 'acme' } } } })).status, 200);
+assert.equal((await new TenantStore(runner).getTenant('acme')).status, 'past_due');
+assert.equal((await signedEvent({ id: 'evt_4', type: 'invoice.payment_succeeded', data: { object: { customer: 'cus_acme', subscription: 'sub_2', metadata: { tenant_slug: 'acme' } } } })).status, 200);
+assert.equal((await new TenantStore(runner).getTenant('acme')).status, 'active');
 
 const invalid = await app.fetch(new Request('https://app.frontbase.test/api/billing/webhooks/stripe', { method: 'POST', headers: { 'stripe-signature': 't=1,v1=bad' }, body: '{}' }));
 assert.equal(invalid.status, 400);
