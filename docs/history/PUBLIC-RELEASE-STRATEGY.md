@@ -1,5 +1,7 @@
 # Frontbase Public Release Strategy
 
+> **2026-09-06 owner priority — paid Cloud launch:** A-26 authorizes completing the framework's Supabase application-database/auth and Stripe migrations. The free-tier implementation is a baseline, not the launch acceptance gate. Track execution in [CLOUD-LAUNCH.md](../CLOUD-LAUNCH.md). Public-framework release gates and paused CF-22 remain separate.
+
 **Status:** Active preparation
 
 **Owner:** Frontbase framework

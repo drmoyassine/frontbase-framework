@@ -1,15 +1,15 @@
 /**
  * State-db resolver (A-24) — the one seam where a host entry turns its
  * environment into the engine's `runner`, choosing among the DbRunner
- * factories that ALREADY exist in @frontbase/edge-infra (RULE 6: no new
+ * factories in @frontbase/edge-infra (RULE 6: no host-local
  * drivers here). Every host entry (worker/node/deno/vercel) calls this
  * instead of binding a runner directly, so the operator — not the adapter —
- * picks the state database, on any host.
+ * picks the state database, on any host. Frontbase Cloud uses the explicit
+ * Hyperdrive binding to reach its Supabase PostgreSQL application database.
  *
- * HONEST MENU (why not "any database"): migrations are SQLite-dialect
- * (19 append-only DDL statements + sqlite_master introspection in
- * packages/backend/src/db/migrations.ts), so the app database must speak
- * SQLite. That admits exactly:
+ * HONEST MENU (why not "any database"): the application schema and queries are
+ * verified for SQLite and PostgreSQL. The schema fingerprint helper remains
+ * SQLite-only and is not used by production boot. Supported selections are:
  *
  *   d1-binding     Cloudflare D1 via env.DB                — the CF default
  *   d1-rest        Cloudflare D1 over the REST API         — works on ANY host
@@ -17,21 +17,19 @@
  *   sqlite-memory  SQLite in memory (ephemeral)            — :memory:
  *   libsql-remote  libSQL over HTTP (Turso, self-hosted    — libsql:// or
  *                  sqld; HRANA over fetch)                   https://
- *
- * Postgres-family stays the documented unclosable gap
- * (docs/known-limitation-postgres-mysql.md) and supabaseRunner is a
- * datasource runner (PostgREST RPC against real Postgres) — neither can run
- * the SQLite-dialect schema, so the resolver refuses to pretend otherwise.
+ *   postgres-hyperdrive  PostgreSQL/Supabase through a     — env.HYPERDRIVE
+ *                        Cloudflare Hyperdrive binding
  *
  * Precedence (first match wins; exactly one runner is built; the kind is
  * logged once at boot by the caller):
- *   1. APP_DB_URL set            → sqliteRunner(url, APP_DB_AUTH_TOKEN)
- *   2. D1-REST trio complete     → d1RunnerFromRest(...)
- *   3. partial D1-REST trio, or APP_DB_AUTH_TOKEN without APP_DB_URL
+ *   1. Hyperdrive binding set    → postgresStateRunner(connectionString)
+ *   2. APP_DB_URL set            → sqliteRunner(url, APP_DB_AUTH_TOKEN)
+ *   3. D1-REST trio complete     → d1RunnerFromRest(...)
+ *   4. partial D1-REST trio, or APP_DB_AUTH_TOKEN without APP_DB_URL
  *                                → StateDbConfigError naming the missing var(s)
- *   4. d1Binding present (CF)    → d1RunnerFromBinding — byte-identical to the
+ *   5. d1Binding present (CF)    → d1RunnerFromBinding — byte-identical to the
  *                                  pre-A-24 CF behavior when no APP_DB_* is set
- *   5. host node                 → file:/data/app.db (the Docker default)
+ *   6. host node                 → file:/data/app.db (the Docker default)
  *      host deno/vercel          → StateDbConfigError listing accepted forms
  *
  * Secrets: APP_DB_AUTH_TOKEN and CLOUDFLARE_API_TOKEN are credentials — they
@@ -41,6 +39,7 @@
 import {
     d1RunnerFromBinding,
     d1RunnerFromRest,
+    postgresStateRunner,
     sqliteRunner,
     type DbRunner,
 } from '@frontbase/edge-infra';
@@ -50,7 +49,8 @@ export type StateDbKind =
     | 'd1-rest'
     | 'sqlite-file'
     | 'sqlite-memory'
-    | 'libsql-remote';
+    | 'libsql-remote'
+    | 'postgres-hyperdrive';
 
 export type StateDbHost = 'cloudflare' | 'node' | 'deno' | 'vercel';
 
@@ -96,14 +96,31 @@ export interface StateDbChoice extends Omit<ResolvedStateDb, 'runner'> {
 export function describeStateDb(input: {
     env: Record<string, string | undefined>;
     d1Binding?: D1Database;
+    hyperdriveBinding?: { connectionString: string };
     host: StateDbHost;
 }): StateDbChoice {
-    const { env, d1Binding, host } = input;
+    const { env, d1Binding, hyperdriveBinding, host } = input;
     const url = env.APP_DB_URL?.trim() || undefined;
     const token = env.APP_DB_AUTH_TOKEN?.trim() || undefined;
     const accountId = env.APP_DB_D1_ACCOUNT_ID?.trim() || undefined;
     const databaseId = env.APP_DB_D1_DATABASE_ID?.trim() || undefined;
     const apiToken = env.CLOUDFLARE_API_TOKEN?.trim() || undefined;
+
+    // Frontbase Cloud's application state. The binding carries a generated,
+    // short-lived connection string; never expose it in labels or errors.
+    if (hyperdriveBinding?.connectionString) {
+        return {
+            kind: 'postgres-hyperdrive',
+            label: 'Supabase PostgreSQL (Hyperdrive)',
+            url: '',
+            displayUrl: 'hyperdrive://application-state',
+            card: { provider: 'supabase', name: 'Supabase PostgreSQL', url: 'hyperdrive://application-state' },
+            makeRunner: () => postgresStateRunner({
+                connectionString: hyperdriveBinding.connectionString,
+                schema: env.FRONTBASE_POSTGRES_SCHEMA?.trim() || 'frontbase_cloud',
+            }),
+        };
+    }
 
     // 1. Explicit URL selection — the operator's override, on any host.
     if (url) {
@@ -220,6 +237,7 @@ export function describeStateDb(input: {
 export function resolveStateDb(input: {
     env: Record<string, string | undefined>;
     d1Binding?: D1Database;
+    hyperdriveBinding?: { connectionString: string };
     host: StateDbHost;
 }): ResolvedStateDb {
     const choice = describeStateDb(input);

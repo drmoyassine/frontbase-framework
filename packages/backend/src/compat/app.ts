@@ -34,6 +34,8 @@ import { registerAuthFormsRoutes } from './routes/auth-forms.js';
 import { registerWorkflowsRoutes } from './routes/workflows.js';
 import { registerActionsRoutes } from './routes/actions.js';
 import { registerAuthCompatUnauthRoutes, registerAuthCompatAuthedRoutes } from './routes/auth-compat.js';
+import type { CloudIdentityProvider } from './supabase-cloud-auth.js';
+import { registerBillingRoutes, registerBillingWebhookRoute, type StripeBillingConfig } from './routes/billing.js';
 import { authRateLimitMiddleware } from './rate-limit-store.js';
 import { registerEdgeEnginesRoutes } from './routes/edge-engines.js';
 import { registerTenantsRoutes } from './routes/tenants.js';
@@ -80,6 +82,10 @@ export interface CreateCompatAppDeps {
     /** Match the product deployment mode. Cloud-only signup and slug checks are
      * disabled by default because the framework worker is self-hosted. */
     cloudMode?: boolean;
+    /** Supabase Auth authority for Cloud customer identities and passwords. */
+    cloudAuth?: CloudIdentityProvider;
+    /** Stripe subscriptions for Frontbase Cloud. */
+    billing?: StripeBillingConfig;
     /** Map the store namespace for the /api/admin/plans* router. Cloud-only:
      * the app-host PlansManager must manage the `_global` catalog — the rows
      * `tenants.plan` resolves against (A-25 WA5) — not the operator tenant's
@@ -267,6 +273,9 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         now,
         runRagIndex: (tenant, bucketId) => runRagIndex(ragDeps, tenant, bucketId),
     });
+    // Stripe signs the raw body, so this one public callback is mounted before
+    // default-deny. Its HMAC and durable event ledger are its authentication.
+    if (deps.billing) registerBillingWebhookRoute(app, runner, deps.billing, now);
     // A-25 WA6 — cloud-only per-IP rate limiting on the unauthenticated auth
     // ops (signup 5/hour, login 10/15min, forgot 5/hour). Durable D1 counters
     // behind the CF-16 guard; synthetic `rl-anon` principal keyed on
@@ -293,6 +302,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
             deps.passwordResetDelivery,
             deps.cloudMode ?? false,
             pagesFor,
+            deps.cloudAuth,
         );
     }
 
@@ -353,8 +363,9 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
 
     // AUTHENTICATED auth ops (me + security) — behind the guard (RULE 2).
     if (deps.sessionSecret && deps.userStoreFor) {
-        registerAuthCompatAuthedRoutes(app, kvFor, secretCipher, now);
+    registerAuthCompatAuthedRoutes(app, kvFor, secretCipher, now);
     }
+    if (deps.billing) registerBillingRoutes(app, runner, deps.billing, now);
 
     // Real handlers for implemented ops, registered with the exact product paths
     // on the main app (no sub-app mount — that mismatches trailing slashes).

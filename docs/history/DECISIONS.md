@@ -1037,3 +1037,15 @@ Six backend suites (`tenant-host`, `cloud-serving`, `cloud-signup`, `admin-tenan
 - [OPENQUESTIONS.md](./OPENQUESTIONS.md) - All open questions
 - [ARCHITECTURE-SPLIT.md](./ARCHITECTURE-SPLIT.md) - Modular architecture details
 - [MILESTONES.md](./MILESTONES.md) - Implementation roadmap
+
+## Decision A-26: Paid Cloud launch from the framework with Supabase
+
+- **Date:** 2026-09-06
+- **Status:** Approved; framework implementation complete on 2026-09-07, deployment acceptance incomplete.
+- **Owner requirements:** launch from frontbase-framework (explicitly chosen over returning to FastAPI); paid subscriptions at launch; reuse the existing Stripe account and plan catalog; Supabase Cloud for the application database and tenant authentication; no existing customer data to migrate.
+- **Scope:** finish the Cloud storage, identity and billing migrations needed for that customer journey. Preserve the six reusable package boundaries and the one-engine model. The original product is implementation evidence, not a runtime dependency. CF-22 remains paused except concrete launch regressions.
+- **Supersedes:** A-25's free-tier-only launch scope and its deferral of billing. A-24's SQLite-family restriction remains current implementation truth, but is no longer the target for Cloud application state. The existing self-host defaults remain supported.
+- **Release gate:** real Supabase signup/login/reset and cross-tenant isolation; persistent application state and publish; Stripe test-mode checkout, verified webhook, repeat/out-of-order delivery, renewal, failed payment, cancellation and portal; deployed host routing and restore/rollback proof. Existing free-tier tests cannot satisfy these gates.
+- **Catalog:** the existing Free/Basic/Pro limits and live Stripe Basic/Pro price references are preserved. The separate Edge Compute Engine price has no supported entitlement in this migration and is excluded from the initial paid beta. Do not invent pricing or sell absent capabilities.
+- **Recommended label (not yet accepted/released):** Frontbase Cloud paid beta after the gates pass. Independent npm/public-framework publication remains governed by A-20/R0-R4 and is not a prerequisite for operating the hosted product from this checkout.
+- **Work record:** [Cloud launch readiness](../CLOUD-LAUNCH.md). PostgreSQL/Hyperdrive state, Supabase Auth and Stripe lifecycle code plus live Supabase smoke evidence are recorded there. No production Worker or live charge has been performed.

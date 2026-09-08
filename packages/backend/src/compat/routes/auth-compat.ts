@@ -38,6 +38,7 @@ import { hashPassword, verifyPassword, issueSession } from '@frontbase/edge-infr
 import { fastApiValidationError } from '../request-validation.js';
 import { slugError } from '../../tenancy/host.js';
 import type { PagesStore } from '../pages-store.js';
+import { CloudIdentityError, type CloudIdentityProvider } from '../supabase-cloud-auth.js';
 
 // A well-formed PBKDF2 hash of a random value — verified against on unknown-email
 // logins so response time doesn't reveal whether the email exists (MED-5). Iters
@@ -118,6 +119,8 @@ export function registerAuthCompatUnauthRoutes(
      *  site is live the moment the signup returns. Optional so pure-auth
      *  fixtures can mount these routes without a page store. */
     pagesFor?: (tenant: string) => PagesStore,
+    /** Frontbase Cloud identity/password authority. Self-host leaves this absent. */
+    cloudAuth?: CloudIdentityProvider,
 ): void {
     // Product contract includes explicit preflight operations for these routes.
     app.options('/api/auth/login', async (c) => {
@@ -138,13 +141,23 @@ export function registerAuthCompatUnauthRoutes(
         // owner in _default. Verify the password against each candidate.
         const candidates = body.email ? await userStoreFor('_default').findByEmailAnyTenant(body.email) : [];
         let matched: (typeof candidates)[number] | null = null;
-        if (body.password) {
+        if (cloudAuth && body.password) {
+            const identity = await cloudAuth.signIn(body.email, body.password);
+            matched = identity ? candidates.find((candidate) => candidate.id === identity.id) ?? null : null;
+            // The operator account can remain framework-local; customer tenant
+            // credentials are always checked by Supabase.
+            if (!matched) {
+                for (const candidate of candidates.filter((item) => item.role === 'master_admin')) {
+                    if (await verifyPassword(body.password, candidate.passwordHash)) { matched = candidate; break; }
+                }
+            }
+        } else if (body.password) {
             for (const u of candidates) {
                 if (await verifyPassword(body.password, u.passwordHash)) { matched = u; break; }
             }
         }
         // MED-5: always run at least one verify so unknown-email ≈ wrong-password timing.
-        if (candidates.length === 0) { await verifyPassword(body.password ?? '', DUMMY_HASH); }
+        if (!cloudAuth && candidates.length === 0) { await verifyPassword(body.password ?? '', DUMMY_HASH); }
         // RULE 4: identical response for unknown email vs wrong password.
         if (!matched) return c.json({ error: 'invalid_credentials' }, 401);
 
@@ -216,14 +229,30 @@ export function registerAuthCompatUnauthRoutes(
             return c.json({ detail: 'An account with this email already exists' }, 409);
         }
         const timestamp = now();
-        await tenants.createTenant(tenantSlug, parsed.data.workspace_name, timestamp);
-        await tenants.updateTenant(tenantSlug, { plan: 'free', status: 'active' });
+        let identity: { id: string; email: string } | null = null;
+        if (cloudAuth) {
+            try {
+                identity = await cloudAuth.createUser(email, parsed.data.password, {
+                    tenant_slug: tenantSlug,
+                    role: 'owner',
+                });
+            } catch (error) {
+                if (error instanceof CloudIdentityError && error.code === 'identity_exists') {
+                    return c.json({ detail: 'An account with this email already exists' }, 409);
+                }
+                throw error;
+            }
+        }
+        let tenantCreated = false;
         let user;
         try {
+            await tenants.createTenant(tenantSlug, parsed.data.workspace_name, timestamp);
+            tenantCreated = true;
+            await tenants.updateTenant(tenantSlug, { plan: 'free', status: 'active' });
             user = await userStoreFor(tenantSlug).createUser({
-                id: parsed.data.user_id ?? undefined,
+                id: identity?.id ?? parsed.data.user_id ?? undefined,
                 email,
-                passwordHash: await hashPassword(parsed.data.password),
+                passwordHash: cloudAuth ? 'supabase-managed' : await hashPassword(parsed.data.password),
                 role: 'owner',
                 tenantSlug,
                 now: timestamp,
@@ -239,7 +268,10 @@ export function registerAuthCompatUnauthRoutes(
                     await userStoreFor(tenantSlug).deleteUser(u.id);
                 }
             } catch { /* best-effort */ }
-            await tenants.deleteTenant(tenantSlug);
+            if (tenantCreated) await tenants.deleteTenant(tenantSlug);
+            if (identity && cloudAuth) {
+                try { await cloudAuth.deleteUser(identity.id); } catch { /* best-effort */ }
+            }
             throw error;
         }
         await setSession(c, user, sessionSecret);
@@ -267,7 +299,9 @@ export function registerAuthCompatUnauthRoutes(
         const input = await c.req.json().catch(() => null);
         const parsed = zForgotPasswordRequest.safeParse(input);
         if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
-        if (deliverPasswordReset) {
+        if (cloudAuth) {
+            try { await cloudAuth.requestPasswordReset(parsed.data.email); } catch { /* preserve opaque response */ }
+        } else if (deliverPasswordReset) {
             const candidates = await userStoreFor('_default').findByEmailAnyTenant(parsed.data.email);
             for (const user of candidates) {
                 const token = await passwordResets.create(user, now());
@@ -291,6 +325,12 @@ export function registerAuthCompatUnauthRoutes(
         const input = await c.req.json().catch(() => null);
         const parsed = zResetPasswordRequest.safeParse(input);
         if (!parsed.success) return c.json(fastApiValidationError('body', input, parsed.error.issues), 422);
+        if (cloudAuth) {
+            const updated = await cloudAuth.updatePassword(parsed.data.token, parsed.data.password);
+            return updated
+                ? c.json({ success: true, message: 'Password has been successfully reset. You can now log in.' })
+                : c.json({ detail: 'Invalid email or token.' }, 400);
+        }
         const capability = await passwordResets.consume(parsed.data.email, parsed.data.token, now());
         if (!capability) return c.json({ detail: 'Invalid email or token.' }, 400);
         await userStoreFor(capability.tenantSlug).updatePasswordAndInvalidateSessions(
@@ -326,16 +366,42 @@ export function registerAuthCompatUnauthRoutes(
             return c.json({ detail: 'An account with this email already exists' }, 409);
         }
         const timestamp = now();
-        const user = await userStoreFor(pending.tenantSlug).createUser({
-            email: pending.email,
-            passwordHash: await hashPassword(parsed.data.password),
-            role: pending.role,
-            tenantSlug: pending.tenantSlug,
-            now: timestamp,
-        });
+        let identity: { id: string; email: string } | null = null;
+        if (cloudAuth) {
+            try {
+                identity = await cloudAuth.createUser(pending.email, parsed.data.password, {
+                    tenant_slug: pending.tenantSlug,
+                    role: pending.role,
+                });
+            } catch (error) {
+                if (error instanceof CloudIdentityError && error.code === 'identity_exists') {
+                    return c.json({ detail: 'An account with this email already exists' }, 409);
+                }
+                throw error;
+            }
+        }
+        let user;
+        try {
+            user = await userStoreFor(pending.tenantSlug).createUser({
+                id: identity?.id,
+                email: pending.email,
+                passwordHash: cloudAuth ? 'supabase-managed' : await hashPassword(parsed.data.password),
+                role: pending.role,
+                tenantSlug: pending.tenantSlug,
+                now: timestamp,
+            });
+        } catch (error) {
+            if (identity && cloudAuth) {
+                try { await cloudAuth.deleteUser(identity.id); } catch { /* best-effort */ }
+            }
+            throw error;
+        }
         const consumed = await invites.consume(parsed.data.token, timestamp);
         if (!consumed) {
             await userStoreFor(pending.tenantSlug).deleteUser(user.id);
+            if (identity && cloudAuth) {
+                try { await cloudAuth.deleteUser(identity.id); } catch { /* best-effort */ }
+            }
             return c.json({ detail: 'Invite is invalid, accepted, or expired' }, 409);
         }
         await setSession(c, user, sessionSecret);

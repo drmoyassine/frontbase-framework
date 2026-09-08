@@ -1,22 +1,10 @@
 /**
- * A-25 WA9 — attach Workers Custom Domains via the Cloudflare API, so a cloud
- * deploy serves the apex app host (`app.<zone>`) and every tenant host
- * (`*.<zone>`) without a dashboard trip. Idempotent: the Custom Domains attach
- * (`PUT /accounts/{id}/workers/domains`) is an upsert — re-attaching an
- * existing hostname is a no-op, so re-running the deploy is safe.
- *
- * The zone is resolved by name (`GET /zones?name=<zone>`) — the deploy only
- * knows the base domain (e.g. `frontbase.dev`), never its zone id.
- *
- * Auth: the account API token travels ONLY in the Authorization header of the
- * API request — never argv, never a log line, never the returned result.
- * Required token scopes: Zone Read (zone lookup), Workers Scripts Edit,
- * Workers Routes Edit (Custom Domains attach).
- *
- * `fetchSeam` is the test seam: the suite injects a deterministic Cloudflare
- * double and asserts the exact request shapes (plan V1 — the live API's
- * wildcard-hostname acceptance can't be proven from a repo; the dashboard
- * fallback is documented for when it refuses).
+ * Cloud deployment routing: app.<zone> is a Workers Custom Domain;
+ * *.<zone> uses a Workers route over existing proxied wildcard DNS.
+ * Cloudflare Custom Domains do not support wildcards.
+ * Token scopes: Zone Read, DNS Read, Workers Scripts Edit, Workers Routes Edit.
+ * Existing DNS and routes owned by other workers are never overwritten.
+ * Tests inject the HTTP transport; live DNS/certificate proof remains required.
  */
 
 /** Minimal Response surface the seam must provide (no DOM dependency). */
@@ -33,7 +21,7 @@ const defaultFetch: FetchLike = (input, init) => fetch(input, init);
 export interface AttachDomainsResult {
     /** Zone id the hostnames were attached under. */
     zoneId: string;
-    /** Hostnames whose attach returned 2xx. */
+    /** Hostnames whose Custom Domain or route is attached (DNS/TLS still require live verification). */
     attached: string[];
     /** Hostnames the API refused, with its error detail. */
     failed: Array<{ hostname: string; status: number; detail: string }>;
@@ -76,6 +64,13 @@ export async function attachWorkerDomains(
     const attached: string[] = [];
     const failed: AttachDomainsResult['failed'] = [];
     for (const hostname of hostnames) {
+        // Custom Domains do not accept wildcards; tenant hosts need a zone route.
+        if (hostname.startsWith('*.')) {
+            const failure = await attachWildcardRoute(zoneId, apiToken, hostname, service, fetchSeam);
+            if (failure) failed.push({ hostname, ...failure });
+            else attached.push(hostname);
+            continue;
+        }
         const res = await fetchSeam(
             `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/workers/domains`,
             {
@@ -106,4 +101,53 @@ export async function attachWorkerDomains(
  *  registered slug's host route to the worker. */
 export function cloudHostnames(zoneName: string, appLabel = 'app'): string[] {
     return [`${appLabel}.${zoneName}`, `*.${zoneName}`];
+}
+
+/** Wildcard routing requires existing proxied DNS. Never overwrite DNS or
+ * another worker's route, including an explicit no-worker exclusion. */
+async function attachWildcardRoute(
+    zoneId: string, token: string, hostname: string, service: string, fetcher: FetchLike,
+): Promise<{ status: number; detail: string } | null> {
+    const base = `https://api.cloudflare.com/client/v4/zones/${encodeURIComponent(zoneId)}`;
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const dns = await fetcher(`${base}/dns_records?name=${encodeURIComponent(hostname)}&per_page=100`, { headers });
+    const dnsBody = await dns.json().catch(() => ({})) as {
+        success?: boolean; result?: Array<{ name?: string; proxied?: boolean; type?: string }>;
+    };
+    if (!dns.ok || dnsBody.success === false) {
+        return { status: dns.status, detail: 'Cannot verify wildcard DNS; the token needs DNS Read on the zone.' };
+    }
+    if (!dnsBody.result?.some((r) => r.name === hostname && r.proxied === true && ['A', 'AAAA', 'CNAME'].includes(r.type ?? ''))) {
+        return { status: 409, detail: `Create an operator-approved proxied DNS record for ${hostname}, then retry. DNS records are never created or overwritten by this helper.` };
+    }
+    const pattern = `${hostname}/*`;
+    let owned = false;
+    for (let page = 1; ; page++) {
+        const res = await fetcher(`${base}/workers/routes?per_page=100&page=${page}`, { headers });
+        const body = await res.json().catch(() => ({})) as {
+            success?: boolean; result?: Array<{ pattern?: string; script?: string }>;
+            result_info?: { total_pages?: number };
+        };
+        if (!res.ok || body.success === false || !Array.isArray(body.result)) {
+            return { status: res.status, detail: 'Cannot inspect existing Workers routes; no route was changed.' };
+        }
+        for (const route of body.result) {
+            if (route.pattern !== pattern) continue;
+            if (route.script !== service) {
+                return { status: 409, detail: `Route ${pattern} already belongs to another worker or is an exclusion. Resolve it explicitly before retrying.` };
+            }
+            owned = true;
+        }
+        if (page >= (body.result_info?.total_pages ?? 1)) break;
+        if (page >= 100) return { status: 409, detail: 'Route inventory exceeded the safety limit; no route was changed.' };
+    }
+    if (owned) return null;
+    const created = await fetcher(`${base}/workers/routes`, {
+        method: 'POST', headers, body: JSON.stringify({ pattern, script: service }),
+    });
+    const result = await created.json().catch(() => ({})) as { success?: boolean };
+    if (!created.ok || result.success === false) {
+        return { status: created.status, detail: `Wildcard route creation failed (HTTP ${created.status}); inspect Workers Routes permissions and retry.` };
+    }
+    return null;
 }

@@ -1,131 +1,101 @@
-/**
- * A-25 WA9 — `attachWorkerDomains` against an injected Cloudflare double
- * (plan V1: the live Custom Domains API's wildcard acceptance can't be proven
- * from a repo, so the seam pins the REQUEST SHAPE and the failure contract;
- * the dashboard fallback is documented for live refusals).
- *
- * Security invariants pinned here: the API token travels ONLY in the
- * Authorization header (never argv/log/result), and per-hostname failures
- * degrade to structured `failed` rows instead of aborting the remaining
- * attaches (partial progress is real state on Cloudflare — upsert is
- * idempotent, so a retry only ever touches what failed).
- */
+/** Cloud domain deployment: real endpoint contracts, no destructive route takeover. */
+import assert from 'node:assert/strict';
 import { attachWorkerDomains, cloudHostnames, ZoneNotFoundError } from '../dist/cli/cloud-domains.js';
-
-let failures = 0;
-// Async-aware: predicates may return booleans or Promises of booleans.
-const check = async (l, c) => { if (await c) console.log(`  ✅ ${l}`); else { failures++; console.log(`  ❌ ${l}`); } };
-
-/** Deterministic CF double: records every request, answers from a script. */
-function makeCf({ zoneId = 'zone-123', zoneOk = true, failHostname = null } = {}) {
-    const requests = [];
-    const cf = async (input, init = {}) => {
+const TOKEN = 'secret-sentinel-not-for-output';
+const HOSTS = cloudHostnames('frontbase.dev');
+function fixture(options = {}) {
+    const calls = [];
+    const routes = [...(options.routes ?? [])];
+    const reply = (result, status = 200) => ({ ok: status < 400, status, json: async () => ({ success: status < 400, result }) });
+    const fetcher = async (url, init = {}) => {
+        const u = new URL(url), method = init.method ?? 'GET';
         const body = init.body ? JSON.parse(init.body) : undefined;
-        const url = new URL(input);
-        requests.push({ url, method: init.method ?? 'GET', headers: init.headers ?? {}, body });
-        if (url.pathname === '/client/v4/zones') {
-            return { ok: zoneOk, status: zoneOk ? 200 : 403, json: async () => ({ result: zoneOk ? [{ id: zoneId }] : [] }) };
+        calls.push({ url: u, method, body, headers: init.headers });
+        if (u.pathname === '/client/v4/zones') return reply(options.zoneFail ? [] : [{ id: 'zone' }], options.zoneFail ? 403 : 200);
+        if (u.pathname.endsWith('/workers/domains')) {
+            assert.equal(method, 'PUT');
+            assert.equal(body.hostname, 'app.frontbase.dev', 'wildcards must NEVER reach Custom Domains');
+            assert.equal(body.service, 'cloud');
+            assert.equal(body.environment, 'production');
+            assert.equal(body.zone_id, 'zone');
+            return reply({ id: 'domain' });
         }
-        if (url.pathname === '/client/v4/accounts/acct-9/workers/domains' && init.method === 'PUT') {
-            if (failHostname && body?.hostname === failHostname) {
-                return { ok: false, status: 400, json: async () => ({ errors: [{ message: `custom domain for "${failHostname}" is not allowed` }] }) };
+        if (u.pathname.endsWith('/dns_records')) {
+            assert.equal(method, 'GET', 'DNS is read-only');
+            assert.equal(u.searchParams.get('name'), '*.frontbase.dev');
+            if (options.dnsDenied) return reply([], 403);
+            return reply(options.missingDns ? [] : [{ name: '*.frontbase.dev', type: 'CNAME', proxied: !options.unproxied }]);
+        }
+        if (u.pathname.endsWith('/workers/routes')) {
+            if (method === 'GET') {
+                if (options.routeDenied) return reply([], 403);
+                const page = Number(u.searchParams.get('page'));
+                const res = reply(options.pages ? (options.pages[page - 1] ?? []) : routes);
+                return { ...res, json: async () => ({ success: true, result: options.pages ? options.pages[page - 1] : routes, result_info: { total_pages: options.pages?.length ?? 1 } }) };
             }
-            return { ok: true, status: 200, json: async () => ({ result: { id: 'dom-1' } }) };
+            assert.equal(method, 'POST', 'existing routes must NEVER be overwritten');
+            assert.deepEqual(body, { pattern: '*.frontbase.dev/*', script: 'cloud' });
+            if (options.createFail) return { ok: false, status: 502, json: async () => { throw new Error('non-JSON'); } };
+            routes.push(body);
+            return reply({ id: 'route' });
         }
-        return { ok: false, status: 404, json: async () => ({ errors: [{ message: 'route not matched' }] }) };
+        throw new Error('Unexpected endpoint');
     };
-    cf.requests = requests;
-    return cf;
+    return { calls, routes, fetcher };
 }
-
-const TOKEN = 'cf-test-token-0123456789abcdef';
-const HOSTNAMES = cloudHostnames('frontbase.dev');
-
-console.log('— request shapes —');
-await check('zone is resolved by name with the Bearer token, and its id is reused for the attaches', async () => {
-    const cf = makeCf();
-    const res = await attachWorkerDomains('acct-9', TOKEN, 'frontbase.dev', HOSTNAMES, 'frontbase-cloud', cf);
-    const zoneReq = cf.requests[0];
-    return res.zoneId === 'zone-123'
-        && zoneReq.url.pathname === '/client/v4/zones'
-        && zoneReq.url.searchParams.get('name') === 'frontbase.dev'
-        && zoneReq.headers.Authorization === `Bearer ${TOKEN}`
-        && cf.requests.slice(1).every((r) => r.body?.zone_id === 'zone-123');
-});
-await check('both cloud hostnames PUT to /accounts/{id}/workers/domains with service + production env', async () => {
-    const cf = makeCf();
-    const res = await attachWorkerDomains('acct-9', TOKEN, 'frontbase.dev', HOSTNAMES, 'frontbase-cloud', cf);
-    const puts = cf.requests.slice(1);
-    return res.attached.length === 2 && res.failed.length === 0
-        && puts.length === 2 && puts.every((r) => r.method === 'PUT')
-        && puts.every((r) => r.url.pathname === '/client/v4/accounts/acct-9/workers/domains')
-        && puts.every((r) => r.body?.service === 'frontbase-cloud' && r.body?.environment === 'production')
-        && puts[0].body?.hostname === 'app.frontbase.dev'
-        && puts[1].body?.hostname === '*.frontbase.dev';
-});
-await check('token never leaks into the result (header-only transport)', async () => {
-    const cf = makeCf({ failHostname: '*.frontbase.dev' });
-    const res = await attachWorkerDomains('acct-9', TOKEN, 'frontbase.dev', HOSTNAMES, 'frontbase-cloud', cf);
-    return !JSON.stringify(res).includes(TOKEN);
-});
-
-console.log('— idempotency —');
-await check('re-attaching the same hostnames is a clean second success (upsert semantics)', async () => {
-    const cf = makeCf();
-    const first = await attachWorkerDomains('acct-9', TOKEN, 'frontbase.dev', HOSTNAMES, 'frontbase-cloud', cf);
-    const second = await attachWorkerDomains('acct-9', TOKEN, 'frontbase.dev', HOSTNAMES, 'frontbase-cloud', cf);
-    return first.attached.length === 2 && second.attached.length === 2
-        && second.failed.length === 0 && cf.requests.length === 6;
-});
-
-console.log('— failure contract —');
-await check('zone the token cannot see → ZoneNotFoundError naming the zone', async () => {
-    const cf = makeCf({ zoneOk: false });
-    try {
-        await attachWorkerDomains('acct-9', TOKEN, 'ghost.dev', HOSTNAMES, 'frontbase-cloud', cf);
-        return false;
-    } catch (e) {
-        return e instanceof ZoneNotFoundError && e.message.includes('ghost.dev') && e.message.includes('zone_not_found');
+const attach = (f) => attachWorkerDomains('account', TOKEN, 'frontbase.dev', HOSTS, 'cloud', f.fetcher);
+const posts = (f) => f.calls.filter((c) => c.method === 'POST');
+let count = 0;
+async function test(name, run) { await run(); count++; console.log(`PASS ${name}`); }
+await test('app Custom Domain plus wildcard route over proxied DNS', async () => {
+    const f = fixture(); const result = await attach(f);
+    assert.deepEqual(result, { zoneId: 'zone', attached: HOSTS, failed: [] });
+    assert.equal(posts(f).length, 1);
+    assert.equal(f.calls[0].url.searchParams.get('name'), 'frontbase.dev');
+    for (const c of f.calls) {
+        assert.equal(c.headers.Authorization, `Bearer ${TOKEN}`);
+        assert.ok(!JSON.stringify({ url: c.url, body: c.body }).includes(TOKEN));
     }
+    assert.ok(!JSON.stringify(result).includes(TOKEN));
 });
-await check('one refused hostname lands in `failed` with status + API detail; the other still attaches', async () => {
-    const cf = makeCf({ failHostname: '*.frontbase.dev' });
-    const res = await attachWorkerDomains('acct-9', TOKEN, 'frontbase.dev', HOSTNAMES, 'frontbase-cloud', cf);
-    return res.attached.join(',') === 'app.frontbase.dev'
-        && res.failed.length === 1
-        && res.failed[0].hostname === '*.frontbase.dev'
-        && res.failed[0].status === 400
-        && res.failed[0].detail.includes('not allowed');
+await test('re-run reuses the existing owned route without a duplicate POST', async () => {
+    const f = fixture(); await attach(f); const result = await attach(f);
+    assert.deepEqual(result.attached, HOSTS); assert.equal(posts(f).length, 1);
 });
-await check('non-JSON error body on an attach degrades to "HTTP <status>" (no throw, other host unaffected)', async () => {
-    const cf = makeCf();
-    // Wrap: the wildcard attach answers 502 with an unparseable body.
-    const wrapped = async (input, init = {}) => {
-        const res = await cf(input, init);
-        if (init.method === 'PUT' && res.ok === false && JSON.parse(init.body).hostname === '*.frontbase.dev') {
-            return { ok: false, status: 502, json: async () => { throw new Error('bad json'); } };
-        }
-        return res;
-    };
-    const res = await attachWorkerDomains('acct-9', TOKEN, 'frontbase.dev', HOSTNAMES, 'frontbase-cloud', wrapped);
-    return res.attached.join(',') === 'app.frontbase.dev'
-        && res.failed.length === 1
-        && res.failed[0].detail === 'HTTP 502';
+for (const option of ['missingDns', 'unproxied', 'dnsDenied', 'routeDenied']) {
+    await test(`${option} fails closed while preserving app-host success`, async () => {
+        const f = fixture({ [option]: true }); const result = await attach(f);
+        assert.deepEqual(result.attached, ['app.frontbase.dev']);
+        assert.equal(result.failed[0].hostname, '*.frontbase.dev'); assert.equal(posts(f).length, 0);
+    });
+}
+for (const script of ['other-worker', undefined]) {
+    await test(`preserves ${script ?? 'no-worker exclusion'} route`, async () => {
+        const f = fixture({ routes: [{ pattern: '*.frontbase.dev/*', script }] });
+        const result = await attach(f); assert.equal(result.failed[0].status, 409); assert.equal(posts(f).length, 0);
+    });
+}
+await test('inspects later route pages before creating a route', async () => {
+    const f = fixture({ pages: [[], [{ pattern: '*.frontbase.dev/*', script: 'other-worker' }]] });
+    const result = await attach(f); assert.equal(result.failed[0].status, 409); assert.equal(posts(f).length, 0);
 });
-await check('missing accountId / empty hostnames / missing service are rejected up front (zero API calls)', async () => {
-    const cf = makeCf();
-    let noAccount = false, noHosts = false, noService = false;
-    try { await attachWorkerDomains('', TOKEN, 'frontbase.dev', HOSTNAMES, 'svc', cf); } catch { noAccount = true; }
-    try { await attachWorkerDomains('acct-9', TOKEN, 'frontbase.dev', [], 'svc', cf); } catch { noHosts = true; }
-    try { await attachWorkerDomains('acct-9', TOKEN, 'frontbase.dev', HOSTNAMES, '', cf); } catch { noService = true; }
-    return noAccount && noHosts && noService && cf.requests.length === 0;
+await test('non-JSON route creation failure reports safe partial state', async () => {
+    const f = fixture({ createFail: true }); const result = await attach(f);
+    assert.equal(result.failed[0].status, 502); assert.deepEqual(result.attached, ['app.frontbase.dev']);
+    assert.ok(!JSON.stringify(result).includes(TOKEN));
 });
-
-console.log('— hostname derivation —');
-await check('cloudHostnames yields the app host then the wildcard (order = deploy output order)',
-    JSON.stringify(cloudHostnames('frontbase.dev')) === JSON.stringify(['app.frontbase.dev', '*.frontbase.dev']));
-await check('cloudHostnames honors a custom app label',
-    JSON.stringify(cloudHostnames('frontbase.dev', 'console')) === JSON.stringify(['console.frontbase.dev', '*.frontbase.dev']));
-
-console.log(failures === 0 ? 'cloud-domains: PASS ✅' : `cloud-domains: FAIL ❌ (${failures})`);
-process.exit(failures === 0 ? 0 : 1);
+await test('zone failure is explicit', async () => {
+    await assert.rejects(attach(fixture({ zoneFail: true })), ZoneNotFoundError);
+});
+await test('missing required inputs make no API calls', async () => {
+    const f = fixture();
+    for (const args of [['', TOKEN, HOSTS, 'cloud'], ['account', '', HOSTS, 'cloud'], ['account', TOKEN, [], 'cloud'], ['account', TOKEN, HOSTS, '']]) {
+        await assert.rejects(attachWorkerDomains(args[0], args[1], 'frontbase.dev', args[2], args[3], f.fetcher));
+    }
+    assert.equal(f.calls.length, 0);
+});
+await test('hostname generation preserves custom app label', async () => {
+    assert.deepEqual(HOSTS, ['app.frontbase.dev', '*.frontbase.dev']);
+    assert.deepEqual(cloudHostnames('frontbase.dev', 'console'), ['console.frontbase.dev', '*.frontbase.dev']);
+});
+console.log(`cloud-domains: ${count} tests PASS`);

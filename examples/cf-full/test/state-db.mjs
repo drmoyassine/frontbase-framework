@@ -3,7 +3,7 @@
  * is the one seam every host entry uses to turn its environment into the
  * engine's `runner`, so these are the properties every host inherits:
  *
- *   1. Precedence — APP_DB_URL > D1-REST trio > D1 binding > host default;
+ *   1. Precedence — Hyperdrive > APP_DB_URL > D1-REST trio > D1 binding > host default;
  *      exactly one runner is built, first match wins.
  *   2. A HALF-configured state DB fails LOUD, naming the exact missing
  *      variable(s) — never a silent fallback (fail at boot, not first write).
@@ -21,13 +21,14 @@ import { describeStateDb, resolveStateDb, StateDbConfigError } from '../dist/sta
 
 const TOKEN = 'unit-test-auth-token-9f2a7c';
 const API_TOKEN = 'unit-test-cf-api-token-31b8e0';
+const PG_SECRET = 'postgres://user:unit-test-password@db.example.test:5432/postgres';
 
 const FAKE_D1 = /** @type {import('@cloudflare/workers-types').D1Database} */ ({});
 const envOf = (vars) => Object.freeze({ ...vars });
 /** The pure decision table — no client constructed (a libsql file: URL opens
  *  its connection EAGERLY, so file: shapes are asserted on describeStateDb). */
-const desc = (vars, host, d1Binding) =>
-    describeStateDb({ env: envOf(vars), host, d1Binding });
+const desc = (vars, host, d1Binding, hyperdriveBinding) =>
+    describeStateDb({ env: envOf(vars), host, d1Binding, hyperdriveBinding });
 
 let failures = 0;
 const check = (label, fn) => {
@@ -56,6 +57,17 @@ const noLeak = (resolved) =>
     && !JSON.stringify(resolved.card).includes(API_TOKEN);
 
 console.log('\n=== state-db resolver: precedence (first match wins) ===');
+
+check('Hyperdrive wins over APP_DB_URL and D1 for Cloud application state', () => {
+    const r = resolveStateDb({
+        env: envOf({ APP_DB_URL: ':memory:' }),
+        d1Binding: FAKE_D1,
+        hyperdriveBinding: { connectionString: PG_SECRET },
+        host: 'cloudflare',
+    });
+    return r.kind === 'postgres-hyperdrive' && r.runner.dialect === 'postgres'
+        && r.displayUrl === 'hyperdrive://application-state';
+});
 
 check('APP_DB_URL=:memory: wins over a complete trio AND a D1 binding', () => {
     const r = resolveStateDb({
@@ -132,6 +144,15 @@ throwsWith('cloudflare WITHOUT a binding lists its own forms (incl. file:)', () 
     ['cloudflare', 'env.DB', 'APP_DB_URL']);
 
 console.log('\n=== state-db resolver: NO-LEAK (credentials never leave the runner) ===');
+check('postgres-hyperdrive: connection string absent from label/displayUrl/card', () => {
+    const r = resolveStateDb({
+        env: envOf({}),
+        hyperdriveBinding: { connectionString: PG_SECRET },
+        host: 'cloudflare',
+    });
+    return r.kind === 'postgres-hyperdrive'
+        && !JSON.stringify({ label: r.label, displayUrl: r.displayUrl, card: r.card }).includes(PG_SECRET);
+});
 check('libsql-remote: token absent from label/displayUrl/card', () => {
     const r = resolveStateDb({ env: envOf({ APP_DB_URL: 'libsql://db.turso.io', APP_DB_AUTH_TOKEN: TOKEN }), host: 'vercel' });
     return noLeak(r);

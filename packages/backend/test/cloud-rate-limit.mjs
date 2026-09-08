@@ -16,6 +16,7 @@
  *   - self-host (cloudMode off) is untouched: no 429s at any volume.
  */
 import { createResolvePrincipal, hashPassword, issueSession, sqliteRunner } from '@frontbase/edge-infra';
+import { createD1RateLimitCache } from '../dist/compat/rate-limit-store.js';
 import { createCompatApp } from '../dist/compat/app.js';
 import { migrateUp } from '../dist/db/migrations.js';
 import { TenantStore } from '../dist/db/tenants.js';
@@ -34,6 +35,22 @@ await new TenantStore(runner).createTenant('taken', 'Taken Co', NOW);
 await new UserStore(runner, 'taken').createUser({
     id: 'seed-1', email: 'seed@taken.test', passwordHash: await hashPassword('pw-seed-1'),
     role: 'owner', tenantSlug: 'taken', now: NOW,
+});
+
+console.log('— PostgreSQL-safe durable counter upsert —');
+check('incr qualifies the target count column (no ambiguous SET count = count)', async () => {
+    const sqls = [];
+    const fake = {
+        dialect: 'postgres',
+        query: async (sql) => (sql.includes('SELECT count FROM') ? [{ count: 2 }] : []),
+        exec: async (sql) => { sqls.push(sql); return 1; },
+        async transaction(work) { return work(this); },
+    };
+    const cache = createD1RateLimitCache(fake, 3600, () => Date.parse(NOW));
+    const value = await cache.incr('rl:rl-anon:pg');
+    return value === 2
+        && sqls.some((sql) => sql.includes('SET count = rate_limit_counters.count + 1'))
+        && !sqls.some((sql) => /SET\s+count\s*=\s*count\s*\+/i.test(sql));
 });
 
 const buildApp = async (cloudMode) => await createCompatApp({

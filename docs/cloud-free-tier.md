@@ -1,6 +1,6 @@
 # Cloud multi-tenant free tier (`app.<zone>`)
 
-**Status**: Shipped 2026-08-29 · **Scope**: free tier only · **Deploy**: `pnpm run deploy:cf-full -- --mode cloud --base-domain <zone>`
+**Status**: Implemented 2026-08-29; paid Supabase Cloud launch not yet verified · **Scope**: free tier only · **Deploy**: `pnpm run deploy:cf-full -- --mode cloud --base-domain <zone>`
 
 The framework's single worker also runs the managed cloud: public self-serve signup,
 site building in the console, publishing, and each site live at `<slug>.frontbase.dev`.
@@ -8,6 +8,8 @@ It is one shared worker — signup provisions database rows only (tenant + owner
 + `free` plan + homepage), and the serving worker resolves the tenant from the **Host
 header prefix alone**. No second process: the same single-worker architecture that
 serves self-host serves the cloud.
+
+> Paid launch requirements now follow [A-26](history/DECISIONS.md#decision-a-26-paid-cloud-launch-from-the-framework-with-supabase) and [CLOUD-LAUNCH.md](CLOUD-LAUNCH.md). This page describes the existing free-tier baseline.
 
 ## Opting in — and staying out
 
@@ -35,7 +37,7 @@ pnpm run deploy:cf-full -- --mode cloud --base-domain frontbase.dev \
 
 The command stages **both** console builds (self-host `/frontbase-admin` + cloud
 `/admin`), gates the deploy on both artifacts, provisions D1, pushes secrets stdin-only,
-deploys with the `--var` pair, and attaches the two Custom Domains. `--dry-run` builds
+deploys with the `--var` pair, and attaches the app Custom Domain plus tenant wildcard route. `--dry-run` builds
 and gates without calling Cloudflare.
 
 Secrets (stdin only — never argv, never logs; names only in output):
@@ -47,18 +49,24 @@ Secrets (stdin only — never argv, never logs; names only in output):
 | `ADMIN_ROLE` | default `master_admin` — the only role that sees `/api/admin/*` |
 | `RESEND_API_KEY` | password-reset email delivery; absent → resets stay non-enumerating no-ops |
 
-## Custom Domains (the wildcard)
+## App domain and tenant wildcard route
 
-After deploy, the script attaches `app.<zone>` + `*.<zone>` as Workers Custom Domains
-through the CF API (`attachWorkerDomains` — idempotent upsert; re-running the deploy is
-safe). The API token travels only in the Authorization header.
+The deploy helper attaches `app.<zone>` as a Workers Custom Domain. For tenant
+hosts it first verifies an existing proxied wildcard A/AAAA/CNAME DNS record,
+then creates `*.<zone>/*` as a Workers route pointing to this worker. An existing
+identical route is reused. A conflicting worker route or no-worker exclusion is
+reported, never overwritten. The token additionally needs **DNS Read**.
 
-**If attach is refused or creds are absent** (the token may lack scopes; wildcards can
-depend on the zone plan): attach both hostnames as Workers Custom Domains in the
-Cloudflare dashboard — for wildcards some plans need a zone route plus a proxied wildcard
-DNS record. The worker itself is live on its workers.dev origin either way. Also expect a
-first-visit certificate-provisioning window for a never-before-seen slug.
+Prepare wildcard DNS explicitly in the operator account. DNS records are never
+created or overwritten by this helper. Missing DNS, insufficient permissions or
+route conflicts produce an actionable failure; an app-host attach may already
+have succeeded. Resolve the reported condition and retry. Verify app and two
+fresh tenant hostnames over HTTPS after deployment, including unknown-tenant 404s.
 
+Cloudflare [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
+do not support wildcards. [Workers routes](https://developers.cloudflare.com/workers/configuration/routing/routes/)
+require proxied DNS. The previous plan-dependent wildcard Custom Domain claim was
+incorrect; an HTTP-double test cannot prove live DNS, routing or TLS.
 ## Host model
 
 | Host | Behavior |

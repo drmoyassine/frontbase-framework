@@ -50,6 +50,13 @@ function recorder() {
 const deployCall = (calls) => calls.find((c) => c.args[0] === 'deploy');
 const secretPut = (calls, name) => calls.find((c) => c.args[0] === 'secret' && c.args[2] === name);
 const RESEND = 're_sk_SENTINEL';
+const CLOUD_SECRETS = {
+    supabaseUrl: 'https://project.supabase.co',
+    supabaseAnonKey: 'anon_SENTINEL',
+    supabaseServiceRoleKey: 'service_SENTINEL',
+    stripeSecretKey: 'sk_SENTINEL',
+    stripeWebhookSecret: 'whsec_SENTINEL',
+};
 
 console.log('— cloud mode: the --var pair + the Resend secret —');
 {
@@ -59,6 +66,7 @@ console.log('— cloud mode: the --var pair + the Resend secret —');
         cwd: dir, target: 'cloudflare',
         appName: 'cloud-app', cloud: true, baseDomain: 'frontbase.dev',
         adminEmail: 'op@frontbase.test', adminPassword: 'pw-cloud', resendApiKey: RESEND,
+        ...CLOUD_SECRETS,
         sessionSecret: 'fixed-session-secret',
         runWrangler,
     });
@@ -79,6 +87,13 @@ console.log('— cloud mode: the --var pair + the Resend secret —');
     check('result reports the secret NAME only — the Resend key never reaches it',
         res.details?.secretsSet?.includes('RESEND_API_KEY') === true
         && !JSON.stringify(res).includes(RESEND));
+    for (const [option, value] of Object.entries(CLOUD_SECRETS)) {
+        const name = option.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase();
+        check(`${name} travels on stdin, never argv`, (() => {
+            const put = secretPut(calls, name);
+            return put?.stdin === value && !put.args.includes(value) && !JSON.stringify(res).includes(value);
+        })());
+    }
 }
 
 console.log('— non-cloud deploy: argv unchanged —');

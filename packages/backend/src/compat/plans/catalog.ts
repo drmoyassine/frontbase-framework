@@ -18,6 +18,9 @@ export const FREE_PLAN_ID = 'free';
 
 export const FREE_PLAN_LIMITS: Record<string, number | boolean> = {
     pages: 10,
+    workflows: 5,
+    datasources: 1,
+    connected_accounts: 1,
     deploys_monthly: 50,
     team_members: 1,
     projects: 1,
@@ -26,6 +29,10 @@ export const FREE_PLAN_LIMITS: Record<string, number | boolean> = {
     api_access: false,
     remove_branding: false,
     engine_imports: false,
+    log_retention_hours: 720,
+    shared_worker_executions_monthly: 1000,
+    agent_credits_daily: 5,
+    agent_credits_monthly: 0,
 };
 
 export interface CatalogPlan {
@@ -34,12 +41,41 @@ export interface CatalogPlan {
     priceCents: number;
     interval: string;
     limits: Record<string, number | boolean>;
+    description: string;
+    features: string[];
+    infraMode: 'managed' | 'byo';
+    stripePriceId?: string;
+    highlighted?: boolean;
+    badge?: string;
+    sortOrder: number;
 }
 
-/** The Phase-4 catalog: free tier only (paid tiers are Phase 5). */
+const BASIC_LIMITS = {
+    projects: 3, pages: 50, workflows: 25, datasources: 3, connected_accounts: 3,
+    edge_engines: 1, team_members: 3, deploys_monthly: 500, log_retention_hours: 2160,
+    shared_worker_executions_monthly: 10000, agent_credits_daily: 5, agent_credits_monthly: 500,
+    private_pages: true, auth_providers: true, remove_branding: true, api_access: true,
+};
+const PRO_LIMITS = {
+    projects: 3, pages: 200, workflows: 50, datasources: 10, connected_accounts: 10,
+    edge_engines: 3, team_members: 10, deploys_monthly: 5000, log_retention_hours: 8760,
+    shared_worker_executions_monthly: -1, agent_credits_daily: 20, agent_credits_monthly: 2000,
+    private_pages: true, auth_providers: true, remove_branding: true, api_access: true,
+};
+
+/** Existing Frontbase live Stripe catalog and product plan limits (A-26). */
 export const PLAN_CATALOG: CatalogPlan[] = [
-    { id: FREE_PLAN_ID, name: 'Free', priceCents: 0, interval: 'month', limits: FREE_PLAN_LIMITS },
+    { id: FREE_PLAN_ID, name: 'Free', priceCents: 0, interval: 'month', limits: FREE_PLAN_LIMITS,
+        description: 'Get started on shared infrastructure.', features: ['10 pages, 5 workflows', 'Community / shared workers', 'Public pages only'], infraMode: 'managed', sortOrder: 0 },
+    { id: 'basic', name: 'Basic', priceCents: 199, interval: 'month', limits: BASIC_LIMITS,
+        description: 'Pro features on Frontbase-managed infrastructure — no setup.', features: ['Managed dedicated engine + state DB', 'Private / auth-gated pages', 'Connect auth providers', 'No infra setup'], infraMode: 'managed', stripePriceId: 'price_1TrSYzPclg9BuO7fJ0s6qjdJ', highlighted: true, badge: 'Best value', sortOrder: 1 },
+    { id: 'pro', name: 'Pro', priceCents: 2900, interval: 'month', limits: PRO_LIMITS,
+        description: 'Pro features on your own infrastructure.', features: ['Bring your own edge', '200 pages, 50 workflows', 'Private pages & auth'], infraMode: 'byo', stripePriceId: 'price_1TrSe3Pclg9BuO7fZBCB1tw2', sortOrder: 2 },
 ];
+
+export function catalogPlan(id: string): CatalogPlan | undefined {
+    return PLAN_CATALOG.find((plan) => plan.id === id);
+}
 
 /**
  * Idempotent catalog seed — INSERT only the ids that don't exist yet, so a

@@ -27,7 +27,8 @@
     "c8": "^11.0.0",
     "esbuild": "^0.28.1",
     "jsdom": "^29.1.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "wrangler": "4.129.1"
   },
   "pnpm": {
     "//": "Fidelity pins: the console SPA must build byte-comparably to the product build it replaces. The console's own devDependencies are exact-pinned; these overrides hold the only remaining resolution drift that reaches its output — the 7 runtime libs bundled into the SPA (floating-ui stack via radix popper, scroll-lock pair, monaco loader) and rollup, vite's chunk codegen, whose patch releases change emitted bytes.",

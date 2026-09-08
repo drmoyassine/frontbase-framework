@@ -248,6 +248,8 @@ export { migrateUp, migrateDown, appliedVersions, schemaFingerprint, MIGRATIONS 
 export type { Migration } from './db/migrations.js';
 // CF-22 P1: product-compatible /api surface + drift-gate machinery.
 export { createCompatApp } from './compat/app.js';
+export { createSupabaseCloudAuth, CloudIdentityError } from './compat/supabase-cloud-auth.js';
+export type { CloudIdentityProvider, SupabaseCloudAuthOptions, SupabaseCloudIdentity } from './compat/supabase-cloud-auth.js';
 export { PagesStore } from './compat/pages-store.js';
 export type { CreateCompatAppDeps } from './compat/app.js';
 export { buildFrameworkSpec, productOps, productSpec, opKey, routedOps, implementedOps } from './compat/app.js';
@@ -285,8 +287,10 @@ export type { PublishedPageRow, ResolvePublishedPageOptions, TenantHostState } f
 // A-25 Phase 4 cloud: the global plan catalog (cloud-boot seed + reads).
 export {
     PLAN_CATALOG_TENANT, FREE_PLAN_ID, FREE_PLAN_LIMITS, PLAN_CATALOG,
-    seedPlanCatalog, catalogPlanLimits, tenantPlanId,
+    seedPlanCatalog, catalogPlan, catalogPlanLimits, tenantPlanId,
 } from './compat/plans/catalog.js';
+export { verifyStripeSignature } from './compat/routes/billing.js';
+export type { StripeBillingConfig } from './compat/routes/billing.js';
 export type { CatalogPlan } from './compat/plans/catalog.js';
 // A-25 Phase 4 cloud: the free-tier enforcement gates (RULE 8 mutation surface).
 export {

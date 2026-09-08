@@ -1,10 +1,10 @@
 # R0 Public Release Scope and Truth Audit
 
-**Status:** Not started
+**Status:** In progress
 
-**Assignee:** Unassigned
+**Assignee:** Codex launch-readiness session (2026-09-06); Cloud-first evidence under owner direction
 
-**Last updated:** 2026-08-13
+**Last updated:** 2026-09-06
 
 ## Objective
 
@@ -76,3 +76,11 @@ Then add:
 ## Completion gate
 
 Set this audit to `Complete` only when all required areas are evidence-backed, conflicting claims are reconciled or explicitly flagged, the recommended edition is decision-ready, and the backlog is executable. If the audit requires a new product choice, add it to `docs/DECISIONS.md` rather than silently treating the recommendation as accepted.
+
+## 2026-09-06 Cloud-first session claim
+
+Owner selected framework-only paid Cloud with Supabase database/auth and the existing Stripe catalog (A-26). Cloud assessment and the ordered evidence-linked launch backlog live in [CLOUD-LAUNCH.md](../CLOUD-LAUNCH.md). This session owns that document, the A-26 synchronization edits, and the confirmed wildcard deployment fix in compiler/scripts/tests. No ownership is claimed over the original product's unfamiliar untracked files.
+
+R0 remains **In progress**, not complete: external package install, clean-room self-host, and release-operations evidence are outstanding. These are public-framework gates; they must not be confused with Cloud billing and Supabase launch work.
+
+Session continuation result (2026-09-08): Supabase PostgreSQL state now uses Hyperdrive-compatible per-request clients. The deployed `app.frontbase.dev` platform host and admin console pass; admin login, authenticated session, and plan routes return 200. Three deployed signup → password login → session cycles passed and provisioned free tenant/owner/published homepage with zero orphans; temporary test identities and rows were removed. Full workspace check/build passes. Live billing, browser journey, restore rehearsal, and the backend mutation final rerun remain open; tenant wildcard is intentionally excluded because it belongs to a separate engine. R0 is not marked complete.

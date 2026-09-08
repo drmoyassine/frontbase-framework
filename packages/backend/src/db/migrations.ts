@@ -288,6 +288,17 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [`DROP TABLE IF EXISTS rate_limit_counters`],
     },
+    {
+        // A-26 Frontbase Cloud billing: provider identifiers and webhook
+        // idempotency. Customer/subscription ids are server-only and tenant keyed.
+        version: 22,
+        name: 'cloud_billing',
+        up: [
+            `CREATE TABLE IF NOT EXISTS billing_accounts (tenant_slug TEXT PRIMARY KEY, provider TEXT NOT NULL, customer_id TEXT NOT NULL UNIQUE, subscription_id TEXT UNIQUE, plan_id TEXT, status TEXT NOT NULL, current_period_end TEXT, updated_at TEXT NOT NULL)`,
+            `CREATE TABLE IF NOT EXISTS billing_events (provider TEXT NOT NULL, event_id TEXT NOT NULL, received_at TEXT NOT NULL, PRIMARY KEY (provider, event_id))`,
+        ],
+        down: [`DROP TABLE IF EXISTS billing_events`, `DROP TABLE IF EXISTS billing_accounts`],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;
@@ -304,7 +315,7 @@ export async function appliedVersions(runner: DbRunner): Promise<number[]> {
 }
 
 /** Apply all pending migrations (up), in order, recording each. Returns applied versions. */
-export async function migrateUp(runner: DbRunner, now: () => string = () => new Date().toISOString(), migrations: Migration[] = MIGRATIONS): Promise<number[]> {
+async function migrateUpUnlocked(runner: DbRunner, now: () => string, migrations: Migration[]): Promise<number[]> {
     await ensureTable(runner);
     const done = new Set(await appliedVersions(runner));
     const applied: number[] = [];
@@ -315,6 +326,18 @@ export async function migrateUp(runner: DbRunner, now: () => string = () => new 
         applied.push(m.version);
     }
     return applied;
+}
+
+export async function migrateUp(runner: DbRunner, now: () => string = () => new Date().toISOString(), migrations: Migration[] = MIGRATIONS): Promise<number[]> {
+    if (runner.dialect === 'postgres' && runner.transaction) {
+        return runner.transaction(async (transaction) => {
+            // Every Worker isolate can cold-start concurrently. Serialize schema
+            // changes for this transaction so a migration is never half-applied.
+            await transaction.query("SELECT pg_advisory_xact_lock(hashtext(?))", ['frontbase:application-state:migrations']);
+            return migrateUpUnlocked(transaction, now, migrations);
+        });
+    }
+    return migrateUpUnlocked(runner, now, migrations);
 }
 
 /** Roll back the latest N applied migrations (down), most-recent first. */

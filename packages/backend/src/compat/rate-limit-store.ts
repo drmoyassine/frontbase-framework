@@ -85,7 +85,7 @@ export function createD1RateLimitCache(
             // resurrect an expired window (the DELETE above already raced it).
             await runner.exec(
                 `INSERT INTO rate_limit_counters (bucket_key, window_start, count) VALUES (?,?,1)
-                 ON CONFLICT(bucket_key) DO UPDATE SET count = count + 1
+                 ON CONFLICT(bucket_key) DO UPDATE SET count = rate_limit_counters.count + 1
                  WHERE rate_limit_counters.window_start > ?`,
                 [key, anchorNow(), cutoff()],
             );

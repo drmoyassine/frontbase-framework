@@ -20,11 +20,15 @@ export type {
  * tenant predicate (Decision A-17: app-level `WHERE tenant = ctx.tenant`).
  */
 export interface DbRunner {
+    /** Optional dialect marker for the few lifecycle operations that need one. */
+    dialect?: 'sqlite' | 'postgres';
     /** Run parameterized SQL; returns rows as plain objects. */
     query(sql: string, params?: unknown[]): Promise<Record<string, unknown>[]>;
     /** Run a statement (DDL/DML); returns the number of affected rows where the
      *  driver reports it (0 otherwise). */
     exec(sql: string, params?: unknown[]): Promise<number>;
+    /** Run work atomically when the driver supports transactions. */
+    transaction?<T>(work: (runner: DbRunner) => Promise<T>): Promise<T>;
 }
 
 /** A DataProvider that also exposes its raw client for tests/seeding. */

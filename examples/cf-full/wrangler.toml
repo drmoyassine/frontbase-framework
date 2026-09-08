@@ -1,7 +1,15 @@
 name = "frontbase-selfhost-fullcms"
 main = "dist/worker.mjs"
-compatibility_date = "2026-01-01"
+compatibility_date = "2026-09-07"
+compatibility_flags = ["nodejs_compat"]
 no_bundle = true
+find_additional_modules = true
+base_dir = "./dist"
+
+[[rules]]
+type = "ESModule"
+globs = ["**/*.mjs"]
+fallthrough = true
 
 # Admin console. Exact files under /frontbase-admin/* are served
 # before the Worker; API, SSR, SW, and unmatched SPA navigation routes fall
@@ -11,9 +19,9 @@ directory = "./console-dist"
 binding = "ASSETS"
 run_worker_first = true
 
-# Single pre-bundled artifact (SW inlined, console + D1 runner bundled). No
-# nodejs_compat: the whole request path is Web-standard (Web Crypto for PBKDF2 +
-# HS256, D1 binding for storage).
+# Single pre-bundled artifact (SW inlined, console and state runners bundled).
+# nodejs_compat supports pg when Frontbase Cloud selects Supabase via Hyperdrive;
+# the self-host D1 path continues to use Web Crypto and the native D1 binding.
 
 # Observability ON by default — persists console.log/error + invocation logs to
 # the CF dashboard so a runtime error is inspectable without a live `wrangler tail`.
@@ -27,8 +35,14 @@ invocation_logs = true
 # and writes the database_id; or create it manually (see README) and paste it here.
 [[d1_databases]]
 binding = "DB"
-database_name = "frontbase-site-db"
-database_id = "9916b332-fba5-4edb-ac9c-808d4cd3d457"
+database_name = "frontbase-cloud-staging-db"
+database_id = "9deebce3-1f73-4a38-ad70-b8de20d6fd5c"
+
+# Frontbase Cloud application state. The resource contains the Supabase
+# connection credentials inside Cloudflare; this file stores only its opaque ID.
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "2114d6c06a474533bda360de370b06dc"
 
 # Secrets are NOT stored here (they'd land in git). Set them with:
 #   wrangler secret put SESSION_SECRET     (required)

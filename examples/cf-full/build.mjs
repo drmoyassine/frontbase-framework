@@ -19,6 +19,7 @@ import { existsSync, readFileSync, readdirSync, statSync, mkdirSync, copyFileSyn
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { builtinModules } from 'node:module';
 import { validateStagedConsole } from '../../scripts/console-pin.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -200,7 +201,7 @@ const workspaceResolver = {
 const shared = {
     bundle: true,
     absWorkingDir: here,
-    platform: 'browser',   // V8 isolate target (no nodejs_compat) — Web Crypto only
+    platform: 'browser',   // V8 isolate target; selected Node builtins remain external for nodejs_compat
     format: 'esm',
     logLevel: 'silent',
     define: { 'process.env.NODE_ENV': '"production"' },
@@ -253,15 +254,33 @@ const edgeAlias = {
     },
 };
 
+// Frontbase Cloud's Supabase state runner uses `pg` through Hyperdrive. The
+// Cloudflare artifact resolves pg's Node builtins under `nodejs_compat`.
+// Non-Cloudflare edge hosts cannot receive a Hyperdrive binding, so their
+// artifacts carry a fail-loud stub that is reached only for invalid wiring.
+const postgresUnavailable = {
+    name: 'postgres-unavailable-on-non-cloudflare-edge',
+    setup(build) {
+        build.onResolve({ filter: /^pg$/ }, () => ({ path: 'pg', namespace: 'pg-unavailable' }));
+        build.onLoad({ filter: /.*/, namespace: 'pg-unavailable' }, () => ({
+            contents: `export class Client { constructor() { throw new Error('postgres-hyperdrive is available only on the Cloudflare host'); } }`,
+            loader: 'js',
+        }));
+    },
+};
+const NODE_BUILTINS = [...new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)])];
+
 // One emit shape for every self-contained edge artifact (the worker and the new
 // per-host bundles): fully bundled (workspaceResolver), same virtual inlines,
 // optional-dep stubs, minified ESM.
-async function emitEdgeArtifact({ entry, outfile, extraPlugins = [], external }) {
+async function emitEdgeArtifact({ entry, outfile, extraPlugins = [], external, platform = shared.platform, banner }) {
     await esbuild.build({
         ...shared,
+        platform,
         entryPoints: [entry],
         outfile: join(here, outfile),
         minify: true,
+        ...(banner ? { banner: { js: banner } } : {}),
         ...(external ? { external } : {}),
         plugins: [workspaceResolver, inlineSwPlugin, consoleShellPlugin, optionalStub, inlineClientPlugin, ...extraPlugins],
     });
@@ -339,9 +358,29 @@ const inlineClientPlugin = {
 //                     disk ASSETS shim's node:fs/path/url imports resolve via
 //                     Deno's node compat at runtime (R1: keep the literal
 //                     `node:` specifier form).
-await emitEdgeArtifact({ entry: 'src/worker.ts', outfile: 'dist/worker.mjs' });
-await emitEdgeArtifact({ entry: 'src/vercel.ts', outfile: 'dist/vercel.mjs', extraPlugins: [edgeAlias] });
-await emitEdgeArtifact({ entry: 'src/deno.ts', outfile: 'dist/deno.mjs', extraPlugins: [edgeAlias], external: ['node:*'] });
+const pgWorkerPath = join(here, 'dist', 'pg-worker.mjs');
+await esbuild.build({
+    ...shared,
+    entryPoints: [realpathSync(join(pkgDir('@frontbase/edge-infra'), 'node_modules', 'pg', 'esm', 'index.mjs'))],
+    outfile: pgWorkerPath,
+    platform: 'node',
+    // pg-cloudflare exposes its real socket only under workerd; without this
+    // condition esbuild bundles the default empty stub and connect fails with
+    // "CloudflareSocket is not a constructor" on Workers.
+    conditions: ['workerd', 'node'],
+    minify: true,
+    external: NODE_BUILTINS,
+    banner: { js: "import { createRequire as __frontbaseCreateRequire } from 'node:module'; const require = __frontbaseCreateRequire('/frontbase-pg.mjs');" },
+});
+const pgWorkerExternal = {
+    name: 'pg-worker-external',
+    setup(build) {
+        build.onResolve({ filter: /^pg$/ }, () => ({ path: './pg-worker.mjs', external: true }));
+    },
+};
+await emitEdgeArtifact({ entry: 'src/worker.ts', outfile: 'dist/worker.mjs', external: NODE_BUILTINS, extraPlugins: [pgWorkerExternal] });
+await emitEdgeArtifact({ entry: 'src/vercel.ts', outfile: 'dist/vercel.mjs', extraPlugins: [edgeAlias, postgresUnavailable] });
+await emitEdgeArtifact({ entry: 'src/deno.ts', outfile: 'dist/deno.mjs', extraPlugins: [edgeAlias, postgresUnavailable], external: ['node:*'] });
 
 // Vercel discovers functions under api/ at the PROJECT ROOT regardless of
 // outputDirectory — stage the byte-identical copy the deploy consumes.
@@ -358,7 +397,8 @@ const API_STAGE = join(here, 'api');
 mkdirSync(API_STAGE, { recursive: true });
 const apiCmsPath = join(API_STAGE, 'cms.mjs');
 const apiCmsBundle = readFileSync(join(here, 'dist', 'vercel.mjs'));
-if (!existsSync(apiCmsPath) || !apiCmsBundle.equals(readFileSync(apiCmsPath))) {
+if (process.env.FRONTBASE_SKIP_VERCEL_STAGE !== '1'
+    && (!existsSync(apiCmsPath) || !apiCmsBundle.equals(readFileSync(apiCmsPath)))) {
     writeFileSync(apiCmsPath, apiCmsBundle);
     console.log('→ api/cms.mjs updated (tracked Vercel edge function)');
 }

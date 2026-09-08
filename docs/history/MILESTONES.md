@@ -1,5 +1,7 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+> **2026-09-07 paid Cloud implementation:** A-26's framework migration is implemented: Supabase PostgreSQL application state through Hyperdrive, Supabase Cloud Auth, and tenant-bound Stripe checkout/portal/webhooks. Live Supabase DB/auth smokes and local security gates pass. Hyperdrive binding, Worker/domain deployment, controlled live billing proof and browser acceptance remain open in [CLOUD-LAUNCH.md](../CLOUD-LAUNCH.md). Public-framework release gates and paused CF-22 remain separate.
+
 **Version**: 3.6
 **Status**: Phases 0, 1, 2 ✅ COMPLETE — Phase 3 (Agent Experience) next · CF-22 (console visual parity) 🛑 PAUSED 2026-08-06 (accepted residue, reactive-only — see docs/cf-22-admin-visual-parity-gap.md)
 **Last Updated**: 2026-08-07 (CF-22 pause memo added)

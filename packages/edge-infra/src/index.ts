@@ -23,6 +23,8 @@ export { sqliteRunner, libsqlRunner, d1RunnerFromBinding, d1RunnerFromRest, supa
 export type { D1RestOpts, SupabaseOpts } from './providers/runners.js';
 export { postgresRunner } from './providers/postgres.js';
 export type { PostgresOpts } from './providers/postgres.js';
+export { postgresStateRunner, postgresPlaceholders } from './providers/postgres-state.js';
+export type { PostgresStateOptions } from './providers/postgres-state.js';
 export type { DbRunner, DataProviderWithClient, EnrichedQueryContext } from './providers/types.js';
 export type { ProviderEnv } from './providers/registry.js';
 

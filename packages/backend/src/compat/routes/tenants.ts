@@ -25,7 +25,7 @@ import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store, PlanRow } from '../../db/phase2-store.js';
-import { PLAN_CATALOG_TENANT, tenantPlanId } from '../plans/catalog.js';
+import { PLAN_CATALOG_TENANT, catalogPlan, tenantPlanId } from '../plans/catalog.js';
 import { deploysThisMonth, startOfMonth } from '../plans/gates.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
@@ -34,24 +34,25 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 export function serializePlan(row: PlanRow, now: string): Record<string, unknown> {
     let limits: Record<string, unknown> = {};
     try { limits = row.limits ? JSON.parse(String(row.limits)) : {}; } catch { /* bad JSON → empty */ }
+    const catalog = catalogPlan(row.id);
     return {
         id: row.id,
         slug: row.id,
         name: row.name,
-        description: null,
-        infra_mode: 'byo',
-        price_display: null,
-        price_period: null,
+        description: catalog?.description ?? null,
+        infra_mode: catalog?.infraMode ?? 'byo',
+        price_display: Number(row.price_cents ?? 0) === 0 ? 'Free' : `$${(Number(row.price_cents ?? 0) / 100).toFixed(Number(row.price_cents ?? 0) % 100 ? 2 : 0)}`,
+        price_period: Number(row.price_cents ?? 0) === 0 ? '' : '/month',
         price_cents: Number(row.price_cents ?? 0),
         limits,
-        features: [],
-        gateway_metadata: {},
-        is_public: false,
+        features: catalog?.features ?? [],
+        gateway_metadata: catalog?.stripePriceId ? { stripe_price_id: catalog.stripePriceId } : {},
+        is_public: !!catalog,
         is_active: row.is_active !== 0,
         is_default: false,
-        highlighted: false,
-        badge: null,
-        sort_order: 0,
+        highlighted: catalog?.highlighted ?? false,
+        badge: catalog?.badge ?? null,
+        sort_order: catalog?.sortOrder ?? 0,
         created_at: row.created_at ?? now,
         updated_at: row.updated_at ?? now,
     };

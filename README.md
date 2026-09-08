@@ -87,7 +87,9 @@ Deploy the full CMS from a fresh fork/clone without a local toolchain — each b
 
 `SESSION_SECRET` is never prompted: when the env var is absent the engine generates a strong secret on first boot and persists it in the state DB, so every isolate agrees (setting it explicitly overrides — rotation caveat applies). `ADMIN_EMAIL` / `ADMIN_PASSWORD` seed the first administrator at boot (idempotent — existing users are never reseeded); leaving them empty falls back to the browser setup flow.
 
-**Vercel** — Root Directory is preset to `examples/cf-full` (the workspace install runs at the repo root; the build is the package's own `node build.mjs`), and creation prompts for `ADMIN_EMAIL` / `ADMIN_PASSWORD` — fill them to seed the first admin, or leave empty. After creation add exactly one complete state-db set to Environment Variables (see the table in [Deploy to four hosts](#deploy-to-four-hosts) — `APP_DB_URL` + `APP_DB_AUTH_TOKEN` for Turso, or the D1-over-REST trio), then Redeploy. The edge function is a tracked artifact (`examples/cf-full/api/cms.mjs`) — Vercel collects `api/` functions from the uploaded source, before the build runs; the build regenerates it and `test:vercel-config` gates byte-sync. **Cloudflare** — build/deploy commands are pre-filled from the root `package.json` (`pnpm -r build`, then `npx wrangler deploy --config examples/cf-full/wrangler.toml`), and the D1 database is provisioned for you (accept or rename `frontbase-site-db`). The flow prompts for `ADMIN_EMAIL` / `ADMIN_PASSWORD` from the repo's `.env.example` — fill them to seed the first admin, or leave empty for the browser setup flow. `SESSION_SECRET` is deliberately not prompted (self-generates at boot). Requires a **public** repo. To seed an admin later instead: **Workers & Pages → your Worker → Settings → Variables and Secrets → add the two (type: Secret) → Deploy**, then log in at `/frontbase-admin`.
+**Vercel** — Root Directory is preset to `examples/cf-full` (the workspace install runs at the repo root; the build is the package's own `node build.mjs`), and creation prompts for `ADMIN_EMAIL` / `ADMIN_PASSWORD` — fill them to seed the first admin, or leave empty. After creation add exactly one complete state-db set to Environment Variables (see the table in [Deploy to four hosts](#deploy-to-four-hosts) — `APP_DB_URL` + `APP_DB_AUTH_TOKEN` for Turso, or the D1-over-REST trio), then Redeploy.
+
+**Cloudflare** — build/deploy commands are pre-filled from the root `package.json` (`pnpm -r build`, then `npx wrangler deploy --config examples/cf-full/wrangler.toml`), and the D1 database is provisioned for you (accept or rename `frontbase-site-db`). The flow prompts for `ADMIN_EMAIL` / `ADMIN_PASSWORD` from the repo's `.env.example` — fill them to seed the first admin, or leave empty for the browser setup flow. `SESSION_SECRET` is deliberately not prompted (self-generates at boot). Requires a **public** repo. To seed an admin later instead: **Workers & Pages → your Worker → Settings → Variables and Secrets → add the two (type: Secret) → Deploy**, then log in at `/frontbase-admin`.
 
 **Deno** — `app_directory` is preset to `examples/cf-full`; install/build come from the package's `deno.json`, and the entrypoint is the committed `deno-entry.mjs` shim (a build output can't be validated pre-build — the shim exists in the clone and imports the built `deno-dist/deno.mjs` after it). Deno's button has no env prompt: set `ADMIN_EMAIL` / `ADMIN_PASSWORD` plus one complete state-db set (Deno Deploy has no D1 binding — Turso is the practical choice) in the project's environment variables, then trigger a new deployment.
 
@@ -122,6 +124,8 @@ On Cloudflare, none of these are required — the D1 binding is the default. On 
 
 ## Cloud multi-tenant hosting
 
+> Paid Cloud launch with Supabase database/auth and Stripe is in preparation, not released. See [launch status and gates](docs/CLOUD-LAUNCH.md).
+
 The same worker also runs the managed cloud: public self-serve signup, site building in the console, and each site live at `<slug>.frontbase.dev`. Opt in via the deploy mode — self-host behavior is byte-identical when it's unset:
 
 ```bash
@@ -131,7 +135,7 @@ pnpm run deploy:cf-full -- --mode cloud --base-domain frontbase.dev \
   --app-name frontbase-cloud --admin-email owner@example.com --admin-password '…'
 ```
 
-That stages both console builds (self-host + cloud `/admin`), boots the worker in cloud mode via `wrangler deploy --var` (never wrangler.toml), attaches `app.<zone>` + `*.<zone>` as Workers Custom Domains, and gates the deploy on both console artifacts. Free tier only: counts/flags are gated by the `_global` plan catalog; per-tenant engines, custom domains, and billing are future phases. Full contract, honest limits, and the dashboard fallback: [docs/cloud-free-tier.md](docs/cloud-free-tier.md).
+That stages both console builds (self-host + cloud `/admin`), boots the worker in cloud mode via `wrangler deploy --var` (never wrangler.toml), attaches `app.<zone>` as a Custom Domain and `*.<zone>/*` as a Workers route over existing proxied wildcard DNS, and gates the deploy on both console artifacts. Free tier only: counts/flags are gated by the `_global` plan catalog; per-tenant engines, custom domains, and billing are future phases. Full contract, honest limits, and the dashboard fallback: [docs/cloud-free-tier.md](docs/cloud-free-tier.md).
 
 ## Architecture
 

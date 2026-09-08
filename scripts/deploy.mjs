@@ -40,11 +40,11 @@
  *                           (non-secret, argv-safe — never wrangler.toml).
  *   --base-domain <zone>    REQUIRED with --mode cloud: the zone tenant hosts
  *                           are served under (e.g. frontbase.dev).
- *   --attach-domains /      attach `app.<zone>` + `*.<zone>` as Workers Custom
- *   --no-domains            Domains via the CF API (default: attach). Needs
+ *   --attach-domains /      attach `app.<zone>` + `*.<zone>` via a Custom
+ *   --no-domains            Domain + wildcard route via the CF API (default: attach). Needs
  *                           CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in the
  *                           environment (token scopes: Zone Read, Workers
- *                           Scripts Edit, Workers Routes Edit). Missing creds →
+ *                           Scripts Edit, Workers Routes Edit, DNS Read). Missing creds →
  *                           loud skip + dashboard instructions; API refusal →
  *                           deploy fails with the per-hostname remediation.
  *   RESEND_API_KEY          password-reset email delivery. Read from the
@@ -102,6 +102,22 @@ if (cloud && !opts.baseDomain) {
 }
 // Secret from the ENVIRONMENT only — never argv (shell history / process list).
 const resendApiKey = process.env.RESEND_API_KEY;
+const paidCloudSecrets = cloud ? {
+    supabaseUrl: process.env.SUPABASE_URL,
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+    stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+} : {};
+if (cloud) {
+    const missing = Object.entries(paidCloudSecrets)
+        .filter(([, value]) => !value)
+        .map(([name]) => name.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase());
+    if (missing.length) {
+        console.error(`✗ paid Cloud deploy requires: ${missing.join(', ')}`);
+        process.exit(1);
+    }
+}
 if (cloud && !resendApiKey) {
     console.error('⚠ RESEND_API_KEY is not set — password-reset email will be a non-enumerating no-op. Export it and re-run to enable email delivery.');
 }
@@ -122,7 +138,11 @@ if (cloud) {
     }
 }
 console.log('→ building examples/cf-full (engine + console + admin console, one artifact)...');
-const build = spawnSync('node', ['build.mjs'], { cwd: cfFullDir, stdio: 'inherit' });
+const build = spawnSync('node', ['build.mjs'], {
+    cwd: cfFullDir,
+    stdio: 'inherit',
+    env: { ...process.env, FRONTBASE_SKIP_VERCEL_STAGE: '1' },
+});
 if (build.status !== 0) {
     console.error('\n✗ build failed — fix the error above before deploying.');
     process.exit(1);
@@ -156,8 +176,8 @@ if (opts.dryRun) {
 //         valid ESM specifier and import() rejects it (ERR_UNSUPPORTED_ESM_URL_SCHEME). ----
 const { deployCommand } = await import(pathToFileURL(join(compilerCliDir, 'deploy.js')).href);
 
-let adminEmail = opts.adminEmail;
-let adminPassword = opts.adminPassword;
+let adminEmail = opts.adminEmail ?? (cloud ? process.env.ADMIN_EMAIL : undefined);
+let adminPassword = opts.adminPassword ?? (cloud ? process.env.ADMIN_PASSWORD : undefined);
 
 if (opts.interactive) {
     const { ensureWranglerLogin, promptCredentials } = await import(pathToFileURL(join(compilerCliDir, 'interactive.js')).href);
@@ -175,7 +195,7 @@ const result = await deployCommand('.', {
     target: 'cloudflare',
     adminEmail,
     adminPassword,
-    adminRole: opts.adminRole,
+    adminRole: opts.adminRole ?? (cloud ? process.env.ADMIN_ROLE : undefined),
     setupToken: opts.setupToken,
     setupLink: opts.setupLink,
     setupTtlMinutes: opts.setupTtlMinutes,
@@ -183,7 +203,7 @@ const result = await deployCommand('.', {
     appName: opts.appName,
     d1DatabaseId: opts.d1DatabaseId,
     // A-25 cloud mode: the --var pair + the env-sourced Resend secret.
-    ...(cloud ? { cloud: true, baseDomain: opts.baseDomain, resendApiKey } : {}),
+    ...(cloud ? { cloud: true, baseDomain: opts.baseDomain, resendApiKey, ...paidCloudSecrets } : {}),
     onSetupLink: (link) => { setupLink = link; },
 });
 
@@ -198,21 +218,21 @@ if (result.details?.secretsSet?.length) {
     console.log(`  secrets set: ${result.details.secretsSet.join(', ')}`);
 }
 
-// ---- 4. CLOUD: attach the app host + wildcard as Workers Custom Domains
+// ---- 4. CLOUD: attach app Custom Domain + tenant wildcard Workers route
 //         (idempotent upsert — re-running the deploy is safe). The API token
 //         travels only inside attachWorkerDomains (Authorization header) and is
 //         never printed. ----
 if (cloud) {
     const zone = opts.baseDomain;
     if (!opts.attachDomains) {
-        console.log(`\n⚠ domains NOT attached (--no-domains): attach app.${zone} and *.${zone} as Workers Custom Domains in the dashboard, or re-run without --no-domains.`);
+        console.log(`\n⚠ domains NOT attached (--no-domains): attach app.${zone} as a Custom Domain and *.${zone}/* as a Workers route over proxied DNS, or re-run without --no-domains.`);
     } else if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
         console.log(`\n⚠ CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are not set — domains were NOT attached.`);
         console.log(`  The worker is live on its workers.dev origin, but ${zone} tenants will not resolve.`);
         console.log(`  Fix: export both, then re-run this command (attach is an idempotent upsert), or attach`);
-        console.log(`  app.${zone} and *.${zone} as Workers Custom Domains in the Cloudflare dashboard.`);
+        console.log(`  app.${zone} as a Custom Domain and *.${zone}/* as a Workers route over proxied wildcard DNS.`);
     } else {
-        console.log(`\n→ attaching Custom Domains on ${zone} (app host + wildcard)...`);
+        console.log(`\n→ attaching app Custom Domain and wildcard Workers route on ${zone}...`);
         const { attachWorkerDomains, cloudHostnames } = await import(pathToFileURL(join(compilerCliDir, 'cloud-domains.js')).href);
         const domains = await attachWorkerDomains(
             process.env.CLOUDFLARE_ACCOUNT_ID,
@@ -225,8 +245,8 @@ if (cloud) {
         if (domains.failed.length) {
             console.error(`\n✗ ${domains.failed.length} of ${domains.attached.length + domains.failed.length} domain attaches refused:`);
             for (const f of domains.failed) console.error(`  ${f.hostname}: ${f.detail}`);
-            console.error(`  Fallback: attach them as Workers Custom Domains in the Cloudflare dashboard`);
-            console.error(`  (Wildcards may need a zone route + proxied wildcard DNS record on some plans).`);
+            console.error(`  Fix the reported DNS/route conflict or token permissions, then retry.`);
+            console.error(`  Wildcards require a Workers route and proxied DNS; Custom Domains do not support them.`);
             process.exit(1);
         }
     }
@@ -240,7 +260,7 @@ if (result.details?.workerUrl) {
         console.log(`  expires: ${setupLink.expiresAt}`);
         console.log('  The claim is removed from browser history when the setup page opens.');
     } else if (cloud) {
-        console.log(`  next steps: visit ${result.details.workerUrl}/admin to log in to the platform console`);
+        console.log(`  next steps: visit https://app.${opts.baseDomain}/admin after DNS and routing verification`);
     } else {
         console.log(`  next steps: visit ${result.details.workerUrl}/frontbase-admin to log in`);
     }

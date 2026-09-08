@@ -217,10 +217,12 @@ const adminCall = (method, path, body, cookie) => cloudAdminApp.fetch(new Reques
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
 }));
-check('master GET /api/admin/plans lists the seeded `free` catalog row (router reads `_global`)', await (async () => {
+check('master GET /api/admin/plans lists the seeded paid catalog (router reads `_global`)', await (async () => {
     const body = await (await adminCall('GET', '/api/admin/plans', undefined, masterCookie)).json();
     const free = body.plans?.find((p) => p.id === 'free');
-    return body.plans?.length === 1 && free?.slug === 'free' && free?.is_active === true;
+    return body.plans?.length === 3 && free?.slug === 'free' && free?.is_active === true
+        && body.plans.some((p) => p.id === 'basic' && p.price_cents === 199)
+        && body.plans.some((p) => p.id === 'pro' && p.price_cents === 2900);
 })());
 check('master PUT on a per-tenant-only plan → 404 (the namespacing has a direction)', await (async () => {
     await new Phase2Store(runner, 'freeco').upsertPlan(

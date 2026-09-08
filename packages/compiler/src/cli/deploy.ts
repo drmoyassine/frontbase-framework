@@ -89,6 +89,13 @@ export interface DeployOptions {
      *  only — like every secret, never argv). Omitted = resets stay
      *  capability-less (non-enumerating no-op delivery). */
     resendApiKey?: string;
+    /** A-26 paid Cloud runtime credentials. Values are always sent to
+     *  `wrangler secret put` over stdin and are never added to argv. */
+    supabaseUrl?: string;
+    supabaseAnonKey?: string;
+    supabaseServiceRoleKey?: string;
+    stripeSecretKey?: string;
+    stripeWebhookSecret?: string;
     /** Test seam: run wrangler. Default spawns the real binary (stdin-fed secrets). */
     runWrangler?: WranglerRunner;
     /** Test seam: exec the per-host deploy script (the --target vercel|deno
@@ -373,6 +380,11 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
         // A-25: Resend delivery for password-reset email (cloud mode). Values
         // ride stdin like every secret — only the NAME is reported.
         ['RESEND_API_KEY', opts.resendApiKey],
+        ['SUPABASE_URL', opts.cloud ? opts.supabaseUrl : undefined],
+        ['SUPABASE_ANON_KEY', opts.cloud ? opts.supabaseAnonKey : undefined],
+        ['SUPABASE_SERVICE_ROLE_KEY', opts.cloud ? opts.supabaseServiceRoleKey : undefined],
+        ['STRIPE_SECRET_KEY', opts.cloud ? opts.stripeSecretKey : undefined],
+        ['STRIPE_WEBHOOK_SECRET', opts.cloud ? opts.stripeWebhookSecret : undefined],
     ];
     for (const [name, value] of toSet) {
         if (value === undefined) continue;

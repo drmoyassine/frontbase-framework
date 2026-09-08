@@ -25,7 +25,7 @@
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import type { PageEntry } from '@frontbase/edge-core';
-import { createConsole, createCompatApp, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
+import { createConsole, createCompatApp, createSupabaseCloudAuth, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, type CloudIdentityProvider, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
@@ -44,6 +44,8 @@ configureEngine({ edition: 'community', nodeEnv: 'production' });
 
 export interface CmsEnv {
     DB: D1Database;
+    /** Frontbase Cloud application-state PostgreSQL through Cloudflare Hyperdrive. */
+    HYPERDRIVE?: { connectionString: string };
     ASSETS: { fetch(request: Request): Promise<Response> };
     SESSION_SECRET: string;
     SETUP_TOKEN?: string;
@@ -74,6 +76,11 @@ export interface CmsEnv {
     FRONTBASE_DEPLOYMENT_MODE?: string;
     /** Required when mode === 'cloud': the tenant zone (e.g. frontbase.dev). */
     FRONTBASE_BASE_DOMAIN?: string;
+    SUPABASE_URL?: string;
+    SUPABASE_ANON_KEY?: string;
+    SUPABASE_SERVICE_ROLE_KEY?: string;
+    STRIPE_SECRET_KEY?: string;
+    STRIPE_WEBHOOK_SECRET?: string;
     /** Optional: enables email delivery of password-reset links (Resend). */
     RESEND_API_KEY?: string;
 }
@@ -122,6 +129,9 @@ export interface CmsEngineOptions {
      *  admin surfaces to the app host, 404s unregistered slugs, seeds the
      *  global plan catalog, and skips the self-host `_root` homepage seed. */
     cloud?: { baseDomain: string; appLabel?: string };
+    /** Cloud customer identity/password authority. */
+    cloudAuth?: CloudIdentityProvider;
+    billing?: { secretKey: string; webhookSecret: string; baseDomain: string };
     /** Resend credentials for password-reset email. Absent ⇒ reset delivery
      *  stays host-injected-capable but silent (non-enumerating response). */
     resend?: { apiKey: string; from?: string };
@@ -391,6 +401,8 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // key (absent ⇒ delivery stays silent; the response is non-enumerating
         // either way). Failures are swallowed inside the route.
         ...(cloud ? { cloudMode: true } : {}),
+        ...(cloud && opts.cloudAuth ? { cloudAuth: opts.cloudAuth } : {}),
+        ...(cloud && opts.billing ? { billing: opts.billing } : {}),
         ...(cloud && opts.resend
             ? {
                 passwordResetDelivery: createResendPasswordResetDelivery({
@@ -714,7 +726,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     if (cloud) {
         const adminShell = async (c: any) => {
             const url = new URL(c.req.url);
-            url.pathname = '/admin/index.html';
+            url.pathname = '/admin/';
             const asset = await assetResponse(new Request(url, c.req.raw), 'no-cache');
             if (asset) return asset;
             // No ASSETS binding (bare in-process smokes) or stage missing: fail
@@ -805,13 +817,37 @@ export default {
             }
             currentCtx = ctx;
             if (!enginePromise) {
+                const isCloud = env.FRONTBASE_DEPLOYMENT_MODE === 'cloud';
+                if (isCloud && !env.HYPERDRIVE?.connectionString) {
+                    return new Response(
+                        'FRONTBASE_DEPLOYMENT_MODE=cloud requires the HYPERDRIVE binding for Supabase application state.',
+                        { status: 500 },
+                    );
+                }
+                if (isCloud) {
+                    const missing = [
+                        ['SUPABASE_URL', env.SUPABASE_URL],
+                        ['SUPABASE_ANON_KEY', env.SUPABASE_ANON_KEY],
+                        ['SUPABASE_SERVICE_ROLE_KEY', env.SUPABASE_SERVICE_ROLE_KEY],
+                        ['STRIPE_SECRET_KEY', env.STRIPE_SECRET_KEY],
+                        ['STRIPE_WEBHOOK_SECRET', env.STRIPE_WEBHOOK_SECRET],
+                    ].filter(([, value]) => !value).map(([name]) => name);
+                    if (missing.length > 0) {
+                        return new Response(`Frontbase Cloud Supabase Auth is incomplete — missing ${missing.join(', ')}.`, { status: 500 });
+                    }
+                }
                 // A-24: the state DB is the operator's choice (./state-db) — D1
                 // binding by default; APP_DB_* selects Turso / SQLite / D1-REST.
                 // A HALF-configured choice fails here, at boot, naming the
                 // missing var — never at first write.
                 let stateDb: ResolvedStateDb;
                 try {
-                    stateDb = resolveStateDb({ env: env as unknown as Record<string, string | undefined>, d1Binding: env.DB, host: 'cloudflare' });
+                    stateDb = resolveStateDb({
+                        env: env as unknown as Record<string, string | undefined>,
+                        d1Binding: env.DB,
+                        hyperdriveBinding: env.HYPERDRIVE,
+                        host: 'cloudflare',
+                    });
                 } catch (e) {
                     if (e instanceof StateDbConfigError) return new Response(e.message, { status: 500 });
                     throw e;
@@ -824,7 +860,6 @@ export default {
                 // (NEVER the committed wrangler.toml — a self-host reusing that file must
                 // not boot cloud). Cloud REQUIRES the tenant zone; a half-configured
                 // boot fails here, naming the missing var — never at first request.
-                const isCloud = env.FRONTBASE_DEPLOYMENT_MODE === 'cloud';
                 if (isCloud && !env.FRONTBASE_BASE_DOMAIN) {
                     return new Response(
                         'FRONTBASE_DEPLOYMENT_MODE=cloud requires FRONTBASE_BASE_DOMAIN (the tenant zone, e.g. frontbase.dev) — set it via: wrangler deploy --var FRONTBASE_BASE_DOMAIN:…',
@@ -843,6 +878,18 @@ export default {
                     assets: env.ASSETS,
                     // A-25 cloud wiring (absent ⇒ self-host byte-identical).
                     ...(isCloud ? { cloud: { baseDomain: env.FRONTBASE_BASE_DOMAIN as string } } : {}),
+                    ...(isCloud ? {
+                        cloudAuth: createSupabaseCloudAuth({
+                            url: env.SUPABASE_URL as string,
+                            anonKey: env.SUPABASE_ANON_KEY as string,
+                            serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY as string,
+                        }),
+                        billing: {
+                            secretKey: env.STRIPE_SECRET_KEY as string,
+                            webhookSecret: env.STRIPE_WEBHOOK_SECRET as string,
+                            baseDomain: env.FRONTBASE_BASE_DOMAIN as string,
+                        },
+                    } : {}),
                     ...(env.RESEND_API_KEY ? { resend: { apiKey: env.RESEND_API_KEY } } : {}),
                     // Host-side env parse (Workers have no process.env). Memoized
                     // on the raw strings — only actual secret changes recompute.
