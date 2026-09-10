@@ -7,7 +7,8 @@ RETURNS TABLE(result jsonb) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE rows_jsonb jsonb; BEGIN EXECUTE format('%s', query_sql) USING SELECT jsonb_array_elements(query_params)::text AS param INTO rows_jsonb; RETURN QUERY SELECT rows_jsonb AS result; END; $$;`):a}},async exec(r,s=[]){try{let{data:a,error:o}=await n.rpc("execute_sql",{query_sql:Lc(r,s),query_params:"[]"});if(o)throw new Error(`[Supabase] exec failed: ${o.message}`);let l=Dc(a);return typeof l=="number"?l:l&&typeof l=="object"&&"rowCount"in l?l.rowCount:0}catch(a){throw a.message.includes("execute_sql")?new Error(`[Supabase] execute_sql function not found. Create it in your Supabase SQL editor:
 CREATE OR REPLACE FUNCTION execute_sql(query_sql text, query_params jsonb = '[]'::jsonb)
 RETURNS TABLE(result jsonb) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE result_jsonb jsonb; BEGIN EXECUTE format('%s', query_sql) USING SELECT jsonb_array_elements(query_params)::text AS param INTO result_jsonb; RETURN QUERY SELECT result_jsonb AS result; END; $$;`):a}}}}var fo=G(()=>{"use strict";po();Bb()});function Oc(t){let e=cr({url:t.url??":memory:",authToken:t.authToken});return zr({kind:"sqlite",manifest:t.manifest,db:Xr(e)})}var Hf=G(()=>{"use strict";po();ec();fo()});var lm={};Nt(lm,{Client:()=>Ov,DatabaseError:()=>EL,NeonDbError:()=>Cs,NeonQueryPromise:()=>_o,Pool:()=>xL,SqlTemplate:()=>am,UnsafeRawSql:()=>im,_bundleExt:()=>wL,defaults:()=>SL,escapeIdentifier:()=>RL,escapeLiteral:()=>TL,neon:()=>om,neonConfig:()=>za,types:()=>kL,warnIfBrowser:()=>Wc});function Jb(t){return 0}function Xf(t,e=!1){let{protocol:n}=new URL(t),r="http:"+t.substring(n.length),{username:s,password:a,host:o,hostname:l,port:c,pathname:p,search:d,searchParams:u,hash:f}=new URL(r);a=decodeURIComponent(a),s=decodeURIComponent(s),p=decodeURIComponent(p);let h=s+":"+a,m=e?Object.fromEntries(u.entries()):d;return{href:t,protocol:n,auth:h,username:s,password:a,host:o,hostname:l,port:c,pathname:p,search:d,query:m,hash:f}}function yo(t){let e=1779033703,n=3144134277,r=1013904242,s=2773480762,a=1359893119,o=2600822924,l=528734635,c=1541459225,p=0,d=0,u=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298],f=N((x,v)=>x>>>v|x<<32-v,"rrot"),h=new Uint32Array(64),m=new Uint8Array(64),g=N(()=>{for(let P=0,k=0;P<16;P++,k+=4)h[P]=m[k]<<24|m[k+1]<<16|m[k+2]<<8|m[k+3];for(let P=16;P<64;P++){let k=f(h[P-15],7)^f(h[P-15],18)^h[P-15]>>>3,j=f(h[P-2],17)^f(h[P-2],19)^h[P-2]>>>10;h[P]=h[P-16]+k+h[P-7]+j|0}let x=e,v=n,w=r,R=s,b=a,E=o,T=l,A=c;for(let P=0;P<64;P++){let k=f(b,6)^f(b,11)^f(b,25),j=b&E^~b&T,D=A+k+j+u[P]+h[P]|0,I=f(x,2)^f(x,13)^f(x,22),O=x&v^x&w^v&w,M=I+O|0;A=T,T=E,E=b,b=R+D|0,R=w,w=v,v=x,x=D+M|0}e=e+x|0,n=n+v|0,r=r+w|0,s=s+R|0,a=a+b|0,o=o+E|0,l=l+T|0,c=c+A|0,d=0},"process"),_=N(x=>{typeof x=="string"&&(x=new TextEncoder().encode(x));for(let v=0;v<x.length;v++)m[d++]=x[v],d===64&&g();p+=x.length},"add"),y=N(()=>{if(m[d++]=128,d==64&&g(),d+8>64){for(;d<64;)m[d++]=0;g()}for(;d<58;)m[d++]=0;let x=p*8;m[d++]=x/1099511627776&255,m[d++]=x/4294967296&255,m[d++]=x>>>24,m[d++]=x>>>16&255,m[d++]=x>>>8&255,m[d++]=x&255,g();let v=new Uint8Array(32);return v[0]=e>>>24,v[1]=e>>>16&255,v[2]=e>>>8&255,v[3]=e&255,v[4]=n>>>24,v[5]=n>>>16&255,v[6]=n>>>8&255,v[7]=n&255,v[8]=r>>>24,v[9]=r>>>16&255,v[10]=r>>>8&255,v[11]=r&255,v[12]=s>>>24,v[13]=s>>>16&255,v[14]=s>>>8&255,v[15]=s&255,v[16]=a>>>24,v[17]=a>>>16&255,v[18]=a>>>8&255,v[19]=a&255,v[20]=o>>>24,v[21]=o>>>16&255,v[22]=o>>>8&255,v[23]=o&255,v[24]=l>>>24,v[25]=l>>>16&255,v[26]=l>>>8&255,v[27]=l&255,v[28]=c>>>24,v[29]=c>>>16&255,v[30]=c>>>8&255,v[31]=c&255,v},"digest");return t===void 0?{add:_,digest:y}:(_(t),y())}function tv(t){return crypto.getRandomValues(he.alloc(t))}function nv(t){if(t==="sha256")return{update:N(function(e){return{digest:N(function(){return he.from(yo(e))},"digest")}},"update")};if(t==="md5")return{update:N(function(e){return{digest:N(function(){return typeof e=="string"?Gf.hashStr(e):Gf.hashByteArray(e)},"digest")}},"update")};throw new Error(`Hash type '${t}' not supported`)}function rv(t,e){if(t!=="sha256")throw new Error(`Only sha256 is supported (requested: '${t}')`);return{update:N(function(n){return{digest:N(function(){typeof e=="string"&&(e=new TextEncoder().encode(e)),typeof n=="string"&&(n=new TextEncoder().encode(n));let r=e.length;if(r>64)e=yo(e);else if(r<64){let c=new Uint8Array(64);c.set(e),e=c}let s=new Uint8Array(64),a=new Uint8Array(64);for(let c=0;c<64;c++)s[c]=54^e[c],a[c]=92^e[c];let o=new Uint8Array(n.length+64);o.set(s,0),o.set(n,64);let l=new Uint8Array(96);return l.set(a,0),l.set(yo(o),64),he.from(yo(l))},"digest")}},"update")}}function iv(...t){return t.join("/")}function lv(t,e){e(new Error("No filesystem"))}function bv({socket:t,servername:e}){return t.startTls(e),t}function Sv(t,{alphabet:e,scratchArr:n}={}){if(!go)if(go=new Uint16Array(256),$c=new Uint16Array(256),Vb)for(let h=0;h<256;h++)go[h]=qc[h&15]<<8|qc[h>>>4],$c[h]=Mc[h&15]<<8|Mc[h>>>4];else for(let h=0;h<256;h++)go[h]=qc[h&15]|qc[h>>>4]<<8,$c[h]=Mc[h&15]|Mc[h>>>4]<<8;t.byteOffset%4!==0&&(t=new Uint8Array(t));let r=t.length,s=r>>>1,a=r>>>2,o=n||new Uint16Array(r),l=new Uint32Array(t.buffer,t.byteOffset,a),c=new Uint32Array(o.buffer,o.byteOffset,s),p=e==="upper"?$c:go,d=0,u=0,f;if(Vb)for(;d<a;)f=l[d++],c[u++]=p[f>>>8&255]<<16|p[f&255],c[u++]=p[f>>>24]<<16|p[f>>>16&255];else for(;d<a;)f=l[d++],c[u++]=p[f>>>24]<<16|p[f>>>16&255],c[u++]=p[f>>>8&255]<<16|p[f&255];for(d<<=2;d<r;)o[d]=p[t[d++]];return hL.decode(o.subarray(0,r))}function Rv(t,e={}){let n="",r=t.length,s=pL>>>1,a=Math.ceil(r/s),o=new Uint16Array(a>1?s:r);for(let l=0;l<a;l++){let c=l*s,p=c+s;n+=Sv(t.subarray(c,p),uL(dL({},e),{scratchArr:o}))}return n}function Tv(t,e={}){return e.alphabet!=="upper"&&typeof t.toHex=="function"?t.toHex():Rv(t,e)}function Wc(){typeof window<"u"&&typeof document<"u"&&typeof console<"u"&&typeof console.warn=="function"&&console.warn(`        ************************************************************
+DECLARE result_jsonb jsonb; BEGIN EXECUTE format('%s', query_sql) USING SELECT jsonb_array_elements(query_params)::text AS param INTO result_jsonb; RETURN QUERY SELECT result_jsonb AS result; END; $$;`):a}}}}var fo=G(()=>{"use strict";po();Bb()});function Oc(t){let e=cr({url:t.url??":memory:",authToken:t.authToken});return zr({kind:"sqlite",manifest:t.manifest,db:Xr(e)})}var Hf=G(()=>{"use strict";po();ec();fo()});var lm={};Nt(lm,{Client:()=>Ov,DatabaseError:()=>EL,NeonDbError:()=>Cs,NeonQueryPromise:()=>_o,Pool:()=>xL,SqlTemplate:()=>am,UnsafeRawSql:()=>im,_bundleExt:()=>wL,defaults:()=>SL,escapeIdentifier:()=>RL,escapeLiteral:()=>TL,neon:()=>om,neonConfig:()=>za,types:()=>kL,warnIfBrowser:()=>Wc});function Jb(t){return 0}function Xf(t,e=!1){let{protocol:n}=new URL(t),r="http:"+t.substring(n.length),{username:s,password:a,host:o,hostname:l,port:c,pathname:p,search:d,searchParams:u,hash:f}=new URL(r);a=decodeURIComponent(a),s=decodeURIComponent(s),p=decodeURIComponent(p);let h=s+":"+a,m=e?Object.fromEntries(u.entries()):d;return{href:t,protocol:n,auth:h,username:s,password:a,host:o,hostname:l,port:c,pathname:p,search:d,query:m,hash:f}}function yo(t){let e=1779033703,n=3144134277,r=1013904242,s=2773480762,a=1359893119,o=2600822924,l=528734635,c=1541459225,p=0,d=0,u=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298],f=N((x,v)=>x>>>v|x<<32-v,"rrot"),h=new Uint32Array(64),m=new Uint8Array(64),g=N(()=>{for(let P=0,k=0;P<16;P++,k+=4)h[P]=m[k]<<24|m[k+1]<<16|m[k+2]<<8|m[k+3];for(let P=16;P<64;P++){let k=f(h[P-15],7)^f(h[P-15],18)^h[P-15]>>>3,j=f(h[P-2],17)^f(h[P-2],19)^h[P-2]>>>10;h[P]=h[P-16]+k+h[P-7]+j|0}let x=e,v=n,w=r,R=s,b=a,E=o,T=l,A=c;for(let P=0;P<64;P++){let k=f(b,6)^f(b,11)^f(b,25),j=b&E^~b&T,D=A+k+j+u[P]+h[P]|0,I=f(x,2)^f(x,13)^f(x,22),O=x&v^x&w^v&w,M=I+O|0;A=T,T=E,E=b,b=R+D|0,R=w,w=v,v=x,x=D+M|0}e=e+x|0,n=n+v|0,r=r+w|0,s=s+R|0,a=a+b|0,o=o+E|0,l=l+T|0,c=c+A|0,d=0},"process"),_=N(x=>{typeof x=="string"&&(x=new TextEncoder().encode(x));for(let v=0;v<x.length;v++)m[d++]=x[v],d===64&&g();p+=x.length},"add"),y=N(()=>{if(m[d++]=128,d==64&&g(),d+8>64){for(;d<64;)m[d++]=0;g()}for(;d<58;)m[d++]=0;let x=p*8;m[d++]=x/1099511627776&255,m[d++]=x/4294967296&255,m[d++]=x>>>24,m[d++]=x>>>16&255,m[d++]=x>>>8&255,m[d++]=x&255,g();let v=new Uint8Array(32);return v[0]=e>>>24,v[1]=e>>>16&255,v[2]=e>>>8&255,v[3]=e&255,v[4]=n>>>24,v[5]=n>>>16&255,v[6]=n>>>8&255,v[7]=n&255,v[8]=r>>>24,v[9]=r>>>16&255,v[10]=r>>>8&255,v[11]=r&255,v[12]=s>>>24,v[13]=s>>>16&255,v[14]=s>>>8&255,v[15]=s&255,v[16]=a>>>24,v[17]=a>>>16&255,v[18]=a>>>8&255,v[19]=a&255,v[20]=o>>>24,v[21]=o>>>16&255,v[22]=o>>>8&255,v[23]=o&255,v[24]=l>>>24,v[25]=l>>>16&255,v[26]=l>>>8&255,v[27]=l&255,v[28]=c>>>24,v[29]=c>>>16&255,v[30]=c>>>8&255,v[31]=c&255,v},"digest");return t===void 0?{add:_,digest:y}:(_(t),y())}function tv(t){return crypto.getRandomValues(he.alloc(t))}function nv(t){if(t==="sha256")return{update:N(function(e){return{digest:N(function(){return he.from(yo(e))},"digest")}},"update")};if(t==="md5")return{update:N(function(e){return{digest:N(function(){return typeof e=="string"?Gf.hashStr(e):Gf.hashByteArray(e)},"digest")}},"update")};throw new Error(`Hash type '${t}' not supported`)}function rv(t,e){if(t!=="sha256")throw new Error(`Only sha256 is supported (requested: '${t}')`);return{update:N(function(n){return{digest:N(function(){typeof e=="string"&&(e=new TextEncoder().encode(e)),typeof n=="string"&&(n=new TextEncoder().encode(n));let r=e.length;if(r>64)e=yo(e);else if(r<64){let c=new Uint8Array(64);c.set(e),e=c}let s=new Uint8Array(64),a=new Uint8Array(64);for(let c=0;c<64;c++)s[c]=54^e[c],a[c]=92^e[c];let o=new Uint8Array(n.length+64);o.set(s,0),o.set(n,64);let l=new Uint8Array(96);return l.set(a,0),l.set(yo(o),64),he.from(yo(l))},"digest")}},"update")}}function iv(...t){return t.join("/")}function lv(t,e){e(new Error("No filesystem"))}function bv({socket:t,servername:e}){return t.startTls(e),t}function Sv(t,{alphabet:e,scratchArr:n}={}){if(!go)if(go=new Uint16Array(256),$c=new Uint16Array(256),Vb)for(let h=0;h<256;h++)go[h]=qc[h&15]<<8|qc[h>>>4],$c[h]=Mc[h&15]<<8|Mc[h>>>4];else for(let h=0;h<256;h++)go[h]=qc[h&15]|qc[h>>>4]<<8,$c[h]=Mc[h&15]|Mc[h>>>4]<<8;t.byteOffset%4!==0&&(t=new Uint8Array(t));let r=t.length,s=r>>>1,a=r>>>2,o=n||new Uint16Array(r),l=new Uint32Array(t.buffer,t.byteOffset,a),c=new Uint32Array(o.buffer,o.byteOffset,s),p=e==="upper"?$c:go,d=0,u=0,f;if(Vb)for(;d<a;)f=l[d++],c[u++]=p[f>>>8&255]<<16|p[f&255],c[u++]=p[f>>>24]<<16|p[f>>>16&255];else for(;d<a;)f=l[d++],c[u++]=p[f>>>24]<<16|p[f>>>16&255],c[u++]=p[f>>>8&255]<<16|p[f&255];for(d<<=2;d<r;)o[d]=p[t[d++]];return hL.decode(o.subarray(0,r))}function Rv(t,e={}){let n="",r=t.length,s=pL>>>1,a=Math.ceil(r/s),o=new Uint16Array(a>1?s:r);for(let l=0;l<a;l++){let c=l*s,p=c+s;n+=Sv(t.subarray(c,p),uL(dL({},e),{scratchArr:o}))}return n}function Tv(t,e={}){return e.alphabet!=="upper"&&typeof t.toHex=="function"?t.toHex():Rv(t,e)}function Wc(){typeof window<"u"&&typeof document<"u"&&typeof console<"u"&&typeof console.warn=="function"&&console.warn(`
+        ************************************************************
         *                                                          *
         *  WARNING: Running SQL directly from the browser can have *
         *  security implications. Even if your database is         *
@@ -78,7 +79,7 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
     </div>`}function cZ(t,e){let n=F(String(e.placeholder||"Enter text...")),r=e.type||"text",s=e.fieldHeight||"2.5rem",a=e.fieldPadding||"0 0.75rem",o=e.fieldFontSize||"0.875rem",l=`display:flex;width:100%;height:${s};padding:${a};border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:${o};background:hsl(var(--background));color:hsl(var(--foreground))`;return`<input ${Pe(t,"fb-input",e,l)} type="${F(r)}" placeholder="${n}" readonly />`}function dZ(t,e){let n=F(String(e.placeholder||"Enter text...")),r=Number(e.rows)||3,a=`display:flex;width:100%;min-height:${e.textareaMinHeight||"5rem"};padding:0.5rem 0.75rem;border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:0.875rem;background:hsl(var(--background));color:hsl(var(--foreground));resize:vertical`;return`<textarea ${Pe(t,"fb-textarea",e,a)} rows="${r}" placeholder="${n}" readonly></textarea>`}function uZ(t,e){let n=F(String(e.placeholder||"Select an option")),r=Array.isArray(e.options)?e.options:["Option 1","Option 2","Option 3"],s=e.selectChevronSize||"1rem",o=Pe(t,"fb-select",e,"display:flex;height:2.5rem;width:100%;align-items:center;justify-content:space-between;padding:0 0.75rem;border:1px solid hsl(var(--input));border-radius:var(--radius,0.5rem);font-size:0.875rem;background:hsl(var(--background));color:hsl(var(--muted-foreground))"),l=`<svg class="fb-select-chevron" style="width:${s};height:${s};opacity:0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`,c=r.map(p=>`<li style="padding:0.5rem 0.75rem;cursor:pointer">${F(String(p))}</li>`).join("");return`<div ${o} role="combobox" aria-haspopup="listbox" aria-expanded="false">
         <span>${n}</span>${l}
         <ul class="fb-select-options" style="display:none;list-style:none;margin:0;padding:0">${c}</ul>
-    </div>`}function pZ(t,e){let n=Array.isArray(e.items)?e.items:[{label:"Home",href:"/"},{label:"Page",href:"/page"}],r=e.gap||"0.5rem",s=e.fontSize||"0.875rem",a=e.activeFontWeight||"500",o=e.separatorOpacity||"0.5",l=`display:flex;align-items:center;gap:${r};font-size:${s};color:hsl(var(--muted-foreground))`,c=Pe(t,"fb-breadcrumb",e,l),p=[];return n.forEach((d,u)=>{let f=u===n.length-1,h=F(String(d.label??"")),m=d.href?F(String(d.href)):"#",g=f?`font-weight:${a};color:hsl(var(--foreground))`:"text-decoration:none;color:hsl(var(--muted-foreground))";p.push(`<li><a href="${m}" style="${g}">${h}</a></li>`),f||p.push(`<li class="fb-breadcrumb-separator" aria-hidden="true" style="opacity:${o}">/</li>`)}),`<nav ${c} aria-label="breadcrumb"><ol style="display:flex;align-items:center;gap:${r};list-style:none;margin:0;padding:0">${p.join("")}</ol></nav>`}var hs=G(()=>{vI();At();lh()});var mh={};Nt(mh,{renderInteractiveComponent:()=>q1});function jn(t,e,n,r,s,a){let{className:o,styleString:l}=Mi(e,n),c=[r,l].filter(Boolean).join(";"),p=n["data-show-if"],d=p?` data-show-if="${F(p)}"`:"";return`id="${t}" class="${o}" style="${c}" data-fb-hydrate="${s}" data-fb-props="${F(a)}"${d}`}function q1(t,e,n,r){let s=JSON.stringify(n).replace(/</g,"\\u003c").replace(/>/g,"\\u003e");switch(t){case"Button":return hZ(e,n,s);case"Link":return fZ(e,n,s);case"Tabs":return mZ(e,n,r,s);case"Accordion":return gZ(e,n,r,s);case"Modal":return yZ(e,n,r,s);case"Dropdown":return _Z(e,n,r,s);case"Toggle":case"Switch":return bZ(e,n,s);case"Checkbox":return vZ(e,n,s);case"Radio":return xZ(e,n,s);case"Tooltip":return wZ(e,n,r,s);case"AuthForm":return EZ(e,n,s);default:return`<div data-fb-id="${e}" data-fb-type="${t}" data-fb-hydrate="true" data-fb-props="${F(s)}">${r}</div>`}}function hZ(t,e,n){let r=F(String(e.label||e.text||e.children||"Button")),s=e.variant||"default",a=e.size||"md",o=e.disabled||!1,l=e.fullWidth||!1,c=e.loading||!1,d=(e.actionBindings||[]).find(R=>R.trigger==="onClick"),u={default:"background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none",primary:"background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none",secondary:"background:hsl(var(--secondary));color:hsl(var(--secondary-foreground));border:none",destructive:"background:hsl(var(--destructive));color:hsl(var(--destructive-foreground));border:none",outline:"background:transparent;color:hsl(var(--foreground));border:1px solid hsl(var(--border))",ghost:"background:transparent;color:hsl(var(--foreground));border:none",link:"background:transparent;color:hsl(var(--primary));border:none;text-decoration:underline"},f={xs:"padding:0.25rem 0.5rem;font-size:0.75rem",sm:"padding:0.375rem 0.75rem;font-size:0.875rem",md:"padding:0.5rem 1rem;font-size:1rem",lg:"padding:0.625rem 1.25rem;font-size:1.125rem",xl:"padding:0.75rem 1.5rem;font-size:1.25rem"},h=e.borderRadius||"0.375rem",m=e.fontWeight||"500",g=e.transition||"all 0.15s",_=`${u[s]||u.default};${f[a]||f.md};border-radius:${h};cursor:pointer;font-weight:${m};transition:${g};${l?"width:100%":"width:fit-content"};${o?"opacity:0.5;cursor:not-allowed":""}`,y="";if(d)switch(d.actionType){case"scrollToSection":d.config?.sectionId&&(y=`data-scroll-to="${F(d.config.sectionId)}"`);break;case"openPage":if(d.config?.pageUrl){let R=F(d.config.pageUrl),b=d.config.openInNewTab;y=`data-navigate-to="${R}"${b?' data-navigate-new-tab="true"':""}`}break;case"setVariable":if(d.config?.variableName){let R=F(d.config.variableScope||"local"),b=F(d.config.variableName),E=F(d.config.variableValue||"");y=`data-action-set-var-scope="${R}" data-action-set-var-name="${b}" data-action-set-var-value="${E}"`}break;case"runWorkflow":d.workflowId&&(y=`data-action-run-workflow="${F(d.workflowId)}"`,d.onSuccess&&(y+=` data-action-onsuccess="${F(d.onSuccess.type)}"`,d.onSuccess.type==="toast"&&d.onSuccess.message?y+=` data-action-onsuccess-toast-message="${F(d.onSuccess.message)}"`:d.onSuccess.type==="redirect"&&d.onSuccess.url?y+=` data-action-onsuccess-redirect-url="${F(d.onSuccess.url)}"`:d.onSuccess.type==="setVariable"&&(y+=` data-action-onsuccess-var-scope="${F(d.onSuccess.variableScope||"local")}"`,y+=` data-action-onsuccess-var-name="${F(d.onSuccess.variableName||"")}"`,y+=` data-action-onsuccess-result-path="${F(d.onSuccess.resultPath||"")}"`)));break}let x=jn(t,`fb-button fb-button-${s}`,e,_,"button",n),v=e.loadingIndicator||"\u23F3",w=e.loadingGap||"0.5rem";return`<button ${x} ${y} ${o?"disabled":""}>
+    </div>`}function pZ(t,e){let n=Array.isArray(e.items)?e.items:[{label:"Home",href:"/"},{label:"Page",href:"/page"}],r=e.gap||"0.5rem",s=e.fontSize||"0.875rem",a=e.activeFontWeight||"500",o=e.separatorOpacity||"0.5",l=`display:flex;align-items:center;gap:${r};font-size:${s};color:hsl(var(--muted-foreground))`,c=Pe(t,"fb-breadcrumb",e,l),p=[];return n.forEach((d,u)=>{let f=u===n.length-1,h=F(String(d.label??"")),m=d.href?F(String(d.href)):"#",g=f?`font-weight:${a};color:hsl(var(--foreground))`:"text-decoration:none;color:hsl(var(--muted-foreground))";p.push(`<li><a href="${m}" style="${g}">${h}</a></li>`),f||p.push(`<li class="fb-breadcrumb-separator" aria-hidden="true" style="opacity:${o}">/</li>`)}),`<nav ${c} aria-label="breadcrumb"><ol style="display:flex;align-items:center;gap:${r};list-style:none;margin:0;padding:0">${p.join("")}</ol></nav>`}var hs=G(()=>{"use strict";vI();At();lh()});var mh={};Nt(mh,{renderInteractiveComponent:()=>q1});function jn(t,e,n,r,s,a){let{className:o,styleString:l}=Mi(e,n),c=[r,l].filter(Boolean).join(";"),p=n["data-show-if"],d=p?` data-show-if="${F(p)}"`:"";return`id="${t}" class="${o}" style="${c}" data-fb-hydrate="${s}" data-fb-props="${F(a)}"${d}`}function q1(t,e,n,r){let s=JSON.stringify(n).replace(/</g,"\\u003c").replace(/>/g,"\\u003e");switch(t){case"Button":return hZ(e,n,s);case"Link":return fZ(e,n,s);case"Tabs":return mZ(e,n,r,s);case"Accordion":return gZ(e,n,r,s);case"Modal":return yZ(e,n,r,s);case"Dropdown":return _Z(e,n,r,s);case"Toggle":case"Switch":return bZ(e,n,s);case"Checkbox":return vZ(e,n,s);case"Radio":return xZ(e,n,s);case"Tooltip":return wZ(e,n,r,s);case"AuthForm":return EZ(e,n,s);default:return`<div data-fb-id="${e}" data-fb-type="${t}" data-fb-hydrate="true" data-fb-props="${F(s)}">${r}</div>`}}function hZ(t,e,n){let r=F(String(e.label||e.text||e.children||"Button")),s=e.variant||"default",a=e.size||"md",o=e.disabled||!1,l=e.fullWidth||!1,c=e.loading||!1,d=(e.actionBindings||[]).find(R=>R.trigger==="onClick"),u={default:"background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none",primary:"background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none",secondary:"background:hsl(var(--secondary));color:hsl(var(--secondary-foreground));border:none",destructive:"background:hsl(var(--destructive));color:hsl(var(--destructive-foreground));border:none",outline:"background:transparent;color:hsl(var(--foreground));border:1px solid hsl(var(--border))",ghost:"background:transparent;color:hsl(var(--foreground));border:none",link:"background:transparent;color:hsl(var(--primary));border:none;text-decoration:underline"},f={xs:"padding:0.25rem 0.5rem;font-size:0.75rem",sm:"padding:0.375rem 0.75rem;font-size:0.875rem",md:"padding:0.5rem 1rem;font-size:1rem",lg:"padding:0.625rem 1.25rem;font-size:1.125rem",xl:"padding:0.75rem 1.5rem;font-size:1.25rem"},h=e.borderRadius||"0.375rem",m=e.fontWeight||"500",g=e.transition||"all 0.15s",_=`${u[s]||u.default};${f[a]||f.md};border-radius:${h};cursor:pointer;font-weight:${m};transition:${g};${l?"width:100%":"width:fit-content"};${o?"opacity:0.5;cursor:not-allowed":""}`,y="";if(d)switch(d.actionType){case"scrollToSection":d.config?.sectionId&&(y=`data-scroll-to="${F(d.config.sectionId)}"`);break;case"openPage":if(d.config?.pageUrl){let R=F(d.config.pageUrl),b=d.config.openInNewTab;y=`data-navigate-to="${R}"${b?' data-navigate-new-tab="true"':""}`}break;case"setVariable":if(d.config?.variableName){let R=F(d.config.variableScope||"local"),b=F(d.config.variableName),E=F(d.config.variableValue||"");y=`data-action-set-var-scope="${R}" data-action-set-var-name="${b}" data-action-set-var-value="${E}"`}break;case"runWorkflow":d.workflowId&&(y=`data-action-run-workflow="${F(d.workflowId)}"`,d.onSuccess&&(y+=` data-action-onsuccess="${F(d.onSuccess.type)}"`,d.onSuccess.type==="toast"&&d.onSuccess.message?y+=` data-action-onsuccess-toast-message="${F(d.onSuccess.message)}"`:d.onSuccess.type==="redirect"&&d.onSuccess.url?y+=` data-action-onsuccess-redirect-url="${F(d.onSuccess.url)}"`:d.onSuccess.type==="setVariable"&&(y+=` data-action-onsuccess-var-scope="${F(d.onSuccess.variableScope||"local")}"`,y+=` data-action-onsuccess-var-name="${F(d.onSuccess.variableName||"")}"`,y+=` data-action-onsuccess-result-path="${F(d.onSuccess.resultPath||"")}"`)));break}let x=jn(t,`fb-button fb-button-${s}`,e,_,"button",n),v=e.loadingIndicator||"\u23F3",w=e.loadingGap||"0.5rem";return`<button ${x} ${y} ${o?"disabled":""}>
         ${c?`<span class="fb-spinner" style="margin-right:${w}">${v}</span>`:""}
         ${r}
     </button>`}function fZ(t,e,n){let r=F(String(e.text||e.label||e.children||"Link")),s=F(String(e.href||e.to||"#")),a=e.target||"_self",o=e.color||"#3b82f6",l=e.underline!==!1,c=`color:${o};${l?"text-decoration:underline":"text-decoration:none"};cursor:pointer`;return`<a ${jn(t,"fb-link",e,c,"link",n)} href="${s}" target="${a}">${r}</a>`}function mZ(t,e,n,r){let s=e.tabs||[],a=e.activeTab||(s[0]?.id??""),o=e.variant||"default",l=e.activeColor||"#3b82f6",c=e.inactiveColor||"#6b7280",p=e.borderColor||"#e5e7eb",d=s.map(h=>{let g=h.id===a?`border-bottom:2px solid ${l};color:${l}`:`border-bottom:2px solid transparent;color:${c}`;return`<button class="fb-tab-button" data-tab-id="${h.id}" style="padding:0.5rem 1rem;background:none;border:none;${g};cursor:pointer;font-weight:500">${F(h.label)}</button>`}).join(""),u=s.map(h=>{let m=h.id===a;return`<div class="fb-tab-panel" data-tab-id="${h.id}" style="${m?"":"display:none"};padding:1rem 0">${h.content?F(String(h.content)):""}</div>`}).join("");return`<div ${jn(t,`fb-tabs fb-tabs-${o}`,e,"","tabs",r)}>
@@ -168,7 +169,7 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
                 </p>
             `:""}
         </div>
-    </div>`}var jl=G(()=>{At();lh()});var SI={};Nt(SI,{renderDataComponent:()=>Bi});function $i(t,e,n,r,s,a,o=""){let{className:l,styleString:c}=Mi(e,n),p=[r,c].filter(Boolean).join(";"),d=n["data-show-if"],u=d?`data-show-if="${F(d)}"`:"";return`id="${t}" class="${l}" style="${p}" data-fb-hydrate="${s}" data-fb-props="${F(a)}" ${u} ${o}`}function Bi(t,e,n,r){let s={...n,mode:"edge",_isEditorPreview:!1},a=JSON.stringify(s).replace(/</g,"\\u003c").replace(/>/g,"\\u003e");switch(t){case"DataTable":return SZ(e,n,a);case"Form":return RZ(e,n,r,a);case"InfoList":return TZ(e,n,a);case"Chart":return kZ(e,n,a);case"KPICard":return jZ(e,n,a);case"Card":return AZ(e,n,r,a);case"Grid":return CZ(e,n,a);case"Repeater":return IZ(e,n,a);default:return`<div data-fb-id="${e}" data-fb-type="${t}" data-fb-hydrate="data" data-fb-props="${F(a)}" class="fb-data-component">
+    </div>`}var jl=G(()=>{"use strict";At();lh()});var SI={};Nt(SI,{renderDataComponent:()=>Bi});function $i(t,e,n,r,s,a,o=""){let{className:l,styleString:c}=Mi(e,n),p=[r,c].filter(Boolean).join(";"),d=n["data-show-if"],u=d?`data-show-if="${F(d)}"`:"";return`id="${t}" class="${l}" style="${p}" data-fb-hydrate="${s}" data-fb-props="${F(a)}" ${u} ${o}`}function Bi(t,e,n,r){let s={...n,mode:"edge",_isEditorPreview:!1},a=JSON.stringify(s).replace(/</g,"\\u003c").replace(/>/g,"\\u003e");switch(t){case"DataTable":return SZ(e,n,a);case"Form":return RZ(e,n,r,a);case"InfoList":return TZ(e,n,a);case"Chart":return kZ(e,n,a);case"KPICard":return jZ(e,n,a);case"Card":return AZ(e,n,r,a);case"Grid":return CZ(e,n,a);case"Repeater":return IZ(e,n,a);default:return`<div data-fb-id="${e}" data-fb-type="${t}" data-fb-hydrate="data" data-fb-props="${F(a)}" class="fb-data-component">
                 <div class="fb-skeleton" style="height:200px;border-radius:0.5rem">&nbsp;</div>
                 ${r}
             </div>`}}function SZ(t,e,n){let r=e.binding||{},s=r.tableName||e.tableName||e.table||"",a=r.columnOrder||e._columnOrder||e.columns||[];if(a.length===0){let v=r.dataRequest?.queryConfig;v?.columns&&typeof v.columns=="string"&&(a=v.columns.split(",").map(w=>w.trim()).map(w=>{let R=w.match(/AS\s+"(.+)"/i);if(R)return R[1];let b=w.match(/"[^"]*"\."([^"]+)"/);return b?b[1]:w.replace(/"/g,"").replace(/^\w+\./,"")}).filter(w=>w&&w!=="*"))}let o=r.columnOverrides||{},l=F(String(e.title||"")),c=r.pagination?.enabled!==!1,p=r.pagination?.pageSize||e.pageSize||10,d=r.sorting?.enabled!==!1,f=JSON.stringify({binding:r,tableName:s}).replace(/</g,"\\u003c").replace(/>/g,"\\u003e"),h=a.length>0?a.slice(0,8).map(v=>{let w=o[v],R=w?.label||w?.displayName||v,b=d?'<button class="h-auto p-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3 w-3 opacity-50"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></button>':"";return`<th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap group [&:has([role=checkbox])]:pr-0"><div class="flex items-center space-x-1"><span>${F(R)}</span>${b}</div></th>`}).join(""):'<th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap">Column 1</th><th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap">Column 2</th><th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap">Column 3</th>',m=a.length>0?Math.min(a.length,8):3,g=Array(Math.min(p,5)).fill(0).map(()=>`<tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted h-12">${Array(m).fill(0).map(()=>'<td class="p-4 align-middle [&:has([role=checkbox])]:pr-0 max-w-[200px] truncate whitespace-nowrap py-2"><div class="fb-skeleton" style="height:1rem;width:80%;border-radius:0.25rem">&nbsp;</div></td>').join("")}</tr>`).join(""),y=r.filtering?.searchEnabled!==!1?`
@@ -288,12 +289,15 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
         <div class="p-6 pt-0">
             <div class="text-2xl font-bold fb-skeleton animate-pulse" style="height:2rem;width:80px;border-radius:0.25rem">&nbsp;</div>
         </div>
-    </div>`}var gh=G(()=>{hs();At();lh()});function Mne(t){if(!t)return"";let e=t;return e=e.replace(/<\/\s*style\s*>/gi,""),e=e.replace(/expression\s*\(/gi,"no-expression("),e=e.replace(/url\s*\(\s*['"]?javascript:/gi,"url("),e=e.replace(/behavior\s*:/gi,"no-behavior:"),e=e.replace(/-moz-binding\s*:/gi,"no-binding:"),e}function St(t){if(!t)return"";if(t.stylingMode==="css"&&t.rawCSS)return Mne(t.rawCSS);if(!t.values)return"";let e=[];for(let[n,r]of Object.entries(t.values))r==null||r===""||n==="className"||Ar(n,r,(s,a)=>{e.push(`${s}:${a}`)});return e.join(";")}var Nr=G(()=>{"use strict";qi()});function zh(t,e,n){let r=e.alignment||"center",s=e.minHeight||"60vh",a=["fb-hero","relative","flex","items-center","overflow-hidden",e.hideOnMobile?"hidden md:flex":"",e.hideOnDesktop?"md:hidden":""].filter(Boolean).join(" "),o=["container","mx-auto","px-4","sm:px-6","lg:px-8","py-12","sm:py-16","lg:py-24",r==="center"?"text-center":"",r==="right"?"text-right":""].filter(Boolean).join(" "),l=["flex","gap-4","mt-8",r==="center"?"justify-center":"",r==="right"?"justify-end":""].filter(Boolean).join(" "),c=[`min-height: ${s}`];e.backgroundImage&&(c.push(`background-image: url('${e.backgroundImage}')`),c.push("background-size: cover"),c.push("background-position: center")),e.backgroundGradient&&c.push(`background: ${e.backgroundGradient}`);let p=n?St(n):"",d=[...c,p].filter(Boolean).join("; "),u="";if(e.badge){let x=typeof e.badge=="string"?{text:e.badge}:e.badge;u=`<div class="mb-6" style="display:flex;${r==="center"?"justify-content:center":r==="right"?"justify-content:flex-end":""}">${ph(`${t}-badge`,{text:x.text,icon:x.icon,iconSvg:x.iconSvg,backgroundColor:x.backgroundColor,textColor:x.textColor,iconColor:x.iconColor,variant:x.variant||"secondary"})}</div>`}let f=`<div class="mb-4 sm:mb-6">${dh(`${t}-title`,{text:e.title,level:1,align:r,className:"text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-foreground"})}</div>`,h=e.subtitle?`<div class="mb-6 sm:mb-8 ${r==="center"?"max-w-2xl mx-auto":"max-w-2xl"}">${uh(`${t}-subtitle`,{text:e.subtitle,align:r,className:"text-lg sm:text-xl text-muted-foreground"})}</div>`:"",m=(x,v,w,R)=>{if(!x)return"";let b=R?"inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors":"inline-flex items-center justify-center px-6 py-3 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium transition-colors",E=w?.find(T=>T.trigger==="onClick");if(E?.actionType==="scrollToSection"&&E.config?.sectionId)return`<button data-scroll-to="${F(E.config.sectionId)}"                     class="${b}">
-                     ${F(x)}
-                   </button>`;if(E?.actionType==="openPage"&&E.config?.pageUrl){let T=E.config.openInNewTab?"_blank":"_self",A=E.config.openInNewTab?"noopener noreferrer":"";return`<a href="${F(E.config.pageUrl)}"                     target="${T}" ${A?`rel="${A}"`:""}
+    </div>`}var gh=G(()=>{"use strict";hs();At();lh()});function Mne(t){if(!t)return"";let e=t;return e=e.replace(/<\/\s*style\s*>/gi,""),e=e.replace(/expression\s*\(/gi,"no-expression("),e=e.replace(/url\s*\(\s*['"]?javascript:/gi,"url("),e=e.replace(/behavior\s*:/gi,"no-behavior:"),e=e.replace(/-moz-binding\s*:/gi,"no-binding:"),e}function St(t){if(!t)return"";if(t.stylingMode==="css"&&t.rawCSS)return Mne(t.rawCSS);if(!t.values)return"";let e=[];for(let[n,r]of Object.entries(t.values))r==null||r===""||n==="className"||Ar(n,r,(s,a)=>{e.push(`${s}:${a}`)});return e.join(";")}var Nr=G(()=>{"use strict";qi()});function zh(t,e,n){let r=e.alignment||"center",s=e.minHeight||"60vh",a=["fb-hero","relative","flex","items-center","overflow-hidden",e.hideOnMobile?"hidden md:flex":"",e.hideOnDesktop?"md:hidden":""].filter(Boolean).join(" "),o=["container","mx-auto","px-4","sm:px-6","lg:px-8","py-12","sm:py-16","lg:py-24",r==="center"?"text-center":"",r==="right"?"text-right":""].filter(Boolean).join(" "),l=["flex","gap-4","mt-8",r==="center"?"justify-center":"",r==="right"?"justify-end":""].filter(Boolean).join(" "),c=[`min-height: ${s}`];e.backgroundImage&&(c.push(`background-image: url('${e.backgroundImage}')`),c.push("background-size: cover"),c.push("background-position: center")),e.backgroundGradient&&c.push(`background: ${e.backgroundGradient}`);let p=n?St(n):"",d=[...c,p].filter(Boolean).join("; "),u="";if(e.badge){let x=typeof e.badge=="string"?{text:e.badge}:e.badge;u=`<div class="mb-6" style="display:flex;${r==="center"?"justify-content:center":r==="right"?"justify-content:flex-end":""}">${ph(`${t}-badge`,{text:x.text,icon:x.icon,iconSvg:x.iconSvg,backgroundColor:x.backgroundColor,textColor:x.textColor,iconColor:x.iconColor,variant:x.variant||"secondary"})}</div>`}let f=`<div class="mb-4 sm:mb-6">${dh(`${t}-title`,{text:e.title,level:1,align:r,className:"text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-foreground"})}</div>`,h=e.subtitle?`<div class="mb-6 sm:mb-8 ${r==="center"?"max-w-2xl mx-auto":"max-w-2xl"}">${uh(`${t}-subtitle`,{text:e.subtitle,align:r,className:"text-lg sm:text-xl text-muted-foreground"})}</div>`:"",m=(x,v,w,R)=>{if(!x)return"";let b=R?"inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors":"inline-flex items-center justify-center px-6 py-3 rounded-lg border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium transition-colors",E=w?.find(T=>T.trigger==="onClick");if(E?.actionType==="scrollToSection"&&E.config?.sectionId)return`<button data-scroll-to="${F(E.config.sectionId)}"
                      class="${b}">
                      ${F(x)}
-                   </a>`}return`<a href="${F(v||"#")}"                 class="${b}">
+                   </button>`;if(E?.actionType==="openPage"&&E.config?.pageUrl){let T=E.config.openInNewTab?"_blank":"_self",A=E.config.openInNewTab?"noopener noreferrer":"";return`<a href="${F(E.config.pageUrl)}"
+                     target="${T}" ${A?`rel="${A}"`:""}
+                     class="${b}">
+                     ${F(x)}
+                   </a>`}return`<a href="${F(v||"#")}"
+                 class="${b}">
                  ${F(x)}
                </a>`},g=m(e.ctaText,e.ctaLink,e.ctaActionBindings||e.actionBindings,!0),_=m(e.secondaryCtaText,e.secondaryCtaLink,e.secondaryCtaActionBindings,!1),y=e.ctaText||e.secondaryCtaText?`<div class="${l}">${g}${_}</div>`:"";return`
         <section id="${e.anchor||t}" class="${a}" style="${d}">
@@ -348,7 +352,8 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
                 <ul class="space-y-3 mb-8 flex-1">
                     ${u}
                 </ul>
-                <a href="${F(c.ctaLink)}"                   class="inline-flex items-center justify-center w-full px-6 py-3 rounded-lg ${c.highlighted?"bg-primary text-primary-foreground hover:bg-primary/90":"border border-input bg-background hover:bg-accent"} font-medium transition-colors">
+                <a href="${F(c.ctaLink)}"
+                   class="inline-flex items-center justify-center w-full px-6 py-3 rounded-lg ${c.highlighted?"bg-primary text-primary-foreground hover:bg-primary/90":"border border-input bg-background hover:bg-accent"} font-medium transition-colors">
                     ${F(c.ctaText)}
                 </a>
             </div>
@@ -361,7 +366,8 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
                 </div>
             </div>
         </section>
-    `.trim()}var P8=G(()=>{"use strict";At();Nr()});function Wh(t,e,n){let r=["fb-cta","py-12","sm:py-16","lg:py-24",e.hideOnMobile?"hidden md:block":"",e.hideOnDesktop?"md:hidden":""].filter(Boolean).join(" "),s=[];e.background&&s.push(`background: ${e.background}`);let a=n?St(n):"",o=[...s,a].filter(Boolean).join("; "),l=e.secondaryCtaText?`<a href="${F(e.secondaryCtaLink||"#")}"             class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-input bg-background hover:bg-accent font-medium transition-colors">
+    `.trim()}var P8=G(()=>{"use strict";At();Nr()});function Wh(t,e,n){let r=["fb-cta","py-12","sm:py-16","lg:py-24",e.hideOnMobile?"hidden md:block":"",e.hideOnDesktop?"md:hidden":""].filter(Boolean).join(" "),s=[];e.background&&s.push(`background: ${e.background}`);let a=n?St(n):"",o=[...s,a].filter(Boolean).join("; "),l=e.secondaryCtaText?`<a href="${F(e.secondaryCtaLink||"#")}"
+             class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-input bg-background hover:bg-accent font-medium transition-colors">
              ${F(e.secondaryCtaText)}
            </a>`:"";return`
         <section id="${e.anchor||t}" class="${r}" style="${o}">
@@ -373,7 +379,8 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
                             ${e.subtitle?`<p class="text-lg text-muted-foreground">${F(e.subtitle)}</p>`:""}
                         </div>
                         <div class="flex flex-wrap items-center gap-4">
-                            <a href="${F(e.ctaLink)}"                               class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
+                            <a href="${F(e.ctaLink)}"
+                               class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
                                 ${F(e.ctaText)}
                             </a>
                             ${l}
@@ -386,7 +393,8 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
        class="inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${o}">
         ${F(e)}
     </a>`}function Gh(t,e,n){let r=!!e.logo||!!e.menuItems,s=["fb-navbar","bg-background","border-b",e.sticky?"sticky top-0 z-50":"",e.hideOnMobile?"hidden md:block":"",e.hideOnDesktop?"md:hidden":""].filter(Boolean).join(" "),a=n?St(n):"";return r?$ne(t,e,s,a):Bne(t,e,s,a)}function $ne(t,e,n,r){let s=e.logo||{type:"text",text:"YourBrand",link:"/"},a=e.menuItems||[],o=e.primaryButton,l=e.secondaryButton,c=e.scale||1,p=s.link||"/",d,u=e.logoHeightBase||"2rem",f=e.iconSizeBase||"1.5rem",h=e.logoFontSizeBase||"1.25rem",m=e.logoFontWeight||"700",g=`${parseFloat(u)*c}rem`,_=`${parseFloat(f)*c}rem`,y=`${parseFloat(h)*c}rem`;if(s.type==="image"&&s.imageUrl)d=Il(`${t}-logo-img`,{src:s.imageUrl,alt:"Logo",height:g,width:"auto",objectFit:"contain"});else if(s.showIcon&&s.imageUrl){let M=Il(`${t}-logo-icon`,{src:s.imageUrl,alt:"Logo",height:_,width:_,objectFit:"contain"}),H=`<span id="${t}-logo-text" style="font-size: ${y}; font-weight: ${m};">${F(s.text||"YourBrand")}</span>`;d=`${M}${H}`}else d=`<span id="${t}-logo-text" style="font-size: ${y}; font-weight: ${m};">${F(s.text||"YourBrand")}</span>`;let x=e.menuFontSizeBase||"0.875rem",v=`${parseFloat(x)*c}rem`,w=a.map(M=>{let H=(M.navType==="scroll",M.target),K=M.navType==="scroll"?`data-scroll-to="${F(M.target)}"`:"";return`
-            <a href="${F(H)}" ${K}               class="font-medium text-muted-foreground hover:text-foreground transition-colors"
+            <a href="${F(H)}" ${K}
+               class="font-medium text-muted-foreground hover:text-foreground transition-colors"
                style="font-size: ${v};">
                 ${F(M.label)}
             </a>
@@ -396,7 +404,10 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
                 ${F(M.label)}
             </a>
         `}).join(""),b="",E=e.showDarkModeToggle?`
-        <button            type="button"            class="p-2 rounded-lg hover:bg-accent transition-colors"            data-fb-theme-toggle
+        <button
+            type="button"
+            class="p-2 rounded-lg hover:bg-accent transition-colors"
+            data-fb-theme-toggle
             aria-label="Toggle dark mode"
             title="Toggle dark mode"
         >
@@ -417,6 +428,7 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
                     <a href="${F(p)}" class="flex items-center gap-2">
                         ${d}
                     </a>
+
                     <!-- Desktop Navigation + CTA Buttons grouped together -->
                     <div class="hidden md:flex items-center" style="gap: ${D};">
                         <nav class="flex items-center" style="gap: ${I};">
@@ -458,6 +470,7 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
                 if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                     document.documentElement.classList.add('dark');
                 }
+
                 // Attach click handlers to all theme toggle buttons
                 var toggles = document.querySelectorAll('[data-fb-theme-toggle]');
                 for (var i = 0; i < toggles.length; i++) {
@@ -521,7 +534,8 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
         </div>
     `:"",o=(e.items||[]).map((l,c)=>`
         <div class="border-b" data-fb-accordion-item>
-            <button type="button"                    class="flex items-center justify-between w-full py-4 text-left font-medium hover:text-primary transition-colors"
+            <button type="button"
+                    class="flex items-center justify-between w-full py-4 text-left font-medium hover:text-primary transition-colors"
                     data-fb-accordion-trigger>
                 <span class="text-lg">${F(l.question)}</span>
                 <svg class="w-5 h-5 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" data-fb-accordion-icon>
@@ -545,13 +559,20 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
         <p class="text-center text-muted-foreground text-sm mb-8">
             ${F(e.title)}
         </p>
-    `:"",y=(T,A)=>{let P=T.scale||1,k=`${f*P}px`,j=`${h*P}px`,D="";if(T.type==="image"){let I=l?"grayscale hover:grayscale-0 opacity-60 hover:opacity-100":"",O=F(T.name||T.value||`Logo ${A+1}`);D=`<img                src="${F(T.value)}"                alt="${O}"                class="object-contain transition-all duration-300 ${I}"
+    `:"",y=(T,A)=>{let P=T.scale||1,k=`${f*P}px`,j=`${h*P}px`,D="";if(T.type==="image"){let I=l?"grayscale hover:grayscale-0 opacity-60 hover:opacity-100":"",O=F(T.name||T.value||`Logo ${A+1}`);D=`<img
+                src="${F(T.value)}"
+                alt="${O}"
+                class="object-contain transition-all duration-300 ${I}"
                 style="height: ${k}; width: auto;"
-            />`}else D=`<span                class="font-semibold whitespace-nowrap transition-all duration-300 ${l?"opacity-60 hover:opacity-100":""}"
+            />`}else D=`<span
+                class="font-semibold whitespace-nowrap transition-all duration-300 ${l?"opacity-60 hover:opacity-100":""}"
                 style="font-size: ${j};"
             >
                 ${F(T.value)}
-            </span>`;return T.url?`<a                href="${F(T.url)}"                target="_blank"                rel="noopener noreferrer"
+            </span>`;return T.url?`<a
+                href="${F(T.url)}"
+                target="_blank"
+                rel="noopener noreferrer"
                 class="flex items-center justify-center hover:scale-105 transition-transform"
             >
                 ${D}
@@ -576,7 +597,9 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
         <section id="${e.anchor||t}" class="${m} overflow-hidden ${E}" style="${g}">
             ${_}
             <div class="logo-marquee-container ${b}">
-                <div                    class="logo-marquee-track"                    style="--marquee-speed: ${a}s; --logo-count: ${r.length};"
+                <div
+                    class="logo-marquee-track"
+                    style="--marquee-speed: ${a}s; --logo-count: ${r.length};"
                 >
                     ${R}
                 </div>
@@ -607,11 +630,13 @@ ${$n} Console: ${r}`);return}let s=await SN();await IN(s,n,()=>{Io=void 0})},tu=
                         ${o}
                         ${l?`<div class="flex gap-4 mt-6">${l}</div>`:""}
                     </div>
+
                     <!-- Link Columns -->
                     <div class="grid ${f} gap-6 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:gap-12">
                         ${c}
                     </div>
                 </div>
+
                 <!-- Copyright -->
                 <div class="border-t mt-12 pt-8 text-center text-muted-foreground text-sm">
                     ${F(d)}
@@ -1062,9 +1087,11 @@ BEGIN
     filter_type := filter_item->>'filterType';
     filter_op := filter_item->>'op';
     filter_value := filter_item->'value';
+
     IF filter_col IS NULL OR filter_col = '' OR (filter_value IS NULL AND COALESCE(filter_op, '') NOT IN ('is_null', 'not_null')) THEN
       CONTINUE;
     END IF;
+
     IF filter_col LIKE '%.%' THEN
         parts := string_to_array(filter_col, '.');
         quoted_col := format('%I.%I', parts[1], parts[2]);
@@ -1073,6 +1100,7 @@ BEGIN
     END IF;
 
     condition := NULL;
+
     IF filter_op IS NOT NULL AND filter_op <> '' THEN
       CASE filter_op
         WHEN 'eq'        THEN condition := format('%s = %L',  quoted_col, filter_value#>>'{}');
@@ -1136,6 +1164,7 @@ BEGIN
         condition := NULL;
       END CASE;
     END IF;
+
     IF condition IS NOT NULL AND condition != '' THEN
       IF where_conditions = '' THEN
         where_conditions := condition;
@@ -1144,6 +1173,7 @@ BEGIN
       END IF;
     END IF;
   END LOOP;
+
   RETURN where_conditions;
 END;
 $$;
@@ -1151,7 +1181,13 @@ $$;
 -- 2. Advanced Rows Fetching (Sorting, Pagination, Joins)
 -- Usage example:
 -- select frontbase_get_rows(
---   'users',--   'users.*, profiles.full_name',--   '[{"table": "profiles", "on": "users.id = profiles.user_id", "type": "left"}]'::jsonb,--   'profiles.full_name',--   'asc',--   1,--   10
+--   'users',
+--   'users.*, profiles.full_name',
+--   '[{"table": "profiles", "on": "users.id = profiles.user_id", "type": "left"}]'::jsonb,
+--   'profiles.full_name',
+--   'asc',
+--   1,
+--   10
 -- );
 CREATE OR REPLACE FUNCTION frontbase_get_rows(
   table_name text,
@@ -1189,8 +1225,10 @@ BEGIN
   FOR join_item IN SELECT * FROM jsonb_array_elements(joins)
   LOOP
     joined_tables := array_append(joined_tables, (join_item->>'table'));
-    join_clause := join_clause || ' ' || (join_item->>'type') || ' JOIN ' ||                   format('%I', (join_item->>'table')) || ' ON ' || (join_item->>'on');
+    join_clause := join_clause || ' ' || (join_item->>'type') || ' JOIN ' ||
+                   format('%I', (join_item->>'table')) || ' ON ' || (join_item->>'on');
   END LOOP;
+
   -- Step 2: Scan columns string for "table"."column" patterns and auto-join missing tables
   -- Pattern: "tablename"."columnname" in the SELECT columns
   DECLARE
@@ -1198,17 +1236,21 @@ BEGIN
     match_record record;
   BEGIN
     -- Use regex to find all "table"."column" patterns in the columns string
-    FOR match_record IN      SELECT (regexp_matches(columns, '"([a-zA-Z_][a-zA-Z0-9_]*)"\.', 'g'))[1] AS tbl
+    FOR match_record IN
+      SELECT (regexp_matches(columns, '"([a-zA-Z_][a-zA-Z0-9_]*)"\.', 'g'))[1] AS tbl
     LOOP
       ref_table := match_record.tbl;
+
       -- Skip if it's the main table or already joined
       IF ref_table != table_name AND NOT (ref_table = ANY(joined_tables)) THEN
         -- Lookup FK relationship from information_schema
-        SELECT          kcu.column_name,
+        SELECT
+          kcu.column_name,
           ccu.column_name
         INTO fk_col, fk_ref_col
         FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu          ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
         JOIN information_schema.constraint_column_usage ccu
           ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
@@ -1216,6 +1258,7 @@ BEGIN
           AND tc.table_name = frontbase_get_rows.table_name
           AND ccu.table_name = ref_table
         LIMIT 1;
+
         IF fk_col IS NOT NULL THEN
           join_clause := join_clause || format(
             ' LEFT JOIN %I ON %I.%I = %I.%I',
@@ -1226,20 +1269,25 @@ BEGIN
       END IF;
     END LOOP;
   END;
+
   -- Step 3: Scan filters for table.column references and auto-join missing tables
   FOR filter_item IN SELECT * FROM jsonb_array_elements(filters)
   LOOP
     filter_col := filter_item->>'column';
+
     IF filter_col LIKE '%.%' THEN
       ref_table := split_part(filter_col, '.', 1);
+
       -- Check if this table is already joined
       IF ref_table != table_name AND NOT (ref_table = ANY(joined_tables)) THEN
         -- Lookup FK relationship from information_schema
-        SELECT          kcu.column_name,
+        SELECT
+          kcu.column_name,
           ccu.column_name
         INTO fk_col, fk_ref_col
         FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu          ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
         JOIN information_schema.constraint_column_usage ccu
           ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
@@ -1247,6 +1295,7 @@ BEGIN
           AND tc.table_name = frontbase_get_rows.table_name
           AND ccu.table_name = ref_table
         LIMIT 1;
+
         -- If FK found, add the JOIN
         IF fk_col IS NOT NULL THEN
           join_clause := join_clause || format(
@@ -1258,15 +1307,19 @@ BEGIN
       END IF;
     END IF;
   END LOOP;
+
   -- Step 4: Also check sort column for table.column reference
   IF sort_col IS NOT NULL AND sort_col LIKE '%.%' THEN
     ref_table := replace(split_part(sort_col, '.', 1), '"', '');
+
     IF ref_table != table_name AND NOT (ref_table = ANY(joined_tables)) THEN
-      SELECT        kcu.column_name,
+      SELECT
+        kcu.column_name,
         ccu.column_name
       INTO fk_col, fk_ref_col
       FROM information_schema.table_constraints tc
-      JOIN information_schema.key_column_usage kcu        ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+      JOIN information_schema.key_column_usage kcu
+        ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
       JOIN information_schema.constraint_column_usage ccu
         ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
       WHERE tc.constraint_type = 'FOREIGN KEY'
@@ -1274,6 +1327,7 @@ BEGIN
         AND tc.table_name = frontbase_get_rows.table_name
         AND ccu.table_name = ref_table
       LIMIT 1;
+
       IF fk_col IS NOT NULL THEN
         join_clause := join_clause || format(
           ' LEFT JOIN %I ON %I.%I = %I.%I',
@@ -1283,6 +1337,7 @@ BEGIN
       END IF;
     END IF;
   END IF;
+
   -- Step 5: Build WHERE clause from filters
   DECLARE
     filter_conds text;
@@ -1292,6 +1347,7 @@ BEGIN
       where_clause := 'WHERE ' || filter_conds;
     END IF;
   END;
+
   -- Step 6: Build ORDER BY clause
   IF sort_col IS NOT NULL AND sort_col != '' THEN
     DECLARE
@@ -1312,7 +1368,10 @@ BEGIN
 
         SELECT data_type INTO col_type
         FROM information_schema.columns
-        WHERE table_schema = 'public'          AND information_schema.columns.table_name = sort_table          AND column_name = clean_sort_col;
+        WHERE table_schema = 'public'
+          AND information_schema.columns.table_name = sort_table
+          AND column_name = clean_sort_col;
+
         DECLARE
             quoted_sort_col text;
         BEGIN
@@ -1332,7 +1391,8 @@ BEGIN
         order_clause := 'ORDER BY ' || sort_col || ' ' || COALESCE(sort_dir, 'asc');
     END;
   ELSE
-    order_clause := '';  END IF;
+    order_clause := '';
+  END IF;
 
   offset_val := (page - 1) * page_size;
 
@@ -1357,6 +1417,7 @@ BEGIN
     join_clause,
     where_clause
   );
+
   EXECUTE count_query INTO total_count;
 
   RETURN json_build_object(
@@ -1412,7 +1473,8 @@ BEGIN
   FOR join_item IN SELECT * FROM jsonb_array_elements(joins)
   LOOP
     joined_tables := array_append(joined_tables, (join_item->>'table'));
-    join_clause := join_clause || ' ' || (join_item->>'type') || ' JOIN ' ||                   format('%I', (join_item->>'table')) || ' ON ' || (join_item->>'on');
+    join_clause := join_clause || ' ' || (join_item->>'type') || ' JOIN ' ||
+                   format('%I', (join_item->>'table')) || ' ON ' || (join_item->>'on');
   END LOOP;
 
   -- Step 2: Scan search columns for table.column references and auto-join missing tables
@@ -1421,12 +1483,15 @@ BEGIN
     LOOP
       IF col LIKE '%.%' THEN
         ref_table := split_part(col, '.', 1);
+
         IF ref_table != table_name AND NOT (ref_table = ANY(joined_tables)) THEN
-          SELECT            kcu.column_name,
+          SELECT
+            kcu.column_name,
             ccu.column_name
           INTO fk_col, fk_ref_col
           FROM information_schema.table_constraints tc
-          JOIN information_schema.key_column_usage kcu            ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+          JOIN information_schema.key_column_usage kcu
+            ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
           JOIN information_schema.constraint_column_usage ccu
             ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
           WHERE tc.constraint_type = 'FOREIGN KEY'
@@ -1434,6 +1499,7 @@ BEGIN
             AND tc.table_name = frontbase_search_rows.table_name
             AND ccu.table_name = ref_table
           LIMIT 1;
+
           IF fk_col IS NOT NULL THEN
             join_clause := join_clause || format(
               ' LEFT JOIN %I ON %I.%I = %I.%I',
@@ -1450,14 +1516,18 @@ BEGIN
   FOR filter_item IN SELECT * FROM jsonb_array_elements(filters)
   LOOP
     filter_col := filter_item->>'column';
+
     IF filter_col LIKE '%.%' THEN
       ref_table := split_part(filter_col, '.', 1);
+
       IF ref_table != table_name AND NOT (ref_table = ANY(joined_tables)) THEN
-        SELECT          kcu.column_name,
+        SELECT
+          kcu.column_name,
           ccu.column_name
         INTO fk_col, fk_ref_col
         FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu          ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
         JOIN information_schema.constraint_column_usage ccu
           ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
@@ -1465,6 +1535,7 @@ BEGIN
           AND tc.table_name = frontbase_search_rows.table_name
           AND ccu.table_name = ref_table
         LIMIT 1;
+
         IF fk_col IS NOT NULL THEN
           join_clause := join_clause || format(
             ' LEFT JOIN %I ON %I.%I = %I.%I',
@@ -1487,7 +1558,8 @@ BEGIN
       END IF;
       -- Handle table.column notation
       IF col LIKE '%.%' THEN
-        search_where := search_where || format('%I.%I::text ILIKE %L',          split_part(col, '.', 1), split_part(col, '.', 2), '%' || search_query || '%');
+        search_where := search_where || format('%I.%I::text ILIKE %L',
+          split_part(col, '.', 1), split_part(col, '.', 2), '%' || search_query || '%');
       ELSE
         search_where := search_where || format('%I::text ILIKE %L', col, '%' || search_query || '%');
       END IF;
@@ -1580,6 +1652,7 @@ BEGIN
   );
 
   EXECUTE 'SELECT json_agg(t) FROM (' || query || ') t' INTO result;
+
   RETURN COALESCE(result, '[]'::json);
 END;
 $$;
@@ -1597,11 +1670,13 @@ BEGIN
   SELECT json_build_object(
     'tables', (
       SELECT json_agg(t) FROM (
-        SELECT          table_name,
+        SELECT
+          table_name,
           (
             SELECT json_agg(c) FROM (
               SELECT column_name, data_type, is_nullable
-              FROM information_schema.columns              WHERE table_schema = 'public' AND table_name = t_main.table_name
+              FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = t_main.table_name
             ) c
           ) as columns
         FROM information_schema.tables t_main
@@ -1611,8 +1686,13 @@ BEGIN
     'foreign_keys', (
       SELECT json_agg(fk) FROM (
         SELECT
-            tc.table_name,            kcu.column_name,            ccu.table_name AS foreign_table_name,
-            ccu.column_name AS foreign_column_name        FROM            information_schema.table_constraints AS tc            JOIN information_schema.key_column_usage AS kcu
+            tc.table_name,
+            kcu.column_name,
+            ccu.table_name AS foreign_table_name,
+            ccu.column_name AS foreign_column_name
+        FROM
+            information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
               ON tc.constraint_name = kcu.constraint_name
               AND tc.table_schema = kcu.table_schema
             JOIN information_schema.constraint_column_usage AS ccu
@@ -1622,6 +1702,7 @@ BEGIN
       ) fk
     )
   ) INTO result;
+
   RETURN result;
 END;
 $$;
@@ -1639,8 +1720,12 @@ DECLARE
 BEGIN
   -- Count all users in auth schema
   SELECT count(*) INTO total_count FROM auth.users;
+
   -- Count users created in the last 7 days
-  SELECT count(*) INTO new_count  FROM auth.users  WHERE created_at >= NOW() - INTERVAL '7 days';
+  SELECT count(*) INTO new_count
+  FROM auth.users
+  WHERE created_at >= NOW() - INTERVAL '7 days';
+
   RETURN json_build_object(
     'total_users', total_count,
     'new_users', new_count,
@@ -1678,6 +1763,7 @@ BEGIN
 
   -- Base Where Clause
   where_clause := 'WHERE 1=1';
+
   -- Search (Simple search on email or contact id for now)
   IF search_query IS NOT NULL AND search_query != '' THEN
     where_clause := where_clause || format(' AND (au.email ILIKE %L OR c.id::text ILIKE %L)', '%' || search_query || '%', '%' || search_query || '%');
@@ -1694,11 +1780,13 @@ BEGIN
   ELSE
     -- Default to contact column for anything else
     -- Use quote_ident to prevent SQL injection on column names
-    order_clause := format('ORDER BY c.%I %s', sort_col, sort_dir);  END IF;
+    order_clause := format('ORDER BY c.%I %s', sort_col, sort_dir);
+  END IF;
 
   -- Dynamic Query
   query := format(
-    'SELECT       au.id as auth_id,
+    'SELECT
+       au.id as auth_id,
        au.email as auth_email,
        au.created_at as auth_created_at,
        au.last_sign_in_at,
@@ -1721,7 +1809,8 @@ BEGIN
 
   -- Count Query
   count_query := format(
-    'SELECT COUNT(*)     FROM auth.users au
+    'SELECT COUNT(*)
+     FROM auth.users au
      INNER JOIN %I c ON au.id = c.%I
      %s',
     table_name,
@@ -1800,6 +1889,7 @@ BEGIN
     ELSE
       join_table_ident := format('%I', join_table);
     END IF;
+
     IF target_join_col IS NOT NULL AND join_table_col IS NOT NULL THEN
       join_clause := format(' INNER JOIN %s j ON t.%I = j.%I', join_table_ident, target_join_col, join_table_col);
       joined_tables := array_append(joined_tables, join_table);
@@ -1810,15 +1900,19 @@ BEGIN
   FOR filter_item IN SELECT * FROM jsonb_array_elements(filters)
   LOOP
     filter_col := filter_item->>'column';
+
     IF filter_col LIKE '%.%' THEN
       ref_table := split_part(filter_col, '.', 1);
+
       IF ref_table != target_table AND NOT (ref_table = ANY(joined_tables)) THEN
         -- Lookup FK relationship from information_schema
-        SELECT          kcu.column_name,
+        SELECT
+          kcu.column_name,
           ccu.column_name
         INTO fk_col, fk_ref_col
         FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu          ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
         JOIN information_schema.constraint_column_usage ccu
           ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
@@ -1826,6 +1920,7 @@ BEGIN
           AND tc.table_name = frontbase_get_distinct_values.target_table
           AND ccu.table_name = ref_table
         LIMIT 1;
+
         IF fk_col IS NOT NULL THEN
           join_clause := join_clause || format(
             ' LEFT JOIN %I ON t.%I = %I.%I',
@@ -1847,7 +1942,8 @@ BEGIN
         search_where := search_where || ' OR ';
       END IF;
       IF col LIKE '%.%' THEN
-        search_where := search_where || format('%I.%I::text ILIKE %L',          split_part(col, '.', 1), split_part(col, '.', 2), '%' || search_query || '%');
+        search_where := search_where || format('%I.%I::text ILIKE %L',
+          split_part(col, '.', 1), split_part(col, '.', 2), '%' || search_query || '%');
       ELSE
         search_where := search_where || format('t.%I::text ILIKE %L', col, '%' || search_query || '%');
       END IF;
@@ -1862,9 +1958,11 @@ BEGIN
     filter_col := filter_item->>'column';
     filter_type := filter_item->>'filterType';
     filter_value := filter_item->'value';
+
     IF filter_col IS NULL OR filter_col = '' OR filter_value IS NULL THEN
       CONTINUE;
     END IF;
+
     -- Handle table.column notation - use full table reference if it's a joined table
     DECLARE
         parts text[];
@@ -1879,28 +1977,34 @@ BEGIN
     END;
 
     condition := NULL;
+
     CASE filter_type
       WHEN 'text' THEN
         IF filter_value::text != 'null' AND filter_value::text != '""' THEN
           condition := format('%s ILIKE %L', quoted_col, '%' || (filter_value#>>'{}'::text[]) || '%');
         END IF;
+
       WHEN 'dropdown', 'select' THEN
         IF filter_value::text != 'null' AND filter_value::text != '""' THEN
           condition := format('%s::text = %L', quoted_col, filter_value#>>'{}'::text[]);
         END IF;
+
       WHEN 'multiselect' THEN
         IF jsonb_typeof(filter_value) = 'array' AND jsonb_array_length(filter_value) > 0 THEN
           condition := format('%s IN (SELECT jsonb_array_elements_text(%L::jsonb))', quoted_col, filter_value::text);
         END IF;
+
       WHEN 'boolean' THEN
         IF filter_value::text = 'true' OR filter_value::text = 'false' THEN
           condition := format('%s = %s', quoted_col, filter_value::boolean);
         END IF;
+
       ELSE
         IF filter_value::text != 'null' AND filter_value::text != '""' THEN
           condition := format('%s::text = %L', quoted_col, filter_value#>>'{}'::text[]);
         END IF;
     END CASE;
+
     IF condition IS NOT NULL AND condition != '' THEN
       IF filter_where = '' THEN
         filter_where := condition;
@@ -1925,9 +2029,11 @@ BEGIN
   -- Step 5: Construct and execute query
   query := format('SELECT DISTINCT t.%I FROM %s t', target_col, target_table_ident);
   query := query || join_clause;
+
   IF where_clause != '' THEN
     query := query || ' ' || where_clause;
   END IF;
+
   query := format('%s ORDER BY t.%I ASC', query, target_col);
 
   EXECUTE 'SELECT json_agg(val) FROM (' || query || ') v(val)' INTO result;
@@ -1958,7 +2064,8 @@ BEGIN
       policyname as policy_name,
       schemaname as schema_name,
       tablename as table_name,
-      CASE        WHEN cmd = 'r' THEN 'SELECT'
+      CASE
+        WHEN cmd = 'r' THEN 'SELECT'
         WHEN cmd = 'a' THEN 'INSERT'
         WHEN cmd = 'w' THEN 'UPDATE'
         WHEN cmd = 'd' THEN 'DELETE'
@@ -2175,6 +2282,7 @@ DECLARE
 BEGIN
   -- First drop the old policy
   SELECT frontbase_drop_rls_policy(p_table_name, p_old_policy_name) INTO drop_result;
+
   IF NOT (drop_result->>'success')::boolean THEN
     RETURN json_build_object(
       'success', false,
@@ -2591,6 +2699,7 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; line-height
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="${s}">
     <link rel="apple-touch-icon" href="${s}">
+
     <!-- Prefetch hydration bundle -->
     <link rel="modulepreload" href="/static/react/hydrate.js?v=${zl}">
 
@@ -2598,6 +2707,7 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; line-height
     <script>
     (function() {
         if (sessionStorage.getItem('visitor-enhanced')) return;
+
         // Configuration from advancedVariables
         const adv = ${JSON.stringify(r.advancedVariables||{})};
         const data = {};
@@ -2629,6 +2739,7 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; line-height
         }
     })();
     <\/script>
+
     <!-- Base styles (from CSS Bundle or fallback) -->
     <style>
         ${t.cssBundle||Xh}
@@ -2643,6 +2754,7 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; line-height
         window.__INITIAL_STATE__ = ${X2(n)};
         window.__PAGE_DATA__ = ${X2({id:t.id,slug:t.slug,layoutData:t.layoutData,datasources:t.datasources})};
     <\/script>
+
     <!-- Frontbase Client SDK -->
     <script>
         // Initialize window.frontbase SDK
@@ -3101,8 +3213,10 @@ ${r}
 
 @neondatabase/serverless/index.mjs:
   (*! Bundled license information:
+
   ieee754/index.js:
     (*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> *)
+
   buffer/index.js:
     (*!
      * The buffer module from node.js, for the browser.
@@ -3115,9 +3229,12 @@ ${r}
 crypto-js/ripemd160.js:
   (** @preserve
   	(c) 2012 by Cédric Mesnil. All rights reserved.
+
   	Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
   	    - Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
   	    - Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
   	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   	*)
 

@@ -382,6 +382,16 @@ await emitEdgeArtifact({ entry: 'src/worker.ts', outfile: 'dist/worker.mjs', ext
 await emitEdgeArtifact({ entry: 'src/vercel.ts', outfile: 'dist/vercel.mjs', extraPlugins: [edgeAlias, postgresUnavailable] });
 await emitEdgeArtifact({ entry: 'src/deno.ts', outfile: 'dist/deno.mjs', extraPlugins: [edgeAlias, postgresUnavailable], external: ['node:*'] });
 
+// Minified template literals can retain harmless trailing editor whitespace.
+// Normalize immediately after emission so the tracked Vercel function and its
+// dist source remain byte-identical without recurring whitespace-only diffs.
+const vercelSourcePath = join(here, 'dist', 'vercel.mjs');
+const normalizedVercelBundle = Buffer.from(
+    readFileSync(vercelSourcePath, 'utf8').replace(/[ \t]+(\r?\n)/g, '$1'),
+    'utf8',
+);
+writeFileSync(vercelSourcePath, normalizedVercelBundle);
+
 // Vercel discovers functions under api/ at the PROJECT ROOT regardless of
 // outputDirectory — stage the byte-identical copy the deploy consumes.
 // src/vercel.ts exports `config = { runtime: 'edge' }` (verify point E3).
