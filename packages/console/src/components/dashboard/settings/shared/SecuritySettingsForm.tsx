@@ -917,9 +917,9 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
                     <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-blue-600 dark:text-blue-400 flex items-start gap-3">
                         <HelpCircle className="h-5 w-5 mt-0.5 shrink-0" />
                         <div className="space-y-1">
-                            <p className="font-semibold">SuperTokens Engine Enabled</p>
+                            <p className="font-semibold">Frontbase Cloud session security</p>
                             <p className="text-xs opacity-90">
-                                This instance is operating in Cloud Mode. Master administrator accounts are protected via Frontbase's built-in lockout parameters, while tenant user authentication, sessions, and secondary security checks are delegated directly to SuperTokens Cloud.
+                                This instance is operating in Cloud Mode. Tenant identities are managed by Supabase Auth, authenticated browser sessions use the framework worker’s signed HTTP-only frontbase_session cookie, and master administrator accounts use Frontbase’s built-in lockout protections.
                             </p>
                         </div>
                     </div>

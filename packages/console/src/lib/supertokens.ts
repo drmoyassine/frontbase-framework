@@ -5,7 +5,8 @@
  * Uses supertokens-web-js (lightweight, no UI) — just wraps fetch()
  * to intercept 401s and auto-refresh via the /api/auth/session/refresh endpoint.
  *
- * This module must be initialized ONCE at app startup (in main.tsx or App.tsx).
+ * This module is opt-in. Do not initialize it at app startup: the framework's
+ * cloud default is the worker's frontbase_session contract, not SuperTokens.
  */
 
 import SuperTokens from 'supertokens-web-js';
@@ -35,5 +36,4 @@ export function initSuperTokens(): void {
   });
 
   _initialized = true;
-  console.log('[SuperTokens] Web SDK initialized');
 }
