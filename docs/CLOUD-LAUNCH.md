@@ -39,6 +39,7 @@ No new paid plan, price, entitlement, or fallback identity provider is approved 
 | CL-5 | Tenant hostname deployment; compiler + deploy guide | Cloudflare zone/token/proxied DNS | Local endpoint/ownership tests plus actual app and two tenant HTTPS hosts, unknown tenant 404 | Local fix implemented; live proof pending |
 | CL-6 | Complete deployed customer journey; cf-full Playwright + Cloud smoke | CL-1 through CL-5 | Two fresh customers; Supabase identity; Stripe test checkout; upgrade; data connection; build/edit/save/publish; published page and authenticated API isolation; reset email; customer portal cancellation | Not run |
 | CL-7 | Operations and paid beta release | CL-6 | Secret configuration; Supabase backup/restore drill; rollback rehearsal; error monitoring; support/contact; owner reviews exact running edition; then live-mode billing and production deployment with named resources | Not ready |
+| CL-8 | Community engine wizard parity (deferred) | CL-7 | The Cloud master-only Community card creates a real shared Worker, marks it `is_shared`, configures the public wildcard, exposes it read-only to tenants, and enforces engine quotas without allowing tenant deletion | Accepted gap |
 
 Custom domains, dedicated engines, branding removal, agent credits and other catalog benefits must be compared to actual plan contents at CL-3. They are not silently dropped, silently promised, or bundled into an unrestricted parity sprint.
 
