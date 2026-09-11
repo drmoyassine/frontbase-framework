@@ -25,7 +25,7 @@
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import type { PageEntry } from '@frontbase/edge-core';
-import { createConsole, createCompatApp, createSupabaseCloudAuth, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, type CloudIdentityProvider, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
+import { createConsole, createCompatApp, createSupabaseCloudAuth, assertStripeKeyMode, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, type CloudIdentityProvider, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
@@ -76,6 +76,12 @@ export interface CmsEnv {
     FRONTBASE_DEPLOYMENT_MODE?: string;
     /** Required when mode === 'cloud': the tenant zone (e.g. frontbase.dev). */
     FRONTBASE_BASE_DOMAIN?: string;
+    /**
+     * Live-billing acknowledgment (`1`). A live STRIPE_SECRET_KEY refuses to
+     * boot billing without it — real customers, real charges must be a
+     * deliberate operator act, not a leftover key.
+     */
+    FRONTBASE_STRIPE_LIVE_MODE?: string;
     SUPABASE_URL?: string;
     SUPABASE_ANON_KEY?: string;
     SUPABASE_SERVICE_ROLE_KEY?: string;
@@ -834,6 +840,13 @@ export default {
                     ].filter(([, value]) => !value).map(([name]) => name);
                     if (missing.length > 0) {
                         return new Response(`Frontbase Cloud Supabase Auth is incomplete — missing ${missing.join(', ')}.`, { status: 500 });
+                    }
+                    // A live Stripe key creates real customers and real charges —
+                    // boot refuses one unless the operator acknowledged live mode.
+                    try {
+                        assertStripeKeyMode(env.STRIPE_SECRET_KEY as string, env.FRONTBASE_STRIPE_LIVE_MODE === '1');
+                    } catch (e) {
+                        return new Response((e as Error).message, { status: 500 });
                     }
                 }
                 // A-24: the state DB is the operator's choice (./state-db) — D1

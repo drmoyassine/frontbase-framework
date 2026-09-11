@@ -319,6 +319,11 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         // The Sheets add-on has no browser session. A short-lived, hashed,
         // single-use capability authorizes this one callback.
         if (path === '/api/sync/datasources/sheets/connect/callback/') return next();
+        // Public pricing catalog — plan slugs, display names and prices only
+        // (no tenant data, no entitlement state). The anonymous signup/pricing
+        // surface reads it; leaving it behind default-deny shadowed the route
+        // into a 401 for exactly the callers it exists for.
+        if (path === '/api/plans/public') return next();
         return defaultDenyAuth(resolvePrincipal as (req: Request) => Promise<any>)(c, next);
     });
     // Provider credentials, infrastructure lifecycle, security administration,

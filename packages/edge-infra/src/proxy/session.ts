@@ -1,12 +1,22 @@
 /**
  * Session issuance (M-ID.1, Decision D2). Issues an HS256 JWT — the SAME shape
  * `createResolvePrincipal` verifies — to be set as the `fb_session` HttpOnly cookie.
- * Claims: { sub, email, role, tenant_slug, exp }. 7-day expiry.
+ * Claims: { iss, aud, sub, email, role, tenant_slug, exp }. 7-day expiry.
  *
  * Reuses auth.ts's verify path (RULE 6 — one source of truth): a token issued
  * here is accepted by `createResolvePrincipal({ jwtSecret, jwtCookie: 'fb_session' })`.
  */
 const enc = new TextEncoder();
+
+/**
+ * The iss/aud stamped into every Frontbase session JWT. Verifiers that opt in
+ * (auth config `jwtIssuer`/`jwtAudience`) reject tokens carrying any other
+ * value — a signed-but-foreign JWT cannot be replayed as a session. Verifiers
+ * that leave them unset stay permissive (self-host may verify third-party
+ * tokens against this same seam).
+ */
+export const SESSION_ISSUER = 'frontbase';
+export const SESSION_AUDIENCE = 'frontbase-session';
 
 export interface SessionClaims {
     sub: string;            // user id
@@ -20,7 +30,7 @@ export interface SessionClaims {
 /** Sign a session JWT valid for 7 days from `now` (seconds since epoch). */
 export async function issueSession(claims: SessionClaims, secret: string, nowSeconds: number): Promise<string> {
     const header = b64url({ alg: 'HS256', typ: 'JWT' });
-    const payload = b64url({ ...claims, exp: nowSeconds + 7 * 24 * 3600, iat: nowSeconds });
+    const payload = b64url({ iss: SESSION_ISSUER, aud: SESSION_AUDIENCE, ...claims, exp: nowSeconds + 7 * 24 * 3600, iat: nowSeconds });
     const signingInput = `${header}.${payload}`;
     const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(signingInput)));

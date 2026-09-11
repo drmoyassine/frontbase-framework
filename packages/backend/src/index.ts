@@ -16,7 +16,7 @@
 import { Hono } from 'hono';
 import type { Principal } from '@frontbase/edge-core';
 import type { DbRunner } from '@frontbase/edge-infra';
-import { sqliteRunner, createResolvePrincipal, s3StorageProvider, cloudflareProvisioner, supabaseProvisioner, noopProvisioner, type StorageProvider, type Provisioner } from '@frontbase/edge-infra';
+import { sqliteRunner, createResolvePrincipal, SESSION_ISSUER, SESSION_AUDIENCE, s3StorageProvider, cloudflareProvisioner, supabaseProvisioner, noopProvisioner, type StorageProvider, type Provisioner } from '@frontbase/edge-infra';
 import type { QueryRegistry } from '@frontbase/compiler/manifest';
 import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from './mw/auth.js';
 import { opaqueErrors } from './mw/errors.js';
@@ -106,9 +106,16 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     let sharedRunner = await makeRunner();
 
     // Resolve the principal resolver: explicit wins; sessionSecret builds one for
-    // the frontbase_session JWT cookie (M-ID.1, D2); else anonymous.
+    // the frontbase_session JWT cookie (M-ID.1, D2); else anonymous. The
+    // iss/aud pinning matches what issueSession stamps — a validly signed
+    // token that is not a Frontbase session cannot authenticate here.
     const baseResolvePrincipal = deps.resolvePrincipal
-        ?? (deps.sessionSecret ? createResolvePrincipal({ jwtSecret: deps.sessionSecret, jwtCookie: 'frontbase_session' })
+        ?? (deps.sessionSecret ? createResolvePrincipal({
+            jwtSecret: deps.sessionSecret,
+            jwtCookie: 'frontbase_session',
+            jwtIssuer: SESSION_ISSUER,
+            jwtAudience: SESSION_AUDIENCE,
+        })
             : (async () => ({ user: null, tenant: undefined })));
 
     // Stores per tenant — built synchronously from the shared runner. RULE 6: one runner.
@@ -246,6 +253,7 @@ export { tenantsRoutes } from './routes/tenants.js';
 export { publishPage } from './publish/pipeline.js';
 export { migrateUp, migrateDown, appliedVersions, schemaFingerprint, MIGRATIONS } from './db/migrations.js';
 export type { Migration } from './db/migrations.js';
+export { assertStripeKeyMode } from './compat/routes/billing.js';
 // CF-22 P1: product-compatible /api surface + drift-gate machinery.
 export { createCompatApp } from './compat/app.js';
 export { createSupabaseCloudAuth, CloudIdentityError } from './compat/supabase-cloud-auth.js';

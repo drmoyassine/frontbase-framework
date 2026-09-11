@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { sqliteRunner } from '@frontbase/edge-infra';
+import { sqliteRunner, createResolvePrincipal } from '@frontbase/edge-infra';
 import { createCompatApp } from '../dist/compat/app.js';
+import { assertStripeKeyMode } from '../dist/compat/routes/billing.js';
 import { migrateUp } from '../dist/db/migrations.js';
 import { TenantStore } from '../dist/db/tenants.js';
 import { UserStore } from '../dist/db/users.js';
@@ -76,4 +77,35 @@ assert.equal((await new TenantStore(runner).getTenant('acme')).status, 'active')
 
 const invalid = await app.fetch(new Request('https://app.frontbase.test/api/billing/webhooks/stripe', { method: 'POST', headers: { 'stripe-signature': 't=1,v1=bad' }, body: '{}' }));
 assert.equal(invalid.status, 400);
+
+// Anonymous callers (no session): the public pricing catalog must answer, the
+// rest of the billing surface must stay behind default-deny. The app above
+// stubs resolvePrincipal to always return the owner, so this second instance
+// wires the REAL verifier to prove the /api/plans/public exemption and the
+// default-deny of every neighboring billing path.
+const anonApp = await createCompatApp({
+    makeRunner: () => runner,
+    resolvePrincipal: createResolvePrincipal({ jwtSecret: 'billing-test-session-secret-0123456789', jwtCookie: 'frontbase_session' }),
+    sessionSecret: 'billing-test-session-secret-0123456789',
+    userStoreFor: (tenant) => new UserStore(runner, tenant),
+    cloudMode: true,
+    billing: { secretKey: 'sk_test_anon', webhookSecret, baseDomain: 'frontbase.test', fetch: stripeFetch },
+});
+const anonPlans = await anonApp.fetch(new Request('https://app.frontbase.test/api/plans/public'));
+assert.equal(anonPlans.status, 200);
+assert.equal((await anonPlans.json()).plans.length, 3);
+const anonCheckout = await anonApp.fetch(new Request('https://app.frontbase.test/api/billing/checkout', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan_slug: 'basic' }),
+}));
+assert.equal(anonCheckout.status, 401);
+const anonPortal = await anonApp.fetch(new Request('https://app.frontbase.test/api/billing/portal', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+}));
+assert.equal(anonPortal.status, 401);
+
+// Live-key guard: live keys need the explicit acknowledgment; test keys and
+// acknowledged live keys boot.
+assert.doesNotThrow(() => assertStripeKeyMode('sk_test_abc', false));
+assert.doesNotThrow(() => assertStripeKeyMode('sk_live_abc', true));
+assert.throws(() => assertStripeKeyMode('sk_live_abc', false), /FRONTBASE_STRIPE_LIVE_MODE/);
 console.log('cloud billing: PASS');

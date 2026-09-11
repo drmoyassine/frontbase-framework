@@ -117,6 +117,14 @@ if (cloud) {
         console.error(`✗ paid Cloud deploy requires: ${missing.join(', ')}`);
         process.exit(1);
     }
+    // Mirror of the worker's boot guard: refuse to push a live Stripe key to a
+    // deployment that has not explicitly acknowledged live billing. The ack is
+    // forwarded to the worker as FRONTBASE_STRIPE_LIVE_MODE (see deploy.ts).
+    if (/^sk_live_/.test(paidCloudSecrets.stripeSecretKey) && process.env.FRONTBASE_STRIPE_LIVE_MODE !== '1') {
+        console.error('✗ STRIPE_SECRET_KEY is a live key — real customers and real charges.');
+        console.error('  Set FRONTBASE_STRIPE_LIVE_MODE=1 to acknowledge live billing, or use a test-mode key.');
+        process.exit(1);
+    }
 }
 if (cloud && !resendApiKey) {
     console.error('⚠ RESEND_API_KEY is not set — password-reset email will be a non-enumerating no-op. Export it and re-run to enable email delivery.');

@@ -13,6 +13,20 @@ export interface StripeBillingConfig {
     fetch?: typeof globalThis.fetch;
 }
 
+/**
+ * Live-mode guard: a live secret key creates REAL Stripe customers and
+ * checkout sessions and can produce REAL charges. Billing boot refuses a live
+ * key unless the operator explicitly acknowledged live mode (the worker wiring
+ * passes `FRONTBASE_STRIPE_LIVE_MODE === '1'`). The catalog's price IDs are
+ * live-mode IDs, so a test-mode key fails at Stripe anyway — this guard makes
+ * either mismatch loud at boot instead of at first checkout.
+ */
+export function assertStripeKeyMode(secretKey: string, liveAcknowledged: boolean): void {
+    if (/^sk_live_/.test(secretKey) && !liveAcknowledged) {
+        throw new Error('stripe_live_key_requires_acknowledgment — serving billing with a live secret key needs FRONTBASE_STRIPE_LIVE_MODE=1 (or use a test-mode key)');
+    }
+}
+
 const encoder = new TextEncoder();
 const toHexBytes = (hex: string): Uint8Array | null => {
     if (!/^[0-9a-f]{64}$/i.test(hex)) return null;

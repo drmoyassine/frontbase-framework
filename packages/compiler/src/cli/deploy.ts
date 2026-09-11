@@ -405,6 +405,12 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
             '--var', 'FRONTBASE_DEPLOYMENT_MODE:cloud',
             '--var', `FRONTBASE_BASE_DOMAIN:${opts.baseDomain}`,
         );
+        // Live-billing acknowledgment rides from the operator's environment the
+        // same way the secrets do — the worker refuses to boot billing with a
+        // live STRIPE_SECRET_KEY unless this var says live mode is intended.
+        if (process.env.FRONTBASE_STRIPE_LIVE_MODE === '1') {
+            deployArgs.push('--var', 'FRONTBASE_STRIPE_LIVE_MODE:1');
+        }
     }
     const dep = await runWrangler(deployArgs, { cwd });
     if (dep.code !== 0) return { ok: false, summary: `${bin} deploy failed`, details: { stderr: dep.stderr } };

@@ -30,7 +30,7 @@ export type { ProviderEnv } from './providers/registry.js';
 
 // auth
 export { createResolvePrincipal } from './proxy/auth.js';
-export { issueSession } from './proxy/session.js';
+export { issueSession, SESSION_ISSUER, SESSION_AUDIENCE } from './proxy/session.js';
 export type { SessionClaims } from './proxy/session.js';
 export type { AuthConfig, ApiKeyHashEntry } from './proxy/auth.js';
 

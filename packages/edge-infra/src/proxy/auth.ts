@@ -29,6 +29,14 @@ export interface AuthConfig {
     jwtSecret?: string;
     /** Cookie name carrying the JWT. Default 'sb-access-token'. */
     jwtCookie?: string;
+    /**
+     * When set, a JWT is only accepted if its `iss` claim equals this value
+     * (fail closed: missing or different issuer ⇒ rejected). Unset ⇒ the
+     * issuer is not checked (permissive — e.g. verifying third-party tokens).
+     */
+    jwtIssuer?: string;
+    /** Same contract as `jwtIssuer`, for the `aud` claim. */
+    jwtAudience?: string;
 }
 
 const enc = new TextEncoder();
@@ -103,7 +111,9 @@ export function createResolvePrincipal(cfg: AuthConfig) {
             const candidates = [bearer, readCookie(request, cookieName)].filter((t): t is string => !!t && t.split('.').length === 3);
             for (const token of candidates) {
                 const claims = await decodeJwt(token, cfg.jwtSecret);
-                if (claims && !isExpired(claims)) {
+                if (claims && !isExpired(claims)
+                    && claimMatches(claims.iss, cfg.jwtIssuer)
+                    && claimMatches(claims.aud, cfg.jwtAudience)) {
                     // D9: role + email ride in the JWT claims into the user object
                     // (structural excess on Principal.user — allowed; edge-core is frozen).
                     const user = {
@@ -132,4 +142,8 @@ function readCookie(request: Request, name: string): string | undefined {
 function isExpired(claims: Record<string, unknown>): boolean {
     const exp = claims.exp;
     return typeof exp === 'number' && exp * 1000 < Date.now();
+}
+/** When an expected claim is configured, the JWT must carry exactly that value. */
+function claimMatches(claim: unknown, expected: string | undefined): boolean {
+    return expected === undefined || claim === expected;
 }

@@ -1023,12 +1023,14 @@ Six backend suites (`tenant-host`, `cloud-serving`, `cloud-signup`, `admin-tenan
 | 2026-08-28 | A-23: Contract Inversion & Hydrate Source Consolidation (Phase 2 of framework-only) | ✅ Approved |
 | 2026-08-28 | A-24: Four-Host Deploy Matrix & Pluggable State DB (Phase 3 of framework-only) | ✅ Approved |
 | 2026-08-29 | A-25: Cloud Multi-Tenant Free Tier on app.frontbase.dev (Phase 4 of framework-only) | ✅ Approved |
+| 2026-09-06 | A-26: Paid Cloud launch from the framework with Supabase | ✅ Approved |
+| 2026-09-11 | A-27: Cloud hardening — public pricing route, session iss/aud pinning, Stripe live-key guard | ✅ Approved |
 
 ---
 
 ## Document Metadata
 
-**Version**: 2.3
+**Version**: 2.4
 **Status**: Active — Chimera architecture adopted; public-release rollout governed by A-20
 **Owner**: Architecture Team
 **Next Review**: As new decisions are made
@@ -1049,3 +1051,14 @@ Six backend suites (`tenant-host`, `cloud-serving`, `cloud-signup`, `admin-tenan
 - **Catalog:** the existing Free/Basic/Pro limits and live Stripe Basic/Pro price references are preserved. The separate Edge Compute Engine price has no supported entitlement in this migration and is excluded from the initial paid beta. Do not invent pricing or sell absent capabilities.
 - **Recommended label (not yet accepted/released):** Frontbase Cloud paid beta after the gates pass. Independent npm/public-framework publication remains governed by A-20/R0-R4 and is not a prerequisite for operating the hosted product from this checkout.
 - **Work record:** [Cloud launch readiness](../CLOUD-LAUNCH.md). PostgreSQL/Hyperdrive state, Supabase Auth and Stripe lifecycle code plus live Supabase smoke evidence are recorded there. No production Worker or live charge has been performed.
+
+## Decision A-27: Cloud hardening — public pricing route, session iss/aud pinning, Stripe live-key guard
+
+- **Date:** 2026-09-11
+- **Status:** Approved (owner direction during the 2026-09-11 code review of the CL backlog).
+- **Scope:** three code-level controls arising from that review; no rollout-scope change.
+  1. `/api/plans/public` is exempted from the compat default-deny guard (`backend/src/compat/app.ts`) — the route serves plan slugs, display names and prices only, and exists for the anonymous signup/pricing surface that default-deny was shadowing into a 401. Every neighboring billing path stays default-deny.
+  2. `issueSession` stamps `iss: frontbase` / `aud: frontbase-session` (`edge-infra/src/proxy/session.ts`); the backend default principal verifier pins both claims (fail closed). Pre-pinning cookies invalidate once (pre-launch; acceptable). Verifiers that leave `jwtIssuer`/`jwtAudience` unset remain permissive, preserving self-host verification of third-party tokens on the same seam.
+  3. `assertStripeKeyMode` (`backend/src/compat/routes/billing.ts`): a live Stripe secret key refuses to boot billing unless `FRONTBASE_STRIPE_LIVE_MODE=1` is present — enforced at worker boot (`examples/cf-full/src/worker.ts`) and mirrored in the deploy preflight (`scripts/deploy.mjs`); the compiler forwards the acknowledgment as a `--var`. The catalog's live price IDs are thereby protected by code, not only by documentation.
+- **Evidence:** edge-infra session gate extended (strict/legacy/foreign-iss-aud cases) and `cloud-billing` extended (anonymous 200 on `/api/plans/public`, anonymous 401 on checkout/portal, guard unit cases) — all green; `pnpm -r check`, `pnpm -r build`, and the backend mutation harness (23/23 RED-on-break) green on 2026-09-11.
+- **Work record:** [Cloud launch readiness](../CLOUD-LAUNCH.md), §2026-09-11.
