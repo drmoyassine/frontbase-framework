@@ -130,8 +130,12 @@ await check('ETag → conditional GET replays 304', async () => {
 });
 await check('404 for a missing file', async () =>
     (await shim('/frontbase-admin/no-such-bundle-xyz.js')).status === 404);
-await check('404 for a directory path (isFile only)', async () =>
-    (await shim('/frontbase-admin')).status === 404);
+await check('a directory WITH an index serves it (binding contract: /admin/ → index.html)', async () => {
+    const r = await shim('/frontbase-admin');
+    return r.status === 200 && (r.headers.get('content-type') ?? '').includes('text/html');
+});
+await check('a directory WITHOUT an index still 404s', async () =>
+    (await shim('/react')).status === 404);
 await check('404 for a dotfile (.assetsignore is wrangler config, not an asset)', async () =>
     (await shim('/.assetsignore')).status === 404);
 await check('404 for encoded ../ traversal out of the root', async () =>

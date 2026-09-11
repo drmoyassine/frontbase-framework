@@ -3,8 +3,12 @@
  * is the one seam every host entry uses to turn its environment into the
  * engine's `runner`, so these are the properties every host inherits:
  *
- *   1. Precedence — Hyperdrive > APP_DB_URL > D1-REST trio > D1 binding > host default;
- *      exactly one runner is built, first match wins.
+ *   1. Precedence — Hyperdrive (cloud mode only) > APP_DB_URL > D1-REST trio
+ *      > D1 binding > host default; exactly one runner is built, first match
+ *      wins. A Hyperdrive binding WITHOUT FRONTBASE_DEPLOYMENT_MODE=cloud is
+ *      IGNORED: the committed wrangler.toml ships the cloud deployment's
+ *      binding, and neither a self-host reusing that file nor a local
+ *      `wrangler dev` may adopt the cloud state plane.
  *   2. A HALF-configured state DB fails LOUD, naming the exact missing
  *      variable(s) — never a silent fallback (fail at boot, not first write).
  *   3. Host honesty — file: is refused on the no-filesystem edge hosts with
@@ -58,15 +62,34 @@ const noLeak = (resolved) =>
 
 console.log('\n=== state-db resolver: precedence (first match wins) ===');
 
-check('Hyperdrive wins over APP_DB_URL and D1 for Cloud application state', () => {
+check('Hyperdrive (cloud mode) wins over APP_DB_URL and D1 for Cloud application state', () => {
     const r = resolveStateDb({
-        env: envOf({ APP_DB_URL: ':memory:' }),
+        env: envOf({ FRONTBASE_DEPLOYMENT_MODE: 'cloud', APP_DB_URL: ':memory:' }),
         d1Binding: FAKE_D1,
         hyperdriveBinding: { connectionString: PG_SECRET },
         host: 'cloudflare',
     });
     return r.kind === 'postgres-hyperdrive' && r.runner.dialect === 'postgres'
         && r.displayUrl === 'hyperdrive://application-state';
+});
+
+check('a Hyperdrive binding WITHOUT cloud mode is ignored — APP_DB_URL keeps self-host state', () => {
+    const r = resolveStateDb({
+        env: envOf({ APP_DB_URL: ':memory:' }),
+        d1Binding: FAKE_D1,
+        hyperdriveBinding: { connectionString: PG_SECRET },
+        host: 'cloudflare',
+    });
+    return r.kind === 'sqlite-memory' && r.displayUrl === ':memory:';
+});
+check('a Hyperdrive binding WITHOUT cloud mode falls through to the D1 binding (local dev / self-host reuse)', () => {
+    const r = resolveStateDb({
+        env: envOf({}),
+        d1Binding: FAKE_D1,
+        hyperdriveBinding: { connectionString: PG_SECRET },
+        host: 'cloudflare',
+    });
+    return r.kind === 'd1-binding' && r.displayUrl === 'd1://system-d1';
 });
 
 check('APP_DB_URL=:memory: wins over a complete trio AND a D1 binding', () => {
@@ -146,7 +169,7 @@ throwsWith('cloudflare WITHOUT a binding lists its own forms (incl. file:)', () 
 console.log('\n=== state-db resolver: NO-LEAK (credentials never leave the runner) ===');
 check('postgres-hyperdrive: connection string absent from label/displayUrl/card', () => {
     const r = resolveStateDb({
-        env: envOf({}),
+        env: envOf({ FRONTBASE_DEPLOYMENT_MODE: 'cloud' }),
         hyperdriveBinding: { connectionString: PG_SECRET },
         host: 'cloudflare',
     });

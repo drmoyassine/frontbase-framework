@@ -1,6 +1,7 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "outputDirectory": "console-dist",
+    "buildCommand": "node build.mjs",
     "trailingSlash": false,
     "cleanUrls": false,
     "rewrites": [

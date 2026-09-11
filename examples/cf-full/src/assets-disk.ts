@@ -67,19 +67,37 @@ export function createDiskAssets(consoleRoot: string): DiskAssets {
             if (!file.startsWith(ROOT + sep)) return new Response('not_found', { status: 404 });
             let st: ReturnType<typeof statSync>;
             try { st = statSync(file); } catch { return new Response('not_found', { status: 404 }); }
-            if (!st.isFile()) return new Response('not_found', { status: 404 });
-            const bytes = readFileSync(file);
-            const etag = '"' + createHash('sha1').update(bytes).digest('hex').slice(0, 24) + '"';
-            if (request.headers.get('if-none-match') === etag) {
-                return new Response(null, { status: 304, headers: { etag } });
+            // Directory-index resolution — half of the binding contract. The
+            // real Static Assets binding serves `<dir>/index.html` for a
+            // directory URL (html_handling auto-trailing-slash; worker.ts:735
+            // relies on it for /admin/). The 1:1 mapping above stops at the
+            // directory itself, so resolve the index here — the Node/Deno
+            // entries and the in-process smokes must serve what production
+            // serves, or smoke:cloud's fail-closed /admin checks stay red.
+            if (!st.isFile()) {
+                const indexFile = normalize(join(file, 'index.html'));
+                if (!indexFile.startsWith(ROOT + sep)) return new Response('not_found', { status: 404 });
+                try { st = statSync(indexFile); } catch { return new Response('not_found', { status: 404 }); }
+                if (!st.isFile()) return new Response('not_found', { status: 404 });
+                return serveFile(indexFile, request);
             }
-            return new Response(bytes, {
-                status: 200,
-                headers: {
-                    'content-type': MIME[extname(file).toLowerCase()] ?? 'application/octet-stream',
-                    etag,
-                },
-            });
+            return serveFile(file, request);
         },
     };
+}
+
+/** Read the (already containment-checked, already a-file) path as an asset response. */
+function serveFile(file: string, request: Request): Response {
+    const bytes = readFileSync(file);
+    const etag = '"' + createHash('sha1').update(bytes).digest('hex').slice(0, 24) + '"';
+    if (request.headers.get('if-none-match') === etag) {
+        return new Response(null, { status: 304, headers: { etag } });
+    }
+    return new Response(bytes, {
+        status: 200,
+        headers: {
+            'content-type': MIME[extname(file).toLowerCase()] ?? 'application/octet-stream',
+            etag,
+        },
+    });
 }

@@ -80,6 +80,14 @@ jobs:
       # the browser must be the one the workspace's own @playwright/test expects —
       # `npx playwright` would fetch latest and mismatch the browser revision.
       - name: Console acceptance (browser)
+        env:
+          # The committed wrangler.toml carries the cloud Hyperdrive binding,
+          # and `wrangler dev` refuses to boot a Hyperdrive binding without a
+          # local Postgres emulation string. This acceptance is SELF-HOST (no
+          # FRONTBASE_DEPLOYMENT_MODE var), and the state-db resolver ignores
+          # the binding outside cloud mode — so a placeholder satisfies
+          # wrangler's startup check and is never dialed.
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: "postgres://placeholder:placeholder@127.0.0.1:5432/placeholder"
         run: |
           npm install -g wrangler@4.125.0
           pnpm --filter @frontbase/example-cf-full exec playwright install --with-deps chromium

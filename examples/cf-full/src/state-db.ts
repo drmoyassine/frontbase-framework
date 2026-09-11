@@ -22,7 +22,8 @@
  *
  * Precedence (first match wins; exactly one runner is built; the kind is
  * logged once at boot by the caller):
- *   1. Hyperdrive binding set    → postgresStateRunner(connectionString)
+ *   1. CLOUD MODE (FRONTBASE_DEPLOYMENT_MODE=cloud) + Hyperdrive binding
+ *                                → postgresStateRunner(connectionString)
  *   2. APP_DB_URL set            → sqliteRunner(url, APP_DB_AUTH_TOKEN)
  *   3. D1-REST trio complete     → d1RunnerFromRest(...)
  *   4. partial D1-REST trio, or APP_DB_AUTH_TOKEN without APP_DB_URL
@@ -31,6 +32,14 @@
  *                                  pre-A-24 CF behavior when no APP_DB_* is set
  *   6. host node                 → file:/data/app.db (the Docker default)
  *      host deno/vercel          → StateDbConfigError listing accepted forms
+ *
+ * The cloud-mode gate on Hyperdrive is deliberate: the committed wrangler.toml
+ * ships the Cloud deployment's Hyperdrive binding, and the same file is the
+ * documented self-host reuse path. Without the gate a self-host reusing it —
+ * and every local `wrangler dev` — would silently adopt the cloud state plane
+ * (in dev: a hang connecting to a database that does not exist). Matches the
+ * worker's own rule: FRONTBASE_DEPLOYMENT_MODE absent ⇒ self-host, which never
+ * boots cloud anything.
  *
  * Secrets: APP_DB_AUTH_TOKEN and CLOUDFLARE_API_TOKEN are credentials — they
  * are passed straight into the runner factories and are NEVER copied into
@@ -106,9 +115,10 @@ export function describeStateDb(input: {
     const databaseId = env.APP_DB_D1_DATABASE_ID?.trim() || undefined;
     const apiToken = env.CLOUDFLARE_API_TOKEN?.trim() || undefined;
 
-    // Frontbase Cloud's application state. The binding carries a generated,
-    // short-lived connection string; never expose it in labels or errors.
-    if (hyperdriveBinding?.connectionString) {
+    // Frontbase Cloud's application state — cloud mode ONLY (see the
+    // precedence note above). The binding carries a generated, short-lived
+    // connection string; never expose it in labels or errors.
+    if (env.FRONTBASE_DEPLOYMENT_MODE === 'cloud' && hyperdriveBinding?.connectionString) {
         return {
             kind: 'postgres-hyperdrive',
             label: 'Supabase PostgreSQL (Hyperdrive)',
