@@ -39,6 +39,7 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createDiskAssets } from './assets-disk.js';
+import { bootTimeoutMs, raceBootTimeout, BootTimeoutError } from './boot-guard.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const exampleRoot = join(here, '..');
@@ -365,6 +366,38 @@ for (const bundle of ['vercel.mjs', 'deno.mjs'] as const) {
         return probeBundleMessage(bundle, { SESSION_SECRET: 'probe-only-secret' }, host);
     });
 }
+
+// ========================================================================
+// E. Boot guard — a never-settling boot (state DB unreachable in a way that
+//    never errors) is a legible BootTimeoutError, not the platform's opaque
+//    request kill. Fast cases only: real budgets are operation-tunable via
+//    FRONTBASE_BOOT_TIMEOUT_MS; here the timer is milliseconds.
+// ========================================================================
+await check('boot guard: value passes through when boot settles within budget', async () =>
+    (await raceBootTimeout(Promise.resolve('engine'), 1000, 'probe')) === 'engine');
+await check('boot guard: hanging boot → BootTimeoutError naming the remedy, no leak', async () => {
+    try {
+        await raceBootTimeout(new Promise<'engine'>(() => {}), 10, 'the full-CMS engine');
+        return false;
+    } catch (e) {
+        const message = (e as Error).message;
+        return e instanceof BootTimeoutError && message.includes('publicly reachable')
+            && message.includes('APP_DB_URL') && !message.includes(SECRET_TOKEN);
+    }
+});
+await check('boot guard: boot rejection still propagates (not swallowed by the race)', async () => {
+    try {
+        await raceBootTimeout(Promise.reject(new Error('boot failed')), 1000, 'probe');
+        return false;
+    } catch (e) {
+        return (e as Error).message === 'boot failed';
+    }
+});
+await check('boot guard: budget override — junk/below-min falls back, valid value honored', () =>
+    bootTimeoutMs({}) === 15_000
+    && bootTimeoutMs({ FRONTBASE_BOOT_TIMEOUT_MS: '500' }) === 15_000
+    && bootTimeoutMs({ FRONTBASE_BOOT_TIMEOUT_MS: 'abc' }) === 15_000
+    && bootTimeoutMs({ FRONTBASE_BOOT_TIMEOUT_MS: '30000' }) === 30_000);
 function probeBundleMessage(bundle: 'vercel.mjs' | 'deno.mjs', env: Record<string, string>, host: string): boolean {
     const script = `
         import { pathToFileURL } from 'node:url';

@@ -33,6 +33,7 @@ import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontb
 import { createDiskAssets, isStagedConsole } from './assets-disk.js';
 import { resolveStateDb, StateDbConfigError } from './state-db.js';
 import { createCmsEngine } from './worker.js';
+import { bootTimeoutMs, raceBootTimeout, BootTimeoutError } from './boot-guard.js';
 import type { Hono } from 'hono';
 
 /** CONSOLE_DIST_DIR → next to this file (staged layout) → ../ (source) → cwd. */
@@ -105,11 +106,19 @@ function engine(): Promise<Hono> {
 export function createRequestHandler(): (req: Request) => Promise<Response> {
     return async (req: Request): Promise<Response> => {
         if (initError) return new Response(initError, { status: 500 });
+        // Bounded boot/request — same legible-503 contract as the Vercel entry
+        // (an unreachable state DB must not hold requests until the host kills them).
+        const budget = bootTimeoutMs(process.env as unknown as { FRONTBASE_BOOT_TIMEOUT_MS?: string });
         try {
-            const e = await engine();
-            return await e.fetch(req);
+            const e = await raceBootTimeout(engine(), budget, 'the full-CMS engine');
+            return await raceBootTimeout(e.fetch(req), budget, 'the state database-backed engine');
         } catch (err) {
             if (err instanceof StateDbConfigError) return new Response(err.message, { status: 500 });
+            if (err instanceof BootTimeoutError) {
+                enginePromise = null;
+                console.error('[frontbase] boot/request exceeded budget:', (err as Error).message);
+                return new Response(err.message, { status: 503, headers: { 'cache-control': 'no-store' } });
+            }
             console.error('[frontbase] request failed:', (err as Error)?.stack ?? err);
             return new Response('internal_error', { status: 500 });
         }

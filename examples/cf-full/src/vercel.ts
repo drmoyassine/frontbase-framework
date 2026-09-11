@@ -32,6 +32,7 @@ import { s3StorageProvider } from '@frontbase/edge-infra';
 import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
 import { resolveStateDb, StateDbConfigError } from './state-db.js';
 import { createCmsEngine } from './worker.js';
+import { bootTimeoutMs, raceBootTimeout, BootTimeoutError } from './boot-guard.js';
 
 // Vercel Edge runtime directive (execution-time verify point E3); inert on
 // every other host. esbuild preserves exported consts in the ESM bundle.
@@ -90,11 +91,22 @@ function engine(): Promise<Hono> {
 
 export default async function handler(req: Request): Promise<Response> {
     if (initError) return new Response(initError, { status: 500 });
+    // Boot AND request-path engine work are bounded: an unreachable state DB
+    // must answer as a legible 503, not hold the request until the platform's
+    // own kill (every request awaits the same pending init — the hang would
+    // otherwise cover the whole deployment). Resetting the memo lets a later
+    // request retry after a transient fault.
+    const budget = bootTimeoutMs(process.env as { FRONTBASE_BOOT_TIMEOUT_MS?: string });
     try {
-        const e = await engine();
-        return await e.fetch(req);
+        const e = await raceBootTimeout(engine(), budget, 'the full-CMS engine');
+        return await raceBootTimeout(e.fetch(req), budget, 'the state database-backed engine');
     } catch (err) {
         if (err instanceof StateDbConfigError) return new Response(err.message, { status: 500 });
+        if (err instanceof BootTimeoutError) {
+            enginePromise = null;
+            console.error('[frontbase] boot/request exceeded budget:', (err as Error).message);
+            return new Response(err.message, { status: 503, headers: { 'cache-control': 'no-store' } });
+        }
         console.error('[frontbase] request failed:', (err as Error)?.stack ?? err);
         return new Response('internal_error', { status: 500 });
     }
