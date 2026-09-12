@@ -1,28 +1,37 @@
 /**
- * Vercel Edge entry (A-24) — the FULL CMS as one Edge function.
+ * Vercel entry (A-24) — the FULL CMS as one serverless function.
  *
  * Same engine as the Cloudflare Worker (src/worker.ts createCmsEngine); the
  * three host bindings swap like the Node entry (A-21), with Vercel's twist:
  *   storage  : ./state-db resolver — no D1 binding exists here, so the
  *              operator picks Turso (libsql:// + APP_DB_AUTH_TOKEN) or the
- *              D1-over-REST trio. APP_DB_URL=file: is refused (no filesystem).
- *   console  : NO assets binding and NO fs on the Edge runtime — vercel.json
- *              serves the static matrix (hashed bundles, hydration bundle,
- *              icon) from the CDN; THIS function owns every route that needs
- *              state or a redirect: /api/*, the /frontbase-admin shell (incl.
- *              the needsSetup 302 to /setup), /static/assets/:filename (KV
- *              branding), SPA fallbacks, /setup, /frontbase-setup/spa.js,
- *              /sw.js, /builder/client.js, /console 301. The engine's shell
- *              fallback (inlined CONSOLE_INDEX) covers the shell route.
+ *              D1-over-REST trio. APP_DB_URL=file: is refused (no persistent
+ *              filesystem on the platform).
+ *   console  : NO assets binding — vercel.json serves the static matrix
+ *              (hashed bundles, hydration bundle, icon) from the CDN; THIS
+ *              function owns every route that needs state or a redirect:
+ *              /api/*, the /frontbase-admin shell (incl. the needsSetup 302
+ *              to /setup), /static/assets/:filename (KV branding), SPA
+ *              fallbacks, /setup, /frontbase-setup/spa.js, /sw.js,
+ *              /builder/client.js, /console 301. The engine's shell fallback
+ *              (inlined CONSOLE_INDEX) covers the shell route.
  *   dispatch : fire-and-forget with a .catch (the node.ts rule — an unhandled
  *              rejection must not take the isolate down).
  *
- * The default export is a plain Web-standard fetch handler: hono/vercel's
- * handle() is a verified pure pass-through ((app) => (req) => app.fetch(req)),
- * so the adapter adds nothing here. Init is LAZY (per cold start), and a
- * misconfigured boot surfaces as a LEGIBLE 500 (the config error's message —
- * state-db errors name the missing var and never contain a credential),
- * not an opaque module-init crash.
+ * RUNTIME — Node, not Edge, deliberately. The bundle is runtime-portable (no
+ * node: builtins, the web libsql client is fetch-based) and this handler runs
+ * unchanged on either; but on Vercel's Edge isolate the ~2 MB bundle silently
+ * held every request until the platform's 300s kill, while the identical
+ * bundle answers in milliseconds under plain Node — proven by the api/health
+ * bisect (tiny edge function 200, cms edge function hung). No default config
+ * export ⇒ @vercel/node provisions the Node runtime for api/cms.mjs.
+ *
+ * The default export is a plain Web-standard fetch handler: init is LAZY (per
+ * cold start), and a misconfigured boot surfaces as a LEGIBLE 500 (the config
+ * error's message — state-db errors name the missing var and never contain a
+ * credential), not an opaque module-init crash. Boot and request-path engine
+ * work are bounded by the boot guard (boot-guard.ts) — a state DB that never
+ * answers yields a legible 503, never a hang.
  *
  * Secrets are RUNTIME env only (Vercel project Environment Variables) — never
  * baked into the bundle (repo rule).
@@ -33,10 +42,6 @@ import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontb
 import { resolveStateDb, StateDbConfigError } from './state-db.js';
 import { createCmsEngine } from './worker.js';
 import { bootTimeoutMs, raceBootTimeout, BootTimeoutError } from './boot-guard.js';
-
-// Vercel Edge runtime directive (execution-time verify point E3); inert on
-// every other host. esbuild preserves exported consts in the ESM bundle.
-export const config = { runtime: 'edge' } as const;
 
 let enginePromise: Promise<Hono> | null = null;
 let initError: string | null = null;

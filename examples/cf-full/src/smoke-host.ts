@@ -76,7 +76,7 @@ for (const f of DIST_FILES) {
 }
 await check('worker.mjs: zero quoted node: specifiers (CF isolate)', async () =>
     !NODE_SPEC.test(readDist('worker.mjs')));
-await check('vercel.mjs: zero quoted node: specifiers (Edge runtime)', async () =>
+await check('vercel.mjs: zero quoted node: specifiers (runtime-portable bundle)', async () =>
     !NODE_SPEC.test(readDist('vercel.mjs')));
 await check('deno.mjs: node:fs import preserved EXTERNAL (deno node-compat)', async () =>
     /['"]node:fs['"]/.test(readDist('deno.mjs')));
@@ -91,8 +91,8 @@ for (const f of ['vercel.mjs', 'deno.mjs'] as const) {
     await check(`${f}: qstash client bundled (upstash endpoint literal present)`, async () =>
         src.includes(QSTASH_MARKER));
 }
-await check('vercel.mjs: edge runtime directive survived bundling', async () =>
-    /runtime\s*:\s*['"]edge['"]/.test(readDist('vercel.mjs')));
+await check('vercel.mjs: provisions the Node runtime (no edge directive — the Edge isolate hung this bundle)', async () =>
+    !/runtime\s*:\s*['"]edge['"]/.test(readDist('vercel.mjs')));
 await check('api/cms.mjs is byte-identical to dist/vercel.mjs', async () => {
     const api = join(exampleRoot, 'api', 'cms.mjs');
     return existsSync(api) && readFileSync(api).equals(readFileSync(join(here, 'vercel.mjs')));
