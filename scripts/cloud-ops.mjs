@@ -154,7 +154,19 @@ function runTool(name, args, options = {}) {
         finalArgs = [command, ...args];
         command = process.execPath;
     }
-    return name;
+    const result = spawnSync(command, finalArgs, {
+        encoding: 'utf8',
+        cwd: ROOT,
+        ...options,
+        env: { ...process.env, ...(options.env ?? {}) },
+    });
+    result.safeStderr = String(result.stderr ?? '').replaceAll('\n', ' ').trim();
+    result.safeStdout = String(result.stdout ?? '').replaceAll('\n', ' ').trim();
+    result.diagnostic = result.safeStderr
+        || result.safeStdout
+        || (result.error ? `${result.error.message ?? String(result.error)}` : '')
+        || (result.signal ? `signal ${result.signal}` : `exit ${result.status}`);
+    return result;
 }
 
 function scrubSecrets(value, secrets = []) {
@@ -297,10 +309,10 @@ export async function backup(args) {
         `--file=${backupFile}`,
         databaseUrl,
     ]);
-    if (dump.status !== 0) throw new Error(`pg_dump failed: ${scrubSecrets(dump.safeStderr || dump.error, [databaseUrl])}`);
+    if (dump.status !== 0) throw new Error(`pg_dump failed: ${scrubSecrets(dump.diagnostic, [databaseUrl])}`);
     const listing = runTool('pgRestore', ['--list', backupFile]);
     if (listing.status !== 0 || !listing.safeStdout.includes(`SCHEMA ${schema}`)) {
-        throw new Error(`backup verification failed: ${scrubSecrets(listing.safeStderr || 'schema missing from archive')}`);
+        throw new Error(`backup verification failed: ${scrubSecrets(listing.diagnostic || 'schema missing from archive')}`);
     }
     const info = await stat(backupFile);
     const checksum = await sha256(backupFile);
@@ -371,7 +383,7 @@ export async function verifyBackup(args) {
     checks.push({
         name: 'pg_restore archive listing',
         status: listing.status === 0 && listing.safeStdout.includes(`SCHEMA ${manifest.schema}`) ? 'pass' : 'fail',
-        detail: listing.status === 0 ? 'valid custom archive' : scrubSecrets(listing.safeStderr || 'pg_restore failed'),
+        detail: listing.status === 0 ? 'valid custom archive' : scrubSecrets(listing.diagnostic || 'pg_restore failed'),
     });
     const result = {
         command: 'verify-backup',
@@ -406,7 +418,7 @@ export async function restore(args) {
         backupPath,
     ]);
     if (restored.status !== 0) {
-        throw new Error(`pg_restore failed: ${scrubSecrets(restored.safeStderr || restored.error, [args['target-url']])}`);
+        throw new Error(`pg_restore failed: ${scrubSecrets(restored.diagnostic, [args['target-url']])}`);
     }
     const tableCount = runTool('psql', [
         '--no-psqlrc',
@@ -416,7 +428,7 @@ export async function restore(args) {
         `--command=SELECT count(*) FROM information_schema.tables WHERE table_schema = '${manifest.schema.replace(/'/g, "''")}'`,
     ]);
     if (tableCount.status !== 0) {
-        throw new Error(`restore verification failed: ${scrubSecrets(tableCount.safeStderr || tableCount.error, [args['target-url']])}`);
+        throw new Error(`restore verification failed: ${scrubSecrets(tableCount.diagnostic, [args['target-url']])}`);
     }
     const count = Number.parseInt(tableCount.safeStdout.trim(), 10);
     if (!Number.isFinite(count) || count < 10) throw new Error(`restore verification found only ${count} schema tables`);
@@ -516,7 +528,7 @@ export async function rollback(args) {
         'Frontbase CL-7 isolated rollback rehearsal',
     ]);
     if (rolledBack.status !== 0) {
-        throw new Error(`wrangler rollback failed: ${scrubSecrets(rolledBack.safeStderr || rolledBack.error)}`);
+        throw new Error(`wrangler rollback failed: ${scrubSecrets(rolledBack.diagnostic)}`);
     }
     const after = await evaluateHealth(args);
     const result = {
