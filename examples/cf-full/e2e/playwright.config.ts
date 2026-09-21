@@ -29,6 +29,9 @@ export const ADMIN = {
 export default defineConfig({
     testDir: '.',
     testMatch: '*.spec.ts',
+    // The cloud provider-double journey has its own config, server and origin.
+    // Keep it out of the self-host wrangler suite (and vice versa).
+    testIgnore: '**/cloud/**',
     // The suite drives one console session and mutates real rows; serial keeps
     // the assertions about "what the list contains" meaningful.
     workers: 1,
