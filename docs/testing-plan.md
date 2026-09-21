@@ -1,6 +1,6 @@
 # Frontbase Framework — Testing Plan
 
-**Date:** 2026-07-13 (updated 2026-08-29) · **Scope:** everything in `frontbase-framework` as it stands today.
+**Date:** 2026-07-13 (updated 2026-09-21) · **Scope:** everything in `frontbase-framework` as it stands today.
 
 This is a practical, run-it-yourself plan across three tiers: **automated** (what CI already proves), **credential-gated** (automated but needs your accounts/keys), and **manual** (things only a human clicking through the app can verify). Each section says exactly what to run and what "pass" looks like.
 
@@ -52,7 +52,15 @@ pnpm --filter @frontbase/example-cf-full smoke
 
 Builds the entire CMS (engine + console + admin SPA + D1 runner) into one `dist/worker.mjs`, then boots it in-process against an in-memory SQLite runner and exercises: public page render, `/sw.js` handover, `/console` SPA shell, health check, default-deny on `/me`, login → session cookie, wrong-password rejection, idempotent re-seed.
 
-**Expect:** `10/10 checks PASS`, worker size **< 1024 KB gzip** (currently ~489 KB). This is your pre-deploy gate — if this fails, don't deploy.
+**Expect:** `10/10 checks PASS`, worker size **< 1024 KB gzip** (currently ~489 KB). This is your pre-deploy gate — if this fails, don’t deploy.
+
+### 1.5 Cloud operations tooling
+
+```bash
+node scripts/cloud-ops.test.mjs
+```
+
+This gates URL redaction, public health probing, backup manifest/checksum verification, and the refusal to restore into the backup source. Live provider drills are documented in [CLOUD-OPERATIONS.md](CLOUD-OPERATIONS.md); they require operator credentials and are not inferred by this local pass.
 
 ---
 

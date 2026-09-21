@@ -19,6 +19,7 @@
     "deploy": "npx --yes wrangler deploy --config examples/cf-full/wrangler.toml",
     "deploy:vercel": "node scripts/deploy-vercel.mjs",
     "deploy:deno": "node scripts/deploy-deno.mjs",
+    "cloud:ops": "node scripts/cloud-ops.mjs",
     "contracts:embed": "node scripts/embed-community-spec.mjs",
     "console:build": "node scripts/build-console.mjs",
     "console:stage": "node scripts/build-console.mjs --skip-build",

@@ -71,6 +71,8 @@ jobs:
         run: pnpm --filter @frontbase/example-cf-full test:vercel-config
       - name: Console artifact guarantees
         run: node examples/cf-full/test/console-pin.mjs
+      - name: Cloud operations tooling gate
+        run: node scripts/cloud-ops.test.mjs
       # Gate 4: the console in a real browser against the real Worker on workerd.
       # This catches what in-process gates structurally cannot — the console calls
       # paths the contract does not declare verbatim, and only a browser sees that.

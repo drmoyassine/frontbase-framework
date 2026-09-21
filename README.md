@@ -124,7 +124,7 @@ On Cloudflare, none of these are required — the D1 binding is the default. On 
 
 ## Cloud multi-tenant hosting
 
-> Paid Cloud launch with Supabase database/auth and Stripe is in preparation, not released. See [launch status and gates](docs/CLOUD-LAUNCH.md).
+> Paid Cloud launch with Supabase database/auth and Stripe is in preparation, not released. See [launch status and gates](docs/CLOUD-LAUNCH.md) and [operations readiness](docs/CLOUD-OPERATIONS.md).
 
 The same worker also runs the managed cloud: public self-serve signup, site building in the console, and each site live at `<slug>.frontbase.dev`. Opt in via the deploy mode — self-host behavior is byte-identical when it's unset:
 

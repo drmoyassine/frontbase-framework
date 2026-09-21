@@ -1,0 +1,32 @@
+{
+  "command": "health",
+  "status": "pass",
+  "checkedAt": "2026-09-21T22:05:36.543Z",
+  "checks": [
+    {
+      "name": "app health",
+      "status": "pass",
+      "detail": "HTTP 200 in 1769ms"
+    },
+    {
+      "name": "cloud console",
+      "status": "pass",
+      "detail": "HTTP 200 in 101ms"
+    },
+    {
+      "name": "public plans",
+      "status": "pass",
+      "detail": "HTTP 200 in 31ms"
+    },
+    {
+      "name": "tenant page",
+      "status": "pass",
+      "detail": "HTTP 200 in 1277ms"
+    },
+    {
+      "name": "unknown tenant rejected",
+      "status": "pass",
+      "detail": "HTTP 404 in 290ms"
+    }
+  ]
+}
