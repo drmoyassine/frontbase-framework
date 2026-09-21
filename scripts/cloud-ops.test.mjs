@@ -68,6 +68,7 @@ if (process.platform !== 'win32') {
     process.env.FRONTBASE_PSQL = join(dir, 'psql');
     const { backup, verifyBackup } = await import('./cloud-ops.mjs');
     const output = join(dir, 'backups');
+    let manifest = '';
     captured = '';
     process.stdout.write = (chunk) => {
         captured += String(chunk);
@@ -77,7 +78,7 @@ if (process.platform !== 'win32') {
         await backup({ output, schema: 'frontbase_cloud', 'database-url': 'postgres://user:secret@source.example.test/source' });
         const [manifestName] = (await readdir(output)).filter((name) => name.endsWith('.manifest.json'));
         assert.ok(manifestName, 'backup wrote a manifest');
-        const manifest = join(output, manifestName);
+        manifest = join(output, manifestName);
         await verifyBackup({ manifest });
     } finally {
         process.stdout.write = originalWrite;
