@@ -439,7 +439,7 @@ export async function restore(args) {
         source: manifest.source,
         target,
         schema: manifest.schema,
-        tableCount,
+        tableCount: count,
         startedAt: restoreStarted,
         finishedAt: new Date().toISOString(),
     };
@@ -448,7 +448,7 @@ export async function restore(args) {
     print({
         command: 'restore',
         status: 'pass',
-        output: { evidence: relativeOrAbsolute(evidencePath), tableCount },
+        output: { evidence: relativeOrAbsolute(evidencePath), tableCount: count },
     }, args.json);
 }
 

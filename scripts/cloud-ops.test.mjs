@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chmod, readdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import process from 'node:process';
 import { databaseIdentity, health, parseCli, redactUrl, restore } from './cloud-ops.mjs';
 
