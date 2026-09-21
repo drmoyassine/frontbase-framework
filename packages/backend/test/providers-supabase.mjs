@@ -133,12 +133,12 @@ function mockFetch(routes) {
 const controlRunner = sqliteRunner(':memory:');
 await migrateUp(controlRunner);
 
-async function makeApp() {
+async function makeApp(externalFetch = async () => Response.json({})) {
     return createCompatApp({
         makeRunner: async () => controlRunner,
         resolvePrincipal: async () => ({ user: { id: 'owner-a', role: 'owner' }, tenant: 'tenant-a' }),
         sessionSecret: 'supabase-auto-apply-test-secret',
-        externalFetch: async () => Response.json({}), // unused by the runner.exec path
+        externalFetch, // unused by the runner.exec path unless provider bootstrap runs
         now: () => '2026-08-03T00:00:00Z',
     });
 }
@@ -170,7 +170,10 @@ async function req(app, method, path, body) {
     return { status: response.status, body: await response.clone().json().catch(() => null) };
 }
 
-// 10. Creating a Supabase datasource best-effort applies the setup migration.
+// 10. A manual URL/key Supabase datasource must not pretend to bootstrap.
+// The helper SQL needs execute_query/execute_sql; installing those functions
+// through a runner that already requires them is circular. Connected-account
+// Management API bootstrap is pinned separately in supabase-bootstrap.mjs.
 {
     const app = await makeApp();
     const { calls, restore } = trackExecuteSqlCalls();
@@ -182,34 +185,24 @@ async function req(app, method, path, body) {
             service_role_key: 'eyJ-svc',
         });
         assert.equal(created.status, 201);
-        // 19 functions in supabase_setup.sql; assert a robust floor plus that the
-        // two framework-critical RPCs were among the statements sent.
-        assert.ok(calls.length >= 15, `expected >=15 execute_sql RPCs, got ${calls.length}`);
-        const blob = calls.join('\n');
-        assert.ok(blob.includes('CREATE OR REPLACE FUNCTION execute_query'), 'execute_query migrated');
-        assert.ok(blob.includes('CREATE OR REPLACE FUNCTION execute_sql'), 'execute_sql migrated');
+        assert.equal(calls.length, 0, 'manual key-only setup must not call execute_sql');
     } finally {
         restore();
     }
 }
 
-// 11. A migration failure (fetch throws / network down) MUST NOT fail the create.
+// 11. A provider/network failure MUST NOT fail an already-persisted create.
 {
-    const app = await makeApp();
-    const original = globalThis.fetch;
-    globalThis.fetch = async () => { throw new Error('network_down'); };
-    try {
-        const created = await req(app, 'POST', '/api/sync/datasources/', {
-            name: 'Failing Supabase',
-            type: 'supabase',
-            url: 'https://fail.supabase.co',
-            service_role_key: 'eyJ-svc',
-        });
-        assert.equal(created.status, 201);
-        assert.ok(created.body && created.body.id, 'datasource row still returned');
-    } finally {
-        globalThis.fetch = original;
-    }
+    const app = await makeApp(async () => { throw new Error('network_down'); });
+    const created = await req(app, 'POST', '/api/sync/datasources/', {
+        name: 'Failing Supabase',
+        type: 'supabase',
+        url: 'https://fail.supabase.co',
+        service_role_key: 'eyJ-svc',
+        access_token: 'management-token',
+    });
+    assert.equal(created.status, 201);
+    assert.ok(created.body && created.body.id, 'datasource row still returned');
 }
 
 // 12. Non-supabase create must NOT trigger any execute_sql RPC (apply is gated).
