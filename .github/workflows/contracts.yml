@@ -92,6 +92,10 @@ jobs:
           npm install -g wrangler@4.125.0
           pnpm --filter @frontbase/example-cf-full exec playwright install --with-deps chromium
           pnpm --filter @frontbase/example-cf-full e2e
+      - name: Cloud customer journey (local providers)
+        run: pnpm --filter @frontbase/example-cf-full e2e:cloud
+      - name: Billing mode and sandbox catalog gate
+        run: node packages/backend/test/cloud-billing.mjs
       - name: Upload acceptance failures
         if: failure()
         uses: actions/upload-artifact@v4

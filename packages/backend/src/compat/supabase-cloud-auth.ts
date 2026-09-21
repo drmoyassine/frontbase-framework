@@ -85,7 +85,17 @@ export function createSupabaseCloudAuth(options: SupabaseCloudAuthOptions): Clou
                 headers: headers(options.anonKey),
                 body: JSON.stringify({ email }),
             });
-            if (!response.ok && response.status >= 500) throw new CloudIdentityError('identity_unavailable');
+            if (!response.ok && response.status >= 500) {
+                // Never include the email in logs. The provider request ID lets
+                // the operator correlate with Supabase support/logs while the
+                // anonymous route remains non-enumerating.
+                console.error('[supabase-auth] recovery request failed', {
+                    status: response.status,
+                    errorCode: response.headers.get('x-sb-error-code'),
+                    requestId: response.headers.get('sb-request-id'),
+                });
+                throw new CloudIdentityError('identity_unavailable');
+            }
         },
         async updatePassword(accessToken, password) {
             const response = await request(`${baseUrl}/auth/v1/user`, {

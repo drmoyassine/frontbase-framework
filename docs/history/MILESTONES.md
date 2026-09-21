@@ -1,14 +1,14 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
-> **2026-09-07 paid Cloud implementation:** A-26's framework migration is implemented: Supabase PostgreSQL application state through Hyperdrive, Supabase Cloud Auth, and tenant-bound Stripe checkout/portal/webhooks. Live Supabase DB/auth smokes and local security gates pass. Hyperdrive binding, Worker/domain deployment, controlled live billing proof and browser acceptance remain open in [CLOUD-LAUNCH.md](../CLOUD-LAUNCH.md). Public-framework release gates and paused CF-22 remain separate.
+> **2026-09-07 paid Cloud implementation:** A-26's framework migration is implemented: Supabase PostgreSQL application state through Hyperdrive, Supabase Cloud Auth, and tenant-bound Stripe checkout/portal/webhooks. Live Supabase DB/auth smokes and local security gates pass. The isolated 2026-09-21 deployment completed the two-customer paid sandbox journey, including Supabase data connection, Builder edit/save/publish, public TLS rendering, payment failure/recovery/renewal, reset delivery and portal cancellation at period end. Spam-safe transactional deliverability and CL-7 operations remain open in [CLOUD-LAUNCH.md](../CLOUD-LAUNCH.md). Public-framework release gates and paused CF-22 remain separate.
 
 **Version**: 3.6
-**Status**: Phases 0, 1, 2 ✅ COMPLETE — Phase 3 (Agent Experience) next · CF-22 (console visual parity) 🛑 PAUSED 2026-08-06 (accepted residue, reactive-only — see docs/cf-22-admin-visual-parity-gap.md)
-**Last Updated**: 2026-08-07 (CF-22 pause memo added)
+**Status**: Phases 0, 1, 2 ✅ COMPLETE — Phase 3 (Agent Experience) partly complete: M3.1 complete, M3.2 pending · CF-22 (console visual parity) 🛑 PAUSED 2026-08-06 (accepted residue, reactive-only — see docs/cf-22-admin-visual-parity-gap.md)
+**Last Updated**: 2026-09-21 (Cloud acceptance evidence reconciled; CL-7 and deliverability remain open)
 
 > **Public-release strategy update (2026-08-13):** Frontbase is preparing for public release as a self-hostable, AI/agent-oriented, edge-native app-builder and framework. The phased engineering roadmap remains valid evidence, but release scope and gates are now centralized in [`PUBLIC-RELEASE-STRATEGY.md`](./PUBLIC-RELEASE-STRATEGY.md). The immediate release action is the R0 scope/truth audit; no target date or downstream course deadline overrides security, external-consumer, self-host, and operability gates.
 
-> **Phase status at a glance:** Phase 0 🟢 · Phase 1 🟢 · Phase 2 🟢 (M2.3 builder is *foundation-complete* — full canvas is a carried-forward item) · Phase 3 🔵 next · Phase 4 🔵.
+> **Phase status at a glance:** Phase 0 🟢 · Phase 1 🟢 · Phase 2 🟢 (M2.3 builder is *foundation-complete* — full canvas is a carried-forward item) · Phase 3 🟡 partial · Phase 4 🔵.
 > Carried-forward / deferred items from every phase are consolidated in **[§ Carried-forward items](#carried-forward-items-live-backlog)** so nothing is lost between phases.
 >
 > **Parallel track — CF-18 admin-console parity (not the "Phase 3: Agent Experience" milestone below):** a separate effort (3a→3b→3c + two follow-up sprints, 2026-07-12/13) took the admin console from MVP (3.5/11 nav areas) to full **functional-area** parity (11/11 areas backed by real endpoints + working UI, WYSIWYG + React Flow, real execution/storage/provisioning). **Single source of truth: [`docs/phase-3-consolidated-delivery.md`](./phase-3-consolidated-delivery.md)** — the deviations ledger is fully closed; only **F8b Stripe** remains deferred. **⚠️ Correction (2026-07-14): "full parity" measured feature-area coverage, NOT visual/UX depth.** The first real-world deploy showed the console is far thinner than the product's (~2.2k lines / 6 UI primitives vs ~11.5k lines / 52 shadcn primitives / 110-file builder studio). That gap is now tracked as **CF-22** — gap analysis + plan: [`docs/cf-22-admin-visual-parity-gap.md`](./cf-22-admin-visual-parity-gap.md). This track's "Phase 3" numbering is independent of the milestone Phase 3 in this file.
@@ -318,7 +318,7 @@ Guiding principles (all milestones serve these):
 
 **Duration**: 3–4 Weeks
 **Target**: Q1 2027 (January – February)
-**Status**: 🔵 Not Started — **next up.**
+**Status**: 🟡 Partly complete — M3.1 diagnostic/agent tooling is complete; M3.2 beta program is not started.
 
 > **📋 Detailed implementer sprint plan for M3.0–M3.2**: [`docs/plans/phase3-agent-experience-sprint.md`](./plans/phase3-agent-experience-sprint.md) — includes an **M3.0 carried-forward hardening milestone** (clears the audit-lesson RULE 8, the builder full-canvas port, cloud-DB live gates, and the live deploy) before the agent-experience work proper.
 
@@ -486,7 +486,7 @@ npx @frontbase/compiler deploy                    # ship it
 ## Document Metadata
 
 **Version**: 3.5
-**Status**: Active — Phases 0–2 complete, Phase 3 next
+**Status**: Active — Phases 0–2 complete, Phase 3 partly complete; Cloud/public-release gates separate
 **Owner**: Architecture Team
 **Next Review**: After Phase 3 M3.0 (hardening) completion
 **Related Documents**:

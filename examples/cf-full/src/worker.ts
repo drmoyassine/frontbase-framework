@@ -76,6 +76,8 @@ export interface CmsEnv {
     FRONTBASE_DEPLOYMENT_MODE?: string;
     /** Required when mode === 'cloud': the tenant zone (e.g. frontbase.dev). */
     FRONTBASE_BASE_DOMAIN?: string;
+    /** Optional app-host label (default: app). Enables isolated staging app hosts. */
+    FRONTBASE_APP_LABEL?: string;
     /**
      * Live-billing acknowledgment (`1`). A live STRIPE_SECRET_KEY refuses to
      * boot billing without it — real customers, real charges must be a
@@ -87,6 +89,8 @@ export interface CmsEnv {
     SUPABASE_SERVICE_ROLE_KEY?: string;
     STRIPE_SECRET_KEY?: string;
     STRIPE_WEBHOOK_SECRET?: string;
+    STRIPE_BASIC_PRICE_ID?: string;
+    STRIPE_PRO_PRICE_ID?: string;
     /** Optional: enables email delivery of password-reset links (Resend). */
     RESEND_API_KEY?: string;
 }
@@ -137,7 +141,7 @@ export interface CmsEngineOptions {
     cloud?: { baseDomain: string; appLabel?: string };
     /** Cloud customer identity/password authority. */
     cloudAuth?: CloudIdentityProvider;
-    billing?: { secretKey: string; webhookSecret: string; baseDomain: string };
+    billing?: { secretKey: string; webhookSecret: string; baseDomain: string; priceIds?: { basic?: string; pro?: string } };
     /** Resend credentials for password-reset email. Absent ⇒ reset delivery
      *  stays host-injected-capable but silent (non-enumerating response). */
     resend?: { apiKey: string; from?: string };
@@ -890,7 +894,12 @@ export default {
                     admin: { email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD, role: env.ADMIN_ROLE },
                     assets: env.ASSETS,
                     // A-25 cloud wiring (absent ⇒ self-host byte-identical).
-                    ...(isCloud ? { cloud: { baseDomain: env.FRONTBASE_BASE_DOMAIN as string } } : {}),
+                    ...(isCloud ? {
+                        cloud: {
+                            baseDomain: env.FRONTBASE_BASE_DOMAIN as string,
+                            ...(env.FRONTBASE_APP_LABEL ? { appLabel: env.FRONTBASE_APP_LABEL } : {}),
+                        },
+                    } : {}),
                     ...(isCloud ? {
                         cloudAuth: createSupabaseCloudAuth({
                             url: env.SUPABASE_URL as string,
@@ -900,6 +909,7 @@ export default {
                         billing: {
                             secretKey: env.STRIPE_SECRET_KEY as string,
                             webhookSecret: env.STRIPE_WEBHOOK_SECRET as string,
+                            priceIds: { basic: env.STRIPE_BASIC_PRICE_ID, pro: env.STRIPE_PRO_PRICE_ID },
                             baseDomain: env.FRONTBASE_BASE_DOMAIN as string,
                         },
                     } : {}),

@@ -51,6 +51,7 @@ for (const g of [
     'cloud-serving',
     'cloud-plan-gates',
     'cloud-rate-limit',
+    'cloud-billing',
 ]) {
     const args = g === 'compat-behavior-auth' ? ['--gate'] : [];
     if (runGate(pkgDir, `test/${g}.mjs`, args) !== 0) {
@@ -360,5 +361,16 @@ await withSourceMutation(
     },
 );
 
+// A test key must never fall back to the live price catalog.
+await withSourceMutation(
+    'billing: test-mode price mapping is mandatory',
+    'packages/backend/src/compat/routes/billing.ts',
+    "const testMode = /^sk_test_/.test(config.secretKey);",
+    'const testMode = false;',
+    async () => {
+        if (!buildPackage(PKG)) throw new Error('billing mutation must compile');
+        expectRed('cloud-billing: fails when test keys inherit live prices', runGate(pkgDir, 'test/cloud-billing.mjs'));
+    },
+);
 buildPackage(PKG);
 summarize(PKG);

@@ -108,6 +108,8 @@ const paidCloudSecrets = cloud ? {
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     stripeSecretKey: process.env.STRIPE_SECRET_KEY,
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    ...(process.env.STRIPE_BASIC_PRICE_ID ? { stripeBasicPriceId: process.env.STRIPE_BASIC_PRICE_ID } : {}),
+    ...(process.env.STRIPE_PRO_PRICE_ID ? { stripeProPriceId: process.env.STRIPE_PRO_PRICE_ID } : {}),
 } : {};
 if (cloud) {
     const missing = Object.entries(paidCloudSecrets)
@@ -115,6 +117,10 @@ if (cloud) {
         .map(([name]) => name.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase());
     if (missing.length) {
         console.error(`✗ paid Cloud deploy requires: ${missing.join(', ')}`);
+        process.exit(1);
+    }
+    if (/^sk_test_/.test(paidCloudSecrets.stripeSecretKey) && (!paidCloudSecrets.stripeBasicPriceId || !paidCloudSecrets.stripeProPriceId)) {
+        console.error('Test-mode Cloud requires STRIPE_BASIC_PRICE_ID and STRIPE_PRO_PRICE_ID from the same Stripe sandbox.');
         process.exit(1);
     }
     // Mirror of the worker's boot guard: refuse to push a live Stripe key to a

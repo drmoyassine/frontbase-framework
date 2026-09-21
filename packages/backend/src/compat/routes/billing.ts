@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
-import { PLAN_CATALOG, catalogPlan, type CatalogPlan } from '../plans/catalog.js';
+import { PLAN_CATALOG, type CatalogPlan } from '../plans/catalog.js';
 import { serializePlan } from './tenants.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
@@ -11,6 +11,8 @@ export interface StripeBillingConfig {
     webhookSecret: string;
     baseDomain: string;
     fetch?: typeof globalThis.fetch;
+    /** Deployment-specific IDs; test keys require both paid plans. */
+    priceIds?: { basic?: string; pro?: string };
 }
 
 /**
@@ -27,6 +29,24 @@ export function assertStripeKeyMode(secretKey: string, liveAcknowledged: boolean
     }
 }
 
+/** Resolve without mutating the shared catalog or falling back to live IDs in test mode. */
+export function billingCatalog(config: StripeBillingConfig): CatalogPlan[] {
+    const testMode = /^sk_test_/.test(config.secretKey);
+    const plans = PLAN_CATALOG.map((plan) => {
+        if (plan.id !== 'basic' && plan.id !== 'pro') return { ...plan };
+        const override = config.priceIds?.[plan.id];
+        if (testMode && !override) throw new Error('stripe_test_prices_required');
+        const stripePriceId = override ?? plan.stripePriceId;
+        if (!stripePriceId || !/^price_[A-Za-z0-9_]+$/.test(stripePriceId)) throw new Error('invalid_stripe_price_id');
+        if (testMode && PLAN_CATALOG.some((entry) => entry.stripePriceId === stripePriceId)) {
+            throw new Error('stripe_test_prices_must_not_use_live_catalog');
+        }
+        return { ...plan, stripePriceId };
+    });
+    const ids = plans.flatMap((plan) => plan.stripePriceId ? [plan.stripePriceId] : []);
+    if (new Set(ids).size !== ids.length) throw new Error('stripe_price_ids_must_be_distinct');
+    return plans;
+}
 const encoder = new TextEncoder();
 const toHexBytes = (hex: string): Uint8Array | null => {
     if (!/^[0-9a-f]{64}$/i.test(hex)) return null;
@@ -91,11 +111,12 @@ function stringValue(value: unknown): string | undefined {
     return typeof value === 'string' && value ? value : undefined;
 }
 
-function planByPriceId(priceId?: string): CatalogPlan | undefined {
-    return priceId ? PLAN_CATALOG.find((plan) => plan.stripePriceId === priceId) : undefined;
+function planByPriceId(catalog: CatalogPlan[], priceId?: string): CatalogPlan | undefined {
+    return priceId ? catalog.find((plan) => plan.stripePriceId === priceId) : undefined;
 }
 
 export function registerBillingWebhookRoute(app: App, runner: DbRunner, config: StripeBillingConfig, now: () => string): void {
+    const catalog = billingCatalog(config);
     app.post('/api/billing/webhooks/:provider', async (c) => {
         if (c.req.param('provider') !== 'stripe') return c.json({ detail: 'Unsupported billing provider' }, 404);
         const payload = await c.req.text();
@@ -128,10 +149,12 @@ export function registerBillingWebhookRoute(app: App, runner: DbRunner, config: 
             const existing = await store.byExternal(customerId, subscriptionId);
             const tenant = stringValue(metadata.tenant_slug) ?? stringValue(existing?.tenant_slug);
             const items = (object.items as { data?: unknown } | undefined)?.data;
-            const firstItem = Array.isArray(items) ? items[0] as { price?: unknown } | undefined : undefined;
+            const firstItem = Array.isArray(items)
+                ? items[0] as { price?: unknown; current_period_end?: unknown } | undefined
+                : undefined;
             const price = firstItem?.price as Record<string, unknown> | undefined;
             const planId = stringValue(metadata.plan_slug)
-                ?? planByPriceId(stringValue(price?.id))?.id
+                ?? planByPriceId(catalog, stringValue(price?.id))?.id
                 ?? stringValue(existing?.plan_id);
             if (!tenant || !customerId) return true;
 
@@ -141,7 +164,12 @@ export function registerBillingWebhookRoute(app: App, runner: DbRunner, config: 
             } else if (eventType === 'checkout.session.completed' || eventType === 'customer.subscription.created' || eventType === 'customer.subscription.updated') {
                 const rawStatus = stringValue(object.status) ?? 'active';
                 const active = ['active', 'trialing', 'complete'].includes(rawStatus);
-                const period = typeof object.current_period_end === 'number' ? new Date(object.current_period_end * 1000).toISOString() : null;
+                const periodEnd = typeof object.current_period_end === 'number'
+                    ? object.current_period_end
+                    : typeof firstItem?.current_period_end === 'number'
+                        ? firstItem.current_period_end
+                        : null;
+                const period = periodEnd === null ? null : new Date(periodEnd * 1000).toISOString();
                 await store.save({ tenant, customerId, subscriptionId, planId, status: rawStatus, periodEnd: period }, now());
                 if (planId) await tx.exec('UPDATE tenants SET plan = ?, status = ? WHERE slug = ?', [planId, active ? 'active' : rawStatus, tenant]);
             } else if (eventType === 'invoice.payment_failed') {
@@ -159,12 +187,13 @@ export function registerBillingWebhookRoute(app: App, runner: DbRunner, config: 
 }
 
 export function registerBillingRoutes(app: App, runner: DbRunner, config: StripeBillingConfig, now: () => string): void {
+    const catalog = billingCatalog(config);
     const store = new BillingStore(runner);
     app.get('/api/plans/public', async (c) => {
-        const detailed = PLAN_CATALOG.map((plan) => serializePlan({
+        const detailed: Record<string, unknown>[] = catalog.map((plan) => ({ ...serializePlan({
             id: plan.id, name: plan.name, price_cents: plan.priceCents, interval: plan.interval,
             limits: JSON.stringify(plan.limits), is_active: 1, created_at: now(), updated_at: now(),
-        }, now()));
+        }, now()), gateway_metadata: plan.stripePriceId ? { stripe_price_id: plan.stripePriceId } : {} }));
         return c.json({ plans: detailed.map((plan) => ({ slug: plan.slug, name: plan.name, price_display: plan.price_display, price_period: plan.price_period })), detailed });
     });
     app.post('/api/billing/checkout', async (c) => {
@@ -177,7 +206,7 @@ export function registerBillingRoutes(app: App, runner: DbRunner, config: Stripe
         if (Array.isArray(body.add_ons) && body.add_ons.length > 0) {
             return c.json({ detail: 'Paid add-ons are not available in this launch' }, 400);
         }
-        const plan = body.plan_slug ? catalogPlan(body.plan_slug) : undefined;
+        const plan = catalog.find((entry) => entry.id === body.plan_slug);
         if (!plan?.stripePriceId) return c.json({ detail: 'This plan is not available for online checkout' }, 400);
         let account = await store.byTenant(tenant);
         let customerId = stringValue(account?.customer_id);

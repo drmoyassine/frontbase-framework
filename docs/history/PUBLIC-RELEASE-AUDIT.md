@@ -77,6 +77,12 @@ Then add:
 
 Set this audit to `Complete` only when all required areas are evidence-backed, conflicting claims are reconciled or explicitly flagged, the recommended edition is decision-ready, and the backlog is executable. If the audit requires a new product choice, add it to `docs/DECISIONS.md` rather than silently treating the recommendation as accepted.
 
+### 2026-09-18 customer-journey continuation
+
+Codex owns CL-6 customer-journey tests and launch-tracker evidence following the owner go-ahead. Starting point: clean main at 3fdc876, matching remote main. Scope: browser/API journey coverage, reproducible verification, and truthful acceptance gaps; no CF-22 restart or release declaration. The owner selected Stripe test-mode staging for payment acceptance. R0 remains in progress; local tests do not replace deployed provider or operations evidence.
+
+Continuation result (2026-09-21): the isolated Cloud journey passed the two-customer sandbox acceptance surface, including payment activation, Supabase datasource connection, Builder edit/save/publish, public TLS rendering, payment failure/recovery/renewal handling, reset delivery and portal cancellation at period end. A Stripe subscription-item period compatibility fix is covered by the cloud billing gate and deployed to the isolated Worker. These results do not close R0, CL-7 operations, spam-safe transactional deliverability, or public-framework release gates.
+
 ## 2026-09-06 Cloud-first session claim
 
 Owner selected framework-only paid Cloud with Supabase database/auth and the existing Stripe catalog (A-26). Cloud assessment and the ordered evidence-linked launch backlog live in [CLOUD-LAUNCH.md](../CLOUD-LAUNCH.md). This session owns that document, the A-26 synchronization edits, and the confirmed wildcard deployment fix in compiler/scripts/tests. No ownership is claimed over the original product's unfamiliar untracked files.

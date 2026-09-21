@@ -18,6 +18,7 @@ console-dist/*
 !console-dist/.assetsignore
 e2e/report/
 e2e/test-results/
+.cloud-e2e/
 test-results/
 
 # Docker compose reads live secrets from .env (SESSION_SECRET, ADMIN_PASSWORD).

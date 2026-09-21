@@ -56,6 +56,8 @@ const CLOUD_SECRETS = {
     supabaseServiceRoleKey: 'service_SENTINEL',
     stripeSecretKey: 'sk_SENTINEL',
     stripeWebhookSecret: 'whsec_SENTINEL',
+    stripeBasicPriceId: 'price_test_basic',
+    stripeProPriceId: 'price_test_pro',
 };
 
 console.log('— cloud mode: the --var pair + the Resend secret —');

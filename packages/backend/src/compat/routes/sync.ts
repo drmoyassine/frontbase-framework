@@ -407,6 +407,45 @@ export function registerSyncRoutes(
         mergeAccountConfig(accountConfigFor, externalFetch, tenant, kind, config);
 
     /**
+     * Bootstrap Supabase helper functions through the Management API.
+     *
+     * PostgREST cannot install `execute_query`/`execute_sql` because the
+     * runner uses those same RPCs. A connected Supabase account has a
+     * Management token, so SQL setup can run before the RPC runner exists.
+     * Manual URL/key datasources have no SQL-capable credential and must use
+     * Supabase's SQL editor (the API intentionally does not fake success).
+     */
+    const supabaseManagementBootstrap = async (
+        tenant: string,
+        config: Record<string, unknown>,
+    ): Promise<{ applied: boolean; reason?: string }> => {
+        const accountId = String(config.provider_account_id ?? '');
+        const account = accountId && accountConfigFor
+            ? await accountConfigFor(tenant, accountId).catch(() => null)
+            : null;
+        const source = account ?? config;
+        const accessToken = String(source.access_token ?? source.personal_token ?? '');
+        if (!accessToken) return { applied: false, reason: 'management_token_missing' };
+
+        const resolved = await mergeAccount(tenant, 'supabase', config);
+        const projectRef = String(
+            source.project_ref ?? source.ref ?? resolved.project_ref ?? resolved.ref
+            ?? String(resolved.api_url ?? resolved.url ?? '').match(/^https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1]
+            ?? '',
+        );
+        if (!projectRef) return { applied: false, reason: 'project_ref_missing' };
+
+        const response = await guardedExternalFetch(externalFetch, `https://api.supabase.com/v1/projects/${encodeURIComponent(projectRef)}/database/query`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+            body: JSON.stringify({ query: SUPABASE_SETUP_SQL }),
+        });
+        if (!response.ok) throw new Error(`supabase_management_bootstrap_${response.status}`);
+        await response.json().catch(() => null);
+        return { applied: true };
+    };
+
+    /**
      * Credential-shaped fields the SPA sends at the TOP LEVEL of a DatasourceCreate
      * payload (no `config` wrapper). Normalize them into a config object so the
      * resolver + mergeAccount see them. Empty strings are dropped (they mean
@@ -474,14 +513,16 @@ export function registerSyncRoutes(
 
         // Supabase: best-effort auto-apply the setup migration (execute_query /
         // execute_sql / frontbase_* schema + rows helpers) so /tables/, /schema/,
-        // and /relationships/ work immediately — without the user manually running
-        // SQL in the Supabase editor. A migration failure MUST NOT fail the create:
-        // the datasource is already persisted, so swallow + log + continue. The
-        // helper is idempotent (CREATE OR REPLACE; "already exists" is tolerated).
+        // and /relationships/ work immediately. Connected accounts can bootstrap
+        // through the Management API. A migration failure MUST NOT fail the
+        // create: the datasource is already persisted, so swallow + log +
+        // continue. The SQL is idempotent (CREATE OR REPLACE).
         if (kind === 'supabase') {
             try {
-                const resolved = await mergeAccount(tenant, kind, config);
-                await applyMigrationStatements(datasourceRunner(kind, resolved), SUPABASE_SETUP_SQL);
+                const bootstrap = await supabaseManagementBootstrap(tenant, config);
+                if (!bootstrap.applied) {
+                    console.warn(`[sync] supabase auto-migration skipped for datasource ${id}: ${bootstrap.reason}`);
+                }
             } catch (error) {
                 console.warn(
                     `[sync] supabase auto-migration failed for datasource ${id}:`,

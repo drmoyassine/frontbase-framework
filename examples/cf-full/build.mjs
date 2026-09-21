@@ -494,6 +494,20 @@ for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/sessi
     });
 }
 
+// Local-only Cloud browser fixture. Keep it OUTSIDE dist/: wrangler's
+// find_additional_modules uploads every .mjs there, and this provider-double
+// server must never ship with the Worker.
+await esbuild.build({
+    ...shared,
+    platform: 'node',
+    packages: 'external',
+    target: 'node22',
+    entryPoints: ['e2e/cloud/server.ts'],
+    outfile: join(here, '.cloud-e2e', 'server.mjs'),
+    minify: false,
+    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
+});
+
 const raw = statSync(join(here, 'dist', 'worker.mjs')).size;
 const gz = gzipSync(readFileSync(join(here, 'dist', 'worker.mjs')), { level: 9 }).length;
 const clientGz = gzipSync(CLIENT_SOURCE, { level: 9 }).length;

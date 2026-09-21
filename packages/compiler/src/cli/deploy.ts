@@ -96,6 +96,8 @@ export interface DeployOptions {
     supabaseServiceRoleKey?: string;
     stripeSecretKey?: string;
     stripeWebhookSecret?: string;
+    stripeBasicPriceId?: string;
+    stripeProPriceId?: string;
     /** Test seam: run wrangler. Default spawns the real binary (stdin-fed secrets). */
     runWrangler?: WranglerRunner;
     /** Test seam: exec the per-host deploy script (the --target vercel|deno
@@ -385,6 +387,8 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
         ['SUPABASE_SERVICE_ROLE_KEY', opts.cloud ? opts.supabaseServiceRoleKey : undefined],
         ['STRIPE_SECRET_KEY', opts.cloud ? opts.stripeSecretKey : undefined],
         ['STRIPE_WEBHOOK_SECRET', opts.cloud ? opts.stripeWebhookSecret : undefined],
+        ['STRIPE_BASIC_PRICE_ID', opts.cloud ? opts.stripeBasicPriceId : undefined],
+        ['STRIPE_PRO_PRICE_ID', opts.cloud ? opts.stripeProPriceId : undefined],
     ];
     for (const [name, value] of toSet) {
         if (value === undefined) continue;

@@ -100,7 +100,7 @@ Prefer the CLI, or want the gated flow (size budgets, staged-console checks, gen
 The same CMS deploys to four hosts. `frontbase deploy` provisions Cloudflare; `--target vercel` / `--target deno` dispatch to the per-host scripts below (from inside this repo) with the same flags — secrets over stdin, exit code propagated. The scripts build, gate, and drive the host CLI:
 
 ```bash
-# Vercel Edge — static matrix in vercel.json, function owns state routes
+# Vercel Node — static matrix in vercel.json, function owns state routes
 vercel login   # or set VERCEL_TOKEN
 pnpm run deploy:vercel -- --project <my_app_name>
 
@@ -135,7 +135,7 @@ pnpm run deploy:cf-full -- --mode cloud --base-domain frontbase.dev \
   --app-name frontbase-cloud --admin-email owner@example.com --admin-password '…'
 ```
 
-That stages both console builds (self-host + cloud `/admin`), boots the worker in cloud mode via `wrangler deploy --var` (never wrangler.toml), attaches `app.<zone>` as a Custom Domain and `*.<zone>/*` as a Workers route over existing proxied wildcard DNS, and gates the deploy on both console artifacts. Free tier only: counts/flags are gated by the `_global` plan catalog; per-tenant engines, custom domains, and billing are future phases. Full contract, honest limits, and the dashboard fallback: [docs/cloud-free-tier.md](docs/cloud-free-tier.md).
+That stages both console builds (self-host + cloud `/admin`), boots the worker in cloud mode via `wrangler deploy --var` (never wrangler.toml), attaches `app.<zone>` as a Custom Domain and `*.<zone>/*` as a Workers route over existing proxied wildcard DNS, and gates the deploy on both console artifacts. Supabase/Hyperdrive application state, Supabase Auth and Stripe billing are implemented, with paid launch acceptance still open. Platform and public tenant traffic use separate Workers. Dedicated engines and unsupported add-ons are excluded from current launch claims. Stripe test staging requires sandbox Basic/Pro price mappings; see the [journey and staging guide](examples/cf-full/e2e/cloud/README.md). Full contract, honest limits, and the dashboard fallback: [docs/cloud-free-tier.md](docs/cloud-free-tier.md).
 
 ## Architecture
 
@@ -147,7 +147,7 @@ One Hono engine (`@frontbase/edge-core`), three render environments — edge, se
 |---|---|---|
 | Worker (engine + console API + auth + pages) | 488.8 KB | 1 MB (Cloudflare free) |
 | inlined `/sw.js` | 108.3 KB | — |
-| Vercel edge bundle | 489.2 KB | 4 MB |
+| Vercel Node function bundle | 489.2 KB | 4 MB |
 
 Three non-negotiable principles:
 
