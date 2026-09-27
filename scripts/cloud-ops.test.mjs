@@ -60,7 +60,7 @@ assert.match(captured, /"unknown tenant rejected"/);
 if (process.platform !== 'win32') {
     const dir = await mkdtemp(join(tmpdir(), 'frontbase-cloud-ops-'));
     await writeFile(join(dir, 'pg_dump'), `#!/bin/sh\nout=\nfor arg in "$@"; do\n  case "$arg" in --file=*) out="\${arg#--file=}" ;; esac\ndone\nprintf 'frontbase backup artifact' > "$out"\n`, 'utf8');
-    await writeFile(join(dir, 'pg_restore'), `#!/bin/sh\nif [ "$1" = "--list" ]; then printf 'SCHEMA frontbase_cloud\\nTABLE tenants\\n'; fi\n`, 'utf8');
+    await writeFile(join(dir, 'pg_restore'), `#!/bin/sh\nif [ "$1" = "--list" ]; then printf 'SCHEMA - frontbase_cloud\\nTABLE tenants\\n'; fi\n`, 'utf8');
     await writeFile(join(dir, 'psql'), '#!/bin/sh\nprintf "24\\n"\n', 'utf8');
     for (const name of ['pg_dump', 'pg_restore', 'psql']) await chmod(join(dir, name), 0o755);
     process.env.FRONTBASE_PG_DUMP = join(dir, 'pg_dump');

@@ -182,6 +182,11 @@ function toolVersion(name) {
     return result.status === 0 ? result.safeStdout || 'unknown' : null;
 }
 
+function archiveListingContainsSchema(listing, schema) {
+    if (listing.status !== 0) return false;
+    return new RegExp(`SCHEMA( -)? ${schema}(\\s|$)`).test(listing.safeStdout);
+}
+
 async function sha256(path) {
     const { createReadStream } = await import('node:fs');
     const { pipeline } = await import('node:stream/promises');
@@ -311,7 +316,7 @@ export async function backup(args) {
     ]);
     if (dump.status !== 0) throw new Error(`pg_dump failed: ${scrubSecrets(dump.diagnostic, [databaseUrl])}`);
     const listing = runTool('pgRestore', ['--list', backupFile]);
-    if (listing.status !== 0 || !listing.safeStdout.includes(`SCHEMA ${schema}`)) {
+    if (!archiveListingContainsSchema(listing, schema)) {
         throw new Error(`backup verification failed: ${scrubSecrets(listing.diagnostic || 'schema missing from archive')}`);
     }
     const info = await stat(backupFile);
@@ -382,7 +387,7 @@ export async function verifyBackup(args) {
     const listing = runTool('pgRestore', ['--list', backupPath]);
     checks.push({
         name: 'pg_restore archive listing',
-        status: listing.status === 0 && listing.safeStdout.includes(`SCHEMA ${manifest.schema}`) ? 'pass' : 'fail',
+        status: archiveListingContainsSchema(listing, manifest.schema) ? 'pass' : 'fail',
         detail: listing.status === 0 ? 'valid custom archive' : scrubSecrets(listing.diagnostic || 'pg_restore failed'),
     });
     const result = {
