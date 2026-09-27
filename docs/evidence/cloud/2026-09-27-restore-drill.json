@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "kind": "frontbase-cloud-restore-drill",
+  "backupSha256": "ea1e0d1959ffc43e105de2f5f1020eadea497bbca4d3a2f4ccd39006203ebfc5",
+  "source": {
+    "valid": true,
+    "host": "aws-1-eu-west-2.pooler.supabase.com",
+    "port": "5432",
+    "database": "postgres",
+    "redactedUrl": "postgresql://***:***@aws-1-eu-west-2.pooler.supabase.com:5432/postgres"
+  },
+  "target": {
+    "valid": true,
+    "host": "frontbase-cl7-restore",
+    "port": "5432",
+    "database": "frontbase_restore",
+    "redactedUrl": "postgresql://***:***@frontbase-cl7-restore:5432/frontbase_restore"
+  },
+  "schema": "frontbase_cloud",
+  "tableCount": 34,
+  "startedAt": "2026-09-27T19:35:36.357Z",
+  "finishedAt": "2026-09-27T19:35:42.393Z"
+}

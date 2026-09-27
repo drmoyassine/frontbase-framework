@@ -1,7 +1,7 @@
 # Frontbase Cloud operations and paid-beta readiness
 
-**Updated:** 2026-09-21
-**Status:** Repeatable health, backup, restore, and rollback tooling is implemented and locally gated. The isolated CL-6 deployment passes every public health probe. The remaining CL-7 blockers are provider-console configuration and human acceptance: PostgreSQL client installation, an isolated restore target, DMARC, external alert ownership, support routing, live-mode billing, and final production sign-off.
+**Updated:** 2026-09-27
+**Status:** Repeatable health, backup, restore, and rollback tooling is implemented and gated. The isolated CL-6 deployment passes every public health probe. The real Supabase backup, checksum verification, and isolated PostgreSQL 17 restore drill pass. The remaining CL-7 blockers are spam-safe transactional delivery, external alert ownership, support routing, live-mode billing, and final production sign-off.
 
 This document is operational scope, not a release claim. The current accepted application journey is sandbox-only and is recorded in [CLOUD-LAUNCH.md](CLOUD-LAUNCH.md).
 
@@ -44,13 +44,14 @@ Required local tools are `pg_dump`, `pg_restore`, `psql`, and Wrangler. If the t
 - `FRONTBASE_PSQL`
 - `FRONTBASE_WRANGLER`
 
-Current provider baseline from 2026-09-21:
+Current provider baseline from 2026-09-27:
 
 - Cloud credential names are present in the local operator environment.
 - The Supabase database URL is valid and redacts correctly.
 - `resend._domainkey.frontbase.dev`, the `send.frontbase.dev` SPF record, and the `send.frontbase.dev` bounce MX record are present.
-- `_dmarc.frontbase.dev` is absent.
-- PostgreSQL client tools are not installed on the current workstation, so a real backup has not yet been produced.
+- `_dmarc.frontbase.dev` is present with monitoring-only `p=none`.
+- Gmail still placed the latest reset message in Spam even though its headers showed SPF, frontbase.dev DKIM, Amazon SES DKIM, and DMARC pass. Resend click/open tracking and the generic Supabase reset template remain suspected deliverability risks.
+- Container-backed matching PostgreSQL 17.11 clients ran the real backup and isolated restore; the archive checksum and all 34 `frontbase_cloud` tables were verified.
 
 ## Public health and monitoring
 
@@ -118,7 +119,7 @@ The restore command refuses:
 
 After restore, it asks PostgreSQL for the number of tables in `frontbase_cloud` and requires at least ten. A `.restore.json` evidence file records the source, redacted target, checksum, table count, and timestamps.
 
-The real drill remains pending until PostgreSQL client tools and an isolated restore database are supplied by the operator. Never restore over the production Supabase database.
+On 2026-09-27, `pg_dump`/`pg_restore` 17.11 backed up the Supabase PostgreSQL 17.6 `frontbase_cloud` schema into a 47,975-byte custom archive with SHA-256 `ea1e0d1959ffc43e105de2f5f1020eadea497bbca4d3a2f4ccd39006203ebfc5`, then restored it into a disposable PostgreSQL 17 container. The verifier found all 34 schema tables. See [backup evidence](evidence/cloud/2026-09-27-backup.json) and [restore evidence](evidence/cloud/2026-09-27-restore-drill.json). This was a logical schema/data drill only; it did not restore Supabase auth/storage objects or exercise a full provider-managed recovery. Never restore over the production Supabase database.
 
 ## Worker rollback rehearsal
 
@@ -161,16 +162,15 @@ Every production incident record must contain: detection time, affected hosts/te
 
 Before changing the production app host or enabling live charges:
 
-1. Add `_dmarc.frontbase.dev` with a monitoring-only `p=none` policy and a real reporting mailbox.
-2. Send a fresh hosted reset and confirm Gmail primary-inbox delivery.
-3. Install or expose PostgreSQL client tools and complete the backup/restore drill against an isolated database.
-4. Complete the Worker rollback/roll-forward rehearsal and preserve both evidence files.
-5. Configure external uptime and error alerts for app health, known tenant rendering, Supabase, Cloudflare, and Stripe webhook delivery.
-6. Name the support route, owner, and escalation contact.
-7. Review the exact Worker version, routes, secrets list, Supabase project/schema, and Stripe mode; record them without secret values.
-8. Enable live Stripe only with `FRONTBASE_STRIPE_LIVE_MODE=1`, attach the production webhook, and complete one deliberate controlled live transaction/cancellation.
-9. Obtain explicit owner release sign-off.
-10. Only after acceptance, remove the recorded sandbox tenants/customers and isolated test routes.
+1. Disable Resend click/open tracking, replace the generic Supabase reset template with branded transactional content, send a fresh hosted reset, and confirm Gmail primary-inbox delivery.
+2. Reassess Gmail/Postmaster reputation before considering DMARC policy escalation.
+3. Complete the Worker rollback/roll-forward rehearsal and preserve both evidence files.
+4. Configure external uptime and error alerts for app health, known tenant rendering, Supabase, Cloudflare, and Stripe webhook delivery.
+5. Name the support route, owner, and escalation contact.
+6. Review the exact Worker version, routes, secrets list, Supabase project/schema, and Stripe mode; record them without secret values.
+7. Enable live Stripe only with `FRONTBASE_STRIPE_LIVE_MODE=1`, attach the production webhook, and complete one deliberate controlled live transaction/cancellation.
+8. Obtain explicit owner release sign-off.
+9. Only after acceptance, remove the recorded sandbox tenants/customers and isolated test routes.
 
 ## Non-negotiable safety boundaries
 
