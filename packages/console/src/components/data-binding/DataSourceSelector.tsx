@@ -18,6 +18,7 @@ interface DataSourceSelectorProps {
   label?: string;
   placeholder?: string;
   disabled?: boolean;
+  autoSelect?: boolean;
 }
 
 export function DataSourceSelector({
@@ -25,7 +26,8 @@ export function DataSourceSelector({
   onValueChange,
   label = "Data Source",
   placeholder = "Select a data source",
-  disabled = false
+  disabled = false,
+  autoSelect = true
 }: DataSourceSelectorProps) {
   // Fetch datasources from API
   const { data: datasources = [], isLoading, error } = useQuery<Datasource[]>({
@@ -40,10 +42,10 @@ export function DataSourceSelector({
 
   // Auto-select first datasource if none selected
   React.useEffect(() => {
-    if (!value && datasources.length > 0 && !isLoading) {
+    if (autoSelect && !value && datasources.length > 0 && !isLoading) {
       onValueChange(datasources[0].id);
     }
-  }, [datasources, value, isLoading, onValueChange]);
+  }, [autoSelect, datasources, value, isLoading, onValueChange]);
 
   const selectedDatasource = datasources.find(ds => ds.id === value);
 

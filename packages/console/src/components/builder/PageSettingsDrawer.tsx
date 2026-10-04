@@ -41,6 +41,9 @@ import { StylesPanel } from '@/components/styles/StylesPanel';
 import { getDefaultPageStyles } from '@/lib/styles/defaults';
 import { VariableInput } from './VariableInput';
 import { toast } from 'sonner';
+import { directoryConfigurationIssues, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
+import { DirectoryConfigurationPanel } from './directory/DirectoryConfigurationPanel';
+import { applyDirectoryConfiguration } from './directory/applyDirectoryConfiguration';
 
 // Allowed variable groups for SEO fields (exclude page to prevent circular dependency)
 const SEO_ALLOWED_GROUPS = ['visitor', 'system', 'user', 'record'];
@@ -144,6 +147,12 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
     };
 
     const handleSave = async () => {
+        const config = currentPage.layoutData?.root.directoryConfiguration;
+        if (config !== undefined && directoryConfigurationIssues(config).length) {
+            toast.error('Fix the invalid directory settings before saving');
+            setActiveTab('directory');
+            return;
+        }
         console.log('💾 [PageSettings] Save button clicked!');
         console.log('💾 [PageSettings] currentPageId:', currentPageId);
         console.log('💾 [PageSettings] savePageToDatabase:', savePageToDatabase);
@@ -182,7 +191,7 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
                     </SheetHeader>
 
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 mb-6">
+                        <TabsList className="grid w-full grid-cols-4 mb-6">
                             <TabsTrigger value="basic" className="gap-2">
                                 <Package className="h-4 w-4" />
                                 Basic
@@ -195,8 +204,19 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
                                 <Zap className="h-4 w-4" />
                                 Advanced
                             </TabsTrigger>
+                            <TabsTrigger value="directory">Directory</TabsTrigger>
                         </TabsList>
 
+                        <TabsContent value="directory" className="space-y-6">
+                            <DirectoryConfigurationPanel
+                                value={currentPage.layoutData?.root.directoryConfiguration as DirectoryConfiguration | undefined}
+                                onChange={directoryConfiguration => handleUpdatePage({ layoutData: { content: currentPage.layoutData?.content || [], root: { ...currentPage.layoutData?.root, directoryConfiguration } } })}
+                                onApplyLayout={() => {
+                                    const config = currentPage.layoutData?.root.directoryConfiguration;
+                                    if (config && directoryConfigurationIssues(config).length === 0) handleUpdatePage({ layoutData: applyDirectoryConfiguration(currentPage, config) });
+                                }}
+                            />
+                        </TabsContent>
                         {/* BASIC TAB */}
                         <TabsContent value="basic" className="space-y-6">
                             {/* Page Name - Always visible */}

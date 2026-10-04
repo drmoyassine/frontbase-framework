@@ -5,6 +5,10 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
+    "./directory/configuration": {
+      "types": "./dist/directory/configuration.d.ts",
+      "import": "./dist/directory/configuration.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"

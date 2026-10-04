@@ -6,6 +6,7 @@
 import { ComponentTemplate, generateId } from './types';
 import * as SectionTemplates from './sections';
 import { frontbaseHomepageTemplate } from './pages/frontbaseHomepageTemplate';
+import { educationDirectoryTemplate } from './pages/educationDirectoryTemplate';
 
 /**
  * Get template by name
@@ -21,6 +22,7 @@ export function getSectionTemplate(name: string): ComponentTemplate | null {
         case 'LogoCloud': return SectionTemplates.logoCloudTemplate();
         case 'Footer': return SectionTemplates.footerTemplate();
         case 'FrontbaseHomepage': return frontbaseHomepageTemplate();
+        case 'EducationDirectory': return educationDirectoryTemplate();
         default: return null;
     }
 }

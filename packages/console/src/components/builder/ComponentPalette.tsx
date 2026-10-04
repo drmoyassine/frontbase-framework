@@ -113,6 +113,7 @@ const componentCategories = {
       // Page Templates separator
       { name: '_separator_templates', icon: Sparkles, description: 'Full Page Templates', section: 'separator' },
       { name: 'FrontbaseHomepage', icon: Sparkles, description: 'Complete Frontbase homepage', section: 'template', isTemplate: true },
+      { name: 'EducationDirectory', icon: Globe, description: 'Programs and institutions directory', section: 'template', isTemplate: true },
     ]
   }
 };

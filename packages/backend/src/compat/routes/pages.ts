@@ -12,6 +12,7 @@ import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { PagesStore, serializePage, type CompatPageRow, type CompatVersionRow } from '../pages-store.js';
 import { isSystemEngine } from './edge-shapes.js';
+import { validateDirectoryLayout } from '../directory-configuration.js';
 import {
     deploysThisMonth, planLimitsForCaller, principalRole, privatePagesBlocked,
     publishGate, type PlanLimits,
@@ -184,6 +185,8 @@ export function registerPagesRoutes(
         }
         const store = storeFor(c.get('tenant'));
         // Check for duplicate slug before creating (product parity: 400 on conflict)
+        const directoryError = await validateDirectoryLayout(body.layoutData ?? body.layout_data, c.get('tenant'), runner);
+        if (directoryError) return c.json(directoryError.body, directoryError.status);
         const existing = await store.getBySlug(body.slug);
         if (existing) return c.json({ success: false, error: 'A page with this slug already exists' }, 400);
         const row = await store.create(
@@ -238,6 +241,8 @@ export function registerPagesRoutes(
         if (wantsPrivate && privatePagesBlocked(await callerLimits(c))) {
             return c.json({ detail: 'Private pages are not available on your current plan' }, 403);
         }
+        const directoryError = await validateDirectoryLayout(body.layoutData ?? body.layout_data, c.get('tenant'), runner);
+        if (directoryError) return c.json(directoryError.body, directoryError.status);
         const row = await storeFor(c.get('tenant')).update(c.req.param('page_id'), body, now());
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
         return c.json({ success: true, data: serializePage(row), message: null, error: null });
@@ -248,6 +253,8 @@ export function registerPagesRoutes(
         if (body.layoutData === undefined) {
             return c.json({ detail: 'layoutData is required' }, 400);
         }
+        const directoryError = await validateDirectoryLayout(body.layoutData, c.get('tenant'), runner);
+        if (directoryError) return c.json(directoryError.body, directoryError.status);
         const row = await storeFor(c.get('tenant')).setLayout(c.req.param('page_id'), body.layoutData, now());
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
         return c.json({ success: true, data: serializePage(row), error: null });
@@ -286,6 +293,8 @@ export function registerPagesRoutes(
             return c.json({ detail: `Page not found: ${pageId}` }, 404);
         }
         const engineId = c.req.param('engine_id');
+        const directoryError = await validateDirectoryLayout(page.layout_data, tenant, runner, true);
+        if (directoryError) return c.json(directoryError.body, directoryError.status);
         // The system edge (the worker itself) is the local publish target; keep
         // accepting the legacy 'local' id for back-compat.
         if (engineId !== 'local' && !isSystemEngine(engineId)) {
@@ -385,9 +394,12 @@ export function registerPagesRoutes(
         if (!await store.get(c.req.param('page_id'))) {
             return c.json({ detail: 'Page not found' }, 404);
         }
-        if (!await store.getVersion(targetVersionId)) {
+        const targetVersion = await store.getVersion(targetVersionId);
+        if (!targetVersion) {
             return c.json({ detail: 'Target version not found' }, 404);
         }
+        const directoryError = await validateDirectoryLayout(targetVersion.layout_data, c.get('tenant'), runner);
+        if (directoryError) return c.json(directoryError.body, directoryError.status);
         const res = await store.rollback(c.req.param('page_id'), targetVersionId, now());
         if (!res) return c.json({ detail: 'Target version not found' }, 404);
         return c.json({
