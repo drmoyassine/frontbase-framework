@@ -24,6 +24,7 @@ import { registerMetaRoutes } from './routes/meta.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerThemesRoutes } from './routes/themes.js';
 import { registerProjectRoutes } from './routes/project.js';
+import { registerSiteConfigurationRoutes } from './routes/site-configuration.js';
 import { registerSecurityEventsRoutes } from './routes/security-events.js';
 import { registerPagesRoutes } from './routes/pages.js';
 import { registerDatabaseRoutes } from './routes/database.js';
@@ -182,7 +183,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // storage-client factory the storage routes resolve with. Null embedding
     // (FRONTBASE_EMBEDDING absent) leaves the routes answering "not
     // configured"; a null vector at resolve time does the same per-tenant.
-    const storageResolver = createStorageClientResolver({ phase2For, kvFor, storageProvider: deps.storageProvider });
+    const storageResolver = createStorageClientResolver({ phase2For, kvFor, storageProvider: deps.storageProvider, externalFetch });
     const ragFetch: ServiceFetch = (input, init) =>
         guardedExternalFetch(externalFetch, input instanceof Request ? input.url : input, init);
     const ragDeps: RagRouteDeps = {
@@ -388,6 +389,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         deps.userStoreFor ? (t) => deps.userStoreFor!(t).countUsers() : undefined);
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
+    registerSiteConfigurationRoutes(app, runner, now);
     registerSecurityEventsRoutes(app, secEventsFor);
     // A-25 WA5: the cloud plan gates ride the same accessor getEffectiveLimits
     // exposes (settings → per-tenant plan → `_global` catalog row). Null
@@ -400,7 +402,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     );
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
-    registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now);
+    registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now, externalFetch);
     // RAG routes are framework-only (outside the 334-op community surface) and
     // console-authed like the storage routes they sit beside.
     registerRagRoutes(app, ragDeps);

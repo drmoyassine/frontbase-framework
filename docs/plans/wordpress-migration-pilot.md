@@ -1,6 +1,8 @@
 # WordPress to Frontbase migration pilot
 
-**Date:** 2026-10-04. **Status:** USA source inventory, private preservation and local draft implemented; canonical reconciliation and production acceptance remain open. **Pilot:** study-in-usa.com, owner selected local draft first. **Data source:** Studygram DB, Supabase project `uwzosvzynnpbxpnwqgkm`, MCP verified. UAE/other domains remain unaudited for migration.
+**Active execution plan (updated 2026-10-06):** [north star, current progress and acceptance gates](wordpress-pilot-roadmap.md). This document retains detailed historical evidence; the active plan supersedes earlier backlog ordering and next-task paragraphs. Implementation baseline `ec17aba` was pushed on `codex/wordpress-pilot`; subsequent harmonization, storage and editorial work remains uncommitted. Current priority is one complete existing-admin/live-data/publish journey (P2), supported by reviewed migration data, before scaling the full site or expanded catalog.
+
+**Historical starting record:** 2026-10-04. **Current status (2026-10-06):** captured source preservation and normal original-listing identity coverage complete; canonical content/media review partial; local templates and two actual CMS editorial drafts proven; complete no-code configuration/live publishing/reuse/production acceptance remain open. **Pilot:** study-in-usa.com, owner selected local draft first. **Data source:** Studygram DB, Supabase project `uwzosvzynnpbxpnwqgkm`, MCP verified. UAE/other domains remain unaudited for migration.
 
 ## Purpose and release boundary
 
@@ -8,7 +10,7 @@ Use the eleven existing WordPress installations as real adoption evidence for Fr
 
 The owner wants a fresh Frontbase design and a larger USA catalog. Preserve every original WordPress listing and its URL while adding reviewed Supabase records. WordPress template conversion is outside scope. Interpret the owner's “cash” item as caching/cost controls pending clarification.
 
-This plan supports [R0](../history/PUBLIC-RELEASE-AUDIT.md), the [release strategy](../history/PUBLIC-RELEASE-STRATEGY.md), and the proposed [competitive roadmap](competitive-roadmap.md). It does not complete R0, reactivate CF-22, accept new architecture, or change launch scope. The recommended first framework label remains **Framework Developer Preview**, subject to owner acceptance and existing release gates. A successful private migration is additional evidence, not a public-release declaration.
+This evidence supports [R0](../history/PUBLIC-RELEASE-AUDIT.md), the [release strategy](../history/PUBLIC-RELEASE-STRATEGY.md), and the [active pilot plan](wordpress-pilot-roadmap.md). It does not complete R0, reactivate CF-22, accept new architecture, or change launch scope. The recommended first framework label remains **Framework Developer Preview**, subject to owner acceptance and existing release gates. A successful private migration is additional evidence, not a public-release declaration.
 
 ## Inspected implementation and limits
 

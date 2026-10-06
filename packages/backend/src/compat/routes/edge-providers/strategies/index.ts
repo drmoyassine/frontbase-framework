@@ -13,6 +13,7 @@ import type { CompatFetch } from '../../../external-http.js';
 import { initBearerStrategies, bearerStrategyRegistry } from './bearer.js';
 import { initBasicStrategies, basicStrategyRegistry } from './basic.js';
 import { initCustomStrategies, customStrategyRegistry } from './custom.js';
+import { S3Strategy } from './s3.js';
 
 /**
  * Combined registry of all provider test strategies.
@@ -30,6 +31,7 @@ export function initStrategies(externalFetch: CompatFetch): void {
     initCustomStrategies(externalFetch);
 
     STRATEGY_REGISTRY.clear();
+    STRATEGY_REGISTRY.set('s3', new S3Strategy(externalFetch));
     for (const [provider, strategy] of bearerStrategyRegistry) {
         STRATEGY_REGISTRY.set(provider, strategy);
     }

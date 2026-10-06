@@ -9,6 +9,8 @@ export interface EducationListing {
     programCount?: number;
     institutionTitle?: string;
     degree?: string;
+    cover?: string;
+    coverAlt?: string;
 }
 
 export interface EducationDirectoryOptions {
@@ -34,6 +36,16 @@ const link = (label: string, href: string, className?: string): ComponentTemplat
     type: 'Link', props: { text: directoryLiteral(label), href, className },
 });
 
+/** Public image reference rendered through the existing editable Image primitive. */
+export function directoryCoverImage(src: string | undefined, alt: string, height = '200px'): ComponentTemplate | null {
+    if (!src || /[{}\x00-\x20\\]/.test(src)) return null;
+    try {
+        const url = new URL(src);
+        if (url.protocol !== 'https:' || url.username || url.password || /[{}\x00-\x20\\]/.test(decodeURIComponent(src))) return null;
+    } catch { return null; }
+    return { type: 'Image', props: { src, alt: directoryLiteral(alt), width: '100%', height, objectFit: 'contain', borderRadius: '10px', className: 'directory-cover' } };
+}
+
 /** Editable primitives; data/query ownership stays with the consumer project. */
 export function educationDirectoryTemplate(options: EducationDirectoryOptions = {}): ComponentTemplate {
     const destination = options.destination || 'your next destination';
@@ -54,11 +66,13 @@ export function educationDirectoryTemplate(options: EducationDirectoryOptions = 
             || /[\\\x00-\x1f]/.test(decodedPath) || decodedPath.split('/').some(segment => segment === '.' || segment === '..')) {
             throw new Error('Directory links require a reviewed local path');
         }
+        const cover = directoryCoverImage(record.cover, record.coverAlt || record.title);
         return {
             type: 'Container', props: { className: 'directory-card' },
             styles: { display: 'flex', flexDirection: 'column', gap: '16px', padding: '28px', border: '1px solid #d6e0d8', borderRadius: '15px', backgroundColor: '#ffffff' },
             children: [
                 text(record.kind, 'directory-eyebrow'),
+                ...(cover ? [cover] : []),
                 { type: 'Heading', props: { text: directoryLiteral(record.title), level: 'h3' } },
                 text(record.city || 'Location to be confirmed', 'directory-location'),
                 ...(record.kind === 'institution' && record.programCount !== undefined

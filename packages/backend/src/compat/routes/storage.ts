@@ -11,6 +11,7 @@ import type { Phase2Store } from '../../db/phase2-store.js';
 import type { KeyValueStore } from '../store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
 import { sigv4StorageProvider, supabaseStorageProvider } from '@frontbase/edge-infra';
+import { checkedExternalUrl, guardedExternalFetch, type CompatFetch } from '../external-http.js';
 import type { StorageProvider } from '@frontbase/edge-infra';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
@@ -39,8 +40,10 @@ export function createStorageClientResolver(opts: {
     phase2For: (t: string) => Phase2Store;
     kvFor: (t: string) => KeyValueStore;
     storageProvider: StorageProvider | undefined;
+    externalFetch?: CompatFetch;
 }) {
     const { phase2For, kvFor, storageProvider } = opts;
+    const transport: CompatFetch = (input, init) => guardedExternalFetch(opts.externalFetch ?? globalThis.fetch, input instanceof Request ? input.url : input, init);
     const sha256Hex = async (value: string): Promise<string> => {
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
         return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -91,8 +94,24 @@ export function createStorageClientResolver(opts: {
             if (!accessKeyId || !secretAccessKey) {
                 return { status: 400, message: `${type} account missing access_key_id / secret_access_key` };
             }
+            let publicUrls: Record<string, string> | undefined;
+            try {
+                const bucket = String(accountConfig.public_bucket ?? '');
+                const base = String(accountConfig.public_base_url ?? '');
+                if (bucket || base) {
+                    if (!bucket || !base) throw new Error('incomplete_public_url');
+                    const url = checkedExternalUrl(base);
+                    if (url.search || url.hash) throw new Error('invalid_public_url');
+                    publicUrls = { [bucket]: url.href };
+                }
+                checkedExternalUrl(String(accountConfig.endpoint ?? 'https://s3.amazonaws.com'));
+            } catch {
+                return { status: 400, message: 'Invalid S3 endpoint or public bucket URL configuration' };
+            }
             return {
                 client: sigv4StorageProvider({
+                    fetch: transport,
+                    publicUrls,
                     accessKeyId,
                     secretAccessKey,
                     endpoint: accountConfig.endpoint ? String(accountConfig.endpoint) : undefined,
@@ -140,6 +159,7 @@ export function registerStorageRoutes(
     secretCipher: SecretCipher,
     storageProvider: StorageProvider | undefined,
     now: () => string,
+    externalFetch?: CompatFetch,
 ): void {
     const redactConfig = (record: Record<string, unknown>) => {
         const { config: _config, config_ciphertext: _ciphertext, id, name, provider, provider_account_id, account_name, is_active, created_at, updated_at, ...rest } = record;
@@ -168,7 +188,7 @@ export function registerStorageRoutes(
 
     // Same factory the RAG pipeline resolves byte access through — one copy of
     // the credential logic (see createStorageClientResolver above).
-    const { resolveForOp, resolveManaged } = createStorageClientResolver({ phase2For, kvFor, storageProvider });
+    const { resolveForOp, resolveManaged } = createStorageClientResolver({ phase2For, kvFor, storageProvider, externalFetch });
     /** Product-shaped resolver failure (`{detail}`, matching _resolve_adapter's HTTPException). */
     const resolutionError = (c: Context<{ Variables: ConsoleAuthVars }>, resolved: { status: 400 | 404 | 500 | 503; message: string }) =>
         c.json({ detail: resolved.message }, resolved.status);

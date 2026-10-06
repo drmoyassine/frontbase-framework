@@ -43,6 +43,7 @@ const LUCIDE_FALLBACKS: Record<string, React.FC<any>> = {
     wordpress_graphql: Globe,  // GraphQL uses same icon as REST API
     postgres: Database,
     mysql: HardDrive,
+    s3: HardDrive,
     neon: Database,
     google_sheets: Table,
     turso: Cloud,
@@ -182,6 +183,21 @@ export interface ProviderConfig {
 }
 
 export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
+    s3: {
+        label: 'S3-compatible',
+        defaultName: 'Object Storage Account',
+        capabilities: ['storage'],
+        fields: [
+            { key: 'endpoint', label: 'S3 API endpoint', placeholder: 'https://s3.example.com', required: true },
+            { key: 'region', label: 'Region', placeholder: 'garage', required: true },
+            { key: 'access_key_id', label: 'Access key ID', placeholder: 'Access key ID', type: 'password', required: true },
+            { key: 'secret_access_key', label: 'Secret access key', placeholder: 'Secret access key', type: 'password', required: true },
+            { key: 'test_bucket', label: 'Bucket to test (optional)', placeholder: 'Bucket allowed by this key' },
+            { key: 'public_bucket', label: 'Public image bucket (optional)', placeholder: 'Explicitly published bucket' },
+            { key: 'public_base_url', label: 'Public image base URL (optional)', placeholder: 'https://images.example.com' },
+        ],
+        helpText: 'Use a bucket-scoped key where possible. Public image settings only build URLs; configure anonymous serving separately with your storage provider.',
+    },
     cloudflare: {
         label: 'Cloudflare',
         defaultName: 'Cloudflare Account',
@@ -502,7 +518,7 @@ export const EDGE_STORAGE_PROVIDERS: EdgeResourceProvider[] = [
     { value: 'supabase',   label: 'Supabase Storage',    icon: PROVIDER_ICONS.supabase   || Database, accountProvider: 'supabase',   active: true,  resourceTypeFilter: 'supabase_project' },
     { value: 'vercel',     label: 'Vercel Blob',         icon: PROVIDER_ICONS.vercel     || Triangle, accountProvider: 'vercel',     active: true,  resourceTypeFilter: 'blob_store' },
     { value: 'netlify',    label: 'Netlify Blobs',       icon: PROVIDER_ICONS.netlify    || Hexagon,  accountProvider: 'netlify',    active: true,  resourceTypeFilter: 'netlify_site' },
-    { value: 's3',         label: 'AWS S3',              icon: Cloud,                                 accountProvider: null,         active: false },
+    { value: 's3',         label: 'S3-compatible',       icon: HardDrive,                             accountProvider: 's3',         active: true },
     { value: 'gcs',        label: 'Google Cloud',        icon: Cloud,                                 accountProvider: null,         active: false },
 ];
 

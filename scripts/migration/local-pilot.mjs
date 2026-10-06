@@ -13,7 +13,24 @@ const port = Number(args.includes('--port') ? value('--port') : 4387);
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Invalid local port');
 const templatePath = fileURLToPath(new URL('../../packages/console/src/components/builder/templates/pages/educationDirectoryTemplate.ts', import.meta.url));
 const bundle = await build({ entryPoints: [templatePath], bundle: true, write: false, platform: 'node', format: 'esm' });
-const { educationDirectoryTemplate, directoryLiteral } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+const { educationDirectoryTemplate, directoryLiteral, directoryCoverImage } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+const editorialRows = new Map();
+let editorialDraftTemplate;
+if (args.includes('--editorial')) {
+    const editorial = JSON.parse(await readFile(value('--editorial'), 'utf8'));
+    if (editorial.publication_approved !== false) throw new Error('Editorial preview must be unapproved');
+    const entry = fileURLToPath(new URL('../../packages/console/src/components/builder/templates/pages/editorialDraftTemplate.ts', import.meta.url));
+    const compiled = await build({ entryPoints: [entry], bundle: true, write: false, platform: 'node', format: 'esm' });
+    ({ editorialDraftTemplate } = await import('data:text/javascript;base64,' + Buffer.from(compiled.outputFiles[0].text).toString('base64')));
+    for (const row of editorial.rows) {
+        const path = row.original_path;
+        if (!path || path === '/' || path === '/explore/' || path.startsWith('/__draft') || !path.startsWith('/') || path.startsWith('//')
+            || /[\\?#\s{}]/.test(path) || /[\\?#\x00-\x20{}]/.test(decodeURIComponent(path))
+            || decodeURIComponent(path).split('/').some(p => ['.', '..'].includes(p)) || editorialRows.has(path)) throw new Error('Unsafe or conflicting editorial path');
+        editorialDraftTemplate(row); // Validate draft state and supported block kinds before serving.
+        editorialRows.set(path, row);
+    }
+}
 const css = await readFile(new URL('./pilot.css', import.meta.url), 'utf8');
 const studioScript = await readFile(new URL('./pilot-studio.js', import.meta.url), 'utf8');
 const html = (text) => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -24,6 +41,9 @@ for (const row of data.rows) {
     }
     if (indexed.has(row.path)) throw new Error('Duplicate projection path: ' + row.path);
     indexed.set(row.path, row);
+}
+for (const [path, row] of editorialRows) {
+    if (indexed.has(path) && indexed.get(path).source_id !== row.source_id) throw new Error('Editorial path conflicts with another source identity');
 }
 const listingKinds = new Set(['program', 'institution', 'pathway', 'city']);
 const cities = [...new Set(data.rows.filter(r => listingKinds.has(r.kind)).map(r => r.city).filter(Boolean))].sort();
@@ -43,7 +63,7 @@ function selection(url, parent = null) {
         size: [12, 24, 48].includes(Number(p.get('size'))) ? Number(p.get('size')) : 12 };
     const rows = data.rows.filter(r => listingKinds.has(r.kind)
         && (options.scope !== 'wordpress' || r.origin === 'wordpress')
-        && (options.kind === 'all' || r.kind === options.kind)
+        && (options.kind === 'all' || r.kind === options.kind || parent && r.kind === 'pathway')
         && (!parent || r.institution_path === parent.path || parent.kind === 'city' && r.city === parent.city)
         && (!options.institution || r.institution_path === options.institution)
         && (!options.degree || r.degree === options.degree)
@@ -98,12 +118,14 @@ function home(url) {
 
 function detail(row, url) {
     const literal = directoryLiteral;
+    const cover = directoryCoverImage(row.cover, row.coverAlt || row.title, '400px');
     const s = selection(url, row);
     const institutions = (row.institution_paths || []).map(path => indexed.get(path)).filter(Boolean);
     const content = [{ type: 'Link', props: { text: '← Explore USA institutions', href: '/explore/?type=institution', className: 'directory-brand' } },
         { type: 'Text', props: { text: literal(row.kind + (row.city ? ' · ' + row.city : '')), className: 'directory-eyebrow' } },
         { type: 'Heading', props: { level: 'h1', text: literal(row.title) } },
-        ...(row.kind === 'program' && institutions.length === 1 ? [link(institutions[0].title, institutions[0].path, 'directory-owner')] : []),
+        ...(cover ? [cover] : []),
+        ...(['program', 'pathway'].includes(row.kind) && institutions.length === 1 ? [link(institutions[0].title, institutions[0].path, 'directory-owner')] : []),
         ...(row.kind === 'institution' ? [group('directory-tabs', [link('Profile', '#profile'), link(`Programs (${s.total.toLocaleString()})`, '#programs')])] : []),
         ...(row.summary ? [{ type: 'Text', props: { text: literal(row.summary), className: 'directory-introduction' } }] : []),
         group('directory-facts', [
@@ -112,7 +134,8 @@ function detail(row, url) {
             ...Object.entries(row.facts || {}).map(([label, value]) => group('directory-fact', [text(label, 'directory-eyebrow'), text(value)])),
             ...(row.intakes?.length ? [group('directory-fact', [text('Intakes', 'directory-eyebrow'), text(row.intakes.join(', '))])] : []),
         ]),
-        heading(row.kind === 'institution' ? 'About the institution' : 'About this program'),
+        heading(row.profile_scope === 'host_institution_history' ? 'Historical host-institution overview' : row.kind === 'institution' ? 'About the institution' : 'About this program'),
+        ...(row.profile_scope === 'host_institution_history' ? [text('ELS center information needs a separate content review. This historical overview describes the host institution.', 'directory-note')] : []),
         ...(row.body ? [{ type: 'Text', props: { text: literal(row.body), className: 'directory-body' } }] : [
             { type: 'Text', props: { text: 'Detailed program information is pending reconciliation. Ask a counselor for current entry requirements and availability.' } },
         ]),
@@ -136,7 +159,7 @@ function filters(url, parent = null) {
     const { options: o } = selection(url, parent);
     const opt = (value, label, selected) => `<option value="${html(value)}"${value === selected ? ' selected' : ''}>${html(label)}</option>`;
     const select = (label, key, values, empty) => `<label>${label}<select name="${key}">${opt('', empty, o[key])}${values.map(v => opt(v, v, o[key])).join('')}</select></label>`;
-    const programs = data.rows.filter(r => r.kind === 'program' && (!parent || (parent.kind === 'city' ? r.city === parent.city : r.institution_path === parent.path)));
+    const programs = data.rows.filter(r => (r.kind === 'program' || parent && r.kind === 'pathway') && (!parent || (parent.kind === 'city' ? r.city === parent.city : r.institution_path === parent.path)));
     const degrees = [...new Set(programs.map(r => r.degree).filter(Boolean))].sort();
     const intakes = [...new Set(programs.flatMap(r => r.intakes || []))].sort();
     const institutionControl = o.kind === 'program' && !parent ? `<label>Institution<select name="institution">${opt('', 'All institutions', o.institution)}${data.rows.filter(r => r.kind === 'institution').sort((a,b) => a.title.localeCompare(b.title)).map(r => opt(r.path, r.title, o.institution)).join('')}</select></label>` : '';
@@ -157,10 +180,14 @@ function studio(url) {
 }
 
 const manifest = { version: 'usa-local-draft-1', queries: {}, pages: {} };
+function editorialPage(row) {
+    return { title: `${row.title} | Editorial draft`, slug: row.original_path.slice(1, -1), description: row.excerpt || '', cssBundle: css,
+        layout: { root: {}, content: [expand(editorialDraftTemplate(row), 'editorial')] } };
+}
 const engine = createEngine({ manifest, data: directProvider(manifest), environment: 'builder',
-    resolvePublishedPage: async (path, request) => path === '/' || path === '/explore/' ? home(new URL(request.url)) : indexed.has(path) ? detail(indexed.get(path), new URL(request.url)) : null });
+    resolvePublishedPage: async (path, request) => path === '/' || path === '/explore/' ? home(new URL(request.url)) : editorialRows.has(path) ? editorialPage(editorialRows.get(path)) : indexed.has(path) ? detail(indexed.get(path), new URL(request.url)) : null });
 const security = { 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff',
-    'referrer-policy': 'no-referrer', 'content-security-policy': "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'" };
+    'referrer-policy': 'no-referrer', 'content-security-policy': "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://s3.studygram.me/public-images/; frame-src 'self'; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'" };
 const server = createServer(async (req, res) => {
     try {
         for (const [key, value] of Object.entries(security)) res.setHeader(key, value);
@@ -171,7 +198,11 @@ const server = createServer(async (req, res) => {
         if (url.pathname === '/__draft/' || url.pathname === '/__draft') body = studio(url);
         else if (url.pathname === '/__draft/style.css') { body = css; type = 'text/css; charset=utf-8'; }
         else if (url.pathname === '/__draft/studio.js') { body = studioScript; type = 'text/javascript; charset=utf-8'; }
-        else if (url.pathname === '/__draft/layout.json') { body = JSON.stringify({ ...home(url), draftDataSelection: selection(url).options, publicationApproved: false }, null, 2); type = 'application/json'; }
+        else if (url.pathname === '/__draft/layout.json') {
+            const editorial = editorialRows.get(url.searchParams.get('path'));
+            body = JSON.stringify({ ...(editorial ? editorialPage(editorial) : home(url)), draftDataSelection: selection(url).options, publicationApproved: false }, null, 2); type = 'application/json';
+        }
+        else if (url.pathname === '/__draft/editorial/') { body = `<!doctype html><html><head><meta name="robots" content="noindex,nofollow"><title>Editorial migration preview</title></head><body><h1>Editorial migration preview</h1><p>Unpublished conversion examples; factual content and media remain under review.</p><ul>${[...editorialRows].map(([path, row]) => `<li><a href="${html(path)}">${html(row.title)}</a></li>`).join('')}</ul></body></html>`; }
         else if (url.pathname === '/__draft/status.json') { body = JSON.stringify({ catalog: data.catalog_counts, reconciliation: data.reconciliation, selected: selection(url).total, exclusions: data.excluded_catalog_rows, localDraft: true }); type = 'application/json'; }
         else if (url.pathname === '/robots.txt') { body = 'User-agent: *\nDisallow: /\n'; type = 'text/plain'; }
         else if (url.pathname === '/static/react/hydrate.js') { body = '// Static local preview; no database hydration or keys.\n'; type = 'text/javascript'; }

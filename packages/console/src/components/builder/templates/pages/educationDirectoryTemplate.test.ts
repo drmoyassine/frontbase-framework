@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { directoryLiteral, educationDirectoryTemplate } from './educationDirectoryTemplate';
+import { directoryLiteral, educationDirectoryTemplate, directoryCoverImage } from './educationDirectoryTemplate';
 import { expandTemplate, getSectionTemplate } from '../index';
 
 describe('education directory', () => {
+    it('uses editable images and refuses active, credential-bearing or template image references', () => {
+        const image = directoryCoverImage('https://media.example.test/cover.png', '{{ secret }}');
+        expect(image?.type).toBe('Image');
+        expect(image?.props?.alt).not.toContain('{{');
+        for (const src of ['javascript:alert(1)', 'data:image/svg+xml,bad', '//evil.test/image', 'http://example.test/a', 'https://user:password@example.test/a', 'https://example.test/{{secret}}', 'https://example.test/%7B%7Bsecret%7D%7D', 'https://example.test/%ZZ']) {
+            expect(directoryCoverImage(src, 'Cover')).toBeNull();
+        }
+        expect(directoryCoverImage(undefined, 'Cover')).toBeNull();
+        const template = educationDirectoryTemplate({ listings: [{ title: 'College', kind: 'institution', path: '/college/', cover: 'https://media.example.test/cover.png' }] });
+        expect(JSON.stringify(template)).toContain('https://media.example.test/cover.png');
+    });
     it('presents institution program counts and program ownership distinctly', () => {
         const template = educationDirectoryTemplate({ listings: [
             { kind: 'institution', title: 'College', city: 'City', path: '/college/', programCount: 42 },

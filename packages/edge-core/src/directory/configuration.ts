@@ -43,6 +43,19 @@ export const directoryConfigurationSchema = z.object({
 
 export type DirectoryConfiguration = z.infer<typeof directoryConfigurationSchema>;
 
+/** Shared authoring only. No page/runtime activation or secrets in this record. */
+export const siteConfigurationDraftSchema = z.object({
+    schemaVersion: z.literal(1),
+    revision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    configuration: directoryConfigurationSchema,
+}).strict();
+export const siteConfigurationSaveSchema = z.object({
+    schemaVersion: z.literal(1),
+    expectedRevision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER - 1),
+    configuration: directoryConfigurationSchema,
+}).strict();
+export type SiteConfigurationDraft = z.infer<typeof siteConfigurationDraftSchema>;
+
 export function emptyDirectoryConfiguration(): DirectoryConfiguration {
     const empty = () => ({ table: '', fields: Object.fromEntries(directoryFieldNames.map(f => [f, ''])) as DirectoryConfiguration['collections']['institution']['fields'], scope: { field: '', value: '' } });
     return { version: 1, template: 'education-directory', site: { name: '', destination: '', origin: '', locale: 'en' }, datasourceId: '',

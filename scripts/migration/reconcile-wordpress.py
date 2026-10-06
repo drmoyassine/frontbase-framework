@@ -119,7 +119,7 @@ def reconcile(source, existing):
         if record["post_type"] == "attachment":
             continue
         kind = meta[record["id"]].get("_case27_listing_type", record["post_type"])
-        table = "institutions" if kind == "institution" else "programs" if kind == "program" else None
+        table = "institutions" if kind == "institution" else "programs" if kind in ("program", "pathway") else None
         path = source_path(record, uris, homepage)
         url = source["site_url"] + path if path else None
         candidates = by_url.get((table, url), []) if table and url else []

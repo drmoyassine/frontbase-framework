@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import { Users } from 'lucide-react';
 import { PrivacySettingsForm } from './settings/shared/PrivacySettingsForm';
 import { ProjectDetailsForm } from './settings/shared/ProjectDetailsForm';
+import { SiteConfigurationForm } from './settings/shared/SiteConfigurationForm';
 import { AdminInviteForm } from './settings/shared/AdminInviteForm';
 import { EdgeAPIKeysForm } from './settings/shared/EdgeAPIKeysForm';
 import { EdgeProvidersSection } from './settings/shared/EdgeProvidersSection';
@@ -67,6 +68,7 @@ export const SettingsPanel: React.FC = () => {
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6 mt-6">
           <ProjectDetailsForm withCard />
+          <SiteConfigurationForm />
 
           <Separator />
 

@@ -113,16 +113,35 @@ def project(source, ledger, catalog):
                      'institution_paths': [institution_paths[record['institution_id']]] if record['institution_id'] in institution_paths else [],
                      'degree': plain(record['level'] or ''), 'city_id': record['city_id']})
     # Explicit source edges win for original pages; never infer ownership from a slug or city.
+    # Only independently reviewed public images enter this local preview. Other
+    # canonical references remain recorded in the catalog, not silently trusted.
+    for row in rows:
+        canonical = (institution_map if row['kind'] == 'institution' else program_map if row['kind'] in ('program', 'pathway') else {}).get(row.get('target_id'))
+        if canonical:
+            row['title'] = plain(canonical.get('title') or row['title'])
+            row['city'] = plain(city_map.get(canonical.get('city_id'), canonical.get('city') or row['city']))
+            if canonical.get('profile_scope') == 'host_institution_history':
+                row['profile_scope'] = 'host_institution_history'
+                row['summary'] = ''
+                if 'Founded' in row.get('facts', {}):
+                    row['facts']['Host institution founded'] = row['facts'].pop('Founded')
+            if row['kind'] == 'pathway' and canonical.get('institution_id') in institution_paths:
+                # A pathway's WP provider edge is not its canonical campus owner.
+                row['institution_paths'] = [institution_paths[canonical['institution_id']]]
+            cover = canonical.get('cover') or ''
+            if cover.startswith('https://s3.studygram.me/public-images/wordpress/study-in-usa/'):
+                row['cover'] = cover
+                row['coverAlt'] = row['title']
     indexed = {row['path']: row for row in rows}
     relationship_issues = []
     for row in rows:
         if row['kind'] == 'institution' and row['target_id'] in institution_map:
             row['city_id'] = institution_map[row['target_id']]['city_id']
-        if row['kind'] == 'program' and row['target_id'] in program_map:
+        if row['kind'] in ('program', 'pathway') and row['target_id'] in program_map:
             row['city_id'] = program_map[row['target_id']]['city_id']
         if row.get('city_id') and row['city'] == plain(city_map.get(row['city_id'], '')):
             row['city_path'] = f'/cities/{row["city_id"]}/'
-        if row['kind'] != 'program':
+        if row['kind'] not in ('program', 'pathway'):
             continue
         paths = row['institution_paths']
         if len(paths) != 1 or paths[0] not in indexed or indexed[paths[0]]['kind'] != 'institution':
@@ -133,7 +152,7 @@ def project(source, ledger, catalog):
             row['institution_title'] = indexed[paths[0]]['title']
     for row in rows:
         if row['kind'] == 'institution':
-            programs = [p for p in rows if p['kind'] == 'program' and p['institution_path'] == row['path']]
+            programs = [p for p in rows if p['kind'] in ('program', 'pathway') and p['institution_path'] == row['path']]
             row['program_count'] = len(programs)
             row['original_program_count'] = sum(p['origin'] == 'wordpress' for p in programs)
     return {'format_version': 2, 'source_url': source['site_url'], 'captured_at': source['captured_at'],

@@ -7,7 +7,8 @@ import { useBindingColumns } from '@/hooks/data/useBindingColumns';
 interface Props {
     value?: DirectoryConfiguration;
     onChange: (value: DirectoryConfiguration) => void;
-    onApplyLayout: () => void;
+    onApplyLayout?: () => void;
+    persistenceScope?: 'page' | 'site';
 }
 const inputClass = 'w-full rounded-md border bg-background p-2 text-sm';
 const fieldLabels: Record<typeof directoryFieldNames[number], string> = {
@@ -34,14 +35,14 @@ function CollectionMapping({ role, config, onChange }: { role: DirectoryRole; co
     </div></details>;
 }
 
-export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout }: Props) {
-    if (!value) return <div className="space-y-3"><p className="text-sm text-muted-foreground">Configure one education directory template for this site. Settings are saved and versioned with the page.</p><button className={inputClass} onClick={() => onChange(emptyDirectoryConfiguration())}>Add directory configuration</button></div>;
+export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, persistenceScope = 'page' }: Props) {
+    if (!value) return <div className="space-y-3"><p className="text-sm text-muted-foreground">{persistenceScope === 'site' ? 'Configure the shared directory settings for this project.' : 'Configure one education directory template for this site. Settings are saved and versioned with the page.'}</p><button className={inputClass} onClick={() => onChange(emptyDirectoryConfiguration())}>Add directory configuration</button></div>;
     if (value.version !== 1 || !value.site || !value.contacts || !value.routes || !value.browsing || !directoryRoles.every(role => value.collections?.[role]?.fields && value.collections[role].scope)) return <p role="alert">Unsupported directory configuration. Restore a supported page version before editing.</p>;
     const issues = directoryConfigurationIssues(value);
     const missing = directoryConfigurationReadiness(value);
     const edit = (label: string, current: string, change: (next: string) => void, type = 'text') => <label className="block space-y-1 text-sm">{label}<input aria-label={label} type={type} className={inputClass} value={current} onChange={e => change(e.target.value)} /></label>;
     return <div className="space-y-5">
-        <p className="text-sm text-muted-foreground">Save with the page’s Save Changes button. Incomplete mappings can be saved as drafts. Live directory publication is pending runtime integration.</p>
+        <p className="text-sm text-muted-foreground">{persistenceScope === 'site' ? 'Save using Save shared settings below. Page linking and live publication remain pending.' : 'Save with the page’s Save Changes button. Incomplete mappings can be saved as drafts. Live directory publication is pending runtime integration.'}</p>
         <fieldset className="space-y-3"><legend className="font-semibold">Site identity</legend>
             {edit('Site name', value.site.name, name => onChange({ ...value, site: { ...value.site, name } }))}
             {edit('Destination', value.site.destination, destination => onChange({ ...value, site: { ...value.site, destination } }))}
@@ -66,7 +67,7 @@ export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout }: 
         </fieldset>
         {issues.length > 0 && <p role="alert" className="text-sm text-destructive">Fix invalid settings: {issues.join(', ')}</p>}
         <p className="text-xs text-muted-foreground">{missing.length ? `${missing.length} configuration items remain before publication review.` : 'Mappings complete. Live runtime and publication acceptance remain pending.'}</p>
-        <button className={inputClass} disabled={issues.length > 0} onClick={onApplyLayout}>Apply configured layout to this page</button>
-        <p className="text-xs text-muted-foreground">Applying replaces only an existing education directory section, or adds one. Other page sections are preserved. Data mappings are saved; live collection binding is not activated by this action.</p>
+        {onApplyLayout && <><button className={inputClass} disabled={issues.length > 0} onClick={onApplyLayout}>Apply configured layout to this page</button>
+        <p className="text-xs text-muted-foreground">Applying replaces only an existing education directory section, or adds one. Other page sections are preserved. Data mappings are saved; live collection binding is not activated by this action.</p></>}
     </div>;
 }

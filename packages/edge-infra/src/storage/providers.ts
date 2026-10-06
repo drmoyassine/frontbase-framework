@@ -94,6 +94,14 @@ export interface S3StorageOpts {
     region?: string;
 }
 
+/** Additional options for the fetch-only SigV4 adapter. */
+export interface SigV4StorageOpts extends S3StorageOpts {
+    /** Hosts can enforce outbound-network policy. */
+    fetch?: typeof globalThis.fetch;
+    /** Bucket-scoped public serving bases. Does not grant anonymous access. */
+    publicUrls?: Record<string, string>;
+}
+
 /** Build an S3-compatible StorageProvider. Dynamic-imports @aws-sdk/client-s3. */
 export function s3StorageProvider(opts: S3StorageOpts): StorageProvider {
     // Lazy client — the SDK + credentials load on first use, not at import.
@@ -207,6 +215,7 @@ interface SigV4Context {
     secretAccessKey: string;
     endpoint: string;
     region: string;
+    fetch: typeof globalThis.fetch;
 }
 
 /** The SigV4 signing key chain — HMAC(secret, date) → region → service → terminator. */
@@ -305,13 +314,23 @@ const assertOk = async (resp: Response, op: string): Promise<void> => {
 /** Build an S3-compatible StorageProvider with zero dependencies (fetch + Web Crypto).
  *  Same contract as `s3StorageProvider`; use where the AWS SDK is unavailable or
  *  undesired (edge bundles, minimal runtimes). */
-export function sigv4StorageProvider(opts: S3StorageOpts): StorageProvider {
+export function sigv4StorageProvider(opts: SigV4StorageOpts): StorageProvider {
     const ctx: SigV4Context = {
         accessKeyId: opts.accessKeyId,
         secretAccessKey: opts.secretAccessKey,
         endpoint: (opts.endpoint ?? 'https://s3.amazonaws.com').replace(/\/+$/, ''),
         region: opts.region ?? 'auto',
+        fetch: opts.fetch ?? globalThis.fetch,
     };
+
+    const publicUrls = new Map<string, string>();
+    for (const [bucket, base] of Object.entries(opts.publicUrls ?? {})) {
+        const url = new URL(base);
+        if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
+            throw new Error('invalid_s3_public_url');
+        }
+        publicUrls.set(bucket, url.href.replace(/\/+$/, ''));
+    }
 
     return {
         async put({ bucket, key, bytes, contentType }: PutOpts): Promise<{ key: string }> {
@@ -322,21 +341,21 @@ export function sigv4StorageProvider(opts: S3StorageOpts): StorageProvider {
                 payloadHash,
                 ...(contentType ? { headers: { 'content-type': contentType } } : {}),
             });
-            const resp = await fetch(url, { method: 'PUT', headers, body: bytes as BufferSource });
+            const resp = await ctx.fetch(url, { method: 'PUT', headers, body: bytes as BufferSource });
             await assertOk(resp, 'put');
             return { key };
         },
 
         async get(bucket: string, key: string) {
             const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: objectPath(bucket, key), payloadHash: EMPTY_SHA256 });
-            const resp = await fetch(url, { method: 'GET', headers });
+            const resp = await ctx.fetch(url, { method: 'GET', headers });
             await assertOk(resp, 'get');
             return { bytes: new Uint8Array(await resp.arrayBuffer()), contentType: resp.headers.get('content-type') ?? undefined };
         },
 
         async delete(bucket: string, key: string) {
             const { url, headers } = await sign(ctx, { method: 'DELETE', canonicalPath: objectPath(bucket, key), payloadHash: EMPTY_SHA256 });
-            await assertOk(await fetch(url, { method: 'DELETE', headers }), 'delete');
+            await assertOk(await ctx.fetch(url, { method: 'DELETE', headers }), 'delete');
         },
 
         async signedUrl(bucket: string, key: string, expiresInSeconds = 900): Promise<string> {
@@ -360,11 +379,17 @@ export function sigv4StorageProvider(opts: S3StorageOpts): StorageProvider {
                 payloadHash: EMPTY_SHA256,
                 headers: { 'x-amz-copy-source': `/${bucket}/${sourceKey.replace(/^\/+/, '')}` },
             });
-            await assertOk(await fetch(url, { method: 'PUT', headers }), 'copy');
+            await assertOk(await ctx.fetch(url, { method: 'PUT', headers }), 'copy');
             await this.delete(bucket, sourceKey);
         },
 
         publicUrl(bucket: string, key: string): string {
+            const publicBase = publicUrls.get(bucket);
+            if (publicBase) {
+                const path = key.replace(/^\/+/, '');
+                if (path.split('/').some(part => part === '.' || part === '..')) throw new Error('invalid_s3_public_key');
+                return `${publicBase}/${uriEncode(path, true)}`;
+            }
             // cloudflare_adapter.py get_public_url: the plain endpoint URL — not
             // presigned (serving through it requires the bucket to be exposed).
             return `${ctx.endpoint}/${uriEncode(bucket)}/${uriEncode(key.replace(/^\/+/, ''), true)}`;
@@ -374,7 +399,7 @@ export function sigv4StorageProvider(opts: S3StorageOpts): StorageProvider {
 
         async listBuckets(): Promise<BucketEntry[]> {
             const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: '/', payloadHash: EMPTY_SHA256 });
-            const resp = await fetch(url, { method: 'GET', headers });
+            const resp = await ctx.fetch(url, { method: 'GET', headers });
             await assertOk(resp, 'list_buckets');
             const xml = await resp.text();
             return xmlBlocks(xml, 'Bucket')
@@ -386,25 +411,25 @@ export function sigv4StorageProvider(opts: S3StorageOpts): StorageProvider {
         async createBucket(opts: CreateBucketOpts): Promise<Record<string, unknown>> {
             const name = opts.name;
             const { url, headers } = await sign(ctx, { method: 'PUT', canonicalPath: `/${uriEncode(name)}`, payloadHash: EMPTY_SHA256 });
-            await assertOk(await fetch(url, { method: 'PUT', headers }), 'create_bucket');
+            await assertOk(await ctx.fetch(url, { method: 'PUT', headers }), 'create_bucket');
             return { id: name, name, public: opts.isPublic ?? false };
         },
 
         async getBucket(id: string): Promise<BucketEntry> {
             const { url, headers } = await sign(ctx, { method: 'HEAD', canonicalPath: `/${uriEncode(id)}`, payloadHash: EMPTY_SHA256 });
-            await assertOk(await fetch(url, { method: 'HEAD', headers }), 'get_bucket');
+            await assertOk(await ctx.fetch(url, { method: 'HEAD', headers }), 'get_bucket');
             return { id, name: id, public: false };
         },
 
         async deleteBucket(id: string): Promise<void> {
             const { url, headers } = await sign(ctx, { method: 'DELETE', canonicalPath: `/${uriEncode(id)}`, payloadHash: EMPTY_SHA256 });
-            await assertOk(await fetch(url, { method: 'DELETE', headers }), 'delete_bucket');
+            await assertOk(await ctx.fetch(url, { method: 'DELETE', headers }), 'delete_bucket');
         },
 
         async emptyBucket(id: string): Promise<void> {
             for await (const key of listObjectKeys(ctx, id)) {
                 const { url, headers } = await sign(ctx, { method: 'DELETE', canonicalPath: objectPath(id, key), payloadHash: EMPTY_SHA256 });
-                await assertOk(await fetch(url, { method: 'DELETE', headers }), 'empty_bucket');
+                await assertOk(await ctx.fetch(url, { method: 'DELETE', headers }), 'empty_bucket');
             }
         },
 
@@ -413,7 +438,7 @@ export function sigv4StorageProvider(opts: S3StorageOpts): StorageProvider {
             const query: Array<[string, string]> = [['list-type', '2'], ['prefix', prefix], ['delimiter', '/']];
             if (opts?.limit) query.push(['max-keys', String(opts.limit)]);
             const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: `/${uriEncode(bucket)}`, query, payloadHash: EMPTY_SHA256 });
-            const resp = await fetch(url, { method: 'GET', headers });
+            const resp = await ctx.fetch(url, { method: 'GET', headers });
             await assertOk(resp, 'list_files');
             const xml = await resp.text();
             const entries: FileEntry[] = [];
@@ -452,7 +477,7 @@ async function* listObjectKeys(ctx: SigV4Context, bucket: string): AsyncGenerato
     do {
         const query: Array<[string, string]> = [['list-type', '2'], ...(token ? [['continuation-token', token] as [string, string]] : [])];
         const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: `/${uriEncode(bucket)}`, query, payloadHash: EMPTY_SHA256 });
-        const resp = await fetch(url, { method: 'GET', headers });
+        const resp = await ctx.fetch(url, { method: 'GET', headers });
         await assertOk(resp, 'list_keys');
         const xml = await resp.text();
         for (const block of xmlBlocks(xml, 'Contents')) {
