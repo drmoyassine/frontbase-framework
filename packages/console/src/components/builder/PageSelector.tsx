@@ -21,16 +21,16 @@ export const PageSelector: React.FC = () => {
 
   return (
     <Select value={currentPageId || ''} onValueChange={setCurrentPage}>
-      <SelectTrigger className="w-48">
+      <SelectTrigger className="w-full min-w-0 sm:w-48" title={currentPage?.name} aria-label="Select page">
         <SelectValue placeholder="Select a page">
           {currentPage && (
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               {currentPage.isHomepage ? (
-                <Home className="h-4 w-4" />
+                <Home className="h-4 w-4 shrink-0" />
               ) : (
-                <FileText className="h-4 w-4" />
+                <FileText className="h-4 w-4 shrink-0" />
               )}
-              {currentPage.name}
+              <span className="truncate">{currentPage.name}</span>
             </div>
           )}
         </SelectValue>

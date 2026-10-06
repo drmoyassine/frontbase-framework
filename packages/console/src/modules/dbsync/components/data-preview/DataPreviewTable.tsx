@@ -204,7 +204,7 @@ export const DataPreviewTable = ({
                     </div>
                     <button
                         onClick={() => setShowDataSearchResults(false)}
-                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-[10px] font-bold rounded-lg shadow-lg shadow-primary-500/20 transition-all flex items-center gap-2"
+                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-primary-foreground text-[10px] font-bold rounded-lg shadow-lg shadow-primary-500/20 transition-all flex items-center gap-2"
                     >
                         <RefreshCw size={14} /> Run <u>{selectedTable}</u> Search
                     </button>
@@ -224,7 +224,7 @@ export const DataPreviewTable = ({
                     <button
                         onClick={searchOtherCollections}
                         disabled={globalSearchStatus !== 'idle'}
-                        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold rounded-lg shadow-lg shadow-orange-500/20 transition-all flex items-center gap-2 group"
+                        className="px-4 py-2 bg-orange-700 hover:bg-orange-800 text-white text-[10px] font-bold rounded-lg shadow-lg shadow-orange-500/20 transition-all flex items-center gap-2 group"
                     >
                         {globalSearchStatus === 'searching_datasource' ? <Loader2 size={14} className="animate-spin" /> : <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />}
                         Search Datasource
@@ -396,7 +396,7 @@ export const DataPreviewTable = ({
                                             setEditingRecord(record);
                                             setActiveTab('record');
                                         }}
-                                        className="p-2 bg-white dark:bg-gray-700 border border-primary-200 dark:border-primary-800 shadow-lg rounded-full text-primary-600 dark:text-primary-400 hover:scale-110 hover:bg-primary-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                                        className="p-2 bg-white dark:bg-gray-700 border border-primary-200 dark:border-primary-800 shadow-lg rounded-full text-primary-600 dark:text-primary-400 hover:scale-110 hover:bg-primary-600 hover:text-primary-foreground dark:hover:text-primary-foreground transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center"
                                         title="Edit Record"
                                     >
                                         <Pencil size={14} />

@@ -36,7 +36,7 @@ const DataPreviewModal = (props: DataPreviewModalProps) => {
 
     // Destructure data
     const {
-        tables, schemaData, tableData, isLoading, error, isFetchingData, availableFields, tableColumns,
+        tables, isLoadingTables, isFetchingTables, tablesError, schemaData, tableData, isLoading, error, isFetchingData, availableFields, tableColumns,
         groupedMatches, filteredTables, filteredRecords, isDataSearching, searchResults,
         hasNextPage, isFetchingNextPage, refreshSchemaMutation
     } = data;
@@ -97,6 +97,10 @@ const DataPreviewModal = (props: DataPreviewModalProps) => {
                                 <RelationshipsView datasourceId={props.datasourceId} />
                             ) : (
                                 <TableSelectionView
+                                    isLoadingTables={isLoadingTables}
+                                    isFetchingTables={isFetchingTables}
+                                    tablesError={tablesError}
+                                    retryTables={() => { void actions.refetchTables(); }}
                                     tableSearch={tableSearch}
                                     setTableSearch={actions.setTableSearch}
                                     dataSearchQuery={dataSearchQuery}

@@ -49,7 +49,16 @@ export const resolveSupabase: DatasourceResolver = (config) => {
     return resolved;
 };
 
-interface ApiKeyRow { name?: string; api_key?: string }
+interface ApiKeyRow { name?: string; api_key?: string; type?: string; id?: string }
+
+// Prefer the new equivalent key without promoting anonymous access to service
+// access. Reuse existing encrypted/redacted credential fields for both formats.
+function selectApiKey(keys: ApiKeyRow[], type: 'secret' | 'publishable', legacyName: string): string | undefined {
+    const candidates = keys.filter(k => typeof k?.api_key === 'string' && k.api_key.length > 0 && !k.api_key.includes('*'));
+    const current = candidates.filter(k => k.type === type && k.api_key!.startsWith(`sb_${type}_`))
+        .sort((a, b) => Number(b.name === 'default') - Number(a.name === 'default') || String(a.id ?? a.name ?? '').localeCompare(String(b.id ?? b.name ?? '')))[0];
+    return current?.api_key ?? candidates.find(k => (!k.type || k.type === 'legacy') && k.name === legacyName)?.api_key;
+}
 
 /**
  * Connect-time enrichment. Fetches anon/service_role keys + jwt_secret and
@@ -60,10 +69,11 @@ export const enrichSupabase: ProviderEnricher = async (config, externalFetch) =>
     const accessToken = String(config.access_token ?? '');
     const projectRef = String(config.project_ref ?? config.ref ?? '');
     if (!accessToken || !projectRef) return config; // nothing to enrich without both
-    // Idempotent: already-enriched accounts (connect-time OR a prior lazy enrich)
-    // have the service_role_key — skip the fetch. Keeps lazy enrichment on the read
-    // path from refetching on every query.
-    if (config.service_role_key) return config;
+    // A stored legacy key must not prevent discovery of its current equivalent:
+    // legacy keys can be disabled after the account was connected. Manual keys
+    // have no Management token and already returned above. Current keys remain
+    // idempotent. No cross-account/global credential cache is introduced.
+    if (String(config.service_role_key ?? '').startsWith('sb_secret_')) return config;
 
     const merged: Record<string, unknown> = {
         ...config,
@@ -73,17 +83,16 @@ export const enrichSupabase: ProviderEnricher = async (config, externalFetch) =>
 
     // GET /v1/projects/{ref}/api-keys → [{name, api_key}, ...]
     try {
-        const resp = await guardedExternalFetch(externalFetch, `${SUPABASE_API}/projects/${encodeURIComponent(projectRef)}/api-keys`, {
+        const resp = await guardedExternalFetch(externalFetch, `${SUPABASE_API}/projects/${encodeURIComponent(projectRef)}/api-keys?reveal=true`, {
             headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (resp.ok) {
             const keys = await resp.json() as ApiKeyRow[];
             if (Array.isArray(keys)) {
-                for (const k of keys) {
-                    const name = String(k?.name ?? '').toLowerCase();
-                    if (name.includes('anon')) merged.anon_key = String(k.api_key ?? '');
-                    else if (name.includes('service')) merged.service_role_key = String(k.api_key ?? '');
-                }
+                const publicKey = selectApiKey(keys, 'publishable', 'anon');
+                const serverKey = selectApiKey(keys, 'secret', 'service_role');
+                if (publicKey) merged.anon_key = publicKey;
+                if (serverKey) merged.service_role_key = serverKey;
             }
         }
     } catch {
@@ -91,7 +100,7 @@ export const enrichSupabase: ProviderEnricher = async (config, externalFetch) =>
     }
 
     // GET /v1/projects/{ref}/postgrest → { jwt_secret }
-    try {
+    if (!config.jwt_secret) try {
         const resp = await guardedExternalFetch(externalFetch, `${SUPABASE_API}/projects/${encodeURIComponent(projectRef)}/postgrest`, {
             headers: { Authorization: `Bearer ${accessToken}` },
         });

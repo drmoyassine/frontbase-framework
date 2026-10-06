@@ -702,7 +702,7 @@ export function TenantsDirectory() {
                                 <button
                                     type="submit"
                                     disabled={createTenantMutation.isPending}
-                                    className="px-5 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5"
+                                    className="px-5 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5"
                                 >
                                     {createTenantMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                                     Provision Workspace
@@ -786,7 +786,7 @@ export function TenantsDirectory() {
                                 <button
                                     type="submit"
                                     disabled={createTenantUserMutation.isPending}
-                                    className="px-5 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5"
+                                    className="px-5 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5"
                                 >
                                     {createTenantUserMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                                     Create User Account
@@ -869,7 +869,7 @@ export function TenantsDirectory() {
                                 <button
                                     type="submit"
                                     disabled={updateTenantMutation.isPending}
-                                    className="px-5 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5"
+                                    className="px-5 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5"
                                 >
                                     {updateTenantMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                                     Save Configurations
@@ -1014,7 +1014,7 @@ function TenantCreditDrawer({ tenantId, tenantName }: { tenantId: string; tenant
                     <button
                         onClick={() => grantMutation.mutate()}
                         disabled={grantMutation.isPending || (!grantDaily && !grantMonthly)}
-                        className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-sm font-medium disabled:opacity-50 flex items-center gap-1.5"
+                        className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium disabled:opacity-50 flex items-center gap-1.5"
                     >
                         {grantMutation.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
                         Grant

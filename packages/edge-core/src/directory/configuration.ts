@@ -1,4 +1,6 @@
 import { z } from 'zod';
+export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, projectDirectoryRecords, type DirectoryQueryBinding } from './bindings.js';
+export { editorialBodySchema, parseEditorialBody, projectEditorialBody } from './editorial.js';
 
 /** Data-only authoring contract. No credentials, SQL, executable templates or host adapters. */
 const identifier = z.string().max(63).regex(/^(?:[A-Za-z_][A-Za-z0-9_]*)?$/);
@@ -22,7 +24,9 @@ const origin = z.string().max(240).refine(value => {
 export const directoryRoles = ['institution', 'program', 'city', 'article', 'pathway'] as const;
 export type DirectoryRole = typeof directoryRoles[number];
 export const directoryFieldNames = ['id', 'title', 'originalPath', 'summary', 'body', 'cover', 'logo', 'gallery', 'cityId', 'institutionId'] as const;
-const fields = z.object(Object.fromEntries(directoryFieldNames.map(k => [k, identifier])) as Record<typeof directoryFieldNames[number], typeof identifier>).strict();
+export const directoryEditorialFields = ['contentRole', 'sourceOrigin', 'byline', 'publishedAt', 'coverAlt'] as const;
+const fields = z.object(Object.fromEntries(directoryFieldNames.map(k => [k, identifier])) as Record<typeof directoryFieldNames[number], typeof identifier>)
+    .extend({ coverAlt: identifier.default(''), contentRole: identifier.default(''), sourceOrigin: identifier.default(''), byline: identifier.default(''), publishedAt: identifier.default('') }).strict();
 const collection = z.object({
     table: identifier,
     fields,
@@ -56,8 +60,50 @@ export const siteConfigurationSaveSchema = z.object({
 }).strict();
 export type SiteConfigurationDraft = z.infer<typeof siteConfigurationDraftSchema>;
 
+export const sitePageRoles = ['directory', 'institution', 'program', 'city', 'article-index', 'article', 'editorial'] as const;
+export const sitePageReferenceSchema = z.object({ version: z.literal(1), role: z.enum(sitePageRoles) }).strict();
+export type SitePageReference = z.infer<typeof sitePageReferenceSchema>;
+export function hasSitePageReference(layout: unknown): boolean {
+    try { const value = typeof layout === 'string' ? JSON.parse(layout) : layout;
+        return value?.root?.siteConfiguration !== undefined;
+    } catch { return false; }
+}
+
+/** Compare validated copies without relying on object-key insertion order. */
+export function directoryCopiesMatch(a: unknown, b: unknown): boolean {
+    const canonical = (value: unknown): string => JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
+        ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
+    const left = directoryConfigurationSchema.safeParse(a), right = directoryConfigurationSchema.safeParse(b);
+    return left.success && right.success && canonical(left.data) === canonical(right.data);
+}
+
+const siteBindingsSchema = z.object({
+    text: z.enum(['site.name', 'site.destination']).optional(),
+    href: z.enum(['contacts.email', 'contacts.whatsapp', 'routes.directory']).optional(),
+}).strict();
+
+/** Display-only projection; caller keeps the original authoring layout for saving. */
+export function projectSharedDirectoryPreview<T>(layout: T, configuration: DirectoryConfiguration): T {
+    const config = directoryConfigurationSchema.parse(configuration);
+    const values = { 'site.name': config.site.name, 'site.destination': config.site.destination,
+        'contacts.email': config.contacts.email ? `mailto:${config.contacts.email}` : '',
+        'contacts.whatsapp': config.contacts.whatsapp, 'routes.directory': config.routes.directory };
+    const walk = (node: any): any => {
+        if (!node || typeof node !== 'object') return node;
+        const props = { ...node.props };
+        if (props.siteBindings !== undefined) {
+            const binding = siteBindingsSchema.parse(props.siteBindings);
+            if (binding.text) props.text = values[binding.text].replace(/\{(?=[{%])/g, '{\u200b');
+            if (binding.href) props.href = values[binding.href];
+        }
+        return { ...node, props, ...(Array.isArray(node.children) ? { children: node.children.map(walk) } : {}) };
+    };
+    const value = layout as { content?: unknown[] };
+    return { ...value, content: Array.isArray(value.content) ? value.content.map(walk) : [] } as T;
+}
+
 export function emptyDirectoryConfiguration(): DirectoryConfiguration {
-    const empty = () => ({ table: '', fields: Object.fromEntries(directoryFieldNames.map(f => [f, ''])) as DirectoryConfiguration['collections']['institution']['fields'], scope: { field: '', value: '' } });
+    const empty = () => ({ table: '', fields: Object.fromEntries([...directoryFieldNames, ...directoryEditorialFields].map(f => [f, ''])) as DirectoryConfiguration['collections']['institution']['fields'], scope: { field: '', value: '' } });
     return { version: 1, template: 'education-directory', site: { name: '', destination: '', origin: '', locale: 'en' }, datasourceId: '',
         collections: { institution: empty(), program: empty(), city: empty(), article: empty(), pathway: empty() },
         browsing: { defaultCollection: 'institution', pageSize: 12, search: true, cityFilter: true, degreeFilter: true, intakeFilter: true, sort: 'name' },
@@ -91,5 +137,7 @@ export function directoryConfigurationReadiness(value: unknown): string[] {
         const r = c.collections[role];
         if (!r.fields.id || !r.fields.title || !r.fields.originalPath || !r.scope.field || r.scope.value === '') missing.push(`collections.${role}`);
     }
+    if (c.collections.article.table && (!c.collections.article.fields.contentRole || !c.collections.article.fields.sourceOrigin || !c.collections.article.fields.body)) missing.push('collections.article.editorial');
     return missing;
 }
+export { editorialCoverUrlSchema, editorialEditSchema, editorialReadRequestSchema, editorialSaveRequestSchema, editorialDocumentSchema, type EditorialDocument, type EditorialEdit } from './editorial.js';

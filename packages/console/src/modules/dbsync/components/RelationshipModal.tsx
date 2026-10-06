@@ -370,7 +370,7 @@ export function RelationshipModal({ datasourceId, datasourceName, onClose }: Rel
                             <button
                                 onClick={handleSave}
                                 disabled={!canCreate || isSaving}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold bg-primary-600 text-primary-foreground rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isSaving ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />

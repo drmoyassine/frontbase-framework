@@ -59,7 +59,7 @@ export const SearchBanners: React.FC<SearchBannersProps> = ({
                         {/* handleNextMatch is a function expecting `scrollToColumn`, so we use the wrapper */}
                         <button
                             onClick={runRemoteSearch}
-                            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-[10px] font-bold rounded-lg shadow-lg shadow-primary-500/20 transition-all flex items-center gap-2"
+                            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-primary-foreground text-[10px] font-bold rounded-lg shadow-lg shadow-primary-500/20 transition-all flex items-center gap-2"
                         >
                             <RefreshCw size={14} /> Run <u>{selectedTable}</u> Search
                         </button>
@@ -79,7 +79,7 @@ export const SearchBanners: React.FC<SearchBannersProps> = ({
                         <button
                             onClick={searchOtherCollections}
                             disabled={globalSearchStatus !== 'idle'}
-                            className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold rounded-lg shadow-lg shadow-orange-500/20 transition-all flex items-center gap-2 group"
+                            className="px-4 py-2 bg-orange-700 hover:bg-orange-800 text-white text-[10px] font-bold rounded-lg shadow-lg shadow-orange-500/20 transition-all flex items-center gap-2 group"
                         >
                             {globalSearchStatus === 'searching_datasource' ? <Loader2 size={14} className="animate-spin" /> : <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />}
                             Search Datasource

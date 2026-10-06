@@ -117,7 +117,7 @@ export const DataPreviewToolbar = ({
                 {filters.length > 0 && (
                     <button
                         onClick={() => setAppliedFilters([...filters])}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-primary-foreground rounded-lg text-xs font-bold transition-all shadow-sm"
                     >
                         <Filter size={12} />
                         Apply Filters

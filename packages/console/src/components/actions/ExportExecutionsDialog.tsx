@@ -83,7 +83,7 @@ export function ExportExecutionsDialog({ engines, onClose }: ExportExecutionsDia
                                     key={engine.id}
                                     onClick={() => toggleItem(selectedEngines, setSelectedEngines, String(engine.id))}
                                     className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${selectedEngines.includes(String(engine.id))
-                                            ? 'bg-blue-500 text-white border-blue-500'
+                                            ? 'bg-blue-600 text-white border-blue-600'
                                             : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-400'
                                         }`}
                                 >
@@ -109,7 +109,7 @@ export function ExportExecutionsDialog({ engines, onClose }: ExportExecutionsDia
                                     key={draft.id}
                                     onClick={() => toggleItem(selectedWorkflows, setSelectedWorkflows, draft.id)}
                                     className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${selectedWorkflows.includes(draft.id)
-                                            ? 'bg-indigo-500 text-white border-indigo-500'
+                                            ? 'bg-indigo-600 text-white border-indigo-600'
                                             : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-indigo-400'
                                         }`}
                                 >
@@ -133,7 +133,7 @@ export function ExportExecutionsDialog({ engines, onClose }: ExportExecutionsDia
                                     key={s.value}
                                     onClick={() => toggleItem(selectedStatuses, setSelectedStatuses, s.value)}
                                     className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${selectedStatuses.includes(s.value)
-                                            ? 'bg-emerald-500 text-white border-emerald-500'
+                                            ? 'bg-emerald-700 text-white border-emerald-700'
                                             : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-emerald-400'
                                         }`}
                                 >

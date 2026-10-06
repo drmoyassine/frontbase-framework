@@ -97,7 +97,7 @@ export function Datasources() {
                     <p className="text-gray-500 mb-4">Add your first database connection to get started.</p>
                     <button
                         onClick={() => setShowModal(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-primary-foreground rounded-lg hover:bg-primary-700 transition-colors"
                     >
                         <Plus className="w-4 h-4" />
                         Add Data Source

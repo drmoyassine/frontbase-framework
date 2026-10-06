@@ -49,7 +49,7 @@ export const MasterAdminImpersonator: React.FC = () => {
                     onClick={() => setIsOpen(true)}
                     className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 border-2 
                         ${isImpersonating 
-                            ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 animate-pulse' 
+                            ? 'bg-amber-700 hover:bg-amber-800 text-white border-amber-800 animate-pulse'
                             : 'bg-slate-800 hover:bg-slate-900 text-white border-slate-700'
                         }`}
                     title={isImpersonating ? "UI Spoofing Active" : "Master Admin Controls"}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { directoryConfigurationIssues, directoryConfigurationReadiness, directoryFieldNames, directoryRoles, emptyDirectoryConfiguration, type DirectoryConfiguration, type DirectoryRole } from '@frontbase/edge-core/directory/configuration';
+import { directoryConfigurationIssues, directoryConfigurationReadiness, directoryFieldNames, directoryEditorialFields, directoryRoles, emptyDirectoryConfiguration, type DirectoryConfiguration, type DirectoryRole } from '@frontbase/edge-core/directory/configuration';
 import { DataSourceSelector } from '@/components/data-binding/DataSourceSelector';
 import { TableSelector } from '@/components/data-binding/TableSelector';
 import { useBindingColumns } from '@/hooks/data/useBindingColumns';
@@ -26,6 +26,7 @@ function CollectionMapping({ role, config, onChange }: { role: DirectoryRole; co
         <TableSelector label={`${role} table`} value={mapping.table} dataSourceId={config.datasourceId} disabled={!config.datasourceId} onValueChange={table => update({ table, fields: emptyDirectoryConfiguration().collections[role].fields, scope: { field: '', value: '' } })} />
         {!columns.length && mapping.table && <p className="text-xs text-muted-foreground">Connect the datasource and load its schema to select fields. Existing mappings are retained.</p>}
         {directoryFieldNames.filter(name => name !== 'institutionId' || role === 'program' || role === 'pathway').filter(name => name !== 'cityId' || role === 'institution' || role === 'program').map(name => <React.Fragment key={name}>{picker(fieldLabels[name], mapping.fields[name], field => update({ fields: { ...mapping.fields, [name]: field } }))}</React.Fragment>)}
+        {role === 'article' && <><p className="text-xs text-muted-foreground">Article content uses semantic blocks. Source site and content type constrain this deployment's article preview.</p>{directoryEditorialFields.map(name => <React.Fragment key={name}>{picker({contentRole:'Content type',sourceOrigin:'Source site',byline:'Byline',publishedAt:'Original publication date'}[name], mapping.fields[name], field => update({ fields: { ...mapping.fields, [name]: field } }))}</React.Fragment>)}</>}
         {picker('Scope field', mapping.scope.field, field => update({ scope: { ...mapping.scope, field } }))}
         <label className="block space-y-1 text-sm">Scope value<input aria-label={`${role} Scope value`} className={inputClass} value={mapping.scope.value} onChange={e => {
             const numeric = typeof mapping.scope.value === 'number' || /^(?:int|numeric|decimal|float|double|number)/i.test(columns.find(c => c.name === mapping.scope.field)?.type || '');

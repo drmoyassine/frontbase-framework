@@ -32,6 +32,8 @@
 import { useEffect, useState } from 'react';
 import type { Page } from '@/types/builder';
 import { buildReRenderRequest } from '@/lib/builder/iframeBridge';
+import { sitePageReferenceSchema, siteConfigurationDraftSchema, projectSharedDirectoryPreview } from '@frontbase/edge-core/directory/configuration';
+import { loadDirectoryCanvas } from '../directory/loadDirectoryCanvas';
 import {
     fetchBuilderRender,
     fetchReRender,
@@ -56,6 +58,8 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string): UseIframeCa
     const [status, setStatus] = useState<IframeStatus>('idle');
     const [error, setError] = useState<string | null>(null);
     const [renderNonce, setRenderNonce] = useState(0);
+    const [focusRevision, setFocusRevision] = useState(0);
+    useEffect(() => { const refresh = () => setFocusRevision(n => n + 1); window.addEventListener('focus', refresh); return () => window.removeEventListener('focus', refresh); }, []);
 
     // Re-render whenever the layout, page identity, or resolved origin changes.
     // `page.layoutData` is a new reference on every mutation (structural
@@ -70,6 +74,20 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string): UseIframeCa
             setError(null);
 
             const body = buildReRenderRequest(page);
+            if (page.layoutData?.root.siteConfiguration !== undefined) {
+                try {
+                    sitePageReferenceSchema.parse(page.layoutData.root.siteConfiguration);
+                    const response = await fetch('/api/project/site-configuration/', { credentials: 'include', signal: controller.signal });
+                    if (!response.ok) throw new Error();
+                    const saved = siteConfigurationDraftSchema.parse((await response.json()).draft);
+                    body.layout = projectSharedDirectoryPreview(body.layout, saved.configuration);
+                    body.layout = await loadDirectoryCanvas(body.layout, saved, controller.signal);
+                } catch {
+                    if (!cancelled && !controller.signal.aborted) { setHtml(''); setStatus('error'); setError('Shared settings or directory data unavailable. Reload shared settings and check preview parameters.'); }
+                    return;
+                }
+                if (cancelled) return;
+            }
             const baseOpts: BuilderApiOptions = {
                 systemEdgeUrl,
                 signal: controller.signal,
@@ -148,6 +166,7 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string): UseIframeCa
         // swap always surfaces as a new page.layoutData reference anyway.
     }, [
         page.layoutData,
+        focusRevision,
         page.title,
         page.name,
         page.slug,

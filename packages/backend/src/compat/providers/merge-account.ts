@@ -27,10 +27,10 @@ export type AccountConfigFor = (
  * Lazy enrichment: accounts created before the connect-time enrichers shipped
  * (or whose provider has since rotated keys) may lack the resolved secret
  * (e.g. Supabase service_role_key). When the merged config carries the
- * enrichment inputs (access_token + project_ref) but not the secret, the
- * kind's enricher fetches it on demand — best-effort, idempotent (enrichers
- * skip when the secret is already present). This makes pre-existing accounts
- * resolve without a re-connect.
+ * enrichment inputs (access_token + project_ref), the kind's enricher can
+ * fetch current equivalents on demand. Supabase refreshes stored legacy keys;
+ * current secret keys skip discovery. Failures preserve the saved config.
+ * This makes older accounts resolve without a re-connect.
  */
 export async function mergeAccountConfig(
     accountConfigFor: AccountConfigFor | undefined,
@@ -45,7 +45,7 @@ export async function mergeAccountConfig(
         const accountConfig = await accountConfigFor(tenant, accountId).catch(() => null);
         if (accountConfig) merged = { ...accountConfig, ...config };
     }
-    // Lazy enrich (idempotent — no-op when the secret is already present).
+    // Lazy provider-specific enrichment/legacy credential refresh.
     merged = await enrichProviderConfig(kind, merged, externalFetch).catch(() => merged);
     return merged;
 }

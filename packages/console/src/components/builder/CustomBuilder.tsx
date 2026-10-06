@@ -378,7 +378,7 @@ export const CustomBuilder: React.FC = () => {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="h-screen flex flex-col bg-background">
+      <div className="builder-shell h-screen flex flex-col bg-background">
         <BuilderHeader
           isMobile={isMobile}
           onToggleLeftSidebar={() => setLeftSidebarOpen(!leftSidebarOpen)}

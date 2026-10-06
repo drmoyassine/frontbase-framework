@@ -334,7 +334,7 @@ export const RecordEditor: React.FC<RecordEditorProps> = ({
                     </button>
                     <button
                         onClick={handleSave}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-xs font-bold rounded-lg transition-all shadow-sm"
                     >
                         <Check className="w-3.5 h-3.5" />
                         Apply Mappings
@@ -372,7 +372,7 @@ export const RecordEditor: React.FC<RecordEditorProps> = ({
                         <button
                             onClick={() => setFilterByMatch(!filterByMatch)}
                             className={`px-2 py-1 rounded-md border transition-all font-bold uppercase tracking-wider ${filterByMatch
-                                ? 'bg-primary-600 text-white border-primary-600'
+                                ? 'bg-primary-600 text-primary-foreground border-primary-600'
                                 : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 hover:border-primary-300'
                                 }`}
                         >

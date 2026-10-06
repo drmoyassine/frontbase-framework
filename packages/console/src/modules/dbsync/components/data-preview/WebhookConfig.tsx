@@ -99,7 +99,7 @@ export const WebhookConfig: React.FC<WebhookConfigProps> = ({
                             setWebhookForm({ name: '', url: '', events: ['insert', 'update', 'delete'], enabled: true, method: 'POST' });
                             setIsWebhookModalOpen(true);
                         }}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold hover:bg-primary-700 transition-all shadow-sm active:scale-95"
+                        className="flex items-center gap-1.5 px-4 py-2 bg-primary-600 text-primary-foreground rounded-xl text-xs font-bold hover:bg-primary-700 transition-all shadow-sm active:scale-95"
                     >
                         <Plus size={14} /> Register Webhook
                     </button>
@@ -219,7 +219,7 @@ export const WebhookConfig: React.FC<WebhookConfigProps> = ({
                                 setWebhookForm({ name: '', url: '', events: ['insert', 'update', 'delete'], enabled: true, method: 'POST' });
                                 setIsWebhookModalOpen(true);
                             }}
-                            className="px-8 py-3 bg-primary-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-primary-500/20 hover:bg-primary-700 transition-all active:scale-95"
+                            className="px-8 py-3 bg-primary-600 text-primary-foreground rounded-2xl text-sm font-bold shadow-lg shadow-primary-500/20 hover:bg-primary-700 transition-all active:scale-95"
                         >
                             Create Your First Webhook
                         </button>
@@ -299,7 +299,7 @@ export const WebhookConfig: React.FC<WebhookConfigProps> = ({
                                                     setWebhookForm((curr: any) => ({ ...curr, events: newEvents }));
                                                 }}
                                                 className={`py-3 px-2 rounded-2xl text-[10px] font-bold uppercase transition-all flex flex-col items-center gap-1.5 ring-1 ring-inset ${isActive
-                                                    ? 'bg-primary-600 text-white ring-primary-600 shadow-lg shadow-primary-500/20'
+                                                    ? 'bg-primary-600 text-primary-foreground ring-primary-600 shadow-lg shadow-primary-500/20'
                                                     : 'bg-white text-gray-400 ring-gray-100 dark:bg-gray-800 dark:ring-gray-700 hover:ring-gray-200'
                                                     } `}
                                             >
@@ -334,7 +334,7 @@ export const WebhookConfig: React.FC<WebhookConfigProps> = ({
                                 <button
                                     onClick={handleSaveWebhookAndView}
                                     disabled={!isFormValid || isSaving}
-                                    className="flex-1 py-4 bg-primary-600 text-white rounded-2xl text-xs font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/20 disabled:opacity-50 disabled:shadow-none active:scale-95 flex items-center justify-center gap-2"
+                                    className="flex-1 py-4 bg-primary-600 text-primary-foreground rounded-2xl text-xs font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/20 disabled:opacity-50 disabled:shadow-none active:scale-95 flex items-center justify-center gap-2"
                                 >
                                     {isSaving ? (
                                         <><RefreshCw size={14} className="animate-spin" /> Saving...</>

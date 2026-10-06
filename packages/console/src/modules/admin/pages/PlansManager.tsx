@@ -214,7 +214,7 @@ export function PlansManager() {
                             <button onClick={() => setDeletingPlan(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800 rounded-lg transition-colors">Cancel</button>
                             <button onClick={() => deleteMutation.mutate(deletingPlan.id)} disabled={deleteMutation.isPending}
                                 className={`px-5 py-2 text-white rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50
-                                    ${deletingPlan.is_active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-red-500 hover:bg-red-600'}`}>
+                                    ${deletingPlan.is_active ? 'bg-amber-700 hover:bg-amber-800' : 'bg-red-700 hover:bg-red-800'}`}>
                                 {deleteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                                 {deletingPlan.is_active ? 'Deactivate' : 'Delete'}
                             </button>
@@ -359,7 +359,7 @@ function PlanEditor({ draft, setDraft, registry, isEdit, saving, onClose, onSave
                 <div className="sticky bottom-0 bg-white dark:bg-slate-900 p-5 border-t border-slate-100 dark:border-slate-850 flex justify-end gap-2">
                     <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
                     <button onClick={onSave} disabled={saving || !draft.name || !draft.slug}
-                        className="px-5 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold flex items-center gap-1.5">
+                        className="px-5 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-primary-foreground rounded-lg text-sm font-semibold flex items-center gap-1.5">
                         {saving && <Loader2 className="w-4 h-4 animate-spin" />}Save Plan
                     </button>
                 </div>
@@ -489,7 +489,7 @@ function EditAddonModal({
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
                     <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
-                    <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50">
+                    <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50">
                         {isSaving ? 'Saving...' : 'Save Changes'}
                     </button>
                 </div>

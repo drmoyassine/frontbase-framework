@@ -54,6 +54,7 @@ interface FileListViewProps {
     handleSelectFile: (name: string, selected: boolean) => void;
     // File select mode
     selectMode?: boolean;
+    requirePublicUrl?: boolean;
     onFileSelect?: (url: string, file: StorageFile) => void;
     // Bucket dialog (edit from file view)
     isBucketDialogOpen: boolean;
@@ -113,7 +114,7 @@ export function FileListView({
     sortConfig, handleSort, getSortedFiles,
     fileSearch, setFileSearch,
     selectedFiles, setSelectedFiles, handleSelectAll, handleSelectFile,
-    selectMode, onFileSelect,
+    selectMode, requirePublicUrl = false, onFileSelect,
     isBucketDialogOpen, setIsBucketDialogOpen,
     bucketDialogMode, editingBucketProviderType, bucketForm, setBucketForm, handleOpenEditBucket,
     confirmDialog, setConfirmDialog,
@@ -199,11 +200,9 @@ export function FileListView({
     const handleBreadcrumbClick = (segment: { label: string; path: string | null }) => {
         if (segment.path === null) {
             setCurrentBucket(null);
-            setCurrentPath('');
         } else {
             setCurrentPath(segment.path);
         }
-        setPage(0);
     };
 
     // ── Event handlers ──
@@ -219,13 +218,12 @@ export function FileListView({
     const handleFileClick = async (file: StorageFile) => {
         if (file.isFolder) {
             const newPath = currentPath ? `${currentPath}/${file.name}` : file.name;
-            setCurrentPath(newPath);
-            setPage(0);
+            setCurrentPath(newPath); // Navigation already resets pagination atomically.
         } else {
             const path = currentPath ? `${currentPath}/${file.name}` : file.name;
             try {
                 const isPublicBucket = currentBucketData?.public ?? false;
-                const url = isPublicBucket
+                const url = (selectMode && requirePublicUrl) || isPublicBucket
                     ? await getPublicUrl(storageProviderId, path, currentBucket)
                     : await getSignedUrl(storageProviderId, path, currentBucket);
                 if (selectMode && onFileSelect) {

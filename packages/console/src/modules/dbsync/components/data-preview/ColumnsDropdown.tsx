@@ -170,7 +170,7 @@ export const ColumnsDropdown: React.FC<ColumnsDropdownProps> = ({
                     e.stopPropagation();
                     setIsColumnsDropdownOpen(!isColumnsDropdownOpen);
                 }}
-                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-lg transition-all border ${isColumnsDropdownOpen ? 'bg-primary-600 border-primary-600 text-white shadow-md' : 'bg-white border-gray-200 text-gray-600 hover:border-primary-400'} `}
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-lg transition-all border ${isColumnsDropdownOpen ? 'bg-primary-600 border-primary-600 text-primary-foreground shadow-md' : 'bg-background border-input text-foreground hover:border-primary-400'} `}
             >
                 <Columns size={14} />
                 <span>Columns</span>

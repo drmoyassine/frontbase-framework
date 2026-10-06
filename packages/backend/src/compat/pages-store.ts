@@ -8,6 +8,7 @@
  * deployments list reflects that). RULE 2: every read/write filtered by tenant.
  */
 import type { DbRunner } from '@frontbase/edge-infra';
+import { hasSitePageReference } from '@frontbase/edge-core/directory/configuration';
 import { stripLayoutEnrichment } from './enrichment.js';
 
 export interface CompatPageRow {
@@ -108,10 +109,11 @@ export class PagesStore {
                 : JSON.stringify(stripLayoutEnrichment(layoutSource));
             content_hash = await hash(layout_data);
         }
-        await this.runner.exec(
-            'UPDATE compat_pages SET name=?, slug=?, title=?, description=?, keywords=?, is_public=?, is_homepage=?, layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=?',
-            [merged.name, merged.slug, merged.title, merged.description, merged.keywords, merged.is_public, merged.is_homepage, layout_data, content_hash, now, this.tenant, id],
+        const changed = await this.runner.exec(
+            'UPDATE compat_pages SET name=?, slug=?, title=?, description=?, keywords=?, is_public=?, is_homepage=?, layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0)',
+            [merged.name, merged.slug, merged.title, merged.description, merged.keywords, merged.is_public, merged.is_homepage, layout_data, content_hash, now, this.tenant, id, hasSitePageReference(layout_data) ? 1 : 0],
         );
+        if (changed !== 1) return null;
         return { ...existing, ...merged, layout_data, content_hash, updated_at: now } as CompatPageRow;
     }
 
@@ -123,7 +125,8 @@ export class PagesStore {
             ? stripLayoutEnrichment(layoutData) as string
             : JSON.stringify(stripLayoutEnrichment(layoutData));
         const ch = await hash(layout);
-        await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=?', [layout, ch, now, this.tenant, id]);
+        const changed = await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0)', [layout, ch, now, this.tenant, id, hasSitePageReference(layout) ? 1 : 0]);
+        if (changed !== 1) return null;
         return { ...existing, layout_data: layout, content_hash: ch, updated_at: now };
     }
 
@@ -146,10 +149,12 @@ export class PagesStore {
         const p = await this.get(id);
         if (!p) return { success: false, error: 'Page not found' };
         // Mark the page live — the eSSR serves rows with is_published = 1.
-        await this.runner.exec(
-            'UPDATE compat_pages SET is_published = 1, updated_at = ? WHERE tenant_slug = ? AND id = ?',
-            [now, this.tenant, id],
+        if (hasSitePageReference(p.layout_data)) return { success: false, error: 'Shared site publication is unavailable' };
+        const activated = await this.runner.exec(
+            'UPDATE compat_pages SET is_published = 1, updated_at = ? WHERE tenant_slug = ? AND id = ? AND layout_data = ?',
+            [now, this.tenant, id, p.layout_data],
         );
+        if (activated !== 1) return { success: false, error: 'Page changed before publication' };
         // snapshot a version on publish
         await this.snapshot(id, p.layout_data, p.content_hash, `Published ${now}`, now);
         return { success: true, previewUrl: null, version: 1, message: `Page '${p.name}' published` };
@@ -239,7 +244,8 @@ export class PagesStore {
         if (!v || !page) return null;
         // snapshot current before rolling back, then restore the target layout
         const preRollbackVersion = await this.snapshot(pageId, page.layout_data, page.content_hash, `Pre-rollback`, now);
-        await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=?', [v.layout_data, v.content_hash, now, this.tenant, pageId]);
+        const changed = await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0)', [v.layout_data, v.content_hash, now, this.tenant, pageId, hasSitePageReference(v.layout_data) ? 1 : 0]);
+        if (changed !== 1) return null;
         return {
             page: { ...page, layout_data: v.layout_data, content_hash: v.content_hash, updated_at: now },
             version: v,

@@ -47,6 +47,7 @@ import { DisplayProperties } from './properties/DisplayProperties';
 // Schema-driven property rendering (simple components)
 import { getPropertySchema, type PropertySchema, type PropertyTab } from './registry/propertySchemas';
 import { SchemaDrivenProperties } from './SchemaDrivenProperties';
+import { DirectoryBindingProperties } from './directory/DirectoryBindingProperties';
 // Framework registry descriptor (single source of truth when reachable)
 import {
   useRegistryDescriptor,
@@ -395,7 +396,8 @@ export const PropertiesPanel = () => {
               />
             </div>
 
-            {renderPropertyFields('general')}
+            {(selectedComponent.props.directoryQuery !== undefined || selectedComponent.props.recordBindings !== undefined) && <DirectoryBindingProperties node={selectedComponent} update={updateComponentProp} />}
+            {selectedComponent.props.directoryQuery === undefined && renderPropertyFields('general')}
           </TabsContent>
 
           <TabsContent value="options" className="space-y-4">

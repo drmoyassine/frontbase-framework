@@ -10,7 +10,6 @@ import {
     HardDrive,
     Workflow,
     Server,
-    LogOut,
     Shield,
     Layers,
     Bot
@@ -19,6 +18,7 @@ import { useState } from 'react'
 import { useAuthStore } from '@/stores/auth'
 import { useAuth } from '@/lib/auth/useAuth'
 import { isCloud } from '@/lib/edition'
+import { AccountMenu } from './AccountMenu'
 
 const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -59,8 +59,8 @@ export function Layout() {
                 {/* Logo */}
                 <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 text-primary-foreground flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" />
                                 <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12" />
                                 <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17" />
@@ -134,36 +134,28 @@ export function Layout() {
                     )}
                 </nav>
 
-                {/* Bottom Actions */}
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700 mt-auto">
-                    <button
-                        onClick={async () => await logout()}
-                        className="flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 font-medium"
-                    >
-                        <LogOut className="w-5 h-5" />
-                        Log Out
-                    </button>
-                </div>
             </aside>
 
             {/* Main content */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Mobile header */}
-                <header className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                    <div className="flex items-center gap-2">
-                        <Database className="w-6 h-6 text-primary" />
-                        <span className="font-bold">Database Sync</span>
-                    </div>
+                {/* Navigation and account header */}
+                <header className="flex shrink-0 h-16 items-center gap-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                     <button
                         onClick={() => setSidebarOpen(true)}
-                        className="p-2 -mr-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        aria-label="Open navigation menu"
+                        className="lg:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                     >
                         <Menu className="w-6 h-6" />
                     </button>
+                    <div className="lg:hidden flex items-center gap-2">
+                        <Layers className="w-6 h-6 text-primary" />
+                        <span className="font-bold">Frontbase</span>
+                    </div>
+                    <div className="ml-auto min-w-0"><AccountMenu logout={logout} /></div>
                 </header>
 
                 {/* Page content */}
-                <main className="flex-1 p-6 overflow-y-auto">
+                <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
                     <Outlet />
                 </main>
             </div>

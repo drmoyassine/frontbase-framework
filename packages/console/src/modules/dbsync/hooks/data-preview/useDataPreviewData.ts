@@ -23,11 +23,12 @@ export const useDataPreviewData = ({
     const queryClient = useQueryClient();
 
     // Queries
-    const { data: tables } = useQuery({
+    const { data: tables, isLoading: isLoadingTables, isFetching: isFetchingTables, error: tablesError, refetch: refetchTables } = useQuery({
         queryKey: ['datasourceTables', datasourceId],
         queryFn: () => datasourcesApi.getTables(datasourceId!).then(r => r.data),
         enabled: isOpen && !!datasourceId,
         staleTime: STALE.STANDARD, // 5 minutes
+        retry: false, // Surface connection failures immediately; the inspector offers a retry.
     });
 
     const { data: schemaData } = useQuery({
@@ -94,6 +95,10 @@ export const useDataPreviewData = ({
 
     return {
         tables,
+        isLoadingTables,
+        isFetchingTables,
+        tablesError,
+        refetchTables,
         schemaData,
         data,
         isLoading,

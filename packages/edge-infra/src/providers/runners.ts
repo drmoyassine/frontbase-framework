@@ -83,7 +83,7 @@ export function d1RunnerFromRest(opts: D1RestOpts): DbRunner {
 export interface SupabaseOpts {
     /** Supabase project URL: https://<ref>.supabase.co */
     url: string;
-    /** Supabase service role key (or anon key for limited operations) */
+    /** Supabase API key (secret/publishable or legacy service_role/anon). Server-only. */
     serviceKey: string;
     /** Optional JWT bearer token for RLS (defaults to service key) */
     jwt?: string;
@@ -183,8 +183,11 @@ export function inlinePgParams(sql: string, params: unknown[]): string {
 export function supabaseRunner(opts: SupabaseOpts): DbRunner {
     const headers: Record<string, string> = {
         apikey: opts.serviceKey,
-        Authorization: `Bearer ${opts.jwt ?? opts.serviceKey}`,
     };
+    // New opaque API keys authenticate only via apikey; a real user JWT still
+    // belongs in Authorization so its RLS context is preserved.
+    const bearer = opts.jwt ?? (opts.serviceKey.startsWith('sb_') ? undefined : opts.serviceKey);
+    if (bearer) headers.Authorization = `Bearer ${bearer}`;
     if (opts.schema) {
         headers['Accept-Profile'] = opts.schema;
         headers['Content-Profile'] = opts.schema;
@@ -239,7 +242,8 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
 
                 // execute_sql is RETURNS TABLE(result jsonb) → [{result: <jsonb>}];
                 // value is a rowCount number or {rowCount} object (already parsed).
-                const parsed = extractRpcResult(data);
+                const parsed = data && !Array.isArray(data) && typeof data === 'object' && 'rowCount' in data
+                    ? data : extractRpcResult(data);
                 if (typeof parsed === 'number') return parsed;
                 if (parsed && typeof parsed === 'object' && 'rowCount' in (parsed as Record<string, unknown>)) {
                     return (parsed as { rowCount: number }).rowCount;

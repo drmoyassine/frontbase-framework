@@ -93,3 +93,34 @@ import { inlinePgParams } from '../dist/providers/runners.js';
 }
 
 console.log('supabase-rpc-parse + inline: 12/12 passed');
+
+// Exercise actual outgoing PostgREST headers, not only a header helper.
+import { supabaseRunner } from '../dist/providers/runners.js';
+const originalFetch = globalThis.fetch;
+try {
+    for (const [serviceKey, jwt, expectedBearer] of [
+        ['sb_secret_test', undefined, null],
+        ['sb_publishable_test', undefined, null],
+        ['legacy-jwt-test', undefined, 'Bearer legacy-jwt-test'],
+        ['sb_publishable_test', 'user-jwt-test', 'Bearer user-jwt-test'],
+    ]) {
+        globalThis.fetch = async (_url, init) => {
+            const headers = new Headers(init.headers);
+            assert.equal(headers.get('apikey'), serviceKey);
+            assert.equal(headers.get('authorization'), expectedBearer);
+            return new Response(JSON.stringify([{ result: [{ name: 'institutions' }] }]), { headers: { 'Content-Type': 'application/json' } });
+        };
+        const runner = supabaseRunner({ url: 'https://example.supabase.co', serviceKey, jwt });
+        assert.deepEqual(await runner.query('SELECT 1'), [{ name: 'institutions' }]);
+        await runner.exec('UPDATE fixture SET value=1');
+    }
+} finally { globalThis.fetch = originalFetch; }
+console.log('supabase-key-headers: 4 query/exec credential modes passed');
+
+try {
+    for (const [payload,expected] of [[{rowCount:1},1],[{rowCount:0},0],[[{result:{rowCount:1}}],1],[[{result:1}],1]]) {
+        globalThis.fetch=async()=>new Response(JSON.stringify(payload),{headers:{'Content-Type':'application/json'}});
+        assert.equal(await supabaseRunner({url:'https://example.supabase.co',serviceKey:'sb_secret_fixture'}).exec('UPDATE fixture SET value=1'),expected);
+    }
+} finally {globalThis.fetch=originalFetch;}
+console.log('supabase-exec: scalar JSON and wrapped affected-row results passed');

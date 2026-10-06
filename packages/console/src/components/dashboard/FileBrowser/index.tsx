@@ -17,6 +17,7 @@ interface FileBrowserProps {
     onNavigationChange?: (isBrowsing: boolean) => void;
     /** When true, clicking a file calls onFileSelect instead of opening */
     selectMode?: boolean;
+    requirePublicUrl?: boolean;
     /** Callback when a file is selected (selectMode must be true) */
     onFileSelect?: (url: string, file: StorageFile) => void;
     /** Auto-navigate to this bucket on mount */
@@ -42,6 +43,7 @@ export function FileBrowser({
     storageProviderId,
     onNavigationChange,
     selectMode = false,
+    requirePublicUrl = false,
     onFileSelect,
     initialBucket,
     hideBucketList = false,
@@ -272,6 +274,7 @@ export function FileBrowser({
             handleSelectAll={handleSelectAll}
             handleSelectFile={handleSelectFile}
             selectMode={selectMode}
+            requirePublicUrl={requirePublicUrl}
             onFileSelect={onFileSelect}
             isBucketDialogOpen={isBucketDialogOpen}
             setIsBucketDialogOpen={setIsBucketDialogOpen}

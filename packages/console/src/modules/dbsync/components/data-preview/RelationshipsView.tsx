@@ -120,7 +120,7 @@ export const RelationshipsView: React.FC<RelationshipsViewProps> = ({ datasource
                     {canAdd && (
                         <button
                             onClick={() => setShowAddModal(true)}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg border border-primary-600 hover:bg-primary-700 transition-colors shadow-sm"
+                            className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-primary-foreground rounded-lg border border-primary-600 hover:bg-primary-700 transition-colors shadow-sm"
                             title="Define a foreign key relationship between two tables (this datasource has no native FKs)"
                         >
                             <Plus className="w-4 h-4" />
@@ -165,7 +165,7 @@ export const RelationshipsView: React.FC<RelationshipsViewProps> = ({ datasource
                             </p>
                             <button
                                 onClick={() => setShowAddModal(true)}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-primary-foreground rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
                             >
                                 <Plus className="w-4 h-4" />
                                 Add Relationship

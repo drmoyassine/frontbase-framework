@@ -26,6 +26,18 @@ const FW = fileURLToPath(new URL('../', import.meta.url));
 let total = 0, wentRed = 0, stayedGreen = 0;
 const evidence = [];
 
+// Windows sync/indexing can briefly lock a source during restoration. Retry
+// only the observed transient error, bounded to two seconds; never swallow it.
+function writeSource(abs, content) {
+    for (let attempt = 0; ; attempt++) {
+        try { writeFileSync(abs, content); return; }
+        catch (error) {
+            if (process.platform !== 'win32' || error?.code !== 'UNKNOWN' || attempt >= 10) throw error;
+            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
+        }
+    }
+}
+
 /** Mutate a source file, run `fn`, always restore the original. */
 export async function withSourceMutation(label, file, find, replace, fn) {
     const abs = file.startsWith('/') || /^[A-Za-z]:/.test(file) ? file : FW + file;
@@ -36,11 +48,11 @@ export async function withSourceMutation(label, file, find, replace, fn) {
         console.log(`  ⚠️  ${label}: MUTATION MISS (find-string not found — fix the mutation)`);
         return;
     }
-    writeFileSync(abs, original.replace(find, replace));
+    writeSource(abs, original.replace(find, replace));
     try {
         await fn();
     } finally {
-        writeFileSync(abs, original);
+        writeSource(abs, original);
     }
 }
 

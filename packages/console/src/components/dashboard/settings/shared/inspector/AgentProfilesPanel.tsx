@@ -426,7 +426,7 @@ export const AgentProfilesPanel: React.FC<{ engineId: string, engineName: string
                                                             {rt.available.map(perm => {
                                                                 const isEnabled = currentPerms.includes(perm) || currentPerms.includes('all');
                                                                 return (
-                                                                    <Button key={perm} size="sm" variant={isEnabled ? 'default' : 'outline'} onClick={() => togglePermission(rt.id, perm)} className={`h-7 px-3 text-xs capitalize ${isEnabled ? 'bg-primary text-white' : ''}`}>
+                                                                    <Button key={perm} size="sm" variant={isEnabled ? 'default' : 'outline'} onClick={() => togglePermission(rt.id, perm)} className={`h-7 px-3 text-xs capitalize ${isEnabled ? 'bg-primary text-primary-foreground' : ''}`}>
                                                                         {perm}
                                                                     </Button>
                                                                 )
@@ -467,7 +467,7 @@ export const AgentProfilesPanel: React.FC<{ engineId: string, engineName: string
                                                             {rt.available.map(perm => {
                                                                 const isEnabled = currentPerms.includes(perm) || currentPerms.includes('all');
                                                                 return (
-                                                                    <Button key={perm} size="sm" variant={isEnabled ? 'default' : 'outline'} onClick={() => togglePermission(rt.id, perm)} className={`h-7 px-3 text-xs capitalize ${isEnabled ? 'bg-primary text-white' : ''}`}>
+                                                                    <Button key={perm} size="sm" variant={isEnabled ? 'default' : 'outline'} onClick={() => togglePermission(rt.id, perm)} className={`h-7 px-3 text-xs capitalize ${isEnabled ? 'bg-primary text-primary-foreground' : ''}`}>
                                                                         {perm}
                                                                     </Button>
                                                                 )

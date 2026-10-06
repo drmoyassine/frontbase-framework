@@ -8,11 +8,23 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores/auth';
+import { ColumnResizeHandle, useTableColumnWidths } from '@/components/ui/resizable-table-columns';
 
 const ITEMS_PER_PAGE = 10;
+const COLUMNS = [
+    { id: 'title', label: 'Title', minWidth: 120, maxWidth: 1200, ratio: '30%' },
+    { id: 'slug', label: 'Slug', minWidth: 100, maxWidth: 1200, ratio: '20%' },
+    { id: 'status', label: 'Status', minWidth: 96, maxWidth: 1200, ratio: '15%' },
+    { id: 'modified', label: 'Last Modified', minWidth: 110, maxWidth: 1200, ratio: '20%' },
+    { id: 'actions', label: 'Actions', minWidth: 96, maxWidth: 1200, ratio: '15%' },
+];
 
 export function PagesContentPanel() {
     const navigate = useNavigate();
+    const { user, tenant } = useAuthStore();
+    const preferenceKey = user ? `frontbase:table:pages:v1:${JSON.stringify([tenant?.slug || user.tenant_slug || tenant?.id || user.tenant_id || 'self-host', user.id])}` : null;
+    const { widths, update, reset } = useTableColumnWidths(preferenceKey, COLUMNS);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
     const [currentPage, setCurrentPage] = useState(1);
@@ -75,7 +87,7 @@ export function PagesContentPanel() {
     return (
         <div className="space-y-6">
             {/* Analytics Row */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -140,30 +152,33 @@ export function PagesContentPanel() {
                         <Button size="sm" onClick={() => navigate('/pages')}>
                             Manage Pages
                         </Button>
+                        <Button variant="ghost" size="sm" onClick={reset} disabled={!widths}>
+                            Reset columns
+                        </Button>
                     </div>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full table-fixed">
+                    <table className="min-w-full table-fixed" style={{ width: widths ? Math.max(640, widths.reduce((a, b) => a + b, 0)) : '100%', minWidth: 'max(100%, 640px)' }}>
+                        <colgroup>{COLUMNS.map((column, index) => <col key={column.id} style={{ width: widths ? widths[index] : column.ratio }} />)}</colgroup>
                         <thead className="bg-gray-50 dark:bg-gray-900/50">
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[30%]">Title</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[20%]">Slug</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Status</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[20%]">Last Modified</th>
-                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">Actions</th>
+                                {COLUMNS.map((column, index) => <th key={column.id} scope="col" className={`relative px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${column.id === 'actions' ? 'text-right' : 'text-left'}`}>
+                                    {column.label}
+                                    <ColumnResizeHandle key={`${preferenceKey}:${column.id}`} column={column} index={index} width={widths?.[index]} onChange={update} />
+                                </th>)}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                             {paginatedPages.map((page) => (
                                 <tr key={page.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors">
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <FileText className="w-4 h-4 text-gray-400" />
-                                            <span className="font-medium">{page.title || page.name || 'Untitled'}</span>
+                                    <td className="px-4 py-3 align-top">
+                                        <div className="flex items-start gap-2 min-w-0">
+                                            <FileText className="w-4 h-4 mt-1 shrink-0 text-gray-400" />
+                                            <span className="min-w-0 line-clamp-2 whitespace-normal [overflow-wrap:anywhere] font-medium" title={page.title || page.name || 'Untitled'}>{page.title || page.name || 'Untitled'}</span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                        /{page.slug || ''}
+                                    <td className="px-4 py-3 align-top whitespace-normal [overflow-wrap:anywhere] text-sm text-gray-500">
+                                        <span className="line-clamp-2" title={`/${page.slug || ''}`}>/{page.slug || ''}</span>
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         {page.isPublic ? (
@@ -178,7 +193,7 @@ export function PagesContentPanel() {
                                             </Badge>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="px-4 py-3 whitespace-normal text-sm text-gray-500">
                                         {page.updatedAt
                                             ? formatDistanceToNow(new Date(page.updatedAt), { addSuffix: true })
                                             : '-'}
@@ -220,7 +235,7 @@ export function PagesContentPanel() {
                     </table>
                 </div>
                 {/* Pagination - always show space to prevent layout shift */}
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between min-h-[60px]">
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-3 items-center justify-between min-h-[60px]">
                     {totalPages > 1 ? (
                         <>
                             <p className="text-sm text-gray-500">

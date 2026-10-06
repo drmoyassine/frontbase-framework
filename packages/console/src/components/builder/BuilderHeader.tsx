@@ -266,35 +266,37 @@ export const BuilderHeader: React.FC<{
     };
 
     return (
-      <header className="relative h-16 bg-card border-b border-border flex items-center px-6">
+      <header className="builder-toolbar bg-card border-b border-border">
         {/* Left Section */}
-        <div className="flex items-center gap-4">
+        <div className="builder-toolbar-identity flex min-w-0 items-center gap-2 xl:gap-3">
 
-          <Button variant="ghost" size="sm" onClick={handleBackToDashboard}>
+          <Button variant="ghost" size="sm" aria-label="Back to pages" className="shrink-0 px-2" onClick={handleBackToDashboard}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
 
-          <div className="h-6 w-px bg-border hidden sm:block" />
+          <div className="h-6 w-px bg-border hidden xl:block" />
 
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden xl:flex shrink-0 items-center gap-2">
             <Layers className="h-5 w-5 text-primary" />
             <span className="font-semibold text-foreground">Frontbase</span>
           </div>
 
-          <div className="h-6 w-px bg-border" />
+          <div className="h-6 w-px shrink-0 bg-border hidden sm:block" />
 
           <PageSelector />
         </div>
 
         {/* Center Section - Responsive Controls (Hidden on mobile) */}
-        <div className="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 items-center gap-3">
+        <div className="builder-toolbar-tools flex min-w-0 items-center justify-center gap-2" aria-label="Canvas tools">
           {/* Viewport Selection */}
-          <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+          <div className="flex shrink-0 items-center gap-0.5 p-0.5 bg-muted rounded-lg">
             <Button
               variant={currentViewport === 'mobile' ? "default" : "ghost"}
               size="sm"
               onClick={() => setCurrentViewport('mobile')}
-              className="h-8 w-8 p-0"
+              aria-label="Mobile viewport"
+              aria-pressed={currentViewport === 'mobile'}
+              className="h-7 w-7 sm:h-8 sm:w-8 p-0"
             >
               <Smartphone className="h-4 w-4" />
             </Button>
@@ -302,7 +304,9 @@ export const BuilderHeader: React.FC<{
               variant={currentViewport === 'tablet' ? "default" : "ghost"}
               size="sm"
               onClick={() => setCurrentViewport('tablet')}
-              className="h-8 w-8 p-0"
+              aria-label="Tablet viewport"
+              aria-pressed={currentViewport === 'tablet'}
+              className="h-7 w-7 sm:h-8 sm:w-8 p-0"
             >
               <Tablet className="h-4 w-4" />
             </Button>
@@ -310,25 +314,28 @@ export const BuilderHeader: React.FC<{
               variant={currentViewport === 'desktop' ? "default" : "ghost"}
               size="sm"
               onClick={() => setCurrentViewport('desktop')}
-              className="h-8 w-8 p-0"
+              aria-label="Desktop viewport"
+              aria-pressed={currentViewport === 'desktop'}
+              className="h-7 w-7 sm:h-8 sm:w-8 p-0"
             >
               <Monitor className="h-4 w-4" />
             </Button>
           </div>
 
           {/* Zoom Controls */}
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setZoomLevel(Math.max(25, zoomLevel - 25))}
+              aria-label="Zoom out"
               disabled={zoomLevel <= 25}
-              className="h-8 w-8 p-0"
+              className="h-7 w-7 sm:h-8 sm:w-8 p-0"
             >
               <ZoomOut className="h-4 w-4" />
             </Button>
 
-            <Badge variant="outline" className="min-w-16 justify-center">
+            <Badge variant="outline" className="min-w-10 px-1 justify-center tabular-nums">
               {zoomLevel}%
             </Badge>
 
@@ -336,37 +343,41 @@ export const BuilderHeader: React.FC<{
               variant="ghost"
               size="sm"
               onClick={() => setZoomLevel(Math.min(200, zoomLevel + 25))}
+              aria-label="Zoom in"
               disabled={zoomLevel >= 200}
-              className="h-8 w-8 p-0"
+              className="h-7 w-7 sm:h-8 sm:w-8 p-0"
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
           </div>
 
           {/* Grid Controls */}
-          <div className="flex items-center gap-1 border-l pl-4">
+          <div className="flex shrink-0 items-center gap-1 border-l pl-2">
             <Button
               variant={showGrid ? "default" : "ghost"}
               size="sm"
               onClick={() => setShowGrid(!showGrid)}
-              className="h-8 w-8 p-0"
+              className="h-7 w-7 sm:h-8 sm:w-8 p-0"
               title="Toggle Grid (G)"
             >
               <Grid3x3 className="h-4 w-4" />
             </Button>
           </div>
+          <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 p-0" onClick={() => setShowVersionHistory(true)} aria-label="Version History" title="Version History"><History className="h-4 w-4" /></Button>
         </div>
 
         {/* Right Section */}
-        <div className="flex items-center gap-4 ml-auto">
+        <div className="builder-toolbar-actions flex shrink-0 items-center justify-end gap-1 sm:gap-2">
           {/* Status Badge */}
           {pageStatus && (
             <Badge
               variant="outline"
-              className={cn("gap-1.5 px-2.5 py-0.5", pageStatus.className)}
+              title={pageStatus.label}
+              aria-label={pageStatus.label}
+              className={cn("shrink-0 gap-1.5 px-1.5 sm:px-2.5 py-0.5", pageStatus.className)}
             >
               <pageStatus.icon className="h-3 w-3" />
-              <span className="text-xs font-medium hidden sm:inline">{pageStatus.label}</span>
+              <span className="text-xs font-medium hidden lg:inline">{pageStatus.label}</span>
             </Badge>
           )}
 
@@ -375,6 +386,7 @@ export const BuilderHeader: React.FC<{
             variant="outline"
             size="sm"
             onClick={handleSave}
+            aria-label={isSaving ? 'Saving page' : 'Save'}
             disabled={isSaving}
             className={cn(
               hasUnsavedChanges && "border-amber-500 text-amber-600"
@@ -392,6 +404,7 @@ export const BuilderHeader: React.FC<{
             size="sm"
             disabled={isSaving || isPublishing || loadingTargets}
             onClick={handlePublishClick}
+            aria-label={isPublishing ? 'Publishing page' : 'Publish'}
           >
             {(isPublishing || loadingTargets) ? (
               <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
@@ -401,16 +414,6 @@ export const BuilderHeader: React.FC<{
             <span className="hidden sm:inline">
               {isPublishing ? 'Publishing...' : 'Publish'}
             </span>
-          </Button>
-
-          {/* Version History */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowVersionHistory(true)}
-            title="Version History"
-          >
-            <History className="h-4 w-4" />
           </Button>
 
           {/* Page Settings */}

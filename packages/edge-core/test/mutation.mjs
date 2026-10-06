@@ -29,9 +29,9 @@ await withSourceMutation(
     'page-path enforceScope (SEC-P2-1)',
     SRC,
     'const denial = enforceScope(q, principal);\n            // A scoped page requested without the required principal is not',
-    '/* MUTATION: deny removed */ void principal;\n            // A scoped page requested without the required principal is not',
+    'const denial = null as ReturnType<typeof enforceScope>;\n            // A scoped page requested without the required principal is not',
     async () => {
-        buildPackage(PKG);
+        if (!buildPackage(PKG)) throw new Error('Page scope mutation must compile');
         const exit = runGate(pkgDir, 'test/scope.mjs');
         expectRed('page-path: scope.mjs goes red when the page-path deny is removed', exit);
     },
@@ -46,12 +46,12 @@ await withSourceMutation(
     "const denial = enforceScope(q, principal);\n            if (denial) return c.json({ error: denial.error }, denial.status);\n\n            let params",
     "/* MUTATION: proxy deny removed */ void 0;\n            let params",
     async () => {
-        buildPackage(PKG);
+        if (!buildPackage(PKG)) throw new Error('Proxy scope mutation must compile');
         const exit = runGate(pkgDir, 'test/scope.mjs');
         expectRed('proxy-path: scope.mjs goes red when the proxy deny is removed', exit);
     },
 );
 
 // Restore + rebuild so the package is green for the rest of the suite.
-buildPackage(PKG);
+if (!buildPackage(PKG)) process.exit(2);
 summarize(PKG);

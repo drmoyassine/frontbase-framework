@@ -72,7 +72,7 @@ function mockFetch(routes) {
 {
     const ref = 'proj-xyz';
     const fetch = mockFetch({
-        [`https://api.supabase.com/v1/projects/${ref}/api-keys`]: Response.json([
+        [`https://api.supabase.com/v1/projects/${ref}/api-keys?reveal=true`]: Response.json([
             { name: 'anon', api_key: 'anon-KEY' },
             { name: 'service_role', api_key: 'svc-KEY' },
         ]),
@@ -111,7 +111,7 @@ function mockFetch(routes) {
 {
     const ref = 'r2';
     const fetch = mockFetch({
-        [`https://api.supabase.com/v1/projects/${ref}/api-keys`]: Response.json([
+        [`https://api.supabase.com/v1/projects/${ref}/api-keys?reveal=true`]: Response.json([
             { name: 'service_role', api_key: 'svc' },
         ]),
         [`https://api.supabase.com/v1/projects/${ref}/postgrest`]: new Response('{"message":"no"}', { status: 404 }),
@@ -223,3 +223,67 @@ async function req(app, method, path, body) {
 }
 
 console.log('providers-supabase: 12/12 passed');
+
+// Management-backed old accounts refresh to the equivalent current key types.
+// Misleading names cannot turn a public key into an elevated server key.
+{
+    const out = await enrichSupabase({ access_token: 'PAT', project_ref: 'refresh', service_role_key: 'legacy-service', anon_key: 'legacy-anon', jwt_secret: 'existing-signing-secret' }, async (url, init) => {
+        assert.equal(String(url), 'https://api.supabase.com/v1/projects/refresh/api-keys?reveal=true');
+        assert.equal(init.headers.Authorization, 'Bearer PAT');
+        return Response.json([
+            { type: 'legacy', name: 'service_role', api_key: 'legacy-service' },
+            { type: 'legacy', name: 'anon', api_key: 'legacy-anon' },
+            { type: 'publishable', name: 'service-admin', api_key: 'sb_publishable_public' },
+            { type: 'secret', name: 'anon-looking-name', id: 'z', api_key: 'sb_secret_other' },
+            { type: 'secret', name: 'default', id: 'a', api_key: 'sb_secret_server' },
+            { type: 'secret', name: 'default', id: '0', api_key: 'sb_secret_******' },
+        ]);
+    });
+    assert.equal(out.service_role_key, 'sb_secret_server');
+    assert.equal(out.anon_key, 'sb_publishable_public');
+    const resolved = resolveSupabase(out);
+    assert.equal(resolved.serviceKey, 'sb_secret_server');
+    assert.equal(resolved.anonKey, 'sb_publishable_public');
+    assert.equal(out.jwt_secret, 'existing-signing-secret');
+}
+
+// Manual legacy/current keys need no management account or extra requests.
+for (const service_role_key of ['manual-legacy', 'sb_secret_manual']) {
+    const config = { api_url: 'https://manual.supabase.co', service_role_key };
+    assert.deepEqual(await enrichSupabase(config, async () => { throw new Error('must not fetch'); }), config);
+    assert.equal(resolveSupabase(config).serviceKey, service_role_key);
+}
+
+// Failed discovery retains working legacy credentials; it never creates keys.
+{
+    const config = { access_token: 'PAT', project_ref: 'old', service_role_key: 'old-key', jwt_secret: 'signing' };
+    const out = await enrichSupabase(config, async (_url, init) => {
+        assert.equal(init.method ?? 'GET', 'GET');
+        return Response.json({ message: 'unavailable' }, { status: 403 });
+    });
+    assert.equal(out.service_role_key, 'old-key');
+}
+
+// A current enriched account is idempotent, preserving explicitly saved keys.
+{
+    const config = { access_token: 'PAT', project_ref: 'current', service_role_key: 'sb_secret_saved' };
+    assert.deepEqual(await enrichSupabase(config, async () => { throw new Error('must not fetch'); }), config);
+}
+
+// Owner-scoped merge must not obtain an account from another owner or mix the
+// project/token when two owners hydrate concurrently.
+import { mergeAccountConfig } from '../dist/compat/providers/merge-account.js';
+{
+    const accountFor = async (tenant, id) => id === 'own' ? { access_token: `PAT-${tenant}`, project_ref: `project-${tenant}`, service_role_key: 'legacy', jwt_secret: 'signing' } : null;
+    const external = async (url, init) => {
+        const tenant = String(url).includes('project-a/') ? 'a' : 'b';
+        assert.equal(init.headers.Authorization, `Bearer PAT-${tenant}`);
+        return Response.json([{ type: 'secret', name: 'default', api_key: `sb_secret_${tenant}` }]);
+    };
+    const [a, b] = await Promise.all(['a', 'b'].map(t => mergeAccountConfig(accountFor, external, t, 'supabase', { provider_account_id: 'own' })));
+    assert.equal(a.service_role_key, 'sb_secret_a');
+    assert.equal(b.service_role_key, 'sb_secret_b');
+    const missing = await mergeAccountConfig(accountFor, async () => { throw new Error('must not fetch'); }, 'a', 'supabase', { provider_account_id: 'foreign' });
+    assert.deepEqual(missing, { provider_account_id: 'foreign' });
+}
+console.log('providers-supabase key compatibility: current discovery, legacy/manual fallback, no escalation, failure preservation, idempotence and owner isolation passed');

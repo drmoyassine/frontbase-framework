@@ -2,6 +2,10 @@ import React from 'react';
 import { Table, Search, Loader2, ChevronRight, X, RefreshCw } from 'lucide-react';
 
 interface TableSelectionViewProps {
+    isLoadingTables: boolean;
+    isFetchingTables: boolean;
+    tablesError: unknown;
+    retryTables: () => void;
     tableSearch: string;
     setTableSearch: (search: string) => void;
     dataSearchQuery: string;
@@ -20,6 +24,10 @@ interface TableSelectionViewProps {
 }
 
 export const TableSelectionView: React.FC<TableSelectionViewProps> = ({
+    isLoadingTables,
+    isFetchingTables,
+    tablesError,
+    retryTables,
     tableSearch,
     setTableSearch,
     dataSearchQuery,
@@ -65,7 +73,7 @@ export const TableSelectionView: React.FC<TableSelectionViewProps> = ({
                         <button
                             onClick={handleDataSearch}
                             disabled={isDataSearching || !dataSearchQuery.trim()}
-                            className="absolute right-1 p-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-all"
+                            className="absolute right-1 p-1.5 bg-primary-600 text-primary-foreground rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-all"
                         >
                             {isDataSearching ? <Loader2 size={12} className="animate-spin" /> : <ChevronRight size={12} />}
                         </button>
@@ -85,7 +93,19 @@ export const TableSelectionView: React.FC<TableSelectionViewProps> = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {isLoadingTables ? (
+                <div role="status" className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading tables…</div>
+            ) : tablesError ? (
+                <div role="alert" className="rounded-xl border border-destructive/40 p-4 space-y-2 text-foreground">
+                    <p className="font-semibold">Could not load tables</p>
+                    <p className="text-sm">{tableConnectionMessage(tablesError)}</p>
+                    <button type="button" onClick={retryTables} disabled={isFetchingTables} className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50">{isFetchingTables ? 'Retrying…' : 'Retry loading tables'}</button>
+                </div>
+            ) : filteredTables.length === 0 ? (
+                <p role="status" className="text-muted-foreground">{tableSearch || showDataSearchResults ? 'No tables match your search.' : 'No accessible tables were returned. Check the connection’s schema and permissions.'}</p>
+            ) : null}
+
+            {!tablesError && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredTables.map((t: string) => {
                     const matchCount = groupedMatches[t];
                     return (
@@ -115,7 +135,7 @@ export const TableSelectionView: React.FC<TableSelectionViewProps> = ({
                             </div>
                             <div className="flex items-center gap-2">
                                 {matchCount !== undefined && (
-                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-primary-600 text-white rounded-full text-[10px] font-bold animate-in zoom-in duration-300">
+                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-primary-600 text-primary-foreground rounded-full text-[10px] font-bold animate-in zoom-in duration-300">
                                         <Search size={10} />
                                         {matchCount}
                                     </div>
@@ -125,7 +145,16 @@ export const TableSelectionView: React.FC<TableSelectionViewProps> = ({
                         </button>
                     );
                 })}
-            </div>
+            </div>}
         </div >
     );
 };
+
+// Never render raw provider errors: they may contain SQL, tokens or connection details.
+export function tableConnectionMessage(error: unknown): string {
+    const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+    if (typeof detail === 'string' && detail.includes('Legacy API keys are disabled')) {
+        return 'Supabase has disabled legacy API keys. Update this connection with a current API key in the admin connection settings, then retry.';
+    }
+    return 'Check the saved connection credentials and database permissions, then retry. Your data has not been changed.';
+}

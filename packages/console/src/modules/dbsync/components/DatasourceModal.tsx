@@ -264,7 +264,7 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                         <button
                             onClick={handleSubmit}
                             disabled={mutation.isPending || testRawMutation.isPending}
-                            className="flex-1 px-4 py-3 text-sm font-bold bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50 shadow-lg shadow-primary-500/20"
+                            className="flex-1 px-4 py-3 text-sm font-bold bg-primary-600 text-primary-foreground rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50 shadow-lg shadow-primary-500/20"
                         >
                             {mutation.isPending ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Data Source')}
                         </button>

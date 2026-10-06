@@ -98,7 +98,7 @@ export const useDataPreview = ({
     });
 
     const {
-        tables, schemaData, data, isLoading, error, isFetchingData, fetchNextPage, hasNextPage, isFetchingNextPage, refetchData,
+        tables, isLoadingTables, isFetchingTables, tablesError, refetchTables, schemaData, data, isLoading, error, isFetchingData, fetchNextPage, hasNextPage, isFetchingNextPage, refetchData,
         searchResults, isSearchingByQuery, refreshSchemaMutation
     } = useDataPreviewData({
         isOpen,
@@ -432,7 +432,7 @@ export const useDataPreview = ({
             currentMatchIndex, allMatches, pinnedColumns, columnOrder, visibleColumns
         },
         data: {
-            tables, schemaData, tableData: data, isLoading, error, isFetchingData, availableFields, tableColumns,
+            tables, isLoadingTables, isFetchingTables, tablesError, schemaData, tableData: data, isLoading, error, isFetchingData, availableFields, tableColumns,
             groupedMatches, filteredTables, filteredRecords, isDataSearching: isSearchingByQuery, searchResults,
             hasNextPage, isFetchingNextPage, refreshSchemaMutation
         },
@@ -450,7 +450,7 @@ export const useDataPreview = ({
             runRemoteSearch: filterState.runRemoteSearch, searchOtherCollections: filterState.searchOtherCollections,
             searchAllDatasources: filterState.searchAllDatasources, handleSaveView, handleManualUpdate,
             handleDataSearch: () => { if (filterState.dataSearchQuery.trim()) setShowDataSearchResults(true); },
-            refreshSchemaMutation, triggerWebhookTest, fetchNextPage
+            refreshSchemaMutation, triggerWebhookTest, fetchNextPage, refetchTables
         }
     };
 };

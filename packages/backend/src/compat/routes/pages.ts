@@ -13,6 +13,7 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { PagesStore, serializePage, type CompatPageRow, type CompatVersionRow } from '../pages-store.js';
 import { isSystemEngine } from './edge-shapes.js';
 import { validateDirectoryLayout } from '../directory-configuration.js';
+import { hasSitePageReference } from '@frontbase/edge-core/directory/configuration';
 import {
     deploysThisMonth, planLimitsForCaller, principalRole, privatePagesBlocked,
     publishGate, type PlanLimits,
@@ -232,6 +233,8 @@ export function registerPagesRoutes(
     // PUT /api/pages/{page_id}/
     app.put('/api/pages/:page_id/', async (c) => {
         const body = await c.req.json().catch(() => ({}));
+        const prior = await storeFor(c.get('tenant')).get(c.req.param('page_id'));
+        if (prior?.is_published && hasSitePageReference(body.layoutData ?? body.layout_data ?? prior.layout_data)) return c.json({ detail: 'Unpublish this page before linking shared settings' }, 409);
         // A-25 WA5 plan gate: `private_pages` — the only write path that can
         // actually set privacy (store.update's isPublic patch field). Refuse
         // the flip BEFORE it lands; already-public pages are never unpubliced
@@ -253,6 +256,8 @@ export function registerPagesRoutes(
         if (body.layoutData === undefined) {
             return c.json({ detail: 'layoutData is required' }, 400);
         }
+        const prior = await storeFor(c.get('tenant')).get(c.req.param('page_id'));
+        if (prior?.is_published && hasSitePageReference(body.layoutData)) return c.json({ detail: 'Unpublish this page before linking shared settings' }, 409);
         const directoryError = await validateDirectoryLayout(body.layoutData, c.get('tenant'), runner);
         if (directoryError) return c.json(directoryError.body, directoryError.status);
         const row = await storeFor(c.get('tenant')).setLayout(c.req.param('page_id'), body.layoutData, now());
@@ -398,6 +403,8 @@ export function registerPagesRoutes(
         if (!targetVersion) {
             return c.json({ detail: 'Target version not found' }, 404);
         }
+        const current = await store.get(c.req.param('page_id'));
+        if (current?.is_published && hasSitePageReference(targetVersion.layout_data)) return c.json({ detail: 'Unpublish this page before restoring shared settings' }, 409);
         const directoryError = await validateDirectoryLayout(targetVersion.layout_data, c.get('tenant'), runner);
         if (directoryError) return c.json(directoryError.body, directoryError.status);
         const res = await store.rollback(c.req.param('page_id'), targetVersionId, now());

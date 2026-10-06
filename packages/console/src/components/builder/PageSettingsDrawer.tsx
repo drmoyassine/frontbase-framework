@@ -41,7 +41,8 @@ import { StylesPanel } from '@/components/styles/StylesPanel';
 import { getDefaultPageStyles } from '@/lib/styles/defaults';
 import { VariableInput } from './VariableInput';
 import { toast } from 'sonner';
-import { directoryConfigurationIssues, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
+import { directoryConfigurationIssues, sitePageReferenceSchema, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
+import { SharedPageConfigurationPanel } from './directory/SharedPageConfigurationPanel';
 import { DirectoryConfigurationPanel } from './directory/DirectoryConfigurationPanel';
 import { applyDirectoryConfiguration } from './directory/applyDirectoryConfiguration';
 
@@ -65,6 +66,7 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
     })));
     const [activeTab, setActiveTab] = useState<string>('basic');
     const [isSaving, setIsSaving] = useState(false);
+    const [editorialOpen,setEditorialOpen]=useState(false);
     const [showHomepageWarning, setShowHomepageWarning] = useState(false);
     const [pendingHomepageChange, setPendingHomepageChange] = useState(false);
 
@@ -147,6 +149,10 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
     };
 
     const handleSave = async () => {
+        const reference = currentPage.layoutData?.root.siteConfiguration;
+        if (reference !== undefined && !sitePageReferenceSchema.safeParse(reference).success) {
+            toast.error('Fix the shared settings reference before saving'); setActiveTab('directory'); return;
+        }
         const config = currentPage.layoutData?.root.directoryConfiguration;
         if (config !== undefined && directoryConfigurationIssues(config).length) {
             toast.error('Fix the invalid directory settings before saving');
@@ -181,7 +187,7 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
 
     return (
         <>
-            <Sheet open={open} onOpenChange={onOpenChange}>
+            <Sheet open={open} onOpenChange={next=>{if(!next&&editorialOpen){toast.info('Save or explicitly close the article editor first');return;}onOpenChange(next);}}>
                 <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
                     <SheetHeader className="mb-6">
                         <SheetTitle className="flex items-center gap-2">
@@ -192,15 +198,15 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
 
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="grid w-full grid-cols-4 mb-6">
-                            <TabsTrigger value="basic" className="gap-2">
+                            <TabsTrigger value="basic" disabled={editorialOpen} className="gap-2">
                                 <Package className="h-4 w-4" />
                                 Basic
                             </TabsTrigger>
-                            <TabsTrigger value="styles" className="gap-2">
+                            <TabsTrigger value="styles" disabled={editorialOpen} className="gap-2">
                                 <Palette className="h-4 w-4" />
                                 Styles
                             </TabsTrigger>
-                            <TabsTrigger value="advanced" className="gap-2">
+                            <TabsTrigger value="advanced" disabled={editorialOpen} className="gap-2">
                                 <Zap className="h-4 w-4" />
                                 Advanced
                             </TabsTrigger>
@@ -208,14 +214,15 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
                         </TabsList>
 
                         <TabsContent value="directory" className="space-y-6">
-                            <DirectoryConfigurationPanel
+                            <SharedPageConfigurationPanel key={currentPage.id} page={currentPage} onEditorialOpenChange={setEditorialOpen} onChange={layoutData => handleUpdatePage({ layoutData })} />
+                            {currentPage.layoutData?.root.siteConfiguration === undefined && <DirectoryConfigurationPanel
                                 value={currentPage.layoutData?.root.directoryConfiguration as DirectoryConfiguration | undefined}
                                 onChange={directoryConfiguration => handleUpdatePage({ layoutData: { content: currentPage.layoutData?.content || [], root: { ...currentPage.layoutData?.root, directoryConfiguration } } })}
                                 onApplyLayout={() => {
                                     const config = currentPage.layoutData?.root.directoryConfiguration;
                                     if (config && directoryConfigurationIssues(config).length === 0) handleUpdatePage({ layoutData: applyDirectoryConfiguration(currentPage, config) });
                                 }}
-                            />
+                            />}
                         </TabsContent>
                         {/* BASIC TAB */}
                         <TabsContent value="basic" className="space-y-6">
@@ -444,14 +451,14 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
                             onClick={() => onOpenChange(false)}
                             variant="outline"
                             className="flex-1"
-                            disabled={isSaving}
+                            disabled={isSaving || editorialOpen}
                         >
                             Close
                         </Button>
                         <Button
                             onClick={handleSave}
                             className="flex-1"
-                            disabled={isSaving}
+                            disabled={isSaving || editorialOpen}
                         >
                             {isSaving ? 'Saving...' : 'Save Changes'}
                         </Button>
