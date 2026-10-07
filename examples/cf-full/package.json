@@ -10,6 +10,8 @@
         "e2e:report": "playwright show-report e2e/report",
         "smoke": "node build.mjs && node dist/smoke.mjs",
         "smoke:cloud": "node build.mjs && node dist/smoke-cloud.mjs",
+        "test:publication-browser-mutation": "node build.mjs && node test/publication-browser-mutation.mjs",
+        "test:publication-browser": "node build.mjs && node .publication-e2e/browser.mjs",
         "smoke:host": "node build.mjs && node dist/smoke-host.mjs",
         "start:node": "node dist/node.mjs",
         "test": "node test/console-pin.mjs",

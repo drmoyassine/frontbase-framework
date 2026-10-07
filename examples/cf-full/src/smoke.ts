@@ -10,6 +10,7 @@ import { createCmsEngine } from './worker.js';
 import { resolveStateDb, StateDbConfigError } from './state-db.js';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { createHash, createHmac } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -30,8 +31,11 @@ const assetBinding = {
     },
 };
 
+// Test-only provider transport: production URL validation and signing remain in place.
+let s3Transport: ((input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) | undefined;
 const engine = await createCmsEngine({
     runner: sqliteRunner(':memory:'),
+    externalFetch: (input, init) => s3Transport ? s3Transport(input, init) : fetch(input, init),
     sessionSecret: 'smoke-session-secret-not-for-prod',
     setupToken: undefined,
     admin: ADMIN,
@@ -714,7 +718,37 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
         }
     });
     await new Promise<void>((resolve) => s3mock.listen(0, '127.0.0.1', resolve));
-    const s3Endpoint = `http://127.0.0.1:${(s3mock.address() as AddressInfo).port}`;
+    const s3Endpoint = 'https://storage-fixture.example.com';
+    const localEndpoint = `http://127.0.0.1:${(s3mock.address() as AddressInfo).port}`;
+    let signedRequests = 0;
+    s3Transport = async (input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        if (url.origin !== s3Endpoint) throw new Error('unexpected_storage_fixture_destination');
+        if (init?.redirect !== 'manual') throw new Error('storage_fixture_requires_guarded_transport');
+        const headers = new Headers(init?.headers);
+        const authorization = headers.get('authorization');
+        if (authorization) {
+            // Independently verify the signature against the PUBLIC HTTPS identity
+            // before rewriting the test wire destination. This mock is not an S3
+            // service and merely observing an Authorization prefix is insufficient.
+            const match = authorization.match(/^AWS4-HMAC-SHA256 Credential=smoke-key\/([^,]+), SignedHeaders=([^,]+), Signature=([a-f0-9]{64})$/);
+            if (!match) throw new Error('invalid_fixture_authorization');
+            const [, scope, signedHeaders, signature] = match;
+            const canonicalHeaders = signedHeaders!.split(';').map(name => `${name}:${name === 'host' ? url.host : headers.get(name)}\n`).join('');
+            const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+            const canonical = [init?.method ?? 'GET', url.pathname, url.search.slice(1), canonicalHeaders, signedHeaders, headers.get('x-amz-content-sha256')].join('\n');
+            const [date, region, service, terminal] = scope!.split('/');
+            const hmac = (key: string | Buffer, value: string) => createHmac('sha256', key).update(value).digest();
+            const signingKey = hmac(hmac(hmac(hmac('AWS4smoke-secret', date!), region!), service!), terminal!);
+            const expected = createHmac('sha256', signingKey).update(['AWS4-HMAC-SHA256', headers.get('x-amz-date'), scope, hash(canonical)].join('\n')).digest('hex');
+            if (signature !== expected) throw new Error('invalid_fixture_sigv4_signature');
+            signedRequests++;
+        }
+        // Rewrite only the test transport destination AFTER the real guard/signature.
+        // Validate the signed public Host above; this local mock does not verify Host.
+        // Never send fixture credentials to the internet.
+        return fetch(localEndpoint + url.pathname + url.search, init);
+    };
     try {
         // Connect an S3 account (the console's ConnectProviderDialog payload)…
         const authed = { 'content-type': 'application/json', cookie: compatCookie } as const;
@@ -765,14 +799,15 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
         await check('storage: the upload reached the S3 host as a SigV4-signed PUT', async () => {
             const obj = objects.get('smoke-bucket/smoke/hello.txt');
             return !!obj && new TextDecoder().decode(obj.bytes) === 'storage-smoke-bytes'
-                && (obj.authorization ?? '').startsWith('AWS4-HMAC-SHA256');
+                && (obj.authorization ?? '').startsWith('AWS4-HMAC-SHA256 Credential=smoke-key/')
+                && signedRequests > 0;
         });
         await check('storage: signed-url presigns through the resolved client and the URL round-trips', async () => {
             if (!providerId) return false;
             const r = await req(`/api/storage/signed-url?provider_id=${providerId}&bucket=smoke-bucket&path=${encodeURIComponent('/smoke/hello.txt')}`, { headers: { cookie: compatCookie } });
             const body = await r.json() as { success?: boolean; signedUrl?: string };
             if (r.status !== 200 || body.success !== true || !body.signedUrl?.includes('X-Amz-Signature')) return false;
-            const direct = await fetch(body.signedUrl);
+            const direct = await s3Transport!(body.signedUrl, { redirect: 'manual' });
             return direct.status === 200 && (await direct.text()) === 'storage-smoke-bytes';
         });
         await check('storage: s3 file list uses ListObjectsV2 (delimiter folders, sizes)', async () => {
@@ -819,7 +854,7 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
             });
             const body = await r.json() as { success?: boolean; message?: string };
             if (r.status !== 200 || body.success !== true || body.message !== undefined) return false;
-            const probe = await fetch(`${s3Endpoint}/smoke-bucket/smoke/moved.txt`);
+            const probe = await s3Transport!(s3Endpoint + '/smoke-bucket/smoke/moved.txt', { redirect: 'manual' });
             return probe.status === 404;
         });
         await check('storage: unknown provider_id → 404 with the product detail', async () => {
@@ -845,6 +880,7 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
                 && body.detail.some((d) => d.loc?.join('.') === 'query.provider_id');
         });
     } finally {
+        s3Transport = undefined;
         s3mock.close();
     }
 }
