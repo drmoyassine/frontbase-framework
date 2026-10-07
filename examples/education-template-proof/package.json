@@ -1,0 +1,19 @@
+{
+  "name": "@frontbase/example-education-template-proof",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Workstream B prototype: education-directory template export/install proof on isolated synthetic USA and Hungary destinations. A design prototype, not an installable template.",
+  "scripts": {
+    "build": "node src/selfcheck.mjs",
+    "check": "node src/selfcheck.mjs",
+    "test": "node test/artifact-contract.test.mjs && node test/destination-proof.test.mjs",
+    "proof": "node src/proof.mjs"
+  },
+  "dependencies": {
+    "@frontbase/backend": "workspace:*",
+    "@frontbase/compiler": "workspace:*",
+    "@frontbase/edge-core": "workspace:*",
+    "@frontbase/edge-infra": "workspace:*"
+  }
+}

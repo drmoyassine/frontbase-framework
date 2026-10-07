@@ -77,6 +77,21 @@ importers:
         specifier: workspace:*
         version: link:../../packages/edge-core
 
+  examples/education-template-proof:
+    dependencies:
+      '@frontbase/backend':
+        specifier: workspace:*
+        version: link:../../packages/backend
+      '@frontbase/compiler':
+        specifier: workspace:*
+        version: link:../../packages/compiler
+      '@frontbase/edge-core':
+        specifier: workspace:*
+        version: link:../../packages/edge-core
+      '@frontbase/edge-infra':
+        specifier: workspace:*
+        version: link:../../packages/edge-infra
+
   packages/admin-console:
     dependencies:
       react:

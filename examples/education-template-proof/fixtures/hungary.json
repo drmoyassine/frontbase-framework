@@ -1,0 +1,61 @@
+{
+  "destinationId": "hungary",
+  "comment": "Synthetic Hungary destination. Different physical table and column names than the USA fixture on purpose: the same template artifact must install into both without any framework source edit. All rows are invented; PRIVATE_* values are canaries. Identifiers stay ASCII because the framework configuration contract requires ASCII identifiers; accented text is fine in values.",
+  "tenant": "tenant-hungary-fixture",
+  "content": {
+    "tables": {
+      "city": "hu_varosok",
+      "institution": "hu_intezmenyek",
+      "program": "hu_programok",
+      "article": "hu_cikkek"
+    },
+    "columns": {
+      "city": { "id": "azonosito", "title": "nev", "country": "orszag" },
+      "institution": { "id": "azonosito", "title": "nev", "country": "orszag", "city": "varos", "original_path": "utvonal", "summary": "osszefoglalo", "body": "torzs", "cover": "borito", "provider_ref": "szolgaltato" },
+      "program": { "id": "azonosito", "title": "nev", "country": "orszag", "institution": "intezmeny", "original_path": "utvonal", "summary": "osszefoglalo", "body": "torzs", "cover": "borito", "provider_ref": "szolgaltato" },
+      "article": { "id": "azonosito", "title": "nev", "country": "orszag", "original_path": "utvonal", "body": "torzs", "kind": "tipus", "origin": "eredet", "byline": "szerzo", "published_at": "kozles", "cover": "borito", "cover_alt": "borito_alt", "evidence": "bizonyitek" }
+    },
+    "ddl": [
+      "CREATE TABLE hu_varosok (azonosito INTEGER PRIMARY KEY, nev TEXT, orszag INTEGER)",
+      "CREATE TABLE hu_intezmenyek (azonosito INTEGER PRIMARY KEY, nev TEXT, orszag INTEGER, varos INTEGER, utvonal TEXT, osszefoglalo TEXT, torzs TEXT, borito TEXT, szolgaltato TEXT)",
+      "CREATE TABLE hu_programok (azonosito INTEGER PRIMARY KEY, nev TEXT, orszag INTEGER, intezmeny INTEGER, utvonal TEXT, osszefoglalo TEXT, torzs TEXT, borito TEXT, szolgaltato TEXT)",
+      "CREATE TABLE hu_cikkek (azonosito INTEGER PRIMARY KEY, nev TEXT, orszag INTEGER, utvonal TEXT, torzs TEXT, tipus TEXT, eredet TEXT, szerzo TEXT, kozles TEXT, borito TEXT, borito_alt TEXT, bizonyitek TEXT)"
+    ],
+    "seed": [
+      "INSERT INTO hu_varosok VALUES (11, 'Budapest (fixture)', 348), (12, 'Szeged (fixture)', 348)",
+      "INSERT INTO hu_intezmenyek VALUES (501, 'Duna-parti Egyetem (fixture)', 348, 11, '/duna-parti-egyetem/', 'Fixture Hungarian university summary.', '<p>Fixture egyetem body.</p>', 'https://img.example/hu/duna-cover.jpg', 'PRIVATE_PROVIDER_CANARY_HU')",
+      "INSERT INTO hu_intezmenyek VALUES (502, 'Tisza Foiskola (fixture)', 348, 12, '/tisza-foiskola/', 'Fixture college summary.', '<p>Fixture foiskola body.</p>', NULL, 'PRIVATE_PROVIDER_CANARY_HU')",
+      "INSERT INTO hu_programok VALUES (601, 'Fixture programozo BSc', 348, 501, '/duna-parti-egyetem/programozo-bsc/', 'Fixture BSc summary.', '<p>Fixture BSc body.</p>', NULL, 'PRIVATE_PROVIDER_CANARY_HU')",
+      "INSERT INTO hu_programok VALUES (602, 'Fixture nemzetkozi gazdalkodas MA', 348, 501, '/duna-parti-egyetem/gazdalkodas-ma/', 'Fixture MA summary.', '<p>Fixture MA body.</p>', NULL, 'PRIVATE_PROVIDER_CANARY_HU')",
+      "INSERT INTO hu_programok VALUES (603, 'Fixture mernokinformatika BSc', 348, 502, '/tisza-foiskola/mernokinformatika-bsc/', 'Fixture BSc summary.', '<p>Fixture BSc body.</p>', NULL, 'PRIVATE_PROVIDER_CANARY_HU')",
+      "INSERT INTO hu_programok VALUES (604, 'Wrong-country program (fixture)', 999, 501, '/duna-parti-egyetem/excluded/', 'Must never resolve.', '<p>Excluded.</p>', NULL, 'PRIVATE_PROVIDER_CANARY_HU')",
+      "INSERT INTO hu_cikkek VALUES (701, 'Fixture felveteli hataridok', 348, '/blog/felveteli-hataridok/', '[{\"kind\":\"paragraph\",\"runs\":[{\"text\":\"Fixture cikk body.\"}]}]', 'article', 'https://hungary.example', 'Fixture Szerzo', '2026-02-01', NULL, 'Fixture borito alt', 'PRIVATE_ARTICLE_EVIDENCE_HU')"
+    ]
+  },
+  "bindings": {
+    "datasourceName": "hungary-fixture-content",
+    "site": { "name": "Tanulmanyok Magyarorszagon (fixture)", "destination": "Magyarorszag", "origin": "https://hungary.example", "locale": "hu" },
+    "contacts": { "email": "tanacsado@hungary.example", "whatsapp": "" },
+    "routes": { "directory": "/kepzesek/", "blog": "/blog/" },
+    "collections": {
+      "institution": { "table": "hu_intezmenyek", "scopeField": "orszag", "scopeValue": 348, "fields": { "id": "azonosito", "title": "nev", "originalPath": "utvonal", "summary": "osszefoglalo", "body": "torzs", "cover": "borito", "cityId": "varos" } },
+      "program": { "table": "hu_programok", "scopeField": "orszag", "scopeValue": 348, "fields": { "id": "azonosito", "title": "nev", "originalPath": "utvonal", "summary": "osszefoglalo", "body": "torzs", "cover": "borito", "institutionId": "intezmeny" } },
+      "city": { "table": "hu_varosok", "scopeField": "orszag", "scopeValue": 348, "fields": { "id": "azonosito", "title": "nev" } },
+      "article": { "table": "hu_cikkek", "scopeField": "orszag", "scopeValue": 348, "fields": { "id": "azonosito", "title": "nev", "originalPath": "utvonal", "body": "torzs", "contentRole": "tipus", "sourceOrigin": "eredet", "byline": "szerzo", "publishedAt": "kozles", "cover": "borito", "coverAlt": "borito_alt" } }
+    },
+    "detailSamplePaths": {
+      "institution": "/duna-parti-egyetem/",
+      "program": "/duna-parti-egyetem/programozo-bsc/",
+      "article": "/blog/felveteli-hataridok/"
+    }
+  },
+  "expect": {
+    "institutionListIds": [501, 502],
+    "programListIds": [603, 602, 601],
+    "programIdsForInstitution501": [601, 602],
+    "institutionDetailId": 501,
+    "programDetailId": 601,
+    "articleListIds": [701],
+    "excludedRowIds": [604]
+  }
+}
