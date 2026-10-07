@@ -27,9 +27,16 @@ export interface ShellOptions {
     faviconUrl?: string;
     language?: string;
     canonicalUrl?: string;
+    robots?: string;
+    openGraph?: { title: string; description?: string; url: string; type: 'website' | 'article'; siteName: string; image?: string; imageAlt?: string };
 }
 
 export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOptions): string {
+    const metadata = [
+        ...(opts.robots ? [`<meta name="robots" content="${escapeHtml(opts.robots)}">`] : []),
+        ...Object.entries(opts.openGraph ? { title: opts.openGraph.title, description: opts.openGraph.description, url: opts.openGraph.url, type: opts.openGraph.type, site_name: opts.openGraph.siteName, image: opts.openGraph.image, 'image:alt': opts.openGraph.image ? opts.openGraph.imageAlt : undefined } : {})
+            .filter(([, value]) => value !== undefined && value !== '').map(([key, value]) => `<meta property="og:${key}" content="${escapeHtml(String(value))}">`),
+    ].join('\n');
     const swRegistration = opts.registerServiceWorker
         ? `<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js');}</script>`
         : '';
@@ -48,7 +55,7 @@ export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOpt
 <meta name="chimera-rendered-by" content="${escapeHtml(opts.environment)}">
 <title>${escapeHtml(page.title)}</title>
 ${opts.canonicalUrl ? `<link rel="canonical" href="${escapeHtml(opts.canonicalUrl)}">\n` : ''}${page.description ? `<meta name="description" content="${escapeHtml(page.description)}">` : ''}
-${faviconLinks}<link rel="modulepreload" href="/static/react/hydrate.js?v=${HYDRATE_VERSION}">
+${metadata ? metadata + '\n' : ''}${faviconLinks}<link rel="modulepreload" href="/static/react/hydrate.js?v=${HYDRATE_VERSION}">
 <style>${page.cssBundle || FALLBACK_CSS}</style>
 </head>
 <body>

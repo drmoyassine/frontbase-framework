@@ -2,12 +2,14 @@ import type { DbRunner } from '@frontbase/edge-infra';
 import { createEngine, directProvider } from '@frontbase/edge-core';
 import { SitePublicationStore } from './site-publication-store.js';
 import { SitePublicationReviewStore } from './site-publication-review-store.js';
+import { capturedSiteSitemap } from './site-publication-sitemap.js';
 import { resolveSitePublicationPage } from './site-publication-runtime.js';
 
 export type SitePublicationResolution =
     | {status:'inactive'}
     | {status:'missing'}
     | {status:'unavailable'}
+    | {status:'sitemap';hash:string;generation:number;xml:string}
     | {status:'resolved';hash:string;generation:number;result:NonNullable<Awaited<ReturnType<typeof resolveSitePublicationPage>>>};
 
 /** Trusted host owner only. Once active, missing/unavailable MUST NOT fall back to mutable pages. */
@@ -17,6 +19,11 @@ export async function resolveReviewedSitePublication(db:DbRunner,owner:string,re
         const active=await new SitePublicationStore(db,owner).active();
         if(!active)return {status:'inactive'};
         if(!await new SitePublicationReviewStore(db,owner).get(active.pointer.hash))return {status:'unavailable'};
+        const url=new URL(request.url);
+        if(url.pathname==='/sitemap.xml') {
+            if(url.search)throw new Error('publication_params_invalid');
+            return {status:'sitemap',hash:active.pointer.hash,generation:active.pointer.generation,xml:capturedSiteSitemap(active.artifact)};
+        }
         const result=await resolveSitePublicationPage(active.artifact,active.pointer.hash,owner,request);
         if(!result)return {status:'missing'};
         return {status:'resolved',hash:active.pointer.hash,generation:active.pointer.generation,result};
@@ -29,6 +36,12 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
     const resolution=await resolveReviewedSitePublication(db,owner,request);
     if(resolution.status==='inactive')return null;
     const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
+    if(resolution.status==='sitemap') {
+        headers.set('Content-Type','application/xml; charset=utf-8');
+        headers.set('X-Site-Version',resolution.hash);
+        headers.set('X-Site-Generation',String(resolution.generation));
+        return new Response(request.method==='HEAD'?null:resolution.xml,{status:200,headers});
+    }
     if(resolution.status!=='resolved') {
         headers.set('Content-Type','text/plain; charset=utf-8');
         headers.set('X-Robots-Tag','noindex, nofollow');
@@ -44,6 +57,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         const rendered=await engine.fetch(new Request(request.url,{method:'GET'}));
         const responseHeaders=new Headers(rendered.headers);
         for(const [key,value] of headers)responseHeaders.set(key,value);
+        responseHeaders.set('X-Robots-Tag',document.robots ?? 'noindex, nofollow');
         responseHeaders.set('X-Site-Version',resolution.hash);
         responseHeaders.set('X-Site-Generation',String(resolution.generation));
         if(request.method==='HEAD')await rendered.body?.cancel();

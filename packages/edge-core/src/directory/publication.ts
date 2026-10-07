@@ -10,7 +10,7 @@ export const publicationPathSchema = z.string().min(1).max(400).refine(value => 
         const path = decodeURIComponent(value);
         return value.startsWith('/') && !path.startsWith('//') && !/[\\?#{}\x00-\x20]/.test(path)
             && !path.split('/').some(part => part === '.' || part === '..')
-            && !/^\/(?:api|frontbase-admin|frontbase-setup|builder|static|console|admin|setup)(?:\/|$)/i.test(path) && !/^\/sw\.js\/?$/i.test(path);
+            && !/^\/(?:api|frontbase-admin|frontbase-setup|builder|static|console|admin|setup)(?:\/|$)/i.test(path) && !/^\/(?:sw\.js|sitemap\.xml)\/?$/i.test(path);
     } catch { return false; }
 });
 const text = (max: number) => z.string().max(max).refine(v => !v.includes('\0'));

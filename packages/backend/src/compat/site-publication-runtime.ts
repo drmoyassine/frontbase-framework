@@ -1,13 +1,13 @@
 import { buildSiteManifest } from '@frontbase/compiler/manifest';
 import { createSnapshotDirectoryQueries } from '@frontbase/compiler/queries/directory';
 import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview } from '@frontbase/edge-core/directory/configuration';
-import type { PageEntry } from '@frontbase/edge-core';
+import type { PageEntry, EngineOptions } from '@frontbase/edge-core';
 import { publicationPathSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
 import { sitePublicationArtifactSchema } from '@frontbase/edge-core/directory/publication';
 import type { PageLayoutData } from '@frontbase/edge-core';
 
 /** Resolve one captured version. No control/content DB or mutable draft access. */
-export async function resolveSitePublicationPage(input: SitePublicationArtifact, hash: string, owner: string, request: Request): Promise<{ page: PageEntry; version: string; cacheKey: string; document: { faviconUrl: string; language: string; canonicalUrl: string } } | null> {
+export async function resolveSitePublicationPage(input: SitePublicationArtifact, hash: string, owner: string, request: Request): Promise<{ page: PageEntry; version: string; cacheKey: string; document: NonNullable<EngineOptions['document']> } | null> {
     if (!owner || !/^[a-f0-9]{64}$/.test(hash)) throw new Error('publication_context_required');
     const artifact = sitePublicationArtifactSchema.parse(input), url = new URL(request.url), path = url.pathname;
     if (!publicationPathSchema.safeParse(path).success) return null;
@@ -52,7 +52,10 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
     const title = typeof row?.title === 'string' ? row.title : template.title;
     const description = typeof row?.summary === 'string' ? row.summary : template.description;
     const manifest = buildSiteManifest({ pages: { [path]: { title, slug: path.replace(/^\//, ''), description, layout: projected as unknown as Record<string, unknown> } }, queries: {}, versionPrefix: hash });
+    const canonicalUrl = new URL(path, artifact.configuration.site.origin).href;
     return { page: manifest.pages[path]!, version: manifest.version, cacheKey: JSON.stringify([owner, hash, path, normalized]),
         document: { faviconUrl: '', language: typeof row?.language === 'string' ? row.language : artifact.configuration.site.locale || 'en',
-            canonicalUrl: new URL(path, artifact.configuration.site.origin).href } };
+            canonicalUrl, robots: url.searchParams.size ? 'noindex, follow' : 'index, follow',
+            openGraph: { title, description, url: canonicalUrl, type: role === 'article' ? 'article' : 'website', siteName: artifact.configuration.site.name,
+                ...(typeof row?.cover === 'string' ? { image: row.cover, imageAlt: typeof row.coverAlt === 'string' ? row.coverAlt : '' } : {}) } } };
 }
