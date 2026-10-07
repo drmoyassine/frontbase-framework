@@ -1,0 +1,35 @@
+{
+  "captured_at": "2026-10-02T09:00:00Z",
+  "countries": [{"id": 5, "country": "Example Country"}],
+  "cities": [{"id": 100, "city": "Springfield", "country_id": 5, "wp_id": 205}],
+  "institutions": [
+    {"id": 700, "institution_name": "Example College", "wp_url": "https://usa.example/college/",
+     "wp_id": 7, "city_id": 100, "provider_id": 34, "status": "Active",
+     "institution_image": "https://media.usa.example/public-images/wordpress/usa/institutions/700/abc.png",
+     "logo": "https://media.usa.example/public-images/wordpress/usa/institutions/700/abc.png"},
+    {"id": 701, "institution_name": "Expanded College", "wp_url": null, "wp_id": null,
+     "city_id": 100, "provider_id": 34, "status": "Active", "institution_image": null,
+     "logo": " https://usa.example/wp-content/uploads/old-logo.png "},
+    {"id": 702, "institution_name": "Duplicate College", "wp_url": "https://usa.example/duplicate-college/",
+     "wp_id": 60, "city_id": 100, "provider_id": 34, "status": "Active",
+     "institution_image": null},
+    {"id": 703, "institution_name": "Duplicate College Two", "wp_url": "https://usa.example/duplicate-college/",
+     "wp_id": null, "city_id": 100, "provider_id": 34, "status": "Active",
+     "institution_image": null},
+    {"id": 704, "institution_name": "Faraway College", "wp_url": "https://other.example/faraway/",
+     "wp_id": null, "city_id": 100, "provider_id": 34, "status": "Active",
+     "institution_image": null}
+  ],
+  "wp_program_ids": [
+    {"id": 800, "program_name": "Example Program", "wp_url": "https://usa.example/college/program/",
+     "wp_id": 8, "institution_id": 700, "city_id": 100, "status": "publish",
+     "program_image": "", "admissions_requirements": "", "updated_at": "2026-10-02T09:00:00Z"},
+    {"id": 801, "program_name": "Example Course", "wp_url": "https://usa.example/college/course/",
+     "wp_id": 9, "institution_id": 700, "city_id": 100, "status": "Draft",
+     "program_image": "https://media.usa.example/public-images/wordpress/usa/programs/801/missing.png"},
+    {"id": 802, "program_name": "Expanded Program", "wp_url": null, "wp_id": null,
+     "institution_id": 700, "city_id": 100, "status": "publish", "program_image": null},
+    {"id": 803, "program_name": "Cross-origin Program", "wp_url": "https://other.example/elsewhere/",
+     "wp_id": null, "institution_id": 700, "city_id": 100, "status": "publish", "program_image": null}
+  ]
+}
