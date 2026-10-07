@@ -1,6 +1,6 @@
 # WordPress pilot: north star, progress and execution order
 
-**Updated:** 2026-10-07. **Active plan:** the current snapshot and ordered backlog below supersede historical next-task statements in this document and older delivery reports. **Pilot:** study-in-usa.com. **Branch:** codex/wordpress-pilot; latest Git checkpoint 836eef9, subsequent implementation/documentation remains uncommitted. This is a pilot plan, not a production-readiness or framework-release declaration.
+**Updated:** 2026-10-07. **Active plan:** the current snapshot and ordered backlog below supersede historical next-task statements in this document and older delivery reports. **Pilot:** study-in-usa.com. **Branch:** codex/wordpress-pilot; implementation checkpoint0629e80 committed and pushed. The [owner-authorized swarm](wordpress-pilot-swarm.md) works from that checkpoint in isolated worktrees. This is a pilot plan, not a production-readiness or framework-release declaration.
 
 ## Current snapshot and ordered backlog
 
