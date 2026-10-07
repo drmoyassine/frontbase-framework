@@ -20,3 +20,6 @@ packages/backend/test/.gate-out*.txt
 
 # Local compose env (docker-compose.yml at repo root) — never commit
 .env
+
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json
