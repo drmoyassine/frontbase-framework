@@ -13,5 +13,5 @@ export async function loadDirectoryCanvas(layout: PageLayoutLike, saved: SiteCon
         if (result.revision !== saved.revision || result.queryId !== binding.queryId || !Array.isArray(result.rows)) throw new Error('Directory preview revision mismatch');
         rows.set(id, result.rows);
     }
-    return projectDirectoryRecords(layout, rows);
+    return projectDirectoryRecords(layout, rows, { locale: saved.configuration.site.locale });
 }

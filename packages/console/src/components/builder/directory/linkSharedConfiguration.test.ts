@@ -13,9 +13,9 @@ it('adds a flat styled header with the brand link first and contact pills last',
     expect(brand.styles).toMatchObject({ fontWeight: '700' });
     expect(destination.props.siteBindings).toEqual({ text: 'site.destination' });
     expect(destination.styles).toMatchObject({ color: '#64748b', fontSize: '0.875rem' });
-    expect(email.props.siteBindings).toEqual({ href: 'contacts.email' });
+    expect(email.props.siteBindings).toEqual({ href: 'contacts.email', hideWhenEmpty: true });
     expect(email.styles).toMatchObject({ marginLeft: 'auto', borderRadius: '9999px', border: '1px solid #dbe2ea' });
-    expect(whatsapp.props.siteBindings).toEqual({ href: 'contacts.whatsapp' });
+    expect(whatsapp.props.siteBindings).toEqual({ href: 'contacts.whatsapp', hideWhenEmpty: true });
     expect(whatsapp.styles).toMatchObject({ borderRadius: '9999px' });
 });
 

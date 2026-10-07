@@ -15,4 +15,15 @@ await withSourceMutation('semantic article rejects executable properties','packa
     expectRed('semantic article rejects executable properties',runGate(dir,'test/directory-bindings.mjs'));
 });
 if (!buildPackage(pkg) || runGate(dir,'test/directory-bindings.mjs') !== 0) process.exit(2);
+for (const [label,file,find,replacement] of [
+    ['optional contacts collapse','configuration.ts',"binding.hideWhenEmpty && !props.href",'false'],
+    ['contact component validation','bindings.ts',"binding.hideWhenEmpty !== undefined && (node.type !== 'Link' || !binding.href)",'false'],
+    ['date format field allowlist','bindings.ts',"record.format && record.text !== 'publishedAt'",'false'],
+    ['explicit date projection','bindings.ts',"b.format === 'date' ? formatEditorialDate(row[b.text], options.locale) : literal(row[b.text])",'literal(row[b.text])'],
+    ['invalid calendar rejection','bindings.ts',"day > days[month - 1]!",'false'],
+]) await withSourceMutation(label,'packages/edge-core/src/directory/'+file,find,replacement,async()=>{
+    if (!buildPackage(pkg)) throw new Error('Binding mutation must compile');
+    expectRed(label,runGate(dir,'test/directory-bindings.mjs'));
+});
+if (!buildPackage(pkg) || runGate(dir,'test/directory-bindings.mjs') !== 0) process.exit(2);
 summarize('directory bindings');

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { siteBindingsSchema, validateSiteBinding } from './bindings.js';
 export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, projectDirectoryRecords, type DirectoryQueryBinding } from './bindings.js';
 export { editorialBodySchema, parseEditorialBody, projectEditorialBody } from './editorial.js';
 
@@ -77,11 +78,6 @@ export function directoryCopiesMatch(a: unknown, b: unknown): boolean {
     return left.success && right.success && canonical(left.data) === canonical(right.data);
 }
 
-const siteBindingsSchema = z.object({
-    text: z.enum(['site.name', 'site.destination']).optional(),
-    href: z.enum(['contacts.email', 'contacts.whatsapp', 'routes.directory']).optional(),
-}).strict();
-
 /** Display-only projection; caller keeps the original authoring layout for saving. */
 export function projectSharedDirectoryPreview<T>(layout: T, configuration: DirectoryConfiguration): T {
     const config = directoryConfigurationSchema.parse(configuration);
@@ -93,8 +89,10 @@ export function projectSharedDirectoryPreview<T>(layout: T, configuration: Direc
         const props = { ...node.props };
         if (props.siteBindings !== undefined) {
             const binding = siteBindingsSchema.parse(props.siteBindings);
+            validateSiteBinding(node);
             if (binding.text) props.text = values[binding.text].replace(/\{(?=[{%])/g, '{\u200b');
             if (binding.href) props.href = values[binding.href];
+            if (binding.hideWhenEmpty && !props.href) return { id: node.id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
         }
         return { ...node, props, ...(Array.isArray(node.children) ? { children: node.children.map(walk) } : {}) };
     };

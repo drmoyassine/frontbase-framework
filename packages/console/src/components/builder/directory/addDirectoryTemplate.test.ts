@@ -38,7 +38,7 @@ it('mutes article detail meta and keeps body block spacing to the projected bloc
     expect(image.props.recordBindings).toEqual({ src: 'cover', alt: 'coverAlt', hideWhenEmpty: true });
     expect(heading.props.level).toBe('1');
     expect(byline.props.recordBindings).toEqual({ text: 'byline' }); expect(byline.styles).toMatchObject({ color: '#64748b', fontSize: '0.875rem' });
-    expect(published.props.recordBindings).toEqual({ text: 'publishedAt' }); expect(published.styles).toMatchObject({ color: '#64748b' });
+    expect(published.props.recordBindings).toEqual({ text: 'publishedAt', format: 'date' }); expect(published.styles).toMatchObject({ color: '#64748b' });
     expect(body.props.recordBindings).toEqual({ blocks: 'body' }); expect(body.children).toBeUndefined();
     expect(body.styles).toBeUndefined(); // projected blocks carry their own margins; a gap would double-space
     expect(nodes.some(node => node.type === 'Link')).toBe(false);

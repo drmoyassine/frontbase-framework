@@ -22,3 +22,14 @@ it('makes empty-image presentation an explicit template option without changing 
     await userEvent.click(screen.getByRole('checkbox',{name:'Hide when this record has no image'}));
     expect(update).toHaveBeenCalledWith('recordBindings',{src:'cover',alt:'coverAlt',hideWhenEmpty:true});
 });
+
+it('selects explicit UTC date format and removes it when switching text fields',async()=>{
+    const update=vi.fn();const {rerender}=render(<DirectoryBindingProperties node={{id:'date',type:'Paragraph',props:{recordBindings:{text:'publishedAt'}}}} update={update}/>);
+    await userEvent.selectOptions(screen.getByRole('combobox',{name:'Directory date display'}),'date');
+    expect(update).toHaveBeenCalledWith('recordBindings',{text:'publishedAt',format:'date'});
+    rerender(<DirectoryBindingProperties node={{id:'date',type:'Paragraph',props:{recordBindings:{text:'publishedAt',format:'date'}}}} update={update}/>);
+    await userEvent.selectOptions(screen.getByRole('combobox',{name:'Directory text field'}),'byline');
+    expect(update).toHaveBeenCalledWith('recordBindings',{text:'byline'});
+    await userEvent.selectOptions(screen.getByRole('combobox',{name:'Directory date display'}),'raw');
+    expect(update).toHaveBeenCalledWith('recordBindings',{text:'publishedAt'});
+});

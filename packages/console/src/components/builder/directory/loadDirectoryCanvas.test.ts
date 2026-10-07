@@ -43,3 +43,11 @@ it('retains exact original detail path and creates distinct editable component i
     expect(detail.content[1].type).toBe('Container');expect(detail.content[1].props.directoryQuery.params.path).toBe('/old-parent/program/');
     expect(addDirectoryTemplate(page,binding).content[1].id).not.toBe(addDirectoryTemplate(page,binding).content[1].id);
 });
+
+it('formats editorial dates with saved locale while keeping authoring source unchanged',async()=>{
+    const article={version:1 as const,queryId:'directory.article.detail' as const,params:{path:'/blog/original/'}};
+    const layout=addDirectoryTemplate(page,article),before=JSON.stringify(layout);
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({revision:2,queryId:article.queryId,rows:[{title:'Article',publishedAt:'2025-04-19T23:30:00-02:00',body:[{kind:'paragraph',runs:[{text:'Body'}]}]}]})}));
+    const projected=await loadDirectoryCanvas(layout,{...saved,configuration:{...saved.configuration,site:{...saved.configuration.site,locale:'en-GB'}}},new AbortController().signal);
+    expect(JSON.stringify(projected)).toContain('20 April 2025');expect(JSON.stringify(layout)).toBe(before);
+});

@@ -14,7 +14,7 @@ export function addDirectoryTemplate(page: Page, binding: DirectoryQueryBinding)
         node('Heading', { text: 'Record title', level: detail ? '1' : '2', recordBindings: { text: 'title' } }, detail ? { lineHeight: '1.2' } : undefined),
         ...(article && detail ? [
             node('Paragraph', { text: 'Byline', recordBindings: { text: 'byline' } }, meta),
-            node('Paragraph', { text: 'Original publication date', recordBindings: { text: 'publishedAt' } }, meta),
+            node('Paragraph', { text: 'Original publication date', recordBindings: { text: 'publishedAt', format: 'date' } }, meta),
             node('Container', { recordBindings: { blocks: 'body' } })
         ] : [node('Paragraph', { text: 'Record description', recordBindings: { text: detail ? 'body' : 'summary' } }, { whiteSpace: 'pre-wrap', lineHeight: '1.65', color: detail ? '#334155' : '#0f172a', margin: '0' })]),
         // Detail pages live on their own original path; a self-referential CTA would link a page to itself.
