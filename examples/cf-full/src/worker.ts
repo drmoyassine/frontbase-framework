@@ -33,6 +33,7 @@ import { resolveStateDb, StateDbConfigError, type ResolvedStateDb } from './stat
 import { resolveSessionSecret } from './session-secret.js';
 import { tenantMiddleware, hostTenantOf, hostKindOf } from './tenancy.js';
 import { manifest } from './manifest.js';
+import { renderReviewedSitePublication } from '@frontbase/backend';
 import SW_BUNDLE from 'virtual:sw-bundle';
 import CLIENT_BUNDLE from 'virtual:builder-client-bundle';
 import CONSOLE_INDEX from './console-shell.js';
@@ -809,6 +810,18 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         return next();
     });
     app.route('/', compatApp);
+
+    // Reviewed captures own public routes once active. Terminal failures never enter legacy fallback.
+    app.get('*', async (c, next) => {
+        const path = new URL(c.req.url).pathname;
+        if (/^\/(?:api|frontbase-admin|frontbase-setup|builder|static|console|admin|setup)(?:\/|$)/i.test(path)
+            || path === '/sw.js') return next();
+        const tenant = hostTenantFor(c.req.raw);
+        if (cloud && !tenant && hostKindOf(c.req.raw, cloud.baseDomain, cloud.appLabel) !== 'foreign') return next();
+        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE });
+        if (reviewed) return reviewed;
+        return next();
+    });
 
     // 5. Engine.
     app.route('/', engine);

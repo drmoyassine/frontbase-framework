@@ -292,6 +292,7 @@ export {
     resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost,
 } from './tenancy/serving.js';
 export type { PublishedPageRow, ResolvePublishedPageOptions, TenantHostState } from './tenancy/serving.js';
+export { renderReviewedSitePublication } from './compat/site-publication-serving.js';
 // A-25 Phase 4 cloud: the global plan catalog (cloud-boot seed + reads).
 export {
     PLAN_CATALOG_TENANT, FREE_PLAN_ID, FREE_PLAN_LIMITS, PLAN_CATALOG,

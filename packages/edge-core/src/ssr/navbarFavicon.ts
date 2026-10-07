@@ -11,7 +11,8 @@ import { engineConfig } from '../config.js';
 
 export async function applyNavbarFavicon(
     type: string,
-    resolvedProps: Record<string, unknown>
+    resolvedProps: Record<string, unknown>,
+    capturedFavicon?: string
 ): Promise<Record<string, unknown>> {
     if (type !== 'Navbar' || !resolvedProps.logo) {
         return resolvedProps;
@@ -20,7 +21,7 @@ export async function applyNavbarFavicon(
     // Inject faviconUrl if either useProjectLogo or showIcon is enabled
     if (logoProps.useProjectLogo || logoProps.showIcon) {
         // Use the unified state provider (supports all runtimes: CF, Deno, Docker, local)
-        const faviconUrl = await engineConfig().resolveFaviconUrl();
+        const faviconUrl = capturedFavicon ?? await engineConfig().resolveFaviconUrl();
 
         // Inject the favicon URL into the logo imageUrl property
         return {

@@ -25,6 +25,8 @@ export interface ShellOptions {
      * icon fallback pass it here (faviconUrl || '/static/icon.png').
      */
     faviconUrl?: string;
+    language?: string;
+    canonicalUrl?: string;
 }
 
 export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOptions): string {
@@ -38,14 +40,14 @@ export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOpt
         ? `<link rel="icon" href="${escapeHtml(opts.faviconUrl)}">\n<link rel="apple-touch-icon" href="${escapeHtml(opts.faviconUrl)}">\n`
         : '';
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${escapeHtml(opts.language || 'en')}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="Frontbase">
 <meta name="chimera-rendered-by" content="${escapeHtml(opts.environment)}">
 <title>${escapeHtml(page.title)}</title>
-${page.description ? `<meta name="description" content="${escapeHtml(page.description)}">` : ''}
+${opts.canonicalUrl ? `<link rel="canonical" href="${escapeHtml(opts.canonicalUrl)}">\n` : ''}${page.description ? `<meta name="description" content="${escapeHtml(page.description)}">` : ''}
 ${faviconLinks}<link rel="modulepreload" href="/static/react/hydrate.js?v=${HYDRATE_VERSION}">
 <style>${page.cssBundle || FALLBACK_CSS}</style>
 </head>

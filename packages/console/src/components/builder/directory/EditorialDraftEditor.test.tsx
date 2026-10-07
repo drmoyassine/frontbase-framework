@@ -5,6 +5,30 @@ import userEvent from '@testing-library/user-event';
 import {EditorialDraftEditor} from './EditorialDraftEditor';
 vi.mock('@/components/dashboard/FileBrowser/FilePickerDialog',()=>({FilePickerDialog:({open,onSelect}:any)=>open?<><button onClick={()=>onSelect('https://media.example.test/cover.jpg',{})}>Select test cover</button><button onClick={()=>onSelect('https://media.example.test/cover.jpg?token=secret',{})}>Select signed cover</button></>:null}));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+it('approves only a saved requested revision after every check and keeps publication separate',async()=>{
+    const requested={...document,language:'en',reviewState:'requested',reviewNote:'Source checked'};
+    const fetch=vi.fn().mockResolvedValueOnce(ok({document:requested})).mockResolvedValueOnce(ok({approval:{documentRevision:1,configurationRevision:3,fingerprint:'a'.repeat(64)},publicationAvailable:false}));vi.stubGlobal('fetch',fetch);
+    render(<EditorialDraftEditor id={id} configurationRevision={3} onClose={()=>{}}/>);await screen.findByLabelText('Article title');
+    const approve=screen.getByRole('button',{name:'Approve saved revision'});expect(approve).toBeDisabled();
+    for(const label of ['Facts and chronology checked','Language checked','Media and alt text reviewed, or omission justified','Formatting, headings and links checked','Original URL and SEO fields checked','Contact actions checked'])await userEvent.click(screen.getByLabelText(label));
+    expect(approve).toBeDisabled();await userEvent.type(screen.getByLabelText('Approval evidence and reasons'),'Verified sources; text-only is appropriate');await userEvent.click(approve);
+    expect(await screen.findByText('Approved snapshot of revision 1. Nothing was published.')).toBeTruthy();
+    const request=JSON.parse(fetch.mock.calls[1][1].body);expect(request.expectedDocumentRevision).toBe(1);expect(request.expectedConfigurationRevision).toBe(3);expect(request.reviewer).toBeUndefined();expect(request.content).toBeUndefined();
+});
+it('prevents approving unsaved edits',async()=>{
+    const requested={...document,language:'en',reviewState:'requested',reviewNote:'Checked'};
+    const fetch=vi.fn().mockResolvedValueOnce(ok({document:requested})).mockRejectedValueOnce(new Error('Lost response'));vi.stubGlobal('fetch',fetch);
+    render(<EditorialDraftEditor id={id} configurationRevision={3} onClose={()=>{}}/>);const title=await screen.findByLabelText('Article title');
+    await userEvent.type(title,' edit');expect(screen.getByLabelText('Facts and chronology checked')).toBeDisabled();expect(fetch).toHaveBeenCalledTimes(1);
+});
+it('locks approval retry after a lost response without discarding content',async()=>{
+    const requested={...document,language:'en',reviewState:'requested',reviewNote:'Checked'};
+    const fetch=vi.fn().mockResolvedValueOnce(ok({document:requested})).mockRejectedValueOnce(new Error('Lost response'));vi.stubGlobal('fetch',fetch);
+    render(<EditorialDraftEditor id={id} configurationRevision={3} onClose={()=>{}}/>);await screen.findByLabelText('Article title');
+    for(const checkbox of screen.getAllByRole('checkbox'))await userEvent.click(checkbox);
+    await userEvent.type(screen.getByLabelText('Approval evidence and reasons'),'Sources and media reviewed');await userEvent.click(screen.getByRole('button',{name:'Approve saved revision'}));
+    expect(await screen.findByText(/Approval could not be confirmed/)).toBeTruthy();expect(screen.getByRole('button',{name:'Approve saved revision'})).toBeDisabled();expect(screen.getByLabelText('Article title')).toHaveValue('Original title');
+});
 const id='00000000-0000-4000-8000-000000000001';
 const document={id,revision:1,originalPath:'/blog/original/',title:'Original title',excerpt:'',body:[{kind:'paragraph',runs:[{text:'Original text'}]}],language:null,byline:'Public author',publishedAt:null,coverUrl:null,coverAlt:'',reviewState:'draft',reviewNote:''};
 const ok=(value:unknown)=>({ok:true,json:async()=>value});

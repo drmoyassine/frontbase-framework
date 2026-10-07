@@ -28,6 +28,7 @@ export function DirectoryBindingProperties({ node, update }: { node: ComponentDa
         {record.data.src && <label className="block text-sm">Image field<select aria-label="Directory image field" className="mt-1 w-full rounded border bg-background p-2" value={record.data.src}
             onChange={e => update('recordBindings', { ...record.data, src: e.target.value })}><option value="cover">Cover image</option><option value="logo">Logo</option></select></label>}
         {record.data.alt && <label className="block text-sm">Image alt text field<select aria-label="Directory image alt text field" className="mt-1 w-full rounded border bg-background p-2" value={record.data.alt} onChange={e=>update('recordBindings',{...record.data,alt:e.target.value})}><option value="title">Record title</option><option value="coverAlt">Cover alt text</option></select></label>}
+        {record.data.src && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={record.data.hideWhenEmpty===true} onChange={e=>update('recordBindings',{...record.data,hideWhenEmpty:e.target.checked})}/>Hide when this record has no image</label>}
         {record.data.href && <p className="text-sm">Links use the original WordPress path.</p>}
     </section>;
     return null;

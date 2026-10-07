@@ -1,0 +1,152 @@
+# WordPress pilot: parallel-session handoff
+
+**Updated 2026-10-07.** Documentation reconciliation; no new implementation, database write, review or activation in this update. This is the entry point for the owner's parallel session. Claims in chat do not replace Git and reproducible evidence.
+
+## Read first and establish the baseline
+
+Read [AGENTS.md](../../AGENTS.md), [release strategy](../history/PUBLIC-RELEASE-STRATEGY.md), [audit](../history/PUBLIC-RELEASE-AUDIT.md), [milestones](../history/MILESTONES.md), [decisions](../history/DECISIONS.md), [README](../../README.md), then [current roadmap](wordpress-pilot-roadmap.md). Detailed contracts: [shared configuration](wordpress-pilot-p2a-contract.md), [publication](wordpress-pilot-publication.md), [editorial model](wordpress-pilot-editorial-model.md), [editorial review](wordpress-pilot-editorial-review.md), [storage](wordpress-pilot-garage-storage.md), [harmonization](wordpress-pilot-harmonization.md), [packaging inventory](wordpress-pilot-packaging-review.md).
+
+Inspect `git status --short`, branch and HEAD before editing. Current branch is `codex/wordpress-pilot`, checkpoint `836eef9`. Publication/review/optional-cover source and documentation after that checkpoint are **uncommitted**, including new untracked implementation files. A new worktree from HEAD does not contain them. Coordinate a reviewed checkpoint or selective transfer before depending on them; do not assume a fresh checkout reproduces this local app. This documentation request does not authorize an automatic commit/push.
+
+Preserve unfamiliar `.gitignore`, `docs/plans/competitive-roadmap.md`, `examples/cf-full/e2e/cloud/find-second-identity.mjs` and `examples/cf-full/e2e/cloud/hosted-journey.spec.ts`. Do not clean, reset, stash or stage all. Generated `examples/cf-full/api/cms.mjs` also has pilot changes; regenerate only with the build owner coordinated.
+
+R0 remains in progress; CF-22 remains paused. The pilot is not production-ready, generally available or an installed reusable template. General release claims retain their own gates. Earlier dated roadmap paragraphs are historical evidence; use its current T1–T7 order.
+
+## Owner decisions to preserve
+
+- One self-host deployment is one site/application, with its own engine/worker, configuration, domain and publication state. Self-host is the primary target; existing Cloud ownership boundaries remain intact. No new multi-site registry or dedicated Cloud worker provisioning is delivered.
+- Existing `/frontbase-admin` owns configuration, data/storage connection, editing and publishing. Retain six packages and one engine.
+- Canonical listings remain in Studygram `public.institutions`, `public.programs`, `public.cities`, `public.countries`. Supabase content is authoritative; WordPress supplies original public path identity and missing-record evidence. Additional Supabase rows are intentional expansion.
+- Institution has many programs and one city. Provider IDs are internal, not public fields or relationships inferred from WordPress. ELS campuses use ILSC Language Schools provider and ELS-scoped naming; the twelve imported campuses are Active and linked imported programs remain Draft.
+- Media uses administrator-connected storage; Garage is this consumer's choice. Never bundle its credentials, recovered private content or local DB into a template.
+- Missing blog covers intentionally collapse to text-only and return when a safe URL is supplied. Missing content/media enrichment is a separate pass; do not ask the owner this decision again.
+- Final core versus installable-template versus consumer classification is required when work completes. Current classification is provisional.
+- Garage off-server backups were explicitly deferred. Production cutover has not been authorized.
+
+## Current implementation map
+
+| Responsibility | Source / current contract |
+|---|---|
+| Shared settings and record bindings | [configuration](../../packages/edge-core/src/directory/configuration.ts), [bindings](../../packages/edge-core/src/directory/bindings.ts); `site_configuration:v1`, expected revision; page root references `{version:1, role}` |
+| Article editing and revision approval | [editorial routes](../../packages/backend/src/compat/routes/editorial.ts), [approval store](../../packages/backend/src/compat/editorial-approval-store.ts), [draft editor](../../packages/console/src/components/builder/directory/EditorialDraftEditor.tsx); canonical PostgreSQL write contract, immutable identity, private exact-revision/configuration approval |
+| Strict immutable capture | [publication schema](../../packages/edge-core/src/directory/publication.ts), [preparation](../../packages/backend/src/compat/site-publication-prepare.ts), [store](../../packages/backend/src/compat/site-publication-store.ts); owner-scoped snapshot, SHA-256 stable identity, generation/hash CAS |
+| Snapshot execution | [compiler queries](../../packages/compiler/src/queries/directory.ts), [runtime](../../packages/backend/src/compat/site-publication-runtime.ts); captured arrays only, fixed parameters, original paths and parent/city relationships, existing engine projection |
+| Whole-version review and guarded activation | [review store](../../packages/backend/src/compat/site-publication-review-store.ts); exact target review required, then CAS; rollback advances generation; internal mechanism only |
+| Reviewed public-reader boundary | [serving](../../packages/backend/src/compat/site-publication-serving.ts); explicit inactive/missing/unavailable/resolved result, trusted owner, active artifact integrity and review required; not wired into host handling |
+| Private API / existing admin | [publication routes](../../packages/backend/src/compat/routes/site-publication.ts), [preparation panel](../../packages/console/src/components/builder/directory/SitePreparationPanel.tsx), [shared panel](../../packages/console/src/components/builder/directory/SharedPageConfigurationPanel.tsx) |
+| Optional covers / generated roles | [template helper](../../packages/console/src/components/builder/directory/addDirectoryTemplate.ts), [Properties](../../packages/console/src/components/builder/directory/DirectoryBindingProperties.tsx); Image/src `hideWhenEmpty`, default enabled on generated article list/detail only |
+
+Persisted keys: `site_publication:v1:<hash>`, `site_publication:active:v1`, `site_publication:review:v1:<hash>`, `editorial_approval:v1:<id>:<documentRevision>:<configurationRevision>`. Owner scope is part of persistence, not a browser-provided tenant selector. Low-level store activation must not become an unguarded route.
+
+### Private API and state transitions
+
+Existing authenticated administrator namespace `/api/project/site-configuration/publication/`:
+
+| Operation | Implemented behavior |
+|---|---|
+| POST `prepare/` | Expected configuration revision plus saved role templates/record references and exact article approval references; server resolves owned settings/data/layouts. Does not save current unsaved builder state |
+| POST `read/` | Strict `{hash}` recovery; captured routes/configuration revision and record identity/title/path plus review timestamp; excludes bodies, private review notes and reviewer identity |
+| POST `preview/` | Hash, original path and bounded supported parameters; private projected page JSON |
+| GET `render/` | Same-engine private HTML, no-store, noindex/nofollow; links retain captured hash |
+| POST `review/` | Exact hash, five true confirmations (content/media/layout/URLs/CTAs) and bounded note; reviewer/time from server, immutable evidence, no publication |
+
+All preparation/read/review responses retain `publicationAvailable:false`. No activate, rollback, delete, list-history or revoke endpoint exists. Lost review response requires reopening before retry. Article approval is a separate six-check document/configuration review (facts/language/media/formatting/URLs/CTAs). Whole-version review does not approve an unapproved canonical article.
+
+Flow: canonical Draft → private exact-revision article approval → immutable candidate containing approved article snapshot and captured catalog/templates → private whole-version review → **pending host/admin activation integration**. Changing source content/settings/layouts does not mutate an old capture or transfer its approval to a new hash.
+
+### Public host integration pitfalls and acceptance
+
+The engine's existing null page callback can fall back to a baked manifest. Therefore the new reader's states cannot be collapsed to null: an active capture with a missing page must not reveal a legacy page; corrupt/unreviewed/unavailable active state must fail closed. Only the explicit inactive state can enter a separately justified legacy policy. Determine HTTP mapping in the integration, including invalid request parameters currently reported as unavailable; do not claim the module already produces public 404/503 responses.
+
+Resolve one trusted owner and active version per request. Reuse that captured identity for page projection, manifest, response/cache/SW and metadata; avoid a second pointer read mixing generations. Current cache key/version-prefix helpers are identity functions, not a production cache implementation. Do not enable legacy Directory publication until end-to-end owner, review, route and version tests pass.
+
+Initial capture is deliberately bounded: 48 records per collection, 1 MiB UTF-8, at most seven saved role templates. Implemented content roles are directory/institution/program/article-index/article; city details, informational pages, full home integration, pathway publication, full-catalog storage and advanced filters remain incomplete. Safe public media is permanent HTTPS raster; no signed URLs or SVG. Mutable legacy bindings, reserved/colliding paths, missing parents and private fields are refused. Source DB/configuration capture is not a distributed transaction.
+
+## Last verified local pilot state
+
+This section records prior checks, not a fresh remote audit performed for this documentation update.
+
+- Local full CMS: `http://127.0.0.1:4389`; 4387 is the offline catalog preview and 4388 was a fixture harness. Browser tab state can contain unsaved user edits; do not overwrite it.
+- Studygram project `uwzosvzynnpbxpnwqgkm`; saved datasource `5ce8d415-444b-4cd9-8e41-72fcf886280e`, country 22, shared configuration revision 4. IDs are local consumer evidence, not defaults to export.
+- Article `606bbbd5-bc2c-4179-bb4c-c8ab480b3bb8` / WordPress 3986: revision 3, English, Draft, cover null, no approval. Corrected announcement wording retains `/blog/tori-murden-mcclure-inspires-wilson-college-graduates-at-155th-commencement/`, original date and byline; two earlier revisions archived privately.
+- Corrected private candidate `b55eef72fdf17cfd81e2485277fd2495d669162658846b622bf85164844d9042` captures Muhlenberg institution 512, program 46188, city 286 and no articles. Program degree text was narrowly corrected DDS→DMD; old immutable captures retain old text. Remaining admissions/availability facts are unapproved. Institution cover is missing; its legacy logo/source assets still need audit.
+- No actual article approval, whole-version review or activation was performed. Private preview 200/no-store/noindex is not public-host acceptance.
+
+| Saved role | Local page ID |
+|---|---|
+| Directory | `302f98d6-440c-489c-b7d9-7f747bcf191f` |
+| Institution | `e630b281-b773-422c-8924-4fbc2f77ebf3` |
+| Program | `bd04d978-1ae4-4876-8b31-521ad09879eb` |
+| Article index | `cf1aa196-45e0-4751-980a-8b16dd29819a` |
+| Article | `7fc4e8dc-04f4-46b3-8afe-0b5f54c64071` |
+
+An older static article page also exists; choose saved role templates explicitly. Current article/list layouts have before-change recovery versions and only their empty-cover behavior was changed. Generated role defaults and the opt-in shared header are polished in the T2 delivery below; the saved local role layouts were refreshed from those generators with recovery snapshots (result below).
+
+Private evidence resides outside Git in `C:/Users/drmoy/.codex/visualizations/2026/10/04/01a105ea-d8e3-7251-9d16-58014053c4d6/garage-deployment`. Relevant files: `site-preparation-corrected-response.json`, `site-preparation-recovery-read.json`, `dental-correction-before.json`, `dental-correction-after.json`, `article-optional-cover-proof.png`, `site-version-review-proof.png`, and the T2 responsive proof (`t2-responsive-proof.mjs`, `t2-directory-list.html`, `t2-program-detail.html`, `t2-article-detail.html`, `t2-t2-*.png`). The local SQLite DB and credential files in that directory are machine-specific private state; keep their contents out of chat, logs and Git. A clean-install proof must not depend on them.
+
+## Owner-directed responsibilities and collision rules
+
+The owner explicitly keeps critical design/planning and verification of delivered work in the primary session. The primary session owns architecture, the roadmap, core/template boundary recommendations, publication integration (T1/T3), acceptance criteria and final integration verification. The parallel session's bounded assignment is T2 template presentation implementation and its own focused tests/evidence. Its evidence supports review; it does not establish final acceptance. No other session is assumed to have started until its exact file claim appears in the audit. Prefer separate worktrees once the required uncommitted baseline has been transferred safely.
+
+| Workstream | Suggested scope | Exit evidence / dependencies |
+|---|---|---|
+| Primary session: T1/T3 and design/acceptance | Architecture/planning, backend serving/publication, engine/host adapter seams, response/version/cache/SW/SEO, core/template decisions and final verification | Explicit reader-state handling; reviewed conditional activation and rollback; no draft/owner leak; independently review and verify parallel delivery before closing milestones |
+| Parallel session: T2 implementation | Narrowly claimed console template files and coordinated saved layouts; paragraphs, shared header, responsive lists/details/blog and CTAs; report coupling findings | Preserve saved bindings/original paths, empty/present covers; focused tests and phone/tablet/desktop evidence; submit changed paths, diff/checkpoint and residuals to primary review |
+| Later: T5 data enrichment | Canonical imports/media and source-delta reconciliation, separately scheduled pass | Idempotent imports, all original identities accounted for, reviewed fields/media; no blind bulk approval or provider creation |
+
+Shared hot files requiring explicit coordination: backend `compat/app.ts`, publication routes/store/schema, core configuration/bindings, compiler directory queries, package scripts, generated CMS and audit/decisions/roadmap documents. A template session needing a new generic binding must agree on file ownership before editing core. Re-read shared documents immediately before patching; append dated evidence rather than overwriting another session's ledger.
+
+The parallel session must bring changes to schema/query contracts, publishing/security, data mappings, architectural packaging or dependencies back to the primary session before implementing them. It may propose options and identify defects; final design and release/phase acceptance stay here. Do not change canonical data, publish/activate a site or mutate shared saved layouts without coordinating the target and recovery snapshot. Production cutover still requires owner authorization.
+
+Delivery review: the parallel session supplies a bounded diff/checkpoint, exact modified paths, tests/commands/results, responsive evidence and remaining issues. The primary session checks alignment with existing architecture, reviews the diff, independently exercises delivered behavior and runs applicable integration/security gates. Failed or credential-gated checks remain visible; a milestone is closed only after primary verification.
+
+Do not run mutation harnesses concurrently with another build/test process: they temporarily modify shared source and must restore it. One session owns builds/generated assets at a time. Separate worktrees do not isolate a shared local DB, saved page layouts, connected bucket or remote canonical rows. Coordinate those mutations independently; preserve unfamiliar Modified builder state. Report exact paths, uncommitted state and next executable task on handoff.
+
+## Verification baseline and commands
+
+Last implementation verification on October 7 (not rerun by this documentation-only update):
+
+| Gate | Result / limit |
+|---|---|
+| `pnpm -r check`, `pnpm -r build`, `pnpm console:stage` | Passed; existing warnings, full CF artifact gzip 509.1 KB; no prohibited client symbols |
+| Publication fixture and mutation | Passed; final mutation 20/20, restored baseline. Earlier 12/15/16-case results are subsets, not additive |
+| Current UI/template subset | 12/12: six canvas/template and six preparation/review tests |
+| Security/database-security; tenant matrix | Passed; tenant 175/175 |
+| Strict conformance | **Failed exit 1**: 248 conforming, zero violations, 77 verified refusals, nine unreachable fixtures |
+| Core binding/no-leak | Passed in the preceding increment; not newly rerun after the last guarded-reader change |
+| Full backend/infrastructure mutation chain, remote control-store races, hosted SEO/cache/SW, staging activation | Not freshly demonstrated by the last increment |
+
+After code edits, run workspace check/build and appropriate focused tests. From `packages/backend`, ordinary fixture `node test/site-publication.mjs`, mutation `node test/site-publication-mutation.mjs`, security `node test/compat-security.mjs`, database security `node test/compat-database-security.mjs`, tenant `node test/compat-tenant-matrix.mjs`, strict conformance `node test/compat-conformance.mjs --gate --behavior --behavior-gate`. Build dependencies before checks importing newly added exports. Run mutations sequentially, confirm restoration and rerun the ordinary baseline. Service-worker no-leak tests require the compiler package cwd. Use package scripts for the console tests and appropriate existing security gates; do not treat unreachable operations as a clean pass.
+
+Documentation-only updates check local link targets and `git diff --check`; they do not renew implementation evidence. README/release-wide size or readiness claims require their own reproducible R0 reconciliation, not automatic replacement with this pilot's artifact measurement.
+
+## Next executable task
+
+Primary has completed bounded T1 host dispatch and independently accepted bounded T2 generator/header presentation; see the current result below. The parallel session has since refreshed the five saved role layouts and delivered the normal-host responsive proof (result below). Next: complete the remaining browser/SEO/cache gates before T3 activation controls. A staging host is needed for T4; no new owner input is needed to start these local tasks. Final verification and critical design remain in the primary session; release/cutover remain separately gated.
+
+### Primary T1 response increment
+
+[Host contract](wordpress-pilot-public-host-contract.md) now records the trace and response/version/SW/SEO acceptance. Local configuration owner is verified `_root`, revision 4, no active pointer. Internal `renderReviewedSitePublication` renders captured GET/HEAD with the existing engine; inactive alone returns null, missing/unavailable return terminal 404/503. No host wiring yet. Mutable favicon/global metadata and old controlled-browser SW transition remain integration gates.
+
+Latest response fixture and expanded mutation23/23 pass/restored; workspace check/build, security/database-security and tenant175/175 pass. Strict conformance remains failed on nine unreachable fixtures. The earlier table's 20/20 and UI/no-leak/staging results remain dated prior evidence. Primary source changes are limited to serving helper and publication fixture/mutation tests plus documentation; no T2 console/template edits, canonical writes or actual activation. Build/mutation run is complete and restored; the shared-tree test lock is released. Next primary task is host wiring with request-specific metadata and current network-only SW transition proof before publication controls open.
+
+### Parallel T2 template-presentation increment
+
+Bounded T2 delivery, accepted by primary review (result below). `addDirectoryTemplate` and `addSharedPageHeader` (owned files, plus new `addDirectoryTemplate.test.ts` and `linkSharedConfiguration.test.ts`) generate polished role defaults and header chrome through existing node props/styles only: bordered cards with full-width dark CTAs bound to `originalPath` ('View details'/'Read article'), optional article covers (`hideWhenEmpty`), self-CTA-free detail pages bounded to 840px with H1/muted meta/gap-free body blocks, and the flat header pinned by existing tests with a bold brand-first link and pill contact links. Saved bindings, original paths, owner content and the pinned structures are preserved; no engine/compiler/backend change, saved-layout mutation or publication.
+
+Verification: full directory vitest suite 42/42 across nine files (including the pinned loadDirectoryCanvas and SharedPageConfigurationPanel tests); scoped `tsc -p tsconfig.app.json --noEmit` has zero diagnostics in owned files (71 pre-existing elsewhere); engine-rendered responsive proof at 375/768/1280 across list/program-detail/article-detail shows grid columns 1/2/3 with zero horizontal overflow, collapsed empty covers and no detail CTAs (private `t2-responsive-proof.mjs` plus HTML/screenshots). Workspace check/build and console staging are deferred to the primary's active host-wiring build/mutation ownership and rerun on release. Coupling findings handed to the primary: saved local layouts still carry draft markers/scaffold placeholders; institution cards with missing covers show a broken-image placeholder; `publishedAt` is unformatted; text bindings lack hideWhenEmpty. Corrected after primary review, both re-verified in source by this session: FALLBACK_CSS inlines UTILITIES_CSS, which already contains the injected `md:`/`lg:` grid utilities — the earlier missing-utilities claim was wrong and no supplemental stylesheet is proposed; and blank contact links render `#` hrefs via the Link renderer (`renderLink`), not empty hrefs. Changes uncommitted.
+### Primary host wiring and independent T2 review
+
+The CMS host now calls the reviewed response boundary before legacy serving; capture-bound canonical/language and explicit empty favicon context bypass current project settings. Infrastructure exclusions preserve `/sw.js` network-only updates. Isolated host smoke, host mutation3/3 and engine scope mutation2/2 pass/restored. Activation controls remain closed; actual old controlled-browser, cache/sitemap and staging proof remain open. Publication mutation/final checks are in progress; do not run concurrent source-mutating/build gates until restoration is recorded.
+
+Primary independently reran the delivered directory suite:42/42 pass, and reviewed the bounded T2 diffs. Responsive proof used a custom cssBundle and is not actual saved/public-host evidence. The claimed missing fallback grid utilities are not confirmed: FALLBACK_CSS imports UTILITIES_CSS, whose runtime string includes grid-cols-1, md:grid-cols-2 and lg:grid-cols-3 (also lg:grid-cols-4). Do not introduce a redundant stylesheet to fix that unproven diagnosis. Saved layout refresh and actual viewport verification remain required; blank contacts, raw dates and missing institution media are tracked findings, not accepted fixes.
+
+**Final primary result:** bounded T2 generator/header presentation accepted after read-only subagent review and independent42/42. [Detailed review](wordpress-pilot-t2-review.md) supersedes the earlier fallback-CSS and empty-href diagnoses: utilities already exist; unconfigured links resolve to #. Full saved-layout/normal-host acceptance stays open. Workspace check/build and console staging passed; host rebuild restored staged sibling assets. Publication24/24, host3/3, engine2/2 mutations restored/final baselines passed; host smoke, parity15/15, security/database-security, tenant175/175 and SW no-leak passed. Strict conformance still fails nine unreachable fixtures; broad CMS smoke still fails eight unchanged S3 loopback-fixture checks against the existing external-URL guard. All source mutations restored and sequential lock released. No saved-layout/canonical write, actual approval/activation, deployment or commit/push; source/docs/generated work remains uncommitted.
+
+### Parallel saved-layout refresh and normal-host verification
+
+Per the review's follow-up items 1–2, all five saved role layouts (directory, institution, program, article index, article) were refreshed through the existing authenticated local pages API with private before/after copies (`t2-refresh-*.json` in the private evidence directory): only stale generated nodes were replaced — each `directoryQuery` wrapper regenerated from the polished generator carrying its identical saved binding (recursive key-order-insensitive comparison) and stale headers with fresh output, with article-index/article receiving the fresh header — while owner nodes, root and page metadata stayed untouched; each PUT sent only `{layoutData}` and was readback-verified. Normal-host proof: a private capture (configuration revision 4, hash d94b32960622…, `publicationAvailable=false`) rendered through the publication render endpoint with the engine's own FALLBACK_CSS — no custom cssBundle — at 375/768/1280: nine of nine route×viewport checks clean (overflowX 0; grid columns 1/2/3 on the directory list), program detail CTA-free and 840px-bounded, header brand/destination/pills present on every page, blog index 404 as expected-gated (zero approved articles). The tracked 'No image' institution-cover placeholder appears on the real render. Scripts and screenshots remain private; no canonical write, approval, activation or deployment, and the unfamiliar Modified builder tab is untouched. Full acceptance awaits primary confirmation.
+
+### Primary confirmation and visual cleanup
+
+Fresh API readbacks independently confirmed the parallel delivery and preservation guards. Live endpoint renders pass nine checks through normal CSS. Primary screenshots then exposed exact old draft-marker Text nodes and a redundant institution-list self-card; these were removed with fresh private recovery copies, preserving all other custom/header/root/bindings/metadata. Generator and saved cover bindings now use existing hideWhenEmpty for all record types. Fresh candidate remains private/unactivated; nine final viewport checks pass, populated program image loads and empty institution cover collapses. Five saved roles verified; blog rendering still gated by zero approved articles. Existing Modified tab untouched. Final check/build, directory42/42, staging and host asset rebuild pass. No canonical/approval/activation/deployment/commit/push. Detailed limits and next tasks are in the primary review; this supersedes the earlier placeholder and pending-confirmation state. Shared build lock released.

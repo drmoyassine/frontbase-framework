@@ -481,7 +481,7 @@ await esbuild.build({
 //      smoke-cloud.mjs — the A-25 cloud smoke (src/smoke-cloud.ts): the SAME
 //                       worker booted with cloud:{baseDomain}, driven with
 //                       explicit Host headers across every host kind.
-for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/session-secret.ts', 'session-secret.mjs'], ['src/smoke-host.ts', 'smoke-host.mjs'], ['src/smoke-cloud.ts', 'smoke-cloud.mjs']]) {
+for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/session-secret.ts', 'session-secret.mjs'], ['src/smoke-host.ts', 'smoke-host.mjs'], ['src/smoke-cloud.ts', 'smoke-cloud.mjs'], ['src/smoke-publication.ts', 'smoke-publication.mjs']]) {
     await esbuild.build({
         ...shared,
         platform: 'node',

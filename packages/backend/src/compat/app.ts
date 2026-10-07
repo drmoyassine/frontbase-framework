@@ -27,6 +27,7 @@ import { registerProjectRoutes } from './routes/project.js';
 import { registerSiteConfigurationRoutes } from './routes/site-configuration.js';
 import { registerDirectoryPreviewRoutes } from './routes/directory-preview.js';
 import { registerEditorialRoutes } from './routes/editorial.js';
+import { registerSitePublicationRoutes } from './routes/site-publication.js';
 import { registerSecurityEventsRoutes } from './routes/security-events.js';
 import { registerPagesRoutes } from './routes/pages.js';
 import { registerDatabaseRoutes } from './routes/database.js';
@@ -392,8 +393,9 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
     registerSiteConfigurationRoutes(app, runner, now);
+    registerSitePublicationRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), now);
     registerDirectoryPreviewRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId));
-    registerEditorialRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId));
+    registerEditorialRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), now);
     registerSecurityEventsRoutes(app, secEventsFor);
     // A-25 WA5: the cloud plan gates ride the same accessor getEffectiveLimits
     // exposes (settings → per-tenant plan → `_global` catalog row). Null

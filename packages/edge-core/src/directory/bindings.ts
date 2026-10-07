@@ -21,6 +21,7 @@ export const directoryRecordBindingSchema = z.object({
     text: z.enum(['title', 'summary', 'body', 'byline', 'publishedAt']).optional(), href: z.literal('originalPath').optional(),
     blocks: z.literal('body').optional(),
     src: z.enum(['cover', 'logo']).optional(), alt: z.enum(['title','coverAlt']).optional(),
+    hideWhenEmpty: z.boolean().optional(),
 }).strict();
 
 /** Validate saved nodes without fetching rows. Avoid nested query multiplication. */
@@ -44,6 +45,7 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
                 if (record.text && !['Text', 'Heading', 'Paragraph', 'Link'].includes(node.type)
                     || record.href && node.type !== 'Link' || (record.src || record.alt) && node.type !== 'Image'
                     || record.blocks && (node.type !== 'Container' || !articleQuery || Object.keys(record).length !== 1 || (node.children?.length ?? 0) > 0)
+                    || record.hideWhenEmpty !== undefined && (node.type !== 'Image' || !record.src)
                     || props.siteBindings !== undefined) throw new Error('invalid_record_binding_component');
             }
             walk(node.children || [], inQuery || props.directoryQuery !== undefined, depth + 1, articleQuery || isArticle);
@@ -85,6 +87,7 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
             if (b.text) { delete rest.content; delete rest.value; rest.text = literal(row[b.text]); }
             if (b.href) rest.href = path.safeParse(row.originalPath).success ? row.originalPath : '';
             if (b.src) { delete rest.url; rest.src = imageUrl(row[b.src]); }
+            if (b.src && b.hideWhenEmpty && !rest.src) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
             if (b.alt) rest.alt = literal(row[b.alt]);
         }
         return { ...node, id, props: rest, ...(node.children ? { children: node.children.map(child => walk(child, row, index)) } : {}) };

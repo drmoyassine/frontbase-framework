@@ -6,6 +6,18 @@ afterEach(()=>vi.unstubAllGlobals());
 const saved={schemaVersion:1 as const,revision:2,configuration:emptyDirectoryConfiguration()};
 const binding={version:1 as const,queryId:'directory.institution.list' as const,params:{q:'College'}};
 const page:any={layoutData:{root:{siteConfiguration:{version:1,role:'directory'},custom:'kept'},content:[{id:'custom',type:'Text',props:{text:'Owner content'}}]}};
+it.each(['directory.article.list','directory.article.detail'] as const)('collapses empty covers and restores populated covers in %s templates',async(queryId)=>{
+    const layout=addDirectoryTemplate(page,{version:1,queryId,params:queryId.endsWith('.detail')?{path:'/blog/original/'}:{}});
+    const image=layout.content[1].children![0].children![0];
+    expect(image.props.recordBindings).toEqual({src:'cover',alt:'coverAlt',hideWhenEmpty:true});
+    const fetcher=vi.fn().mockResolvedValue({ok:true,json:async()=>({revision:2,queryId,rows:[{title:'Article',cover:null,body:[{kind:'paragraph',runs:[{text:'Article text'}]}]}]})});vi.stubGlobal('fetch',fetcher);
+    const empty=await loadDirectoryCanvas(layout,saved,new AbortController().signal);
+    expect(empty.content[1].children![0].children![0].styles?.display).toBe('none');
+    expect(empty.content[1].children![0].children![1].props.text).toBe('Article');
+    fetcher.mockResolvedValue({ok:true,json:async()=>({revision:2,queryId,rows:[{title:'Article',cover:'https://media.example.test/cover.jpg',coverAlt:'Campus',body:[{kind:'paragraph',runs:[{text:'Article text'}]}]}]})});
+    const populated=await loadDirectoryCanvas(layout,saved,new AbortController().signal);
+    expect(populated.content[1].children![0].children![0].type).toBe('Image');expect(populated.content[1].children![0].children![0].props.src).toBe('https://media.example.test/cover.jpg');
+});
 it('projects canonical semantic article bodies and metadata without saving fetched content',async()=>{
     const article={version:1 as const,queryId:'directory.article.detail' as const,params:{path:'/blog/original/'}};
     const layout=addDirectoryTemplate(page,article);const before=JSON.stringify(layout);

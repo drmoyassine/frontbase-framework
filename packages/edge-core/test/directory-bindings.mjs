@@ -57,3 +57,8 @@ const coveredProjection=projectDirectoryRecords(covered,new Map([['article',[{bo
 assert.equal(coveredProjection.content[0].children[1].props.src,'https://media.test/campus.jpg');
 const coverHtml=await renderPage(coveredProjection,{user:{private:'COVER_CANARY'},page:{},app:{},visitor:{},url:{},system:{},cookies:{},local:{},session:{}});
 assert.ok(coverHtml.includes('Campus &lt;gardens&gt;'));assert.ok(!coverHtml.includes('COVER_CANARY'));
+const optionalCover=structuredClone(covered);optionalCover.content[0].children[1].props.recordBindings.hideWhenEmpty=true;
+const missingCover=projectDirectoryRecords(optionalCover,new Map([['article',[{body:articleBody,cover:null}]]]));
+assert.equal(missingCover.content[0].children[1].type,'Container');assert.equal(missingCover.content[0].children[1].styles.display,'none');assert.deepEqual(missingCover.content[0].children[1].children,[]);
+const presentCover=projectDirectoryRecords(optionalCover,new Map([['article',[{body:articleBody,cover:'https://media.test/campus.jpg'}]]]));assert.equal(presentCover.content[0].children[1].type,'Image');
+const invalidOptionalCover=structuredClone(optionalCover);delete invalidOptionalCover.content[0].children[1].props.recordBindings.src;assert.throws(()=>directoryLayoutQueries(invalidOptionalCover));

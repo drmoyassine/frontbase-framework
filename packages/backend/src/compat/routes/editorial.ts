@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
-import { editorialReadRequestSchema, editorialSaveRequestSchema } from '@frontbase/edge-core/directory/configuration';
+import { editorialReadRequestSchema, editorialSaveRequestSchema, editorialApprovalRequestSchema } from '@frontbase/edge-core/directory/configuration';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { SiteConfigurationStore } from '../site-configuration-store.js';
 import type { SyncStore } from '../sync-store.js';
@@ -8,18 +8,19 @@ import { datasourceRunner } from '../../db/datasource-runner.js';
 import { mergeAccountConfig, type AccountConfigFor } from '../providers/merge-account.js';
 import type { CompatFetch } from '../external-http.js';
 import { editorialAdapter } from '../editorial-adapter.js';
+import { EditorialApprovalStore } from '../editorial-approval-store.js';
 
 export function registerEditorialRoutes(app: Hono<{ Variables: ConsoleAuthVars }>, control: DbRunner,
-    storeFor: (tenant: string) => SyncStore, externalFetch: CompatFetch, accounts: AccountConfigFor): void {
-    for (const mode of ['read','save'] as const) app.post(`/api/project/site-configuration/editorial/${mode}/`, async c => {
+    storeFor: (tenant: string) => SyncStore, externalFetch: CompatFetch, accounts: AccountConfigFor, now: () => string): void {
+    for (const mode of ['read','save','approve'] as const) app.post(`/api/project/site-configuration/editorial/${mode}/`, async c => {
         c.header('Cache-Control','no-store');
-        const user = c.get('principal').user as { role?: string };
+        const user = c.get('principal').user as { role?: string; id?: string; sub?: string };
         if (!user?.role || !['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(user.role)) return c.json({ detail:'Article editing is unavailable' },403);
         const reader = c.req.raw.body?.getReader(); const decoder = new TextDecoder(); let text='', size=0;
         if (reader) { while (true) { const chunk=await reader.read(); if(chunk.done) break; size+=chunk.value.byteLength;
             if(size>262144) { await reader.cancel(); return c.json({detail:'Article request is too large'},413); } text+=decoder.decode(chunk.value,{stream:true}); } text+=decoder.decode(); }
         let input: unknown; try { input=JSON.parse(text); } catch { return c.json({detail:'Invalid article request'},422); }
-        const parsed=(mode==='read'?editorialReadRequestSchema:editorialSaveRequestSchema).safeParse(input);
+        const parsed=(mode==='read'?editorialReadRequestSchema:mode==='save'?editorialSaveRequestSchema:editorialApprovalRequestSchema).safeParse(input);
         if(!parsed.success) return c.json({detail:'Invalid article request'},422);
         const request=parsed.data, tenant=c.get('tenant');
         const draft=await new SiteConfigurationStore(control,tenant).get();
@@ -30,7 +31,17 @@ export function registerEditorialRoutes(app: Hono<{ Variables: ConsoleAuthVars }
         try {
             const db=datasourceRunner(source.kind,await mergeAccountConfig(accounts,externalFetch,tenant,source.kind,source.config));
             const adapter=editorialAdapter(draft.configuration,db);
-            if(mode==='read') { const document=await adapter.read(request.id); return document?c.json({document,configurationRevision:draft.revision,publicationAvailable:false}):c.json({detail:'Article is unavailable'},404); }
+            const approvals = new EditorialApprovalStore(control,tenant);
+            if(mode==='read') { const document=await adapter.read(request.id); return document?c.json({document,configurationRevision:draft.revision,approval:await approvals.get(document.id,document.revision,draft.revision),publicationAvailable:false}):c.json({detail:'Article is unavailable'},404); }
+            if(mode==='approve') {
+                const approval = editorialApprovalRequestSchema.parse(request), reviewer = user.id ?? user.sub;
+                if (!reviewer) return c.json({detail:'Verified reviewer identity is required'},403);
+                const document = await adapter.read(approval.id);
+                if (!document || document.revision !== approval.expectedDocumentRevision) return c.json({detail:'Article changed; reload before approval',code:'editorial_revision_conflict'},409);
+                if (document.reviewState !== 'requested' || !document.language || !document.reviewNote.trim()) return c.json({detail:'Save and request review before approval'},422);
+                const result = await approvals.approve(document,draft,reviewer,approval.note,approval.checks,now());
+                return result ? c.json({approval:result,publicationAvailable:false}) : c.json({detail:'Already approved or shared settings changed; reload first',code:'editorial_approval_conflict'},409);
+            }
             const save=editorialSaveRequestSchema.parse(request);
             if(!await adapter.save(save.id,save.expectedDocumentRevision,save.content)) return c.json({detail:'Article changed or is unavailable; reload before saving',code:'editorial_revision_conflict'},409);
             return c.json({savedRevision:save.expectedDocumentRevision+1,publicationAvailable:false});

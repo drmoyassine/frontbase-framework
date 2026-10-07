@@ -140,4 +140,4 @@ export function directoryConfigurationReadiness(value: unknown): string[] {
     if (c.collections.article.table && (!c.collections.article.fields.contentRole || !c.collections.article.fields.sourceOrigin || !c.collections.article.fields.body)) missing.push('collections.article.editorial');
     return missing;
 }
-export { editorialCoverUrlSchema, editorialEditSchema, editorialReadRequestSchema, editorialSaveRequestSchema, editorialDocumentSchema, type EditorialDocument, type EditorialEdit } from './editorial.js';
+export { editorialCoverUrlSchema, editorialEditSchema, editorialReadRequestSchema, editorialSaveRequestSchema, editorialDocumentSchema, editorialApprovalRequestSchema, editorialReviewChecksSchema, type EditorialDocument, type EditorialEdit } from './editorial.js';

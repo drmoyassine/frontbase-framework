@@ -76,7 +76,8 @@ async function renderComponent(
     }
 
     // Special handling for Navbar with useProjectLogo or showIcon
-    resolvedProps = await applyNavbarFavicon(type, resolvedProps);
+    resolvedProps = await applyNavbarFavicon(type, resolvedProps,
+        typeof context.app?.faviconUrl === 'string' ? context.app.faviconUrl : undefined);
 
     // Inject styles and className from component definition into resolvedProps
     if (styles) {

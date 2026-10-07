@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
+    "./directory/publication": {"types": "./dist/directory/publication.d.ts", "import": "./dist/directory/publication.js"},
     "./directory/configuration": {
       "types": "./dist/directory/configuration.d.ts",
       "import": "./dist/directory/configuration.js"

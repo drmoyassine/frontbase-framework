@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { directoryConfigurationSchema, directoryConfigurationReadiness, parseEditorialBody, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { defineQueries, type QueryRegistry } from './defineQueries.js';
+import { sitePublicationArtifactSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
 
 const roles = ['institution', 'program', 'city', 'article'] as const;
 const localPath = z.string().max(400).refine(v => {
@@ -63,6 +64,35 @@ export function createDirectoryQueries(input: DirectoryConfiguration, owner: str
                     if (role === 'article' && key === 'body') return [key, parseEditorialBody(v)];
                     return [key, key === 'originalPath' ? directoryOriginalPath(v, c.site.origin) : typeof v === 'string' ? v.slice(0, key === 'body' ? 60000 : key === 'gallery' ? 12000 : key === 'summary' ? 1000 : 2048) : typeof v === 'number' && Number.isFinite(v) ? v : null];
                 })));
+            } };
+    }
+    return defineQueries(registry);
+}
+
+/** Same registered-query boundary over an immutable, already-reviewed capture. */
+export function createSnapshotDirectoryQueries(input: SitePublicationArtifact, owner: string): QueryRegistry {
+    const artifact = sitePublicationArtifactSchema.parse(input), c = artifact.configuration;
+    if (!owner) throw new Error('publication_owner_required');
+    const collections = { institution: artifact.records.institutions, program: artifact.records.programs,
+        city: artifact.records.cities, article: artifact.records.articles };
+    const registry: QueryRegistry = {};
+    for (const role of roles) for (const mode of ['list', 'detail'] as const) {
+        if (role === 'city' && mode === 'detail') continue;
+        const params = directoryPreviewSchema.shape.params.refine(p => mode === 'detail'
+            ? !!p.path && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined
+            : p.path === undefined && (p.institutionId === undefined || role === 'program') && (p.limit ?? c.browsing.pageSize) <= c.browsing.pageSize);
+        registry[`directory.${role}.${mode}`] = { scope: 'tenant', ttlSeconds: 0, params,
+            execute: async (raw, ctx) => {
+                if (ctx.tenant !== owner) throw new Error('principal_context_required');
+                const p = params.parse(raw);
+                let rows: Record<string, unknown>[] = collections[role].map(row => ({ ...row }));
+                if (p.path) rows = rows.filter(row => row.originalPath === p.path);
+                if (p.q) rows = rows.filter(row => String(row.title).toLowerCase().includes(p.q!.toLowerCase()));
+                if (p.institutionId !== undefined) rows = rows.filter(row => String(row.institutionId) === String(p.institutionId));
+                rows.sort((a, b) => String(a.title) < String(b.title) ? -1 : String(a.title) > String(b.title) ? 1 : String(a.id) < String(b.id) ? -1 : 1);
+                rows = rows.slice(p.offset ?? 0, (p.offset ?? 0) + (mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1));
+                // Detail-only semantic body never rides list/search responses.
+                return rows.map(row => mode === 'list' ? Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'body')) : structuredClone(row));
             } };
     }
     return defineQueries(registry);

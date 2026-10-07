@@ -30,6 +30,8 @@ export interface EngineOptions {
     swBundle?: string;
     /** Console API sub-router, mounted at /api/console (Phase 2). */
     console?: Hono;
+    /** Request/capture-bound document metadata. Empty favicon explicitly disables host lookup. */
+    document?: { faviconUrl?: string; language?: string; canonicalUrl?: string };
     /** Resolve a published page by URL path. When set, dynamic CMS pages override
      *  the baked manifest (the manifest becomes a last-resort fallback). Injected
      *  by the host so the engine stays DB-blind. Returns null when no such page.
@@ -83,7 +85,8 @@ function buildContext(page: PageEntry, path: string, records: Record<string, unk
         url: {}, system: buildSystemContext(),
         cookies: {}, local: {}, session: {},
         records,
-        app: { environment: opts.environment, manifestVersion: opts.manifest.version },
+        app: { environment: opts.environment, manifestVersion: opts.manifest.version,
+            ...(opts.document?.faviconUrl !== undefined ? { faviconUrl: opts.document.faviconUrl } : {}) },
     } as TemplateContext;
 }
 
@@ -208,7 +211,7 @@ export function createEngine(opts: EngineOptions): Hono {
             const principal = await engineConfig().resolvePrincipal(c.req.raw);
             if (!principal.user) {
                 const body = await renderPage(page.layout, buildContext(page, path, [], opts));
-                const faviconUrl = await engineConfig().resolveFaviconUrl(c.req.raw);
+                const faviconUrl = opts.document?.faviconUrl ?? await engineConfig().resolveFaviconUrl(c.req.raw);
                 const gatedHtml = generateGatedPageDocument(
                     toHtmlPageData(page, path),
                     body,
@@ -262,7 +265,9 @@ export function createEngine(opts: EngineOptions): Hono {
             registerServiceWorker: environment === 'edge' && !!opts.swBundle,
             // Same resolver the gated branch and navbarFavicon use — the host
             // decides (product: project settings faviconUrl || default icon).
-            faviconUrl: (await engineConfig().resolveFaviconUrl(c.req.raw)) || undefined,
+            faviconUrl: (opts.document?.faviconUrl ?? await engineConfig().resolveFaviconUrl(c.req.raw)) || undefined,
+            language: opts.document?.language,
+            canonicalUrl: opts.document?.canonicalUrl,
         });
         return c.html(html, 200, {
             'x-rendered-by': environment,

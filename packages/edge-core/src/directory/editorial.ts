@@ -25,8 +25,20 @@ export const editorialEditSchema = z.object({
 }).strict().refine(v => v.reviewState !== 'requested' || (v.language !== null && v.reviewNote.trim().length > 0));
 export const editorialReadRequestSchema = z.object({ expectedConfigurationRevision: z.number().int().positive(), id: z.string().uuid() }).strict();
 export const editorialSaveRequestSchema = editorialReadRequestSchema.extend({ expectedDocumentRevision: z.number().int().positive().max(2147483646), content: editorialEditSchema }).strict();
-export const editorialDocumentSchema = z.object({ id: z.string().uuid(), revision: z.number().int().positive(), originalPath: z.string().min(1).max(400),
-    title: z.string().min(1).max(500).refine(v => !v.includes('\0')), excerpt: plain(10000), body: editorialBodySchema, language: z.string().nullable(), byline: plain(500).nullable(),
+export const editorialReviewChecksSchema = z.object({
+    facts: z.literal(true), language: z.literal(true), media: z.literal(true),
+    formatting: z.literal(true), urls: z.literal(true), ctas: z.literal(true),
+}).strict();
+export const editorialApprovalRequestSchema = editorialReadRequestSchema.extend({
+    expectedDocumentRevision: z.number().int().positive(), checks: editorialReviewChecksSchema,
+    note: z.string().trim().min(1).max(4000).refine(v => !v.includes('\0')),
+}).strict();
+const originalPath = z.string().min(1).max(400).refine(value => {
+    try { const decoded=decodeURIComponent(value); return value.startsWith('/') && !decoded.startsWith('//') && !/[\\?#{}\x00-\x20]/.test(decoded) && !decoded.split('/').some(part=>part==='.' || part==='..'); }
+    catch { return false; }
+});
+export const editorialDocumentSchema = z.object({ id: z.string().uuid(), revision: z.number().int().positive(), originalPath,
+    title: z.string().min(1).max(500).refine(v => !v.includes('\0')), excerpt: plain(10000), body: editorialBodySchema, language: z.string().regex(/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/).nullable(), byline: plain(500).nullable(),
     publishedAt: z.string().nullable(), coverUrl: editorialCoverUrlSchema.nullable().default(null), coverAlt: plain(500).default(''), reviewState: z.enum(['draft', 'requested']), reviewNote: plain(4000),
 }).strict();
 export type EditorialDocument = z.infer<typeof editorialDocumentSchema>;

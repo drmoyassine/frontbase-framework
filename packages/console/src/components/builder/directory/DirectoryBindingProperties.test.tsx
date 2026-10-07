@@ -17,3 +17,8 @@ it('selects only mapped public display fields',async()=>{
     await userEvent.selectOptions(screen.getByRole('combobox',{name:'Directory text field'}),'body');expect(update).toHaveBeenCalledWith('recordBindings',{text:'body'});
     expect(screen.queryByRole('option',{name:'provider_id'})).toBeNull();
 });
+it('makes empty-image presentation an explicit template option without changing record data',async()=>{
+    const update=vi.fn();render(<DirectoryBindingProperties node={{id:'cover',type:'Image',props:{recordBindings:{src:'cover',alt:'coverAlt'}}}} update={update}/>);
+    await userEvent.click(screen.getByRole('checkbox',{name:'Hide when this record has no image'}));
+    expect(update).toHaveBeenCalledWith('recordBindings',{src:'cover',alt:'coverAlt',hideWhenEmpty:true});
+});
