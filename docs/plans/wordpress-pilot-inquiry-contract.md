@@ -198,6 +198,14 @@ Commands run 2026-10-07 in `C:/Users/drmoy/.codex/worktrees/swarm2-d-inquiry/fro
 | `node examples/pilot-inquiry-prototype/test-inquiry.mjs` | **27 checks passed** (first run exposed 3 real contract bugs, fixed and re-run — see §12) |
 | `pnpm -r check` | all nine packages `tsc --noEmit` clean |
 
+Sanitizer notice for future credential scans: this workstream's committed tree
+intentionally contains credential-shaped text in exactly three inert forms —
+the pattern names quoted in §4's guard-rail sentence, the detection regex
+literals in `inquiry-schema.mjs` (`CREDENTIAL_PATTERNS`, the guard rail
+itself), and one synthetic refusal fixture in `test-inquiry.mjs` (fabricated
+sequential filler that must match a guard-rail pattern to prove refusal). No
+real credential material is committed anywhere in this workstream.
+
 The 27 checks cover: token round-trip/tamper/expiry/form-mismatch; unknown and
 inactive context IDs refused at submit; inline-URL, credential-material,
 duplicate-key configuration refusals; draft-vs-readiness split; public-view

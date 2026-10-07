@@ -184,6 +184,10 @@ ok('configuration refuses an inline URL in a destination', () => {
 
 ok('configuration refuses credential material in free text', () => {
     const config = defaultInquiryConfiguration();
+    // Sanitizer notice: the value below is a deliberately fabricated,
+    // non-functional credential-shaped fixture with obviously fake sequential
+    // filler. It must match a CREDENTIAL_PATTERNS regex to prove the guard
+    // rail refuses such material; it is not a real secret and never was.
     config.fields[0].label = 'sk_live_BCkXyZ1234567890abcdef name';
     assert.ok(inquiryConfigurationIssues(config).length > 0);
 });
