@@ -3201,8 +3201,8 @@ data: ${JSON.stringify(v)}
     <meta name="twitter:title" content="Frontbase - Build Apps Visually" />
     <meta name="twitter:description" content="The no-code platform for designers and developers." />
     <meta name="twitter:image" content="/logo.png" />
-    <script type="module" crossorigin src="/frontbase-admin/assets/index-DhgzmEw2-171969630605286.js"><\/script>
-    <link rel="stylesheet" crossorigin href="/frontbase-admin/assets/index-DKlgvaZZ-171969630605286.css">
+    <script type="module" crossorigin src="/frontbase-admin/assets/index-BjPI63b--219713897623245.js"><\/script>
+    <link rel="stylesheet" crossorigin href="/frontbase-admin/assets/index-DKlgvaZZ-219713897623245.css">
   </head>
 
   <body>
