@@ -1,5 +1,9 @@
 # Coherent site publication: implementation and evidence
 
+**October 8 follow-up:** [Step 2 evidence](wordpress-pilot-step2-completion.md) governs the additive accessible CTA binding and typed terminal 400 request behavior, including corrected per-fault restoration verification. Earlier mutation counts are dated execution logs; cross-package RED counts alone do not establish independent fault detection. [T3's implementation plan](wordpress-pilot-t3-implementation-plan.md) defines the next guarded admin controls. Those controls are not delivered here; actual content review, activation and deployment remain closed.
+
+**Current combined increment:** [first-swarm primary review](wordpress-pilot-first-swarm-primary-review.md). Captured SEO/sitemap, optional contacts/date and browser/storage source are integrated and independently verified locally, uncommitted/unpushed. Mutation chains and restored baselines pass. Earlier S3/browser pending statements below are historical. Strict conformance retains nine unreachable fixtures. No actual publication activation or deployment occurred.
+
 **2026-10-07 — private preparation implemented; public activation remains closed.** Continue [P2c](wordpress-pilot-roadmap.md) inside existing Frontbase packages and `/frontbase-admin`.
 
 **Current handoff:** [parallel-session implementation map, API contracts, backlog and verification](wordpress-pilot-parallel-handoff.md). Internal reviewed activation/rollback and the explicit-state reader are implemented and fixture-tested; the reader is now connected to CMS public-host dispatch, while activation HTTP controls remain closed. `publicationAvailable` remains false. The dated ledgers below preserve earlier attempts and subsets; current verification follows the host increment and is not a cumulative sum of test counts.

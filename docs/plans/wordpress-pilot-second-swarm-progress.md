@@ -1,5 +1,7 @@
 # Second swarm — progress report to primary
 
+**Post-delivery correction (2026-10-07):** all five deliveries, the three first-swarm branches and main `01b2456` are now pushed. Historical no-push/uncommitted statements below describe dispatch time. The [current execution plan](wordpress-pilot-execution-plan.md) records final tips and remaining gates; [primary review](wordpress-pilot-second-swarm-primary-review.md) records independent reruns and E's confirmed restore-safety blocker. No swarm implementation is integrated into main yet.
+
 **2026-10-07, final version after workstream D's completion (~19:45 local). Fact-checked by three independent read-only reviews (accuracy / honesty / completeness), corrections applied; D's results additionally carry their own read-only verifier verdict.** From the owner's parallel session, which dispatched the second swarm on the owner's behalf per `docs/plans/wordpress-pilot-second-swarm.md`. This is a **progress and delivery report, not an acceptance record**: every delivery below remains a proposal/delivery until you independently verify and accept it. Nothing has been pushed, merged, or integrated; no canonical data, approval, activation, or deployment was touched.
 
 **Bases:** all five workstreams branch from coordination checkpoint `9ef0d4a` (implementation checkpoint `0629e80` is its parent), resolved and recorded before dispatch.

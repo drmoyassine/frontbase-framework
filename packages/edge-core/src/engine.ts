@@ -14,7 +14,7 @@ import { buildSystemContext } from './ssr/lib/context.js';
 import type { TemplateContext } from './ssr/lib/context.js';
 import type { SiteManifest, PageEntry, RegisteredQuery } from './manifest.js';
 import type { DataProvider } from './data.js';
-import { renderDocument } from './shell.js';
+import { renderDocument, type ShellOptions } from './shell.js';
 import { generateGatedPageDocument } from './ssr/gatedPage.js';
 import { getDefaultTrackingConfig } from './ssr/lib/tracking.js';
 import type { HtmlPageData } from './ssr/htmlDocument.js';
@@ -31,7 +31,7 @@ export interface EngineOptions {
     /** Console API sub-router, mounted at /api/console (Phase 2). */
     console?: Hono;
     /** Request/capture-bound document metadata. Empty favicon explicitly disables host lookup. */
-    document?: { faviconUrl?: string; language?: string; canonicalUrl?: string };
+    document?: Pick<ShellOptions, 'faviconUrl' | 'language' | 'canonicalUrl' | 'robots' | 'openGraph'>;
     /** Resolve a published page by URL path. When set, dynamic CMS pages override
      *  the baked manifest (the manifest becomes a last-resort fallback). Injected
      *  by the host so the engine stays DB-blind. Returns null when no such page.
@@ -268,6 +268,8 @@ export function createEngine(opts: EngineOptions): Hono {
             faviconUrl: (opts.document?.faviconUrl ?? await engineConfig().resolveFaviconUrl(c.req.raw)) || undefined,
             language: opts.document?.language,
             canonicalUrl: opts.document?.canonicalUrl,
+            robots: opts.document?.robots,
+            openGraph: opts.document?.openGraph,
         });
         return c.html(html, 200, {
             'x-rendered-by': environment,

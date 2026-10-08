@@ -26,3 +26,4 @@ test-results/
 .env
 
 .vercel
+.publication-e2e/

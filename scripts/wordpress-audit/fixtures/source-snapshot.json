@@ -1,0 +1,46 @@
+{
+  "site_url": "https://usa.example",
+  "captured_at": "2026-10-01T09:00:00Z",
+  "options": [
+    {"name": "page_on_front", "value": "10"},
+    {"name": "permalink-manager-uris", "value": "a:10:{i:7;s:7:\"college\";i:8;s:15:\"college/program\";i:9;s:14:\"college/course\";i:11;s:17:\"college/anomalous\";i:20;s:18:\"blog/first-article\";i:22;s:19:\"blog/second-article\";i:40;s:13:\"events/legacy\";i:60;s:17:\"duplicate-college\";i:50;s:13:\"retired-brand\";i:61;s:15:\"missing-college\";}"}
+  ],
+  "records": [
+    {"id": 7, "post_type": "job_listing", "status": "publish", "title": "Example College", "content": "<p>Campus body</p>"},
+    {"id": 8, "post_type": "job_listing", "status": "publish", "title": "Example Program", "content": "<p>Program body</p>"},
+    {"id": 9, "post_type": "job_listing", "status": "publish", "title": "Example Course", "content": "<p>Course body</p>"},
+    {"id": 11, "post_type": "job_listing", "status": "published", "title": "Anomalous Course", "content": ""},
+    {"id": 10, "post_type": "page", "status": "publish", "title": "Home",
+     "content": "<a href=\"/college/\">College</a> <a href=\"https://usa.example/college/program/\">Program</a> <a href=\"mailto:info@usa.example\">Mail</a>"},
+    {"id": 20, "post_type": "post", "status": "publish", "title": "First Article",
+     "content": "<p>Read <a href=\"/college/\">the college</a> and <a href=\"/gone-page/\">gone</a>.</p><img src=\"https://cdn.external.example/img/x.png\" alt=\"\">"},
+    {"id": 21, "post_type": "post", "status": "publish", "title": "Second Article", "content": "<p>No permalink evidence.</p>"},
+    {"id": 22, "post_type": "post", "status": "publish", "title": "Third Article", "content": "<p>Not yet imported.</p>"},
+    {"id": 30, "post_type": "attachment", "status": "inherit", "title": "college-cover", "post_mime_type": "image/png"},
+    {"id": 31, "post_type": "attachment", "status": "inherit", "title": "orphan-file"},
+    {"id": 40, "post_type": "event", "status": "publish", "title": "Legacy Event", "content": ""},
+    {"id": 50, "post_type": "page", "status": "publish", "title": "Retired Brand Page", "content": ""},
+    {"id": 60, "post_type": "job_listing", "status": "publish", "title": "Duplicate College", "content": ""},
+    {"id": 61, "post_type": "job_listing", "status": "publish", "title": "Missing College", "content": ""}
+  ],
+  "metadata": [
+    {"post_id": 7, "key": "_case27_listing_type", "value": "institution"},
+    {"post_id": 7, "key": "_job_cover", "value": "https://usa.example/wp-content/uploads/2026/01/college-cover.png"},
+    {"post_id": 7, "key": "_thumbnail_id", "value": "30"},
+    {"post_id": 8, "key": "_case27_listing_type", "value": "program"},
+    {"post_id": 8, "key": "_job_cover", "value": "https://cdn.external.example/covers/program.png"},
+    {"post_id": 8, "key": "_synthetic_admissions", "value": "<p>Submit transcripts and   proof of English.</p><script>steal()</script>"},
+    {"post_id": 9, "key": "_case27_listing_type", "value": "pathway"},
+    {"post_id": 11, "key": "_case27_listing_type", "value": "pathway"},
+    {"post_id": 30, "key": "_wp_attached_file", "value": "2026/01/college-cover.png"},
+    {"post_id": 60, "key": "_case27_listing_type", "value": "institution"},
+    {"post_id": 61, "key": "_case27_listing_type", "value": "institution"}
+  ],
+  "terms": [
+    {"post_id": 7, "taxonomy": "region", "name": "Springfield", "term_id": 205}
+  ],
+  "relations": [
+    {"parent_id": 7, "child_id": 8, "field_key": "program-university-link"},
+    {"parent_id": 7, "child_id": 9, "field_key": "program-university-link"}
+  ]
+}

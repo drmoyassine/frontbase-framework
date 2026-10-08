@@ -1,6 +1,6 @@
 import {withSourceMutation,buildPackage,runGate,expectRed,summarize,repoRoot} from '../../../scripts/mutation-lib.mjs';
 const dir=repoRoot+'packages/backend/';
-if(!buildPackage('@frontbase/backend')||runGate(dir,'test/site-publication.mjs')!==0)process.exit(2);
+if(!buildPackage('@frontbase/compiler')||!buildPackage('@frontbase/backend')||runGate(dir,'test/site-publication.mjs')!==0)process.exit(2);
 for(const [label,path,find,replacement,pkg] of [
  ['publication integrity','packages/backend/src/compat/site-publication-store.ts','await publicationHash(artifact) !== hash','false','@frontbase/backend'],
  ['publication owner read','packages/backend/src/compat/site-publication-store.ts',"WHERE tenant_slug = ? AND key = ?', [this.tenant, keyName]","WHERE ? IS NOT NULL AND key = ?', [this.tenant, keyName]",'@frontbase/backend'],
@@ -21,11 +21,18 @@ for(const [label,path,find,replacement,pkg] of [
  ['public reader review guard','packages/backend/src/compat/site-publication-serving.ts',"if(!await new SitePublicationReviewStore(db,owner).get(active.pointer.hash))","if(false)",'@frontbase/backend'],
  ['public reader owner','packages/backend/src/compat/site-publication-serving.ts',"new SitePublicationStore(db,owner)","new SitePublicationStore(db,'guarded')",'@frontbase/backend'],
  ['missing active page never falls back','packages/backend/src/compat/site-publication-serving.ts',"if(!result)return {status:'missing'};","if(!result)return {status:'inactive'};",'@frontbase/backend'],
- ['corrupt active site never falls back','packages/backend/src/compat/site-publication-serving.ts',"catch{return {status:'unavailable'};}","catch{return {status:'inactive'};}",'@frontbase/backend'],
+ ['corrupt active site never falls back','packages/backend/src/compat/site-publication-serving.ts',"catch(error){return error instanceof PublicationRequestError ? {status:'invalid'} : {status:'unavailable'};}","catch{return {status:'inactive'};}",'@frontbase/backend'],
+ ['public request offset guard','packages/backend/src/compat/site-publication-runtime.ts',"offset > 10000 || search.length > 100","search.length > 100",'@frontbase/backend'],
+ ['invalid requests remain terminal','packages/backend/src/compat/site-publication-serving.ts',"const invalid=resolution.status==='invalid';","const invalid=false;",'@frontbase/backend'],
  ['terminal response never falls back','packages/backend/src/compat/site-publication-serving.ts',"if(resolution.status!=='resolved') {","if(resolution.status!=='resolved') { return null;",'@frontbase/backend'],
  ['response capture identity','packages/backend/src/compat/site-publication-serving.ts',"responseHeaders.set('X-Site-Version',resolution.hash);","responseHeaders.set('X-Site-Version','baked');",'@frontbase/backend'],
  ['HEAD response body','packages/backend/src/compat/site-publication-serving.ts',"request.method==='HEAD'?null:rendered.body","rendered.body",'@frontbase/backend'],
  ['captured document metadata','packages/backend/src/compat/site-publication-serving.ts',"environment:'edge',document,swBundle:options.swBundle","environment:'edge',swBundle:options.swBundle",'@frontbase/backend'],
-])await withSourceMutation(label,path,find,replacement,async()=>{if(!buildPackage(pkg))throw new Error('Mutation did not compile');expectRed(label,runGate(dir,'test/site-publication.mjs'));});
+]) {
+ await withSourceMutation(label,path,find,replacement,async()=>{if(!buildPackage(pkg))throw new Error('Mutation did not compile');expectRed(label,runGate(dir,'test/site-publication.mjs'));});
+ // Source restoration alone leaves dist mutated. Prove a clean dependency baseline before the next fault.
+ if(!buildPackage(pkg)||runGate(dir,'test/site-publication.mjs')!==0)throw new Error('Restored publication baseline failed: '+label);
+ console.log('  restored baseline GREEN: '+label);
+}
 if(!buildPackage('@frontbase/compiler')||!buildPackage('@frontbase/backend')||runGate(dir,'test/site-publication.mjs')!==0)process.exit(2);
 summarize('site publication mutation');

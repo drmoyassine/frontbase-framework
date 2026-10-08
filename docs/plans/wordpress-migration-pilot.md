@@ -1,5 +1,7 @@
 # WordPress to Frontbase migration pilot
 
+**Current execution order:** [post-checkpoint plan, 2026-10-07](wordpress-pilot-execution-plan.md). Main `01b2456` and eight separate swarm branches are pushed. Historical results below are dated evidence, not integrated acceptance or a fresh live audit.
+
 **Active execution plan (updated 2026-10-06):** [north star, current progress and acceptance gates](wordpress-pilot-roadmap.md). This document retains detailed historical evidence; the active plan supersedes earlier backlog ordering and next-task paragraphs. Implementation baseline `ec17aba` was pushed on `codex/wordpress-pilot`; subsequent harmonization, storage and editorial work remains uncommitted. Current priority is one complete existing-admin/live-data/publish journey (P2), supported by reviewed migration data, before scaling the full site or expanded catalog.
 
 **Historical starting record:** 2026-10-04. **Current status (2026-10-06):** captured source preservation and normal original-listing identity coverage complete; canonical content/media review partial; local templates and two actual CMS editorial drafts proven; complete no-code configuration/live publishing/reuse/production acceptance remain open. **Pilot:** study-in-usa.com, owner selected local draft first. **Data source:** Studygram DB, Supabase project `uwzosvzynnpbxpnwqgkm`, MCP verified. UAE/other domains remain unaudited for migration.

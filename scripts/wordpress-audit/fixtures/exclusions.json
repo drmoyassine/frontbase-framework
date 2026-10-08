@@ -1,0 +1,7 @@
+{
+  "decisions": [
+    {"scope": "path", "path": "/retired-brand/",
+     "reason": "Retired legacy brand page; owner-approved reviewed removal.",
+     "authority": "synthetic-fixture-owner-decision"}
+  ]
+}

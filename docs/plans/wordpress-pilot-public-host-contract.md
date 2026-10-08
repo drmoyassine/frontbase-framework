@@ -1,5 +1,9 @@
 # P2c public host integration contract
 
+**October 8 request-contract follow-up:** [Step 2 evidence](wordpress-pilot-step2-completion.md) adds typed invalid requests to the reviewed reader and terminal HTTP boundary: intact reviewed routes with invalid parameters return 400, unknown routes return 404, and damaged/unreviewed state returns 503. GET/HEAD retain no-store/noindex and inactive-only fallback. The historical wiring/design trace below predates this fourth reader state; its narrower state list is not the current contract. Verification status follows the Step 2 report. Next controls are specified in the [T3 implementation plan](wordpress-pilot-t3-implementation-plan.md); no actual pilot activation is authorized by this report.
+
+**Current verification:** [first-swarm primary review](wordpress-pilot-first-swarm-primary-review.md) records passing combined full-CMS/S3 smoke, controlled Chromium transition, actual host sitemap GET/HEAD assertions and restored source mutation chains. Integration is uncommitted/unpushed; deployed automatic-update timing and real staging acceptance remain open. No actual pilot activation.
+
 **2026-10-07 — host dispatch and captured document metadata implemented; activation remains closed.** Implements [T1](wordpress-pilot-roadmap.md), retaining six packages, existing engine and private reviewed capture. [Parallel-session ownership](wordpress-pilot-parallel-handoff.md) keeps critical design and final verification here. The historical trace/design below precedes the current host wiring. No actual pilot activation or deployment is claimed.
 
 **Current wiring:** the CMS factory calls `renderReviewedSitePublication` after compat/infrastructure handlers and before the legacy engine. Null means inactive only; active missing/unavailable returns terminal 404/503 with no-store/noindex. GET/HEAD use captured manifest, canonical origin/path and language; request-scoped explicit empty favicon bypasses both document and Navbar mutable lookups without changing engine-global configuration. No captured favicon field exists yet. The host supplies its existing network-only SW and registers `/sw.js` so older installations can update. Actual previously-controlled browser transition remains unproven; VM lifecycle proof is narrower. Activation API/controls remain closed.
@@ -32,9 +36,10 @@ A read-only local SQLite query on October 7 confirms the pilot configuration is 
 | inactive | Deliberately continue existing legacy behavior for that authorized host only; absence is not a search across site owners |
 | missing | Terminal 404 for the active reviewed site's route space; never baked or mutable-page fallback |
 | unavailable | Terminal opaque 503/no-store, noindex; no captured/private detail, stack, owner or database diagnostic in response |
+| invalid | Terminal opaque 400/no-store, noindex for invalid parameters on an intact reviewed captured route; no mutable fallback or capture identity headers |
 | resolved | Render the captured page using its captured version through the existing engine; never legacy enrichment or mutable query execution |
 
-The reader currently collapses invalid supported-query input into unavailable. Before wiring, choose and test a distinct client-error result or deliberately document that behavior; do not advertise 400 semantics without implementing it. Oversized/duplicate/unknown query input must remain refused. Capture path safety and reserved route protection remain authoritative.
+The October 8 bounded follow-up implements an explicit request-error type. Artifact integrity and review are checked first; only parameter validation throws that type. Unknown/duplicate keys, invalid collection/page syntax, search over 100 trimmed characters and offsets above 10,000 return 400 on captured routes. Missing routes still return 404, unreviewed/corrupt/failed state still returns 503, and inactive-only legacy continuation is unchanged. Sitemap query parameters also return 400. GET/HEAD share status/headers; HEAD is bodyless. No stack, parameter echo or capture identity is exposed on the error response. Capture path safety and reserved route protection remain authoritative. See the audit for verification status.
 
 ## One engine, captured manifest and response
 

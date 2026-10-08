@@ -1,13 +1,18 @@
 import { buildSiteManifest } from '@frontbase/compiler/manifest';
 import { createSnapshotDirectoryQueries } from '@frontbase/compiler/queries/directory';
 import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview } from '@frontbase/edge-core/directory/configuration';
-import type { PageEntry } from '@frontbase/edge-core';
+import type { PageEntry, EngineOptions } from '@frontbase/edge-core';
 import { publicationPathSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
 import { sitePublicationArtifactSchema } from '@frontbase/edge-core/directory/publication';
 import type { PageLayoutData } from '@frontbase/edge-core';
 
+/** Only explicit visitor-parameter failures get a client-error response. */
+export class PublicationRequestError extends Error {
+    constructor() { super('publication_params_invalid'); this.name = 'PublicationRequestError'; }
+}
+
 /** Resolve one captured version. No control/content DB or mutable draft access. */
-export async function resolveSitePublicationPage(input: SitePublicationArtifact, hash: string, owner: string, request: Request): Promise<{ page: PageEntry; version: string; cacheKey: string; document: { faviconUrl: string; language: string; canonicalUrl: string } } | null> {
+export async function resolveSitePublicationPage(input: SitePublicationArtifact, hash: string, owner: string, request: Request): Promise<{ page: PageEntry; version: string; cacheKey: string; document: NonNullable<EngineOptions['document']> } | null> {
     if (!owner || !/^[a-f0-9]{64}$/.test(hash)) throw new Error('publication_context_required');
     const artifact = sitePublicationArtifactSchema.parse(input), url = new URL(request.url), path = url.pathname;
     if (!publicationPathSchema.safeParse(path).success) return null;
@@ -27,18 +32,20 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
     const normalized: Record<string, unknown> = {};
     // Only supported parameters enter the page/cache identity; refuse unknown duplicates.
     const allowed = role === 'directory' ? ['type', 'q', 'page'] : role === 'article-index' ? ['q', 'page'] : [];
-    for (const key of url.searchParams.keys()) if (!allowed.includes(key) || url.searchParams.getAll(key).length !== 1) throw new Error('publication_params_invalid');
+    for (const key of url.searchParams.keys()) if (!allowed.includes(key) || url.searchParams.getAll(key).length !== 1) throw new PublicationRequestError();
     const type = url.searchParams.get('type') ?? artifact.configuration.browsing.defaultCollection;
-    if (role === 'directory' && !['institution', 'program'].includes(type)) throw new Error('publication_params_invalid');
+    if (role === 'directory' && !['institution', 'program'].includes(type)) throw new PublicationRequestError();
     const page = url.searchParams.get('page') ?? '1';
-    if (!/^[1-9][0-9]{0,3}$/.test(page)) throw new Error('publication_params_invalid');
+    if (!/^[1-9][0-9]{0,3}$/.test(page)) throw new PublicationRequestError();
     const offset = (Number(page) - 1) * artifact.configuration.browsing.pageSize;
+    const search = (url.searchParams.get('q') ?? '').trim();
+    if (offset > 10000 || search.length > 100) throw new PublicationRequestError();
     for (const query of directoryLayoutQueries(layout)) {
         const [_, collection, mode] = query.binding.queryId.split('.');
         if (role === 'directory' && mode === 'list' && ['institution','program'].includes(collection!) && collection !== type) { inactive.add(query.id); continue; }
         const parentPath = role === 'program' && collection === 'institution' && row
             ? artifact.records.institutions.find(parent => String(parent.id) === String(row!.institutionId))?.originalPath : undefined;
-        const params: Record<string, unknown> = mode === 'detail' ? { path: parentPath ?? path } : { q: url.searchParams.get('q') ?? '', offset, limit: artifact.configuration.browsing.pageSize,
+        const params: Record<string, unknown> = mode === 'detail' ? { path: parentPath ?? path } : { q: search, offset, limit: artifact.configuration.browsing.pageSize,
             ...(role === 'institution' && collection === 'program' && row ? { institutionId: row.id } : {}) };
         // Never use authoring sample paths/filters for public records.
         const registered = queries[query.binding.queryId];
@@ -48,11 +55,14 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
         normalized[query.id] = params;
     }
     const prune = (nodes: PageLayoutData['content']): PageLayoutData['content'] => nodes.filter(node => !inactive.has(node.id)).map(node => ({ ...node, ...(node.children ? { children: prune(node.children) } : {}) }));
-    const projected = projectDirectoryRecords(projectSharedDirectoryPreview({ ...layout, content: prune(layout.content) }, artifact.configuration), records);
+    const projected = projectDirectoryRecords(projectSharedDirectoryPreview({ ...layout, content: prune(layout.content) }, artifact.configuration), records, { locale: artifact.configuration.site.locale });
     const title = typeof row?.title === 'string' ? row.title : template.title;
     const description = typeof row?.summary === 'string' ? row.summary : template.description;
     const manifest = buildSiteManifest({ pages: { [path]: { title, slug: path.replace(/^\//, ''), description, layout: projected as unknown as Record<string, unknown> } }, queries: {}, versionPrefix: hash });
+    const canonicalUrl = new URL(path, artifact.configuration.site.origin).href;
     return { page: manifest.pages[path]!, version: manifest.version, cacheKey: JSON.stringify([owner, hash, path, normalized]),
         document: { faviconUrl: '', language: typeof row?.language === 'string' ? row.language : artifact.configuration.site.locale || 'en',
-            canonicalUrl: new URL(path, artifact.configuration.site.origin).href } };
+            canonicalUrl, robots: url.searchParams.size ? 'noindex, follow' : 'index, follow',
+            openGraph: { title, description, url: canonicalUrl, type: role === 'article' ? 'article' : 'website', siteName: artifact.configuration.site.name,
+                ...(typeof row?.cover === 'string' ? { image: row.cover, imageAlt: typeof row.coverAlt === 'string' ? row.coverAlt : '' } : {}) } } };
 }

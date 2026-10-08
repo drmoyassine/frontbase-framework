@@ -1,5 +1,17 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-08 bounded pilot request and accessibility correction
+
+Under the owner's existing direction to finish Step 2, invalid visitor parameters receive an explicit terminal 400 only after trusted-owner artifact integrity and review checks. The runtime uses a typed request error, not an error-message match; corrupt/unreviewed state remains 503, uncaptured paths 404, inactive-only legacy continuation unchanged. Search/page bounds retain the registered snapshot query limits. This resolves the open client-error choice in the [public host contract](../plans/wordpress-pilot-public-host-contract.md), without new publication authorization or release scope.
+
+New directory CTAs use optional `recordBindings.ariaLabel: 'title'`, restricted to Links with originalPath binding. Projection retains the visible CTA wording and adds literal record title to its accessible name; the same Link renderer escapes the optional attribute. Existing unlabelled Links retain their output and saved layouts are not rewritten. The existing builder exposes an opt-out. This is an additive accessibility correction within the accepted engine/projection contract, not an independent renderer or template installer. Verification is recorded in the audit; no real approval, activation, data write or deployment follows.
+
+## 2026-10-07 bounded pilot integration under existing owner direction
+
+Primary source review retains the first swarm's previously approved bounded designs: captured robots/Open Graph and `/sitemap.xml` derive solely from one trusted owner's immutable reviewed capture, with no-store and generation identity; no current drafts/request origin supply metadata. Optional `siteBindings.hideWhenEmpty` is confined to supported bound Link hrefs. Optional publishedAt date formatting uses strict ISO input, captured/saved locale and UTC Gregorian/Latin output; missing/invalid dates collapse, existing literal bindings remain unchanged. The combined runtime passes captured locale while retaining captured SEO. These are additive existing-engine/admin capabilities, not acceptance of a new package, template installer, activation endpoint or broader release scope. Combined verification is recorded in the pilot audit; no actual content approval, activation or deployment follows.
+
+The bounded A/C follow-up under the same owner direction keeps presentation in editable authoring nodes and the existing projection: new shared headers use `routes.directory`; list H1 preserves owner/detail headings; optional `recordBindings.altFallback: 'title'` is restricted to Image/coverAlt, remains literal and leaves omitted-option empty-alt behavior unchanged. Administrative fallback choice is exposed in the existing builder. Saved layouts and canonical data are not rewritten. Offline attachment placement cannot imply an owner-approved exclusion. These are corrections within the accepted one-engine/query design, not a new architecture or release decision; [primary evidence](../plans/wordpress-pilot-ac-primary-reconciliation.md) records verification and remaining gates.
+
 **Version**: 1.0
 **Status**: Active
 **Last Updated**: 2026-06-29

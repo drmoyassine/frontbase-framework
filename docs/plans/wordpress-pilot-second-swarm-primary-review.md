@@ -42,4 +42,4 @@ The runbook also says secrets are "runtime env only" while documenting boot-gene
 4. Return E's confirmed restore-safety gap for a bounded fix and retest before adopting its command. Review D's newly landed production-contract proposal separately from its passing fake-delivery fixture.
 5. Keep guarded publication controls, actual reviewed staging, full-catalog/content coverage, final packaging/reuse and production operations acceptance in the primary roadmap. No release/cutover claim follows from passing these synthetic suites.
 
-This review documentation remains uncommitted. Existing strict-conformance residues remain open; first-swarm reports of fixed S3 checks await integrated primary verification. R0 remains in progress and CF-22 paused.
+This review was committed and pushed in main `01b2456`; swarm deliveries are pushed on separate review branches and not integrated into main. The [current execution plan](wordpress-pilot-execution-plan.md) governs remaining work. Strict-conformance residues remain open; first-swarm S3 fixes await integrated primary verification. R0 remains in progress and CF-22 paused.

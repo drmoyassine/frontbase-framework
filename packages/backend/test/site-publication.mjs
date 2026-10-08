@@ -66,15 +66,26 @@ const neutralizingHtml=await renderReviewedSitePublication(db,'guarded',publicRe
 configureEngine({});
 const publicHead=await renderReviewedSitePublication(db,'guarded',new Request(publicRequest.url,{method:'HEAD'}));assert.equal(publicHead.status,200);assert.equal(publicHead.headers.get('x-site-version'),hash);assert.equal(await publicHead.text(),'');
 const terminalMissing=await renderReviewedSitePublication(db,'guarded',new Request('https://usa.test/missing/'));assert.equal(terminalMissing.status,404);assert.equal(terminalMissing.headers.get('cache-control'),'no-store');assert.equal(terminalMissing.headers.get('x-robots-tag'),'noindex, nofollow');
-const unavailableHead=await renderReviewedSitePublication(db,'guarded',new Request('https://usa.test/explore/?country=99',{method:'HEAD'}));assert.equal(unavailableHead.status,503);assert.equal(await unavailableHead.text(),'');
+const invalidHead=await renderReviewedSitePublication(db,'guarded',new Request('https://usa.test/explore/?country=99',{method:'HEAD'}));assert.equal(invalidHead.status,400);assert.equal(await invalidHead.text(),'');
+for(const params of ['country=99','type=foreign','q=a&q=b','page=0','page=01','page=-1','page=1.5','page=9999','q='+ 'x'.repeat(101)]) {
+ const request=new Request('https://usa.test/explore/?'+params);
+ assert.equal((await resolveReviewedSitePublication(db,'guarded',request)).status,'invalid');
+ const response=await renderReviewedSitePublication(db,'guarded',request);
+ assert.equal(response.status,400);assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(response.headers.get('x-robots-tag'),'noindex, nofollow');assert.equal(response.headers.get('x-site-version'),null);assert.equal(await response.text(),'Invalid request');
+}
+const lastPage=Math.floor(10000/config.browsing.pageSize)+1;
+assert.equal((await renderReviewedSitePublication(db,'guarded',new Request('https://usa.test/explore/?page='+lastPage))).status,200);
+assert.equal((await renderReviewedSitePublication(db,'guarded',new Request('https://usa.test/explore/?page='+(lastPage+1)))).status,400);
+assert.equal((await renderReviewedSitePublication(db,'guarded',new Request('https://usa.test/not-captured/?page=0'))).status,404);
 assert.deepEqual(await resolveReviewedSitePublication(db,'guarded',new Request('https://usa.test/missing/')),{status:'missing'});
-assert.deepEqual(await resolveReviewedSitePublication(db,'guarded',new Request('https://usa.test/explore/?country=99')),{status:'unavailable'});
+assert.deepEqual(await resolveReviewedSitePublication(db,'guarded',new Request('https://usa.test/explore/?country=99')),{status:'invalid'});
 const guardedNextArtifact=structuredClone(artifact);guardedNextArtifact.records.institutions[0].title='Reviewed update';
 const guardedNextHash=await guardedStore.prepare(guardedNextArtifact,now);
 // A caller bypassing the internal reviewed wrapper cannot make the public reader serve an unreviewed capture.
 const injected=await guardedStore.activate(guardedNextHash,guardedFirst,now);
 assert.deepEqual(await resolveReviewedSitePublication(db,'guarded',publicRequest),{status:'unavailable'});
 const unreviewedResponse=await renderReviewedSitePublication(db,'guarded',publicRequest);assert.equal(unreviewedResponse.status,503);assert.equal(await unreviewedResponse.text(),'Site unavailable');
+assert.equal((await renderReviewedSitePublication(db,'guarded',new Request('https://usa.test/explore/?page=0'))).status,503);
 await guardedStore.activate(hash,injected,now);
 const guardedCurrent=(await guardedStore.active()).pointer;
 await assert.rejects(()=>guardedReview.activate(guardedNextHash,guardedCurrent,now),/publication_review_required/);assert.deepEqual((await guardedStore.active()).pointer,guardedCurrent);
@@ -208,10 +219,14 @@ await assert.rejects(()=>render('/explore/?type=foreign'));
 await assert.rejects(()=>render('/explore/?q=a&q=b'));
 await assert.rejects(()=>render('/explore/?page=9999'));
 const explore=await render('/explore/?type=program&q=Dental');assert.ok(JSON.stringify(explore.page.layout).includes('Dental program'));
+assert.equal(explore.cacheKey,(await render('/explore/?type=program&q=%20Dental%20')).cacheKey);
 assert.notEqual(explore.cacheKey,(await render('/explore/?type=institution')).cacheKey);
 assert.notEqual(institution.cacheKey,(await resolveSitePublicationPage((await store.get(next)),next,'alpha',new Request('https://usa.test/muhlenberg-college/'))).cacheKey);
 assert.notEqual(institution.cacheKey,(await resolveSitePublicationPage(first.artifact,hash,'beta',new Request('https://usa.test/muhlenberg-college/'))).cacheKey);
 // At-rest corruption is opaque and cannot be republished or overwritten by an identical retry.
 await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',[JSON.stringify({...first.artifact,configurationRevision:2}),'alpha',`site_publication:v1:${hash}`]);
 await assert.rejects(()=>store.get(hash),/publication_unavailable/);await assert.rejects(()=>store.active(),/publication_unavailable/);await assert.rejects(()=>store.prepare(first.artifact,now),/publication_unavailable/);
+assert.equal((await renderReviewedSitePublication(db,'alpha',new Request('https://usa.test/explore/?page=0'))).status,503);
+const failedDb={...db,query:async()=>{throw new Error('publication_params_invalid');}};
+assert.equal((await renderReviewedSitePublication(failedDb,'alpha',new Request('https://usa.test/explore/'))).status,503);
 console.log('site publication: immutable capture/integrity, CAS races, owner isolation, coherent rollback, original URLs, parent binding, registered snapshot queries and version/parameter cache separation passed');

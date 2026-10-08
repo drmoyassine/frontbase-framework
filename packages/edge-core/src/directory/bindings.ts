@@ -20,9 +20,23 @@ export type DirectoryQueryBinding = z.infer<typeof directoryQueryBindingSchema>;
 export const directoryRecordBindingSchema = z.object({
     text: z.enum(['title', 'summary', 'body', 'byline', 'publishedAt']).optional(), href: z.literal('originalPath').optional(),
     blocks: z.literal('body').optional(),
+    ariaLabel: z.literal('title').optional(),
     src: z.enum(['cover', 'logo']).optional(), alt: z.enum(['title','coverAlt']).optional(),
+    altFallback: z.literal('title').optional(),
+    hideWhenEmpty: z.boolean().optional(),
+    format: z.literal('date').optional(),
+}).strict();
+
+export const siteBindingsSchema = z.object({
+    text: z.enum(['site.name', 'site.destination']).optional(),
+    href: z.enum(['contacts.email', 'contacts.whatsapp', 'routes.directory']).optional(),
     hideWhenEmpty: z.boolean().optional(),
 }).strict();
+export function validateSiteBinding(node: PageComponent): void {
+    if (node.props?.siteBindings === undefined) return;
+    const binding = siteBindingsSchema.parse(node.props.siteBindings);
+    if (binding.hideWhenEmpty !== undefined && (node.type !== 'Link' || !binding.href)) throw new Error('invalid_site_binding_component');
+}
 
 /** Validate saved nodes without fetching rows. Avoid nested query multiplication. */
 export function directoryLayoutQueries(layout: PageLayoutData): { id: string; binding: DirectoryQueryBinding }[] {
@@ -32,6 +46,7 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
         for (const node of nodes) {
             if (++visited > 2000) throw new Error('directory_template_size');
             const props = node.props || {}; let isArticle = false;
+            validateSiteBinding(node);
             if (props.directoryQuery !== undefined) {
                 if (inQuery || requests.length >= 8 || requests.some(r => r.id === node.id) || props.binding || node.binding) throw new Error('ambiguous_directory_query');
                 const query = directoryQueryBindingSchema.parse(props.directoryQuery);
@@ -43,6 +58,9 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
                 if (!inQuery) throw new Error('record_binding_without_query');
                 const record = directoryRecordBindingSchema.parse(props.recordBindings);
                 if (record.text && !['Text', 'Heading', 'Paragraph', 'Link'].includes(node.type)
+                    || record.format && record.text !== 'publishedAt'
+                    || record.altFallback && (node.type !== 'Image' || record.alt !== 'coverAlt')
+                    || record.ariaLabel && (node.type !== 'Link' || !record.href)
                     || record.href && node.type !== 'Link' || (record.src || record.alt) && node.type !== 'Image'
                     || record.blocks && (node.type !== 'Container' || !articleQuery || Object.keys(record).length !== 1 || (node.children?.length ?? 0) > 0)
                     || record.hideWhenEmpty !== undefined && (node.type !== 'Image' || !record.src)
@@ -60,8 +78,30 @@ const imageUrl = (value: unknown) => {
     try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : ''; } catch { return ''; }
 };
 
+/** ISO-only input; never infer timezone or allow Date.parse calendar rollover. */
+function formatEditorialDate(value: unknown, locale?: string): string {
+    if (typeof value !== 'string') return '';
+    const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|[+-]\d{2}:\d{2}))?$/.exec(value);
+    if (!match) return '';
+    const [, y, m, d, h, minute, second, , zone] = match;
+    const year = Number(y), month = Number(m), day = Number(d);
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if (year < 1 || month < 1 || month > 12 || day < 1 || day > days[month - 1]!
+        || h !== undefined && (Number(h) > 23 || Number(minute) > 59 || Number(second) > 59)
+        || zone && zone !== 'Z' && (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4)) > 59)) return '';
+    const date = new Date(h === undefined ? `${value}T00:00:00Z` : value);
+    if (!Number.isFinite(date.getTime())) return '';
+    let selected = 'en';
+    try {
+        if (locale && locale.length <= 35 && /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)
+            && Intl.DateTimeFormat.supportedLocalesOf([locale]).length) selected = locale;
+    } catch { /* unsupported/invalid locale uses the stable declared fallback */ }
+    return new Intl.DateTimeFormat(selected, { timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn', year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+}
+
 /** Transient plain-component projection through the SAME renderer; never save its rows. */
-export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, records: Map<string, Record<string, unknown>[]>): T {
+export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, records: Map<string, Record<string, unknown>[]>, options: { locale?: string } = {}): T {
     directoryLayoutQueries(layout);
     let projected = 0;
     const walk = (node: PageComponent, row?: Record<string, unknown>, index = 0): PageComponent => {
@@ -84,11 +124,19 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
             const b = directoryRecordBindingSchema.parse(props.recordBindings);
             if (!row) throw new Error('record_context_unavailable');
             if (b.blocks) { const children = projectEditorialBody(row.body, id); projected += children.reduce((n,c) => n + 1 + (c.children?.length ?? 0), 0); if (projected > 4000) throw new Error('directory_projection_size'); return { ...node, id, props: rest, children }; }
-            if (b.text) { delete rest.content; delete rest.value; rest.text = literal(row[b.text]); }
+            if (b.text) {
+                delete rest.content; delete rest.value;
+                rest.text = b.format === 'date' ? formatEditorialDate(row[b.text], options.locale) : literal(row[b.text]);
+                if (b.format === 'date' && !rest.text) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+            }
             if (b.href) rest.href = path.safeParse(row.originalPath).success ? row.originalPath : '';
+            if (b.ariaLabel) {
+                const title = literal(row.title);
+                rest.ariaLabel = title ? `${literal(String(rest.text || rest.label || rest.children || 'Link'))}: ${title}` : '';
+            }
             if (b.src) { delete rest.url; rest.src = imageUrl(row[b.src]); }
             if (b.src && b.hideWhenEmpty && !rest.src) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
-            if (b.alt) rest.alt = literal(row[b.alt]);
+            if (b.alt) rest.alt = literal(row[b.alt]) || (b.altFallback === 'title' ? literal(row.title) : '');
         }
         return { ...node, id, props: rest, ...(node.children ? { children: node.children.map(child => walk(child, row, index)) } : {}) };
     };

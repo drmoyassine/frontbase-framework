@@ -1,0 +1,16 @@
+{
+  "captured_at": "2026-10-02T10:00:00Z",
+  "buckets": [
+    {"bucket": "usa-media",
+     "public_base_urls": ["https://media.usa.example/public-images"],
+     "keys": [
+       {"key": "wordpress/usa/institutions/700/abc.png", "size": 1234,
+        "sha256": "aa11223344556677889900aabbccddeeff11223344556677889900aabbccddee",
+        "content_type": "image/png"},
+       {"key": "wordpress/usa/duplicates/abc-copy.png", "size": 1234,
+        "sha256": "aa11223344556677889900aabbccddeeff11223344556677889900aabbccddee",
+        "content_type": "image/png"}
+     ]}
+  ],
+  "url_map": []
+}

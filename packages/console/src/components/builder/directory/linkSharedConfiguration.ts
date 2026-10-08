@@ -18,9 +18,9 @@ export function addSharedPageHeader(page: Page): NonNullable<Page['layoutData']>
     const contact = { border: '1px solid #dbe2ea', borderRadius: '9999px', padding: '8px 16px', fontSize: '0.875rem' };
     return { ...old, content: [{ id: crypto.randomUUID(), type: 'Container', props: { sharedSiteHeader: true },
         styles: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px 24px', padding: '18px 32px', borderBottom: '1px solid #dbe2ea', backgroundColor: '#ffffff' }, children: [
-            node('Link', { text: 'Site name', href: '/', color: '#0f172a', underline: false, siteBindings: { text: 'site.name' } }, { fontWeight: '700', fontSize: '1.125rem' }),
+            node('Link', { text: 'Site name', href: '/', color: '#0f172a', underline: false, siteBindings: { text: 'site.name', href: 'routes.directory' } }, { fontWeight: '700', fontSize: '1.125rem' }),
             node('Text', { text: 'Destination', siteBindings: { text: 'site.destination' } }, { color: '#64748b', fontSize: '0.875rem' }),
-            node('Link', { text: 'Email a counselor', href: '', color: '#0f172a', underline: false, siteBindings: { href: 'contacts.email' } }, { ...contact, marginLeft: 'auto' }),
-            node('Link', { text: 'WhatsApp', href: '', color: '#0f172a', underline: false, siteBindings: { href: 'contacts.whatsapp' } }, contact),
+            node('Link', { text: 'Email a counselor', href: '', color: '#0f172a', underline: false, siteBindings: { href: 'contacts.email', hideWhenEmpty: true } }, { ...contact, marginLeft: 'auto' }),
+            node('Link', { text: 'WhatsApp', href: '', color: '#0f172a', underline: false, siteBindings: { href: 'contacts.whatsapp', hideWhenEmpty: true } }, contact),
         ] }, ...old.content] };
 }

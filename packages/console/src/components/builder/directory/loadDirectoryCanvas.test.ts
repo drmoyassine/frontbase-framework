@@ -8,15 +8,17 @@ const binding={version:1 as const,queryId:'directory.institution.list' as const,
 const page:any={layoutData:{root:{siteConfiguration:{version:1,role:'directory'},custom:'kept'},content:[{id:'custom',type:'Text',props:{text:'Owner content'}}]}};
 it.each(['directory.article.list','directory.article.detail'] as const)('collapses empty covers and restores populated covers in %s templates',async(queryId)=>{
     const layout=addDirectoryTemplate(page,{version:1,queryId,params:queryId.endsWith('.detail')?{path:'/blog/original/'}:{}});
-    const image=layout.content[1].children![0].children![0];
-    expect(image.props.recordBindings).toEqual({src:'cover',alt:'coverAlt',hideWhenEmpty:true});
+    const queryIndex=layout.content.findIndex(node=>node.props.directoryQuery?.queryId===queryId);
+    const image=layout.content[queryIndex].children![0].children![0];
+    expect(image.props.recordBindings).toEqual({src:'cover',alt:'coverAlt',altFallback:'title',hideWhenEmpty:true});
     const fetcher=vi.fn().mockResolvedValue({ok:true,json:async()=>({revision:2,queryId,rows:[{title:'Article',cover:null,body:[{kind:'paragraph',runs:[{text:'Article text'}]}]}]})});vi.stubGlobal('fetch',fetcher);
     const empty=await loadDirectoryCanvas(layout,saved,new AbortController().signal);
-    expect(empty.content[1].children![0].children![0].styles?.display).toBe('none');
-    expect(empty.content[1].children![0].children![1].props.text).toBe('Article');
+    expect(empty.content[queryIndex].children![0].children![0].styles?.display).toBe('none');
+    expect(empty.content[queryIndex].children![0].children![1].props.text).toBe('Article');
     fetcher.mockResolvedValue({ok:true,json:async()=>({revision:2,queryId,rows:[{title:'Article',cover:'https://media.example.test/cover.jpg',coverAlt:'Campus',body:[{kind:'paragraph',runs:[{text:'Article text'}]}]}]})});
     const populated=await loadDirectoryCanvas(layout,saved,new AbortController().signal);
-    expect(populated.content[1].children![0].children![0].type).toBe('Image');expect(populated.content[1].children![0].children![0].props.src).toBe('https://media.example.test/cover.jpg');
+    expect(populated.content[queryIndex].children![0].children![0].type).toBe('Image');expect(populated.content[queryIndex].children![0].children![0].props.src).toBe('https://media.example.test/cover.jpg');
+    expect(populated.content[queryIndex].children![0].children![0].props.alt).toBe('Campus');
 });
 it('projects canonical semantic article bodies and metadata without saving fetched content',async()=>{
     const article={version:1 as const,queryId:'directory.article.detail' as const,params:{path:'/blog/original/'}};
@@ -42,4 +44,12 @@ it('retains exact original detail path and creates distinct editable component i
     const detail=addDirectoryTemplate(page,{version:1,queryId:'directory.program.detail',params:{path:'/old-parent/program/'}});
     expect(detail.content[1].type).toBe('Container');expect(detail.content[1].props.directoryQuery.params.path).toBe('/old-parent/program/');
     expect(addDirectoryTemplate(page,binding).content[1].id).not.toBe(addDirectoryTemplate(page,binding).content[1].id);
+});
+
+it('formats editorial dates with saved locale while keeping authoring source unchanged',async()=>{
+    const article={version:1 as const,queryId:'directory.article.detail' as const,params:{path:'/blog/original/'}};
+    const layout=addDirectoryTemplate(page,article),before=JSON.stringify(layout);
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({revision:2,queryId:article.queryId,rows:[{title:'Article',publishedAt:'2025-04-19T23:30:00-02:00',body:[{kind:'paragraph',runs:[{text:'Body'}]}]}]})}));
+    const projected=await loadDirectoryCanvas(layout,{...saved,configuration:{...saved.configuration,site:{...saved.configuration.site,locale:'en-GB'}}},new AbortController().signal);
+    expect(JSON.stringify(projected)).toContain('20 April 2025');expect(JSON.stringify(layout)).toBe(before);
 });

@@ -508,6 +508,14 @@ await esbuild.build({
     plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
 });
 
+// Test-only actual-browser transition harness, outside deployable dist/.
+await esbuild.build({
+    ...shared, platform: 'node', packages: 'external', target: 'node22',
+    entryPoints: ['e2e/publication/browser.ts'],
+    outfile: join(here, '.publication-e2e', 'browser.mjs'), minify: false,
+    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
+});
+
 const raw = statSync(join(here, 'dist', 'worker.mjs')).size;
 const gz = gzipSync(readFileSync(join(here, 'dist', 'worker.mjs')), { level: 9 }).length;
 const clientGz = gzipSync(CLIENT_SOURCE, { level: 9 }).length;

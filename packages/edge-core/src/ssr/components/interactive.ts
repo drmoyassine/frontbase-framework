@@ -215,8 +215,9 @@ function renderLink(id: string, props: Record<string, unknown>, propsJson: strin
 
     const style = `color:${color};${underline ? 'text-decoration:underline' : 'text-decoration:none'};cursor:pointer`;
     const attrs = getCommonAttributes(id, 'fb-link', props, style, 'link', propsJson);
+    const accessibleName = typeof props.ariaLabel === 'string' && props.ariaLabel.trim() ? ` aria-label="${escapeHtml(props.ariaLabel)}"` : '';
 
-    return `<a ${attrs} href="${href}" target="${target}">${text}</a>`;
+    return `<a ${attrs} href="${href}" target="${target}"${accessibleName}>${text}</a>`;
 }
 
 function renderTabs(id: string, props: Record<string, unknown>, childrenHtml: string, propsJson: string): string {
