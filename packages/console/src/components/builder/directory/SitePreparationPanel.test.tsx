@@ -18,7 +18,7 @@ describe('site preparation',()=>{
   const approve=screen.getByText('Approve this private version') as HTMLButtonElement;expect(approve.disabled).toBe(true);
   for(const label of ['Content and relationships are accurate','Images are suitable, or missing images are intentional','Layouts work on small and large screens','Original URLs and page links are correct','Contact actions lead to the intended destination'])fireEvent.click(screen.getByLabelText(label));
   expect(approve.disabled).toBe(true);fireEvent.change(screen.getByLabelText('Version review note'),{target:{value:'Checked each captured page'}});fireEvent.click(approve);
-  await screen.findByText('Reviewed 2026-10-07T09:00:00Z. Nothing was published.');
+  await screen.findByText('Reviewed 2026-10-07T09:00:00Z. Reviewing does not publish.');
   const input=JSON.parse(String(fetcher.mock.calls.find(([path])=>path.endsWith('/review/'))![1]?.body));expect(input).toEqual({hash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Checked each captured page'});
  });
  it('locks a lost review response until the immutable version is reopened',async()=>{
@@ -51,7 +51,7 @@ describe('site preparation',()=>{
   fireEvent.click(screen.getByLabelText('Include program'));fireEvent.click(screen.getByText('Prepare private preview'));await screen.findByText(/Captured pages/);
   const request=fetcher.mock.calls.find(([path])=>path.endsWith('/publication/prepare/'))!;
   const input=JSON.parse(String(request[1]?.body));expect(input.institutionPaths).toEqual(['/muhlenberg/']);expect(input.programPaths).toEqual(['/old-parent/dental/']);expect(input.pageIds).toHaveLength(3);expect(input.records).toBeUndefined();expect(input.reviewer).toBeUndefined();
-  fireEvent.click(screen.getByRole('button',{name:'Dental'}));expect(screen.getByTitle('Prepared site preview').getAttribute('src')).toContain('hash='+('a'.repeat(64)));expect(screen.getByRole('status').textContent).toContain('Nothing was published');
+  fireEvent.click(screen.getByRole('button',{name:'Dental'}));expect(screen.getByTitle('Prepared site preview').getAttribute('src')).toContain('hash='+('a'.repeat(64)));expect(screen.getByText('Private version prepared. Review its captured pages below. Preparation does not publish.')).toBeTruthy();
  });
  it('does not include an unapproved article or infer approval from a draft',async()=>{
   vi.stubGlobal('fetch',vi.fn(async(path:string)=>path==='/api/pages/'?ok({data:pages}):path.endsWith('/editorial/read/')?ok({approval:null,document:{revision:3}}):ok({revision:1,rows:[{id:'article',title:'Article',originalPath:'/blog/article/'}]})));

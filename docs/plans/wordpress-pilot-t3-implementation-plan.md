@@ -1,6 +1,6 @@
 # T3: guarded publishing in the existing admin
 
-**2026-10-08. Primary implementation plan, not delivered HTTP controls or permission to publish actual content.** Depends on [Step 2 verification](wordpress-pilot-step2-completion.md). Retains the existing admin, six packages, trusted deployment owner and one rendering engine. No new control plane, consumer-specific activation path or public low-level store endpoint.
+**2026-10-08. Bounded local implementation and verification complete.** [T3 delivery](wordpress-pilot-t3-delivery.md) is the current implementation/evidence authority; the design checklist below is retained. Preceding Step 2 checkpoint `fcf0f1c` is pushed; T3 changes are uncommitted. Retains the existing admin, six packages, trusted deployment owner and one rendering engine. No permission to publish actual content, new control plane, consumer-specific activation path or public low-level store endpoint.
 
 ## Outcome
 

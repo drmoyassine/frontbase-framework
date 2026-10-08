@@ -1,5 +1,11 @@
 # Second swarm: initial primary review
 
+**October 8 D/E follow-up:** [primary D/E delivery](wordpress-pilot-de-primary-delivery.md) records the imported/corrected D fixture, production inquiry contract and E automated same-version real-server drill. Original branch conclusions below remain dated evidence. Missing-transport delivery, context-parent, adapter-failure, status/expiry and key-custody assumptions are corrected locally; actual form/provider/durable storage and deployed operations remain open.
+
+**October 8 B follow-up:** [primary B integration/recovery review](wordpress-pilot-installer-recovery-delivery.md) and [production contract](wordpress-pilot-installer-recovery-contract.md) govern the imported and corrected private example. Original branch conclusions below are dated. Durable/conditional production installation and upgrade remain open; synthetic no-op/recovery proposals do not close that gate.
+
+**October 8 follow-up:** [primary restore safety repair](wordpress-pilot-restore-safety-delivery.md) governs the later imported/repaired E rehearsal. The counterexample and withheld acceptance below describe the original `84a931d` branch, not the repaired main-tree source. Production operations adoption remains open; no real backup/restore or deployment is authorized by local proof.
+
 **2026-10-07 — independent review of delivered branch tips, not integration or full acceptance.** Read with the [progress report](wordpress-pilot-second-swarm-progress.md) and [assignments](wordpress-pilot-second-swarm.md). No commits were cherry-picked, merged or pushed in this review; no actual pilot/canonical/review/activation/deployment state changed.
 
 ## Independent verification

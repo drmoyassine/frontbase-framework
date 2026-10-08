@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { sqliteRunner } from '@frontbase/edge-infra';
+import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
+import { createCompatApp } from '../dist/compat/app.js';
+import { SitePublicationStore } from '../dist/compat/site-publication-store.js';
+import { SitePublicationReviewStore } from '../dist/compat/site-publication-review-store.js';
+import { renderReviewedSitePublication } from '../dist/compat/site-publication-serving.js';
+import { migrateUp } from '../dist/db/migrations.js';
+
+const db=sqliteRunner('file:'+join(tmpdir(),`publication-controls-${crypto.randomUUID()}.db`).replaceAll('\\','/'));await migrateUp(db);
+const config=emptyDirectoryConfiguration();config.site={name:'Synthetic directory',destination:'USA',origin:'https://capture.test',locale:'en'};config.datasourceId='PRIVATE_SOURCE';
+for(const role of ['institution','program','city']){const mapping=config.collections[role];mapping.table='PRIVATE_'+role;mapping.scope={field:'country',value:22};Object.assign(mapping.fields,{id:'id',title:'title'});if(role!=='city')mapping.fields.originalPath='url';}
+config.collections.institution.fields.cityId='city';config.collections.program.fields.institutionId='institution';
+const layout=role=>({root:{siteConfiguration:{version:1,role}},content:[{id:role,type:role==='directory'?'Repeater':'Container',props:{directoryQuery:{version:1,queryId:`directory.institution.${role==='directory'?'list':'detail'}`,params:role==='directory'?{}:{path:'/campus/'}}},children:[{id:role+'-title',type:'Heading',props:{recordBindings:{text:'title'}}}]}]});
+const artifact={schemaVersion:1,runtimeVersion:'directory-snapshot-v1',configurationRevision:1,configuration:config,
+ templates:['directory','institution'].map((role,i)=>({pageId:`00000000-0000-4000-8000-00000000000${i}`,role,title:role,description:'',layout:layout(role)})),
+ records:{cities:[{id:1,title:'Fixture city'}],institutions:[{id:1,title:'First campus',originalPath:'/campus/',cityId:1,summary:'',cover:null,coverAlt:'',logo:null}],programs:[],articles:[]}};
+const now='2026-10-08T09:00:00Z',store=new SitePublicationStore(db,'alpha'),reviews=new SitePublicationReviewStore(db,'alpha');
+const first=await store.prepare(artifact,now),second=await store.prepare({...artifact,records:{...artifact.records,institutions:[{...artifact.records.institutions[0],title:'Second campus'}]}},now);
+const checks={content:true,media:true,layout:true,urls:true,ctas:true};for(const hash of [first,second])await reviews.approve({hash,checks,note:'PRIVATE_REVIEW_NOTE'},'PRIVATE_REVIEWER',now);
+let tenant='alpha',role='owner',authenticated=true;
+const app=await createCompatApp({makeRunner:async()=>db,resolvePrincipal:async()=>({user:authenticated?{id:'actor',role}:null,tenant}),sessionSecret:'synthetic-publication-controls',now:()=>now});
+const base='/api/project/site-configuration/publication/';
+const state=()=>app.request(base+'state/');
+const activate=input=>app.request(base+'activate/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
+const initial=await state();assert.equal(initial.status,200);assert.deepEqual(await initial.json(),{pointer:null,capture:null});assert.equal(initial.headers.get('cache-control'),'no-store');
+for(const userRole of ['viewer','member','editor']){role=userRole;assert.equal((await state()).status,403);assert.equal((await activate({hash:first,expected:null})).status,403);}role='owner';
+authenticated=false;assert.equal((await state()).status,401);assert.equal((await activate({hash:first,expected:null})).status,401);authenticated=true;
+for(const input of [{hash:first},{hash:first,expected:null,tenant:'beta'},{hash:first,expected:null,reviewer:'forged'},{hash:first,expected:{}},{hash:'invalid',expected:null}])assert.equal((await activate(input)).status,422);
+assert.equal((await app.request(base+'activate/',{method:'POST',headers:{'content-type':'application/json'},body:'x'.repeat(4097)})).status,413);
+assert.equal((await app.request(base+'activate/',{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify({hash:first,expected:null})})).status,415);
+assert.equal((await app.request(base+'state/?owner=beta')).status,422);
+assert.equal((await app.request(base+'activate/?owner=beta',{method:'POST',body:JSON.stringify({hash:first,expected:null})})).status,422);
+tenant='beta';assert.deepEqual(await (await state()).json(),{pointer:null,capture:null});assert.equal((await activate({hash:first,expected:null})).status,503);assert.equal(await new SitePublicationStore(db,'beta').active(),null);tenant='alpha';
+const races=await Promise.all([activate({hash:first,expected:null}),activate({hash:second,expected:null})]);assert.deepEqual(races.map(r=>r.status).sort(),[200,409]);
+let current=(await (await state()).json()).pointer;assert.equal(current.generation,1);
+tenant='beta';assert.deepEqual(await (await state()).json(),{pointer:null,capture:null});tenant='alpha';
+assert.equal((await activate({hash:current.hash,expected:null})).status,409);
+const same=await activate({hash:current.hash,expected:current});assert.equal(same.status,200);assert.deepEqual(await same.json(),{pointer:current,changed:false});
+assert.equal((await store.active()).pointer.generation,1);
+const next=current.hash===first?second:first,prior=current;
+const update=await activate({hash:next,expected:current});assert.equal(update.status,200);current=(await update.json()).pointer;assert.equal(current.generation,2);assert.equal(current.hash,next);
+assert.equal((await activate({hash:prior.hash,expected:prior})).status,409);
+const rollback=await activate({hash:prior.hash,expected:current});assert.equal(rollback.status,200);current=(await rollback.json()).pointer;assert.equal(current.generation,3);
+const visible=await renderReviewedSitePublication(db,'alpha',new Request('https://host.test/campus/'));assert.equal(visible.status,200);assert.equal(visible.headers.get('x-site-version'),current.hash);assert.equal(visible.headers.get('x-site-generation'),'3');assert.ok((await visible.text()).includes(current.hash===first?'First campus':'Second campus'));
+const view=await state(),payload=await view.json();assert.equal(view.headers.get('x-robots-tag'),'noindex, nofollow');assert.deepEqual(payload.capture.paths,['/explore/','/campus/']);assert.deepEqual(payload.capture.counts,{institutions:1,programs:0,articles:0});assert.ok(!JSON.stringify(payload).includes('PRIVATE_'));
+const unreviewed=await store.prepare({...artifact,configurationRevision:2},now);assert.equal((await activate({hash:unreviewed,expected:current})).status,503);assert.deepEqual((await store.active()).pointer,current);
+const key=`site_publication:review:v1:${current.hash}`,reviewRaw=(await db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',['alpha',key]))[0].value;
+await db.exec('DELETE FROM settings WHERE tenant_slug = ? AND key = ?',['alpha',key]);assert.equal((await state()).status,503);assert.equal((await activate({hash:next,expected:current})).status,503);
+await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?)',['alpha',key,reviewRaw,now]);
+await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',['broken','alpha','site_publication:active:v1']);assert.equal((await state()).status,503);assert.equal((await activate({hash:first,expected:null})).status,503);
+assert.equal((await db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',['alpha','site_publication:active:v1']))[0].value,'broken');
+console.log('publication controls: auth/roles/owner, strict bounded input, reviewed CAS races/update/rollback, same-target no-op, no-leak and corrupt-state refusal passed');

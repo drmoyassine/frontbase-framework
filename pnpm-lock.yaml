@@ -71,6 +71,21 @@ importers:
         specifier: ^1.62.0
         version: 1.62.0
 
+  examples/education-template-proof:
+    dependencies:
+      '@frontbase/backend':
+        specifier: workspace:*
+        version: link:../../packages/backend
+      '@frontbase/compiler':
+        specifier: workspace:*
+        version: link:../../packages/compiler
+      '@frontbase/edge-core':
+        specifier: workspace:*
+        version: link:../../packages/edge-core
+      '@frontbase/edge-infra':
+        specifier: workspace:*
+        version: link:../../packages/edge-infra
+
   examples/cf-worker:
     dependencies:
       '@frontbase/edge-core':

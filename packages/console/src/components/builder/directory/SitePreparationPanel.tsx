@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { SiteConfigurationDraft } from '@frontbase/edge-core/directory/configuration';
 import { sitePublicationReviewChecksSchema } from '@frontbase/edge-core/directory/publication';
 import { Button } from '@/components/ui/button';
+import { SitePublicationPanel } from './SitePublicationPanel';
 
 const rowSchema=z.object({id:z.union([z.string(),z.number()]),title:z.string(),originalPath:z.string().startsWith('/'),institutionId:z.union([z.string(),z.number()]).optional()});
 type Row=z.infer<typeof rowSchema>;
@@ -57,7 +58,7 @@ export function SitePreparationPanel({draft,disabled=false}:{draft:SiteConfigura
         const result=await post('publication/prepare',{expectedConfigurationRevision:draft.revision,pageIds:needed.map(role=>pages[role]),institutionPaths:institutions.map(row=>row.originalPath),programPaths:programs.map(row=>row.originalPath),articles:articles.map(({id,revision,fingerprint})=>({id,revision,fingerprint}))});
         const hash=z.string().regex(/^[a-f0-9]{64}$/).parse(result.hash);if(result.configurationRevision!==draft.revision || result.publicationAvailable!==false)throw new Error();
         const paths=z.array(rowSchema).parse([...result.records.institutions,...result.records.programs,...result.records.articles]);
-        setPrepared({hash,revision:draft.revision,paths,directory:institutions.length?draft.configuration.routes.directory:undefined,blog:articles.length?draft.configuration.routes.blog:undefined});setMessage('Private version prepared. Review its captured pages below. Nothing was published.');
+        setPrepared({hash,revision:draft.revision,paths,directory:institutions.length?draft.configuration.routes.directory:undefined,blog:articles.length?draft.configuration.routes.blog:undefined});setMessage('Private version prepared. Review its captured pages below. Preparation does not publish.');
     }
     async function reopen() {
         const hash=z.string().regex(/^[a-f0-9]{64}$/).parse(recoveryHash.trim());
@@ -68,7 +69,7 @@ export function SitePreparationPanel({draft,disabled=false}:{draft:SiteConfigura
         setPreview('');setPrepared({hash,revision:candidate.configurationRevision,paths:[...candidate.records.institutions,...candidate.records.programs,...candidate.records.articles],
             directory:candidate.records.institutions.length?candidate.routes.directory:undefined,blog:candidate.records.articles.length?candidate.routes.blog:undefined,review:candidate.review});
         setReviewChecks({});setReviewNote('');setReviewAttempted(false);
-        setMessage('Saved private version reopened. Its captured settings and data are unchanged. Nothing was published.');
+        setMessage('Saved private version reopened. Its captured settings and data are unchanged. Reopening does not publish.');
     }
     async function review() {
         if(!prepared || reviewAttempted || prepared.review)return;
@@ -78,7 +79,7 @@ export function SitePreparationPanel({draft,disabled=false}:{draft:SiteConfigura
         const result=await post('publication/review',{hash,checks,note:reviewNote.trim()});
         const confirmed=z.object({hash:z.literal(hash),review:z.object({reviewedAt:z.string().datetime()}),publicationAvailable:z.literal(false)}).parse(result);
         setPrepared(prior=>prior?.hash===hash?{...prior,review:confirmed.review.reviewedAt}:prior);
-        setMessage('This exact version is reviewed. Nothing was published.');
+        setMessage('This exact version is reviewed. Reviewing does not publish.');
     }
     const locked=disabled||busy;
     return <section aria-label="Site preparation" className="space-y-3 rounded-lg border p-3">
@@ -94,7 +95,8 @@ export function SitePreparationPanel({draft,disabled=false}:{draft:SiteConfigura
             <Button disabled={locked || !(institutions.length+articles.length)} onClick={()=>void operation(prepare)}>Prepare private preview</Button>
         </>}
         {prepared && <div className="space-y-2"><p className="font-medium">Captured pages · settings revision {prepared.revision}</p><p className="text-xs text-muted-foreground">Save this version ID to reopen it:</p><code className="block select-all break-all text-xs">{prepared.hash}</code>{prepared.directory && <Button variant="outline" disabled={locked} onClick={()=>setPreview(prepared.directory!)}>Explore directory</Button>}{prepared.blog && <Button variant="outline" disabled={locked} onClick={()=>setPreview(prepared.blog!)}>Articles index</Button>}{prepared.paths.map(row=><Button key={row.originalPath} variant="outline" className="h-auto max-w-full whitespace-normal break-words text-left" title={row.title} disabled={locked} onClick={()=>setPreview(row.originalPath)}>{row.title}</Button>)}{preview && <iframe title="Prepared site preview" className="h-[480px] w-full rounded border bg-white" src={`/api/project/site-configuration/publication/render/?hash=${encodeURIComponent(prepared.hash)}&path=${encodeURIComponent(preview)}`}/>}</div>}
-        {prepared && <fieldset disabled={locked||!!prepared.review||reviewAttempted} className="space-y-2 rounded border p-3"><legend className="px-1 font-medium">Review this captured version</legend><p className="text-sm text-muted-foreground">Confirm only after checking every included page. This records review; publishing is a separate step.</p>{(['content','media','layout','urls','ctas'] as const).map(check=><label key={check} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reviewChecks[check]??false} onChange={event=>setReviewChecks(prior=>({...prior,[check]:event.target.checked}))}/>{{content:'Content and relationships are accurate',media:'Images are suitable, or missing images are intentional',layout:'Layouts work on small and large screens',urls:'Original URLs and page links are correct',ctas:'Contact actions lead to the intended destination'}[check]}</label>)}<label className="block text-sm">Version review note<textarea aria-label="Version review note" className="mt-1 block w-full rounded border bg-background p-2" maxLength={4000} value={reviewNote} onChange={event=>setReviewNote(event.target.value)}/></label><Button disabled={locked||!!prepared.review||reviewAttempted||!reviewNote.trim()||!sitePublicationReviewChecksSchema.safeParse(reviewChecks).success} onClick={()=>void operation(review)}>Approve this private version</Button>{prepared.review?<p className="text-sm">Reviewed {prepared.review}. Nothing was published.</p>:reviewAttempted && <p className="text-sm">Reopen this version to check the review result before trying again.</p>}</fieldset>}
+        {prepared && <fieldset disabled={locked||!!prepared.review||reviewAttempted} className="space-y-2 rounded border p-3"><legend className="px-1 font-medium">Review this captured version</legend><p className="text-sm text-muted-foreground">Confirm only after checking every included page. This records review; publishing is a separate step.</p>{(['content','media','layout','urls','ctas'] as const).map(check=><label key={check} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reviewChecks[check]??false} onChange={event=>setReviewChecks(prior=>({...prior,[check]:event.target.checked}))}/>{{content:'Content and relationships are accurate',media:'Images are suitable, or missing images are intentional',layout:'Layouts work on small and large screens',urls:'Original URLs and page links are correct',ctas:'Contact actions lead to the intended destination'}[check]}</label>)}<label className="block text-sm">Version review note<textarea aria-label="Version review note" className="mt-1 block w-full rounded border bg-background p-2" maxLength={4000} value={reviewNote} onChange={event=>setReviewNote(event.target.value)}/></label><Button disabled={locked||!!prepared.review||reviewAttempted||!reviewNote.trim()||!sitePublicationReviewChecksSchema.safeParse(reviewChecks).success} onClick={()=>void operation(review)}>Approve this private version</Button>{prepared.review?<p className="text-sm">Reviewed {prepared.review}. Reviewing does not publish.</p>:reviewAttempted && <p className="text-sm">Reopen this version to check the review result before trying again.</p>}</fieldset>}
+        {prepared && <SitePublicationPanel candidate={prepared} revision={draft.revision} disabled={locked}/>}
         {message && <p role="status">{message}</p>}
     </section>;
 }

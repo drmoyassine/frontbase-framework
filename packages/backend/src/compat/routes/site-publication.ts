@@ -13,12 +13,14 @@ import { SitePublicationReviewStore } from '../site-publication-review-store.js'
 import { resolveSitePublicationPage } from '../site-publication-runtime.js';
 import { publicationPathSchema,sitePublicationReviewRequestSchema } from '@frontbase/edge-core/directory/publication';
 import { createEngine,directProvider } from '@frontbase/edge-core';
+import { registerSitePublicationControls } from './site-publication-controls.js';
 
 const previewRequest=z.object({hash:z.string().regex(/^[a-f0-9]{64}$/),path:publicationPathSchema,
     params:z.object({type:z.enum(['institution','program']).optional(),q:z.string().max(100).optional(),page:z.number().int().min(1).max(834).optional()}).strict().default({})}).strict();
-/** Authenticated candidate preparation/preview only. No route activation endpoint. */
+/** Preparation/review remain private; separate guarded controls publish exact reviewed captures. */
 export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVars}>,control:DbRunner,storeFor:(tenant:string)=>SyncStore,
     externalFetch:CompatFetch,accounts:AccountConfigFor,now:()=>string):void {
+    registerSitePublicationControls(app,control,now);
     app.get('/api/project/site-configuration/publication/render/',async c=>{
         c.header('Cache-Control','no-store');c.header('X-Robots-Tag','noindex, nofollow');
         const user=c.get('principal').user as {role?:string};
