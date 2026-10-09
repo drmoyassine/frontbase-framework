@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { siteBindingsSchema, validateSiteBinding } from './bindings.js';
+export { siteBindingsSchema } from './bindings.js';
 export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, projectDirectoryRecords, type DirectoryQueryBinding } from './bindings.js';
 export { editorialBodySchema, parseEditorialBody, projectEditorialBody } from './editorial.js';
 

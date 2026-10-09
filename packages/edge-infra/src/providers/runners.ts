@@ -15,6 +15,16 @@ import { createClient, type Client } from '@libsql/client';
 import { PostgrestClient } from '@supabase/postgrest-js';
 import type { DbRunner } from './types.js';
 
+/** Operations consumed by the D1 adapter; self-contained on every host. */
+export interface D1PreparedStatementBinding {
+    bind(...values: unknown[]): D1PreparedStatementBinding;
+    all(): Promise<{ results?: Record<string, unknown>[] }>;
+    run(): Promise<{ meta?: { changes?: number | { count?: number } } }>;
+}
+export interface D1DatabaseBinding {
+    prepare(sql: string): D1PreparedStatementBinding;
+}
+
 /** A libsql client as a DbRunner (:memory:, file:, libsql://). */
 export function sqliteRunner(url: string, authToken?: string): DbRunner {
     return libsqlRunner(createClient({ url, authToken }));
@@ -35,7 +45,7 @@ export function libsqlRunner(client: Client): DbRunner {
 }
 
 /** A Cloudflare D1 binding (env.DB) as a DbRunner — the CF default (B2/B3). */
-export function d1RunnerFromBinding(binding: D1Database): DbRunner {
+export function d1RunnerFromBinding(binding: D1DatabaseBinding): DbRunner {
     return {
         async query(sql, params = []) {
             const ps = binding.prepare(sql);

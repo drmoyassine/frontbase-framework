@@ -307,7 +307,7 @@ async function prepareFixture(path, method, op) {
 
     const edgeFixtures = [
         ['/api/edge-api-keys', '/api/edge-api-keys', { name: nextFixture('key'), scope: 'user' }],
-        ['/api/edge-caches', '/api/edge-caches/', { name: nextFixture('cache'), provider: 'upstash', cache_url: 'https://probe.example' }],
+        ['/api/edge-caches', '/api/edge-caches/', { name: nextFixture('cache'), provider: 'upstash', cache_url: `https://probe.example/${nextFixture('cache-url')}` }],
         ['/api/edge-databases', '/api/edge-databases/', { name: nextFixture('database'), provider: 'turso', db_url: 'https://probe.example' }],
         ['/api/edge-engines', '/api/edge-engines/', { name: nextFixture('engine'), url: 'https://probe.example' }],
         ['/api/edge-providers', '/api/edge-providers/', {
@@ -318,8 +318,8 @@ async function prepareFixture(path, method, op) {
                 url: 'https://probe.example',
             },
         }],
-        ['/api/edge-queues', '/api/edge-queues/', { name: nextFixture('queue'), provider: 'qstash', queue_url: 'https://probe.example' }],
-        ['/api/edge-vectors', '/api/edge-vectors/', { name: nextFixture('vector'), provider: 'turso', vector_url: 'https://probe.example' }],
+        ['/api/edge-queues', '/api/edge-queues/', { name: nextFixture('queue'), provider: 'qstash', queue_url: `https://probe.example/${nextFixture('queue-url')}` }],
+        ['/api/edge-vectors', '/api/edge-vectors/', { name: nextFixture('vector'), provider: 'turso', vector_url: `https://probe.example/${nextFixture('vector-url')}` }],
     ];
     for (const [prefix, createPath, createBody] of edgeFixtures) {
         if (!path.startsWith(prefix) || !path.includes('{')) continue;
@@ -410,7 +410,14 @@ async function prepareFixture(path, method, op) {
     }
 
     if (path.startsWith('/api/storage/buckets/{bucket_id}')) {
-        const bucket = await createFixture('/api/storage/buckets?provider_id=probe', {
+        const account = await createFixture('/api/edge-providers/', {
+            name: nextFixture('storage-account'), provider: 'cloudflare', provider_credentials: { token: 'probe-token' },
+        });
+        const provider = await createFixture('/api/storage/providers/', {
+            name: nextFixture('storage-provider'), provider: 'local', provider_account_id: fixtureId(account),
+        });
+        params.storage_provider_id = fixtureId(provider);
+        const bucket = await createFixture(`/api/storage/buckets?provider_id=${params.storage_provider_id}`, {
             name: nextFixture('bucket'),
             provider: 'local',
         });
@@ -487,6 +494,16 @@ async function prepareFixture(path, method, op) {
     }
 
     if (path.startsWith('/api/sync/')) {
+        if (path === '/api/sync/datasources/test-raw/') {
+            body = { type: 'sqlite', url: temporaryDatabaseUrl() };
+        }
+        if (path === '/api/sync/datasources/search-all/') {
+            const dbFile = temporaryDatabaseUrl();
+            const dsRunner = datasourceRunner('sqlite', { url: dbFile });
+            await dsRunner.exec('CREATE TABLE published_pages (id TEXT PRIMARY KEY, slug TEXT, title TEXT)');
+            await dsRunner.exec("INSERT INTO published_pages VALUES ('search-1', 'home', 'R2 searchable fixture')");
+            await createFixture('/api/sync/datasources/', { name: nextFixture('search-ds'), type: 'sqlite', config: { url: dbFile } });
+        }
         if (path.includes('{datasource_id}')) {
             let fixture;
             if (path.endsWith('/wordpress/discover/')) {
@@ -762,6 +779,8 @@ async function prepareFixture(path, method, op) {
             query.set(parameter.name, String(synth(parameter.schema)));
         }
     }
+    if (params.storage_provider_id) query.set('provider_id', params.storage_provider_id);
+    if (path === '/api/sync/datasources/search-all/') query.set('q', 'R2 searchable fixture');
     if (path === '/api/sync/datasources/sheets/connect/status/' && params.sheets_token) {
         query.set('token', params.sheets_token);
     }

@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import { sqliteRunner } from '@frontbase/edge-infra';
+import { buildArtifact } from '../../../examples/education-template-proof/src/template-source.mjs';
+import { validateEducationArtifact } from '../dist/compat/template-artifact.js';
+import { createCompatApp } from '../dist/compat/app.js';
+import { migrateUp } from '../dist/db/migrations.js';
+
+const baseline=buildArtifact(1,{institution:'/institution/',program:'/program/',article:'/article/'});
+const artifact=()=>structuredClone(baseline);
+const before=artifact();const raw=JSON.stringify(before);assert.deepEqual(validateEducationArtifact(before),before);assert.equal(JSON.stringify(before),raw);
+let cases=0;
+function refusal(change){const a=artifact();change(a);assert.throws(()=>validateEducationArtifact(a));cases++;}
+refusal(a=>a.artifact.exportSchema=2);refusal(a=>a.artifact.templateId='foreign');refusal(a=>a.records=[]);
+refusal(a=>a.configuration.datasourceId='owned');refusal(a=>a.configuration.site.name='Study USA');refusal(a=>a.configuration.site.origin='https://usa.test');
+refusal(a=>a.configuration.collections.institution.scope.value=22);refusal(a=>a.configuration.contacts.email='counselor@example.test');
+refusal(a=>a.destinationBindings=[]);refusal(a=>a.requiredCapabilities[0].required=false);refusal(a=>a.requiredCapabilities.push(a.requiredCapabilities[0]));
+refusal(a=>a.pages[1].slug=a.pages[0].slug);refusal(a=>a.pages[1].role=a.pages[0].role);refusal(a=>a.pages[1].layout.root.siteConfiguration.role='program');
+refusal(a=>a.pages[0].layout.root.directoryConfiguration={});refusal(a=>a.pages[0].layout.content[0].id='bad"id');
+refusal(a=>a.pages[0].layout.content.push(a.pages[0].layout.content[0]));refusal(a=>a.pages[0].layout.content[0].props.templateNodeId='different');
+refusal(a=>a.pages[0].layout.content[0].type='Embed');refusal(a=>a.pages[0].layout.content[0].props.html='<script>bad</script>');
+refusal(a=>a.pages[0].layout.content[0].props.text='{{ env.SECRET }}');refusal(a=>a.pages[0].layout.content[0].props.className='bad" onclick="bad');
+refusal(a=>a.pages[0].layout.content[0].styles={backgroundImage:'url(https://private.example)'});refusal(a=>a.pages[0].layout.content[0].styles={color:'red;display:none'});
+refusal(a=>a.pages[0].layout.content[0].binding={query:'SELECT private'});refusal(a=>a.pages[0].layout.content[0].props.records=[]);
+refusal(a=>a.notes='PRIVATE_EXPORT_CANARY');refusal(a=>a.pages[0].layout.content=a.pages[0].layout.content.filter(n=>!n.props?.directoryQuery));
+for(const href of ['javascript:alert(1)','data:text/html,<script>bad</script>','//evil.test','/%2e%2e/private','/a/../private','https://user:password@example.test/','https://consumer.example/','mailto:owner@consumer.example'])refusal(a=>a.pages[0].layout.content.push({id:'unsafe-link',type:'Link',props:{text:'Link',href}}));
+refusal(a=>a.pages[0].layout.content.push({id:'unsafe-image',type:'Image',props:{src:'https://consumer.example/wp/image.jpg'}}));
+refusal(a=>a.pages[0].layout.content.push({id:'wrong-binding',type:'Image',props:{siteBindings:{text:'site.name'}}}));
+refusal(a=>{let child={id:'deep-leaf',type:'Text',props:{text:'Text'}};for(let i=0;i<26;i++)child={id:'deep-'+i,type:'Container',children:[child]};a.pages[0].layout.content.push(child);});
+refusal(a=>a.pages[0].layout.content=Array.from({length:1501},(_,i)=>({id:'item-'+i,type:'Text',props:{text:'Text'}})));
+refusal(a=>a.notes='a'.repeat(1024*1024));
+// Literal markup stays text, optional cover remains empty, existing renderer/query contract is reused.
+const literal=artifact();literal.pages[0].layout.content[0].props.text='<script>literal</script>';validateEducationArtifact(literal);
+const db=sqliteRunner(':memory:');await migrateUp(db);let role='owner',authenticated=true;
+const app=await createCompatApp({makeRunner:async()=>db,resolvePrincipal:async()=>({user:authenticated?{id:'owner',role}:null,tenant:'alpha'}),sessionSecret:'artifact-check-session'});
+const snapshot=async()=>JSON.stringify(await db.query('SELECT * FROM settings'))+JSON.stringify(await db.query('SELECT * FROM compat_pages'));
+const saved=await snapshot();const call=(body={schemaVersion:1,artifact:artifact()},suffix='',headers={'content-type':'application/json'})=>app.request('/api/project/template-artifact/check/'+suffix,{method:'POST',headers,body:typeof body==='string'?body:JSON.stringify(body)});
+let response=await call();assert.equal(response.status,200);const result=await response.json();assert.equal(result.artifactValid,true);assert.equal(result.installAvailable,false);assert.equal(result.publicationAvailable,false);assert.equal(result.roles.length,5);assert.ok(!JSON.stringify(result).includes('SELECT'));assert.equal(response.headers.get('cache-control'),'no-store');assert.match(response.headers.get('x-robots-tag'),/noindex/);assert.equal(await snapshot(),saved);
+role='viewer';assert.equal((await call()).status,403);role='owner';authenticated=false;assert.equal((await call()).status,401);authenticated=true;
+assert.equal((await call({...{schemaVersion:1,artifact:artifact()},owner:'beta'})).status,422);assert.equal((await call({},'?owner=beta')).status,422);
+assert.equal((await call('{broken')).status,422);assert.equal((await call({},'',{})).status,415);assert.equal((await call(' '.repeat(1024*1024+1))).status,413);
+const secret=artifact();secret.notes='PRIVATE_EXPORT_CANARY';response=await call({schemaVersion:1,artifact:secret});assert.equal(response.status,422);assert.ok(!(await response.text()).includes('PRIVATE_'));
+assert.equal(await snapshot(),saved);console.log(`template-artifact: accepted existing five-role synthetic artifact; ${cases} malformed/unsafe/ref-bound cases refused; real-app auth/roles/body/opaque/no-write checks pass`);process.exit(0);

@@ -8,8 +8,23 @@
  * Templates are inlined strings (no FS template dir) so the compiler package is
  * self-contained. The scaffolded worker mirrors examples/cf-worker.
  */
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const compilerPackage = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+function exactVersion(value: unknown): string {
+    if (typeof value !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(value)) {
+        throw new Error('Installed Frontbase package has an invalid version');
+    }
+    return value;
+}
+export const compilerPackageVersion = exactVersion(compilerPackage.version);
+function installedCoreVersion(): string {
+    const manifest = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.resolve('@frontbase/edge-core'))), '..', 'package.json'), 'utf8'));
+    if (manifest.name !== '@frontbase/edge-core') throw new Error('Installed Frontbase core metadata is unavailable');
+    return exactVersion(manifest.version);
+}
 
 export type InitVariant = 'pure' | 'with-infra' | 'full';
 
@@ -48,19 +63,18 @@ export function scaffoldProject(targetDir: string, variant: InitVariant): InitRe
 
     if (variant !== 'pure') {
         write('src/infra.ts', INFRA_PLACEHOLDER);
-        notes.push('edge-infra wiring is a placeholder — real providers land in Phase 2 (M2.1).');
+        notes.push('Provider wiring is a placeholder. Install and connect @frontbase/edge-infra before replacing it; no database is configured.');
     }
     if (variant === 'full') {
         write('src/console.ts', CONSOLE_PLACEHOLDER);
-        notes.push('Console API (backend) wiring is a placeholder — lands in Phase 2 (M2.2).');
+        notes.push('Console wiring is a placeholder. This starter does not include administration; use the full CMS example for the current self-host path.');
     }
 
     return { path: targetDir, variant, files, notes };
 }
 
-function packageJson(variant: InitVariant): string {
-    const deps = ['"@frontbase/edge-core": "workspace:*"', '"zod": "^3.25.76"'];
-    if (variant !== 'pure') deps.push('"@frontbase/edge-infra": "workspace:*"');
+function packageJson(_variant: InitVariant): string {
+    const deps = [`"@frontbase/edge-core": "${installedCoreVersion()}"`, '"zod": "^3.25.76"'];
     return `{
   "name": "my-frontbase-app",
   "version": "0.0.0",
@@ -73,9 +87,10 @@ function packageJson(variant: InitVariant): string {
   },
   "dependencies": { ${deps.join(', ')} },
   "devDependencies": {
-    "@frontbase/compiler": "workspace:*",
+    "@frontbase/compiler": "${compilerPackageVersion}",
     "@types/node": "^20.0.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0"
   }
 }
 `;
@@ -101,7 +116,6 @@ export default defineConfig({ plugins: [frontbasePlugin()] });
 const WRANGLER = `name = "my-frontbase-app"
 main = "dist/worker.js"
 compatibility_date = "2026-01-01"
-no_bundle = true
 `;
 
 const HELLO_COMPONENT = `import { z } from 'zod';
@@ -175,7 +189,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const { manifest } = emitBrowserManifest({ pages, queries }, join(here, '..', 'src', 'manifest.browser.js'));
+const { manifest } = emitBrowserManifest({ pages, queries }, join(here, '..', 'dist', 'manifest.browser.js'));
+emitBrowserManifest({ pages, queries }, join(here, '..', 'src', 'manifest.browser.js'));
 console.log('generated browser manifest:', manifest.version, Object.keys(manifest.queries).length, 'queries (execute stripped)');
 `;
 
@@ -188,36 +203,12 @@ const engine = createEngine({ manifest, data: proxyProvider('/api/data'), enviro
 attachServiceWorker(self as any, engine, manifest);
 `;
 
-const WORKER_ENTRY = `import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
-import { createConsole } from '@frontbase/backend';
-import { d1RunnerFromBinding, sqliteRunner } from '@frontbase/edge-infra';
+const WORKER_ENTRY = `import { createEngine, directProvider } from '@frontbase/edge-core';
 import { manifest } from './manifest.edge.js';
-
-// BLOCKER-1/B10: D1 bindings live in per-request env, so the engine/console are
-// built LAZILY on first request (cached per isolate), not at module init.
-let cached: ReturnType<typeof createEngine> | null = null;
-let initialized = false;
-
-function getEngine(env: any) {
-  if (cached) return cached;
-  configureEngine({ edition: 'community', nodeEnv: 'production' });
-  // CF: env.DB is the D1 binding (provisioned by 'frontbase deploy'). Docker/dev:
-  // env.DB_URL is a file: URL. One runner, shared by the console + public data.
-  const makeRunner = async () => env.DB ? d1RunnerFromBinding(env.DB) : sqliteRunner(env.DB_URL ?? 'file:./data/frontbase.db');
-  const console = createConsole({ makeRunner, sessionSecret: env.SESSION_SECRET });
-  cached = createEngine({ manifest, data: directProvider(manifest), environment: 'edge', console });
-  return cached;
-}
+const engine = createEngine({ manifest, data: directProvider(manifest), environment: 'edge' });
 
 export default {
   async fetch(req: Request, env: any, ctx: any) {
-    const engine = getEngine(env);
-    // First-boot: the lazy getEngine is the only place env.DB exists, so
-    // migrations + seeding run here, once per isolate (BLOCKER-4).
-    if (!initialized) {
-      initialized = true;
-      // migrateUp(runner) + seedOwner run on first request (M-ID.1 wires seed).
-    }
     return engine.fetch(req, env, ctx);
   },
 };
@@ -257,5 +248,8 @@ pnpm check        # schema + diagnostics (--json for agents)
 \`\`\`
 
 Deploy as a Cloudflare Worker: \`npx wrangler deploy\` (after \`pnpm build\`).
+
+This is an engine starter with sample data, not an installed CMS. ${variant === 'pure' ? '' : 'Provider/console files are placeholders; no database or administrator is configured.'}
+Dependencies pin the installed compiler and core versions. Unpublished local versions require explicit tarball overrides for testing; registry availability is a separate release gate.
 `;
 }

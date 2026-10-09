@@ -1,5 +1,11 @@
 # B: template installation, recovery and upgrade contract
 
+**Current artifact boundary:** [Internal artifact checks](wordpress-pilot-artifact-check-delivery.md) validate a bounded education editable-node profile without writes or install authority. [Execution investigation](wordpress-pilot-install-execution-design.md) records the next database/namespace prerequisites: current adapters do not supply uniform transactions and legacy page creation can race into duplicate owner slugs. Syntax and destination-check success cannot be treated as an execution receipt.
+
+**Current destination checks:** [Read-only install-check delivery](wordpress-pilot-install-check-delivery.md) checks proposed bindings, mapped-column selection and template-shell page collisions. Its read-back is not namespace reservation, full artifact/schema/query/storage capability acceptance or install authorization. Existing settings require a separate upgrade plan.
+
+**Current foundation:** [Guarded draft-change delivery](wordpress-pilot-draft-change-delivery.md) implements the next additive single-page CAS/recovery primitive. Its owner operation slot does not reserve the entire install namespace or replace production artifact/capability/configuration/page-creation preflight. Legacy saves stay unchanged; installer/upgrade callers must use the locally verified guarded path, not unconditional PUT. Hosted adapters still need independent acceptance. Multi-page orchestration and administrator recovery remain open.
+
 **2026-10-08. Primary design proposal and bounded private proof; not a public importer.** Implements the next review task in the [execution plan](wordpress-pilot-execution-plan.md). Existing admin, six framework packages, trusted deployment owner and one engine remain the product boundary. Final template packaging and production adoption still require their acceptance work.
 
 ## Required behavior

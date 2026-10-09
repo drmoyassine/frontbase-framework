@@ -6,6 +6,13 @@
  */
 import type { CacheProvider } from './types.js';
 
+/** Operations consumed by kvCache; no Cloudflare ambient globals required. */
+export interface KVNamespaceBinding {
+    get(key: string): Promise<string | null>;
+    put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+    delete(key: string): Promise<void>;
+}
+
 interface Entry { value: string; expiresAt?: number; }
 
 /** In-process cache (dev/tests). Keys with TTL expire lazily on read. */
@@ -138,7 +145,7 @@ export function resilientCache(opts: ResilientCacheOpts): CacheProvider {
  * KV stores strings; TTL via the `expirationTtl`-equivalent is KV's cacheTtl on
  * read, so setex stores the value with a metadata expiry checked on get.
  */
-export function kvCache(namespace: KVNamespace): CacheProvider {
+export function kvCache(namespace: KVNamespaceBinding): CacheProvider {
     const mem = memoryCache(); // KV has no native pattern/TTL-as-map; mirror for keys()
     return {
         async get(key) {

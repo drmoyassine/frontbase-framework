@@ -299,6 +299,13 @@ export const MIGRATIONS: Migration[] = [
         ],
         down: [`DROP TABLE IF EXISTS billing_events`, `DROP TABLE IF EXISTS billing_accounts`],
     },
+    {
+        // Durable receipt written atomically with guarded draft updates; legacy page shapes remain unchanged.
+        version: 23,
+        name: 'compat_page_change_receipt',
+        up: [`ALTER TABLE compat_pages ADD COLUMN last_write_operation TEXT`],
+        down: [],
+    },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

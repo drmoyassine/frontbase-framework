@@ -9,7 +9,7 @@ import { resolve } from 'node:path';
 import { runCheck } from './checker.js';
 import { runLint } from './linter.js';
 import { runParityCheck } from './parity.js';
-import { scaffoldProject, type InitVariant } from './scaffold.js';
+import { scaffoldProject, compilerPackageVersion, type InitVariant } from './scaffold.js';
 import { simulateRender, serve, type ProviderMode } from './simulate.js';
 import { emitSwBundle } from '../emit/swBundle.js';
 import { deployCommand } from './deploy.js';
@@ -18,7 +18,7 @@ import type { CommandResult } from './types.js';
 
 export function createProgram(): Command {
     const program = new Command();
-    program.name('frontbase').description('Frontbase Framework CLI').version('0.1.0');
+    program.name('frontbase').description('Frontbase Framework CLI').version(compilerPackageVersion);
 
     const emit = (json: boolean, result: CommandResult): void => {
         if (json) console.log(formatAgentJson(result));

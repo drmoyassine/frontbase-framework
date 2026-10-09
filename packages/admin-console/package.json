@@ -1,5 +1,6 @@
 {
   "name": "@frontbase/admin-console",
+  "private": true,
   "version": "0.0.0",
   "description": "Frontbase first-run setup SPA. The product community console is served separately at /frontbase-admin. Browser-only; never imports server modules.",
   "license": "Apache-2.0",

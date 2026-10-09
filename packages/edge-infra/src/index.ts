@@ -20,7 +20,7 @@ export { d1DataProvider, tursoDataProvider, postgresDataProvider } from './provi
 export { buildDataProvider } from './providers/registry.js';
 export { requireTenant, copyRows } from './providers/helpers.js';
 export { sqliteRunner, libsqlRunner, d1RunnerFromBinding, d1RunnerFromRest, supabaseRunner, extractRpcResult, inlinePgParams } from './providers/runners.js';
-export type { D1RestOpts, SupabaseOpts } from './providers/runners.js';
+export type { D1RestOpts, SupabaseOpts, D1DatabaseBinding, D1PreparedStatementBinding } from './providers/runners.js';
 export { postgresRunner } from './providers/postgres.js';
 export type { PostgresOpts } from './providers/postgres.js';
 export { postgresStateRunner, postgresPlaceholders } from './providers/postgres-state.js';
@@ -40,7 +40,7 @@ export type { RateLimitConfig, RateLimitResult } from './proxy/ratelimit.js';
 
 // cache
 export { memoryCache, nullCache, kvCache, prefixedCache, resilientCache } from './cache/providers.js';
-export type { ResilientCacheOpts } from './cache/providers.js';
+export type { ResilientCacheOpts, KVNamespaceBinding } from './cache/providers.js';
 export { upstashCache } from './cache/upstash.js';
 export type { UpstashCacheOpts } from './cache/upstash.js';
 export { ioredisCache } from './cache/ioredis-adapter.js';

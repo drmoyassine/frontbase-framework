@@ -12,12 +12,20 @@ import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { emitSwBundle } from '../dist/emit/swBundle.js';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 const PKG = '@frontbase/compiler';
 const pkgDir = repoRoot + 'packages/compiler/';
 const EC = join(repoRoot, 'packages/edge-core/src/index.ts').replace(/\\/g, '/');
 const SWBUNDLE = 'packages/compiler/src/emit/swBundle.ts';
 const DEPLOY = 'packages/compiler/src/cli/deploy.ts';
+const sourceHashes = new Map([SWBUNDLE, DEPLOY].map(path => [path, createHash('sha256').update(readFileSync(repoRoot + path)).digest('hex')]));
+function restoredBaseline() {
+    assert.equal(buildPackage(PKG), true, 'restored compiler builds');
+    assert.equal(runGate(pkgDir, 'test/sw-no-leak.mjs'), 0, 'restored browser projection GREEN');
+    assert.equal(runGate(pkgDir, 'test/deploy-seed.mjs'), 0, 'restored secret transport GREEN');
+}
 
 console.log('— compiler mutation harness —\n');
 if (!buildPackage(PKG)) { console.log('baseline build failed'); process.exit(2); }
@@ -51,11 +59,12 @@ await withSourceMutation(
     "    writeFileSync(outFile, `export const manifest = ${JSON.stringify(manifest, null, 2)};\\n`);",
     "    writeFileSync(outFile, `export const manifest = ${JSON.stringify(manifest, null, 2)}; export const execute = function(){ return 'LEAKED_SERVER_EXECUTOR'; };\\n`);",
     async () => {
-        buildPackage(PKG);
+        assert.equal(buildPackage(PKG), true, 'serialization fault compiles');
         const exit = runGate(pkgDir, 'test/sw-no-leak.mjs');
         expectRed('sw-no-leak: goes red when the emitted manifest carries a function', exit);
     },
 );
+restoredBaseline();
 
 // 3. SOURCE — CF-19 no-argv-leak. Secret values must travel on stdin only. If the
 //    value is added to the wrangler argv (process-list leak), deploy-seed's
@@ -68,11 +77,12 @@ await withSourceMutation(
     "const res = await runWrangler(['secret', 'put', name, '--name', appName], { cwd, stdin: value });",
     "const res = await runWrangler(['secret', 'put', name, value, '--name', appName], { cwd, stdin: value });",
     async () => {
-        buildPackage(PKG);
+        assert.equal(buildPackage(PKG), true, 'secret transport fault compiles');
         const exit = runGate(pkgDir, 'test/deploy-seed.mjs');
         expectRed('deploy-seed: goes red when a secret value is passed on argv', exit);
     },
 );
 
-buildPackage(PKG);
+restoredBaseline();
+for (const [path, expected] of sourceHashes) assert.equal(createHash('sha256').update(readFileSync(repoRoot + path)).digest('hex'), expected, 'restored source hash: ' + path);
 summarize(PKG);

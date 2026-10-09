@@ -4,9 +4,11 @@
 
 **Status:** Active preparation
 
+**First edition accepted (2026-10-08):** Frontbase Framework Developer Preview, for developers and agents operating their own deployment; six Apache-2.0 library packages and separately built application artifacts. Cloudflare leads; other hosts retain evidence-specific support boundaries. [R0 findings and ordered backlog](PUBLIC-RELEASE-R0-2026-10-08.md) guide R1–R4. This is scope acceptance, not release availability, package publication or deployment authorization. Full template installation, migration, turnkey full CLI scaffolding and universal host/provider parity remain unclaimed; CF-22 stays paused.
+
 **Owner:** Frontbase framework
 
-**Last updated:** 2026-08-13
+**Last updated:** 2026-10-08
 
 ## Release intent
 
@@ -88,4 +90,4 @@ NoCodeHero may use a released Frontbase version to teach Certified No-code Engin
 
 ## Immediate next action
 
-Run R0 through [`PUBLIC-RELEASE-AUDIT.md`](./PUBLIC-RELEASE-AUDIT.md) as a release-focused audit of the current repository, not as a new feature sprint. Convert findings into a small, ordered public-release backlog. The existing Phase 3/4 roadmap and paused CF-22 record remain evidence, but the public release should be scoped from current truth rather than inherited target dates.
+R0 evidence and Developer Preview scope acceptance are recorded in [`PUBLIC-RELEASE-AUDIT.md`](./PUBLIC-RELEASE-AUDIT.md). Fresh external runtime/starter proof and [self-contained infrastructure types](PUBLIC-RELEASE-R1-BINDING-TYPES.md) pass, including actual Cloudflare binding assignability; full R1 remains open with backend Drizzle declaration failures. [R2 response-fixture correction](PUBLIC-RELEASE-R2-CONFORMANCE-DIAGNOSIS.md) reaches zero unreachable operations; the separate behavior gate still fails and its ledger is unchanged. Next: establish backend dependency/compiler compatibility, isolate behavior fixtures and review evidence, then complete lifecycle/full-CMS/host acceptance before registry/release operations. The existing Phase 3/4 roadmap and paused CF-22 record remain evidence, not inherited release commitments or permission for an uncontrolled feature sprint.

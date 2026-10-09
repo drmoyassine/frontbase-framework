@@ -26,10 +26,15 @@ import { registerThemesRoutes } from './routes/themes.js';
 import { registerProjectRoutes } from './routes/project.js';
 import { registerSiteConfigurationRoutes } from './routes/site-configuration.js';
 import { registerDirectoryPreviewRoutes } from './routes/directory-preview.js';
+import { registerTemplatePreflightRoutes } from './routes/template-preflight.js';
+import { registerTemplateArtifactRoutes } from './routes/template-artifact.js';
+import { datasourceRunner } from '../db/datasource-runner.js';
+import { mergeAccountConfig } from './providers/merge-account.js';
 import { registerEditorialRoutes } from './routes/editorial.js';
 import { registerSitePublicationRoutes } from './routes/site-publication.js';
 import { registerSecurityEventsRoutes } from './routes/security-events.js';
 import { registerPagesRoutes } from './routes/pages.js';
+import { registerPageChangeRoutes } from './routes/page-changes.js';
 import { registerDatabaseRoutes } from './routes/database.js';
 import { registerRlsRoutes } from './routes/rls.js';
 import { registerStorageRoutes, createStorageClientResolver } from './routes/storage.js';
@@ -393,6 +398,12 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
     registerSiteConfigurationRoutes(app, runner, now);
+    registerTemplateArtifactRoutes(app);
+    registerTemplatePreflightRoutes(app, runner, async (tenant, id) => {
+        const datasource = await syncStoreFor(tenant).getDatasource(id);
+        if (!datasource) return null;
+        return datasourceRunner(datasource.kind, await mergeAccountConfig((t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), externalFetch, tenant, datasource.kind, datasource.config));
+    });
     registerSitePublicationRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), now);
     registerDirectoryPreviewRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId));
     registerEditorialRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), now);
@@ -400,6 +411,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // A-25 WA5: the cloud plan gates ride the same accessor getEffectiveLimits
     // exposes (settings → per-tenant plan → `_global` catalog row). Null
     // limits (self-host) leaves every gate inert.
+    registerPageChangeRoutes(app, runner, now);
     registerPagesRoutes(app, pagesFor, now, runner, deps.enrichPageLayout,
         (t) => phase2For(t).getEffectiveLimits());
     registerDatabaseRoutes(

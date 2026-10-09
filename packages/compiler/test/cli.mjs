@@ -81,6 +81,11 @@ check('init: sw.ts imports the browser manifest (not edge, not queries)',
     swSrc.includes('manifest.browser') && !swSrc.includes('manifest.edge') && !swSrc.includes('./queries'));
 const workerSrc = readFileSync(join(projDir, 'src', 'worker.ts'), 'utf8');
 check('init: worker.ts imports the edge manifest', workerSrc.includes('manifest.edge'));
+const starterPackage = JSON.parse(readFileSync(join(projDir, 'package.json'), 'utf8'));
+check('init: external package references have exact versions, no workspace coupling',
+    !JSON.stringify(starterPackage).includes('workspace:') && /^\d+\.\d+\.\d+/.test(starterPackage.dependencies['@frontbase/edge-core']) && /^\d+\.\d+\.\d+/.test(starterPackage.devDependencies['@frontbase/compiler']));
+check('init: pure worker requires no undeclared backend/database packages',
+    !workerSrc.includes('@frontbase/backend') && !workerSrc.includes('@frontbase/edge-infra') && !workerSrc.includes('SESSION_SECRET'));
 
 // init --full adds infra + console placeholders
 const fullDir = join(initDir, 'fullapp');

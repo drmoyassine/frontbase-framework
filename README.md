@@ -2,11 +2,13 @@
 
 Frontbase is an open-source, edge-native platform for building and deploying AI-powered apps with no code — a visual builder whose published sites, admin console, and API all ship as **one deployable worker**.
 
-**Universal SSR** — one Hono engine, three render environments, byte-identical output. No hydration mismatches. No server/client render drift. No separate backend to stand up. Public pages render server-side (edge or service worker) from the *same* engine that runs the visual builder's canvas. The worker measures **488.8 KB min+gzip** (Cloudflare free-tier limit: 1 MB); the admin console is served through Workers Static Assets.
+**Universal SSR** — one Hono engine shared by edge execution and the visual builder's canvas. Published pages render server-side; the current service worker leaves navigations to the server. The admin console is served as static assets alongside the API. See the [dated build evidence](docs/plans/wordpress-pilot-artifact-check-delivery.md) for current working-tree measurements rather than a fixed release-size claim.
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 > **Status**: actively developed (pre-1.0). The admin console, the hydration runtime, the admin API, the four-host deploy matrix, and the managed-cloud free tier are all maintained in this repository — no code is fetched from outside at build or run time.
+
+The accepted first public-edition scope is **Frontbase Framework Developer Preview**. Release preparation is in progress; package publication, clean self-host installation, security and operations gates remain open. Cloudflare is the leading deployment path; other hosts have evidence-specific support boundaries. [Release scope and ordered backlog](docs/history/PUBLIC-RELEASE-R0-2026-10-08.md) distinguish the library framework, application artifacts and unfinished template/migration work. Full console scaffolding and general host/provider parity are not release claims.
 
 ---
 
@@ -141,13 +143,13 @@ That stages both console builds (self-host + cloud `/admin`), boots the worker i
 
 Canonical spec: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · stack detail: [docs/STACK.md](docs/STACK.md).
 
-One Hono engine (`@frontbase/edge-core`), three render environments — edge, service worker, builder canvas — with a unified priority router, SSR renderer, and DataProvider DI. Published pages ship zero React. Bundle facts (measured by `deploy:cf-full -- --dry-run`):
+One Hono engine (`@frontbase/edge-core`) with a unified priority router, SSR renderer, and DataProvider DI. Published pages ship zero React. Current service-worker lifecycle behavior does not intercept public navigation. Bundle measurements are recorded by `pnpm -r build` in [dated delivery evidence](docs/plans/wordpress-pilot-artifact-check-delivery.md); those local artifacts are not released versions.
 
-| Artifact | Size (min+gzip) | Limit |
-|---|---|---|
-| Worker (engine + console API + auth + pages) | 488.8 KB | 1 MB (Cloudflare free) |
-| inlined `/sw.js` | 108.3 KB | — |
-| Vercel Node function bundle | 489.2 KB | 4 MB |
+| Artifact | Measurement basis |
+|---|---|
+| Worker (engine + console API + auth + pages) | Minified bundle, gzip level9, byte count divided by1024 (KiB); repository budget1MiB |
+| Inlined `/sw.js` | Build log reports source length separately, not its individual gzip contribution |
+| Vercel Node / Deno function bundles | Local build and host-smoke evidence; intended-host acceptance remains separate |
 
 Three non-negotiable principles:
 
