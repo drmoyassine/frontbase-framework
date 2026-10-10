@@ -36,6 +36,7 @@ import { evaluateVisibilityCondition, applyClientVisibilityInjection } from './v
 import { applyNavbarFavicon } from './navbarFavicon.js';
 import { resolveRootStyles } from './rootStyles.js';
 import { renderBadge } from './badge.js';
+import { renderDirectoryBrowsing } from './components/directoryBrowsing.js';
 import { renderLayoutComponent } from './layoutRenderer.js';
 import { renderLandingComponent } from './landingDispatcher.js';
 
@@ -87,6 +88,10 @@ async function renderComponent(
     // Ensure className is passed through
     if (props && props.className) {
         resolvedProps.className = props.className;
+    }
+
+    if (type === 'Container' && resolvedProps.directoryBrowsing !== undefined) {
+        return renderLayoutComponent(type, id, resolvedProps, styles || {}, renderDirectoryBrowsing(resolvedProps), component.visibility);
     }
 
     const classification = classifyComponent(type);

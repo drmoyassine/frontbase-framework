@@ -176,7 +176,7 @@ export function registerDataExecuteRoute(
 
                 let runner: DbRunner;
                 try {
-                    runner = datasourceRunner(ds.kind, config);
+                    runner = datasourceRunner(ds.kind, config, externalFetch);
                 } catch {
                     return c.json({
                         success: false,
@@ -455,7 +455,7 @@ export function registerDataExecuteRoute(
         ).catch(() => ds.config);
         try {
             const dialect = dialectOf(ds.kind);
-            const runner = datasourceRunner(ds.kind, resolveDatasourceConfig(ds.kind, merged));
+            const runner = datasourceRunner(ds.kind, resolveDatasourceConfig(ds.kind, merged), externalFetch);
             const schema = await inspectTable(runner, dialect, table);
             const pk = schema.columns.find((column) => column.primary_key)?.name ?? 'id';
             return { runner, schema, pk, dialect };

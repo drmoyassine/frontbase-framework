@@ -41,6 +41,15 @@ for (const slug of ['api/users','/frontbase-admin/','//explore/','/%65xplore/','
     const candidate=body();candidate.pages[1].slug=slug; assert.equal((await call(candidate)).status,422,slug);
 }
 let candidate=body();candidate.pages[1].slug='EXPLORE';assert.equal((await call(candidate)).status,422);
+for (const slug of ['/builder/x','builder','/frontbase-setup/x','FRONTBASE-SETUP','/console/x','console']) {
+    const candidate=body();candidate.pages[1].slug=slug;
+    const beforeResolve=resolutions.length, beforeProbe=probes.length;
+    assert.equal((await call(candidate)).status,422,`host-owned route: ${slug}`);
+    assert.equal(resolutions.length,beforeResolve);assert.equal(probes.length,beforeProbe);
+}
+for (const slug of ['builder-course','frontbase-setup-guide','console-studies']) {
+    const candidate=body();candidate.pages[1].slug=slug;assert.equal((await call(candidate)).status,200,`boundary: ${slug}`);
+}
 candidate=body();candidate.pages[1].role='directory';assert.equal((await call(candidate)).status,422);
 candidate=body();candidate.configuration.routes.directory='/other/';assert.equal((await call(candidate)).status,422);
 candidate=body();candidate.configuration.collections.program.fields.institutionId='';assert.equal((await call(candidate)).status,422);

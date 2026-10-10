@@ -44,9 +44,13 @@ function parseConfig(value: unknown): Record<string, unknown> {
     }
 }
 
+function isPrimaryForm(row: AuthFormRow): boolean {
+    return Boolean(row.is_primary ?? parseConfig(row.config).is_primary);
+}
+
 function serializeForm(row: AuthFormRow): Record<string, unknown> {
     const config = parseConfig(row.config);
-    const primary = Boolean(row.is_primary ?? config.is_primary);
+    const primary = isPrimaryForm(row);
     const embeddable = Boolean(config.is_embeddable);
     const active = config.is_active === undefined ? true : Boolean(config.is_active);
     const target = typeof config.target_contact_type === 'string' ? config.target_contact_type : null;
@@ -187,7 +191,7 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
     app.get('/api/auth-forms/primary/', async (c) => {
         try {
             // Framework has no is_active column - it's in config JSON
-            // Match product logic: filter active by config, then find by config.is_primary
+            // Active status lives in config; primary identity uses the persisted column.
             const allRows = await runner.query(
                 `SELECT ${COLS} FROM auth_forms WHERE tenant_slug = ? ORDER BY created_at DESC`,
                 [c.get('tenant')],
@@ -197,11 +201,7 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
                 const config = parseConfig(candidate.config);
                 return config.is_active === undefined || Boolean(config.is_active);
             });
-            // Find first with is_primary in config
-            const primary = activeRows.find((candidate) => {
-                const config = parseConfig(candidate.config);
-                return Boolean(config.is_primary);
-            });
+            const primary = activeRows.find(isPrimaryForm);
             // No fallback - must have an explicit primary form
             if (primary) {
                 return c.json(envelope(true, serializeForm(primary)));
@@ -286,7 +286,9 @@ export function registerAuthFormsRoutes(app: App, runner: DbRunner, now: () => s
             if (body.allowed_contact_types !== undefined) config.allowed_contact_types = body.allowed_contact_types;
             if (body.redirect_url !== undefined) config.redirect_url = body.redirect_url;
             if (body.is_active !== undefined) config.is_active = body.is_active;
-            const primary = Boolean(config.is_primary ?? existing.is_primary);
+            const primary = body.config === undefined
+                ? isPrimaryForm(existing)
+                : Boolean(config.is_primary ?? existing.is_primary);
             const timestamp = now();
             await runner.exec(
                 'UPDATE auth_forms SET name = ?, type = ?, config = ?, is_primary = ?, updated_at = ? WHERE tenant_slug = ? AND id = ?',

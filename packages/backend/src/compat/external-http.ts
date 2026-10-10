@@ -71,12 +71,63 @@ export function checkedExternalUrl(raw: string): URL {
     return url;
 }
 
+/** Keep caller cancellation and the deadline active for the returned response
+ * body as well as its headers. Listener lifetime is bounded by the deadline;
+ * remove both listeners on the first abort. No AbortSignal.any runtime dependency. */
+function requestDeadlineSignal(caller: AbortSignal): { signal: AbortSignal; dispose: () => void } {
+    const deadline = AbortSignal.timeout(10_000);
+    const controller = new AbortController();
+    const cleanup = () => {
+        caller.removeEventListener('abort', callerAborted);
+        deadline.removeEventListener('abort', deadlineAborted);
+    };
+    const callerAborted = () => {
+        cleanup();
+        controller.abort(caller.reason);
+    };
+    const deadlineAborted = () => {
+        cleanup();
+        controller.abort(deadline.reason);
+    };
+    if (caller.aborted) {
+        controller.abort(caller.reason);
+    } else {
+        caller.addEventListener('abort', callerAborted, { once: true });
+        deadline.addEventListener('abort', deadlineAborted, { once: true });
+    }
+    return { signal: controller.signal, dispose: cleanup };
+}
+
 export async function guardedExternalFetch(
     fetchImpl: CompatFetch,
-    input: string | URL,
+    input: RequestInfo | URL,
     init: RequestInit = {},
     opts: GuardedFetchOptions = {},
 ): Promise<Response> {
+    if (input instanceof Request) {
+        // Check before transferring/consuming a stream from the original input.
+        checkedExternalUrl(input.url);
+        if (opts.followRedirects) throw new Error('provider_request_redirect_replay_unsupported');
+        const request = new Request(input, init);
+        checkedExternalUrl(request.url);
+        request.signal.throwIfAborted();
+        const cancellation = requestDeadlineSignal(request.signal);
+        let response: Response;
+        try {
+            const guardedRequest = new Request(request, {
+                redirect: 'manual',
+                signal: cancellation.signal,
+            });
+            guardedRequest.signal.throwIfAborted();
+            response = await fetchImpl(guardedRequest);
+        } catch (error) {
+            cancellation.dispose();
+            throw error;
+        }
+        // Keep the bounded abort link for an unread redirect response body too.
+        if (response.status >= 300 && response.status < 400) throw new Error('provider_redirect_rejected');
+        return response;
+    }
     let url = checkedExternalUrl(String(input));
     const maxHops = opts.followRedirects ? Math.max(1, opts.maxRedirects ?? 5) : 0;
 

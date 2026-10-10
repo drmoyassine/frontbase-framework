@@ -277,9 +277,10 @@ async function searchDatasource(
     datasource: { kind: string; config: Record<string, unknown> },
     query: string,
     limit: number,
+    externalFetch: CompatFetch,
 ): Promise<Record<string, unknown>[]> {
     if (!query || limit <= 0) return [];
-    const runner = datasourceRunner(datasource.kind, datasource.config);
+    const runner = datasourceRunner(datasource.kind, datasource.config, externalFetch);
     const dialect = dialectOf(datasource.kind);
     const matches: Record<string, unknown>[] = [];
     for (const rawTable of await listTables(runner, dialect)) {
@@ -590,7 +591,7 @@ export function registerSyncRoutes(
         };
 
         try {
-            const runner = datasourceRunner(kind, config);
+            const runner = datasourceRunner(kind, config, externalFetch);
             await runner.query('SELECT 1');
             let tables: string[] = [];
             if (isIntrospectable(kind)) {
@@ -639,7 +640,7 @@ export function registerSyncRoutes(
                     ...datasource,
                     config: await mergeAccount(c.get('tenant'), datasource.kind, datasource.config),
                 };
-                const rows = await searchDatasource(mergedDatasource, query, limit - matches.length);
+                const rows = await searchDatasource(mergedDatasource, query, limit - matches.length, externalFetch);
                 matches.push(...rows.map((row) => ({
                     datasource_id: datasource.id,
                     datasource_name: datasource.name,
@@ -699,7 +700,7 @@ export function registerSyncRoutes(
         const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             await runner.query('SELECT 1');
             return c.json({ success: true, message: 'Connection active' });
         } catch (err) {
@@ -718,7 +719,7 @@ export function registerSyncRoutes(
         // Flat DatasourceCreate payload: normalize, hydrate from connected account, enrich.
         const config = await mergeAccount(c.get('tenant'), kind, flatBodyToConfig({ ...ds.config, ...b }));
         try {
-            const runner = datasourceRunner(kind, config);
+            const runner = datasourceRunner(kind, config, externalFetch);
             await runner.query('SELECT 1');
             return c.json({ success: true, message: 'Updated settings valid' });
         } catch (err) {
@@ -733,7 +734,7 @@ export function registerSyncRoutes(
         const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             return c.json(await listTables(runner, dialect));
         } catch (error) {
@@ -755,7 +756,7 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             const schema = await inspectTable(runner, dialect, rawTable);
             return c.json({
@@ -785,7 +786,7 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             const schema = await inspectTable(runner, dialect, rawTable);
             const table = schema.table;
@@ -878,7 +879,7 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const schema = await inspectTable(runner, dialectOf(ds.kind), rawTable);
             const filters = [
                 ...parseFilterList(rawFilters),
@@ -931,7 +932,7 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const schema = await inspectTable(runner, dialectOf(ds.kind), rawTable);
             const table = schema.table;
             const col = validateIdentifier(rawCol, schema.columns.map((column) => column.name));
@@ -959,7 +960,7 @@ export function registerSyncRoutes(
         }
 
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             const schema = await inspectTable(runner, dialect, rawTable);
             const table = schema.table;
@@ -1000,7 +1001,7 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             const schema = await inspectTable(runner, dialect, rawTable);
             const table = schema.table;
@@ -1037,7 +1038,7 @@ export function registerSyncRoutes(
         const limit = Math.max(1, Math.min(Number(c.req.query('limit') ?? 10), 100));
         try {
             const mergedDs = { ...ds, config: await mergeAccount(c.get('tenant'), ds.kind, ds.config) };
-            return c.json({ matches: await searchDatasource(mergedDs, query, limit) });
+            return c.json({ matches: await searchDatasource(mergedDs, query, limit, externalFetch) });
         } catch (error) {
             return c.json({ detail: `Search failed: ${(error as Error).message}` }, 502);
         }
@@ -1104,7 +1105,7 @@ export function registerSyncRoutes(
         if (b.target_table) {
             try {
                 await inspectTable(
-                    datasourceRunner(datasource.kind, await mergeAccount(c.get('tenant'), datasource.kind, datasource.config)),
+                    datasourceRunner(datasource.kind, await mergeAccount(c.get('tenant'), datasource.kind, datasource.config), externalFetch),
                     dialectOf(datasource.kind),
                     b.target_table,
                 );
@@ -1143,7 +1144,7 @@ export function registerSyncRoutes(
 
         if (ds) {
             try {
-                const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+                const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
                 const schema = await inspectTable(runner, dialectOf(ds.kind), view.target_table);
                 const table = schema.table;
                 const offset = (page - 1) * perPage;
@@ -1196,7 +1197,7 @@ export function registerSyncRoutes(
         let count = 0;
         if (ds) {
             try {
-                const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+                const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
                 const schema = await inspectTable(runner, dialectOf(ds.kind), view.target_table);
                 const where = buildWhere(
                     dialectOf(ds.kind),
@@ -1247,7 +1248,7 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ success: false, message: 'Datasource not found' }, 400);
 
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             const schema = await inspectTable(runner, dialect, view.target_table);
             const table = schema.table;
@@ -1284,7 +1285,7 @@ export function registerSyncRoutes(
         const datasource = await store.getDatasource(view.datasource_id);
         if (!datasource) return c.json({ detail: 'Associated datasource not found' }, 404);
         try {
-            const runner = datasourceRunner(datasource.kind, await mergeAccount(c.get('tenant'), datasource.kind, datasource.config));
+            const runner = datasourceRunner(datasource.kind, await mergeAccount(c.get('tenant'), datasource.kind, datasource.config), externalFetch);
             const dialect = dialectOf(datasource.kind);
             const schema = await inspectTable(runner, dialect, view.target_table);
             const columnNames = schema.columns.map((column) => column.name);
@@ -1370,7 +1371,7 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             const tables = await listTables(runner, dialect);
             // Batched: one FK query (Postgres) or local per-table pragma (SQLite) — was N inspectTable calls.
@@ -1487,7 +1488,7 @@ export function registerSyncRoutes(
             }
             try {
                 await validateRelationshipDefinition(
-                    datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config)),
+                    datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch),
                     dialectOf(ds.kind),
                     b,
                 );
@@ -2091,7 +2092,7 @@ export function registerSyncRoutes(
         }
 
         try {
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             // Check if execute_query function exists
             const rows = await runner.query(`
                 SELECT EXISTS (
@@ -2134,7 +2135,7 @@ export function registerSyncRoutes(
                 ? body.sql
                 : SUPABASE_SETUP_SQL;
 
-            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config));
+            const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const { successCount, errors } = await applyMigrationStatements(runner, migrationSql);
 
             if (errors.length > 0) {

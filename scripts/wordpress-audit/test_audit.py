@@ -5,6 +5,7 @@ used. The suite proves disposition coverage, determinism, refusal behavior
 and the dry-run-only proposal policy on the committed fixtures.
 """
 import copy
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -362,6 +363,32 @@ class CliAndSafetyTests(unittest.TestCase):
             self.assertTrue(summary["sanitized"])
             self.assertIn("input_digests", summary)
             self.assertEqual(summary["records"]["total"], len(SOURCE["records"]))
+
+    def test_repeat_run_into_same_output_directory_does_not_duplicate(self):
+        names = ["reconciliation-ledger.json", "media-ledger.json", "links-ledger.json",
+                 "import-proposals.json", "summary.json"]
+        digests = []
+        with tempfile.TemporaryDirectory() as out:
+            for _ in range(2):
+                completed = subprocess.run(
+                    [sys.executable, str(HERE / "audit-migration.py"),
+                     "--source", str(HERE / "fixtures" / "source-snapshot.json"),
+                     "--canonical", str(HERE / "fixtures" / "canonical-export.json"),
+                     "--editorial", str(HERE / "fixtures" / "editorial-export.json"),
+                     "--storage-manifest", str(HERE / "fixtures" / "storage-manifest.json"),
+                     "--exclusions", str(HERE / "fixtures" / "exclusions.json"),
+                     "--field-map", str(HERE / "fixtures" / "field-map.json"),
+                     "--country-id", "5", "--output", out],
+                    capture_output=True, text=True, timeout=120)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertEqual(sorted(p.name for p in Path(out).iterdir()), sorted(names))
+                summary = json.loads((Path(out) / "summary.json").read_text())
+                self.assertEqual(summary["records"]["total"], len(SOURCE["records"]))
+                self.assertEqual(summary["proposals"]["total"],
+                                 len(json.loads((Path(out) / "import-proposals.json").read_text())["proposals"]))
+                digests.append({name: hashlib.sha256((Path(out) / name).read_bytes()).hexdigest()
+                                for name in names})
+        self.assertEqual(digests[0], digests[1])
 
     def test_outputs_refused_inside_repository(self):
         with self.assertRaises(ValueError):

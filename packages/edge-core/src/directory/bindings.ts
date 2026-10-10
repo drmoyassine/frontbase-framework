@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { PageComponent, PageLayoutData } from '../ssr/types.js';
 import { projectEditorialBody } from './editorial.js';
+import { validateDirectoryBrowsing } from './browsing.js';
 
 const path = z.string().max(400).refine(v => {
     try { const decoded = decodeURIComponent(v); return v.startsWith('/') && !decoded.startsWith('//') && !/[\\?#{}\s\x00-\x20]/.test(decoded) && !decoded.split('/').some(p => p === '.' || p === '..'); }
@@ -40,12 +41,14 @@ export function validateSiteBinding(node: PageComponent): void {
 
 /** Validate saved nodes without fetching rows. Avoid nested query multiplication. */
 export function directoryLayoutQueries(layout: PageLayoutData): { id: string; binding: DirectoryQueryBinding }[] {
-    const requests: { id: string; binding: DirectoryQueryBinding }[] = []; let visited = 0;
+    const requests: { id: string; binding: DirectoryQueryBinding }[] = []; let visited = 0, browsing = 0;
     const walk = (nodes: PageComponent[], inQuery = false, depth = 0, articleQuery = false) => {
         if (depth > 20) throw new Error('directory_template_depth');
         for (const node of nodes) {
             if (++visited > 2000) throw new Error('directory_template_size');
             const props = node.props || {}; let isArticle = false;
+            validateDirectoryBrowsing(node, inQuery);
+            if (props.directoryBrowsing !== undefined && (++browsing > 1 || !['directory', 'article-index'].includes(String((layout.root?.siteConfiguration as {role?:string} | undefined)?.role)))) throw new Error('invalid_directory_browsing_role');
             validateSiteBinding(node);
             if (props.directoryQuery !== undefined) {
                 if (inQuery || requests.length >= 8 || requests.some(r => r.id === node.id) || props.binding || node.binding) throw new Error('ambiguous_directory_query');

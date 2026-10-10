@@ -1,5 +1,7 @@
 # D: production inquiry acceptance contract
 
+**2026-10-10 owner clarification:** preserve `/apply-2/` while simplifying the application. Legacy multi-step/document-upload parity is unnecessary; uploads are deferred. Initial contact, selected institution/program and intake use reusable existing-admin machinery. The [draft authoring increment](wordpress-pilot-application-draft.md) adds configurable presentation to the existing Form, with collection explicitly disabled. Durable recording, trusted context, validation/consent and delivery remain the outstanding D2–D5 gates; draft rendering alone does not complete D1.
+
 **2026-10-08. Primary design proposal; production remains open.** The imported [D prototype](../../examples/pilot-inquiry-prototype/README.md) and [original contract](wordpress-pilot-inquiry-contract.md) provide bounded synthetic evidence. This document specifies the next implementable work without adopting fixture HTML, an in-memory lead store or a new package as production architecture. Retain the existing admin, six packages and one engine; one self-host deployment is one site/application. Existing Cloud routes still derive ownership from trusted server context.
 
 ## What the administrator configures

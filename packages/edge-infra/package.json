@@ -16,8 +16,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node test/password.mjs && node test/session.mjs && node test/runners.mjs && node test/postgres-state.mjs && node test/supabase-rpc-parse.mjs && node test/providers.mjs && node test/storage-sigv4.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/cache-remote.mjs && node test/qstash.mjs && node test/vector.mjs && node test/workflow-durable.mjs && node test/ratelimit.mjs && node test/no-leak.mjs",
-    "test:mutation": "node test/mutation.mjs"
+    "test": "tsc -p tsconfig.json && node test/password.mjs && node test/session.mjs && node test/runners.mjs && node test/d1-rest-count.mjs && node test/postgres-state.mjs && node test/supabase-rpc-parse.mjs && node test/providers.mjs && node test/storage-sigv4.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/cache-remote.mjs && node test/qstash.mjs && node test/vector.mjs && node test/workflow-durable.mjs && node test/ratelimit.mjs && node test/no-leak.mjs",
+    "test:d1-rest-count": "node test/d1-rest-count.mjs",
+    "test:mutation": "node test/mutation.mjs && node test/d1-rest-count-mutation.mjs"
   },
   "peerDependencies": {
     "@frontbase/edge-core": "workspace:*"

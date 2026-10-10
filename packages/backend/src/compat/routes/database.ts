@@ -104,7 +104,7 @@ export function registerDatabaseRoutes(
             // database connection — treat as unconfigured rather than 500ing.
             let activeRunner: DbRunner;
             try {
-                activeRunner = datasourceRunner(ds.kind, config);
+                activeRunner = datasourceRunner(ds.kind, config, externalFetch);
             } catch {
                 return null;
             }

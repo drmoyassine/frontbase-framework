@@ -11,10 +11,13 @@
  */
 import { createClient, type Client, type InValue } from '@libsql/client';
 import { vectorTableName, type VectorAdapter, type VectorDocument, type VectorMetadata, type VectorSearchResult } from './types.js';
+import type { ServiceFetch } from '../cache/types.js';
+import { libsqlHttpConfig } from '../providers/libsql-http.js';
 
 export interface LibsqlVectorOpts {
     url: string;
     authToken?: string;
+    fetchImpl?: ServiceFetch;
 }
 
 /** JSON1 metadata filters as SQL conditions + bound values (product parity:
@@ -56,7 +59,7 @@ export function libsqlVectorAdapter(opts: LibsqlVectorOpts): VectorAdapter {
     const remote = /^(?:libsql|wss|https?):\/\//i.test(opts.url);
     // One client for the adapter's lifetime — libsql connects lazily, so a
     // file: URL that does not exist yet is only touched on first use.
-    const client: Client = createClient({ url: opts.url, authToken: opts.authToken });
+    const client: Client = createClient(libsqlHttpConfig(opts.url, opts.authToken, opts.fetchImpl));
 
     return {
         async ensureTable(tableName) {

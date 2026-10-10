@@ -118,7 +118,41 @@ assert.equal(sitePreparationRequestSchema.safeParse({...selection,records:artifa
 const prepare=(request=selection,tenant='alpha',version=draft)=>prepareSitePublication(db,db,tenant,version,'sqlite',request,{id:'owner'},now);
 const captured=await prepare();assert.equal(captured.artifact.templates[1].title,'institution');assert.equal(captured.artifact.records.programs[0].institutionId,512);assert.equal(captured.artifact.records.articles[0].revision,3);
 assert.ok(!JSON.stringify(captured.artifact.records).includes('PRIVATE_'));
+// A browser serializes raw Unicode. Preparation must refuse, never rename or persist it.
+for (const [role,table,id,path,original] of [
+ ['institution','PRIVATE_institution',512,'/caf\u00e9/','/muhlenberg-college/'],
+ ['program','PRIVATE_program',46188,'/old-parent/\u533b\u5b66/','/old-parent/dental-program/'],
+]) {
+    await db.exec(`UPDATE ${table} SET wp_url=? WHERE id=?`,[path,id]);
+    const settingsBefore=JSON.stringify(await db.query('SELECT * FROM settings ORDER BY tenant_slug,key'));
+    try {
+        await assert.rejects(()=>prepare({...selection,[role+'Paths']:[path]}),/publication_route_serialization/);
+        assert.equal(JSON.stringify(await db.query('SELECT * FROM settings ORDER BY tenant_slug,key')),settingsBefore);
+        assert.equal((await db.query(`SELECT wp_url FROM ${table} WHERE id=?`,[id]))[0].wp_url,path);
+    } finally {await db.exec(`UPDATE ${table} SET wp_url=? WHERE id=?`,[original,id]);}
+}
 await assert.rejects(()=>prepare({...selection,institutionPaths:['/foreign/']}));
+const unicodeArticle={...document,revision:4,originalPath:'/\u6587\u7ae0/'};
+const unicodeApproval=await new EditorialApprovalStore(db,'alpha').approve(unicodeArticle,draft,'owner','Synthetic URL check',{facts:true,language:true,media:true,formatting:true,urls:true,ctas:true},now);
+let settingsBefore=JSON.stringify(await db.query('SELECT * FROM settings ORDER BY tenant_slug,key'));
+await assert.rejects(()=>prepare({...selection,articles:[{id:article.id,revision:4,fingerprint:unicodeApproval.fingerprint}]}),/publication_route_serialization/);
+assert.equal(JSON.stringify(await db.query('SELECT * FROM settings ORDER BY tenant_slug,key')),settingsBefore);
+for(const route of ['directory','blog']){
+    const owner='url-'+route,configuration=structuredClone(config);configuration.routes[route]='/caf\u00e9/';
+    const version=await new SiteConfigurationStore(db,owner).save(configuration,0,now);
+    for(const template of templates)await new PagesStore(db,owner).create({name:'Synthetic',slug:template.role,layout_data:template.layout},template.pageId,now);
+    const approval=await new EditorialApprovalStore(db,owner).approve(document,version,'owner','Synthetic route check',{facts:true,language:true,media:true,formatting:true,urls:true,ctas:true},now);
+    settingsBefore=JSON.stringify(await db.query('SELECT * FROM settings ORDER BY tenant_slug,key'));
+    await assert.rejects(()=>prepare({...selection,articles:[{id:article.id,revision:3,fingerprint:approval.fingerprint}]},owner,version),/publication_route_serialization/);
+    assert.equal(JSON.stringify(await db.query('SELECT * FROM settings ORDER BY tenant_slug,key')),settingsBefore);
+}
+// Already encoded spelling is retained byte-for-byte and resolves as requested.
+await db.exec('UPDATE PRIVATE_institution SET wp_url=? WHERE id=?',['/caf%C3%A9/',512]);
+try {
+    const encoded=await prepare({...selection,institutionPaths:['/caf%C3%A9/']});
+    assert.equal(encoded.artifact.records.institutions[0].originalPath,'/caf%C3%A9/');
+    assert.ok(await resolveSitePublicationPage(encoded.artifact,encoded.hash,'alpha',new Request('https://usa.test/caf%C3%A9/')));
+} finally {await db.exec('UPDATE PRIVATE_institution SET wp_url=? WHERE id=?',['/muhlenberg-college/',512]);}
 await assert.rejects(()=>prepare(selection,'beta'));
 await assert.rejects(()=>prepare({...selection,expectedConfigurationRevision:2}));
 await assert.rejects(()=>prepare({...selection,articles:[{...selection.articles[0],fingerprint:'a'.repeat(64)}]}));
@@ -136,6 +170,13 @@ const app=await createCompatApp({makeRunner:async()=>db,resolvePrincipal:async()
 const call=(mode,input)=>app.request(`/api/project/site-configuration/publication/${mode}/`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
 const apiPrepared=await call('prepare',selection);assert.equal(apiPrepared.status,200);assert.equal(apiPrepared.headers.get('cache-control'),'no-store');
 const candidate=await apiPrepared.json();assert.equal(candidate.publicationAvailable,false);assert.equal(candidate.hash,captured.hash);assert.ok(!JSON.stringify(candidate).includes('PRIVATE_'));
+await db.exec('UPDATE PRIVATE_institution SET wp_url=? WHERE id=?',['/caf\u00e9/',512]);
+try {
+    const before=JSON.stringify(await db.query('SELECT * FROM settings ORDER BY tenant_slug,key'));
+    const response=await call('prepare',{...selection,institutionPaths:['/caf\u00e9/']});assert.equal(response.status,422);
+    const error=await response.json();assert.equal(error.code,'publication_route_serialization');assert.ok(error.detail.includes('original encoding'));assert.ok(!JSON.stringify(error).includes('caf'));
+    assert.equal(JSON.stringify(await db.query('SELECT * FROM settings ORDER BY tenant_slug,key')),before);
+}finally{await db.exec('UPDATE PRIVATE_institution SET wp_url=? WHERE id=?',['/muhlenberg-college/',512]);}
 const readInput={hash:candidate.hash};
 const reviewInput={hash:candidate.hash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'PRIVATE_SITE_REVIEW'};
 assert.equal((await call('review',{...reviewInput,reviewer:'forged'})).status,422);
@@ -223,6 +264,33 @@ assert.equal(explore.cacheKey,(await render('/explore/?type=program&q=%20Dental%
 assert.notEqual(explore.cacheKey,(await render('/explore/?type=institution')).cacheKey);
 assert.notEqual(institution.cacheKey,(await resolveSitePublicationPage((await store.get(next)),next,'alpha',new Request('https://usa.test/muhlenberg-college/'))).cacheKey);
 assert.notEqual(institution.cacheKey,(await resolveSitePublicationPage(first.artifact,hash,'beta',new Request('https://usa.test/muhlenberg-college/'))).cacheKey);
+// Opt-in visitor browsing operates over the same captured slice, never the datasource.
+const browsable=structuredClone(artifact);
+browsable.templates[0].layout.content.unshift({id:'browse',type:'Container',props:{directoryBrowsing:{version:1,tabs:true,search:true,pagination:true}},children:[]});
+for(let n=1;n<=13;n++)browsable.records.institutions.push({...base,id:600+n,title:`Campus ${String(n).padStart(2,'0')}`,originalPath:`/campus-${n}/`,cityId:1});
+browsable.templates[0].layout.content.push({id:'program-nav',type:'Link',props:{text:'Find captured programs',href:'/explore/?type=program&q=Dental'}});
+const browsableHash=await store.prepare(browsable,now);
+const browsingResult=await resolveSitePublicationPage(browsable,browsableHash,'alpha',new Request('https://usa.test/explore/?type=institution'));
+assert.equal(browsingResult.page.layout.content[0].props.directoryBrowsingState[0].hasNext,true);
+const browsingLast=await resolveSitePublicationPage(browsable,browsableHash,'alpha',new Request('https://usa.test/explore/?type=institution&page=2'));
+assert.equal(browsingLast.page.layout.content[0].props.directoryBrowsingState[0].hasNext,false);
+assert.equal(browsingLast.page.layout.content[0].props.directoryBrowsingState[0].page,2);
+const browsingFiltered=await resolveSitePublicationPage(browsable,browsableHash,'alpha',new Request('https://usa.test/explore/?type=institution&q=Campus%2001'));
+assert.equal(browsingFiltered.page.layout.content[0].props.directoryBrowsingState[0].hasNext,false);
+const browsingProgram=await resolveSitePublicationPage(browsable,browsableHash,'alpha',new Request('https://usa.test/explore/?type=program'));
+assert.equal(browsingProgram.page.layout.content[0].props.directoryBrowsingState[0].collection,'program');
+assert.ok(JSON.stringify(browsingProgram.page.layout).includes('Dental program'));assert.ok(!JSON.stringify(browsingProgram.page.layout).includes('Campus 01'));
+const privateBrowsingResponse=await app.request(`/api/project/site-configuration/publication/render/?hash=${browsableHash}&path=%2Fexplore%2F&type=institution&page=2&q=Campus`);
+assert.equal(privateBrowsingResponse.status,200);
+const privateBrowsingBody=await privateBrowsingResponse.text();
+assert.ok(privateBrowsingBody.includes('name="hash" value="'+browsableHash+'"'));assert.ok(privateBrowsingBody.includes('name="path" value="/explore/"'));
+assert.ok(privateBrowsingBody.includes('>Previous</a>'));assert.ok(!privateBrowsingBody.includes('>Next</a>'));
+assert.ok(privateBrowsingBody.includes('hash='+browsableHash+'&amp;path=%2Fexplore%2F&amp;type=program&amp;q=Campus'));
+assert.ok(privateBrowsingBody.includes('hash='+browsableHash+'&amp;path=%2Fexplore%2F&amp;type=program&amp;q=Dental'));
+assert.equal(privateBrowsingResponse.headers.get('x-robots-tag'),'noindex, nofollow');assert.ok(!privateBrowsingBody.includes('PRIVATE_'));
+tenant='beta';assert.equal((await app.request(`/api/project/site-configuration/publication/render/?hash=${browsableHash}&path=%2Fexplore%2F`)).status,404);tenant='alpha';
+role='viewer';assert.equal((await app.request(`/api/project/site-configuration/publication/render/?hash=${browsableHash}&path=%2Fexplore%2F`)).status,403);role='owner';
+console.log('directory browsing runtime: filtered page boundaries, collection selection, capture-bound private GET controls and owner refusal passed');
 // At-rest corruption is opaque and cannot be republished or overwritten by an identical retry.
 await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',[JSON.stringify({...first.artifact,configurationRevision:2}),'alpha',`site_publication:v1:${hash}`]);
 await assert.rejects(()=>store.get(hash),/publication_unavailable/);await assert.rejects(()=>store.active(),/publication_unavailable/);await assert.rejects(()=>store.prepare(first.artifact,now),/publication_unavailable/);

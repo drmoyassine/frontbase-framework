@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DirectoryQueryPreview } from './DirectoryQueryPreview';
 import { addDirectoryTemplate } from './addDirectoryTemplate';
 import { SitePreparationPanel } from './SitePreparationPanel';
+import { addDirectoryBrowsing, hasDirectoryBrowsing } from './addDirectoryBrowsing';
 
 export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenChange }: { page: Page; onChange: (layout: NonNullable<Page['layoutData']>) => void; onEditorialOpenChange?: (open:boolean)=>void }) {
     const [editorialOpen,setEditorialOpen]=useState(false);
@@ -36,6 +37,7 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
         <Button disabled={!draft || conflict || editorialOpen} onClick={() => { if (draft) onChange(linkSharedConfiguration(page, draft.configuration, { version: 1, role })); }}>Use shared settings for this page</Button>
         <Button variant="outline" disabled={editorialOpen} onClick={() => setReload(n => n + 1)}>Reload shared settings</Button>
         {current.success && <Button variant="outline" disabled={editorialOpen || page.layoutData?.content.some(node => node.props?.sharedSiteHeader === true)} onClick={() => onChange(addSharedPageHeader(page))}>Add shared site header and contact links</Button>}
+        {current.success && ['directory', 'article-index'].includes(current.data.role) && <Button variant="outline" disabled={editorialOpen || hasDirectoryBrowsing(page.layoutData?.content || [])} onClick={() => onChange(addDirectoryBrowsing(page))}>Add visitor browsing controls</Button>}
         <p className="text-sm">Save Changes persists the link. Shared values refresh in canvas preview after an edit or when you return to the builder. Existing custom text is preserved; only explicit shared bindings change.</p>
         {current.success && draft && <DirectoryQueryPreview draft={draft} onEditorialOpenChange={handleEditorialOpen} onAddTemplate={binding => onChange(addDirectoryTemplate(page, binding))} />}
         {current.success && draft && <SitePreparationPanel draft={draft} disabled={editorialOpen} />}

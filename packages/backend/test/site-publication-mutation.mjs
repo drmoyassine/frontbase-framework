@@ -2,12 +2,15 @@ import {withSourceMutation,buildPackage,runGate,expectRed,summarize,repoRoot} fr
 const dir=repoRoot+'packages/backend/';
 if(!buildPackage('@frontbase/compiler')||!buildPackage('@frontbase/backend')||runGate(dir,'test/site-publication.mjs')!==0)process.exit(2);
 for(const [label,path,find,replacement,pkg] of [
+ ['browsing next-page evidence','packages/backend/src/compat/site-publication-runtime.ts','rows.length > artifact.configuration.browsing.pageSize','false','@frontbase/backend'],
+ ['private browsing capture binding','packages/backend/src/compat/routes/site-publication.ts','previewHash:parsed.data.hash','previewHash:undefined','@frontbase/backend'],
  ['publication integrity','packages/backend/src/compat/site-publication-store.ts','await publicationHash(artifact) !== hash','false','@frontbase/backend'],
  ['publication owner read','packages/backend/src/compat/site-publication-store.ts',"WHERE tenant_slug = ? AND key = ?', [this.tenant, keyName]","WHERE ? IS NOT NULL AND key = ?', [this.tenant, keyName]",'@frontbase/backend'],
  ['publication stale activation','packages/backend/src/compat/site-publication-store.ts','stableStringify(current) !== stableStringify(expected)','false','@frontbase/backend'],
  ['publication first activation race','packages/backend/src/compat/site-publication-store.ts','ON CONFLICT(tenant_slug, key) DO NOTHING\', [this.tenant, ACTIVE','ON CONFLICT(tenant_slug, key) DO UPDATE SET value = excluded.value\', [this.tenant, ACTIVE','@frontbase/backend'],
  ['publication update activation race','packages/backend/src/compat/site-publication-store.ts','AND value = ?\', [JSON.stringify(next)','AND ? IS NOT NULL\', [JSON.stringify(next)','@frontbase/backend'],
  ['publication preparation settings','packages/backend/src/compat/site-publication-prepare.ts',"(await new SiteConfigurationStore(control,tenant).get())?.revision!==draft.revision","false",'@frontbase/backend'],
+ ['publication browser path admission','packages/backend/src/compat/site-publication-prepare.ts',"paths.some(path=>new URL(path,'https://publication.invalid').pathname!==path)","false",'@frontbase/backend'],
  ['publication approval fingerprint','packages/backend/src/compat/editorial-approval-store.ts','record.fingerprint !== expectedFingerprint','false','@frontbase/backend'],
  ['snapshot query owner','packages/compiler/src/queries/directory.ts',"if (ctx.tenant !== owner) throw new Error('principal_context_required');","if (false) throw new Error('principal_context_required');",'@frontbase/compiler'],
  ['public parent query binding','packages/backend/src/compat/site-publication-runtime.ts',"{ institutionId: row.id }","{ institutionId: 999 }",'@frontbase/backend'],

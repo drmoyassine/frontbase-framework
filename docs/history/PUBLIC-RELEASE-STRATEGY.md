@@ -8,7 +8,7 @@
 
 **Owner:** Frontbase framework
 
-**Last updated:** 2026-10-08
+**Last updated:** 2026-10-09
 
 ## Release intent
 
@@ -90,4 +90,8 @@ NoCodeHero may use a released Frontbase version to teach Certified No-code Engin
 
 ## Immediate next action
 
-R0 evidence and Developer Preview scope acceptance are recorded in [`PUBLIC-RELEASE-AUDIT.md`](./PUBLIC-RELEASE-AUDIT.md). Fresh external runtime/starter proof and [self-contained infrastructure types](PUBLIC-RELEASE-R1-BINDING-TYPES.md) pass, including actual Cloudflare binding assignability; full R1 remains open with backend Drizzle declaration failures. [R2 response-fixture correction](PUBLIC-RELEASE-R2-CONFORMANCE-DIAGNOSIS.md) reaches zero unreachable operations; the separate behavior gate still fails and its ledger is unchanged. Next: establish backend dependency/compiler compatibility, isolate behavior fixtures and review evidence, then complete lifecycle/full-CMS/host acceptance before registry/release operations. The existing Phase 3/4 roadmap and paused CF-22 record remain evidence, not inherited release commitments or permission for an uncontrolled feature sprint.
+The [Request-preserving guarded primitive](PUBLIC-RELEASE-R2-REQUEST-TRANSPORT-DELIVERY.md) now reaches the selected SDK paths in [bounded HTTP delivery](PUBLIC-RELEASE-R2-SDK-HTTP-DELIVERY.md): 15 functional cases, six independently restored mutations and integrated local gates pass. The two demonstrated Turso-vector/Supabase injection bypasses are closed within those tested paths. Next: review parallel behavior/type evidence and establish a safe Neon policy without per-request global SDK mutation. Native/operator, DNS/egress, remaining wrappers and actual provider/host acceptance retain explicit boundaries; this does not close R2 or M1.
+
+In parallel with explicitly owned work, isolate [behavior fixtures and classification](PUBLIC-RELEASE-R2-BEHAVIOR-REPAIR-PLAN.md) without refreshing the ledger to conceal order dependence, and establish an adopted distributable [backend type remedy](PUBLIC-RELEASE-R1-UPSTREAM-TYPE-REPAIR-PROPOSAL.md). R1 lifecycle/full-CMS clean-install and R2/R3 security/host operations evidence remain necessary before R4 publication. R0 and Developer Preview preparation scope are accepted; no GA or general host parity is claimed.
+
+The separate [pilot execution plan](../plans/wordpress-pilot-execution-plan.md) covers M0–M9 through migration, installation, full-catalog publication, production inquiries, reuse, operations and authorized USA cutover. The [namespace inventory](../plans/wordpress-pilot-namespace-writer-inventory.md) blocks claiming a safe installer from advisory checks alone. Pilot acceptance and framework publication are separate finish lines and authorizations. This planning refresh changes no accepted edition scope or release gates; CF-22 remains paused.

@@ -211,7 +211,7 @@ function reg(
         if (kind === 'vector' && ['libsql', 'turso', 'cloudflare', 'vectorize'].includes(provider)) {
             const adapter = vectorAdapterFromConfig(
                 config,
-                (input, init) => guardedExternalFetch(externalFetch, input instanceof Request ? input.url : input, init),
+                (input, init) => guardedExternalFetch(externalFetch, input, init),
                 () => {},
             );
             if (adapter) {

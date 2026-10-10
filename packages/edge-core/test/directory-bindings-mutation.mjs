@@ -34,4 +34,13 @@ await withSourceMutation('accessible link attribute escaping','packages/edge-cor
     expectRed('accessible link attribute escaping',runGate(dir,'test/directory-bindings.mjs'));
 });
 if (!buildPackage(pkg) || runGate(dir,'test/directory-bindings.mjs') !== 0) process.exit(2);
+for (const [label,path,find,replacement] of [
+ ['browsing transient state refusal','packages/edge-core/src/directory/browsing.ts',"if (node.props?.directoryBrowsingState !== undefined)","if (false)"],
+ ['browsing local target guard','packages/edge-core/src/directory/browsing.ts',"value.startsWith('/') && !decoded.startsWith('//')","true"],
+ ['browsing search attribute escaping','packages/edge-core/src/ssr/components/directoryBrowsing.ts','escapeHtml(state.q)','state.q'],
+]) await withSourceMutation(label,path,find,replacement,async()=>{
+ if (!buildPackage(pkg)) throw new Error('Browsing mutation must compile');
+ expectRed(label,runGate(dir,'test/directory-bindings.mjs'));
+});
+if (!buildPackage(pkg) || runGate(dir,'test/directory-bindings.mjs') !== 0) process.exit(2);
 summarize('directory bindings');

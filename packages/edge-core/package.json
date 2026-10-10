@@ -45,8 +45,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "node test/parity.mjs && node test/wysiwyg-parity.mjs && node test/engine.mjs && node test/scope.mjs && node test/fallback.mjs && node test/behaviors.mjs && node test/workflow.mjs && node test/directory-bindings.mjs",
-    "test:mutation": "node test/mutation.mjs && node test/directory-bindings-mutation.mjs"
+    "test": "node test/parity.mjs && node test/wysiwyg-parity.mjs && node test/engine.mjs && node test/scope.mjs && node test/fallback.mjs && node test/behaviors.mjs && node test/workflow.mjs && node test/directory-bindings.mjs && node test/public-form-draft.mjs",
+    "test:mutation": "node test/mutation.mjs && node test/directory-bindings-mutation.mjs && node test/public-form-draft-mutation.mjs"
   },
   "dependencies": {
     "hono": "^4.6.0",

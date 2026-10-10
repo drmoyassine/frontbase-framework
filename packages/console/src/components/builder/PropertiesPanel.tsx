@@ -396,7 +396,7 @@ export const PropertiesPanel = () => {
               />
             </div>
 
-            {(selectedComponent.props.directoryQuery !== undefined || selectedComponent.props.recordBindings !== undefined) && <DirectoryBindingProperties node={selectedComponent} update={updateComponentProp} />}
+            {(selectedComponent.props.directoryBrowsing !== undefined || selectedComponent.props.directoryQuery !== undefined || selectedComponent.props.recordBindings !== undefined) && <DirectoryBindingProperties node={selectedComponent} update={updateComponentProp} />}
             {selectedComponent.props.directoryQuery === undefined && renderPropertyFields('general')}
           </TabsContent>
 

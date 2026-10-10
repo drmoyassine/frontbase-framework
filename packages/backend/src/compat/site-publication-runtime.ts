@@ -1,6 +1,6 @@
 import { buildSiteManifest } from '@frontbase/compiler/manifest';
 import { createSnapshotDirectoryQueries } from '@frontbase/compiler/queries/directory';
-import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview } from '@frontbase/edge-core/directory/configuration';
+import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview, projectDirectoryBrowsing } from '@frontbase/edge-core/directory/configuration';
 import type { PageEntry, EngineOptions } from '@frontbase/edge-core';
 import { publicationPathSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
 import { sitePublicationArtifactSchema } from '@frontbase/edge-core/directory/publication';
@@ -40,6 +40,7 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
     const offset = (Number(page) - 1) * artifact.configuration.browsing.pageSize;
     const search = (url.searchParams.get('q') ?? '').trim();
     if (offset > 10000 || search.length > 100) throw new PublicationRequestError();
+    let hasNext = false;
     for (const query of directoryLayoutQueries(layout)) {
         const [_, collection, mode] = query.binding.queryId.split('.');
         if (role === 'directory' && mode === 'list' && ['institution','program'].includes(collection!) && collection !== type) { inactive.add(query.id); continue; }
@@ -51,11 +52,17 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
         const registered = queries[query.binding.queryId];
         if (!registered) throw new Error('publication_query_unavailable');
         const rows = await registered.execute(params, { tenant: owner, request });
+        if ((role === 'directory' && collection === type || role === 'article-index' && collection === 'article') && mode === 'list') hasNext ||= rows.length > artifact.configuration.browsing.pageSize;
         records.set(query.id, rows.slice(0, mode === 'detail' ? 1 : artifact.configuration.browsing.pageSize));
         normalized[query.id] = params;
     }
     const prune = (nodes: PageLayoutData['content']): PageLayoutData['content'] => nodes.filter(node => !inactive.has(node.id)).map(node => ({ ...node, ...(node.children ? { children: prune(node.children) } : {}) }));
-    const projected = projectDirectoryRecords(projectSharedDirectoryPreview({ ...layout, content: prune(layout.content) }, artifact.configuration), records, { locale: artifact.configuration.site.locale });
+    let projected = projectDirectoryRecords(projectSharedDirectoryPreview({ ...layout, content: prune(layout.content) }, artifact.configuration), records, { locale: artifact.configuration.site.locale });
+    if (role === 'directory' || role === 'article-index') projected = projectDirectoryBrowsing(projected, [{ path,
+        collection: role === 'directory' ? type as 'institution' | 'program' : null,
+        q: search, page: Number(page), searchEnabled: artifact.configuration.browsing.search,
+        hasNext: hasNext && offset + artifact.configuration.browsing.pageSize <= 10000,
+    }]);
     const title = typeof row?.title === 'string' ? row.title : template.title;
     const description = typeof row?.summary === 'string' ? row.summary : template.description;
     const manifest = buildSiteManifest({ pages: { [path]: { title, slug: path.replace(/^\//, ''), description, layout: projected as unknown as Record<string, unknown> } }, queries: {}, versionPrefix: hash });

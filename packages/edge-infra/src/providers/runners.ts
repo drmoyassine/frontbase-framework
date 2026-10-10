@@ -14,6 +14,8 @@
 import { createClient, type Client } from '@libsql/client';
 import { PostgrestClient } from '@supabase/postgrest-js';
 import type { DbRunner } from './types.js';
+import type { ServiceFetch } from '../cache/types.js';
+import { libsqlHttpConfig } from './libsql-http.js';
 
 /** Operations consumed by the D1 adapter; self-contained on every host. */
 export interface D1PreparedStatementBinding {
@@ -26,8 +28,8 @@ export interface D1DatabaseBinding {
 }
 
 /** A libsql client as a DbRunner (:memory:, file:, libsql://). */
-export function sqliteRunner(url: string, authToken?: string): DbRunner {
-    return libsqlRunner(createClient({ url, authToken }));
+export function sqliteRunner(url: string, authToken?: string, fetchImpl?: ServiceFetch): DbRunner {
+    return libsqlRunner(createClient(libsqlHttpConfig(url, authToken, fetchImpl)));
 }
 
 /** Build a DbRunner from an existing libsql client (shared by sqliteRunner + turso). */
@@ -67,24 +69,34 @@ export function d1RunnerFromBinding(binding: D1DatabaseBinding): DbRunner {
     };
 }
 
-export interface D1RestOpts { accountId: string; databaseId: string; apiToken: string; }
+export interface D1RestOpts { accountId: string; databaseId: string; apiToken: string; fetchImpl?: ServiceFetch; }
 
 /** D1 over the REST API (when no binding is available, e.g. from a non-Worker host). */
 export function d1RunnerFromRest(opts: D1RestOpts): DbRunner {
     const url = `https://api.cloudflare.com/client/v4/accounts/${opts.accountId}/d1/database/${opts.databaseId}/query`;
     const headers = { authorization: `Bearer ${opts.apiToken}`, 'content-type': 'application/json' };
+    const transport = opts.fetchImpl ?? globalThis.fetch;
     return {
         async query(sql, params = []) {
-            const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ sql, params }) });
+            const res = await transport(url, { method: 'POST', headers, body: JSON.stringify({ sql, params }) });
             const json = await res.json() as { success: boolean; result?: Array<{ results: Record<string, unknown>[] }> };
             if (!json.success) throw new Error('d1_query_failed');
             return json.result?.[0]?.results ?? [];
         },
         async exec(sql, params = []) {
-            const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ sql, params }) });
-            const json = await res.json() as { success: boolean; result?: Array<{ meta?: { changes?: { count?: number } } }> };
+            const res = await transport(url, { method: 'POST', headers, body: JSON.stringify({ sql, params }) });
+            const json = await res.json() as { success: boolean; result?: Array<{ meta?: { changes?: unknown } }> };
             if (!json.success) throw new Error('d1_exec_failed');
-            return json.result?.[0]?.meta?.changes?.count ?? 0;
+            const changes = json.result?.[0]?.meta?.changes;
+            const count = typeof changes === 'number' ? changes
+                : changes && typeof changes === 'object' && 'count' in changes ? changes.count : undefined;
+            // Keep the DbRunner's unreported-count contract; absence is not CAS evidence.
+            if (count === undefined) {
+                if (changes !== undefined && changes !== null) throw new Error('d1_invalid_change_count');
+                return 0;
+            }
+            if (typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0) throw new Error('d1_invalid_change_count');
+            return count;
         },
     };
 }
@@ -99,6 +111,8 @@ export interface SupabaseOpts {
     jwt?: string;
     /** Postgres schema to use (default: public) */
     schema?: string;
+    /** Per-instance HTTP transport; native application-state callers are separate. */
+    fetchImpl?: ServiceFetch;
 }
 
 /**
@@ -206,6 +220,7 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
     const client = new PostgrestClient(`${opts.url}/rest/v1`, {
         headers,
         schema: opts.schema ?? 'public',
+        fetch: opts.fetchImpl,
     });
 
     return {

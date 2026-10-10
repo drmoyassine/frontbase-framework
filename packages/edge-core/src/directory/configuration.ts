@@ -3,6 +3,7 @@ import { siteBindingsSchema, validateSiteBinding } from './bindings.js';
 export { siteBindingsSchema } from './bindings.js';
 export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, projectDirectoryRecords, type DirectoryQueryBinding } from './bindings.js';
 export { editorialBodySchema, parseEditorialBody, projectEditorialBody } from './editorial.js';
+export { directoryBrowsingSchema, directoryBrowsingStateSchema, projectDirectoryBrowsing, type DirectoryBrowsingState } from './browsing.js';
 
 /** Data-only authoring contract. No credentials, SQL, executable templates or host adapters. */
 const identifier = z.string().max(63).regex(/^(?:[A-Za-z_][A-Za-z0-9_]*)?$/);

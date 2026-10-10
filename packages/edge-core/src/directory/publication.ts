@@ -40,14 +40,14 @@ const layout = z.record(z.unknown()).refine(value => {
         return true;
     } catch { return false; }
 });
-const template = z.object({ pageId: z.string().uuid(), role: sitePageReferenceSchema.shape.role,
+export const publicationTemplateSchema = z.object({ pageId: z.string().uuid(), role: sitePageReferenceSchema.shape.role,
     title: text(500), description: text(10000), layout }).strict();
 
 /** Small first-release slice. Full-catalog storage is a separate measured gate. */
 export const sitePublicationArtifactSchema = z.object({
     schemaVersion: z.literal(1), runtimeVersion: z.literal('directory-snapshot-v1'),
     configurationRevision: z.number().int().positive(), configuration: directoryConfigurationSchema,
-    templates: z.array(template).min(1).max(7),
+    templates: z.array(publicationTemplateSchema).min(1).max(7),
     records: z.object({ institutions: z.array(publicationInstitutionSchema).max(48), programs: z.array(publicationProgramSchema).max(48),
         cities: z.array(publicationCitySchema).max(48), articles: z.array(publicationArticleSchema).max(48) }).strict(),
 }).strict().superRefine((artifact, ctx) => {

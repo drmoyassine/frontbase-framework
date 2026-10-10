@@ -1,8 +1,13 @@
 import React from 'react';
-import { directoryQueryBindingSchema, directoryRecordBindingSchema } from '@frontbase/edge-core/directory/configuration';
+import { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryBrowsingSchema } from '@frontbase/edge-core/directory/configuration';
 import type { ComponentData } from '@/types/builder';
 
 export function DirectoryBindingProperties({ node, update }: { node: ComponentData; update: (key: string, value: unknown) => void }) {
+    const browsing = directoryBrowsingSchema.safeParse(node.props.directoryBrowsing);
+    if (browsing.success) return <section className="space-y-3 rounded border p-3" aria-label="Visitor browsing controls">
+        <p className="text-sm">Uses the current captured collection, search and page. Search also follows the shared site's Search setting. Controls become functional in the prepared site preview.</p>
+        {(['tabs', 'search', 'pagination'] as const).map(key => <label key={key} className="flex gap-2 text-sm"><input type="checkbox" checked={browsing.data[key]} onChange={e => update('directoryBrowsing', { ...browsing.data, [key]: e.target.checked })} />{({ tabs: 'Institution / program tabs', search: 'Title search', pagination: 'Previous / next links' })[key]}</label>)}
+    </section>;
     const query = directoryQueryBindingSchema.safeParse(node.props.directoryQuery);
     const record = directoryRecordBindingSchema.safeParse(node.props.recordBindings);
     if (query.success) {

@@ -27,7 +27,7 @@ export function registerDirectoryPreviewRoutes(app: Hono<{ Variables: ConsoleAut
         if (!datasource) return c.json({ detail: 'Directory datasource is unavailable' }, 403);
         if (!['supabase', 'postgres', 'neon', 'sqlite', 'turso', 'd1'].includes(datasource.kind)) return c.json({ detail: 'Directory preview requires a supported SQL datasource' }, 422);
         try {
-            const db = datasourceRunner(datasource.kind, await mergeAccountConfig(accounts, externalFetch, tenant, datasource.kind, datasource.config));
+            const db = datasourceRunner(datasource.kind, await mergeAccountConfig(accounts, externalFetch, tenant, datasource.kind, datasource.config), externalFetch);
             const registry = createDirectoryQueries(draft.configuration, tenant, dialectOf(datasource.kind), (sql, params) => db.query(sql, params));
             const queryId = `directory.${request.data.role}.${request.data.mode}`;
             const query = registry[queryId];

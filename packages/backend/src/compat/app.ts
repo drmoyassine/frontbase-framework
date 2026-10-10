@@ -27,6 +27,7 @@ import { registerProjectRoutes } from './routes/project.js';
 import { registerSiteConfigurationRoutes } from './routes/site-configuration.js';
 import { registerDirectoryPreviewRoutes } from './routes/directory-preview.js';
 import { registerTemplatePreflightRoutes } from './routes/template-preflight.js';
+import { registerPageRouteAudit } from './routes/page-route-audit.js';
 import { registerTemplateArtifactRoutes } from './routes/template-artifact.js';
 import { datasourceRunner } from '../db/datasource-runner.js';
 import { mergeAccountConfig } from './providers/merge-account.js';
@@ -193,7 +194,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // configured"; a null vector at resolve time does the same per-tenant.
     const storageResolver = createStorageClientResolver({ phase2For, kvFor, storageProvider: deps.storageProvider, externalFetch });
     const ragFetch: ServiceFetch = (input, init) =>
-        guardedExternalFetch(externalFetch, input instanceof Request ? input.url : input, init);
+        guardedExternalFetch(externalFetch, input, init);
     const ragDeps: RagRouteDeps = {
         phase2For,
         kvFor,
@@ -399,10 +400,11 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerProjectRoutes(app, kvFor, now);
     registerSiteConfigurationRoutes(app, runner, now);
     registerTemplateArtifactRoutes(app);
+    registerPageRouteAudit(app, runner);
     registerTemplatePreflightRoutes(app, runner, async (tenant, id) => {
         const datasource = await syncStoreFor(tenant).getDatasource(id);
         if (!datasource) return null;
-        return datasourceRunner(datasource.kind, await mergeAccountConfig((t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), externalFetch, tenant, datasource.kind, datasource.config));
+        return datasourceRunner(datasource.kind, await mergeAccountConfig((t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), externalFetch, tenant, datasource.kind, datasource.config), externalFetch);
     });
     registerSitePublicationRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), now);
     registerDirectoryPreviewRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId));

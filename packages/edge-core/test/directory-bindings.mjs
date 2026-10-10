@@ -123,3 +123,34 @@ const badLabelComponent=structuredClone(descriptiveLinks);badLabelComponent.cont
 assert.equal(layout.content[1].children[0].children[2].props.recordBindings.ariaLabel,undefined);
 const labelOnly=structuredClone(descriptiveLinks);delete labelOnly.content[1].children[0].children[2].props.text;labelOnly.content[1].children[0].children[2].props.label='Read more';
 assert.equal(projectDirectoryRecords(labelOnly,new Map([['cards',namedRows]])).content[1].children[1].children[2].props.ariaLabel,'Read more: Campus B');
+
+// Native visitor controls: authoring placement, transient state, literal search and safe targets.
+const { projectDirectoryBrowsing } = await import('../dist/directory/configuration.js');
+const browseLayout={root:{siteConfiguration:{version:1,role:'directory'}},content:[{id:'browse',type:'Container',props:{directoryBrowsing:{version:1,tabs:true,search:true,pagination:true}},children:[]}]};
+directoryLayoutQueries(browseLayout);
+for(const mutate of [a=>a.content[0].props.directoryBrowsingState=[],a=>a.content[0].type='Link',a=>a.content[0].children.push({id:'custom',type:'Text',props:{text:'Do not overwrite'}}),a=>a.root.siteConfiguration.role='program',a=>a.content.push(structuredClone(a.content[0])),a=>a.content[0].props.directoryBrowsing.extra='bad']){
+ const invalid=structuredClone(browseLayout);mutate(invalid);assert.throws(()=>directoryLayoutQueries(invalid));
+}
+const browsingContext={user:{private:'BROWSING_PRIVATE_CANARY'},page:{},app:{},visitor:{},url:{},system:{},cookies:{},local:{},session:{}};
+const browsingState=[{path:'/explore/',collection:'program',q:'{{ user.private }} "><img src=x>',searchEnabled:true,page:2,hasNext:true}];
+const browsingHtml=await renderPage(projectDirectoryBrowsing(browseLayout,browsingState),browsingContext);
+assert.ok(browsingHtml.includes('method="get"'));assert.ok(browsingHtml.includes('action="/explore/"'));
+assert.ok(browsingHtml.includes('value="{{ user.private }} &quot;&gt;&lt;img src=x&gt;"'));assert.ok(!browsingHtml.includes('BROWSING_PRIVATE_CANARY'));assert.ok(!browsingHtml.includes('<img src=x>'));
+assert.ok(browsingHtml.includes('type=program'));assert.ok(browsingHtml.includes('page=3'));assert.ok(browsingHtml.includes('>Previous</a>'));assert.ok(browsingHtml.includes('aria-current="page"'));
+assert.equal(browseLayout.content[0].props.directoryBrowsingState,undefined);
+const firstBrowsing=await renderPage(projectDirectoryBrowsing(browseLayout,[{...browsingState[0],q:'',page:1,hasNext:false}]),browsingContext);
+assert.ok(!firstBrowsing.includes('>Next</a>'));assert.ok(!firstBrowsing.includes('>Previous</a>'));
+const noSearch=await renderPage(projectDirectoryBrowsing(browseLayout,[{...browsingState[0],searchEnabled:false}]),browsingContext);assert.ok(!noSearch.includes('<form'));
+const articleBrowsing=await renderPage(projectDirectoryBrowsing(browseLayout,[{...browsingState[0],collection:null}]),browsingContext);assert.ok(!articleBrowsing.includes('Directory collections'));
+for(const path of ['//evil.test','/../evil','/explore/?bad=1','/explore/%0a','https://evil.test'])assert.throws(()=>projectDirectoryBrowsing(browseLayout,[{...browsingState[0],path}]));
+const privateBrowsing=await renderPage(projectDirectoryBrowsing(browseLayout,[{...browsingState[0],previewHash:'a'.repeat(64)}]),browsingContext);
+assert.ok(privateBrowsing.includes('action="/api/project/site-configuration/publication/render/"'));assert.ok(privateBrowsing.includes('name="hash"'));assert.ok(privateBrowsing.includes('name="path"'));
+console.log('directory browsing: saved placement/role/options, literal escaping, native GET, pager boundaries and private version context passed');
+
+const styledBrowsing=structuredClone(browseLayout);
+styledBrowsing.content[0].styles={padding:'24px',viewportOverrides:{mobile:{padding:'8px'}}};
+styledBrowsing.content[0].visibility={mobile:false,tablet:true,desktop:true};
+const styledBrowsingHtml=await renderPage(projectDirectoryBrowsing(styledBrowsing,browsingState),browsingContext);
+assert.ok(styledBrowsingHtml.includes('fb-layout fb-container'));assert.ok(styledBrowsingHtml.includes('padding:24px'));
+assert.ok(styledBrowsingHtml.includes('padding:8px'));assert.ok(styledBrowsingHtml.includes('[id="browse"]{display:none!important}'));
+console.log('directory browsing retains the existing Container responsive styles and viewport visibility');

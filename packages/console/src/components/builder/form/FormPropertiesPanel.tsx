@@ -9,6 +9,9 @@ import { FieldConfigurator } from './FieldConfigurator';
 import type { ColumnSchema, TableSchema } from '@/types/schema';
 import { DataSourceSelector } from '@/components/data-binding/DataSourceSelector';
 import { TableSelector } from '@/components/data-binding/TableSelector';
+import { createPublicFormDraft } from '@frontbase/edge-core';
+import { PublicFormDraftProperties } from './PublicFormDraftProperties';
+import { Button } from '@/components/ui/button';
 
 interface FormPropertiesPanelProps {
     activeTab: string;
@@ -31,7 +34,7 @@ export const FormPropertiesPanel: React.FC<FormPropertiesPanelProps> = ({
 
     // Fetch schema when datasource/table changes
     useEffect(() => {
-        if (!props.dataSourceId || !props.tableName) {
+        if (props.publicFormDraft !== undefined || !props.dataSourceId || !props.tableName) {
             setSchema(null);
             return;
         }
@@ -52,14 +55,21 @@ export const FormPropertiesPanel: React.FC<FormPropertiesPanelProps> = ({
         };
 
         fetchSchema();
-    }, [props.dataSourceId, props.tableName]);
+    }, [props.publicFormDraft, props.dataSourceId, props.tableName]);
 
     // Derived state for current mode (default to create if not set)
     const currentMode = props.recordId !== undefined ? 'edit' : 'create';
 
+    if (type === 'Form' && props.publicFormDraft !== undefined) {
+        return activeTab === 'general'
+            ? <div className="space-y-4"><PublicFormDraftProperties value={props.publicFormDraft} onChange={value => updateComponentProp('publicFormDraft', value)} /><Button variant="outline" onClick={() => updateComponentProp('publicFormDraft', undefined)}>Return to database form</Button></div>
+            : <p className="text-sm text-muted-foreground">Public form draft. Submission actions remain disabled.</p>;
+    }
+
     if (activeTab === 'general') {
         return (
             <div className="max-h-[calc(100vh-250px)] overflow-y-auto px-1 pb-4 space-y-6">
+                {type === 'Form' && <Button variant="outline" onClick={() => updateComponentProp('publicFormDraft', createPublicFormDraft())}>Use public form draft</Button>}
                 {/* Data Source Configuration */}
                 <div className="space-y-4">
                     <DataSourceSelector

@@ -18,3 +18,4 @@ export type { SiteManifest, PageEntry, RegisteredQuery, QueryContext } from './m
 export { renderDocument, type ShellOptions } from './shell.js';
 export { attachServiceWorker } from './sw.js';
 export { startBehaviors, type VarScope } from './behaviors.js';
+export { publicFormDraftSchema, createPublicFormDraft, type PublicFormDraft } from './forms/public-form.js';

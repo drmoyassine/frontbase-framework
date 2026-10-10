@@ -16,7 +16,7 @@ function pathKey(slug: string): string | null {
     const key = slug.replace(/^\//, '').replace(/\/$/, '').toLowerCase();
     return /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/.test(key) ? key : null;
 }
-const reserved = /^(?:api|admin|frontbase-admin|setup|health|assets|react|static|sw|builder-sw|sitemap|robots)(?:\/|$)/;
+const reserved = /^(?:api|admin|frontbase-admin|frontbase-setup|builder|console|setup|health|assets|react|static|sw|builder-sw|sitemap|robots)(?:\/|$)/;
 
 /** Destination checks only. Never reserves, installs, publishes or returns datasource/row contents. */
 export function registerTemplatePreflightRoutes(app: Hono<{ Variables: ConsoleAuthVars }>, control: DbRunner,

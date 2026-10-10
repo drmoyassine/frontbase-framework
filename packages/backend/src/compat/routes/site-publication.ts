@@ -13,6 +13,7 @@ import { SitePublicationReviewStore } from '../site-publication-review-store.js'
 import { resolveSitePublicationPage } from '../site-publication-runtime.js';
 import { publicationPathSchema,sitePublicationReviewRequestSchema } from '@frontbase/edge-core/directory/publication';
 import { createEngine,directProvider } from '@frontbase/edge-core';
+import { directoryBrowsingStateSchema } from '@frontbase/edge-core/directory/configuration';
 import { registerSitePublicationControls } from './site-publication-controls.js';
 
 const previewRequest=z.object({hash:z.string().regex(/^[a-f0-9]{64}$/),path:publicationPathSchema,
@@ -43,7 +44,18 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
             // Private preview navigation stays within the SAME captured version.
             const rewrite=(nodes:typeof result.page.layout.content):typeof result.page.layout.content=>nodes.map(node=>{
                 const props={...node.props};
-                if(node.type==='Link' && typeof props.href==='string' && paths.has(props.href))props.href=`/api/project/site-configuration/publication/render/?hash=${parsed.data.hash}&path=${encodeURIComponent(props.href)}`;
+                if(props.directoryBrowsingState!==undefined){
+                    const [state]=directoryBrowsingStateSchema.parse(props.directoryBrowsingState);
+                    props.directoryBrowsingState=[{...state,previewHash:parsed.data.hash}];
+                }
+                if(node.type==='Link' && typeof props.href==='string' && props.href.startsWith('/')){
+                    const target=new URL(props.href,'https://publication-preview.invalid');
+                    if(target.origin==='https://publication-preview.invalid' && paths.has(target.pathname) && !target.hash){
+                        const params=new URLSearchParams({hash:parsed.data.hash,path:target.pathname});
+                        for(const [key,value] of target.searchParams)params.append(key,value);
+                        props.href=`/api/project/site-configuration/publication/render/?${params}`;
+                    }
+                }
                 return {...node,props,...(node.children?{children:rewrite(node.children)}:{})};
             });
             result.page={...result.page,layout:{...result.page.layout,content:rewrite(result.page.layout.content)}};
@@ -106,11 +118,14 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
         if(!source)return c.json({detail:'Directory datasource is unavailable'},403);
         if(!['supabase','postgres','neon','sqlite','turso','d1'].includes(source.kind))return c.json({detail:'Preparation requires a supported SQL datasource'},422);
         try{
-            const db=datasourceRunner(source.kind,await mergeAccountConfig(accounts,externalFetch,tenant,source.kind,source.config));
+            const db=datasourceRunner(source.kind,await mergeAccountConfig(accounts,externalFetch,tenant,source.kind,source.config), externalFetch);
             const result=await prepareSitePublication(control,db,tenant,draft,dialectOf(source.kind),request.data,user,now());
             return c.json({hash:result.hash,configurationRevision:draft.revision,
                 records:Object.fromEntries(Object.entries(result.artifact.records).map(([role,rows])=>[role,rows.map(row=>({id:row.id,title:row.title,...('originalPath' in row?{originalPath:row.originalPath}:{})}))])),
                 purpose:'private-prepared-candidate',publicationAvailable:false});
-        }catch{return c.json({detail:'Site preparation failed. Check saved templates, scoped records and matching article approvals.'},422);}
+        }catch(error){
+            if(error instanceof Error && error.message==='publication_route_serialization')return c.json({detail:'An original URL changes when requested by a browser. Review its original encoding before preparing this version; no URL was renamed.',code:'publication_route_serialization'},422);
+            return c.json({detail:'Site preparation failed. Check saved templates, scoped records and matching article approvals.'},422);
+        }
     });
 }

@@ -55,6 +55,11 @@ export async function prepareSitePublication(control:DbRunner, canonical:DbRunne
     }
     const artifact=sitePublicationArtifactSchema.parse({schemaVersion:1,runtimeVersion:'directory-snapshot-v1',configurationRevision:draft.revision,
         configuration:draft.configuration,templates,records:{institutions,programs,cities,articles}});
+    // Exact capture matching requires the browser's pathname spelling. Never
+    // silently encode/rename an original URL or alter already saved captures.
+    const paths=[artifact.configuration.routes.directory,...(articles.length?[artifact.configuration.routes.blog]:[]),
+        ...institutions.map(row=>row.originalPath),...programs.map(row=>row.originalPath),...articles.map(row=>row.originalPath)] as string[];
+    if(paths.some(path=>new URL(path,'https://publication.invalid').pathname!==path))throw new Error('publication_route_serialization');
     if((await new SiteConfigurationStore(control,tenant).get())?.revision!==draft.revision)throw new Error('publication_configuration_conflict');
     // Captured catalog rows remain a private candidate; whole-site review/activation is separate.
     return {hash:await new SitePublicationStore(control,tenant).prepare(artifact,now),artifact};

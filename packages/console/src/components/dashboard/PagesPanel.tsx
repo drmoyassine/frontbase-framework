@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { resolvePreviewUrl } from '@/lib/edgeUtils';
 import { CreatePageDialog } from './CreatePageDialog';
 import { EdgePublishDialog } from './settings/shared/EdgePublishDialog';
+import { PageRouteAudit } from './PageRouteAudit';
 
 export const PagesPanel: React.FC = () => {
   const navigate = useNavigate();
@@ -380,14 +381,15 @@ export const PagesPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{showTrash ? 'Trashed Pages' : 'Pages'}</h1>
           <p className="text-muted-foreground">
             {showTrash ? 'Pages will be permanently deleted after 14 days' : 'Manage your website pages and content'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isAuthenticated && <PageRouteAudit key={`${tenantSlug ?? '_root'}:${user?.id ?? ''}:${user?.role ?? ''}`} />}
           <Button
             variant={showTrash ? "secondary" : "ghost"}
             onClick={() => setShowTrash(!showTrash)}

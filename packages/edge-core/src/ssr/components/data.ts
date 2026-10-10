@@ -8,6 +8,7 @@
 import { renderIcon as renderIconPrimitive } from './static.js';
 import { escapeHtml } from './lib/utils.js';
 import { resolvePropsStyles } from './lib/attrs.js';
+import { renderPublicFormDraft } from './publicForm.js';
 
 /**
  * Helper to build common attributes (id, class, style, data-*)
@@ -185,6 +186,7 @@ function renderDataTable(id: string, props: Record<string, unknown>, propsJson: 
 }
 
 function renderForm(id: string, props: Record<string, unknown>, childrenHtml: string, propsJson: string): string {
+    if (props.publicFormDraft !== undefined) return renderPublicFormDraft(id, props.publicFormDraft);
     const binding = props.binding as Record<string, unknown> || {};
     const title = escapeHtml(String(props.title || 'Form'));
     const tableName = (props._tableName as string) || (binding.tableName as string) || props.tableName as string || props.table as string || '';
