@@ -16,6 +16,7 @@ export const directoryQueryBindingSchema = z.discriminatedUnion('queryId', [
     binding('directory.institution.list', listParams), binding('directory.program.list', programParams), binding('directory.city.list', listParams),
     binding('directory.institution.detail', detailParams), binding('directory.program.detail', detailParams),
     binding('directory.article.list', listParams), binding('directory.article.detail', detailParams),
+    binding('directory.page.detail', detailParams),
 ]);
 export type DirectoryQueryBinding = z.infer<typeof directoryQueryBindingSchema>;
 export const directoryRecordBindingSchema = z.object({
@@ -53,7 +54,7 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
             if (props.directoryQuery !== undefined) {
                 if (inQuery || requests.length >= 8 || requests.some(r => r.id === node.id) || props.binding || node.binding) throw new Error('ambiguous_directory_query');
                 const query = directoryQueryBindingSchema.parse(props.directoryQuery);
-                isArticle = query.queryId === 'directory.article.detail';
+                isArticle = query.queryId === 'directory.article.detail' || query.queryId === 'directory.page.detail';
                 if (node.type !== (query.queryId.endsWith('.list') ? 'Repeater' : 'Container')) throw new Error('invalid_directory_query_component');
                 requests.push({ id: node.id, binding: query });
             }

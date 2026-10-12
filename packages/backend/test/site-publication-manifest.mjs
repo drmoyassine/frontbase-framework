@@ -36,6 +36,20 @@ const hash = await store.prepare(header, records, now), manifest = await store.g
 assert.equal(manifest.index.length, 124);
 assert.ok(manifest.chunks.reduce((n,c) => n + c.bytes, 0) > 1024 * 1024);
 await store.verify(manifest);
+const redirected=await store.get(await store.prepare({...header,redirects:[{from:'/blog/old-news/',to:'/old-news/'}]},records,now));
+assert.deepEqual(redirected.redirects,[{from:'/blog/old-news/',to:'/old-news/'}]);
+for(const aliases of [
+ [{from:'/campus/',to:'/old-news/'}], [{from:'/%63ampus/',to:'/old-news/'}],
+ [{from:'/old/',to:'/missing/'}], [{from:'/old/',to:'/old/'}],
+ [{from:'/old/',to:'/other-old/'},{from:'/other-old/',to:'/old-news/'}],
+ [{from:'/old/',to:'/old-news/'},{from:'/old',to:'/campus/'}],
+ [{from:'/api/old/',to:'/old-news/'}], [{from:'/old/',to:'https://evil.test/'}],
+ [{from:'/old/?q=x',to:'/old-news/'}], [{from:'/old/%2e%2e/new/',to:'/old-news/'}],
+]){
+ const before=await db.query('SELECT * FROM settings');
+ await assert.rejects(()=>store.prepare({...header,redirects:aliases},records,now));
+ assert.deepEqual(await db.query('SELECT * FROM settings'),before);
+}
 assert.equal(await foreign.get(hash), null);
 await assert.rejects(() => foreign.verify(manifest), /publication_manifest_chunk_missing/);
 assert.equal(await store.prepare(header, { ...records, programs: [...records.programs].reverse() }, now), hash);

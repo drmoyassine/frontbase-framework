@@ -38,23 +38,23 @@ export function DirectoryQueryPreview({ draft, onAddTemplate, onEditorialOpenCha
         <div className="flex flex-wrap gap-2">
             <select aria-label="Preview collection" value={role} disabled={busy || !!editingId} onChange={e => { setRole(e.target.value); setRows([]); setLoadedQuery(undefined); setMessage(''); }} className="rounded border bg-background p-2">
                 <option value="institution">Institutions</option><option value="program">Programs</option><option value="city">Cities</option>
-                {draft.configuration.collections.article.table && <option value="article">Articles</option>}
+                {draft.configuration.collections.article.table && <><option value="article">Articles</option><option value="page">Pages</option></>}
             </select>
             <input aria-label="Preview title search" value={q} maxLength={100} onChange={e => setQ(e.target.value)} placeholder="Search titles" className="rounded border bg-background p-2" />
             <Button type="button" disabled={!ready || busy || !!editingId} onClick={() => { void preview(role, 'list', { q }); }}>{busy ? 'Loading…' : 'Load data preview'}</Button>
         </div>
         {message && <p role="status">{message}</p>}
-        {onAddTemplate && loadedQuery && rows.length > 0 && <Button type="button" variant="outline" disabled={busy || !!editingId} onClick={() => onAddTemplate(loadedQuery)}>{loadedQuery.queryId.endsWith('.list') ? 'Add editable cards to canvas' : 'Add editable detail to canvas'}</Button>}
+        {onAddTemplate && loadedQuery && loadedQuery.queryId !== ('directory.page.list' as string) && rows.length > 0 && <Button type="button" variant="outline" disabled={busy || !!editingId} onClick={() => onAddTemplate(loadedQuery)}>{loadedQuery.queryId.endsWith('.list') ? 'Add editable cards to canvas' : 'Add editable detail to canvas'}</Button>}
         <ul className="space-y-2">{rows.map((row, index) => <li key={String(row.id ?? index)} className="rounded border p-2 space-y-1">
             <p className="font-medium">{String(row.title ?? '')}</p>
             <p className="break-all text-sm">{String(row.originalPath ?? 'No original WordPress URL')}</p>
             {row.summary != null && <p className="line-clamp-2 text-sm">{String(row.summary)}</p>}
             <div className="flex flex-wrap gap-2">
                 {role !== 'city' && typeof row.originalPath === 'string' && <Button type="button" variant="outline" disabled={busy || !!editingId} onClick={() => { void preview(role, 'detail', { path: row.originalPath }); }}>Preview detail</Button>}
-                {role === 'article' && typeof row.id === 'string' && <Button type="button" variant="outline" disabled={busy || !!editingId} onClick={() => setEditingId(row.id as string)}>Edit article content</Button>}
+                {(role === 'article' || role === 'page') && typeof row.id === 'string' && <Button type="button" variant="outline" disabled={busy || !!editingId} onClick={() => setEditingId(row.id as string)}>Edit {role === 'page' ? 'page' : 'article'} content</Button>}
                 {role === 'institution' && row.id != null && <Button type="button" variant="outline" disabled={busy} onClick={() => { setQ(''); void preview('program', 'list', { institutionId: row.id }); }}>Preview linked programs</Button>}
             </div>
         </li>)}</ul>
-        {editingId && <EditorialDraftEditor key={`${draft.revision}:${editingId}`} id={editingId} configurationRevision={draft.revision} onClose={() => { setEditingId(undefined); setRows([]); setLoadedQuery(undefined); setMessage('Reload the data preview to see the latest saved content.'); }} />}
+        {editingId && <EditorialDraftEditor key={`${draft.revision}:${editingId}`} id={editingId} contentRole={role === 'page' ? 'page' : 'article'} configurationRevision={draft.revision} onClose={() => { setEditingId(undefined); setRows([]); setLoadedQuery(undefined); setMessage('Reload the data preview to see the latest saved content.'); }} />}
     </section>;
 }

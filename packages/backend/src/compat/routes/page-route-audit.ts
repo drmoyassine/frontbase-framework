@@ -16,7 +16,7 @@ export function registerPageRouteAudit(app: Hono<{ Variables: ConsoleAuthVars }>
         // does not imply that every stored record is currently publicly served.
         try {
             const capture = await captureRouteInventory(runner, c.get('tenant'));
-            const result = await auditRouteNamespace(runner, c.get('tenant'), { includeFramework: true, publicPaths: capture.paths });
+            const result = await auditRouteNamespace(runner, c.get('tenant'), { includeFramework: true, publicPaths: capture.paths,capturedCatalog:true });
             const after = await captureRouteInventory(runner, c.get('tenant'));
             if (JSON.stringify(capture.identity) !== JSON.stringify(after.identity))
                 return c.json({ schemaVersion: 1, coverage: 'stored-pages', publicRecordsChecked: false, status: 'unavailable', code: 'namespace_changed', installAvailable: false }, 503);

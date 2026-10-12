@@ -2,6 +2,8 @@ import { withSourceMutation, buildPackage, runGate, expectRed, summarize, repoRo
 const dir = repoRoot + 'packages/backend/', file = 'packages/backend/src/compat/site-publication-manifest.ts';
 if (!buildPackage('@frontbase/backend') || runGate(dir, 'test/site-publication-manifest.mjs') !== 0) process.exit(2);
 for (const [label, find, replacement] of [
+    ['redirect target admission', "if(!paths.includes(redirect.to))fail('redirect_target_unavailable');", 'if(false)fail(\'redirect_target_unavailable\');'],
+    ['redirect source collision', 'normalized.includes(identity) || aliasIdentities.has(identity)', 'false'],
     ['manifest route collision', 'new Set(normalized).size !== paths.length', 'false'],
     ['manifest program parent', '!institutions.has(String(row.parentId))', 'false'],
     ['manifest index fidelity', 'stableStringify(indexChunk(chunk, reference)) !== stableStringify(expected)', 'false'],

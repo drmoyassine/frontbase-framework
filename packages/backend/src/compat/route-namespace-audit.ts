@@ -8,7 +8,7 @@ export function inspectNamespacePath(path: string): 'supported' | 'reserved' | '
     return path === '/' || /^\/[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?:\/[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)*\/?$/.test(path) ? 'supported' : 'unsupported';
 }
 
-type PublicSource = 'template' | 'directory' | 'blog' | 'institution' | 'program' | 'article';
+type PublicSource = 'template' | 'directory' | 'blog' | 'institution' | 'program' | 'article' | 'page';
 export interface NamespacePublicPath { source: PublicSource; id: string; path: string; }
 type Ref = { source: 'compat' | 'framework' | PublicSource; id: string; path: string; deleted: boolean };
 type Issue = { code: 'unsupported_path' | 'reserved_path' | 'route_conflict' | 'potential_alias_conflict'; resources: Ref[] };
@@ -18,7 +18,7 @@ export type NamespaceAuditResult =
 
 const unavailable = (code: Extract<NamespaceAuditResult, { status: 'unavailable' }>['code']): NamespaceAuditResult => ({ status: 'unavailable', code, installAvailable: false });
 const idValid = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9/_-]{0,199}$/.test(value);
-const publicSources = new Set(['template', 'directory', 'blog', 'institution', 'program', 'article']);
+const publicSources = new Set(['template', 'directory', 'blog', 'institution', 'program', 'article', 'page']);
 const order = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
 const stable = (value: Ref) => JSON.stringify([value.source, value.id, value.path, value.deleted]);
 
@@ -29,10 +29,10 @@ const stable = (value: Ref) => JSON.stringify([value.source, value.id, value.pat
  * Nothing returned here grants writer/installer admission.
  */
 export async function auditRouteNamespace(db: Pick<DbRunner, 'query'>, owner: string,
-    options: { includeFramework: boolean; publicPaths?: readonly NamespacePublicPath[] }): Promise<NamespaceAuditResult> {
+    options: { includeFramework: boolean; publicPaths?: readonly NamespacePublicPath[]; capturedCatalog?:boolean }): Promise<NamespaceAuditResult> {
     if (!owner || owner.length > 256 || typeof options?.includeFramework !== 'boolean') return unavailable('namespace_invalid');
     const publicPaths = options.publicPaths ?? [];
-    if (!Array.isArray(publicPaths) || publicPaths.length > 1000) return unavailable('namespace_too_large');
+    if (!Array.isArray(publicPaths) || publicPaths.length > (options.capturedCatalog?101002:1000)) return unavailable('namespace_too_large');
     if (publicPaths.some(row => !row || !publicSources.has(row.source) || !idValid(row.id) || typeof row.path !== 'string' || row.path.length > 400)) return unavailable('namespace_invalid');
     // Copy trusted projection so caller mutation during awaits cannot change this run.
     const supplied = publicPaths.map(row => ({ source: row.source, id: row.id, path: row.path }));

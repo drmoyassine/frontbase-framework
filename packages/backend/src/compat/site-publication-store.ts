@@ -1,12 +1,13 @@
 import type { DbRunner } from '@frontbase/edge-infra';
 import { stableStringify } from '@frontbase/compiler/manifest';
 import { sitePublicationArtifactSchema, sitePublicationPointerSchema, type SitePublicationArtifact, type SitePublicationPointer } from '@frontbase/edge-core/directory/publication';
+import { SitePublicationManifestStore } from './site-publication-manifest.js';
+import type { PublicationVersion } from './publication-version.js';
 
 const ACTIVE = 'site_publication:active:v1';
 const key = (hash: string) => `site_publication:v1:${hash}`;
-export async function publicationHash(value: unknown): Promise<string> {
-    return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stableStringify(value))))].map(v => v.toString(16).padStart(2, '0')).join('');
-}
+export { publicationHash } from './publication-hash.js';
+import { publicationHash } from './publication-hash.js';
 /** Immutable server captures and conditional activation. Not a public write API. */
 export class SitePublicationStore {
     constructor(private db: DbRunner, private tenant: string) {
@@ -35,6 +36,16 @@ export class SitePublicationStore {
         if (!await this.get(hash)) throw new Error('publication_unavailable');
         return hash;
     }
+    async getVersion(hash:string):Promise<PublicationVersion|null> {
+        const legacy=await this.get(hash);
+        return legacy ?? new SitePublicationManifestStore(this.db,this.tenant).get(hash);
+    }
+    async activeVersion():Promise<{pointer:SitePublicationPointer;artifact:PublicationVersion}|null>{
+        const raw=await this.raw(ACTIVE);if(raw===null)return null;
+        try{const pointer=sitePublicationPointerSchema.parse(JSON.parse(raw)),artifact=await this.getVersion(pointer.hash);
+            if(!artifact)throw new Error();return {pointer,artifact};
+        }catch{throw new Error('publication_unavailable');}
+    }
     async active(): Promise<{ pointer: SitePublicationPointer; artifact: SitePublicationArtifact } | null> {
         const raw = await this.raw(ACTIVE);
         if (raw === null) return null;
@@ -46,7 +57,7 @@ export class SitePublicationStore {
     }
     /** Activation and rollback use the same CAS: generation always advances. */
     async activate(hash: string, expected: SitePublicationPointer | null, now: string): Promise<SitePublicationPointer | null> {
-        if (!await this.get(hash)) throw new Error('publication_unavailable');
+        if (!await this.getVersion(hash)) throw new Error('publication_unavailable');
         const prior = await this.raw(ACTIVE);
         const current = prior === null ? null : sitePublicationPointerSchema.parse(JSON.parse(prior));
         if (stableStringify(current) !== stableStringify(expected)) return null;

@@ -1,14 +1,11 @@
-import type { SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
+import type { PublicationVersion } from './publication-version.js';
+import { publicationPaths } from './publication-version.js';
 
 const xml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[char]!);
 
 /** One reviewed capture only. Never query canonical data or current templates. */
-export function capturedSiteSitemap(artifact: SitePublicationArtifact): string {
-    const paths = [...(artifact.templates.some(template => template.role === 'directory') ? [artifact.configuration.routes.directory] : []),
-        ...(artifact.records.articles.length ? [artifact.configuration.routes.blog] : []),
-        ...artifact.records.institutions.map(row => row.originalPath),
-        ...artifact.records.programs.map(row => row.originalPath),
-        ...artifact.records.articles.map(row => row.originalPath)];
+export function capturedSiteSitemap(artifact: PublicationVersion): string {
+    const paths = artifact.schemaVersion===1?[...(artifact.templates.some(template=>template.role==='directory')?[artifact.configuration.routes.directory]:[]),...(artifact.records.articles.length?[artifact.configuration.routes.blog]:[]),...[...artifact.records.institutions,...artifact.records.programs,...artifact.records.articles].map(row=>row.originalPath)]:publicationPaths(artifact);
     const seen = new Set<string>();
     const urls = paths.filter(path => {
         const identity = decodeURIComponent(path).replace(/\/$/, '') || '/';

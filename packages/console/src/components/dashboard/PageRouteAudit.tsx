@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-const resource = z.object({ source: z.enum(['compat','framework','template','directory','blog','institution','program','article']), id: z.string().max(200), path: z.string().max(400), deleted: z.boolean() }).strict();
+const resource = z.object({ source: z.enum(['compat','framework','template','directory','blog','institution','program','article','page']), id: z.string().max(200), path: z.string().max(400), deleted: z.boolean() }).strict();
 const common = { schemaVersion: z.literal(1), coverage: z.enum(['stored-pages','stored-pages-and-active-capture']), publicRecordsChecked: z.boolean(), installAvailable: z.literal(false),
     capture: z.object({schemaVersion:z.literal(1),generation:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),hash:z.string().regex(/^[a-f0-9]{64}$/)}).strict().optional() };
 const reportSchema = z.union([

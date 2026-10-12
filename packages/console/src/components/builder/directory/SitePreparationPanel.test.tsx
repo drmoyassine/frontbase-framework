@@ -11,6 +11,11 @@ const institution={id:512,title:'Muhlenberg',originalPath:'/muhlenberg/'},progra
 const ok=(value:unknown)=>({ok:true,json:async()=>value});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 describe('site preparation',()=>{
+ it('shows captured redirects when reopening and previews them within the same version',async()=>{
+  const hash='e'.repeat(64);vi.stubGlobal('fetch',vi.fn(async()=>ok({hash,configurationRevision:1,publicationAvailable:false,routes:{directory:'/explore/',blog:'/blog/'},records:{institutions:[],programs:[],articles:[],pages:[]},redirects:[{from:'/blog/old-news/',to:'/old-news/'}]})));
+  render(<SitePreparationPanel draft={draft}/>);fireEvent.change(screen.getByLabelText('Prepared version ID'),{target:{value:hash}});fireEvent.click(screen.getByText('Reopen private version'));
+  fireEvent.click(await screen.findByRole('button',{name:'Redirect: /blog/old-news/ → /old-news/'}));expect(screen.getByTitle('Prepared site preview').getAttribute('src')).toContain('path=%2Fblog%2Fold-news%2F');
+ });
  it('requires every review check and sends only the captured hash, checks and note',async()=>{
   const hash='c'.repeat(64),fetcher=vi.fn(async(path:string,init?:RequestInit)=>path.endsWith('/review/')?ok({hash,review:{reviewedAt:'2026-10-07T09:00:00Z'},publicationAvailable:false}):ok({hash,configurationRevision:1,publicationAvailable:false,review:null,routes:{directory:'/explore/',blog:'/blog/'},records:{institutions:[institution],programs:[],articles:[]}}));
   vi.stubGlobal('fetch',fetcher);render(<SitePreparationPanel draft={draft}/>);
@@ -51,7 +56,24 @@ describe('site preparation',()=>{
   fireEvent.click(screen.getByLabelText('Include program'));fireEvent.click(screen.getByText('Prepare private preview'));await screen.findByText(/Captured pages/);
   const request=fetcher.mock.calls.find(([path])=>path.endsWith('/publication/prepare/'))!;
   const input=JSON.parse(String(request[1]?.body));expect(input.institutionPaths).toEqual(['/muhlenberg/']);expect(input.programPaths).toEqual(['/old-parent/dental/']);expect(input.pageIds).toHaveLength(3);expect(input.records).toBeUndefined();expect(input.reviewer).toBeUndefined();
-  fireEvent.click(screen.getByRole('button',{name:'Dental'}));expect(screen.getByTitle('Prepared site preview').getAttribute('src')).toContain('hash='+('a'.repeat(64)));expect(screen.getByText('Private version prepared. Review its captured pages below. Preparation does not publish.')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'Dental'}));expect(screen.getByTitle('Prepared site preview').getAttribute('src')).toContain('hash='+('a'.repeat(64)));expect(screen.getByText(/Private version prepared with 2 detail/)).toBeTruthy();
+ });
+ it('prepares the full mapped catalog, approved pages and selected ordinary pages through the same workflow',async()=>{
+  const home={id:'00000000-0000-4000-8000-000000000020',name:'Home',isPublic:true,layoutData:{root:{}}};
+  const editorial={id:'00000000-0000-4000-8000-000000000005',name:'Page detail',layoutData:{root:{siteConfiguration:{version:1,role:'editorial'}}}};
+  const hash='e'.repeat(64),captured=Array.from({length:121},(_,i)=>({id:i+1,title:`Program ${i}`,originalPath:`/program-${i}/`}));
+  const fetcher=vi.fn(async(path:string)=>path==='/api/pages/'?ok({data:[...pages,editorial,home]}):ok({hash,configurationRevision:1,publicationAvailable:false,records:{institutions:[institution],programs:captured,articles:[],pages:[{id:home.id,title:'Home',originalPath:'/'}]},skippedUnmapped:{institutions:1,programs:0}}));
+  vi.stubGlobal('fetch',fetcher);render(<SitePreparationPanel draft={draft}/>);
+  fireEvent.click(screen.getByText('Choose templates and records'));await screen.findByLabelText('editorial template');
+  fireEvent.click(screen.getByLabelText('Include all catalog listings with original URLs in the saved country scope'));
+  fireEvent.click(screen.getByLabelText('Include the latest approved articles and pages for these settings'));
+  fireEvent.click(screen.getByLabelText('Saved page: Home'));fireEvent.click(screen.getByText('Prepare private preview'));
+  await screen.findByText(/Captured pages/);
+  const input=JSON.parse(String(fetcher.mock.calls.find(([path])=>path.endsWith('/prepare/'))![1]?.body));
+  expect(input.format).toBe('chunked');expect(input.includeMappedCatalog).toBe(true);expect(input.includeApprovedEditorial).toBe(true);expect(input.staticPageIds).toEqual([home.id]);expect(input.pageIds).toHaveLength(6);
+  expect(screen.queryByRole('button',{name:'Program 120'})).toBeNull();fireEvent.change(screen.getByLabelText('Find captured URL'),{target:{value:'/program-120/'}});fireEvent.click(screen.getByRole('button',{name:'Program 120'}));
+  expect(screen.getByTitle('Prepared site preview').getAttribute('src')).toContain('path=%2Fprogram-120%2F');
+  expect(fetcher.mock.calls.some(([path])=>path.endsWith('/activate/'))).toBe(false);
  });
  it('does not include an unapproved article or infer approval from a draft',async()=>{
   vi.stubGlobal('fetch',vi.fn(async(path:string)=>path==='/api/pages/'?ok({data:pages}):path.endsWith('/editorial/read/')?ok({approval:null,document:{revision:3}}):ok({revision:1,rows:[{id:'article',title:'Article',originalPath:'/blog/article/'}]})));

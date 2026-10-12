@@ -1,16 +1,16 @@
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { stableStringify } from '@frontbase/compiler/manifest';
-import { publicationInstitutionSchema, publicationProgramSchema, publicationCitySchema, publicationArticleSchema } from '@frontbase/edge-core/directory/publication';
-import { publicationHash } from './site-publication-store.js';
+import { publicationInstitutionSchema, publicationProgramSchema, publicationCitySchema, publicationArticleSchema, publicationPageSchema } from '@frontbase/edge-core/directory/publication';
+import { publicationHash } from './publication-hash.js';
 
 export const PUBLICATION_CHUNK_BYTES = 512 * 1024;
 const schemas = { institutions: publicationInstitutionSchema, programs: publicationProgramSchema,
-    cities: publicationCitySchema, articles: publicationArticleSchema };
+    cities: publicationCitySchema, articles: publicationArticleSchema, pages: publicationPageSchema };
 export type PublicationCollection = keyof typeof schemas;
 const bytes = (value: unknown) => new TextEncoder().encode(stableStringify(value)).byteLength;
 const envelope = z.object({ schemaVersion: z.literal(1), kind: z.literal('directory-record-chunk'),
-    collection: z.enum(['institutions', 'programs', 'cities', 'articles']), records: z.array(z.unknown()).min(1).max(48) }).strict();
+    collection: z.enum(['institutions', 'programs', 'cities', 'articles', 'pages']), records: z.array(z.unknown()).min(1).max(48) }).strict();
 
 /** Internal storage primitive, not a reviewed publication or an anonymous write contract. */
 export function parsePublicationChunk(input: unknown) {

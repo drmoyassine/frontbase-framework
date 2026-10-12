@@ -23,7 +23,7 @@ export async function validateDirectoryLayout(layout: unknown, tenant: string, r
             return { status: 403, body: { detail: 'Directory datasource is unavailable' } };
         try { projectSharedDirectoryPreview(value, draft.configuration); }
         catch { return { status: 422, body: { detail: 'Invalid shared settings binding' } }; }
-        if (publishing) return { status: 422, body: { detail: 'Live directory publication is not available yet', code: 'directory_runtime_pending' } };
+        if (publishing) return { status: 422, body: { detail: 'Use Prepare a site version in Page Settings to review and publish this shared-template site', code: 'directory_runtime_pending' } };
         return null;
     }
     const config = root?.directoryConfiguration;
@@ -38,9 +38,8 @@ export async function validateDirectoryLayout(layout: unknown, tenant: string, r
     if (publishing) {
         const missing = directoryConfigurationReadiness(config);
         if (missing.length) return { status: 422, body: { detail: 'Directory configuration is incomplete', fields: missing } };
-        // A saved contract does not yet register server-enforced live collections/detail routes.
-        // Fail closed until that runtime integration and publication acceptance exist.
-        return { status: 422, body: { detail: 'Live directory publication is not available yet', code: 'directory_runtime_pending' } };
+        // A page-local configuration cannot enter the reviewed shared-site workflow.
+        return { status: 422, body: { detail: 'Link this page to shared settings, then prepare and review a site version in Page Settings', code: 'directory_runtime_pending' } };
     }
     return null;
 }

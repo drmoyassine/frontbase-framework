@@ -5,6 +5,7 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { sitePublicationPointerSchema } from '@frontbase/edge-core/directory/publication';
 import { SitePublicationStore } from '../site-publication-store.js';
 import { SitePublicationReviewStore } from '../site-publication-review-store.js';
+import { publicationPaths,publicationRows } from '../publication-version.js';
 
 const activationRequest = z.object({hash:z.string().regex(/^[a-f0-9]{64}$/),expected:sitePublicationPointerSchema.nullable()}).strict();
 const roles = ['owner','admin','tenant_admin','master_admin','master_admin_root'];
@@ -16,16 +17,14 @@ export function registerSitePublicationControls(app:Hono<{Variables:ConsoleAuthV
         if(!user?.role || !roles.includes(user.role))return c.json({detail:'Publication is unavailable'},403);
         if(new URL(c.req.url).search)return c.json({detail:'Invalid publication request'},422);
         try {
-            const owner=c.get('tenant'),active=await new SitePublicationStore(db,owner).active();
+            const owner=c.get('tenant'),active=await new SitePublicationStore(db,owner).activeVersion();
             if(!active)return c.json({pointer:null,capture:null});
             const review=await new SitePublicationReviewStore(db,owner).get(active.pointer.hash);
             if(!review)throw new Error('publication_review_required');
             const {artifact}=active;
-            const paths=[...artifact.records.institutions,...artifact.records.programs,...artifact.records.articles].map(row=>row.originalPath);
-            if(artifact.templates.some(template=>template.role==='directory'))paths.unshift(artifact.configuration.routes.directory);
-            if(artifact.templates.some(template=>template.role==='article-index'))paths.unshift(artifact.configuration.routes.blog);
+            const paths=publicationPaths(artifact),rows=publicationRows(artifact);
             return c.json({pointer:active.pointer,capture:{configurationRevision:artifact.configurationRevision,reviewedAt:review.reviewedAt,
-                paths,counts:{institutions:artifact.records.institutions.length,programs:artifact.records.programs.length,articles:artifact.records.articles.length}}});
+                paths,...(artifact.schemaVersion===2?{runtimeVersion:artifact.runtimeVersion}:{}),counts:{institutions:rows.institutions.length,programs:rows.programs.length,articles:rows.articles.length,...(artifact.schemaVersion===2?{pages:rows.pages.length+(artifact.staticPages?.length??0)}:{})}}});
         }catch{return c.json({detail:'Publication is unavailable'},503);}
     });
     app.post('/api/project/site-configuration/publication/activate/',async c=>{
@@ -44,7 +43,7 @@ export function registerSitePublicationControls(app:Hono<{Variables:ConsoleAuthV
         if(!request.success)return c.json({detail:'Invalid publication request'},422);
         try {
             const owner=c.get('tenant'),store=new SitePublicationStore(db,owner),reviews=new SitePublicationReviewStore(db,owner);
-            const active=await store.active(),current=active?.pointer??null;
+            const active=await store.activeVersion(),current=active?.pointer??null;
             if(active && !await reviews.get(active.pointer.hash))throw new Error('publication_review_required');
             if(JSON.stringify(current)!==JSON.stringify(request.data.expected))return c.json({detail:'Live version changed. Read it again before publishing.',code:'publication_conflict'},409);
             if(!await reviews.get(request.data.hash))throw new Error('publication_review_required');

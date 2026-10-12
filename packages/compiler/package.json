@@ -1,7 +1,7 @@
 {
   "name": "@frontbase/compiler",
   "version": "0.0.0",
-  "description": "Frontbase build tooling — Zod schema extraction, manifest/type generation, query registrar, Vite plugin, CLI",
+  "description": "Frontbase build tooling \u2014 Zod schema extraction, manifest/type generation, query registrar, Vite plugin, CLI",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -24,6 +24,10 @@
     "./cli": {
       "types": "./dist/cli/index.d.ts",
       "import": "./dist/cli/index.js"
+    },
+    "./queries": {
+      "types": "./dist/queries/index.d.ts",
+      "import": "./dist/queries/index.js"
     }
   },
   "bin": {

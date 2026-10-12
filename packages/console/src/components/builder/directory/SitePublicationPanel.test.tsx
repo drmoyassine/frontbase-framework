@@ -18,6 +18,12 @@ describe('guarded publication panel',()=>{
   expect(JSON.parse(String(fetcher.mock.calls[1][1]?.body))).toEqual({hash,expected:pointer(other,4)});
   await act(async()=>resolve(ok({pointer:pointer(hash,5),changed:true})));await screen.findByText(/selected version is currently live/);expect(button().disabled).toBe(true);expect(fetcher).toHaveBeenCalledTimes(3);
  });
+ it('checks a chunked live version without relaxing legacy bounds',async()=>{
+  const state={pointer:pointer(other,3),capture:{configurationRevision:1,reviewedAt:candidate.review,runtimeVersion:'directory-chunks-v1',paths:['/explore/'],counts:{institutions:121,programs:10049,articles:955,pages:12}}};
+  const fetcher=vi.fn().mockResolvedValueOnce(ok(state)).mockResolvedValueOnce(ok({...state,capture:{...state.capture,runtimeVersion:undefined}}));
+  vi.stubGlobal('fetch',fetcher);render(<SitePublicationPanel candidate={candidate} revision={1}/>);await check();fireEvent.click(confirm());expect(button().disabled).toBe(false);
+  fireEvent.click(screen.getByText('Check live version'));await screen.findByText(/Live state is unavailable/);expect(button().disabled).toBe(true);expect(confirm().checked).toBe(false);
+ });
  it('allows first publication only after verified inactive state',async()=>{
   const fetcher=vi.fn().mockResolvedValueOnce(ok(live(null))).mockResolvedValueOnce(ok({pointer:pointer(hash,1),changed:true})).mockResolvedValueOnce(ok(live(hash,1)));
   vi.stubGlobal('fetch',fetcher);render(<SitePublicationPanel candidate={candidate} revision={1}/>);await check();fireEvent.click(confirm());fireEvent.click(button());await screen.findByText(/selected version is currently live/);

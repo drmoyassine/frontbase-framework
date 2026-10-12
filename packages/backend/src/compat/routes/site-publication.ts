@@ -10,14 +10,22 @@ import { SiteConfigurationStore } from '../site-configuration-store.js';
 import { sitePreparationRequestSchema,prepareSitePublication } from '../site-publication-prepare.js';
 import { SitePublicationStore } from '../site-publication-store.js';
 import { SitePublicationReviewStore } from '../site-publication-review-store.js';
-import { resolveSitePublicationPage } from '../site-publication-runtime.js';
+import { resolvePublicationVersionPage } from '../site-publication-runtime.js';
 import { publicationPathSchema,sitePublicationReviewRequestSchema } from '@frontbase/edge-core/directory/publication';
 import { createEngine,directProvider } from '@frontbase/edge-core';
 import { directoryBrowsingStateSchema } from '@frontbase/edge-core/directory/configuration';
+import { chunkPreparationRequestSchema,prepareChunkPublication } from '../site-publication-chunk-prepare.js';
+import { publicationPaths,publicationRows,type PublicationVersion } from '../publication-version.js';
 import { registerSitePublicationControls } from './site-publication-controls.js';
+import { SitePublicationManifestStore } from '../site-publication-manifest.js';
+import { verifyManifestEditorial } from '../site-publication-approval-check.js';
 
 const previewRequest=z.object({hash:z.string().regex(/^[a-f0-9]{64}$/),path:publicationPathSchema,
-    params:z.object({type:z.enum(['institution','program']).optional(),q:z.string().max(100).optional(),page:z.number().int().min(1).max(834).optional()}).strict().default({})}).strict();
+    params:z.object({type:z.enum(['institution','program']).optional(),q:z.string().max(100).optional(),page:z.number().int().min(1).max(1667).optional()}).strict().default({})}).strict();
+function metadata(artifact:PublicationVersion){
+    const rows=publicationRows(artifact);
+    return Object.fromEntries(Object.entries({...rows,pages:[...rows.pages,...(artifact.schemaVersion===2?artifact.staticPages??[]:[])]}).map(([role,entries])=>[role,entries.map(row=>({id:'id' in row?row.id:row.pageId,title:row.title,...('originalPath' in row?{originalPath:row.originalPath}:{})}))]));
+}
 /** Preparation/review remain private; separate guarded controls publish exact reviewed captures. */
 export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVars}>,control:DbRunner,storeFor:(tenant:string)=>SyncStore,
     externalFetch:CompatFetch,accounts:AccountConfigFor,now:()=>string):void {
@@ -33,14 +41,21 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
         const parsed=previewRequest.safeParse({hash:url.searchParams.get('hash'),path:url.searchParams.get('path'),params});
         if(!parsed.success)return c.json({detail:'Invalid preview request'},422);
         try {
-            const tenant=c.get('tenant'),artifact=await new SitePublicationStore(control,tenant).get(parsed.data.hash);
+            const tenant=c.get('tenant'),artifact=await new SitePublicationStore(control,tenant).getVersion(parsed.data.hash);
             if(!artifact)return c.json({detail:'Prepared site is unavailable'},404);
+            const redirect=artifact.schemaVersion===2?artifact.redirects?.find(alias=>alias.from===parsed.data.path):undefined;
+            if(redirect && artifact.schemaVersion===2){
+                if(Object.keys(parsed.data.params).length)return c.json({detail:'Invalid redirect preview request'},422);
+                await new SitePublicationManifestStore(control,tenant).verify(artifact);
+                await verifyManifestEditorial(control,tenant,artifact);
+                const location='/api/project/site-configuration/publication/render/?'+new URLSearchParams({hash:parsed.data.hash,path:redirect.to});
+                return new Response(null,{status:301,headers:{Location:location,'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}});
+            }
             const pageUrl=new URL(parsed.data.path,'https://publication-preview.invalid');
             for(const [key,value] of Object.entries(parsed.data.params))pageUrl.searchParams.set(key,String(value));
-            const result=await resolveSitePublicationPage(artifact,parsed.data.hash,tenant,new Request(pageUrl));
+            const result=await resolvePublicationVersionPage(artifact,parsed.data.hash,tenant,control,new Request(pageUrl));
             if(!result)return c.json({detail:'No prepared page at this URL'},404);
-            const paths=new Set([artifact.configuration.routes.directory,artifact.configuration.routes.blog,
-                ...artifact.records.institutions.map(row=>row.originalPath),...artifact.records.programs.map(row=>row.originalPath),...artifact.records.articles.map(row=>row.originalPath)]);
+            const paths=new Set([...publicationPaths(artifact),...(artifact.schemaVersion===2?artifact.redirects??[]:[]).map(alias=>alias.from)]);
             // Private preview navigation stays within the SAME captured version.
             const rewrite=(nodes:typeof result.page.layout.content):typeof result.page.layout.content=>nodes.map(node=>{
                 const props={...node.props};
@@ -48,9 +63,12 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
                     const [state]=directoryBrowsingStateSchema.parse(props.directoryBrowsingState);
                     props.directoryBrowsingState=[{...state,previewHash:parsed.data.hash}];
                 }
-                if(node.type==='Link' && typeof props.href==='string' && props.href.startsWith('/')){
-                    const target=new URL(props.href,'https://publication-preview.invalid');
-                    if(target.origin==='https://publication-preview.invalid' && paths.has(target.pathname) && !target.hash){
+                if(node.type==='Link' && typeof props.href==='string'){
+                    let target:URL|undefined;
+                    try{target=new URL(props.href,'https://publication-preview.invalid');}catch{/* Preserve malformed authoring links; never invent a destination. */}
+                    if(target && !target.username && !target.password
+                        && (target.origin==='https://publication-preview.invalid' || target.origin===new URL(artifact.configuration.site.origin).origin)
+                        && paths.has(target.pathname) && !target.hash){
                         const params=new URLSearchParams({hash:parsed.data.hash,path:target.pathname});
                         for(const [key,value] of target.searchParams)params.append(key,value);
                         props.href=`/api/project/site-configuration/publication/render/?${params}`;
@@ -72,8 +90,9 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
         if(!user?.role || !['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(user.role))return c.json({detail:'Site preparation is unavailable'},403);
         const reader=c.req.raw.body?.getReader(),decoder=new TextDecoder();let text='',size=0;
         if(reader){while(true){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.byteLength;
-            if(size>65536){await reader.cancel();return c.json({detail:'Preparation request is too large'},413);}text+=decoder.decode(chunk.value,{stream:true});}text+=decoder.decode();}
+            if(size>(mode==='prepare'?8*1024*1024:65536)){await reader.cancel();return c.json({detail:'Preparation request is too large'},413);}text+=decoder.decode(chunk.value,{stream:true});}text+=decoder.decode();}
         let input:unknown;try{input=JSON.parse(text);}catch{return c.json({detail:'Invalid preparation request'},422);}
+        if(mode==='prepare' && size>65536 && !(input && typeof input==='object' && 'format' in input && input.format==='chunked'))return c.json({detail:'Preparation request is too large'},413);
         const tenant=c.get('tenant');
         if(mode==='review'){
             const request=sitePublicationReviewRequestSchema.safeParse(input);
@@ -90,11 +109,12 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
             const request=z.object({hash:z.string().regex(/^[a-f0-9]{64}$/)}).strict().safeParse(input);
             if(!request.success)return c.json({detail:'Invalid preparation request'},422);
             try{
-                const artifact=await new SitePublicationStore(control,tenant).get(request.data.hash);
+                const artifact=await new SitePublicationStore(control,tenant).getVersion(request.data.hash);
                 if(!artifact)return c.json({detail:'Prepared site is unavailable'},404);
                 return c.json({hash:request.data.hash,configurationRevision:artifact.configurationRevision,
                     routes:artifact.configuration.routes,
-                    records:Object.fromEntries(Object.entries(artifact.records).map(([role,rows])=>[role,rows.map(row=>({id:row.id,title:row.title,...('originalPath' in row?{originalPath:row.originalPath}:{})}))])),
+                    records:metadata(artifact),
+                    redirects:artifact.schemaVersion===2?artifact.redirects??[]:[],
                     review:(await new SitePublicationReviewStore(control,tenant).get(request.data.hash))?.reviewedAt??null,
                     purpose:'private-prepared-candidate',publicationAvailable:false});
             }catch{return c.json({detail:'Prepared site is unavailable'},422);}
@@ -102,16 +122,16 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
         if(mode==='preview'){
             const request=previewRequest.safeParse(input);if(!request.success)return c.json({detail:'Invalid preview request'},422);
             try{
-                const artifact=await new SitePublicationStore(control,tenant).get(request.data.hash);
+                const artifact=await new SitePublicationStore(control,tenant).getVersion(request.data.hash);
                 if(!artifact)return c.json({detail:'Prepared site is unavailable'},404);
                 const url=new URL(request.data.path,'https://publication-preview.invalid');
                 for(const [key,value] of Object.entries(request.data.params))url.searchParams.set(key,String(value));
-                const result=await resolveSitePublicationPage(artifact,request.data.hash,tenant,new Request(url));
+                const result=await resolvePublicationVersionPage(artifact,request.data.hash,tenant,control,new Request(url));
                 if(!result)return c.json({detail:'No prepared page at this URL'},404);
                 return c.json({hash:request.data.hash,page:result.page,version:result.version,purpose:'private-prepared-preview',publicationAvailable:false});
             }catch{return c.json({detail:'Prepared preview is unavailable'},422);}
         }
-        const request=sitePreparationRequestSchema.safeParse(input);if(!request.success)return c.json({detail:'Invalid preparation request'},422);
+        const request=z.union([sitePreparationRequestSchema,chunkPreparationRequestSchema]).safeParse(input);if(!request.success)return c.json({detail:'Invalid preparation request'},422);
         const draft=await new SiteConfigurationStore(control,tenant).get();
         if(!draft || draft.revision!==request.data.expectedConfigurationRevision)return c.json({detail:'Shared settings changed; reload first'},409);
         const source=await storeFor(tenant).getDatasource(draft.configuration.datasourceId);
@@ -119,9 +139,10 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
         if(!['supabase','postgres','neon','sqlite','turso','d1'].includes(source.kind))return c.json({detail:'Preparation requires a supported SQL datasource'},422);
         try{
             const db=datasourceRunner(source.kind,await mergeAccountConfig(accounts,externalFetch,tenant,source.kind,source.config), externalFetch);
-            const result=await prepareSitePublication(control,db,tenant,draft,dialectOf(source.kind),request.data,user,now());
+            const result=await ('format' in request.data ? prepareChunkPublication(control,db,tenant,draft,dialectOf(source.kind),request.data,user,now()) : prepareSitePublication(control,db,tenant,draft,dialectOf(source.kind),request.data,user,now()));
             return c.json({hash:result.hash,configurationRevision:draft.revision,
-                records:Object.fromEntries(Object.entries(result.artifact.records).map(([role,rows])=>[role,rows.map(row=>({id:row.id,title:row.title,...('originalPath' in row?{originalPath:row.originalPath}:{})}))])),
+                records:metadata(result.artifact),routes:result.artifact.configuration.routes,...('skippedUnmapped' in result?{skippedUnmapped:result.skippedUnmapped}:{}),
+                redirects:result.artifact.schemaVersion===2?result.artifact.redirects??[]:[],
                 purpose:'private-prepared-candidate',publicationAvailable:false});
         }catch(error){
             if(error instanceof Error && error.message==='publication_route_serialization')return c.json({detail:'An original URL changes when requested by a browser. Review its original encoding before preparing this version; no URL was renamed.',code:'publication_route_serialization'},422);

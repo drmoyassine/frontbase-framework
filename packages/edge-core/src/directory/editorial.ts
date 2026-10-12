@@ -23,7 +23,7 @@ export const editorialEditSchema = z.object({
     language: z.string().regex(/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/).nullable(),
     byline: plain(500).nullable(), coverUrl: editorialCoverUrlSchema.nullable(), coverAlt: plain(500), reviewState: z.enum(['draft', 'requested']), reviewNote: plain(4000),
 }).strict().refine(v => v.reviewState !== 'requested' || (v.language !== null && v.reviewNote.trim().length > 0));
-export const editorialReadRequestSchema = z.object({ expectedConfigurationRevision: z.number().int().positive(), id: z.string().uuid() }).strict();
+export const editorialReadRequestSchema = z.object({ expectedConfigurationRevision: z.number().int().positive(), id: z.string().uuid(), contentRole: z.enum(['article','page']).optional() }).strict();
 export const editorialSaveRequestSchema = editorialReadRequestSchema.extend({ expectedDocumentRevision: z.number().int().positive().max(2147483646), content: editorialEditSchema }).strict();
 export const editorialReviewChecksSchema = z.object({
     facts: z.literal(true), language: z.literal(true), media: z.literal(true),
@@ -38,6 +38,7 @@ const originalPath = z.string().min(1).max(400).refine(value => {
     catch { return false; }
 });
 export const editorialDocumentSchema = z.object({ id: z.string().uuid(), revision: z.number().int().positive(), originalPath,
+    contentRole: z.enum(['article','page']).optional(),
     title: z.string().min(1).max(500).refine(v => !v.includes('\0')), excerpt: plain(10000), body: editorialBodySchema, language: z.string().regex(/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/).nullable(), byline: plain(500).nullable(),
     publishedAt: z.string().nullable(), coverUrl: editorialCoverUrlSchema.nullable().default(null), coverAlt: plain(500).default(''), reviewState: z.enum(['draft', 'requested']), reviewNote: plain(4000),
 }).strict();

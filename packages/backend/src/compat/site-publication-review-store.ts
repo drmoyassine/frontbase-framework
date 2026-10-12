@@ -1,13 +1,15 @@
 import type { DbRunner } from '@frontbase/edge-infra';
 import { sitePublicationReviewRequestSchema,sitePublicationReviewSchema,type SitePublicationPointer } from '@frontbase/edge-core/directory/publication';
 import { SitePublicationStore } from './site-publication-store.js';
+import { SitePublicationManifestStore } from './site-publication-manifest.js';
+import { verifyManifestEditorial } from './site-publication-approval-check.js';
 
 /** Private review and guarded internal activation of exact immutable captures. No HTTP activation endpoint. */
 export class SitePublicationReviewStore {
     constructor(private db:DbRunner,private tenant:string) { if(!tenant)throw new Error('publication_owner_required'); }
     private key(hash:string) { return `site_publication:review:v1:${hash}`; }
     async get(hash:string) {
-        if(!await new SitePublicationStore(this.db,this.tenant).get(hash))return null;
+        if(!await new SitePublicationStore(this.db,this.tenant).getVersion(hash))return null;
         const rows=await this.db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',[this.tenant,this.key(hash)]);
         if(!rows.length)return null;
         try {const review=sitePublicationReviewSchema.parse(JSON.parse(String(rows[0]!.value)));if(review.hash!==hash)throw new Error();return review;}
@@ -15,7 +17,9 @@ export class SitePublicationReviewStore {
     }
     async approve(input:unknown,reviewer:string,now:string) {
         const request=sitePublicationReviewRequestSchema.parse(input);
-        if(!await new SitePublicationStore(this.db,this.tenant).get(request.hash))throw new Error('publication_unavailable');
+        const version=await new SitePublicationStore(this.db,this.tenant).getVersion(request.hash);
+        if(!version)throw new Error('publication_unavailable');
+        if(version.schemaVersion===2){await new SitePublicationManifestStore(this.db,this.tenant).verify(version);await verifyManifestEditorial(this.db,this.tenant,version);}
         const review=sitePublicationReviewSchema.parse({schemaVersion:1,...request,reviewer,reviewedAt:now});
         const changed=await this.db.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug, key) DO NOTHING',
             [this.tenant,this.key(request.hash),JSON.stringify(review),now]);
@@ -25,6 +29,8 @@ export class SitePublicationReviewStore {
     /** Activation and rollback require the target's own review; neither inherits the current site's approval. */
     async activate(hash:string,expected:SitePublicationPointer|null,now:string) {
         if(!await this.get(hash))throw new Error('publication_review_required');
+        const version=await new SitePublicationStore(this.db,this.tenant).getVersion(hash);
+        if(version?.schemaVersion===2){await new SitePublicationManifestStore(this.db,this.tenant).verify(version);await verifyManifestEditorial(this.db,this.tenant,version);}
         return new SitePublicationStore(this.db,this.tenant).activate(hash,expected,now);
     }
 }

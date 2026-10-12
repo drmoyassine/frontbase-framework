@@ -23,6 +23,7 @@ export const publicationProgramSchema = base.extend({ institutionId: id, body: t
 export const publicationCitySchema = z.object({ id, title: text(500).refine(v => v.trim().length > 0) }).strict();
 export const publicationArticleSchema = base.extend({ revision: z.number().int().positive(), body: editorialBodySchema,
     language: z.string().regex(/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/), byline: text(500).nullable(), publishedAt: text(100).nullable() }).strict();
+export const publicationPageSchema = publicationArticleSchema;
 
 const layout = z.record(z.unknown()).refine(value => {
     try {

@@ -51,3 +51,5 @@ console.log('editorial: strict fields/body, immutable identity, fixed scope, CAS
 for(const coverUrl of ['javascript:alert(1)','http://media.test/a.jpg','https://u:p@media.test/a.jpg','https://media.test/a.svg','https://media.test/a.jpg?X-Amz-Signature=x','https://media.test/a.jpg#x','https://media.test/%22a.jpg']) assert.equal(editorialSaveRequestSchema.safeParse({...request,content:{...content,coverUrl}}).success,false);
 assert.equal(editorialSaveRequestSchema.safeParse({...request,content:{...content,coverUrl:'https://media.test/a.webp',coverAlt:'Campus'}}).success,true);
 const omitted={...content};delete omitted.coverUrl;assert.equal(editorialSaveRequestSchema.safeParse({...request,content:omitted}).success,false);
+
+const pageAdapter=editorialAdapter(config,{query:async(sql,args)=>{assert.equal(args[3],'page');return [row];},exec:async()=>0},'page');assert.equal((await pageAdapter.read(id)).contentRole,'page');

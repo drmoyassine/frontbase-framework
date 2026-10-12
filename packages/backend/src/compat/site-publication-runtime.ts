@@ -5,6 +5,13 @@ import type { PageEntry, EngineOptions } from '@frontbase/edge-core';
 import { publicationPathSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
 import { sitePublicationArtifactSchema } from '@frontbase/edge-core/directory/publication';
 import type { PageLayoutData } from '@frontbase/edge-core';
+import type { DbRunner } from '@frontbase/edge-infra';
+import type { PublicationVersion } from './publication-version.js';
+import { resolveChunkPublicationPage } from './site-publication-chunk-runtime.js';
+
+export async function resolvePublicationVersionPage(input:PublicationVersion,hash:string,owner:string,db:DbRunner,request:Request){
+    return input.schemaVersion===1?resolveSitePublicationPage(input,hash,owner,request):resolveChunkPublicationPage(input,hash,owner,db,request);
+}
 
 /** Only explicit visitor-parameter failures get a client-error response. */
 export class PublicationRequestError extends Error {

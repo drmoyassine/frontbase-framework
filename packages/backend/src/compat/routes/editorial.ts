@@ -30,7 +30,7 @@ export function registerEditorialRoutes(app: Hono<{ Variables: ConsoleAuthVars }
         if(!['supabase','postgres','neon'].includes(source.kind)) return c.json({detail:'Article editing requires the canonical Postgres editorial contract'},422);
         try {
             const db=datasourceRunner(source.kind,await mergeAccountConfig(accounts,externalFetch,tenant,source.kind,source.config), externalFetch);
-            const adapter=editorialAdapter(draft.configuration,db);
+            const adapter=editorialAdapter(draft.configuration,db,request.contentRole??'article');
             const approvals = new EditorialApprovalStore(control,tenant);
             if(mode==='read') { const document=await adapter.read(request.id); return document?c.json({document,configurationRevision:draft.revision,approval:await approvals.get(document.id,document.revision,draft.revision),publicationAvailable:false}):c.json({detail:'Article is unavailable'},404); }
             if(mode==='approve') {

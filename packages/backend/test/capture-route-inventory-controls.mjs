@@ -8,6 +8,7 @@ async function load(source) {
     let js=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
     js=js.replace('@frontbase/edge-core/directory/publication',import.meta.resolve('@frontbase/edge-core/directory/publication'))
         .replace('./site-publication-store.js',new URL('../dist/compat/site-publication-store.js',import.meta.url).href);
+    for(const name of ['site-publication-manifest','publication-version'])js=js.replace(`./${name}.js`,new URL(`../dist/compat/${name}.js`,import.meta.url).href);
     return import('data:text/javascript;base64,'+Buffer.from(js+`\n// ${serial++}`).toString('base64'));
 }
 async function evidence(api,kind) {

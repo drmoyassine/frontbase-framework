@@ -64,3 +64,40 @@ response=await cloud.request('https://acme.frontbase.test/institution/',{headers
 response=await cloud.request('https://globex.frontbase.test/institution/',{headers:{host:'globex.frontbase.test'}});assert.equal(response.status,404);assert.equal(response.headers.get('x-site-version'),null);
 assert.equal((await cloud.request('https://unknown.frontbase.test/institution/',{headers:{host:'unknown.frontbase.test'}})).status,404);
 console.log('publication host: inactive compatibility, terminal failures, captured metadata, HEAD, infrastructure routes, network-only SW lifecycle, update/rollback and Cloud owner isolation passed');
+
+// Full-format dispatch uses the same self-hosted engine and infrastructure boundaries.
+const {SitePublicationManifestStore}=await import(new URL('../../../packages/backend/dist/compat/site-publication-manifest.js',import.meta.url).href);
+const {SiteConfigurationStore}=await import(new URL('../../../packages/backend/dist/compat/site-configuration-store.js',import.meta.url).href);
+const {EditorialApprovalStore}=await import(new URL('../../../packages/backend/dist/compat/editorial-approval-store.js',import.meta.url).href);
+await review.approve({hash,checks,note:'Restore synthetic legacy review'},'fixture-reviewer',now);
+const capturedConfig=await new SiteConfigurationStore(runner,'_root').save(config,0,now);
+const pageDocument={id:'00000000-0000-4000-8000-000000000098',revision:1,contentRole:'page',originalPath:'/about/',title:'About the site',excerpt:'Public page',body:[{kind:'paragraph',runs:[{text:'Reviewed generic page'}]}],language:'en',byline:null,publishedAt:null,coverUrl:null,coverAlt:'',reviewState:'requested',reviewNote:'Synthetic page review'};
+const approval=await new EditorialApprovalStore(runner,'_root').approve(pageDocument,capturedConfig,'fixture-reviewer','Synthetic approval',{facts:true,language:true,media:true,formatting:true,urls:true,ctas:true},now);assert.ok(approval);
+const base={summary:'',cover:null,coverAlt:'',logo:null};
+const chunkTemplates=[...artifact.templates,{pageId:'00000000-0000-4000-8000-000000000002',role:'program',title:'Program',description:'',layout:{root:{siteConfiguration:{version:1,role:'program'}},content:[queryNode('program-detail','directory.program.detail')]}},{pageId:'00000000-0000-4000-8000-000000000003',role:'editorial',title:'Page',description:'',layout:{root:{siteConfiguration:{version:1,role:'editorial'}},content:[queryNode('page-detail','directory.page.detail')]}}];
+chunkTemplates[0].layout.content.push(queryNode('programs','directory.program.list'));
+const chunks=new SitePublicationManifestStore(runner,'_root');
+const fullHash=await chunks.prepare({configurationRevision:1,configuration:config,templates:chunkTemplates,approvals:[{id:pageDocument.id,revision:1,fingerprint:approval.fingerprint,contentRole:'page'}],staticPages:[{pageId:'00000000-0000-4000-8000-000000000020',originalPath:'/',title:'Home',description:'',layout:{root:{},content:[{id:'home',type:'Heading',props:{text:'Captured home'}}]}},{pageId:'00000000-0000-4000-8000-000000000021',originalPath:'/apply/',title:'Apply',description:'',layout:{root:{},content:[{id:'apply',type:'Heading',props:{text:'Saved apply page'}}]}}]},
+ {cities:artifact.records.cities,institutions:artifact.records.institutions,programs:Array.from({length:121},(_,i)=>({...base,id:i+1,title:`Captured program ${i+1}`,originalPath:`/old-parent/program-${i+1}/`,institutionId:512})),articles:[],pages:[{...base,id:pageDocument.id,revision:1,title:pageDocument.title,originalPath:pageDocument.originalPath,summary:pageDocument.excerpt,body:pageDocument.body,language:'en',byline:null,publishedAt:null}]},now);
+await review.approve({hash:fullHash,checks,note:'Synthetic full host version'},'fixture-reviewer',now);
+const fullPointer=await review.activate(fullHash,(await store.activeVersion()).pointer,now);assert.ok(fullPointer);
+for(const [path,title] of [['/','Captured home'],['/apply/','Saved apply page'],['/about/','About the site'],['/old-parent/program-121/','Captured program 121'],['/explore/?type=program&page=2','Captured program']]){
+ response=await host.request('https://local.test'+path);assert.equal(response.status,200,path);assert.equal(response.headers.get('x-site-version'),fullHash);html=await response.text();assert.ok(html.includes(title));assert.ok(!html.includes('PRIVATE_'));
+}
+assert.equal((await host.request('https://local.test/legacy-only')).status,404);
+assert.equal((await host.request('https://local.test/frontbase-admin/login')).status,loginBaseline.status);
+assert.equal((await host.request('https://local.test/api/project/site-configuration/publication/state/')).status,401);
+response=await host.request('https://local.test/sitemap.xml');assert.equal(response.status,200);html=await response.text();assert.ok(html.includes('https://study-in-usa.com/apply/'));assert.ok(html.includes('https://study-in-usa.com/about/'));
+const fullManifest=await chunks.get(fullHash),fullRecords:Record<string,unknown[]>={cities:[],institutions:[],programs:[],articles:[],pages:[]};
+for(const ref of fullManifest.chunks)fullRecords[ref.collection].push(...(await chunks.loadChunk(fullManifest,ref)).records);
+const acmeConfig=await new SiteConfigurationStore(runner,'acme').save(config,0,now);
+const acmeApproval=await new EditorialApprovalStore(runner,'acme').approve(pageDocument,acmeConfig,'acme-reviewer','Synthetic cloud page',{facts:true,language:true,media:true,formatting:true,urls:true,ctas:true},now);assert.equal(acmeApproval.fingerprint,approval.fingerprint);
+const acmeChunks=new SitePublicationManifestStore(runner,'acme');
+assert.equal(await acmeChunks.prepare({configurationRevision:1,configuration:config,templates:fullManifest.templates,staticPages:fullManifest.staticPages,approvals:fullManifest.approvals},fullRecords,now),fullHash);
+await acmeReview.approve({hash:fullHash,checks,note:'Synthetic cloud full version'},'acme-reviewer',now);assert.ok(await acmeReview.activate(fullHash,(await acme.activeVersion()).pointer,now));
+response=await cloud.request('https://acme.frontbase.test/about/',{headers:{host:'acme.frontbase.test'}});assert.equal(response.status,200);assert.equal(response.headers.get('x-site-version'),fullHash);
+response=await cloud.request('https://globex.frontbase.test/about/',{headers:{host:'globex.frontbase.test'}});assert.equal(response.status,404);assert.equal(response.headers.get('x-site-version'),null);
+const missingRef=(await chunks.get(fullHash)).chunks.find((ref:any)=>ref.collection==='programs');assert.ok(missingRef);
+await runner.exec('DELETE FROM settings WHERE tenant_slug=? AND key=?',['_root',`site_publication:chunk:v1:${missingRef.hash}`]);
+assert.equal((await host.request('https://local.test/old-parent/program-1/')).status,503);assert.equal((await host.request('https://local.test/sitemap.xml')).status,503);
+console.log('chunk publication host: same-engine home/apply/approved page/121-program dispatch, SEO sitemap, admin/auth boundaries and terminal missing-chunk refusal passed');

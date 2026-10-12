@@ -12,7 +12,7 @@ const localPath = z.string().min(1).max(400).refine(value => {
 /** Transient captured-request state. An array keeps visitor text out of Liquid resolution. */
 export const directoryBrowsingStateSchema = z.tuple([z.object({
     path: localPath, collection: z.enum(['institution', 'program']).nullable(),
-    q: z.string().max(100), searchEnabled: z.boolean(), page: z.number().int().min(1).max(834),
+    q: z.string().max(100), searchEnabled: z.boolean(), page: z.number().int().min(1).max(1667),
     hasNext: z.boolean(),
     previewHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).strict()]);

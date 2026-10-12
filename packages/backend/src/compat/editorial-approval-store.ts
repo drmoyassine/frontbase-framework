@@ -35,6 +35,7 @@ export class EditorialApprovalStore {
         if (document.reviewState !== 'requested' || !document.language || !document.reviewNote.trim() || !reviewer || reviewer.length > 256) throw new Error('approval_not_ready');
         // Explicit public allowlist; private source evidence/review/actor fields never enter snapshot.
         const snapshot = { id: document.id, revision: document.revision, originalPath: document.originalPath,
+            ...(document.contentRole==='page'?{contentRole:'page' as const}:{}),
             title: document.title, excerpt: document.excerpt, body: document.body, language: document.language,
             byline: document.byline, publishedAt: document.publishedAt, coverUrl: document.coverUrl, coverAlt: document.coverAlt };
         const bytes = new TextEncoder().encode(JSON.stringify(snapshot));

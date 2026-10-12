@@ -8,7 +8,7 @@ const hasPageHeading = (nodes: ComponentData[]): boolean => nodes.some(node =>
 export function addDirectoryTemplate(page: Page, binding: DirectoryQueryBinding): NonNullable<Page['layoutData']> {
     const query = directoryQueryBindingSchema.parse(binding); const old = page.layoutData || { root: {}, content: [] };
     if (!old.root.siteConfiguration) throw new Error('Link shared settings first');
-    const detail = query.queryId.endsWith('.detail'); const article = query.queryId.startsWith('directory.article.');
+    const detail = query.queryId.endsWith('.detail'); const article = query.queryId.startsWith('directory.article.') || query.queryId.startsWith('directory.page.');
     const node = (type: string, props: Record<string, unknown>, styles?: Record<string, unknown>) => ({ id: crypto.randomUUID(), type, props, ...(styles ? { styles } : {}) });
     // Editorial body blocks carry their own 20px margins; keep the blocks container gap-free to avoid double spacing.
     const meta = { color: '#64748b', fontSize: '0.875rem', margin: '0' };

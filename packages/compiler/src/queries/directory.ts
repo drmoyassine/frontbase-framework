@@ -3,7 +3,7 @@ import { directoryConfigurationSchema, directoryConfigurationReadiness, parseEdi
 import { defineQueries, type QueryRegistry } from './defineQueries.js';
 import { sitePublicationArtifactSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
 
-const roles = ['institution', 'program', 'city', 'article'] as const;
+const roles = ['institution', 'program', 'city', 'article', 'page'] as const;
 const localPath = z.string().max(400).refine(v => {
     try { const d = decodeURIComponent(v); return v.startsWith('/') && !d.startsWith('//') && !/[\\?#\s\x00-\x20]/.test(d) && !d.split('/').some(p => p === '.' || p === '..'); }
     catch { return false; }
@@ -33,8 +33,8 @@ export function createDirectoryQueries(input: DirectoryConfiguration, owner: str
     const registry: QueryRegistry = {};
     for (const role of roles) for (const mode of ['list', 'detail'] as const) {
         if (role === 'city' && mode === 'detail') continue; // cities have no preserved-path mapping yet
-        const mapping = c.collections[role];
-        if (role === 'article' && !mapping.table) continue;
+        const mapping = c.collections[role === 'page' ? 'article' : role];
+        if ((role === 'article' || role === 'page') && !mapping.table) continue;
         const paramsSchema = directoryPreviewSchema.shape.params.refine(p => mode === 'detail'
             ? !!p.path && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined
             : p.path === undefined && (p.institutionId === undefined || role === 'program') && (p.limit ?? c.browsing.pageSize) <= c.browsing.pageSize);
@@ -48,7 +48,7 @@ export function createDirectoryQueries(input: DirectoryConfiguration, owner: str
                 const city = c.collections.city, institution = c.collections.institution;
                 const cityExists = (alias: string) => `EXISTS (SELECT 1 FROM ${quote(city.table)} dc WHERE ${field('dc', city.fields.id)} = ${field(alias, institution.fields.cityId)} AND ${scoped('dc', city)})`;
                 const where = [scoped('d', mapping)];
-                if (role === 'article') where.push(`${field('d', mapping.fields.contentRole)} = ${bind('article')}`, `${field('d', mapping.fields.sourceOrigin)} = ${bind(c.site.origin)}`);
+                if (role === 'article' || role === 'page') where.push(`${field('d', mapping.fields.contentRole)} = ${bind(role)}`, `${field('d', mapping.fields.sourceOrigin)} = ${bind(c.site.origin)}`);
                 if (role === 'institution') where.push(cityExists('d'));
                 if (role === 'program') where.push(`EXISTS (SELECT 1 FROM ${quote(institution.table)} di WHERE ${field('di', institution.fields.id)} = ${field('d', mapping.fields.institutionId)} AND ${scoped('di', institution)} AND ${cityExists('di')})`);
                 if (p.institutionId !== undefined) where.push(`${field('d', mapping.fields.institutionId)} = ${bind(p.institutionId)}`);
@@ -61,7 +61,7 @@ export function createDirectoryQueries(input: DirectoryConfiguration, owner: str
                 // Enforce a narrow bounded projection even if a driver returns extra columns.
                 return rows.slice(0, mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1).map(row => Object.fromEntries(selected.map(([key]) => {
                     const v = row[key];
-                    if (role === 'article' && key === 'body') return [key, parseEditorialBody(v)];
+                    if ((role === 'article' || role === 'page') && key === 'body') return [key, parseEditorialBody(v)];
                     return [key, key === 'originalPath' ? directoryOriginalPath(v, c.site.origin) : typeof v === 'string' ? v.slice(0, key === 'body' ? 60000 : key === 'gallery' ? 12000 : key === 'summary' ? 1000 : 2048) : typeof v === 'number' && Number.isFinite(v) ? v : null];
                 })));
             } };
@@ -77,7 +77,7 @@ export function createSnapshotDirectoryQueries(input: SitePublicationArtifact, o
         city: artifact.records.cities, article: artifact.records.articles };
     const registry: QueryRegistry = {};
     for (const role of roles) for (const mode of ['list', 'detail'] as const) {
-        if (role === 'city' && mode === 'detail') continue;
+        if (role === 'page' || role === 'city' && mode === 'detail') continue;
         const params = directoryPreviewSchema.shape.params.refine(p => mode === 'detail'
             ? !!p.path && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined
             : p.path === undefined && (p.institutionId === undefined || role === 'program') && (p.limit ?? c.browsing.pageSize) <= c.browsing.pageSize);

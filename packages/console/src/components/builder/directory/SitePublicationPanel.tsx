@@ -4,13 +4,14 @@ import { sitePublicationPointerSchema,type SitePublicationPointer } from '@front
 import { Button } from '@/components/ui/button';
 
 const stateSchema=z.object({pointer:sitePublicationPointerSchema.nullable(),capture:z.object({configurationRevision:z.number().int().positive(),reviewedAt:z.string().datetime(),
-    paths:z.array(z.string().startsWith('/')).max(146),counts:z.object({institutions:z.number().int().min(0).max(48),programs:z.number().int().min(0).max(48),articles:z.number().int().min(0).max(48)}).strict()}).strict().nullable()}).strict()
-    .refine(value=>(value.pointer===null)===(value.capture===null));
+    runtimeVersion:z.literal('directory-chunks-v1').optional(),paths:z.array(z.string().startsWith('/')).max(101002),counts:z.object({institutions:z.number().int().min(0).max(20000),programs:z.number().int().min(0).max(20000),articles:z.number().int().min(0).max(20000),pages:z.number().int().min(0).max(21000).optional()}).strict()}).strict().nullable()}).strict()
+    .refine(value=>(value.pointer===null)===(value.capture===null))
+    .refine(value=>!value.capture || value.capture.runtimeVersion==='directory-chunks-v1' || value.capture.paths.length<=146 && value.capture.counts.pages===undefined && Object.values(value.capture.counts).every(count=>count!<=48));
 const successSchema=z.object({pointer:sitePublicationPointerSchema,changed:z.boolean()}).strict();
 type Candidate={hash:string;review?:string|null;paths:{originalPath:string}[];directory?:string;blog?:string};
 /** Same admin/settings surface; uncertain writes require authenticated read-back, never replay. */
 export function SitePublicationPanel({candidate,revision,disabled=false}:{candidate:Candidate;revision:number;disabled?:boolean}) {
-    const [live,setLive]=useState<z.infer<typeof stateSchema>>(),[busy,setBusy]=useState(false),[confirmed,setConfirmed]=useState(false),[message,setMessage]=useState('Check the live version before publishing.');
+    const [live,setLive]=useState<z.infer<typeof stateSchema>>(),[busy,setBusy]=useState(false),[confirmed,setConfirmed]=useState(false),[urlSearch,setUrlSearch]=useState(''),[message,setMessage]=useState('Check the live version before publishing.');
     const generation=useRef(0),inFlight=useRef(false);
     useEffect(()=>{generation.current++;inFlight.current=false;setLive(undefined);setBusy(false);setConfirmed(false);setMessage('Check the live version before publishing.');return()=>{generation.current++;};},[candidate.hash,revision]);
     const valid=(id:number)=>id===generation.current;
@@ -48,7 +49,7 @@ export function SitePublicationPanel({candidate,revision,disabled=false}:{candid
         <p className="text-sm text-muted-foreground">This version includes only the captured pages below. Other site pages are not included. Reopen an earlier reviewed version above to roll back.</p>
         <p className="break-all text-xs">Selected version: {candidate.hash}</p>
         <p className="text-sm">{candidate.review?`Reviewed ${candidate.review}`:'Review this version before publishing.'}</p>
-        <details><summary className="cursor-pointer text-sm">Included URLs</summary><ul className="max-h-40 overflow-auto text-xs">{[candidate.directory,candidate.blog,...candidate.paths.map(row=>row.originalPath)].filter((path):path is string=>!!path).map(path=><li className="break-all" key={path}>{path}</li>)}</ul></details>
+        <details><summary className="cursor-pointer text-sm">Included URLs</summary><input aria-label="Find included URL" value={urlSearch} onChange={event=>setUrlSearch(event.target.value)} className="w-full rounded border bg-background p-2 text-sm" placeholder="Find URL"/><p className="text-xs">{candidate.paths.length} detail and saved pages · showing at most 100 matching URLs</p><ul className="max-h-40 overflow-auto text-xs">{[candidate.directory,candidate.blog,...candidate.paths.map(row=>row.originalPath)].filter((path):path is string=>!!path && path.toLowerCase().includes(urlSearch.toLowerCase())).slice(0,100).map(path=><li className="break-all" key={path}>{path}</li>)}</ul></details>
         {live && <p className="break-all text-xs">{live.pointer?`Live generation ${live.pointer.generation}: ${live.pointer.hash}`:'No captured site version is currently live.'}</p>}
         <Button variant="outline" disabled={locked} onClick={()=>void check()}>Check live version</Button>
         <label className="flex items-start gap-2 text-sm"><input type="checkbox" aria-label="Confirm selected version replaces live site" disabled={locked||!live||!candidate.review||alreadyLive} checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>Publish this reviewed version as the live site, replacing the version shown above.</label>
