@@ -31,7 +31,7 @@ const LAYOUT_COMPONENTS = new Set([
 
 // Landing page section components
 const LANDING_COMPONENTS = new Set([
-    'Hero', 'Features', 'FeatureSection', 'Pricing', 'CTA', 'Navbar', 'FAQ', 'LogoCloud', 'Footer'
+    'Hero', 'Features', 'FeatureSection', 'Pricing', 'CTA', 'Navbar', 'Sidebar', 'FAQ', 'LogoCloud', 'Footer'
 ]);
 
 /**

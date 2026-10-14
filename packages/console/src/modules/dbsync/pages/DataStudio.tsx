@@ -19,7 +19,7 @@ export function DataStudio() {
         <div className="flex flex-col h-full space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Data Studio</h2>
+                    <h2 className="text-2xl font-bold tracking-tight">Data</h2>
                     <p className="text-muted-foreground">Manage your data sources, synchronizations, and integrity.</p>
                 </div>
                 {isOnDatasources && (

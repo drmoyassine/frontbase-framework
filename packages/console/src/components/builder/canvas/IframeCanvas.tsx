@@ -18,6 +18,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { ComponentData, Page } from '@/types/builder';
+import {markSharedMenuPreview} from '@/lib/builder/sharedMenuPreview';
 import { queryComponentRects, stampComponentIds } from '@/lib/builder/iframeBridge';
 import { clearEditableText, stampEditableText } from '@/lib/builder/editableText';
 import type { ComponentRect } from '@/lib/builder/iframeTypes';
@@ -112,6 +113,7 @@ export const IframeCanvas: React.FC<IframeCanvasProps> = ({
     const prepareIframeDoc = useCallback(
         (doc: Document, nodes: ComponentData[], preview: boolean) => {
             // 1. Stamp data-fb-id so [data-fb-id] selection resolves real components.
+            if(page.layoutData?.root.appMenus!==undefined)markSharedMenuPreview(doc);
             stampComponentIds(doc, nodes);
             // 1b. Stamp data-fb-edit-id/prop on inline-editable text elements
             //     (including NESTED prop text like Hero title / Features card
@@ -119,7 +121,7 @@ export const IframeCanvas: React.FC<IframeCanvasProps> = ({
             //     select→edit for them. No-op in preview mode.
             stampEditableText(doc, nodes, preview);
         },
-        [],
+        [page.layoutData?.root.appMenus],
     );
 
     // STEP 4 of handleLoad — observe content reflow (async image decode, web-

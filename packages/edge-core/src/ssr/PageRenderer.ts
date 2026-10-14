@@ -37,6 +37,7 @@ import { applyNavbarFavicon } from './navbarFavicon.js';
 import { resolveRootStyles } from './rootStyles.js';
 import { renderBadge } from './badge.js';
 import { renderDirectoryBrowsing } from './components/directoryBrowsing.js';
+import { renderTemplateHero, renderTemplateSearch } from './components/templateLanding.js';
 import { renderLayoutComponent } from './layoutRenderer.js';
 import { renderLandingComponent } from './landingDispatcher.js';
 
@@ -94,12 +95,26 @@ async function renderComponent(
         return renderLayoutComponent(type, id, resolvedProps, styles || {}, renderDirectoryBrowsing(resolvedProps), component.visibility);
     }
 
+    if (type === 'Container' && resolvedProps.templateHero !== undefined) {
+        const html=resolvedProps.templateHeroState === undefined ? '<p>Hero imagery appears in the shared template preview.</p>' : renderTemplateHero(resolvedProps.templateHeroState);
+        return renderLayoutComponent(type,id,resolvedProps,styles||{},html,component.visibility);
+    }
+    if (type === 'Container' && resolvedProps.templateSearch !== undefined) {
+        const html=resolvedProps.templateSearchState === undefined ? '<p>Search appears in the shared template preview.</p>' : renderTemplateSearch(resolvedProps.templateSearchState);
+        return renderLayoutComponent(type,id,resolvedProps,styles||{},html,component.visibility);
+    }
+
     const classification = classifyComponent(type);
 
     // Render children recursively (async)
     const childrenHtml = children
         ? (await Promise.all(children.map(child => renderComponent(child, context)))).join('')
         : '';
+
+    if(type==='Container' && resolvedProps.templateMenu!==undefined){
+        const html=`<details class="fb-template-menu" data-fb-template-menu open><summary aria-label="Browse navigation">Browse ☰</summary><nav aria-label="Main navigation" class="fb-template-menu-links">${childrenHtml}</nav></details><style>.fb-template-menu{position:relative}.fb-template-menu summary{cursor:pointer;padding:10px 12px;min-height:44px;border:1px solid currentColor;border-radius:8px;list-style:none}.fb-template-menu-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.fb-template-menu summary:focus-visible{outline:3px solid #fff;outline-offset:3px}@media(min-width:768px){.fb-template-menu summary{display:none}}@media(max-width:767px){.fb-template-menu-links{position:absolute;top:52px;right:0;width:240px;max-width:calc(100vw - 48px);padding:12px;z-index:20;background:var(--fb-template-primary,#122d50);border:1px solid #fff;border-radius:10px;box-shadow:0 8px 24px #0003;flex-direction:column;align-items:stretch}.fb-template-menu:not([open]) .fb-template-menu-links{display:none}}</style>`;
+        return renderLayoutComponent(type,id,resolvedProps,styles||{},html,component.visibility);
+    }
 
     // Build responsive CSS for viewport-specific style overrides (font-size, colors, etc.)
     // Check both styles and stylesData (builder uses stylesData with viewportOverrides)

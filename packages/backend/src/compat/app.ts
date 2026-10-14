@@ -1,3 +1,5 @@
+import { registerMenusRoutes } from './routes/menus.js';
+import {registerAppUserRoutes} from './routes/app-users.js';
 /**
  * CF-22 P1 / D2 — the product-compatible console surface.
  *
@@ -28,6 +30,9 @@ import { registerSiteConfigurationRoutes } from './routes/site-configuration.js'
 import { registerDirectoryPreviewRoutes } from './routes/directory-preview.js';
 import { registerTemplatePreflightRoutes } from './routes/template-preflight.js';
 import { registerPageRouteAudit } from './routes/page-route-audit.js';
+import { registerPagesWorkspaceRoutes } from './routes/pages-workspace.js';
+import { registerPagesOrganizationRoutes } from './routes/pages-organization.js';
+import { pagesWorkspace } from './pages-workspace.js';
 import { registerTemplateArtifactRoutes } from './routes/template-artifact.js';
 import { datasourceRunner } from '../db/datasource-runner.js';
 import { mergeAccountConfig } from './providers/merge-account.js';
@@ -266,6 +271,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // UNAUTHENTICATED routes — registered BEFORE default-deny:
     // 1. Meta (health/liveness)
     registerMetaRoutes(app, runner, deps.includeProductRoot);
+    registerAppUserRoutes(app,runner,secretCipher,externalFetch,now,deps.requestTenant??(deps.cloudMode?async()=>undefined:undefined));
     // 2. Client hydration data plane (product parity — public route, no systemKeyAuth)
     registerDataExecuteRoute(
         app, runner, syncStoreFor, kvFor, externalFetch, now,
@@ -398,9 +404,12 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         deps.userStoreFor ? (t) => deps.userStoreFor!(t).countUsers() : undefined);
     registerThemesRoutes(app, themesFor, now);
     registerProjectRoutes(app, kvFor, now);
+    registerMenusRoutes(app, runner, kvFor, now);
     registerSiteConfigurationRoutes(app, runner, now);
     registerTemplateArtifactRoutes(app);
     registerPageRouteAudit(app, runner);
+    registerPagesWorkspaceRoutes(app, runner);
+    registerPagesOrganizationRoutes(app, runner, now, async tenant => new Set((await pagesWorkspace(runner, tenant)).entries.map(entry => entry.id)));
     registerTemplatePreflightRoutes(app, runner, async (tenant, id) => {
         const datasource = await syncStoreFor(tenant).getDatasource(id);
         if (!datasource) return null;

@@ -22,8 +22,9 @@ import { AccountMenu } from './AccountMenu'
 
 const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/pages', label: 'Builder Studio', icon: FileText },
-    { path: '/data-studio', label: 'Data Studio', icon: Database },
+    { path: '/pages', label: 'Pages', icon: FileText },
+    { path: '/menus', label: 'Menus', icon: Menu },
+    { path: '/data-studio', label: 'Data', icon: Database },
     { path: '/users', label: 'App Users', icon: Users },
     { path: '/storage', label: 'File Storage', icon: HardDrive },
     { path: '/automations', label: 'Automations', icon: Workflow },

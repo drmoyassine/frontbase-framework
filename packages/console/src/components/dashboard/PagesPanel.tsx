@@ -34,6 +34,7 @@ import { resolvePreviewUrl } from '@/lib/edgeUtils';
 import { CreatePageDialog } from './CreatePageDialog';
 import { EdgePublishDialog } from './settings/shared/EdgePublishDialog';
 import { PageRouteAudit } from './PageRouteAudit';
+import { PagesWorkspace } from './pages-workspace/PagesWorkspace';
 
 export const PagesPanel: React.FC = () => {
   const navigate = useNavigate();
@@ -415,13 +416,13 @@ export const PagesPanel: React.FC = () => {
               placeholder="Search pages..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 w-[300px]"
+              className="pl-8 w-full sm:w-[300px]"
             />
           </div>
         </div>
 
         {/* Bulk actions */}
-        {filteredPages.length > 0 && (
+        {showTrash && filteredPages.length > 0 && (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -516,6 +517,22 @@ export const PagesPanel: React.FC = () => {
         )}
       </div>
 
+      {!showTrash && isAuthenticated && <PagesWorkspace
+        scope={`${tenantSlug ?? '_root'}:${user?.id ?? ''}`} pages={pages} search={searchQuery} filterStatus={filterStatus}
+        edit={handleEditPage}
+        actions={page => <>
+          <DropdownMenuItem onClick={() => handleDuplicatePage(page)}>Duplicate</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExportPage(page)}>Export</DropdownMenuItem>
+          {!page.layoutData?.root?.siteConfiguration && !page.layoutData?.root?.directoryLanding && <DropdownMenuItem onClick={() => {setSelectedPages(new Set([page.id]));setShowPublishDialog(true);}}>Publish to target</DropdownMenuItem>}
+          {page.deployments?.map((dep: any) => <React.Fragment key={dep.id}>
+            <DropdownMenuItem onClick={() => handleSyncTarget(page.id, dep.engineId)}>Sync: {dep.target?.name || 'Target'}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleUnpublishTarget(page.id, dep.engineId)}>Unpublish: {dep.target?.name || 'Target'}</DropdownMenuItem>
+          </React.Fragment>)}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="text-destructive" onClick={() => handleDeletePage(page.id)}>Move to trash</DropdownMenuItem>
+        </>}
+      />}
+      {showTrash && <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPages.map((page) => {
           const badges = getPageBadges(page);
@@ -744,6 +761,8 @@ export const PagesPanel: React.FC = () => {
           </p>
         </div>
       ) : null}
+
+      </>}
 
       <CreatePageDialog
         open={showCreateDialog}

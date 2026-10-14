@@ -9,6 +9,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@frontbase/edge-core": "workspace:*",
     "@tanstack/react-query": "5.90.17",
     "react": "19.2.3",
     "react-dom": "19.2.3"

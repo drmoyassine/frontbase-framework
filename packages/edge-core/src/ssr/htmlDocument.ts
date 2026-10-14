@@ -16,7 +16,7 @@ export { escapeHtml };
 // Cache-busting version - update this when hydration scripts change.
 // Exported so shell.ts (the canvas/published-page shell) references the SAME
 // version instead of a drifting copy.
-export const HYDRATE_VERSION = '20260617c';
+export const HYDRATE_VERSION = '20261012-homepage-2';
 
 // Default favicon path constant
 const DEFAULT_FAVICON = '/static/icon.png';

@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { supabase } from '@/lib/supabase';
+import type {SupabaseClient} from '@supabase/supabase-js';
+import {createAppUserClient,syncAppUserSession,safeAppRedirect} from './app-user-session';
 import { AuthForm, AUTH_PROVIDERS } from '@/types/auth-form';
 import { Loader2 } from 'lucide-react';
-import { useUserContactConfig } from '@/hooks/useUserContactConfig';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -17,17 +17,20 @@ export default function EmbedAuthPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedContactType, setSelectedContactType] = useState<string>('');
     const [activeTab, setActiveTab] = useState('sign_in');
-
-    // Use config to determine redirection logic
-    const { config: userConfig } = useUserContactConfig();
+    const [supabase,setSupabase]=useState<SupabaseClient|null>(null);
+    const [contactLabels,setContactLabels]=useState<Record<string,string>>({});
 
     useEffect(() => {
+        let active=true;const controller=new AbortController();let client:SupabaseClient|null=null;
+        setLoading(true);setError(null);setForm(null);setSupabase(null);setContactLabels({});setSelectedContactType('');setActiveTab('sign_in');
         async function fetchForm() {
             try {
-                const res = await fetch(`/api/auth-forms/${formId}/`);
-                const json = await res.json();
-                if (json.success) {
-                    const loadedForm = json.data;
+                const res = await fetch(`/api/app-users/forms/${formId}/`,{credentials:'omit',signal:controller.signal});
+                const json = await res.json();if(!active)return;
+                if (res.ok&&json.form&&json.provider) {
+                    const loadedForm = json.form;
+                    client=createAppUserClient(json.provider);setSupabase(client);
+                    setContactLabels(json.contactTypes??{});
                     setForm(loadedForm);
                     // Initialize contact type
                     if (loadedForm.allowedContactTypes && loadedForm.allowedContactTypes.length > 0) {
@@ -40,18 +43,19 @@ export default function EmbedAuthPage() {
                     else if (loadedForm.type === 'login') setActiveTab('sign_in');
                     else if (loadedForm.config.defaultView) setActiveTab(loadedForm.config.defaultView);
                 } else {
-                    setError(json.error || 'Form not found');
+                    setError('Form unavailable. Check its activation and App Users configuration.');
                 }
             } catch (err) {
-                setError('Failed to load form');
+                if(active)setError('Failed to load form');
             } finally {
-                setLoading(false);
+                if(active)setLoading(false);
             }
         }
 
         if (formId) {
             fetchForm();
-        }
+        }else setLoading(false);
+        return()=>{active=false;controller.abort();void client?.auth.stopAutoRefresh();};
     }, [formId]);
 
     // Resize Observer for Smart Embed
@@ -77,34 +81,20 @@ export default function EmbedAuthPage() {
     }, [formId, form, activeTab, selectedContactType]); // Re-measure on tab switch or selection change
 
     useEffect(() => {
+        if(!supabase||!form)return;let active=true;
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session && form) {
-                // If this was a SIGNUP event, we might need to record the contact type
-                // Note: Getting the exact event type (signup vs login) can be tricky in Supabase v2 client-side
-                // But we can check if the user has metadata or if we want to force an update.
-
-                // Ideally, we'd pass this as metadata to the signUp call, 
-                // but Auth UI component doesn't easily allow dynamic metadata injection based on external state *during* the submission.
-                // WORKAROUND: We will update the user's metadata immediately after sign in if it's not set.
-                // However, since we are in an iframe, security rules might apply.
-
-                // Ideally the redirect URL handles the semantic logic. 
-                // For now, let's assume the user is created and we handle navigation.
-
-                // Handle Redirection logic
-                if (form.redirectUrl) {
-                    window.top!.location.href = form.redirectUrl;
-                    return;
-                }
-
-                // Default logic: Redirect to dashboard
-                const builderUrl = window.location.origin;
-                window.top!.location.href = `${builderUrl}/dashboard`;
+            if ((event === 'SIGNED_IN'||event==='INITIAL_SESSION') && session && form) {
+                // Only the server bridge establishes the application cookie.
+                try{await syncAppUserSession(session.access_token);if(!active)return;window.top!.location.href=new URL(safeAppRedirect(form.redirectUrl),window.location.origin).href;}catch(e){if(active)setError(e instanceof Error?e.message:'Login could not be confirmed');}
+            }
+            if(event==='TOKEN_REFRESHED'||event==='SIGNED_OUT'){
+                // Defer fetch work outside the SDK's auth-state notification lock.
+                void Promise.resolve().then(()=>{if(active)return syncAppUserSession(session?.access_token??null);}).catch(e=>{if(active)setError(e instanceof Error?e.message:'Login could not be confirmed');});
             }
         });
 
-        return () => subscription.unsubscribe();
-    }, [form]);
+        return () => {active=false;subscription.unsubscribe();};
+    }, [form,supabase]);
 
     if (loading) {
         return (
@@ -114,7 +104,7 @@ export default function EmbedAuthPage() {
         );
     }
 
-    if (error || !form) {
+    if (error || !form || !supabase) {
         return (
             <div className="flex items-center justify-center min-h-[300px] text-destructive">
                 <p>{error || 'Form not found'}</p>
@@ -157,7 +147,7 @@ export default function EmbedAuthPage() {
                         <SelectContent>
                             {contactTypes.map(type => (
                                 <SelectItem key={type} value={type}>
-                                    {userConfig?.contactTypes[type] || type}
+                                    {contactLabels[type] || type}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -174,7 +164,7 @@ export default function EmbedAuthPage() {
                 showLinks={form.config.showLinks !== false}
                 magicLink={form.config.magicLink}
                 onlyThirdPartyProviders={false}
-                redirectTo={window.location.origin + '/auth/callback'}
+                redirectTo={window.location.origin + window.location.pathname}
                 // Pass metadata to be saved on signup
                 additionalData={
                     view === 'sign_up' && selectedContactType

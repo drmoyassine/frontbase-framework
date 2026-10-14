@@ -73,16 +73,25 @@ export interface NavbarProps {
     buttonGapBase?: string;
 }
 
+/** Preserve the supplied CSS unit when applying the native component scale. */
+function scaledLength(value: string, scale: number): string {
+    const match = /^(\d+(?:\.\d+)?)(px|rem|em)$/.exec(value);
+    return match ? `${Number(match[1]) * scale}${match[2]}` : '0rem';
+}
+
 // Helper to render CTA-style links (DRY for both primary and secondary buttons)
 function renderCtaLink(
     id: string,
     text: string,
     target: string,
     navType: 'scroll' | 'link',
-    variant: 'primary' | 'secondary'
+    variant: 'primary' | 'secondary',
+    styleVariant = 'default'
 ): string {
     const scrollAttr = navType === 'scroll' ? `data-scroll-to="${escapeHtml(target)}"` : '';
-    const variantClasses = variant === 'primary'
+    const variantClasses = styleVariant === 'outline' ? 'border border-current hover:bg-accent'
+        : styleVariant === 'ghost' ? 'hover:bg-accent'
+        : variant === 'primary'
         ? 'bg-primary text-primary-foreground hover:bg-primary/90'
         : 'border border-border hover:bg-accent';
 
@@ -144,9 +153,9 @@ function renderNewFormat(
     const logoFontWeight = props.logoFontWeight as string || '700';
 
     // Apply scale to sizes
-    const logoHeight = `${parseFloat(logoHeightBase) * scale}rem`;
-    const iconSize = `${parseFloat(iconSizeBase) * scale}rem`;
-    const logoFontSize = `${parseFloat(logoFontSizeBase) * scale}rem`;
+    const logoHeight = scaledLength(logoHeightBase, scale);
+    const iconSize = scaledLength(iconSizeBase, scale);
+    const logoFontSize = scaledLength(logoFontSizeBase, scale);
 
     if (logo.type === 'image' && logo.imageUrl) {
         // Use renderImage primitive with scaled size
@@ -175,7 +184,7 @@ function renderNewFormat(
 
     // Menu items HTML with scroll support (apply scale to font size)
     const menuFontSizeBase = props.menuFontSizeBase as string || '0.875rem';
-    const menuFontSize = `${parseFloat(menuFontSizeBase) * scale}rem`; // 14px base
+    const menuFontSize = scaledLength(menuFontSizeBase, scale); // 14px base
     const menuItemsHtml = menuItems.map(item => {
         const href = item.navType === 'scroll' ? item.target : item.target;
         const scrollAttr = item.navType === 'scroll' ? `data-scroll-to="${escapeHtml(item.target)}"` : '';
@@ -229,7 +238,8 @@ function renderNewFormat(
             secondaryButton.text || 'Learn More',
             secondaryButton.target || '#',
             secondaryButton.navType || 'link',
-            'secondary'
+            'secondary',
+            secondaryButton.variant
         );
     }
 
@@ -239,7 +249,8 @@ function renderNewFormat(
             primaryButton?.text || 'Get Started',
             primaryButton?.target || '#',
             primaryButton?.navType || 'link',
-            'primary'
+            'primary',
+            primaryButton?.variant
         );
     }
 
@@ -248,10 +259,10 @@ function renderNewFormat(
     const navGapBase = props.navGapBase as string || '2rem';
     const menuGapBase = props.menuGapBase as string || '1.5rem';
     const buttonGapBase = props.buttonGapBase as string || '0.75rem';
-    const navPadding = `${parseFloat(navPaddingBase) * scale}rem`; // py-4 = 1rem
-    const navGap = `${parseFloat(navGapBase) * scale}rem`; // gap-8 = 2rem
-    const menuGap = `${parseFloat(menuGapBase) * scale}rem`; // gap-6 = 1.5rem
-    const buttonGap = `${parseFloat(buttonGapBase) * scale}rem`; // gap-3 = 0.75rem
+    const navPadding = scaledLength(navPaddingBase, scale); // py-4 = 1rem
+    const navGap = scaledLength(navGapBase, scale); // gap-8 = 2rem
+    const menuGap = scaledLength(menuGapBase, scale); // gap-6 = 1.5rem
+    const buttonGap = scaledLength(buttonGapBase, scale); // gap-3 = 0.75rem
 
     return `
         <header id="${id}" class="${headerClasses}" style="${inlineStyles}">
@@ -276,7 +287,7 @@ function renderNewFormat(
                     <!-- Mobile: Dark Mode Toggle + Menu Button -->
                     <div class="md:hidden flex items-center gap-2">
                         ${darkModeToggleHtml}
-                        <button type="button" class="p-2 rounded-lg hover:bg-accent" data-fb-mobile-menu-toggle>
+                        <button type="button" class="p-2 rounded-lg hover:bg-accent" aria-label="Toggle navigation" aria-expanded="false" aria-controls="${escapeHtml(id)}-mobile-menu" data-fb-mobile-menu-toggle>
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                             </svg>
@@ -285,7 +296,7 @@ function renderNewFormat(
                 </div>
 
                 <!-- Mobile Menu (hidden by default) -->
-                <div class="md:hidden hidden pb-4" data-fb-mobile-menu>
+                <div id="${escapeHtml(id)}-mobile-menu" class="md:hidden hidden pb-4" data-fb-mobile-menu>
                     <nav class="flex flex-col gap-1">
                         ${mobileMenuItemsHtml}
                     </nav>

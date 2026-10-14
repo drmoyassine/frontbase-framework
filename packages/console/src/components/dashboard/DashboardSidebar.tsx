@@ -8,6 +8,7 @@ import {
   Settings,
   Palette,
   Server,
+  Menu,
   Workflow
 } from 'lucide-react';
 import {
@@ -24,8 +25,9 @@ import {
 } from '@/components/ui/sidebar';
 
 const menuItems = [
-  { title: 'Builder Studio', url: '/pages', icon: FileText },
-  { title: 'Database', url: '/data-studio', icon: Database },
+  { title: 'Pages', url: '/pages', icon: FileText },
+  { title: 'Menus', url: '/menus', icon: Menu },
+  { title: 'Data', url: '/data-studio', icon: Database },
   { title: 'App Users', url: '/users', icon: Users },
   { title: 'File Storage', url: '/storage', icon: HardDrive },
   { title: 'Automations', url: '/automations', icon: Workflow },

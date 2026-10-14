@@ -43,6 +43,7 @@ import { VariableInput } from './VariableInput';
 import { toast } from 'sonner';
 import { directoryConfigurationIssues, sitePageReferenceSchema, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { SharedPageConfigurationPanel } from './directory/SharedPageConfigurationPanel';
+import {SharedMenusPanel} from './SharedMenusPanel';
 import { DirectoryConfigurationPanel } from './directory/DirectoryConfigurationPanel';
 import { applyDirectoryConfiguration } from './directory/applyDirectoryConfiguration';
 
@@ -227,6 +228,7 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
                         {/* BASIC TAB */}
                         <TabsContent value="basic" className="space-y-6">
                             {/* Page Name - Always visible */}
+                            <SharedMenusPanel key={currentPage.id} page={currentPage} onChange={layoutData=>handleUpdatePage({layoutData})}/>
                             <div className="space-y-2">
                                 <Label htmlFor="pageName">Page Name</Label>
                                 <Input

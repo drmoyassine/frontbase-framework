@@ -27,3 +27,5 @@ export type { LogoCloudProps, LogoItem } from './LogoCloud.js';
 
 export { renderFooter } from './Footer.js';
 export type { FooterProps, FooterColumn, FooterLink, SocialLink } from './Footer.js';
+
+export { renderSidebar } from './Sidebar.js';

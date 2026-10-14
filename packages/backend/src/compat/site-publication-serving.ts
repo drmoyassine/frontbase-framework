@@ -17,7 +17,7 @@ export type SitePublicationResolution =
     | {status:'resolved';hash:string;generation:number;result:NonNullable<Awaited<ReturnType<typeof resolveSitePublicationPage>>>};
 
 /** Trusted host owner only. Once active, missing/unavailable MUST NOT fall back to mutable pages. */
-export async function resolveReviewedSitePublication(db:DbRunner,owner:string,request:Request):Promise<SitePublicationResolution> {
+export async function resolveReviewedSitePublication(db:DbRunner,owner:string,request:Request,audience:import('@frontbase/edge-core/menus').VerifiedMenuAudience|null=null):Promise<SitePublicationResolution> {
     if(!owner)throw new Error('publication_owner_required');
     try {
         const active=await new SitePublicationStore(db,owner).activeVersion();
@@ -38,16 +38,17 @@ export async function resolveReviewedSitePublication(db:DbRunner,owner:string,re
             if(active.artifact.schemaVersion===2){await new SitePublicationManifestStore(db,owner).verify(active.artifact);await verifyManifestEditorial(db,owner,active.artifact);}
             return {status:'sitemap',hash:active.pointer.hash,generation:active.pointer.generation,xml:capturedSiteSitemap(active.artifact)};
         }
-        const result=await resolvePublicationVersionPage(active.artifact,active.pointer.hash,owner,db,request);
+        const result=await resolvePublicationVersionPage(active.artifact,active.pointer.hash,owner,db,request,audience);
         if(!result)return {status:'missing'};
         return {status:'resolved',hash:active.pointer.hash,generation:active.pointer.generation,result};
     }catch(error){return error instanceof PublicationRequestError ? {status:'invalid'} : {status:'unavailable'};}
 }
 
 /** Final page-dispatch boundary only: null means INACTIVE, never missing/corrupt. */
-export async function renderReviewedSitePublication(db:DbRunner,owner:string,request:Request,options:{swBundle?:string}={}):Promise<Response|null> {
+export async function renderReviewedSitePublication(db:DbRunner,owner:string,request:Request,options:{swBundle?:string;resolveAudience?:(owner:string,request:Request)=>Promise<import('@frontbase/edge-core/menus').VerifiedMenuAudience>}={}):Promise<Response|null> {
     if(!['GET','HEAD'].includes(request.method))throw new Error('publication_method_invalid');
-    const resolution=await resolveReviewedSitePublication(db,owner,request);
+    const audience=options.resolveAudience?await options.resolveAudience(owner,request).catch(()=>({authenticated:false})):null;
+    const resolution=await resolveReviewedSitePublication(db,owner,request,audience);
     if(resolution.status==='inactive')return null;
     const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     if(resolution.status==='redirect'){

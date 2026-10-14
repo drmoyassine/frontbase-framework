@@ -34,6 +34,7 @@ import type { Page } from '@/types/builder';
 import { buildReRenderRequest } from '@/lib/builder/iframeBridge';
 import { sitePageReferenceSchema, siteConfigurationDraftSchema, projectSharedDirectoryPreview } from '@frontbase/edge-core/directory/configuration';
 import { loadDirectoryCanvas } from '../directory/loadDirectoryCanvas';
+import {loadMenuCanvas} from './loadMenuCanvas';
 import {
     fetchBuilderRender,
     fetchReRender,
@@ -74,9 +75,9 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string): UseIframeCa
             setError(null);
 
             const body = buildReRenderRequest(page);
-            if (page.layoutData?.root.siteConfiguration !== undefined) {
+            if (page.layoutData?.root.siteConfiguration !== undefined || page.layoutData?.root.directoryLanding!==undefined) {
                 try {
-                    sitePageReferenceSchema.parse(page.layoutData.root.siteConfiguration);
+                    if(page.layoutData.root.siteConfiguration!==undefined)sitePageReferenceSchema.parse(page.layoutData.root.siteConfiguration);
                     const response = await fetch('/api/project/site-configuration/', { credentials: 'include', signal: controller.signal });
                     if (!response.ok) throw new Error();
                     const saved = siteConfigurationDraftSchema.parse((await response.json()).draft);
@@ -88,6 +89,7 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string): UseIframeCa
                 }
                 if (cancelled) return;
             }
+            try{body.layout=await loadMenuCanvas(body.layout,page.id,page.isHomepage?'/':`/${page.slug.replace(/^\/+|\/+$/g,'')}/`,controller.signal);}catch{if(!cancelled&&!controller.signal.aborted){setHtml('');setStatus('error');setError('Shared menu references are unavailable. Reload their saved version in Page Settings.');}return;}
             const baseOpts: BuilderApiOptions = {
                 systemEdgeUrl,
                 signal: controller.signal,
@@ -162,10 +164,11 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string): UseIframeCa
         // Deps mirror EXACTLY what buildReRenderRequest(page) consumes (layout
         // content/root via page.layoutData, plus pageData: title ?? name, slug,
         // description) plus the effect's own systemEdgeUrl input. page.id is
-        // intentionally omitted: it is not read in the render body, and a page
-        // swap always surfaces as a new page.layoutData reference anyway.
+        // participates in shared menu reference validation.
     }, [
         page.layoutData,
+        page.id,
+        page.isHomepage,
         focusRevision,
         page.title,
         page.name,

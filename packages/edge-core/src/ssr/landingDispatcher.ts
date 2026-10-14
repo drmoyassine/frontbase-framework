@@ -21,6 +21,8 @@ export function renderLandingComponent(
             return landing.renderPricing(id, props as any, stylesData as any);
         case 'CTA':
             return landing.renderCTA(id, props as any, stylesData as any);
+        case 'Sidebar':
+            return landing.renderSidebar(id, props as any, stylesData as any);
         case 'Navbar':
             return landing.renderNavbar(id, props as any, stylesData as any);
         case 'FAQ':

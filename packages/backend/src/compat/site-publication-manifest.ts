@@ -3,6 +3,7 @@ import type { DbRunner } from '@frontbase/edge-infra';
 import { stableStringify } from '@frontbase/compiler/manifest';
 import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, directoryLayoutQueries } from '@frontbase/edge-core/directory/configuration';
 import { publicationTemplateSchema, publicationPathSchema } from '@frontbase/edge-core/directory/publication';
+import {menuReferenceSchema} from '@frontbase/edge-core/menus';
 import type { PageLayoutData } from '@frontbase/edge-core';
 import { publicationHash } from './publication-hash.js';
 import { packPublicationChunks, SitePublicationChunkStore, publicationChunkReferenceSchema, type PublicationChunk, type PublicationChunkReference } from './site-publication-chunks.js';
@@ -27,6 +28,7 @@ export const sitePublicationManifestSchema = z.object({ schemaVersion: z.literal
     redirects:z.array(publicationRedirectSchema).max(5000).optional(),
 }).strict().superRefine((manifest, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+    for(const page of [...manifest.templates,...(manifest.staticPages??[])]){const menus=(page.layout.root as Record<string,unknown>|undefined)?.appMenus;if(menus!==undefined){const reference=menuReferenceSchema.safeParse(menus);if(!reference.success||reference.data.pageId!==page.pageId)fail('menu_reference_invalid');}}
     if (byteSize(manifest) > MAX_MANIFEST_BYTES) fail('publication_manifest_too_large');
     if (directoryConfigurationReadiness(manifest.configuration).length) fail('configuration_incomplete');
     if (manifest.chunks.reduce((sum, chunk) => sum + chunk.bytes, 0) > 256 * 1024 * 1024) fail('publication_catalog_too_large');
@@ -109,6 +111,13 @@ function indexChunk(chunk: PublicationChunk, reference: PublicationChunkReferenc
 export class SitePublicationManifestStore {
     private chunks: SitePublicationChunkStore;
     constructor(private db: DbRunner, private tenant: string) { this.chunks = new SitePublicationChunkStore(db, tenant); }
+    /** Layout-only derivative: preserve exact immutable content/index/approval/redirect references. */
+    async prepareLayouts(baseHash:string,layouts:Pick<SitePublicationManifest,'templates'|'staticPages'>,now:string):Promise<string>{
+        const base=await this.get(baseHash);if(!base)throw Error('publication_manifest_unavailable');await this.verify(base);
+        const manifest=sitePublicationManifestSchema.parse({...base,templates:layouts.templates,staticPages:layouts.staticPages}),hash=await publicationHash(manifest);
+        const changed=await this.db.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug, key) DO NOTHING',[this.tenant,`site_publication:manifest:v2:${hash}`,stableStringify(manifest),now]);
+        if(changed!==0&&changed!==1||!await this.get(hash))throw Error('publication_manifest_unavailable');return hash;
+    }
     async prepare(header: Header, records: Records, now: string): Promise<string> {
         const input = recordsInput.parse(records);
         const packed = (['cities', 'institutions', 'programs', 'articles','pages'] as const).flatMap(collection => packPublicationChunks(collection, input[collection]));

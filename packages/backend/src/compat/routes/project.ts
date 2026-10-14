@@ -9,6 +9,7 @@ import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { KeyValueStore } from '../store.js';
 import { saveProjectAsset } from '../assets.js';
+import { directoryConfigurationSchema } from '@frontbase/edge-core/directory/configuration';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -67,6 +68,9 @@ export function registerProjectRoutes(app: App, kvFor: (t: string) => KeyValueSt
     // PUT /api/project/
     app.put('/api/project/', async (c) => {
         const body = await c.req.json().catch(() => ({}));
+        if (body && typeof body === 'object' && 'siteIdentity' in body && !directoryConfigurationSchema.shape.site.omit({ destination: true }).safeParse(body.siteIdentity).success) {
+            return c.json({ detail: 'Invalid public site identity' }, 400);
+        }
         const ts = now();
         // Read existing data first to preserve fields not in the request body
         const existing = await kvFor(c.get('tenant')).getJson('project', {}) as any;

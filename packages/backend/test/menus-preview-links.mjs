@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';
+import {rewritePublicationPreviewLinks} from '../dist/compat/site-publication-preview-links.js';
+const nodes=[{id:'header',type:'Navbar',props:{logo:{link:'/'},menuItems:[{navType:'link',target:'/explore/?type=program',subItems:[{navType:'link',target:'https://site.test/blog/'}]},{navType:'scroll',target:'section'}],primaryButton:{navType:'link',target:'https://external.test/'}}},{id:'footer',type:'Footer',props:{columns:[{links:[{href:'/blog/'}]}]}},{id:'body',type:'Link',props:{href:'/#search'}}];
+const before=JSON.stringify(nodes),hash='a'.repeat(64),next=rewritePublicationPreviewLinks(nodes,new Set(['/','/blog/','/explore/']),hash,'https://site.test');
+assert.equal(JSON.stringify(nodes),before);
+const target=new URL(next[0].props.menuItems[0].target,'https://stage.test');assert.equal(target.pathname,'/api/project/site-configuration/publication/render/');assert.equal(target.searchParams.get('hash'),hash);assert.equal(target.searchParams.get('type'),'program');assert.equal(target.searchParams.get('path'),'/explore/');
+assert.ok(next[0].props.logo.link.includes(hash));assert.ok(next[0].props.menuItems[0].subItems[0].target.includes(hash));assert.equal(next[0].props.menuItems[1].target,'section');assert.equal(next[0].props.primaryButton.target,'https://external.test/');assert.ok(next[1].props.columns[0].links[0].href.includes(hash));assert.equal(next[2].props.href,'/#search');
+console.log('Menu private preview navigation: same capture for native header/footer/nesting/query links, external/scroll preservation and immutable authoring input PASS');

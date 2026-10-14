@@ -86,7 +86,9 @@ const privateArticle=await app.request('/api/project/site-configuration/publicat
 const privateArticleHtml=await privateArticle.text();assert.equal(privateArticle.status,200);
 const previewLinks=[...privateArticleHtml.matchAll(/href="([^"]+)"/g)].map(match=>new URL(match[1].replaceAll('&amp;','&'),'https://publication-preview.invalid'));
 assert.ok(previewLinks.some(link=>link.searchParams.get('hash')===hash&&link.searchParams.get('path')==='/about-studygram/'));
-for(const unchanged of ['https://other.example/about-studygram/','https://study-in-usa.com/not-captured/','https://study-in-usa.com/about-studygram/#section'])assert.ok(previewLinks.some(link=>link.href===unchanged),unchanged);
+for(const unchanged of ['https://other.example/about-studygram/','https://publication-preview.invalid/not-captured/','https://publication-preview.invalid/about-studygram/#section'])assert.ok(previewLinks.some(link=>link.href===unchanged),unchanged);
+assert.ok(privateArticleHtml.includes('href="/not-captured/"'));
+assert.ok(privateArticleHtml.includes('href="/about-studygram/#section"'));
 role='viewer';assert.equal((await call('prepare',selection)).status,403);assert.equal((await call('read',{hash})).status,403);role='owner';
 authenticated=false;assert.equal((await call('read',{hash})).status,401);authenticated=true;
 tenant='beta';assert.equal((await call('read',{hash})).status,404);assert.equal((await call('activate',{hash,expected:null})).status,503);tenant='alpha';

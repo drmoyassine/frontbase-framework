@@ -14,12 +14,12 @@ import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Users } from 'lucide-react';
 import { PrivacySettingsForm } from './settings/shared/PrivacySettingsForm';
 import { ProjectDetailsForm } from './settings/shared/ProjectDetailsForm';
+import { PublicSiteIdentityForm } from './settings/shared/PublicSiteIdentityForm';
 import { SiteConfigurationForm } from './settings/shared/SiteConfigurationForm';
+import { TemplateSettingsForm } from './settings/shared/TemplateSettingsForm';
 import { AdminInviteForm } from './settings/shared/AdminInviteForm';
 import { EdgeAPIKeysForm } from './settings/shared/EdgeAPIKeysForm';
 import { EdgeProvidersSection } from './settings/shared/EdgeProvidersSection';
@@ -30,8 +30,8 @@ import { isCloud } from '@/lib/edition';
 
 const CLOUD = isCloud();
 const VALID_TABS: string[] = CLOUD
-  ? ['general', 'plan', 'team', 'privacy', 'keys', 'accounts', 'security']
-  : ['general', 'team', 'privacy', 'keys', 'accounts', 'security'];
+  ? ['general', 'template', 'plan', 'team', 'privacy', 'keys', 'accounts', 'security']
+  : ['general', 'template', 'team', 'privacy', 'keys', 'accounts', 'security'];
 type SettingsTab = string;
 
 export const SettingsPanel: React.FC = () => {
@@ -55,8 +55,9 @@ export const SettingsPanel: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className={`grid w-full ${CLOUD ? 'grid-cols-7 lg:w-[1050px]' : 'grid-cols-6 lg:w-[900px]'}`}>
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="template">Template settings</TabsTrigger>
           {CLOUD && <TabsTrigger value="plan">Plan & Usage</TabsTrigger>}
           <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="privacy">Privacy & Tracking</TabsTrigger>
@@ -65,26 +66,11 @@ export const SettingsPanel: React.FC = () => {
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="template" className="space-y-6 mt-6"><SiteConfigurationForm /><TemplateSettingsForm /></TabsContent>
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6 mt-6">
+          <PublicSiteIdentityForm />
           <ProjectDetailsForm withCard />
-          <SiteConfigurationForm />
-
-          <Separator />
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-destructive">Danger Zone</CardTitle>
-              <CardDescription>
-                Irreversible and destructive actions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="destructive">
-                Delete Project
-              </Button>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* Plan & Usage Tab (cloud only) */}

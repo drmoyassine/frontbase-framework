@@ -16,6 +16,10 @@ import { KPICard } from './wrappers/KPICard';
 import { Grid } from './wrappers/Grid';
 import { Repeater } from './wrappers/repeater/Repeater';
 import './globals.css';
+import { startHeroSlides } from '@frontbase/edge-core/browser/template';
+
+// These SSR-native controls also run when the page has no React widgets.
+startHeroSlides();
 
 // Create QueryClient with sensible defaults for SSR hydration
 const queryClient = new QueryClient({
@@ -320,6 +324,7 @@ function initMobileMenuToggle() {
 
         button.addEventListener('click', () => {
             const isHidden = mobileMenu.classList.contains('hidden');
+            button.setAttribute('aria-expanded', String(isHidden));
 
             if (isHidden) {
                 mobileMenu.classList.remove('hidden');

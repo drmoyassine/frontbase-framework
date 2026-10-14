@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { directoryLayoutQueries, projectDirectoryRecords } from '../dist/directory/configuration.js';
+import { directoryLayoutQueries, projectDirectoryRecords, projectRelativeSiteLinks } from '../dist/directory/configuration.js';
 import { renderPage } from '../dist/index.js';
 const layout = { root: { siteConfiguration: { version: 1, role: 'directory' }, custom: 'retained' }, content: [
     { id: 'custom', type: 'Text', props: { text: 'Custom content' } },
@@ -12,6 +12,17 @@ const layout = { root: { siteConfiguration: { version: 1, role: 'directory' }, c
     ] },
 ] };
 const before = JSON.stringify(layout);
+const navigation = {content: [{id:'navigation',type:'Container',children:[
+    ...['https://site.test/explore/?type=program#results', '/already-relative/', 'https://external.test/help',
+        'https://site.test.evil.test/', 'https://user:password@site.test/path/', 'https://site.test//external.test/',
+        'https://site.test/%2Fexternal.test/', 'https://site.test/%5Cexternal.test/', 'mailto:help@site.test', 'https://site.test/%E0%A4%A'].map((href,i)=>({id:String(i),type:'Link',props:{href}})),
+    {id:'media',type:'Image',props:{src:'https://site.test/image.png'}},
+]}]};
+const navigationBefore=JSON.stringify(navigation), portable=projectRelativeSiteLinks(navigation,'https://site.test');
+assert.equal(portable.content[0].children[0].props.href,'/explore/?type=program#results');
+for(let i=1;i<10;i++)assert.equal(portable.content[0].children[i].props.href,navigation.content[0].children[i].props.href);
+assert.equal(portable.content[0].children[10].props.src,'https://site.test/image.png');
+assert.equal(JSON.stringify(navigation),navigationBefore);
 const rows = [{ title: '<script>evil()</script>{{ user.private }}', cover: 'javascript:alert(1)', originalPath: '//evil.example/' },
     { title: 'Second campus', cover: 'https://media.example.test/campus.jpg', originalPath: '/old-campus/' }];
 const projected = projectDirectoryRecords(layout, new Map([['cards', rows]]));

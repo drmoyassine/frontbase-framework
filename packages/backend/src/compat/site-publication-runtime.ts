@@ -1,6 +1,6 @@
 import { buildSiteManifest } from '@frontbase/compiler/manifest';
 import { createSnapshotDirectoryQueries } from '@frontbase/compiler/queries/directory';
-import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview, projectDirectoryBrowsing } from '@frontbase/edge-core/directory/configuration';
+import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview, projectDirectoryBrowsing, projectRelativeSiteLinks } from '@frontbase/edge-core/directory/configuration';
 import type { PageEntry, EngineOptions } from '@frontbase/edge-core';
 import { publicationPathSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
 import { sitePublicationArtifactSchema } from '@frontbase/edge-core/directory/publication';
@@ -8,9 +8,18 @@ import type { PageLayoutData } from '@frontbase/edge-core';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { PublicationVersion } from './publication-version.js';
 import { resolveChunkPublicationPage } from './site-publication-chunk-runtime.js';
+import {menuReferenceSchema,type VerifiedMenuAudience} from '@frontbase/edge-core/menus';
+import {resolveAppMenuLayout} from './menus-runtime.js';
 
-export async function resolvePublicationVersionPage(input:PublicationVersion,hash:string,owner:string,db:DbRunner,request:Request){
-    return input.schemaVersion===1?resolveSitePublicationPage(input,hash,owner,request):resolveChunkPublicationPage(input,hash,owner,db,request);
+export async function resolvePublicationVersionPage(input:PublicationVersion,hash:string,owner:string,db:DbRunner,request:Request,audience:VerifiedMenuAudience|null=null){
+    const result=await(input.schemaVersion===1?resolveSitePublicationPage(input,hash,owner,request):resolveChunkPublicationPage(input,hash,owner,db,request));
+    if(!result)return null;
+    const layout=result.page.layout as unknown as PageLayoutData;
+    const reference=(layout.root as Record<string,unknown>)?.appMenus;
+    if(reference===undefined)return result;
+    const ref=menuReferenceSchema.parse(reference);
+    const projected=await resolveAppMenuLayout(db,owner,layout,new URL(request.url).pathname,audience,input.configuration.site.name);
+    return {...result,page:{...result.page,layout:projected},cacheKey:JSON.stringify([result.cacheKey,ref.hash,audience])};
 }
 
 /** Only explicit visitor-parameter failures get a client-error response. */
@@ -70,6 +79,7 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
         q: search, page: Number(page), searchEnabled: artifact.configuration.browsing.search,
         hasNext: hasNext && offset + artifact.configuration.browsing.pageSize <= 10000,
     }]);
+    projected = projectRelativeSiteLinks(projected, artifact.configuration.site.origin);
     const title = typeof row?.title === 'string' ? row.title : template.title;
     const description = typeof row?.summary === 'string' ? row.summary : template.description;
     const manifest = buildSiteManifest({ pages: { [path]: { title, slug: path.replace(/^\//, ''), description, layout: projected as unknown as Record<string, unknown> } }, queries: {}, versionPrefix: hash });

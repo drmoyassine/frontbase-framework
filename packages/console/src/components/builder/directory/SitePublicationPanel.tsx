@@ -10,7 +10,7 @@ const stateSchema=z.object({pointer:sitePublicationPointerSchema.nullable(),capt
 const successSchema=z.object({pointer:sitePublicationPointerSchema,changed:z.boolean()}).strict();
 type Candidate={hash:string;review?:string|null;paths:{originalPath:string}[];directory?:string;blog?:string};
 /** Same admin/settings surface; uncertain writes require authenticated read-back, never replay. */
-export function SitePublicationPanel({candidate,revision,disabled=false}:{candidate:Candidate;revision:number;disabled?:boolean}) {
+export function SitePublicationPanel({candidate,revision,disabled=false,request=fetch}:{candidate:Candidate;revision:number;disabled?:boolean;request?:typeof fetch}) {
     const [live,setLive]=useState<z.infer<typeof stateSchema>>(),[busy,setBusy]=useState(false),[confirmed,setConfirmed]=useState(false),[urlSearch,setUrlSearch]=useState(''),[message,setMessage]=useState('Check the live version before publishing.');
     const generation=useRef(0),inFlight=useRef(false);
     useEffect(()=>{generation.current++;inFlight.current=false;setLive(undefined);setBusy(false);setConfirmed(false);setMessage('Check the live version before publishing.');return()=>{generation.current++;};},[candidate.hash,revision]);
@@ -18,7 +18,7 @@ export function SitePublicationPanel({candidate,revision,disabled=false}:{candid
     async function readBack(id:number,target?:string):Promise<void> {
         setLive(undefined);setConfirmed(false);
         try {
-            const response=await fetch('/api/project/site-configuration/publication/state/',{credentials:'include',cache:'no-store'});
+            const response=await request('/api/project/site-configuration/publication/state/',{credentials:'include',cache:'no-store'});
             if(!response.ok)throw new Error();const state=stateSchema.parse(await response.json());if(!valid(id))return;
             setLive(state);
             setMessage(target?(state.pointer?.hash===target?'The selected version is currently live. This check does not identify which attempt published it.':'Live state checked. Review the current version and confirm again before another attempt.'):'Live state checked. Review and confirm the selected version before publishing.');
@@ -33,7 +33,7 @@ export function SitePublicationPanel({candidate,revision,disabled=false}:{candid
         const id=generation.current,target=candidate.hash,expected:SitePublicationPointer|null=live.pointer;
         inFlight.current=true;setBusy(true);setLive(undefined);setConfirmed(false);setMessage('Publishing the selected reviewed version…');
         try {
-            const response=await fetch('/api/project/site-configuration/publication/activate/',{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:JSON.stringify({hash:target,expected})});
+            const response=await request('/api/project/site-configuration/publication/activate/',{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:JSON.stringify({hash:target,expected})});
             if(!valid(id))return;
             if(!response.ok)throw new Error();
             const result=successSchema.parse(await response.json());if(!valid(id))return;

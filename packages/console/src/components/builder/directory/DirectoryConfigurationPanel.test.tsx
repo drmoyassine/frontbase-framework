@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import { emptyDirectoryConfiguration, directoryConfigurationSchema, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { DirectoryConfigurationPanel } from './DirectoryConfigurationPanel';
 import { applyDirectoryConfiguration } from './applyDirectoryConfiguration';
@@ -14,6 +14,8 @@ function Harness() {
     const [config, setConfig] = useState<DirectoryConfiguration | undefined>();
     return <><DirectoryConfigurationPanel value={config} onChange={setConfig} onApplyLayout={() => {}} /><output data-testid="saved">{JSON.stringify(config)}</output></>;
 }
+afterEach(cleanup);
+
 describe('directory admin configuration', () => {
     it('maps a datasource, collection, numeric scope and media without SQL', () => {
         render(<Harness />);
@@ -31,6 +33,20 @@ describe('directory admin configuration', () => {
         fireEvent.change(screen.getByLabelText('Counselor email'), { target: { value: 'bad?email' } });
         expect(screen.getByRole('alert').textContent).toContain('contacts.email');
         expect(screen.getByRole('button', { name: 'Apply configured layout to this page' })).toBeDisabled();
+    });
+    it('keeps public identity out of template setup, hides unsupported controls and preserves saved values', () => {
+        const config = emptyDirectoryConfiguration(); config.site.name = 'Configured site'; config.collections.institution.fields.gallery = 'old_gallery'; config.browsing.sort = 'latest';
+        const change = vi.fn(); render(<DirectoryConfigurationPanel value={config} hideIdentity persistenceScope="site" onChange={change} />);
+        expect(screen.queryByLabelText('Site name')).not.toBeInTheDocument(); expect(screen.queryByLabelText('Site origin')).not.toBeInTheDocument(); expect(screen.queryByLabelText('Locale')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Default sort')).not.toBeInTheDocument(); expect(screen.queryByLabelText('City filter')).not.toBeInTheDocument(); expect(screen.queryByLabelText('institution Gallery')).not.toBeInTheDocument(); expect(screen.queryByLabelText('pathway table')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('article Cover alt text')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'Hungary' } });
+        expect(change.mock.calls[0][0].collections.institution.fields.gallery).toBe('old_gallery'); expect(change.mock.calls[0][0].browsing.sort).toBe('latest'); expect(change.mock.calls[0][0].site.name).toBe('Configured site');
+    });
+    it('seeds new template setup only on explicit initialization', () => {
+        const change = vi.fn(); render(<DirectoryConfigurationPanel hideIdentity persistenceScope="site" initialSite={{ name: 'Core name', origin: 'https://core.example.com', locale: 'ar' }} onChange={change} />);
+        expect(change).not.toHaveBeenCalled(); fireEvent.click(screen.getByText('Add directory configuration'));
+        expect(change.mock.calls[0][0].site).toEqual({ name: 'Core name', origin: 'https://core.example.com', locale: 'ar', destination: '' });
     });
     it('applies each destination through the same template and preserves unrelated page content', () => {
         const page: Page = { id: 'fixture', name: 'Directory', slug: 'directory', isPublic: false, isHomepage: false, createdAt: '2026-10-05', updatedAt: '2026-10-05', layoutData: { root: { existing: true }, content: [{ id: 'keep', type: 'Text', props: { text: 'Unrelated content' } }] } };

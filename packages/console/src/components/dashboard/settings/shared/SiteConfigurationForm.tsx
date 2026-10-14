@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 
 const endpoint = '/api/project/site-configuration/';
 export function SiteConfigurationForm() {
+    const [initialSite, setInitialSite] = useState<Partial<DirectoryConfiguration['site']>>({});
     const [configuration, setConfiguration] = useState<DirectoryConfiguration>();
     const [revision, setRevision] = useState<number | null>(null);
     const [pending, setPending] = useState(false);
@@ -24,6 +25,13 @@ export function SiteConfigurationForm() {
                 if (body.revision !== draft.revision) throw new Error();
             } else if (body.revision !== 0) throw new Error();
             if (generation !== loadGeneration.current) return;
+            if (!body.draft) {
+                const projectResponse = await fetch('/api/project/', { credentials: 'include' });
+                if (!projectResponse.ok) throw new Error();
+                const project = await projectResponse.json();
+                if (generation !== loadGeneration.current) return;
+                setInitialSite(project.siteIdentity || { name: project.name || '', origin: project.appUrl || project.app_url || '', locale: 'en' });
+            }
             setConfiguration(body.draft?.configuration); setRevision(body.revision); setConflict(false); setMessage('');
         } catch { if (generation === loadGeneration.current) { setRevision(null); setMessage('Could not load shared settings. Reload before saving.'); } }
         finally { if (generation === loadGeneration.current) setPending(false); }
@@ -43,9 +51,9 @@ export function SiteConfigurationForm() {
         } catch { setMessage('Could not save shared settings. Your edits are retained.'); }
         finally { setPending(false); }
     }
-    return <Card><CardHeader><CardTitle>Shared directory settings</CardTitle><CardDescription>Project-wide authoring settings. Existing page settings remain separate until page linking is implemented.</CardDescription></CardHeader>
+    return <Card><CardHeader><CardTitle>Directory setup</CardTitle><CardDescription>Education-template data, browsing, URLs and contact actions. Site identity is managed in General. Saves update authoring settings; prepare and review a site version to publish.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
-            <fieldset disabled={pending || revision === null}><DirectoryConfigurationPanel persistenceScope="site" value={configuration} onChange={setConfiguration} /></fieldset>
+            <fieldset disabled={pending || revision === null}><DirectoryConfigurationPanel persistenceScope="site" hideIdentity initialSite={initialSite} value={configuration} onChange={setConfiguration} /></fieldset>
             <div className="flex gap-3"><Button disabled={pending || revision === null || !configuration || conflict || directoryConfigurationIssues(configuration).length > 0} onClick={() => void save()}>Save shared settings</Button>
                 <Button variant="outline" disabled={pending} onClick={() => void load()}>Reload saved settings (discard edits)</Button></div>
             {revision !== null && <p className="text-sm text-muted-foreground">Saved revision: {revision}</p>}

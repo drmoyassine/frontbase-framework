@@ -3,6 +3,7 @@ import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePage
 import { directoryLayoutQueries } from './bindings.js';
 import { editorialBodySchema, editorialCoverUrlSchema } from './editorial.js';
 import type { PageLayoutData } from '../ssr/types.js';
+import {menuReferenceSchema} from '../menus.js';
 
 /** Server-side capture contract. Never an input accepted from an anonymous browser. */
 export const publicationPathSchema = z.string().min(1).max(400).refine(value => {
@@ -57,6 +58,8 @@ export const sitePublicationArtifactSchema = z.object({
     if (new TextEncoder().encode(JSON.stringify(artifact)).byteLength > 1024 * 1024) error('publication_too_large');
     const roles = new Set<string>();
     for (const page of artifact.templates) {
+        const menus=(page.layout.root as Record<string,unknown>|undefined)?.appMenus;
+        if(menus!==undefined){const reference=menuReferenceSchema.safeParse(menus);if(!reference.success||reference.data.pageId!==page.pageId)error('menu_reference_invalid');}
         if (roles.has(page.role)) error('duplicate_template_role');
         roles.add(page.role);
         const ref = sitePageReferenceSchema.safeParse((page.layout.root as Record<string, unknown> | undefined)?.siteConfiguration);

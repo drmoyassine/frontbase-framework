@@ -1,6 +1,6 @@
 import type { DbRunner } from '@frontbase/edge-infra';
 import { buildSiteManifest } from '@frontbase/compiler/manifest';
-import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview, projectDirectoryBrowsing } from '@frontbase/edge-core/directory/configuration';
+import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview, projectDirectoryBrowsing, projectRelativeSiteLinks, projectTemplatePresentation, readLandingSettings, landingQueryParams } from '@frontbase/edge-core/directory/configuration';
 import type { PageLayoutData, EngineOptions, PageEntry } from '@frontbase/edge-core';
 import { publicationPathSchema } from '@frontbase/edge-core/directory/publication';
 import { sitePublicationManifestSchema, type SitePublicationManifest } from './site-publication-manifest.js';
@@ -34,16 +34,19 @@ export async function resolveChunkPublicationPage(input:SitePublicationManifest,
         const [,collection,mode]=query.binding.queryId.split('.');
         if(role==='directory' && mode==='list' && ['institution','program'].includes(collection!) && collection!==type){inactive.add(query.id);continue;}
         const parentPath=role==='program' && collection==='institution' && entry?artifact.index.find(parent=>parent.collection==='institutions' && String(parent.id)===String(entry.parentId))?.originalPath:undefined;
-        const params:Record<string,unknown>=mode==='detail'?{path:parentPath??path}:{q:search,offset,limit:artifact.configuration.browsing.pageSize,
+const params:Record<string,unknown>=mode==='detail'?{path:parentPath??path}:role==='static'?{...query.binding.params,limit:Math.min(Number((query.binding.params as Record<string,unknown>).limit??artifact.configuration.browsing.pageSize),artifact.configuration.browsing.pageSize)}:{q:search,offset,limit:artifact.configuration.browsing.pageSize,
             ...(role==='institution' && collection==='program' && row?{institutionId:row.id}:{})};
+        if(role==='static' && mode==='list')Object.assign(params,landingQueryParams(layout,query.id,params));
         const registered=queries[query.binding.queryId];if(!registered)throw new Error('publication_query_unavailable');
         const rows=await registered.execute(params,{tenant:owner,request});
         if((role==='directory' && collection===type || role==='article-index' && collection==='article') && mode==='list')hasNext ||= rows.length>artifact.configuration.browsing.pageSize;
-        records.set(query.id,rows.slice(0,mode==='detail'?1:artifact.configuration.browsing.pageSize));normalized[query.id]=params;
+        records.set(query.id,rows.slice(0,mode==='detail'?1:Number(params.limit)));normalized[query.id]=params;
     }
     const prune=(nodes:PageLayoutData['content']):PageLayoutData['content']=>nodes.filter(node=>!inactive.has(node.id)).map(node=>({...node,...(node.children?{children:prune(node.children)}:{})}));
     let projected=projectDirectoryRecords(projectSharedDirectoryPreview({...layout,content:prune(layout.content)},artifact.configuration),records,{locale:artifact.configuration.site.locale});
     if(role==='directory'||role==='article-index')projected=projectDirectoryBrowsing(projected,[{path,collection:role==='directory'?type as 'institution'|'program':null,q:search,page:Number(page),searchEnabled:artifact.configuration.browsing.search,hasNext:hasNext && offset+artifact.configuration.browsing.pageSize<=19999}]);
+    projected=projectTemplatePresentation(projected,artifact.configuration,artifact.staticPages?.find(page=>page.originalPath==='/')?readLandingSettings(artifact.staticPages.find(page=>page.originalPath==='/')!.layout as unknown as PageLayoutData):undefined);
+    projected=projectRelativeSiteLinks(projected,artifact.configuration.site.origin);
     const title=typeof row?.title==='string'?row.title:template.title,description=typeof row?.summary==='string'?row.summary:template.description;
     const built=buildSiteManifest({pages:{[path]:{title,slug:path.replace(/^\//,''),description,layout:projected as unknown as Record<string,unknown>}},queries:{},versionPrefix:hash});
     const canonicalUrl=new URL(path,artifact.configuration.site.origin).href;

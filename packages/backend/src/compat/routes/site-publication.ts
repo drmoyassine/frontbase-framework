@@ -1,3 +1,4 @@
+import {rewritePublicationPreviewLinks} from '../site-publication-preview-links.js';
 import { z } from 'zod';
 import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
@@ -57,26 +58,7 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
             if(!result)return c.json({detail:'No prepared page at this URL'},404);
             const paths=new Set([...publicationPaths(artifact),...(artifact.schemaVersion===2?artifact.redirects??[]:[]).map(alias=>alias.from)]);
             // Private preview navigation stays within the SAME captured version.
-            const rewrite=(nodes:typeof result.page.layout.content):typeof result.page.layout.content=>nodes.map(node=>{
-                const props={...node.props};
-                if(props.directoryBrowsingState!==undefined){
-                    const [state]=directoryBrowsingStateSchema.parse(props.directoryBrowsingState);
-                    props.directoryBrowsingState=[{...state,previewHash:parsed.data.hash}];
-                }
-                if(node.type==='Link' && typeof props.href==='string'){
-                    let target:URL|undefined;
-                    try{target=new URL(props.href,'https://publication-preview.invalid');}catch{/* Preserve malformed authoring links; never invent a destination. */}
-                    if(target && !target.username && !target.password
-                        && (target.origin==='https://publication-preview.invalid' || target.origin===new URL(artifact.configuration.site.origin).origin)
-                        && paths.has(target.pathname) && !target.hash){
-                        const params=new URLSearchParams({hash:parsed.data.hash,path:target.pathname});
-                        for(const [key,value] of target.searchParams)params.append(key,value);
-                        props.href=`/api/project/site-configuration/publication/render/?${params}`;
-                    }
-                }
-                return {...node,props,...(node.children?{children:rewrite(node.children)}:{})};
-            });
-            result.page={...result.page,layout:{...result.page.layout,content:rewrite(result.page.layout.content)}};
+            result.page={...result.page,layout:{...result.page.layout,content:rewritePublicationPreviewLinks(result.page.layout.content,paths,parsed.data.hash,new URL(artifact.configuration.site.origin).origin)}};
             const manifest={version:result.version,pages:{[pageUrl.pathname]:result.page},queries:{}};
             const engine=createEngine({manifest,data:directProvider(manifest),environment:'builder'});
             const rendered=await engine.fetch(new Request(pageUrl));

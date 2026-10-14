@@ -92,7 +92,6 @@ export function ProjectDetailsForm({ withCard = false }: ProjectDetailsFormProps
             // This prevents accidentally overwriting them with stale state
             await updateProjectInDatabase({
                 name: formData.name,
-                appUrl: formData.appUrl || undefined,
                 description: formData.description || undefined,
             });
             toast.success('Project settings saved');
@@ -108,7 +107,7 @@ export function ProjectDetailsForm({ withCard = false }: ProjectDetailsFormProps
     const content = (
         <>
             <div className="space-y-2">
-                <Label htmlFor="project-name">Project Name</Label>
+                <Label htmlFor="project-name">Internal project label</Label>
                 <Input
                     id="project-name"
                     placeholder="My Website"
@@ -116,21 +115,8 @@ export function ProjectDetailsForm({ withCard = false }: ProjectDetailsFormProps
                     onChange={(e) => handleFieldChange('name', e.target.value)}
                 />
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="app-url">App URL</Label>
-                <Input
-                    id="app-url"
-                    placeholder="https://mysite.com"
-                    value={formData.appUrl}
-                    onChange={(e) => handleFieldChange('appUrl', e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                    Public URL for publish/preview. Leave empty to auto-detect.
-                </p>
-            </div>
-
             {/* Favicon & Logo Uploads */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <AssetUploader
                     value={formData.faviconUrl}
                     onChange={handleFaviconChange}
@@ -152,7 +138,7 @@ export function ProjectDetailsForm({ withCard = false }: ProjectDetailsFormProps
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="project-description">Project Description</Label>
+                <Label htmlFor="project-description">Internal description</Label>
                 <Textarea
                     id="project-description"
                     placeholder="A description of your project..."
@@ -176,10 +162,10 @@ export function ProjectDetailsForm({ withCard = false }: ProjectDetailsFormProps
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Globe className="h-5 w-5" />
-                        Project Settings
+                        Project details
                     </CardTitle>
                     <CardDescription>
-                        Configure your project name, URL, favicon, and description
+                        Optional internal project details and site branding. Public name and canonical URL are configured in Site identity.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

@@ -34,6 +34,8 @@ import { resolveSessionSecret } from './session-secret.js';
 import { tenantMiddleware, hostTenantOf, hostKindOf } from './tenancy.js';
 import { manifest } from './manifest.js';
 import { renderReviewedSitePublication } from '@frontbase/backend';
+import {configuredMenuAudienceResolver} from '@frontbase/backend';
+import {resolveAppMenuLayout,readPublicSiteName} from '@frontbase/backend';
 import SW_BUNDLE from 'virtual:sw-bundle';
 import CLIENT_BUNDLE from 'virtual:builder-client-bundle';
 import CONSOLE_INDEX from './console-shell.js';
@@ -556,11 +558,18 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
                 cloud ? {} : { crossTenantFallback: true },
             );
             if (!page) return null;
+            let pageLayout=page.layout;
+            if((pageLayout as {root?:{appMenus?:unknown}})?.root?.appMenus!==undefined){
+                if(!req||!page.pageId||!page.owner)throw Error('menu_reference_invalid');
+                const audience=await configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch)(page.owner,req);
+                const siteName=await readPublicSiteName(opts.runner,page.owner);
+                pageLayout=await resolveAppMenuLayout(opts.runner,page.owner,pageLayout as import('@frontbase/edge-core').PageLayoutData,path,audience,String(siteName),page.pageId);
+            }
             return {
                 title: page.title,
                 slug: page.slug,
                 description: page.description,
-                layout: page.layout as PageEntry['layout'],
+                layout: pageLayout as PageEntry['layout'],
                 ...(page.isPublic !== undefined ? { isPublic: page.isPublic } : {}),
                 ...(page.primaryAuthForm ? { _primaryAuthForm: page.primaryAuthForm as PageEntry['_primaryAuthForm'] } : {}),
             };
@@ -818,7 +827,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             || path === '/sw.js') return next();
         const tenant = hostTenantFor(c.req.raw);
         if (cloud && !tenant && hostKindOf(c.req.raw, cloud.baseDomain, cloud.appLabel) !== 'foreign') return next();
-        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE });
+        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE, resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch) });
         if (reviewed) return reviewed;
         return next();
     });

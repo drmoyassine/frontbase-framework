@@ -19,6 +19,7 @@ config.collections.institution.fields.cityId='city_id';config.collections.progra
 const node=(id,queryId,params)=>({id,type:queryId.endsWith('.list')?'Repeater':'Container',props:{directoryQuery:{version:1,queryId,params}},children:[{id:id+'-title',type:'Heading',props:{recordBindings:{text:'title'}}},{id:id+'-link',type:'Link',props:{text:'Details',recordBindings:{href:'originalPath'}}}]});
 const templates=['directory','institution','program','article-index','article'].map((role,index)=>({pageId:`00000000-0000-4000-8000-00000000000${index}`,role,title:role,description:'',layout:{root:{siteConfiguration:{version:1,role}},content:role==='directory'?[node('institutions','directory.institution.list',{}),node('programs','directory.program.list',{})]:role==='article-index'?[node('articles','directory.article.list',{})]:[node('detail',`directory.${role}.detail`,{path:'/WRONG-SAMPLE/'}),...(role==='institution'?[node('related','directory.program.list',{institutionId:999})]:[])]}}));
 const base={summary:'Public summary',cover:null,coverAlt:'',logo:null};
+templates.find(t=>t.role==='article').layout.content[0].children.push({id:'body',type:'Container',props:{recordBindings:{blocks:'body'}},children:[]});
 const artifact={schemaVersion:1,runtimeVersion:'directory-snapshot-v1',configurationRevision:1,configuration:config,templates,records:{
  cities:[{id:1,title:'Allentown'}],institutions:[{...base,id:512,title:'Muhlenberg College',originalPath:'/muhlenberg-college/',cityId:1}],
  programs:[{...base,id:46188,title:'Dental program',originalPath:'/old-parent/dental-program/',institutionId:512}],
@@ -30,6 +31,7 @@ const store=new SitePublicationStore(db,'seo'),review=new SitePublicationReviewS
 const sitemap = () => renderReviewedSitePublication(db,'seo',request('/sitemap.xml'));
 assert.equal(await sitemap(),null);
 const capture=structuredClone(artifact);
+capture.records.articles[0].body[0].runs.push({text:'Internal navigation',href:'https://study-in-usa.com/explore/?type=program#results'},{text:'External reference',href:'https://external.test/help'});
 capture.records.institutions[0].title='College " ><script>EVIL</script> &';
 capture.records.institutions[0].summary='Summary " ><script>EVIL</script> &';
 capture.records.institutions[0].cover='https://media.test/cover.webp';
@@ -61,6 +63,7 @@ for(const query of ['?page=2','?q=College','?type=program','?q=']) {
  html=await response.text();assert.ok(html.includes('name="robots" content="noindex, follow"'));assert.ok(html.includes('rel="canonical" href="https://study-in-usa.com/explore/"'));
 }
 response=await renderReviewedSitePublication(db,'seo',request(capture.records.articles[0].originalPath));html=await response.text();assert.ok(html.includes('<html lang="ar">'));assert.ok(html.includes('property="og:type" content="article"'));assert.ok(!html.includes('property="og:image"'));
+assert.ok(html.includes('href="/explore/?type=program#results"'));assert.ok(html.includes('href="https://external.test/help"'));
 for(const path of ['/sitemap.xml?x=1','/explore/?unknown=1','/explore/?page=2&page=3','/muhlenberg-college/?q=x'])assert.equal((await renderReviewedSitePublication(db,'seo',request(path))).status,400);
 assert.equal((await renderReviewedSitePublication(db,'seo',request('/not-captured/'))).status,404);
 assert.equal(await renderReviewedSitePublication(db,'foreign',request('/sitemap.xml')),null);

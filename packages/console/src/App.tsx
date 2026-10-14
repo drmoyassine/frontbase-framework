@@ -1,3 +1,4 @@
+import { MenusPanel } from '@/components/dashboard/MenusPanel';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -87,7 +88,7 @@ const persister = createSyncStoragePersister({
   },
 });
 
-const App = () => {
+const AdminApp = () => {
   const { fetchConnections } = useDashboardStore();
   const { loadPagesFromDatabase, loadVariablesFromDatabase, loadProjectFromDatabase } = useBuilderStore(useShallow(s => ({ loadPagesFromDatabase: s.loadPagesFromDatabase, loadVariablesFromDatabase: s.loadVariablesFromDatabase, loadProjectFromDatabase: s.loadProjectFromDatabase })));
   const { isAuthenticated } = useAuth();
@@ -160,6 +161,7 @@ const App = () => {
                 <Route element={<UnifiedShell />}>
                   <Route path="/dashboard" element={<Overview />} />
                   <Route path="/pages" element={<PagesPanel />} />
+                  <Route path="/menus" element={<MenusPanel />} />
                   <Route path="/automations" element={<ActionsPage />} />
                   <Route path="/automations/:id" element={<ActionsPage />} />
 
@@ -196,5 +198,8 @@ const App = () => {
   );
 };
 
+const App=()=>window.location.pathname.startsWith(`${BASE_PATH}/embed/auth/`)
+  ? <BrowserRouter basename={BASE_PATH}><Routes><Route path="/embed/auth/:formId" element={<EmbedAuthPage/>}/></Routes></BrowserRouter>
+  : <AdminApp/>;
 export default App;
 

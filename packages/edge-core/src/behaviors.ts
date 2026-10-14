@@ -14,6 +14,7 @@
  */
 
 export type VarScope = 'page' | 'local' | 'session' | 'cookie';
+import { startHeroSlides } from './hero-behavior.js';
 
 interface BehaviorsOptions {
     /** Edge Data Proxy base URL for workflow execution. Default '/api/data'. */
@@ -170,8 +171,10 @@ function dispatch(el: Element, opts: BehaviorsOptions): void {
  */
 export function startBehaviors(opts: BehaviorsOptions = {}): void {
     if (typeof document === 'undefined') return;
+    startHeroSlides();
     if ((document as Document & { __frontbaseBehaviors?: boolean }).__frontbaseBehaviors) return;
     (document as Document & { __frontbaseBehaviors?: boolean }).__frontbaseBehaviors = true;
+
 
     reevaluateShowIf();
 

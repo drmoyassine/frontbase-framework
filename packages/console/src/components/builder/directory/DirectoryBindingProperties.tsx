@@ -5,8 +5,11 @@ import type { ComponentData } from '@/types/builder';
 export function DirectoryBindingProperties({ node, update }: { node: ComponentData; update: (key: string, value: unknown) => void }) {
     const browsing = directoryBrowsingSchema.safeParse(node.props.directoryBrowsing);
     if (browsing.success) return <section className="space-y-3 rounded border p-3" aria-label="Visitor browsing controls">
-        <p className="text-sm">Uses the current captured collection, search and page. Search also follows the shared site's Search setting. Controls become functional in the prepared site preview.</p>
-        {(['tabs', 'search', 'pagination'] as const).map(key => <label key={key} className="flex gap-2 text-sm"><input type="checkbox" checked={browsing.data[key]} onChange={e => update('directoryBrowsing', { ...browsing.data, [key]: e.target.checked })} />{({ tabs: 'Institution / program tabs', search: 'Title search', pagination: 'Previous / next links' })[key]}</label>)}
+        <h3 className="font-medium">URL parameter controls</h3>
+        <p className="text-sm">These are states of this page, not separate pages. Choose which visitor controls this element displays. Changes are saved with the page design and take effect after preparing/publishing it.</p>
+        <dl className="space-y-1 text-xs text-muted-foreground"><div><dt className="inline font-mono">type</dt><dd className="inline"> — institution or program; switches the listing collection.</dd></div><div><dt className="inline font-mono">q</dt><dd className="inline"> — title search; also follows the shared Search setting.</dd></div><div><dt className="inline font-mono">page</dt><dd className="inline"> — result page, starting at 1.</dd></div></dl>
+        <p className="text-xs text-muted-foreground">Parameter names are fixed for compatibility. Default collection and cards per page come from Template settings → Directory setup → Browsing. Sorting currently uses name order; other filters are unavailable.</p>
+        {(['tabs', 'search', 'pagination'] as const).map(key => <label key={key} className="flex gap-2 text-sm"><input type="checkbox" checked={browsing.data[key]} onChange={e => update('directoryBrowsing', { ...browsing.data, [key]: e.target.checked })} />{({ tabs: 'Collection tabs (type)', search: 'Title search (q)', pagination: 'Pagination links (page)' })[key]}</label>)}
     </section>;
     const query = directoryQueryBindingSchema.safeParse(node.props.directoryQuery);
     const record = directoryRecordBindingSchema.safeParse(node.props.recordBindings);

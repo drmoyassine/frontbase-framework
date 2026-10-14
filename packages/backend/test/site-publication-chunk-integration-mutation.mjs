@@ -2,7 +2,7 @@ import {withSourceMutation,buildPackage,runGate,expectRed,summarize,repoRoot} fr
 const dir=repoRoot+'packages/backend/',gate='test/site-publication-chunk-integration.mjs',args=['--without-capacity'];
 if(!buildPackage('@frontbase/backend')||runGate(dir,gate,args)!==0)process.exit(2);
 for(const [label,file,find,replacement] of [
- ['preview captured absolute link','routes/site-publication.ts'," || target.origin===new URL(artifact.configuration.site.origin).origin",''],
+ ['chunk host-portable navigation','site-publication-chunk-runtime.ts','projected=projectRelativeSiteLinks(projected,artifact.configuration.site.origin);',''],
  ['preview external origin admission','routes/site-publication.ts',"(target.origin==='https://publication-preview.invalid' || target.origin===new URL(artifact.configuration.site.origin).origin)",'true'],
  ['redirect complete chunk integrity','site-publication-serving.ts','await new SitePublicationManifestStore(db,owner).verify(active.artifact);\n                await verifyManifestEditorial(db,owner,active.artifact);','await verifyManifestEditorial(db,owner,active.artifact);'],
  ['redirect approved content','site-publication-serving.ts','await verifyManifestEditorial(db,owner,active.artifact);\n                return {status:\'redirect\'','return {status:\'redirect\''],

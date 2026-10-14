@@ -105,10 +105,8 @@ const componentCategories = {
       { name: 'Features', icon: Layout, description: 'Feature cards grid', section: 'landing', isTemplate: true },
       { name: 'Pricing', icon: DollarSign, description: 'Pricing table', section: 'landing' },
       { name: 'CTA', icon: MousePointer, description: 'Call to action banner', section: 'landing', isTemplate: true },
-      { name: 'Navbar', icon: Menu, description: 'Navigation bar', section: 'landing', isTemplate: true },
       { name: 'FAQ', icon: HelpCircle, description: 'FAQ accordion', section: 'landing', isTemplate: true },
       { name: 'LogoCloud', icon: Image, description: 'Partner logos', section: 'landing', isTemplate: true },
-      { name: 'Footer', icon: Layout, description: 'Page footer', section: 'landing', isTemplate: true },
 
       // Page Templates separator
       { name: '_separator_templates', icon: Sparkles, description: 'Full Page Templates', section: 'separator' },

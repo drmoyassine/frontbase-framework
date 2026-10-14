@@ -1,0 +1,45 @@
+// Source-only default; PAGES_ORGANIZATION_DIST=1 runs the same checks against built modules.
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import ts from 'typescript';
+import {Hono} from 'hono';
+const source=await readFile(new URL('../src/compat/pages-organization.ts',import.meta.url),'utf8');
+const moduleURL=process.env.PAGES_ORGANIZATION_DIST==='1'?new URL('../dist/compat/pages-organization.js',import.meta.url).href:'data:text/javascript;base64,'+Buffer.from(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace("from 'zod'",`from '${import.meta.resolve('zod')}'`)).toString('base64');
+const {PagesOrganizationStore,validatePagesOrganization,emptyPagesOrganization}=await import(moduleURL);
+const routeSource=await readFile(new URL('../src/compat/routes/pages-organization.ts',import.meta.url),'utf8');
+const routeURL=process.env.PAGES_ORGANIZATION_DIST==='1'?new URL('../dist/compat/routes/pages-organization.js',import.meta.url).href:'data:text/javascript;base64,'+Buffer.from(ts.transpileModule(routeSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace("from '../pages-organization.js'",`from '${moduleURL}'`)).toString('base64');
+const {registerPagesOrganizationRoutes}=await import(routeURL);
+const values=new Map();let writes=0;
+const runner={query:async(_,args)=>{const raw=values.get(args[0]+'|'+args[1]);return raw?[{value:raw}]:[];},exec:async(sql,args)=>{
+  writes++; if(sql.startsWith('UPDATE')){const key=args[2]+'|'+args[3];if(values.get(key)!==args[4])return 0;values.set(key,args[0]);return 1;}
+  const key=args[0]+'|'+args[1];if(values.has(key))return 0;values.set(key,args[2]);return 1;
+}};
+const input={schemaVersion:1,expectedRevision:0,folders:[{id:'a',name:'Directory',parentId:null,order:0}],placements:[{entryId:'page-a',folderId:'a',order:0}]};
+const owned=new Set(['page-a','view:program']);
+assert.equal(validatePagesOrganization({...input,revision:0},owned),true);
+assert.equal(validatePagesOrganization({...input,revision:0,placements:[{entryId:'foreign',folderId:'a',order:0}]},owned),false);
+assert.equal(validatePagesOrganization({...input,revision:0,folders:[{id:'a',name:'A',parentId:'b',order:0},{id:'b',name:'B',parentId:'a',order:0}]},owned),false);
+assert.equal(validatePagesOrganization({...input,revision:0,placements:[input.placements[0],input.placements[0]]},owned),false);
+assert.equal(validatePagesOrganization({...input,revision:0,folders:[...input.folders,...input.folders]},owned),false);
+assert.equal(validatePagesOrganization({...input,revision:0,placements:[{entryId:'page-a',folderId:'missing',order:0}]},owned),false);
+const first=new PagesOrganizationStore(runner,'owner-a'),second=new PagesOrganizationStore(runner,'owner-b');
+const saved=await first.save(input,owned,'now');assert.equal(saved.revision,1);assert.deepEqual(await second.get(),emptyPagesOrganization());
+assert.equal(await first.save(input,owned,'later'),null);
+const app=new Hono();app.use('*',async(c,next)=>{c.set('tenant',c.req.header('x-owner')??'owner-a');c.set('principal',{user:{role:c.req.header('x-role')??'owner'}});await next();});
+registerPagesOrganizationRoutes(app,runner,()=> 'now',async owner=>owner==='owner-a'?owned:new Set(['owner-b-page']));
+const send=(body,headers={})=>app.request('/api/project/pages-organization/',{method:'PUT',headers:{'Content-Type':'application/json',...headers},body:typeof body==='string'?body:JSON.stringify(body)});
+assert.equal((await send({...input,expectedRevision:1},{'x-role':'viewer'})).status,403);
+assert.equal((await send({...input,expectedRevision:1,placements:[{entryId:'foreign',folderId:'a',order:0}]})).status,422);
+assert.equal((await send(input,{'x-owner':'owner-b'})).status,422);
+assert.equal((await send(input)).status,409);
+assert.equal((await send('{')).status,422);
+assert.equal((await send({...input,expectedRevision:1,slug:'/changed/'})).status,422);
+assert.equal((await send('x'.repeat(256*1024+1))).status,413);
+assert.equal((await send({...input,expectedRevision:1})).status,200);
+assert.equal((await first.get()).revision,2);assert.equal(writes,2);
+const read=await app.request('/api/project/pages-organization/',{headers:{'x-owner':'owner-b'}});assert.equal(read.status,200);assert.equal(read.headers.get('cache-control'),'no-store');
+assert.equal((await app.request('/api/project/pages-organization/',{headers:{'x-role':'viewer'}})).status,403);
+assert.equal((await send({...input,expectedRevision:Number.MAX_SAFE_INTEGER})).status,422);
+values.set('owner-b|pages_organization:v1','PRIVATE_INVALID_CANARY');
+const corrupt=await app.request('/api/project/pages-organization/',{headers:{'x-owner':'owner-b'}});assert.equal(corrupt.status,503);assert.ok(!(await corrupt.text()).includes('PRIVATE_INVALID_CANARY'));
+console.log('pages organization: structural, owner, role, size, strictness and guarded-save checks passed');

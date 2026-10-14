@@ -1,4 +1,7 @@
 import { z } from 'zod';
+export { projectRelativeSiteLinks } from './navigation.js';
+export { templateSettingsSchema, landingRootSchema, defaultTemplateSettings, readLandingSettings, projectTemplatePresentation, landingQueryParams, templateContrastIssues, type TemplateSettings } from './template-settings.js';
+export { createEducationLanding } from './landing.js';
 import { siteBindingsSchema, validateSiteBinding } from './bindings.js';
 export { siteBindingsSchema } from './bindings.js';
 export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, projectDirectoryRecords, type DirectoryQueryBinding } from './bindings.js';
@@ -68,7 +71,7 @@ export const sitePageReferenceSchema = z.object({ version: z.literal(1), role: z
 export type SitePageReference = z.infer<typeof sitePageReferenceSchema>;
 export function hasSitePageReference(layout: unknown): boolean {
     try { const value = typeof layout === 'string' ? JSON.parse(layout) : layout;
-        return value?.root?.siteConfiguration !== undefined;
+        return value?.root?.siteConfiguration !== undefined || value?.root?.directoryLanding!==undefined;
     } catch { return false; }
 }
 

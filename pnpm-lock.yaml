@@ -71,6 +71,12 @@ importers:
         specifier: ^1.62.0
         version: 1.62.0
 
+  examples/cf-worker:
+    dependencies:
+      '@frontbase/edge-core':
+        specifier: workspace:*
+        version: link:../../packages/edge-core
+
   examples/education-template-proof:
     dependencies:
       '@frontbase/backend':
@@ -85,12 +91,6 @@ importers:
       '@frontbase/edge-infra':
         specifier: workspace:*
         version: link:../../packages/edge-infra
-
-  examples/cf-worker:
-    dependencies:
-      '@frontbase/edge-core':
-        specifier: workspace:*
-        version: link:../../packages/edge-core
 
   packages/admin-console:
     dependencies:
@@ -570,6 +570,9 @@ importers:
 
   packages/hydrate:
     dependencies:
+      '@frontbase/edge-core':
+        specifier: workspace:*
+        version: link:../edge-core
       '@tanstack/react-query':
         specifier: 5.90.17
         version: 5.90.17(react@19.2.3)

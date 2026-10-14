@@ -2,15 +2,17 @@ import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { createDirectoryQueries, directoryOriginalPath } from '@frontbase/compiler/queries/directory';
 import { publicationPathSchema } from '@frontbase/edge-core/directory/publication';
-import { sitePageReferenceSchema, type SiteConfigurationDraft } from '@frontbase/edge-core/directory/configuration';
+import { sitePageReferenceSchema, readLandingSettings, type SiteConfigurationDraft } from '@frontbase/edge-core/directory/configuration';
 import { PagesStore } from './pages-store.js';
 import { EditorialApprovalStore } from './editorial-approval-store.js';
 import { SiteConfigurationStore } from './site-configuration-store.js';
 import { SitePublicationManifestStore,publicationRedirectSchema } from './site-publication-manifest.js';
+import { prepareLandingFromCapture } from './landing-publication-prepare.js';
 
 const reference=z.object({id:z.string().uuid(),revision:z.number().int().positive(),fingerprint:z.string().regex(/^[a-f0-9]{64}$/),contentRole:z.enum(['article','page']).default('article')}).strict();
 export const chunkPreparationRequestSchema=z.object({format:z.literal('chunked'),expectedConfigurationRevision:z.number().int().positive(),
-    pageIds:z.array(z.string().uuid()).max(7),staticPageIds:z.array(z.string().uuid()).max(1000).default([]),
+    pageIds:z.array(z.string().uuid()).max(7),staticPageIds:z.array(z.string().uuid()).max(1000).default([]),replaceEditorialHomepage:z.boolean().default(false),
+    homepageBase:z.object({baseHash:z.string().regex(/^[a-f0-9]{64}$/),homepageId:z.string().uuid(),homepageStateHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict().optional(),
     institutionPaths:z.array(publicationPathSchema).max(20000).default([]),programPaths:z.array(publicationPathSchema).max(20000).default([]),
     articles:z.array(reference).max(40000).default([]),redirects:z.array(publicationRedirectSchema).max(5000).optional(),includeMappedCatalog:z.boolean().default(false),includeApprovedEditorial:z.boolean().default(false)}).strict();
 
@@ -18,6 +20,10 @@ export async function prepareChunkPublication(control:DbRunner,canonical:DbRunne
     dialect:'postgres'|'sqlite',raw:z.infer<typeof chunkPreparationRequestSchema>,user:unknown,now:string){
     const request=chunkPreparationRequestSchema.parse(raw);
     if(!tenant || !user || request.expectedConfigurationRevision!==draft.revision)throw new Error('publication_context_required');
+    if(request.homepageBase){
+        if(request.pageIds.length || request.staticPageIds.length || request.includeMappedCatalog || request.includeApprovedEditorial || request.institutionPaths.length || request.programPaths.length || request.articles.length || request.redirects?.length || request.replaceEditorialHomepage)throw Error('ambiguous_homepage_preparation');
+        return prepareLandingFromCapture(control,tenant,draft,request.homepageBase,now);
+    }
     const pages=new PagesStore(control,tenant),templates=[],staticPages=[];
     for(const id of request.pageIds){const page=await pages.get(id);
         if(!page || page.deleted_at || !page.is_public || page.is_published)throw new Error('publication_template_unavailable');
@@ -30,6 +36,7 @@ export async function prepareChunkPublication(control:DbRunner,canonical:DbRunne
         if(layout.root?.directoryConfiguration!==undefined || layout.root?.siteConfiguration!==undefined)throw new Error('publication_template_copy_conflict');
         // Explicit saved slug spelling; never invent a canonical editorial destination.
         const originalPath=page.is_homepage?'/':page.slug.startsWith('/')?page.slug:`/${page.slug}`;
+        if(readLandingSettings(layout) && (!page.is_homepage || originalPath!=='/'))throw new Error('landing_homepage_required');
         staticPages.push({pageId:id,originalPath,title:page.title??page.name,description:page.description??'',layout});}
     const quote=(name:string)=>{if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))throw new Error('invalid_mapping');return `"${name}"`;};
     const media=(value:unknown)=>typeof value==='string'?(value.trim()||null):value??null;
@@ -71,15 +78,18 @@ export async function prepareChunkPublication(control:DbRunner,canonical:DbRunne
             const key=`${ref.contentRole}:${ref.id}`,old=latest.get(key);if(!old || ref.revision>old.revision)latest.set(key,ref);}
         refs=[...latest.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
     }
-    const articles:Record<string,unknown>[]=[],editorialPages:Record<string,unknown>[]=[];
+    if(request.replaceEditorialHomepage && !staticPages.some(page=>page.originalPath==='/' && readLandingSettings(page.layout)))throw new Error('landing_homepage_required');
+    const articles:Record<string,unknown>[]=[],editorialPages:Record<string,unknown>[]=[],includedRefs:typeof refs=[];
     for(const ref of refs){const snapshot=await new EditorialApprovalStore(control,tenant).snapshot(ref.id,ref.revision,draft,ref.fingerprint);
         if(!snapshot || (snapshot.contentRole??'article')!==ref.contentRole)throw new Error('publication_approval_unavailable');
+        if(request.replaceEditorialHomepage && ref.contentRole==='page' && snapshot.originalPath==='/')continue;
+        includedRefs.push(ref);
         const record={id:snapshot.id,revision:snapshot.revision,title:snapshot.title,originalPath:snapshot.originalPath,summary:snapshot.excerpt,body:snapshot.body,
             cover:snapshot.coverUrl,coverAlt:snapshot.coverAlt,logo:null,language:snapshot.language,byline:snapshot.byline,publishedAt:snapshot.publishedAt};
         (ref.contentRole==='page'?editorialPages:articles).push(record);}
     if((await new SiteConfigurationStore(control,tenant).get())?.revision!==draft.revision)throw new Error('publication_configuration_conflict');
     const store=new SitePublicationManifestStore(control,tenant);
-    const hash=await store.prepare({configurationRevision:draft.revision,configuration:draft.configuration,templates,staticPages,approvals:refs,...(request.redirects?{redirects:request.redirects}:{})},
+    const hash=await store.prepare({configurationRevision:draft.revision,configuration:draft.configuration,templates,staticPages,approvals:includedRefs,...(request.redirects?{redirects:request.redirects}:{})},
         {institutions,programs,cities,articles,pages:editorialPages},now);
     const artifact=(await store.get(hash))!;
     return {hash,artifact,skippedUnmapped:skipped};

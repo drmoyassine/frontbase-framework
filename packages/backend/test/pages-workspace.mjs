@@ -1,0 +1,64 @@
+import assert from 'node:assert/strict';
+import { Hono } from 'hono';
+import { sqliteRunner } from '@frontbase/edge-infra';
+import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
+import { migrateUp } from '../dist/db/migrations.js';
+import { PagesStore } from '../dist/compat/pages-store.js';
+import { SiteConfigurationStore } from '../dist/compat/site-configuration-store.js';
+import { SitePublicationManifestStore } from '../dist/compat/site-publication-manifest.js';
+import { SitePublicationStore } from '../dist/compat/site-publication-store.js';
+import { pagesWorkspace } from '../dist/compat/pages-workspace.js';
+import { registerPagesWorkspaceRoutes } from '../dist/compat/routes/pages-workspace.js';
+import { registerPagesOrganizationRoutes } from '../dist/compat/routes/pages-organization.js';
+
+const db = sqliteRunner(':memory:'); await migrateUp(db);
+const now = '2026-10-12T18:00:00Z', owner = 'workspace-owner', pages = new PagesStore(db, owner);
+const cfg = emptyDirectoryConfiguration(); cfg.site = {name:'Public site',destination:'USA',origin:'https://public.test',locale:'en'}; cfg.datasourceId='owned-source';
+for (const role of ['institution','program','city']) { const m=cfg.collections[role];m.table=role;m.fields.id='id';m.fields.title='title';m.scope={field:'country',value:22};if(role!=='city')m.fields.originalPath='path'; }
+cfg.collections.institution.fields.cityId='city_id';cfg.collections.program.fields.institutionId='institution_id';
+const draft=await new SiteConfigurationStore(db,owner).save(cfg,0,now);assert.ok(draft);
+const templates=[];
+for (const role of ['directory','institution','program']) {
+ const id=crypto.randomUUID(), queries=role==='directory'?['directory.institution.list','directory.program.list']:[`directory.${role}.detail`];
+ const layout={root:{siteConfiguration:{version:1,role}},content:queries.map((q,i)=>({id:'q'+i,type:q.endsWith('.list')?'Repeater':'Container',props:{directoryQuery:{version:1,queryId:q,params:q.endsWith('.list')?{}:{path:'/college/'}}},children:[]}))};
+ await pages.create({name:role,slug:'draft-'+role,title:role,layout_data:layout},id,now);templates.push({pageId:id,role,title:role,description:'',layout});
+}
+const homeId=crypto.randomUUID(), home={root:{},content:[]};await pages.create({name:'Homepage',slug:'home',title:'Homepage',layout_data:home},homeId,now);await pages.update(homeId,{isHomepage:true},now);
+const tempId=crypto.randomUUID();await pages.create({name:'Editorial migration review · Temporary',slug:'temporary'},tempId,now);
+const foreignId=crypto.randomUUID();await new PagesStore(db,'foreign').create({name:'PRIVATE_FOREIGN',slug:'private'},foreignId,now);
+const base={summary:'',cover:null,coverAlt:'',logo:null},records={cities:[{id:1,title:'City'}],institutions:[{...base,id:1,title:'College',cityId:1,originalPath:'/college/'}],programs:[{...base,id:2,title:'Program',institutionId:1,originalPath:'/college/program/'}],articles:[],pages:[]};
+const hash=await new SitePublicationManifestStore(db,owner).prepare({configurationRevision:1,configuration:cfg,templates,staticPages:[{pageId:homeId,originalPath:'/',title:'Homepage',description:'',layout:home}]},records,now);
+await new SitePublicationStore(db,owner).activate(hash,null,now);
+let inventory=await pagesWorkspace(db,owner);
+assert.ok(inventory.entries.some(e=>e.id===homeId),'owner homepage must be present');
+assert.equal(inventory.publication.hash,hash);assert.equal(inventory.entries.find(e=>e.id===homeId).publicationStatus,'published');
+assert.equal(inventory.entries.find(e=>e.role==='directory').path,'/explore/');
+assert.equal(inventory.entries.find(e=>e.id===templates[2].pageId).serves,1);
+assert.ok(!inventory.entries.some(e=>e.kind==='collection-view'));
+assert.deepEqual(inventory.entries.find(e=>e.role==='directory').paths,['/explore/','/explore/?type=institution','/explore/?type=program']);
+assert.equal(inventory.entries.find(e=>e.id===tempId).developmentOnly,true);
+assert.ok(!JSON.stringify(inventory).includes('PRIVATE_FOREIGN'));assert.ok(!JSON.stringify(inventory).includes('layoutData'));
+await pages.update(homeId,{isPublic:false},now);assert.equal((await pagesWorkspace(db,owner)).entries.find(e=>e.id===homeId).publicationStatus,'changes-pending');await pages.update(homeId,{isPublic:true},now);
+await pages.update(templates[1].pageId,{title:'Changed draft'},now);inventory=await pagesWorkspace(db,owner);
+assert.equal(inventory.entries.find(e=>e.id===templates[1].pageId).publicationStatus,'changes-pending');
+await new SiteConfigurationStore(db,owner).save({...cfg,site:{...cfg.site,name:'Changed public name'}},1,now);
+inventory=await pagesWorkspace(db,owner);assert.equal(inventory.entries.find(e=>e.id===templates[2].pageId).publicationStatus,'changes-pending');
+assert.equal((await new SitePublicationStore(db,owner).activeVersion()).pointer.hash,hash);
+const app=new Hono();app.use('*',async(c,next)=>{c.set('tenant',owner);c.set('principal',{user:{role:c.req.header('x-test-role')??'owner'}});await next();});registerPagesWorkspaceRoutes(app,db);
+registerPagesOrganizationRoutes(app,db,()=>now,async tenant=>new Set((await pagesWorkspace(db,tenant)).entries.map(e=>e.id)));
+assert.equal((await app.request('/api/project/pages-workspace/',{headers:{'x-test-role':'user'}})).status,403);
+assert.equal((await app.request('/api/project/pages-workspace/?owner=foreign')).status,422);
+const response=await app.request('/api/project/pages-workspace/');assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');
+const beforePages=await pages.list();
+const organization={schemaVersion:1,expectedRevision:0,folders:[{id:'directory',name:'Directory',parentId:null,order:0}],placements:[{entryId:templates[0].pageId,folderId:'directory',order:0}]};
+const put=body=>app.request('/api/project/pages-organization/',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+assert.equal((await put({...organization,placements:[{entryId:foreignId,folderId:'directory',order:0}]})).status,422);
+const saved=await put(organization);assert.equal(saved.status,200);assert.equal((await saved.json()).revision,1);
+assert.equal((await put(organization)).status,409);
+assert.equal((await put({...organization,expectedRevision:1,folders:[{id:'directory',name:'Directory',parentId:'directory',order:0}]})).status,422);
+assert.deepEqual(await pages.list(),beforePages);assert.equal((await new SitePublicationStore(db,owner).activeVersion()).pointer.hash,hash);
+assert.equal((await app.request('/api/project/pages-organization/',{method:'PUT',headers:{'x-test-role':'user','content-type':'application/json'},body:JSON.stringify(organization)})).status,403);
+// A corrupt capture fails closed rather than reporting every page as an unpublished draft.
+await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',['{}',owner,`site_publication:manifest:v2:${hash}`]);
+assert.equal((await app.request('/api/project/pages-workspace/')).status,503);
+console.log('pages-workspace: owner-scoped inventory, route/layout status, draft/config changes, foreign denial and corrupt capture refusal PASS');

@@ -13,6 +13,9 @@
 import type { DbRunner } from '@frontbase/edge-infra';
 
 export interface PublishedPageRow {
+    /** Included only for managed-region layouts; binds their private snapshot to the actual row. */
+    pageId?:string;
+    owner?:string;
     title: string;
     slug: string;
     description?: string;
@@ -32,6 +35,8 @@ export interface ResolvePublishedPageOptions {
 }
 
 interface RawPageRow {
+    id?:unknown;
+    tenant_slug?:unknown;
     name: unknown;
     slug: unknown;
     description: unknown;
@@ -58,12 +63,13 @@ function mapRow(row: RawPageRow): PublishedPageRow {
         slug: String(row.slug ?? ''),
         description: row.description ? String(row.description) : undefined,
         layout,
+        ...((layout as {root?:{appMenus?:unknown}})?.root?.appMenus!==undefined?{pageId:String(row.id??''),owner:String(row.tenant_slug??'')} : {}),
         ...(isPublic !== undefined ? { isPublic } : {}),
         ...(primaryAuthForm ? { primaryAuthForm } : {}),
     };
 }
 
-const PAGE_COLUMNS = 'name, slug, description, layout_data, is_public, primary_auth_form';
+const PAGE_COLUMNS = 'name, slug, description, layout_data, is_public, primary_auth_form, id, tenant_slug';
 
 /**
  * Resolve a published page for ONE tenant. `path === '/'` → that tenant's

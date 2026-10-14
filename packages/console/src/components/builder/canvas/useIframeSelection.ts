@@ -26,6 +26,7 @@
  * returns a cleanup that the caller stores and runs before re-attaching.
  */
 
+import {isSharedMenuPreview} from '@/lib/builder/sharedMenuPreview';
 import { INLINE_TEXT_TYPES } from '@/lib/builder/iframeTypes';
 import { findComponentId } from '@/lib/builder/iframeBridge';
 import { EDIT_ID_ATTR, EDIT_PROP_ATTR, findEditTarget } from '@/lib/builder/editableText';
@@ -99,6 +100,7 @@ export function attachIframeSelection(
     const onClick = (e: Event) => {
         const target = e.target as HTMLElement | null;
         const state = useBuilderStore.getState();
+        if(isSharedMenuPreview(target)){e.preventDefault();e.stopPropagation();return;}
 
         // 1. Scroll-target selection mode: hand the id + type to the callback.
         if (state.scrollTargetSelectionMode && state.scrollTargetCallback) {
@@ -185,7 +187,7 @@ export function attachIframeSelection(
 
     const onMouseMove = (e: Event) => {
         const target = e.target as HTMLElement | null;
-        const id = findComponentId(target);
+        const id = isSharedMenuPreview(target)?null:findComponentId(target);
         if (hoverTimer) clearTimeout(hoverTimer);
         hoverTimer = setTimeout(() => handlers.onHoveredId(id), HOVER_DEBOUNCE_MS);
     };
@@ -193,6 +195,7 @@ export function attachIframeSelection(
     const onDblClick = (e: Event) => {
         const target = e.target as HTMLElement | null;
         const state = useBuilderStore.getState();
+        if(isSharedMenuPreview(target)){e.preventDefault();e.stopPropagation();return;}
         if (state.isPreviewMode) return;
 
         // Native word-select inside the active editor.
