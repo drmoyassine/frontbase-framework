@@ -47,6 +47,7 @@ const FILTER_CATEGORIES = ['Text', 'Numbers', 'Lists', 'Dates', 'Format'] as con
 
 // Group icons and labels
 const GROUP_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string; description: string }> = {
+    app: {icon:<Box className="h-4 w-4"/>,label:'App',color:'text-blue-500',description:'App variables'},
     page: { icon: <FileText className="h-4 w-4" />, label: 'Page', color: 'text-blue-500', description: 'Current page details' },
     visitor: { icon: <Globe className="h-4 w-4" />, label: 'Visitor', color: 'text-purple-500', description: 'Visitor info & location' },
     user: { icon: <User className="h-4 w-4" />, label: 'User', color: 'text-green-500', description: 'Authenticated user data' },

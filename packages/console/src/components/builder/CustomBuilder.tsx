@@ -58,6 +58,8 @@ export const CustomBuilder: React.FC = () => {
 
   // Keyboard shortcuts integration
   useKeyboardShortcuts({
+    onUndo:()=>useBuilderStore.getState().undoLayout(),
+    onRedo:()=>useBuilderStore.getState().redoLayout(),
     onSave: async () => {
       if (currentPageId) {
         try {

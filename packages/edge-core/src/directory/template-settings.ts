@@ -38,6 +38,28 @@ export function templateContrastIssues(input:TemplateSettings):string[]{
 export function readLandingSettings(layout: PageLayoutData): TemplateSettings | undefined {
     return layout.root?.directoryLanding === undefined ? undefined : landingRootSchema.parse(layout.root.directoryLanding).settings;
 }
+
+/** Copy legacy global presentation values into their actual authoring elements. */
+export function materializeElementSettings(layout:PageLayoutData,configuration:{browsing:{defaultCollection:string;pageSize:number;search:boolean}}):PageLayoutData{
+    const settings=readLandingSettings(layout);
+    const copyValues=settings?{programHeading:settings.programHeading,articleHeading:settings.articleHeading,counselorHeading:settings.counselorHeading,counselorCopy:settings.counselorCopy}:undefined;
+    const walk=(nodes:PageComponent[]):PageComponent[]=>nodes.map(node=>{
+        const props={...node.props};let visibilityCondition=node.visibilityCondition;
+        if(settings){
+            if(props.templateHero!==undefined)props.templateHero={...props.templateHero as any,settings:(props.templateHero as any)?.settings??settings.hero};
+            if(props.templateText&&copyValues&&Object.hasOwn(copyValues,String(props.templateText))){props.text=literal(copyValues[props.templateText as keyof typeof copyValues]);delete props.templateText;}
+            if(props.templateSection){if(!settings.sections[props.templateSection as keyof typeof settings.sections])visibilityCondition=visibilityCondition?`(${visibilityCondition}) and false`:'false';delete props.templateSection;}
+            if(props.templateList&&props.directoryQuery){const query=props.directoryQuery as any;props.directoryQuery={...query,params:{...query.params,limit:props.templateList==='program'?settings.programCount:settings.articleCount}};delete props.templateList;}
+        }
+        if(props.templateSearch!==undefined)props.templateSearch={...props.templateSearch as any,defaultCollection:(props.templateSearch as any)?.defaultCollection??configuration.browsing.defaultCollection};
+        if(node.type==='Repeater'&&(props.directoryQuery as any)?.queryId?.endsWith('.list')){
+            const query=props.directoryQuery as any;props.directoryQuery={...query,params:{...query.params,limit:query.params?.limit??configuration.browsing.pageSize}};
+            props.directoryControls={version:1,tabs:false,search:configuration.browsing.search,pagination:true,...props.directoryControls as any};
+        }
+        return {...node,props,...(visibilityCondition!==undefined?{visibilityCondition}:{}),...(node.children?{children:walk(node.children)}:{})};
+    });
+    return {...layout,root:{...layout.root,elementSettingsVersion:1},content:walk(layout.content)};
+}
 export function landingQueryParams(layout:PageLayoutData,id:string,params:Record<string,unknown>):Record<string,unknown>{
     const settings=readLandingSettings(layout);if(!settings)return params;
     const find=(nodes:PageComponent[]):PageComponent|undefined=>{for(const n of nodes){if(n.id===id)return n;const found=n.children&&find(n.children);if(found)return found;}return undefined;};
@@ -52,27 +74,28 @@ export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, 
     if(!settings)return layout;
     const s=templateSettingsSchema.parse(settings),p=templatePalette(s);
     const slots:Record<string,Record<string,unknown>>={
-        page:{backgroundColor:p.background,color:p.text,fontFamily:s.font==='serif'?'Georgia, serif':'system-ui, -apple-system, Segoe UI, sans-serif'},
+        page:{backgroundColor:'hsl(var(--background))',color:'hsl(var(--foreground))',fontFamily:s.font==='serif'?'Georgia, serif':'system-ui, -apple-system, Segoe UI, sans-serif'},
         header:{backgroundColor:p.primary,color:'#ffffff'}, section:{padding:`${s.spacing}px 24px`,maxWidth:`${s.width}px`,margin:'0 auto',width:'100%'},
-        card:{backgroundColor:p.background,color:p.text,border:`1px solid ${p.border}`,borderRadius:`${s.radius}px`},
-        button:{backgroundColor:p.primary,color:'#ffffff',borderRadius:`${Math.min(s.radius,12)}px`},soft:{backgroundColor:p.surface,color:p.text},
-        muted:{color:p.muted},
+        card:{backgroundColor:'hsl(var(--background))',color:'hsl(var(--foreground))',border:'1px solid hsl(var(--border))',borderRadius:`${s.radius}px`},
+        button:{backgroundColor:p.primary,color:'#ffffff',borderRadius:`${Math.min(s.radius,12)}px`},soft:{backgroundColor:'hsl(var(--muted))',color:'hsl(var(--foreground))'},
+        muted:{color:'hsl(var(--muted-foreground))'},
     };
     const values={programHeading:s.programHeading,articleHeading:s.articleHeading,counselorHeading:s.counselorHeading,counselorCopy:s.counselorCopy};
     const walk=(node:PageComponent):PageComponent|null=>{
         const props={...node.props};
+        if(['page','card','soft','muted'].includes(String(props.templateStyle)))props.className=[typeof props.className==='string'?props.className:'',`fb-template-${props.templateStyle}`].filter(Boolean).join(' ');
         if(props.templateSection && !s.sections[props.templateSection as keyof typeof s.sections])return null;
         if(props.templateText && Object.hasOwn(values,String(props.templateText)))props.text=literal(values[props.templateText as keyof typeof values]);
         if(props.templateLink==='blog')props.href=configuration.routes.blog;
         if(props.templateLink==='institutions')props.href=configuration.routes.directory+'?type=institution';
         if(props.templateLink==='programs')props.href=configuration.routes.directory+'?type=program';
         // Like browsing state, a tuple keeps public copy out of recursive Liquid resolution.
-        if(props.templateHero!==undefined)props.templateHeroState=[{settings:s.hero,palette:p,destination:configuration.site.destination}];
-        if(props.templateSearch!==undefined)props.templateSearchState={path:configuration.routes.directory,collection:configuration.browsing.defaultCollection==='program'?'program':'institution'};
+        if(props.templateHero!==undefined)props.templateHeroState=[{settings:templateSettingsSchema.shape.hero.parse((props.templateHero as any)?.settings??s.hero),palette:p,destination:configuration.site.destination}];
+        if(props.templateSearch!==undefined)props.templateSearchState={path:configuration.routes.directory,collection:(props.templateSearch as any)?.defaultCollection??(configuration.browsing.defaultCollection==='program'?'program':'institution')};
         const styles={...(typeof props.templateStyle==='string'?slots[props.templateStyle]??{}:{}),...node.styles};
         return {...node,props,styles,...(node.children?{children:node.children.map(walk).filter((n):n is PageComponent=>!!n)}:{})};
     };
     const previous=layout.root?.containerStyles as Record<string,unknown>|undefined;
     const styleValues=(previous?.values??previous??{}) as Record<string,unknown>;
-    return {...layout,root:{...layout.root,containerStyles:{values:{...styleValues,'--fb-template-primary':p.primary,'--fb-template-width':`${s.width}px`,'--primary':hsl(p.primary),'--primary-foreground':'0 0% 100%','--background':hsl(p.background),'--foreground':hsl(p.text),'--border':hsl(p.border),'--muted-foreground':hsl(p.muted)}}},content:layout.content.map(walk).filter((n):n is PageComponent=>!!n)};
+    return {...layout,root:{...layout.root,containerStyles:{values:{...styleValues,'--fb-template-primary':p.primary,'--fb-template-width':`${s.width}px`,'--primary':hsl(p.primary),'--primary-foreground':'0 0% 100%','--background':hsl(p.background),'--foreground':hsl(p.text),'--muted':hsl(p.surface),'--border':hsl(p.border),'--muted-foreground':hsl(p.muted)}}},content:layout.content.map(walk).filter((n):n is PageComponent=>!!n)};
 }

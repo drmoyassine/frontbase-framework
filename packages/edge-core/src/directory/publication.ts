@@ -4,6 +4,8 @@ import { directoryLayoutQueries } from './bindings.js';
 import { editorialBodySchema, editorialCoverUrlSchema } from './editorial.js';
 import type { PageLayoutData } from '../ssr/types.js';
 import {menuReferenceSchema} from '../menus.js';
+import {applyBlockVersion,validateBlockVersions} from '../block-versions.js';
+import {publicationListSourceSchema} from './standard-repeater.js';
 
 /** Server-side capture contract. Never an input accepted from an anonymous browser. */
 export const publicationPathSchema = z.string().min(1).max(400).refine(value => {
@@ -31,10 +33,21 @@ const layout = z.record(z.unknown()).refine(value => {
         if (!Array.isArray(value.content) || JSON.stringify(value).length > 200000) return false;
         // Existing binding validation and renderer own layout semantics. No new renderer.
         directoryLayoutQueries(value as unknown as PageLayoutData);
+        if(/"versions"/.test(JSON.stringify(value)))validateBlockVersions(value.content as any);
+        const sourceBinding=z.object({componentId:z.string().min(1).max(200),dataSourceId:z.literal('frontbase:publication'),tableName:z.enum(['institutions','programs','articles']),source:publicationListSourceSchema,
+            pagination:z.object({enabled:z.boolean(),pageSize:z.number().int().min(1).max(48),page:z.number().int().min(0).max(20000)}).strict(),
+            sorting:z.object({enabled:z.boolean(),column:z.enum(['title','id']).optional(),direction:z.enum(['asc','desc']).optional()}).strict(),
+            filtering:z.object({searchEnabled:z.boolean(),filters:z.record(z.unknown())}).strict(),columnOrder:z.array(z.string()).max(100).optional(),columnOverrides:z.record(z.unknown()),hiddenFilters:z.array(z.unknown()).max(50).optional(),refreshInterval:z.number().optional()}).strict();
         const inspect = (nodes: Record<string, unknown>[]) => {
             for (const node of nodes) {
                 const props = node.props as Record<string, unknown> | undefined;
-                if (node.binding || props?.binding || props?.dataRequest || props?.queryConfig) throw new Error('mutable_binding');
+                if (props?.dataRequest || props?.queryConfig || props?.initialRows || props?.initialTotal!==undefined || props?._initialQuery) throw new Error('mutable_binding');
+                if(node.binding || props?.binding){
+                    if(node.type!=='Repeater')throw Error('mutable_binding');
+                    sourceBinding.parse(props?.binding??node.binding);
+                    if(node.binding&&props?.binding&&JSON.stringify(node.binding)!==JSON.stringify(props.binding))throw Error('ambiguous_binding');
+                }
+                for(const version of (node.versions??[]) as any[])inspect([applyBlockVersion(node as any,version.id)]);
                 if (Array.isArray(node.children)) inspect(node.children);
             }
         };

@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 import { ComponentData } from '@/stores/builder';
 import { cn } from '@/lib/utils';
-import { findComponentWithParent, removeComponentFromTree, insertComponentIntoTree } from '@/lib/tree-utils';
+import { findComponentWithParent, findComponent } from '@/lib/tree-utils';
+import {resolveBlockTree} from '@frontbase/edge-core/block-versions';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,9 +56,11 @@ export const LayersPanel: React.FC = () => {
   const [expandedComponents, setExpandedComponents] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const selections=useBuilderStore(state=>state.editingVersions);
+  const move=useBuilderStore(state=>state.moveComponent);
 
   const currentPage = pages.find(page => page.id === currentPageId);
-  const components = currentPage?.layoutData?.content || [];
+  const components = resolveBlockTree(currentPage?.layoutData?.content || [],()=>undefined,selections);
 
   // Expand all containers with children by default on page load
   React.useEffect(() => {
@@ -149,7 +152,7 @@ export const LayersPanel: React.FC = () => {
       return;
     }
 
-    const content = currentPage.layoutData?.content || [];
+    const content = components;
 
     // Find both components in the tree (works for nested components)
     const activeResult = findComponentWithParent(content, String(active.id));
@@ -174,38 +177,8 @@ export const LayersPanel: React.FC = () => {
     const activeIndex = activeResult.index;
     const overIndex = overResult.index;
 
-    // Create deep copy of content and reorder
-    const deepClone = (arr: ComponentData[]): ComponentData[] =>
-      arr.map(c => ({ ...c, children: c.children ? deepClone(c.children) : undefined }));
-
-    let newContent = deepClone(content);
-
-    if (activeParentId === null) {
-      // Top-level reorder
-      newContent = arrayMove(newContent, activeIndex, overIndex);
-    } else {
-      // Nested reorder - find parent and reorder its children
-      const updateChildren = (items: ComponentData[]): ComponentData[] => {
-        return items.map(item => {
-          if (item.id === activeParentId && item.children) {
-            return { ...item, children: arrayMove(item.children, activeIndex, overIndex) };
-          }
-          if (item.children) {
-            return { ...item, children: updateChildren(item.children) };
-          }
-          return item;
-        });
-      };
-      newContent = updateChildren(newContent);
-    }
-
-    // Update page with new component order
-    updatePage(currentPageId, {
-      layoutData: {
-        ...currentPage.layoutData,
-        content: newContent
-      }
-    });
+    const original=findComponent(currentPage.layoutData?.content??[],String(active.id));
+    if(original)move(currentPageId,original.id,original,overIndex,activeParentId??undefined);
 
     // Reset drag state
     setActiveId(null);

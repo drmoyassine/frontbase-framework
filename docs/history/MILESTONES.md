@@ -1,5 +1,33 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-15 Block Versions / configurable Repeater — staging verified
+
+Owner-agreed direct Default inheritance, same-type alternatives and first-match conditions are deployed with standard Repeater source/table/saved-view controls, editable Card/@ mappings, browsing/filter controls and guarded settings/Explore conversion. Workspace check/build, 25 focused tests, core/SQLite/capacity gates, 6 restored mutations and clean-image gates pass. Actual saved drafts migrated; generation20 conversion active; public/canvas titles/images, source switching/history, paging/search and responsive widths verified. [Receipt and limits](../plans/frontbase-block-versions-20261015.md). Pending owner edits preserved; generic provider snapshot creation and configured-provider acceptance remain unclaimed. Uncommitted; no production/public-release scope change.
+
+## 2026-10-14 unified conditions — staging verified
+
+[Receipt](../plans/frontbase-unified-conditions-20261014.md): shared core conditions/value resolution and shared authoring for filters/visibility, typed JSON/@ operands, Menus comparator reuse and verified minimal App Users context delivered. Workspace check/build, 15 console tests, real SQLite/protocol/isolation checks, 2/2 new and 6/6 existing mutations and retained clean-image gates pass. Actual synthetic public/canvas image/card/records/history checks and deployed Image Options verification pass. Live configured-provider acceptance remains unclaimed. Generation19 and owner drafts unchanged; no Git checkpoint, production cutover or release acceptance.
+
+## 2026-10-14 single-binding conditional filters — staging verified
+
+[Receipt](../plans/frontbase-single-binding-filters-20261014.md): existing URL/local variables condition hidden predicates on ordinary single-bound lists; shared runtime, reactive history/canvas behavior and bounded SQL read repairs delivered. Workspace check/build, eight console tests, real SQLite/protocol/isolation gates, 2/2 mutations and retained clean-image gates pass. Synthetic public/canvas button checks pass; deployed runtime and unchanged generation19 confirmed. Multiple binding selection, saved-view/snapshot services and specialized Explore conversion remain separate. No owner draft save/publication activation, production cutover or release acceptance.
+
+## 2026-10-14 Explore Repeater parity — staging verified
+
+[Receipt](../plans/frontbase-repeater-parity-20261014.md): pinned captured canvas data and native browsing controls, Repeater query/control configuration and collection-selection preview delivered. Actual Institutions/Programs title ordering matches public delivery; 12 UI tests, workspace check/build, native/query/chunk/capacity gates and 6/6 preview mutations pass. Arbitrary-field facets/multi-field sorts remain outside current captured-index capability. No owner draft save, publication activation, production cutover or release acceptance.
+
+## 2026-10-14 public appearance — deployed and verified
+
+[Receipt](../plans/frontbase-public-appearance-20261014.md): native Light/Dark/System, System default, persisted public preference, OS tracking and semantic template surfaces delivered. Real staging colors and reload persistence pass, including interactive opaque design preview. Workspace/focused/CSP/retained clean-image checks pass. No menu publication, auth configuration, production cutover or release acceptance added.
+
+## 2026-10-14 sticky navigation and publication-read repair — deployed
+
+[Receipt](../plans/frontbase-sticky-menu-publication-repair-20261014.md): real scroll verifies sticky header, bulk approval reads retain exact snapshot validation, two source mutations and clean-image gates pass. User draft revision6 remains untouched; prepared preview and Publish readiness verified. Database-read reduction proven; no exact live Publish timing claim or production action.
+
+## 2026-10-14 Pages/Menus UX refinement — deployed
+
+[Receipt](../plans/frontbase-pages-menus-simplification-20261014.md): redundant folder sidebar removed, toolbar/breadcrumb navigation retained, guarded saved-draft Preview → Publish/Discard implemented and native shared backgrounds corrected. Actual staging UI/private preview passes; live generation15 and user draft revision2 remain unchanged. Twelve UI tests and three new mutation proofs pass alongside workspace and clean-image gates. No real visitor-audience, production cutover or public release acceptance added.
+
 ## 2026-10-14 app-level Menus — public staging delivery verified
 
 Shared Header/Footer/Sidebar management, existing component editors, owner/CAS drafts, immutable publication, builder references and verified Supabase audience integration are implemented. Public Header/Footer delivery is verified on actual staging across nine page roles, with exact-node pilot conversion, desktop/mobile navigation, rollback/restoration and restart persistence. Active capture 3a81d285… generation15 preserves catalog counts, URLs, folders and Apply content. Real signed-in visitor acceptance remains pending App Users' existing Auth Provider/contact configuration; no provider, contacts or RLS were changed for proof. [Final delivery and limits](../plans/frontbase-app-menus-delivery-20261014.md). Source remains uncommitted; production, installer and framework release gates remain open.

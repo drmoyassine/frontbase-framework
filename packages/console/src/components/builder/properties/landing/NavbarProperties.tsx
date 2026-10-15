@@ -483,12 +483,12 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
 
             {/* Dark Mode Toggle Section */}
             <div className="space-y-3 pt-4 border-t">
-                <Label className="text-sm font-medium">Dark Mode</Label>
+                <Label className="text-sm font-medium">Appearance</Label>
                 <div className="flex items-center justify-between space-y-0 rounded-md border p-3 bg-muted/30">
                     <div className="space-y-0.5">
-                        <Label className="text-xs font-medium">Show Dark Mode Toggle</Label>
+                        <Label className="text-xs font-medium">Show appearance switcher</Label>
                         <p className="text-xs text-muted-foreground">
-                            Display sun/moon icon to switch themes
+                            Light, Dark or System. System is the default; visitor choices are saved.
                         </p>
                     </div>
                     <Switch

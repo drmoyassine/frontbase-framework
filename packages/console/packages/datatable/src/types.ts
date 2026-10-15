@@ -106,6 +106,7 @@ export interface DataTableBinding {
     dataRequest?: DataRequest;
     _resolvedHiddenFilters?: any[];
     _pendingHiddenFilters?: any[];
+    hiddenFilters?: import('@frontbase/types').HiddenFilter[];
 }
 
 // =============================================================================
@@ -160,6 +161,7 @@ export interface DataFetcherConfig {
     sortDirection?: 'asc' | 'desc';
     filters?: Record<string, any>;
     searchQuery?: string;
+    resolvedHiddenFilters?: any[];
 }
 
 export interface DataFetcherResult {

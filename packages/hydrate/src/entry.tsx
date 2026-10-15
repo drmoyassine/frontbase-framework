@@ -1,3 +1,6 @@
+import {evaluateCondition,contextReader} from '@frontbase/edge-core/conditions';
+import {startBlockVersions} from '@frontbase/edge-core/browser/block-versions';
+import {browserFilterUrlVariables,isBuilderCanvas} from '@frontbase/types';
 /**
  * React Hydration Entry Point with React Query
  * 
@@ -5,7 +8,7 @@
  * Includes QueryClientProvider for @frontbase/datatable caching.
  */
 
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import { StrictMode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DataTable } from './wrappers/UnifiedDataTable';
@@ -16,6 +19,8 @@ import { KPICard } from './wrappers/KPICard';
 import { Grid } from './wrappers/Grid';
 import { Repeater } from './wrappers/repeater/Repeater';
 import './globals.css';
+import {startPublicTheme} from '@frontbase/edge-core/browser/theme';
+startPublicTheme();
 import { startHeroSlides } from '@frontbase/edge-core/browser/template';
 
 // These SSR-native controls also run when the page has no React widgets.
@@ -51,6 +56,7 @@ const components: Record<string, React.ComponentType<any>> = {
 };
 
 // Hydrate all React components
+const hydratedRoots = new Map<Element, Root>();
 function hydrateReactComponents() {
     console.log('🔄 React hydration starting...');
 
@@ -60,6 +66,7 @@ function hydrateReactComponents() {
     );
 
     elements.forEach((element) => {
+        if (hydratedRoots.has(element)) return;
         // Handle both new data-react-component and legacy data-fb-hydrate
         const hydrateType = element.getAttribute('data-fb-hydrate');
         const componentName = element.getAttribute('data-react-component') ||
@@ -92,12 +99,10 @@ function hydrateReactComponents() {
                     const componentDef = findComponentById(pageData.layoutData.content, componentId);
                     // Check binding in root (correct) or props (legacy)
                     const binding = componentDef?.binding || componentDef?.props?.binding;
-                    if (binding) {
-                        props.binding = { ...props.binding, ...binding };
-                    }
+                    if (binding && !props.binding) props.binding = binding;
                     // Repeater: the designed template subtree lives in the layout tree,
                     // not in serialized props — pass it so the edge Repeater can repeat it.
-                    if (componentDef?.children) {
+                    if (componentDef?.children && !props.template) {
                         props.template = componentDef.children;
                     }
                 }
@@ -117,6 +122,7 @@ function hydrateReactComponents() {
             // Always use createRoot to replace skeleton with interactive component.
             element.innerHTML = '';
             const root = createRoot(element);
+            hydratedRoots.set(element, root);
             root.render(reactTree);
         } catch (err) {
             console.error(`[React Hydrate] Failed to hydrate ${componentName}:`, err);
@@ -156,7 +162,7 @@ class VariableStore {
 
         // 1. Hydrate URL parameters
         if (typeof window !== 'undefined') {
-            const searchParams = new URLSearchParams(window.location.search);
+            const searchParams = new URLSearchParams(browserFilterUrlVariables());
             for (const [key, value] of searchParams.entries()) {
                 this.url[key] = value;
             }
@@ -176,9 +182,7 @@ class VariableStore {
         }
 
         // 3. Hydrate app variables (baked at publish time)
-        if (pageData && pageData.appVariables) {
-            this.app = { ...pageData.appVariables };
-        }
+        this.app = {...((window as any).__CONDITION_CONTEXT__?.app??{}),...(pageData?.appVariables??{})};
 
         // 4. Hydrate session variables (from sessionStorage or defaults)
         const sessionDefs = root.sessionVariables || {};
@@ -243,10 +247,10 @@ class VariableStore {
         } else if (scope === 'url') {
             const prev = this.url[key];
             this.url[key] = value;
-            if (typeof window !== 'undefined') {
+            if (typeof window !== 'undefined' && !isBuilderCanvas()) {
                 const url = new URL(window.location.href);
                 url.searchParams.set(key, String(value));
-                window.history.replaceState(null, '', url.pathname + url.search);
+                if(url.href!==window.location.href)window.history.pushState(null, '', url.pathname + url.search + url.hash);
             }
             changed = prev !== value;
         }
@@ -267,6 +271,7 @@ class VariableStore {
         for (const listener of this.listeners) {
             listener();
         }
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('fb:variables-changed'));
     }
 }
 
@@ -281,6 +286,17 @@ if (typeof window !== 'undefined') {
         // Initialize Variable Store & Action Delegation
         const store = new VariableStore();
         (window as any).__VARIABLE_STORE__ = store;
+        startBlockVersions((scope, key) => {
+            const value = store.get(scope, key);
+            return value === undefined ? contextReader((window as any).__CONDITION_CONTEXT__ ?? {})(scope, key) : value;
+        }, {
+            beforeRemove: root => { for (const [element, reactRoot] of hydratedRoots) if (root.contains(element)) { reactRoot.unmount(); hydratedRoots.delete(element); } },
+            afterInsert: () => { hydrateReactComponents(); startHeroSlides(); updateVisibilityToggles(store); },
+        });
+        window.addEventListener('frontbase:blocks-removing',((event:CustomEvent)=>{const root=event.detail?.root;if(!(root instanceof Element))return;for(const [element,reactRoot]of hydratedRoots)if(root.contains(element)){reactRoot.unmount();hydratedRoots.delete(element);}}) as EventListener);
+        window.addEventListener('frontbase:blocks-inserted',()=>{hydrateReactComponents();updateVisibilityToggles(store);startHeroSlides();});
+        window.dispatchEvent(new Event('frontbase:variables-ready'));
+        window.addEventListener('popstate',()=>{store.url=Object.fromEntries(new URLSearchParams(window.location.search));store.notify();});
         if ((window as any).frontbase) {
             (window as any).frontbase.variableStore = store;
         }
@@ -431,117 +447,9 @@ if (typeof window !== 'undefined') {
 
 
 
-function getPath(obj: any, path: string): any {
-    const parts = path.trim().split('.');
-    let current = obj;
-    for (const part of parts) {
-        if (current === null || current === undefined) return undefined;
-        current = current[part];
-    }
-    return current;
-}
-
-function normalizeExpression(expr: string): string {
-    return expr
-        .replace(/\[['"]([^'"]+)['"]\]/g, '.$1')
-        .replace(/\[(\d+)\]/g, '.$1');
-}
-
-function safeEval(expression: string, data: Record<string, any>): any {
-    expression = normalizeExpression(expression.trim());
-
-    if (expression === 'true') return true;
-    if (expression === 'false') return false;
-    if (expression === 'null') return null;
-    if (expression === 'undefined') return undefined;
-
-    if (/^\d+(\.\d+)?$/.test(expression)) {
-        return Number(expression);
-    }
-
-    const stringMatch = expression.match(/^['"](.*)['"]$/);
-    if (stringMatch) {
-        return stringMatch[1];
-    }
-
-    if (expression.startsWith('!')) {
-        return !safeEval(expression.substring(1), data);
-    }
-
-    if (expression.includes('||')) {
-        const parts = expression.split('||');
-        for (const part of parts) {
-            const val = safeEval(part, data);
-            if (val) return val;
-        }
-        return safeEval(parts[parts.length - 1], data);
-    }
-
-    if (expression.includes('&&')) {
-        const parts = expression.split('&&');
-        let val: any = true;
-        for (const part of parts) {
-            val = safeEval(part, data);
-            if (!val) return val;
-        }
-        return val;
-    }
-
-    const operators = ['===', '!==', '==', '!=', '>=', '<=', '>', '<', ' contains '];
-    for (const op of operators) {
-        if (expression.includes(op)) {
-            const parts = expression.split(op).map(p => p.trim());
-            if (parts.length === 2) {
-                const left = safeEval(parts[0], data);
-                const right = safeEval(parts[1], data);
-                switch (op.trim()) {
-                    case '===':
-                    case '==':
-                        return left === right;
-                    case '!==':
-                    case '!=':
-                        return left !== right;
-                    case '>=':
-                        return left >= right;
-                    case '<=':
-                        return left <= right;
-                    case '>':
-                        return left > right;
-                    case '<':
-                        return left < right;
-                    case 'contains':
-                        if (Array.isArray(left)) {
-                            return left.includes(right);
-                        }
-                        if (typeof left === 'string') {
-                            return left.includes(String(right));
-                        }
-                        return false;
-                }
-            }
-        }
-    }
-
-    return getPath(data, expression);
-}
-
-function evaluateCondition(condition: string, store: VariableStore): boolean {
-    if (!condition) return true;
-    try {
-        const evalData = {
-            local: store.local,
-            session: store.session,
-            cookies: store.cookies,
-            url: store.url,
-            app: store.app,
-            page: (window as any).__PAGE_DATA__ || {},
-            user: (window as any).__USER_CONTEXT__ || {}
-        };
-        return !!safeEval(condition, evalData);
-    } catch (err) {
-        console.warn(`[Visibility Evaluator] Error evaluating condition "${condition}":`, err);
-        return true; 
-    }
+function evaluateVisibility(condition:string,store:VariableStore):boolean {
+    const context=(window as any).__CONDITION_CONTEXT__??(window as any).__INITIAL_STATE__??{};
+    return evaluateCondition(condition,contextReader({...context,local:store.local,session:store.session,cookies:store.cookies,url:store.url,app:store.app,page:context.page??(window as any).__PAGE_DATA__??{}}));
 }
 
 function updateVisibilityToggles(store: VariableStore) {
@@ -550,14 +458,8 @@ function updateVisibilityToggles(store: VariableStore) {
         const condition = element.getAttribute('data-show-if');
         if (!condition) return;
 
-        const isVisible = evaluateCondition(condition, store);
-        if (isVisible) {
-            if ((element as HTMLElement).style.display === 'none') {
-                (element as HTMLElement).style.display = '';
-            }
-        } else {
-            (element as HTMLElement).style.display = 'none';
-        }
+        const isVisible = evaluateVisibility(condition, store);
+        element.toggleAttribute('data-condition-hidden',!isVisible);
     });
 }
 

@@ -12,6 +12,7 @@ export function SiteConfigurationForm() {
     const [pending, setPending] = useState(false);
     const [message, setMessage] = useState('');
     const [conflict, setConflict] = useState(false);
+    const [elementBrowsing,setElementBrowsing]=useState(false);
     const loadGeneration = useRef(0);
     async function load() {
         const generation = ++loadGeneration.current;
@@ -32,7 +33,7 @@ export function SiteConfigurationForm() {
                 if (generation !== loadGeneration.current) return;
                 setInitialSite(project.siteIdentity || { name: project.name || '', origin: project.appUrl || project.app_url || '', locale: 'en' });
             }
-            setConfiguration(body.draft?.configuration); setRevision(body.revision); setConflict(false); setMessage('');
+            setConfiguration(body.draft?.configuration); setElementBrowsing(body.elementBrowsing===true);setRevision(body.revision); setConflict(false); setMessage('');
         } catch { if (generation === loadGeneration.current) { setRevision(null); setMessage('Could not load shared settings. Reload before saving.'); } }
         finally { if (generation === loadGeneration.current) setPending(false); }
     }
@@ -53,7 +54,7 @@ export function SiteConfigurationForm() {
     }
     return <Card><CardHeader><CardTitle>Directory setup</CardTitle><CardDescription>Education-template data, browsing, URLs and contact actions. Site identity is managed in General. Saves update authoring settings; prepare and review a site version to publish.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
-            <fieldset disabled={pending || revision === null}><DirectoryConfigurationPanel persistenceScope="site" hideIdentity initialSite={initialSite} value={configuration} onChange={setConfiguration} /></fieldset>
+            <fieldset disabled={pending || revision === null}><DirectoryConfigurationPanel persistenceScope="site" hideIdentity elementBrowsing={elementBrowsing} initialSite={initialSite} value={configuration} onChange={setConfiguration} /></fieldset>
             <div className="flex gap-3"><Button disabled={pending || revision === null || !configuration || conflict || directoryConfigurationIssues(configuration).length > 0} onClick={() => void save()}>Save shared settings</Button>
                 <Button variant="outline" disabled={pending} onClick={() => void load()}>Reload saved settings (discard edits)</Button></div>
             {revision !== null && <p className="text-sm text-muted-foreground">Saved revision: {revision}</p>}

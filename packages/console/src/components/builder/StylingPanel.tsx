@@ -16,6 +16,8 @@ import { StylesPanel } from '@/components/styles/StylesPanel';
 import { ThemeSelector } from '@/components/builder/ThemeSelector';
 import type { StylesData, ViewportType, VisibilitySettings } from '@/lib/styles/types';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
+import {findComponent,inheritedVersionOwner} from '@/lib/tree-utils';
+import {applyBlockVersion} from '@frontbase/edge-core/block-versions';
 
 const VIEWPORT_LABELS: Record<ViewportType, { label: string; icon: React.ElementType }> = {
   desktop: { label: 'Desktop', icon: Monitor },
@@ -43,6 +45,9 @@ export const StylingPanel: React.FC = () => {
   })));
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const selections=useBuilderStore(state=>state.editingVersions);
+  const remove=useBuilderStore(state=>state.removeComponent);
+  const update=useBuilderStore(state=>state.updateComponent);
 
 
   const currentPage = pages.find(page => page.id === currentPageId);
@@ -59,8 +64,8 @@ export const StylingPanel: React.FC = () => {
     return null;
   };
 
-  const selectedComponent = currentPage?.layoutData?.content ?
-    findComponentById(currentPage.layoutData.content, selectedComponentId || '') : null;
+  const defaultComponent=currentPage?.layoutData?.content?findComponent(currentPage.layoutData.content,selectedComponentId||''):null;
+  const selectedComponent=defaultComponent?applyBlockVersion(defaultComponent,selections[selectedComponentId||'']):null;
 
   if (!selectedComponent) {
     return (
@@ -74,6 +79,8 @@ export const StylingPanel: React.FC = () => {
       </div>
     );
   }
+  const inheritedOwner=inheritedVersionOwner(currentPage?.layoutData?.content??[],selectedComponentId||'',selections);
+  if(inheritedOwner)return <div className="space-y-3 p-4"><p className="text-sm">These children inherit from Default. Enable Override structure on the parent version before changing their styles.</p><Button variant="outline" onClick={()=>setSelectedComponentId(inheritedOwner)}>Open parent version</Button></div>;
 
   // Recursive function to update component in nested structure
   const updateComponentInContent = (components: any[], componentId: string, updates: any): any[] => {
@@ -93,27 +100,7 @@ export const StylingPanel: React.FC = () => {
 
   const deleteComponent = () => {
     if (!currentPage) return;
-
-    const removeComponentFromContent = (components: any[], componentId: string): any[] => {
-      return components.filter(comp => {
-        if (comp.id === componentId) return false;
-        if (comp.children) {
-          comp.children = removeComponentFromContent(comp.children, componentId);
-        }
-        return true;
-      });
-    };
-
-    const updatedContent = removeComponentFromContent(currentPage.layoutData.content, selectedComponentId!);
-
-    updatePage(currentPage.id, {
-      layoutData: {
-        ...currentPage.layoutData,
-        content: updatedContent
-      }
-    });
-
-    setSelectedComponentId(null);
+    remove(selectedComponentId!);
     setShowDeleteDialog(false);
   };
 
@@ -263,23 +250,7 @@ export const StylingPanel: React.FC = () => {
     if (!currentPage) return;
 
     const currentVisibility = getVisibility();
-    const updatedContent = updateComponentInContent(
-      currentPage.layoutData.content,
-      selectedComponentId!,
-      {
-        visibility: {
-          ...currentVisibility,
-          [viewport]: visible
-        }
-      }
-    );
-
-    updatePage(currentPage.id, {
-      layoutData: {
-        ...currentPage.layoutData,
-        content: updatedContent
-      }
-    });
+    update(selectedComponentId!,{visibility:{...currentVisibility,[viewport]:visible}});
   };
 
   const CurrentViewportIcon = VIEWPORT_LABELS[currentViewport].icon;

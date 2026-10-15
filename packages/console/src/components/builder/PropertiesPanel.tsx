@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useBuilderStore } from '@/stores/builder';
 import { useShallow } from 'zustand/react/shallow';
-import { findComponent } from '@/lib/tree-utils';
+import { findComponent, inheritedVersionOwner } from '@/lib/tree-utils';
 import { useDataBindingStore } from '@/stores/data-binding-simple';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,10 @@ import { DisplayProperties } from './properties/DisplayProperties';
 import { getPropertySchema, type PropertySchema, type PropertyTab } from './registry/propertySchemas';
 import { SchemaDrivenProperties } from './SchemaDrivenProperties';
 import { DirectoryBindingProperties } from './directory/DirectoryBindingProperties';
+import { BlockVersionsPanel } from './BlockVersionsPanel';
+import { applyBlockVersion } from '@frontbase/edge-core/block-versions';
+import {TemplateSettingsEditor} from './directory/TemplateSettingsEditor';
+import {defaultTemplateSettings,readLandingSettings} from '@frontbase/edge-core/directory/configuration';
 // Framework registry descriptor (single source of truth when reachable)
 import {
   useRegistryDescriptor,
@@ -99,6 +103,8 @@ export const PropertiesPanel = () => {
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
+  const editingVersions = useBuilderStore(s => s.editingVersions ?? {});
+  const focusComponent=useBuilderStore(s=>s.setSelectedComponentId);
 
   // Initialize data binding store when panel opens
   React.useEffect(() => {
@@ -119,9 +125,11 @@ export const PropertiesPanel = () => {
   }
 
   const currentPage = pages.find(p => p.id === currentPageId);
-  const selectedComponent = currentPage?.layoutData?.content
+  const defaultComponent = currentPage?.layoutData?.content
     ? findComponent(currentPage.layoutData.content, selectedComponentId)
     : null;
+  const selectedVersion = selectedComponentId ? editingVersions[selectedComponentId] : undefined;
+  const selectedComponent = defaultComponent ? applyBlockVersion(defaultComponent, selectedVersion) : null;
 
   if (!selectedComponent) {
     return (
@@ -130,6 +138,8 @@ export const PropertiesPanel = () => {
       </div>
     );
   }
+  const inheritedOwner=inheritedVersionOwner(currentPage?.layoutData?.content??[],selectedComponentId,editingVersions);
+  if(inheritedOwner)return <div className="space-y-3 p-4"><p className="text-sm">This element’s structure inherits from Default. Enable Override structure on its parent version to edit it independently.</p><Button variant="outline" onClick={()=>focusComponent(inheritedOwner)}>Open parent version</Button></div>;
 
   const updateComponentProp = (key: string, value: any) => {
     updateComponent(selectedComponentId, { [key]: value });
@@ -192,7 +202,7 @@ export const PropertiesPanel = () => {
     }
 
     // ── Tier 3: Bespoke panels (complex / non-schema UX) ──────────────────
-    const isMultiTabComponent = ['DataTable', 'Chart', 'Grid', 'KPICard', 'Form', 'InfoList', 'Button'].includes(type);
+    const isMultiTabComponent = ['DataTable', 'Chart', 'Grid', 'Repeater', 'KPICard', 'Form', 'InfoList', 'Button'].includes(type);
     if (!isMultiTabComponent && tab !== 'general') {
       return null;
     }
@@ -264,6 +274,7 @@ export const PropertiesPanel = () => {
       case 'Repeater':
         return (
           <RepeaterProperties
+            canEditProperty={key=>!selectedVersion||selectedVersion==='default'||Object.hasOwn(defaultComponent?.versions?.find(v=>v.id===selectedVersion)?.overrides.props??{},key)}
             activeTab={tab}
             componentId={selectedComponentId!}
             binding={selectedComponent?.props?.binding}
@@ -378,7 +389,8 @@ export const PropertiesPanel = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {defaultComponent && <BlockVersionsPanel node={defaultComponent} />}
+        {(!selectedVersion || selectedVersion==='default' || selectedComponent.type==='Repeater') && <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="options">Options</TabsTrigger>
@@ -386,7 +398,9 @@ export const PropertiesPanel = () => {
           </TabsList>
 
           <TabsContent value="general" className="space-y-4">
-            <div className="space-y-2">
+            {selectedComponent.props.templateHero!==undefined&&<TemplateSettingsEditor scope="hero" value={{...(readLandingSettings(currentPage?.layoutData as any)??defaultTemplateSettings()),hero:selectedComponent.props.templateHero.settings??readLandingSettings(currentPage?.layoutData as any)?.hero??defaultTemplateSettings().hero}} onChange={settings=>updateComponentProp('templateHero',{version:1,settings:settings.hero})} />}
+            {selectedComponent.props.templateSearch!==undefined&&<label className="block text-sm">Default collection<select aria-label="Default collection" className="mt-1 w-full rounded border bg-background p-2" value={selectedComponent.props.templateSearch.defaultCollection??'institution'} onChange={event=>updateComponentProp('templateSearch',{version:1,defaultCollection:event.target.value})}><option value="institution">Institutions</option><option value="program">Programs</option></select></label>}
+            <fieldset className="space-y-2" disabled={!!selectedVersion&&selectedVersion!=='default'&&!Object.hasOwn(defaultComponent?.versions?.find(v=>v.id===selectedVersion)?.overrides.props??{},'title')}>
               <Label htmlFor="component-title" className="text-sm font-medium">Component Title <span className="text-muted-foreground text-xs">(@ for variables)</span></Label>
               <VariableInput
                 value={selectedComponent.props.title || ''}
@@ -394,14 +408,16 @@ export const PropertiesPanel = () => {
                 syntaxContext="output"
                 placeholder="Enter component title"
               />
-            </div>
+            </fieldset>
 
-            {(selectedComponent.props.directoryBrowsing !== undefined || selectedComponent.props.directoryQuery !== undefined || selectedComponent.props.recordBindings !== undefined) && <DirectoryBindingProperties node={selectedComponent} update={updateComponentProp} />}
-            {selectedComponent.props.directoryQuery === undefined && renderPropertyFields('general')}
+            {(selectedComponent.props.directoryBrowsing !== undefined || selectedComponent.props.directoryQuery !== undefined || selectedComponent.props.recordBindings !== undefined) && <DirectoryBindingProperties layout={currentPage?.layoutData} node={selectedComponent} update={updateComponentProp} />}
+            <fieldset disabled={!!selectedVersion && selectedVersion!=='default' && !Object.hasOwn(defaultComponent?.versions?.find(v=>v.id===selectedVersion)?.overrides.props??{},'binding')}>
+              {selectedComponent.props.directoryQuery === undefined && renderPropertyFields('general')}
+            </fieldset>
           </TabsContent>
 
           <TabsContent value="options" className="space-y-4">
-            {renderPropertyFields('options')}
+            <fieldset disabled={!!selectedVersion && selectedVersion!=='default' && !Object.hasOwn(defaultComponent?.versions?.find(v=>v.id===selectedVersion)?.overrides.props??{},'binding')}>{renderPropertyFields('options')}</fieldset>
             <VisibilityConditionEditor
               value={selectedComponent.visibilityCondition || ''}
               onChange={(value) => updateComponent(selectedComponentId, { visibilityCondition: value })}
@@ -409,6 +425,7 @@ export const PropertiesPanel = () => {
           </TabsContent>
 
           <TabsContent value="actions" className="space-y-4">
+            <fieldset disabled={!!selectedVersion&&selectedVersion!=='default'&&!Object.hasOwn(defaultComponent?.versions?.find(v=>v.id===selectedVersion)?.overrides.props??{},'actionBindings')}>
             {renderPropertyFields('actions')}
             <ActionConfigurator
               componentId={selectedComponentId || ''}
@@ -417,8 +434,9 @@ export const PropertiesPanel = () => {
               onBindingsChange={(bindings: ActionBinding[]) => updateComponentProp('actionBindings', bindings)}
               availableTriggers={['onClick', 'onHover']}
             />
+            </fieldset>
           </TabsContent>
-        </Tabs>
+        </Tabs>}
       </div>
 
       <DeleteConfirmationDialog

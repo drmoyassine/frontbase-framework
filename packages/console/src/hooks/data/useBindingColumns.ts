@@ -8,7 +8,10 @@ export function useBindingColumns(tableName?: string, dataSourceId?: string) {
     const [columns, setColumns] = useState<ColumnInfo[]>([]);
 
     useEffect(() => {
-        if (!tableName) return;
+        if (!tableName) {setColumns([]);return;}
+        if(dataSourceId==='frontbase:publication'){
+            setColumns(['title','id','parentId','summary','cover','logo','originalPath'].map(name=>({name,type:'text'})));return;
+        }
 
         const fetchColumns = async () => {
             const allColumns: ColumnInfo[] = [];

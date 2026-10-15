@@ -1,11 +1,12 @@
 import type { DbRunner } from '@frontbase/edge-infra';
-import { createEngine, directProvider } from '@frontbase/edge-core';
+import { createEngine, directProvider, audienceConditionUser } from '@frontbase/edge-core';
 import { SitePublicationStore } from './site-publication-store.js';
 import { SitePublicationReviewStore } from './site-publication-review-store.js';
 import { SitePublicationManifestStore } from './site-publication-manifest.js';
 import { verifyManifestEditorial } from './site-publication-approval-check.js';
 import { capturedSiteSitemap } from './site-publication-sitemap.js';
 import { PublicationRequestError, resolveSitePublicationPage, resolvePublicationVersionPage } from './site-publication-runtime.js';
+import { publicationListResponse } from './publication-list-source.js';
 
 export type SitePublicationResolution =
     | {status:'inactive'}
@@ -48,6 +49,7 @@ export async function resolveReviewedSitePublication(db:DbRunner,owner:string,re
 export async function renderReviewedSitePublication(db:DbRunner,owner:string,request:Request,options:{swBundle?:string;resolveAudience?:(owner:string,request:Request)=>Promise<import('@frontbase/edge-core/menus').VerifiedMenuAudience>}={}):Promise<Response|null> {
     if(!['GET','HEAD'].includes(request.method))throw new Error('publication_method_invalid');
     const audience=options.resolveAudience?await options.resolveAudience(owner,request).catch(()=>({authenticated:false})):null;
+    const listResponse=await publicationListResponse(db,owner,request,audience);if(listResponse)return listResponse;
     const resolution=await resolveReviewedSitePublication(db,owner,request,audience);
     if(resolution.status==='inactive')return null;
     const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
@@ -73,7 +75,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         const manifest={version,pages:{[path]:page},queries:{}};
         // Captured projection is complete. No mutable enrichment, resolver or query.
         // Host may supply its network-only SW to replace older intercepting installations.
-        const engine=createEngine({manifest,data:directProvider(manifest),environment:'edge',document,swBundle:options.swBundle});
+        const engine=createEngine({manifest,data:directProvider(manifest),environment:'edge',document,swBundle:options.swBundle,resolveConditionUser:async()=>audienceConditionUser(audience)});
         const rendered=await engine.fetch(new Request(request.url,{method:'GET'}));
         const responseHeaders=new Headers(rendered.headers);
         for(const [key,value] of headers)responseHeaders.set(key,value);

@@ -1,3 +1,4 @@
+import {clientVisibilityAttributes} from '../visibility.js';
 /**
  * Data Component Renderers
  * 
@@ -25,8 +26,7 @@ function getCommonAttributes(
     const { className, styleString: propStyleString } = resolvePropsStyles(baseClass, props);
     const finalStyle = [extraStyle, propStyleString].filter(Boolean).join(';');
 
-    const showIf = props['data-show-if'] as string | undefined;
-    const showIfAttr = showIf ? `data-show-if="${escapeHtml(showIf)}"` : '';
+    const showIfAttr = clientVisibilityAttributes(props);
 
     return `id="${id}" class="${className}" style="${finalStyle}" data-fb-hydrate="${hydrateType}" data-fb-props="${escapeHtml(propsJson)}" ${showIfAttr} ${extraAttrs}`;
 }
@@ -73,7 +73,7 @@ export function renderDataComponent(
             return renderDataGrid(id, props, propsJson);
 
         case 'Repeater':
-            return renderRepeater(id, props, propsJson);
+            return renderRepeater(id, props, propsJson, childrenHtml);
 
         default:
             // Fallback for unknown data components
@@ -454,7 +454,7 @@ function renderDataGrid(id: string, props: Record<string, unknown>, propsJson: s
     </div>`;
 }
 
-function renderRepeater(id: string, props: Record<string, unknown>, propsJson: string): string {
+function renderRepeater(id: string, props: Record<string, unknown>, propsJson: string, childrenHtml=''): string {
     const columns = (props.columns as number) || 3;
     const layout = (props.layout as string) || 'grid';
 
@@ -469,7 +469,7 @@ function renderRepeater(id: string, props: Record<string, unknown>, propsJson: s
 
     const attrs = getCommonAttributes(
         id,
-        layoutClass,
+        'fb-repeater-host',
         props,
         '',
         'repeater',
@@ -488,7 +488,7 @@ function renderRepeater(id: string, props: Record<string, unknown>, propsJson: s
     `).join('');
 
     return `<div ${attrs}>
-        ${skeletonCards}
+        <div class="${layoutClass}" style="grid-column:1/-1;min-width:0;width:100%">${Array.isArray(props.initialRows)?childrenHtml:skeletonCards}</div>
     </div>`;
 }
 

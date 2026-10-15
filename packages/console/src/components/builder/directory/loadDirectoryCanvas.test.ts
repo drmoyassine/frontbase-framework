@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
-import { loadDirectoryCanvas } from './loadDirectoryCanvas';
+import { loadDirectoryCanvas, selectedDirectoryCollection } from './loadDirectoryCanvas';
 import { addDirectoryTemplate } from './addDirectoryTemplate';
 afterEach(()=>vi.unstubAllGlobals());
 const saved={schemaVersion:1 as const,revision:2,configuration:emptyDirectoryConfiguration()};
@@ -33,7 +33,7 @@ it('saves references only and sends authenticated registered queries to the shar
     const projected=await loadDirectoryCanvas(layout,saved,new AbortController().signal);
     expect(JSON.stringify(projected)).toContain('LIVE_RECORD_CANARY');expect(JSON.stringify(layout)).toBe(before);expect(before).not.toContain('LIVE_RECORD_CANARY');
     expect(projected.content[0]).toEqual(layout.content[0]);expect(projected.root.custom).toBe('kept');
-    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({expectedRevision:2,role:'institution',mode:'list',params:{q:'College'}});expect(fetch.mock.calls[0][1].credentials).toBe('include');
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({source:'published',expectedRevision:2,role:'institution',mode:'list',params:{q:'College'}});expect(fetch.mock.calls[0][1].credentials).toBe('include');
 });
 it('refuses stale query replies and request errors instead of returning old records',async()=>{
     const layout=addDirectoryTemplate(page,binding);
@@ -52,4 +52,18 @@ it('formats editorial dates with saved locale while keeping authoring source unc
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({revision:2,queryId:article.queryId,rows:[{title:'Article',publishedAt:'2025-04-19T23:30:00-02:00',body:[{kind:'paragraph',runs:[{text:'Body'}]}]}]})}));
     const projected=await loadDirectoryCanvas(layout,{...saved,configuration:{...saved.configuration,site:{...saved.configuration.site,locale:'en-GB'}}},new AbortController().signal);
     expect(JSON.stringify(projected)).toContain('20 April 2025');expect(JSON.stringify(layout)).toBe(before);
+});
+
+it('uses the pinned published catalog, renders browsing state and prunes inactive collections',async()=>{
+ const configuration=emptyDirectoryConfiguration();
+ const layout:any={root:{siteConfiguration:{version:1,role:'directory'}},content:[{id:'browse',type:'Container',props:{directoryBrowsing:{version:1,tabs:true,search:true,pagination:true}}},{id:'institutions',type:'Repeater',props:{directoryQuery:{version:1,queryId:'directory.institution.list',params:{}}},children:[{id:'title',type:'Text',props:{recordBindings:{text:'title'}}}]},{id:'programs',type:'Repeater',props:{directoryQuery:{version:1,queryId:'directory.program.list',params:{}}},children:[]}]};
+ const fetcher=vi.fn().mockImplementation(async(_url,request)=>{const input=JSON.parse(request.body);return {ok:true,json:async()=>({revision:2,queryId:`directory.${input.role}.list`,rows:[{title:'Captured campus'}],captureHash:'a'.repeat(64),configuration,total:16,hasMore:true})}});vi.stubGlobal('fetch',fetcher);
+ const projected=await loadDirectoryCanvas(layout,saved,new AbortController().signal);
+ expect(JSON.parse(fetcher.mock.calls[0][1].body).source).toBe('published');expect(JSON.parse(fetcher.mock.calls[1][1].body).expectedCapture).toBe('a'.repeat(64));
+ expect(projected.content.map(row=>row.id)).toEqual(['browse','institutions']);expect(projected.content[0].props.directoryBrowsingState[0]).toMatchObject({total:16,hasNext:true,page:1,collection:'institution'});expect(projected.content[1].children[0].props.text).toBe('Captured campus');
+});
+
+it('selecting a program Repeater previews that collection without changing its saved default',()=>{
+ const layout:any={root:{siteConfiguration:{version:1,role:'directory'}},content:[{id:'programs',type:'Repeater',props:{directoryQuery:{version:1,queryId:'directory.program.list',params:{}}},children:[{id:'program-title',type:'Text',props:{}}]}]};
+ expect(selectedDirectoryCollection(layout,'program-title')).toBe('program');expect(selectedDirectoryCollection(layout,'unrelated')).toBeUndefined();expect(layout.root).toEqual({siteConfiguration:{version:1,role:'directory'}});
 });

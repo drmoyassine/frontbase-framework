@@ -9,6 +9,7 @@
  * back to base styles.
  */
 import { FALLBACK_CSS } from './ssr/baseStyles.js';
+import {publicThemeScript} from './public-theme.js';
 import type { PageEntry } from './manifest.js';
 import { escapeHtml, HYDRATE_VERSION } from './ssr/htmlDocument.js';
 
@@ -57,6 +58,7 @@ export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOpt
 ${opts.canonicalUrl ? `<link rel="canonical" href="${escapeHtml(opts.canonicalUrl)}">\n` : ''}${page.description ? `<meta name="description" content="${escapeHtml(page.description)}">` : ''}
 ${metadata ? metadata + '\n' : ''}${faviconLinks}<link rel="modulepreload" href="/static/react/hydrate.js?v=${HYDRATE_VERSION}">
 <style>${page.cssBundle || FALLBACK_CSS}</style>
+${bodyHtml.includes('data-fb-theme-picker')?`<script>${publicThemeScript()}</script>`:''}
 </head>
 <body>
 <div id="root">${bodyHtml}</div>

@@ -24,6 +24,8 @@ export interface SocialLink {
 }
 
 export interface FooterProps {
+    themeSurface?: boolean;
+    contentMaxWidth?: number;
     logo?: string;
     logoText?: string;
     description?: string;
@@ -111,8 +113,8 @@ export function renderFooter(
     const gridColsClass = mobileColsClass[props.mobileColumns || 1] || 'grid-cols-1';
 
     return `
-        <footer id="${id}" class="${footerClasses}" style="${inlineStyles}">
-            <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+        <footer id="${id}" class="${footerClasses}" style="${inlineStyles}"${props.themeSurface?' data-fb-theme-surface':''}>
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16"${typeof props.contentMaxWidth==='number'&&props.contentMaxWidth>=320&&props.contentMaxWidth<=2000?` style="max-width: ${props.contentMaxWidth}px;"`:''}>
                 <div class="flex flex-col gap-8 md:flex-row md:flex-wrap md:justify-between">
                     <!-- Brand -->
                     <div class="flex-shrink-0 max-w-sm">

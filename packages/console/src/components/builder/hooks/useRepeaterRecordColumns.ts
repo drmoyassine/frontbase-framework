@@ -2,6 +2,7 @@ import { useBuilderStore } from '@/stores/builder';
 import { useShallow } from 'zustand/react/shallow';
 import { useDataBindingStore } from '@/stores/data-binding-simple';
 import { useBindingColumns } from '@/hooks/data/useBindingColumns';
+import { resolveBlockTree } from '@frontbase/edge-core/block-versions';
 
 interface TreeNode {
     id: string;
@@ -50,10 +51,11 @@ export function useRepeaterRecordColumns(componentId?: string): string[] | undef
         selectedComponentId: s.selectedComponentId
     })));
     const { getComponentBinding } = useDataBindingStore();
+    const selections=useBuilderStore(state=>state.editingVersions);
 
     const id = componentId ?? selectedComponentId ?? undefined;
     const page = pages.find(p => p.id === currentPageId);
-    const tree: TreeNode[] = page?.layoutData?.content ?? [];
+    const tree: TreeNode[] = resolveBlockTree(page?.layoutData?.content ?? [],()=>undefined,selections);
     const repeater = id ? findAncestorRepeater(tree, id) : null;
 
     const propBinding = repeater?.props?.binding;

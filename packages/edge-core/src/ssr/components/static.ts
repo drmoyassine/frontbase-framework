@@ -1,3 +1,4 @@
+import {clientVisibilityAttributes} from '../visibility.js';
 /**
  * Static Component Renderers
  *
@@ -37,10 +38,7 @@ function getCommonAttributes(id: string, baseClass: string, props: Record<string
         ? ` data-fb-props="${escapeHtml(JSON.stringify({ actionBindings }))}"`
         : '';
 
-    const showIf = props['data-show-if'] as string | undefined;
-    if (showIf) {
-        propsAttr += ` data-show-if="${escapeHtml(showIf)}"`;
-    }
+    propsAttr += clientVisibilityAttributes(props);
 
     return `id="${id}" class="${className}" style="${finalStyle}"${propsAttr}`;
 }

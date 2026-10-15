@@ -33,8 +33,10 @@ import { useEffect, useState } from 'react';
 import type { Page } from '@/types/builder';
 import { buildReRenderRequest } from '@/lib/builder/iframeBridge';
 import { sitePageReferenceSchema, siteConfigurationDraftSchema, projectSharedDirectoryPreview } from '@frontbase/edge-core/directory/configuration';
-import { loadDirectoryCanvas } from '../directory/loadDirectoryCanvas';
+import { useBuilderStore } from '@/stores/builder';
+import { loadDirectoryCanvas, selectedDirectoryCollection } from '../directory/loadDirectoryCanvas';
 import {loadMenuCanvas} from './loadMenuCanvas';
+import {resolveBlockTree} from '@frontbase/edge-core/block-versions';
 import {
     fetchBuilderRender,
     fetchReRender,
@@ -55,6 +57,10 @@ export interface UseIframeCanvasResult {
 const DEBOUNCE_MS = 120;
 
 export function useIframeCanvas(page: Page, systemEdgeUrl?: string): UseIframeCanvasResult {
+    const selectedId=useBuilderStore(state=>state.selectedComponentId);
+    const editingVersions=useBuilderStore(state=>state.editingVersions);
+    const previewConditions=useBuilderStore(state=>state.previewVersionConditions);
+    const previewCollection=selectedDirectoryCollection(page.layoutData,selectedId);
     const [html, setHtml] = useState('');
     const [status, setStatus] = useState<IframeStatus>('idle');
     const [error, setError] = useState<string | null>(null);
@@ -75,6 +81,7 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string): UseIframeCa
             setError(null);
 
             const body = buildReRenderRequest(page);
+            if (!previewConditions) body.layout = { ...body.layout, content: resolveBlockTree(body.layout.content, () => undefined, editingVersions) as typeof body.layout.content };
             if (page.layoutData?.root.siteConfiguration !== undefined || page.layoutData?.root.directoryLanding!==undefined) {
                 try {
                     if(page.layoutData.root.siteConfiguration!==undefined)sitePageReferenceSchema.parse(page.layoutData.root.siteConfiguration);
@@ -82,7 +89,7 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string): UseIframeCa
                     if (!response.ok) throw new Error();
                     const saved = siteConfigurationDraftSchema.parse((await response.json()).draft);
                     body.layout = projectSharedDirectoryPreview(body.layout, saved.configuration);
-                    body.layout = await loadDirectoryCanvas(body.layout, saved, controller.signal);
+                    body.layout = await loadDirectoryCanvas(body.layout, saved, controller.signal,previewCollection);
                 } catch {
                     if (!cancelled && !controller.signal.aborted) { setHtml(''); setStatus('error'); setError('Shared settings or directory data unavailable. Reload shared settings and check preview parameters.'); }
                     return;
@@ -170,6 +177,9 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string): UseIframeCa
         page.id,
         page.isHomepage,
         focusRevision,
+        previewCollection,
+        editingVersions,
+        previewConditions,
         page.title,
         page.name,
         page.slug,

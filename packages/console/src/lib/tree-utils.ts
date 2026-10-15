@@ -1,5 +1,20 @@
 import { ComponentData } from '@/stores/builder';
 
+/** An inherited/hidden child cannot accidentally write back into Default. */
+export function inheritedVersionOwner(nodes:ComponentData[],id:string,selections:Readonly<Record<string,string>>={},owner?:string):string|undefined{
+    for(const node of nodes){
+        if(node.id===id)return owner;
+        const selected=node.versions?.find(version=>version.id===selections[node.id]);
+        const defaultOwner=owner??(selected?node.id:undefined);
+        const found=inheritedVersionOwner(node.children??[],id,selections,defaultOwner);
+        if(found)return found;
+        for(const version of node.versions??[]){
+            const found=inheritedVersionOwner(version.overrides.children as ComponentData[]??[],id,selections,owner??(version.id===selected?.id?undefined:node.id));
+            if(found)return found;
+        }
+    }
+}
+
 /**
  * Recursively finds a component by ID in a list of components.
  */
@@ -8,6 +23,10 @@ export const findComponent = (components: ComponentData[], id: string): Componen
         if (component.id === id) return component;
         if (component.children) {
             const found = findComponent(component.children, id);
+            if (found) return found;
+        }
+        for (const version of component.versions ?? []) {
+            const found = findComponent(version.overrides.children as ComponentData[] ?? [], id);
             if (found) return found;
         }
     }
@@ -30,6 +49,10 @@ export const findComponentWithParent = (
             const found = findComponentWithParent(components[i].children, id, components[i]);
             if (found) return found;
         }
+        for (const version of components[i].versions ?? []) {
+            const found = findComponentWithParent(version.overrides.children as ComponentData[] ?? [], id, components[i]);
+            if (found) return found;
+        }
     }
     return null;
 };
@@ -43,11 +66,10 @@ export const removeComponentFromTree = (items: ComponentData[], id: string): Com
     const result: ComponentData[] = [];
     for (const item of items) {
         if (item.id === id) continue;
-        if (item.children) {
-            result.push({ ...item, children: removeComponentFromTree(item.children, id) });
-        } else {
-            result.push(item);
-        }
+        result.push({ ...item,
+            ...(item.children ? { children: removeComponentFromTree(item.children, id) } : {}),
+            ...(item.versions ? { versions: item.versions.map(version => ({ ...version, overrides: { ...version.overrides,
+                ...(version.overrides.children ? { children: removeComponentFromTree(version.overrides.children as ComponentData[], id) } : {}) } })) } : {}) });
     }
     return result;
 };
@@ -60,7 +82,8 @@ export const insertComponentIntoTree = (
     items: ComponentData[],
     targetId: string | undefined,
     comp: ComponentData,
-    index: number
+    index: number,
+    editingVersions: Readonly<Record<string, string>> = {}
 ): ComponentData[] => {
     if (!targetId) {
         // Insert at root level
@@ -75,6 +98,14 @@ export const insertComponentIntoTree = (
 
     return items.map(item => {
         if (item.id === targetId) {
+            const versionId = editingVersions[item.id];
+            const version = item.versions?.find(v => v.id === versionId);
+            if (version) {
+                if (!version.overrides.children) throw Error('Override structure before adding children to this version.');
+                const children = [...version.overrides.children];
+                children.splice(index === -1 ? children.length : index, 0, comp);
+                return { ...item, versions: item.versions!.map(v => v === version ? { ...v, overrides: { ...v.overrides, children } } : v) };
+            }
             const newChildren = item.children ? [...item.children] : [];
             if (index === -1) {
                 newChildren.push(comp);
@@ -83,10 +114,10 @@ export const insertComponentIntoTree = (
             }
             return { ...item, children: newChildren };
         }
-        if (item.children) {
-            return { ...item, children: insertComponentIntoTree(item.children, targetId, comp, index) };
-        }
-        return item;
+        return { ...item,
+            ...(item.children ? { children: insertComponentIntoTree(item.children, targetId, comp, index, editingVersions) } : {}),
+            ...(item.versions ? { versions: item.versions.map(v => ({ ...v, overrides: { ...v.overrides,
+                ...(v.overrides.children ? { children: insertComponentIntoTree(v.overrides.children as ComponentData[], targetId, comp, index, editingVersions) } : {}) } })) } : {}) };
     });
 };
 
@@ -102,9 +133,9 @@ export const updateComponentInTree = (
         if (comp.id === componentId) {
             return updateFn(comp);
         }
-        if (comp.children) {
-            return { ...comp, children: updateComponentInTree(comp.children, componentId, updateFn) };
-        }
-        return comp;
+        return { ...comp,
+            ...(comp.children ? { children: updateComponentInTree(comp.children, componentId, updateFn) } : {}),
+            ...(comp.versions ? { versions: comp.versions.map(v => ({ ...v, overrides: { ...v.overrides,
+                ...(v.overrides.children ? { children: updateComponentInTree(v.overrides.children as ComponentData[], componentId, updateFn) } : {}) } })) } : {}) };
     });
 };

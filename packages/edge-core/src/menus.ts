@@ -1,3 +1,4 @@
+import {evaluateCondition,contextReader,type Condition} from './conditions.js';
 import { z } from 'zod';
 
 const key = z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/);
@@ -11,15 +12,16 @@ export const menuAudienceSchema=z.object({
 }).strict();
 export type MenuAudience=z.infer<typeof menuAudienceSchema>;
 export const publicMenuAudience=():MenuAudience=>({authentication:'everyone',contactTypes:[],permissionLevels:[]});
-export interface VerifiedMenuAudience { authenticated:boolean; contactType?:string; permissionLevel?:string; }
+export interface VerifiedMenuAudience { authenticated:boolean; contactType?:string; permissionLevel?:string; userId?:string; }
 /** Only a host's verified app-user/contact resolver supplies this input. Never client state. */
 export function menuAudienceMatches(rule:MenuAudience,user:VerifiedMenuAudience|null):boolean {
     const parsed=menuAudienceSchema.safeParse(rule);if(!parsed.success)return false;
-    const r=parsed.data,authenticated=user?.authenticated===true;
-    if(r.authentication==='authenticated'&&!authenticated||r.authentication==='anonymous'&&authenticated)return false;
-    if(r.contactTypes.length&&(!authenticated||!user?.contactType||!r.contactTypes.includes(user.contactType)))return false;
-    if(r.permissionLevels.length&&(!authenticated||!user?.permissionLevel||!r.permissionLevels.includes(user.permissionLevel)))return false;
-    return true;
+    const r=parsed.data,conditions:Condition[]=[];
+    if(r.authentication!=='everyone')conditions.push({left:{kind:'variable',path:'user.authenticated'},operator:'eq',right:{kind:'literal',value:r.authentication==='authenticated'}});
+    if(r.contactTypes.length)conditions.push({left:{kind:'variable',path:'user.contactType'},operator:'in',right:{kind:'literal',value:r.contactTypes}});
+    if(r.permissionLevels.length)conditions.push({left:{kind:'variable',path:'user.permissionLevel'},operator:'in',right:{kind:'literal',value:r.permissionLevels}});
+    const verified=user?.authenticated===true?user:{authenticated:false};
+    return !conditions.length||evaluateCondition({all:conditions},contextReader({user:verified}));
 }
 const destination=z.string().min(1).max(2000).refine(value=>{
     if(value.startsWith('/'))return !value.startsWith('//')&&!/[\\\x00-\x20]/.test(value);

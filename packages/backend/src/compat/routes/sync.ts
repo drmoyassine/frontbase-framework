@@ -183,7 +183,7 @@ function placeholders(dialect: 'sqlite' | 'postgres', count: number, start = 1):
     return Array.from({ length: count }, (_, index) => dialect === 'sqlite' ? '?' : `$${start + index}`);
 }
 
-function parseFilterList(raw: unknown): Record<string, unknown>[] {
+export function parseFilterList(raw: unknown): Record<string, unknown>[] {
     if (!raw) return [];
     const parsed = typeof raw === 'string' ? JSON.parse(raw) as unknown : raw;
     if (!Array.isArray(parsed)) throw new Error('filters_must_be_an_array');
@@ -192,7 +192,7 @@ function parseFilterList(raw: unknown): Record<string, unknown>[] {
         Boolean(item && typeof item === 'object' && !Array.isArray(item)));
 }
 
-function buildWhere(
+export function buildWhere(
     dialect: 'sqlite' | 'postgres',
     columns: ColumnInfo[],
     filters: Record<string, unknown>[],
@@ -203,16 +203,16 @@ function buildWhere(
     const clauses: string[] = [];
     const params: unknown[] = [];
     const bind = (value: unknown): string => {
-        params.push(value);
+        params.push(value !== null && typeof value === 'object' ? JSON.stringify(value) : value);
         return dialect === 'sqlite' ? '?' : `$${params.length}`;
     };
     for (const filter of filters) {
         const field = validateIdentifier(String(filter.field ?? filter.column ?? ''), columnNames);
         const operator = String(filter.operator ?? filter.op ?? 'eq').toLowerCase();
         const value = filter.value;
-        const quoted = `"${field}"`;
-        if (operator === 'is_null') {
-            clauses.push(`${quoted} IS ${value === false ? 'NOT ' : ''}NULL`);
+        const quoted = `"${field.replace(/"/g,'""')}"`;
+        if (operator === 'is_null' || operator === 'not_null') {
+            clauses.push(`${quoted} IS ${operator === 'not_null' || value === false ? 'NOT ' : ''}NULL`);
         } else if (operator === 'in') {
             if (!Array.isArray(value) || value.length === 0 || value.length > 100) {
                 throw new Error('invalid_in_filter');

@@ -119,6 +119,8 @@ export function directoryConfigurationIssues(value: unknown): string[] {
 }
 
 /** Completeness is distinct from validation: incomplete authoring drafts remain saveable. */
+export {migrateExploreRepeater,standardPublicationQueries,publicationListSourceSchema} from './standard-repeater.js';
+export {materializeElementSettings} from './template-settings.js';
 export function directoryConfigurationReadiness(value: unknown): string[] {
     const parsed = directoryConfigurationSchema.safeParse(value);
     if (!parsed.success) return directoryConfigurationIssues(value);

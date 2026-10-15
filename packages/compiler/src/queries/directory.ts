@@ -9,10 +9,10 @@ const localPath = z.string().max(400).refine(v => {
     catch { return false; }
 });
 export const directoryPreviewSchema = z.object({
-    expectedRevision: z.number().int().positive(), role: z.enum(roles), mode: z.enum(['list', 'detail']),
-    params: z.object({ q: z.string().trim().max(100).optional(), offset: z.number().int().min(0).max(10000).optional(),
+    source: z.enum(['published','connected']).optional(), expectedCapture: z.string().regex(/^[a-f0-9]{64}$/).optional(), expectedRevision: z.number().int().positive(), role: z.enum(roles), mode: z.enum(['list', 'detail']),
+    params: z.object({ q: z.string().trim().max(100).optional(), offset: z.number().int().min(0).max(19999).optional(),
         limit: z.number().int().min(1).max(48).optional(), institutionId: z.union([z.string().max(128).min(1), z.number().int().positive()]).optional(),
-        path: localPath.optional() }).strict().default({}),
+        sort: z.enum(['title-asc','title-desc']).optional(), match: z.enum(['contains','startsWith','equals']).optional(), path: localPath.optional() }).strict().default({}),
 }).strict();
 
 /** Original identity only: no slug generation, foreign origins or traversal. */
@@ -36,7 +36,7 @@ export function createDirectoryQueries(input: DirectoryConfiguration, owner: str
         const mapping = c.collections[role === 'page' ? 'article' : role];
         if ((role === 'article' || role === 'page') && !mapping.table) continue;
         const paramsSchema = directoryPreviewSchema.shape.params.refine(p => mode === 'detail'
-            ? !!p.path && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined
+            ? !!p.path && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined && p.sort === undefined && p.match === undefined
             : p.path === undefined && (p.institutionId === undefined || role === 'program') && (p.limit ?? c.browsing.pageSize) <= c.browsing.pageSize);
         registry[`directory.${role}.${mode}`] = { scope: 'tenant', ttlSeconds: 0, params: paramsSchema,
             execute: async (raw, ctx) => {
@@ -52,11 +52,11 @@ export function createDirectoryQueries(input: DirectoryConfiguration, owner: str
                 if (role === 'institution') where.push(cityExists('d'));
                 if (role === 'program') where.push(`EXISTS (SELECT 1 FROM ${quote(institution.table)} di WHERE ${field('di', institution.fields.id)} = ${field('d', mapping.fields.institutionId)} AND ${scoped('di', institution)} AND ${cityExists('di')})`);
                 if (p.institutionId !== undefined) where.push(`${field('d', mapping.fields.institutionId)} = ${bind(p.institutionId)}`);
-                if (p.q) where.push(`LOWER(CAST(${field('d', mapping.fields.title)} AS TEXT)) LIKE ${bind('%' + p.q.toLowerCase().replace(/[!%_]/g, v => '!' + v) + '%')} ESCAPE '!'`);
+                if (p.q) where.push(`LOWER(CAST(${field('d', mapping.fields.title)} AS TEXT)) LIKE ${bind((p.match === 'contains' || !p.match ? '%' : '') + p.q.toLowerCase().replace(/[!%_]/g, v => '!' + v) + (p.match === 'equals' ? '' : '%'))} ESCAPE '!'`);
                 if (p.path) where.push(`(${field('d', mapping.fields.originalPath)} = ${bind(p.path)} OR ${field('d', mapping.fields.originalPath)} = ${bind(c.site.origin + p.path)})`);
                 const selected = Object.entries(mapping.fields).filter(([key, value]) => value && !['contentRole','sourceOrigin'].includes(key) && (mode === 'detail' || !['body', 'gallery'].includes(key)));
                 const projection = selected.map(([key, value]) => `${field('d', value)} AS ${quote(key)}`).join(', ');
-                const rows = await query(`SELECT ${projection} FROM ${quote(mapping.table)} d WHERE ${where.join(' AND ')} ORDER BY ${field('d', mapping.fields.title)}, ${field('d', mapping.fields.id)} LIMIT ${bind(mode === 'detail' ? 2 : (p.limit ?? c.browsing.pageSize) + 1)} OFFSET ${bind(p.offset ?? 0)}`, values);
+                const rows = await query(`SELECT ${projection} FROM ${quote(mapping.table)} d WHERE ${where.join(' AND ')} ORDER BY ${field('d', mapping.fields.title)} ${p.sort === 'title-desc' ? 'DESC' : 'ASC'}, ${field('d', mapping.fields.id)} LIMIT ${bind(mode === 'detail' ? 2 : (p.limit ?? c.browsing.pageSize) + 1)} OFFSET ${bind(p.offset ?? 0)}`, values);
                 if (mode === 'detail' && rows.length > 1) throw new Error('directory_path_ambiguous');
                 // Enforce a narrow bounded projection even if a driver returns extra columns.
                 return rows.slice(0, mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1).map(row => Object.fromEntries(selected.map(([key]) => {
@@ -79,7 +79,7 @@ export function createSnapshotDirectoryQueries(input: SitePublicationArtifact, o
     for (const role of roles) for (const mode of ['list', 'detail'] as const) {
         if (role === 'page' || role === 'city' && mode === 'detail') continue;
         const params = directoryPreviewSchema.shape.params.refine(p => mode === 'detail'
-            ? !!p.path && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined
+            ? !!p.path && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined && p.sort === undefined && p.match === undefined
             : p.path === undefined && (p.institutionId === undefined || role === 'program') && (p.limit ?? c.browsing.pageSize) <= c.browsing.pageSize);
         registry[`directory.${role}.${mode}`] = { scope: 'tenant', ttlSeconds: 0, params,
             execute: async (raw, ctx) => {
@@ -87,9 +87,9 @@ export function createSnapshotDirectoryQueries(input: SitePublicationArtifact, o
                 const p = params.parse(raw);
                 let rows: Record<string, unknown>[] = collections[role].map(row => ({ ...row }));
                 if (p.path) rows = rows.filter(row => row.originalPath === p.path);
-                if (p.q) rows = rows.filter(row => String(row.title).toLowerCase().includes(p.q!.toLowerCase()));
+                if (p.q) rows = rows.filter(row => p.match === 'equals' ? String(row.title).toLowerCase() === p.q!.toLowerCase() : p.match === 'startsWith' ? String(row.title).toLowerCase().startsWith(p.q!.toLowerCase()) : String(row.title).toLowerCase().includes(p.q!.toLowerCase()));
                 if (p.institutionId !== undefined) rows = rows.filter(row => String(row.institutionId) === String(p.institutionId));
-                rows.sort((a, b) => String(a.title) < String(b.title) ? -1 : String(a.title) > String(b.title) ? 1 : String(a.id) < String(b.id) ? -1 : 1);
+                rows.sort((a,b)=>(String(a.title)<String(b.title)?-1:String(a.title)>String(b.title)?1:0)*(p.sort==='title-desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0));
                 rows = rows.slice(p.offset ?? 0, (p.offset ?? 0) + (mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1));
                 // Detail-only semantic body never rides list/search responses.
                 return rows.map(row => mode === 'list' ? Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'body')) : structuredClone(row));

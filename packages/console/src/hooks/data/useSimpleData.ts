@@ -4,7 +4,7 @@ import { STALE } from '@/lib/queryCache';
 import { useDataBindingStore } from '@/stores/data-binding-simple';
 import { useTableData, useTableSchema, useGlobalSchema, useRpcData } from '@/hooks/useDatabase';
 import { debug } from '@/lib/debug';
-import { resolveHiddenFilters } from '@/lib/data-binding/resolveHiddenFilters';
+import {resolveHiddenFilterRules,readBrowserFilterVariable,subscribeFilterVariables} from '@frontbase/types';
 
 export interface FilterConfig {
     id: string;
@@ -25,11 +25,16 @@ export interface HiddenFilter {
   id: string;
   column: string;
   operator: HiddenFilterOperator;
-  value?: string;
+  value?: import('@frontbase/edge-core/conditions').Operand | import('@frontbase/edge-core/conditions').JsonValue;
   previewValue?: string;
+  when?: import('@frontbase/types').HiddenFilterCondition;
 }
 
 export interface ComponentDataBinding {
+    viewId?:string;
+    viewName?:string;
+    source?: { kind: 'publication'; hash: string };
+    _blockVersionId?: string;
     componentId: string;
     dataSourceId: string;
     tableName: string;
@@ -144,17 +149,9 @@ export function useSimpleData({
         };
     }, [binding, filters, sorting, pagination, searchQuery]);
 
-    const resolvedHiddenFilters = useMemo(() => {
-        if (!binding?.hiddenFilters) return [];
-        // Basic context for builder preview
-        const ctx = {
-            url: Object.fromEntries(new URLSearchParams(window.location.search)),
-            system: {
-                date: new Date().toISOString(),
-            }
-        };
-        return resolveHiddenFilters(binding.hiddenFilters, ctx, { dropUnresolved: true });
-    }, [binding?.hiddenFilters]);
+    const [filterRevision,setFilterRevision]=useState(0);
+    useEffect(()=>subscribeFilterVariables(()=>setFilterRevision(v=>v+1)),[]);
+    const resolvedHiddenFilters=useMemo(()=>resolveHiddenFilterRules(binding?.hiddenFilters,readBrowserFilterVariable),[binding?.hiddenFilters,filterRevision]);
 
     // React Query Hooks
     const {
@@ -195,7 +192,7 @@ export function useSimpleData({
         error: datasourceError,
         refetch: refetchDatasource
     } = useQuery({
-        queryKey: ['datasource-data', binding?.dataSourceId, binding?.tableName, queryParams, binding?.columnOrder],
+        queryKey: ['datasource-data', binding?.dataSourceId, binding?.tableName, queryParams, binding?.columnOrder,resolvedHiddenFilters],
         queryFn: async () => {
             if (!binding?.dataSourceId || !binding?.tableName) {
                 return { records: [], total: 0 };
@@ -280,7 +277,7 @@ export function useSimpleData({
             });
 
             const response = await fetch(
-                `/api/sync/datasources/${binding.dataSourceId}/tables/${binding.tableName}/data?${params}`
+                `/api/sync/datasources/${binding.dataSourceId}/tables/${binding.tableName}/data/?${params}`
             );
             if (!response.ok) throw new Error('Failed to fetch data');
             const result = await response.json();
@@ -307,7 +304,7 @@ export function useSimpleData({
         refetch: refetchTable
     } = useTableData(
         !isRpcMode && !useDatasourceData && binding?.tableName ? binding.tableName : null,
-        queryParams || {}
+        {...(queryParams||{}),hiddenFilters:resolvedHiddenFilters}
     );
 
     const {
@@ -327,7 +324,7 @@ export function useSimpleData({
             sort_col: queryParams?.sort?.column,
             sort_dir: queryParams?.sort?.direction,
             search_query: queryParams?.filters?.search || '',
-            filters: JSON.stringify(queryParams?.filters || {}),
+            filters: JSON.stringify([...Object.entries(queryParams?.filters||{}).filter(([key])=>key!=='search').map(([column,value])=>({column,op:'eq',value})),...resolvedHiddenFilters]),
         } : {}
     );
 

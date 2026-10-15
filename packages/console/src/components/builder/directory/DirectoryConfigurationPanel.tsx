@@ -11,6 +11,7 @@ interface Props {
     persistenceScope?: 'page' | 'site';
     hideIdentity?: boolean;
     initialSite?: Partial<DirectoryConfiguration['site']>;
+    elementBrowsing?:boolean;
 }
 const inputClass = 'w-full rounded-md border bg-background p-2 text-sm';
 const fieldLabels: Record<typeof directoryFieldNames[number], string> = {
@@ -38,7 +39,7 @@ function CollectionMapping({ role, config, onChange }: { role: DirectoryRole; co
     </div></details>;
 }
 
-export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, persistenceScope = 'page', hideIdentity = false, initialSite }: Props) {
+export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, persistenceScope = 'page', hideIdentity = false, initialSite, elementBrowsing=false }: Props) {
     if (!value) return <div className="space-y-3"><p className="text-sm text-muted-foreground">{persistenceScope === 'site' ? 'Configure the shared directory settings for this project.' : 'Configure one education directory template for this site. Settings are saved and versioned with the page.'}</p><button className={inputClass} onClick={() => { const config = emptyDirectoryConfiguration(); onChange({ ...config, site: { ...config.site, ...initialSite } }); }}>Add directory configuration</button></div>;
     if (value.version !== 1 || !value.site || !value.contacts || !value.routes || !value.browsing || !directoryRoles.every(role => value.collections?.[role]?.fields && value.collections[role].scope)) return <p role="alert">Unsupported directory configuration. Restore a supported page version before editing.</p>;
     const issues = directoryConfigurationIssues(value);
@@ -56,12 +57,13 @@ export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, pe
         <fieldset className="space-y-3"><legend className="font-semibold">Data and relationships</legend><DataSourceSelector autoSelect={false} value={value.datasourceId} onValueChange={datasourceId => onChange({ ...value, datasourceId, collections: emptyDirectoryConfiguration().collections })} />
             {directoryRoles.filter(role => role !== 'pathway').map(role => <CollectionMapping key={`${role}:${value.datasourceId}:${value.collections[role].table}`} role={role} config={value} onChange={onChange} />)}
         </fieldset>
-        <fieldset className="space-y-3"><legend className="font-semibold">Browsing</legend>
+        {!elementBrowsing&&<fieldset className="space-y-3"><legend className="font-semibold">Browsing</legend>
             <label className="block space-y-1 text-sm">Default collection<select aria-label="Default collection" className={inputClass} value={value.browsing.defaultCollection} onChange={e => onChange({ ...value, browsing: { ...value.browsing, defaultCollection: e.target.value as DirectoryRole } })}>{(!['institution', 'program'].includes(value.browsing.defaultCollection) ? [value.browsing.defaultCollection, 'institution', 'program'] : ['institution', 'program']).map(role => <option key={role} disabled={!['institution', 'program'].includes(role)}>{role}{!['institution', 'program'].includes(role) ? ' (unsupported)' : ''}</option>)}</select></label>
             <label className="block space-y-1 text-sm">Cards per page<select aria-label="Cards per page" className={inputClass} value={value.browsing.pageSize} onChange={e => onChange({ ...value, browsing: { ...value.browsing, pageSize: Number(e.target.value) as 12 | 24 | 48 } })}>{[12, 24, 48].map(n => <option key={n}>{n}</option>)}</select></label>
             <label className="flex gap-2 text-sm"><input type="checkbox" aria-label="search" checked={value.browsing.search} onChange={e => onChange({ ...value, browsing: { ...value.browsing, search: e.target.checked } })} />Show directory search</label>
             <p className="text-xs text-muted-foreground">Results currently use name ordering. City, degree and intake filters, galleries and pathway rendering are not available. Existing saved values are retained.</p>
-        </fieldset>
+        </fieldset>}
+        {elementBrowsing&&<p className="text-sm text-muted-foreground">Default collection, page size, search and ordering are configured on the page elements in Pages.</p>}
         <fieldset className="space-y-3"><legend className="font-semibold">URLs and contacts</legend>
             {edit('Directory path', value.routes.directory, directory => onChange({ ...value, routes: { ...value.routes, directory } }))}
             {edit('Blog path', value.routes.blog, blog => onChange({ ...value, routes: { ...value.routes, blog } }))}

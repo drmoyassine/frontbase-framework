@@ -18,6 +18,12 @@ assert.equal((await req({expectedRevision:0,menus:[menu]})).status,409);
 response=await app.request('/api/project/menus/');const text=await response.text();assert.ok(!text.includes('AUTH_PRIVATE_SENTINEL'));assert.equal(JSON.parse(text).audiences.contactTypes.student,'Student');
 assert.equal((await app.request('/api/project/menus/?owner=foreign')).status,422);
 assert.equal((await app.request('/api/project/menus/',{headers:{'x-role':'editor'}})).status,403);
+for(const mode of ['preview-saved','publish','discard']){
+    const body={expectedRevision:1,...(mode==='publish'?{hash:'a'.repeat(64)}:{})};
+    assert.equal((await app.request(`/api/project/menus/${mode}/`,{method:'POST',headers:{'content-type':'application/json','x-role':'editor'},body:JSON.stringify(body)})).status,403);
+    assert.equal((await app.request(`/api/project/menus/${mode}/?owner=foreign`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})).status,422);
+    assert.equal((await app.request(`/api/project/menus/${mode}/`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...body,owner:'foreign'})})).status,422);
+}
 assert.equal((await req({expectedRevision:1,menus:[menu]},{'x-role':'editor'})).status,403);
 assert.equal((await req({expectedRevision:0,menus:[menu]},{'x-owner':'foreign'})).status,422);
 assert.deepEqual(await new MenusStore(db,'foreign').get(),{schemaVersion:1,revision:0,menus:[]});
@@ -28,6 +34,7 @@ assert.deepEqual(await new PagesStore(db,owner).list(),before);assert.equal((awa
 const privateMenu=structuredClone(menu);privateMenu.items=[{id:'private',label:'PRIVATE_ITEM_LABEL',href:'/private-url/',audience:{authentication:'authenticated',contactTypes:['student'],permissionLevels:['reader']},children:[]}];
 const preview=(audience,headers={})=>app.request('/api/project/menus/preview/',{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify({menu:privateMenu,audience})});
 response=await preview({authenticated:false});assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');let html=await response.text();assert.ok(!html.includes('PRIVATE_ITEM_LABEL'));assert.ok(!html.includes('private-url'));assert.ok(!html.includes('AUTH_PRIVATE_SENTINEL'));
+const themeNonce=html.match(/<script nonce="([a-f0-9]+)">/)[1];assert.ok(html.includes(`script-src 'nonce-${themeNonce}'`));assert.ok(html.includes("default-src 'none'"));assert.ok(!html.includes("script-src 'unsafe-inline'"));assert.ok(html.includes("form-action 'none'"));
 response=await preview({authenticated:true,contactType:'student',permissionLevel:'reader'});assert.equal(response.status,200);html=await response.text();assert.ok(html.includes('PRIVATE_ITEM_LABEL'));assert.ok(!html.includes('contactTypes'));assert.ok(!html.includes('AUTH_PRIVATE_SENTINEL'));
 assert.equal((await preview({authenticated:true,contactType:'unknown'})).status,422);assert.equal((await preview({authenticated:true},{'x-role':'editor'})).status,403);assert.equal((await preview({authenticated:true,contactType:'student'},{'x-owner':'foreign'})).status,422);
 assert.equal((await app.request('/api/project/menus/preview/',{method:'POST',body:'x'.repeat(128*1024+1)})).status,413);

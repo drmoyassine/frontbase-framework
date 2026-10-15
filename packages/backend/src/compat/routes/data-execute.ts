@@ -9,7 +9,8 @@ import { resolveDatasourceConfig } from '../credential-resolver.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 import { mergeAccountConfig, type AccountConfigFor } from '../providers/merge-account.js';
 import { validateRpcQueryBody } from '../rpc-body.js';
-import { inspectTable } from './sync.js';
+import { inspectTable,parseFilterList } from './sync.js';
+import {executeSingleTableRpc} from '../single-table-rpc.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -24,6 +25,7 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 const anonRpcDenied = new Set<string>();
 
 interface DataRequest {
+    viewId?:string;
     datasourceId?: string;
     fetchStrategy?: 'direct' | 'proxy';
     method?: 'GET' | 'POST';
@@ -168,6 +170,16 @@ export function registerDataExecuteRoute(
                         error: 'Unauthorized access to this datasource',
                     }, 403);
                 }
+                if(dataRequest.viewId){
+                    const view=await store.getView(dataRequest.viewId);
+                    const requestBody=dataRequest.body as Record<string,unknown>|undefined;
+                    if(!view||view.datasource_id!==ds.id||!requestBody||requestBody.table_name!==view.target_table||'query' in requestBody)return c.json({success:false,error:'Saved view unavailable'},403);
+                    try{
+                        const aliases:Record<string,string>={'==':'eq','=':'eq','!=':'neq','<>':'neq','>':'gt','>=':'gte','<':'lt','<=':'lte'};
+                        const filters=parseFilterList(view.filters).map(filter=>({column:filter.column??filter.field,op:aliases[String(filter.op??filter.operator??'eq')]??filter.op??filter.operator??'eq',value:filter.value}));
+                        dataRequest.body={...requestBody,filters:[...filters,...(Array.isArray(requestBody.filters)?requestBody.filters:[])]};
+                    }catch{return c.json({success:false,error:'Invalid saved view filters'},422);}
+                }
 
                 const merged = await mergeAccountConfig(
                     accountConfigFor, externalFetch, tenant, ds.kind, ds.config,
@@ -231,6 +243,16 @@ export function registerDataExecuteRoute(
                         }, 400);
                     }
                     const rpcBase = String(config.url ?? '').replace(/\/+$/, '');
+                    if(['postgres','neon','sqlite','turso','d1'].includes(ds.kind)){
+                        try{
+                            const result=await executeSingleTableRpc(runner,dialectOf(ds.kind),validated.payload);
+                            return c.json({success:true,data:result.rows,count:result.rows.length,total:result.total});
+                        }catch(error){
+                            const message=error instanceof Error?error.message:'';
+                            const invalid=['single_table_only','invalid_columns','invalid_column'].includes(message)||message.startsWith('invalid_identifier:');
+                            return c.json({success:false,error:'Single-table query failed'},invalid?422:502);
+                        }
+                    }
                     // Key policy: authenticated console/preview callers use the
                     // service-role key; anonymous published-page visitors prefer
                     // the public anon key (the product's direct-strategy trust

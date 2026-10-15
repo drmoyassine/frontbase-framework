@@ -10,9 +10,10 @@ import type { PublicationVersion } from './publication-version.js';
 import { resolveChunkPublicationPage } from './site-publication-chunk-runtime.js';
 import {menuReferenceSchema,type VerifiedMenuAudience} from '@frontbase/edge-core/menus';
 import {resolveAppMenuLayout} from './menus-runtime.js';
+import {audienceConditionUser} from '@frontbase/edge-core';
 
 export async function resolvePublicationVersionPage(input:PublicationVersion,hash:string,owner:string,db:DbRunner,request:Request,audience:VerifiedMenuAudience|null=null){
-    const result=await(input.schemaVersion===1?resolveSitePublicationPage(input,hash,owner,request):resolveChunkPublicationPage(input,hash,owner,db,request));
+    const result=await(input.schemaVersion===1?resolveSitePublicationPage(input,hash,owner,request):resolveChunkPublicationPage(input,hash,owner,db,request,audienceConditionUser(audience)));
     if(!result)return null;
     const layout=result.page.layout as unknown as PageLayoutData;
     const reference=(layout.root as Record<string,unknown>)?.appMenus;
@@ -47,13 +48,18 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
     const inactive = new Set<string>();
     const normalized: Record<string, unknown> = {};
     // Only supported parameters enter the page/cache identity; refuse unknown duplicates.
-    const allowed = role === 'directory' ? ['type', 'q', 'page'] : role === 'article-index' ? ['q', 'page'] : [];
+    const allowed = role === 'directory' ? ['type', 'q', 'page', 'sort', 'match'] : role === 'article-index' ? ['q', 'page', 'sort', 'match'] : [];
     for (const key of url.searchParams.keys()) if (!allowed.includes(key) || url.searchParams.getAll(key).length !== 1) throw new PublicationRequestError();
     const type = url.searchParams.get('type') ?? artifact.configuration.browsing.defaultCollection;
     if (role === 'directory' && !['institution', 'program'].includes(type)) throw new PublicationRequestError();
+    const listBinding=['directory','article-index'].includes(role)?directoryLayoutQueries(layout).find(query=>query.binding.queryId===`directory.${role==='article-index'?'article':type}.list`):undefined;
+    const defaults=(listBinding?.binding.params??{}) as {sort?:string;match?:string;limit?:number};
+    const pageSize=Math.min(defaults.limit??artifact.configuration.browsing.pageSize,artifact.configuration.browsing.pageSize);
+    const sort=url.searchParams.get('sort')??defaults.sort??'title-asc',match=url.searchParams.get('match')??defaults.match??'contains';
+    if(!['title-asc','title-desc'].includes(sort)||!['contains','startsWith','equals'].includes(match))throw new PublicationRequestError();
     const page = url.searchParams.get('page') ?? '1';
-    if (!/^[1-9][0-9]{0,3}$/.test(page)) throw new PublicationRequestError();
-    const offset = (Number(page) - 1) * artifact.configuration.browsing.pageSize;
+    if (!/^[1-9][0-9]{0,4}$/.test(page)) throw new PublicationRequestError();
+    const offset = (Number(page) - 1) * pageSize;
     const search = (url.searchParams.get('q') ?? '').trim();
     if (offset > 10000 || search.length > 100) throw new PublicationRequestError();
     let hasNext = false;
@@ -62,22 +68,22 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
         if (role === 'directory' && mode === 'list' && ['institution','program'].includes(collection!) && collection !== type) { inactive.add(query.id); continue; }
         const parentPath = role === 'program' && collection === 'institution' && row
             ? artifact.records.institutions.find(parent => String(parent.id) === String(row!.institutionId))?.originalPath : undefined;
-        const params: Record<string, unknown> = mode === 'detail' ? { path: parentPath ?? path } : { q: search, offset, limit: artifact.configuration.browsing.pageSize,
+        const params: Record<string, unknown> = mode === 'detail' ? { path: parentPath ?? path } : { q: search, sort, match, offset, limit: pageSize,
             ...(role === 'institution' && collection === 'program' && row ? { institutionId: row.id } : {}) };
         // Never use authoring sample paths/filters for public records.
         const registered = queries[query.binding.queryId];
         if (!registered) throw new Error('publication_query_unavailable');
         const rows = await registered.execute(params, { tenant: owner, request });
-        if ((role === 'directory' && collection === type || role === 'article-index' && collection === 'article') && mode === 'list') hasNext ||= rows.length > artifact.configuration.browsing.pageSize;
-        records.set(query.id, rows.slice(0, mode === 'detail' ? 1 : artifact.configuration.browsing.pageSize));
+        if ((role === 'directory' && collection === type || role === 'article-index' && collection === 'article') && mode === 'list') hasNext ||= rows.length > pageSize;
+        records.set(query.id, rows.slice(0, mode === 'detail' ? 1 : pageSize));
         normalized[query.id] = params;
     }
     const prune = (nodes: PageLayoutData['content']): PageLayoutData['content'] => nodes.filter(node => !inactive.has(node.id)).map(node => ({ ...node, ...(node.children ? { children: prune(node.children) } : {}) }));
     let projected = projectDirectoryRecords(projectSharedDirectoryPreview({ ...layout, content: prune(layout.content) }, artifact.configuration), records, { locale: artifact.configuration.site.locale });
     if (role === 'directory' || role === 'article-index') projected = projectDirectoryBrowsing(projected, [{ path,
         collection: role === 'directory' ? type as 'institution' | 'program' : null,
-        q: search, page: Number(page), searchEnabled: artifact.configuration.browsing.search,
-        hasNext: hasNext && offset + artifact.configuration.browsing.pageSize <= 10000,
+        q: search, page: Number(page),sort:sort as 'title-asc'|'title-desc',match:match as 'contains'|'startsWith'|'equals',pageSize:pageSize,total:(role==='article-index'?artifact.records.articles:type==='program'?artifact.records.programs:artifact.records.institutions).filter(row=>!search || (match==='equals'?row.title.toLowerCase()===search.toLowerCase():match==='startsWith'?row.title.toLowerCase().startsWith(search.toLowerCase()):row.title.toLowerCase().includes(search.toLowerCase()))).length, searchEnabled: artifact.configuration.browsing.search,
+        hasNext: hasNext && offset + pageSize <= 10000,
     }]);
     projected = projectRelativeSiteLinks(projected, artifact.configuration.site.origin);
     const title = typeof row?.title === 'string' ? row.title : template.title;

@@ -22,7 +22,7 @@ import { SitePublicationManifestStore } from '../site-publication-manifest.js';
 import { verifyManifestEditorial } from '../site-publication-approval-check.js';
 
 const previewRequest=z.object({hash:z.string().regex(/^[a-f0-9]{64}$/),path:publicationPathSchema,
-    params:z.object({type:z.enum(['institution','program']).optional(),q:z.string().max(100).optional(),page:z.number().int().min(1).max(1667).optional()}).strict().default({})}).strict();
+    params:z.object({sort:z.enum(['title-asc','title-desc']).optional(),match:z.enum(['contains','startsWith','equals']).optional(),type:z.enum(['institution','program']).optional(),q:z.string().max(100).optional(),page:z.number().int().min(1).max(20000).optional()}).strict().default({})}).strict();
 function metadata(artifact:PublicationVersion){
     const rows=publicationRows(artifact);
     return Object.fromEntries(Object.entries({...rows,pages:[...rows.pages,...(artifact.schemaVersion===2?artifact.staticPages??[]:[])]}).map(([role,entries])=>[role,entries.map(row=>({id:'id' in row?row.id:row.pageId,title:row.title,...('originalPath' in row?{originalPath:row.originalPath}:{})}))]));
@@ -36,9 +36,9 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
         const user=c.get('principal').user as {role?:string};
         if(!user?.role || !['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(user.role))return c.json({detail:'Prepared preview is unavailable'},403);
         const url=new URL(c.req.url);
-        const allowed=['hash','path','type','q','page'];
+        const allowed=['hash','path','type','q','page','sort','match'];
         if(url.search.length>4096 || [...url.searchParams.keys()].some(key=>!allowed.includes(key)||url.searchParams.getAll(key).length!==1))return c.json({detail:'Invalid preview request'},422);
-        const params=Object.fromEntries([...url.searchParams.entries()].filter(([key])=>['type','q','page'].includes(key)).map(([key,value])=>[key,key==='page'?Number(value):value]));
+        const params=Object.fromEntries([...url.searchParams.entries()].filter(([key])=>['type','q','page','sort','match'].includes(key)).map(([key,value])=>[key,key==='page'?Number(value):value]));
         const parsed=previewRequest.safeParse({hash:url.searchParams.get('hash'),path:url.searchParams.get('path'),params});
         if(!parsed.success)return c.json({detail:'Invalid preview request'},422);
         try {

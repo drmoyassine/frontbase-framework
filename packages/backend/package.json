@@ -34,7 +34,7 @@
     "test:publication-integration": "node test/site-publication-chunk-integration.mjs",
     "test:publication-integration-mutation": "node test/site-publication-chunk-integration-mutation.mjs",
     "test:menus": "node test/menus.mjs && node test/menu-audience.mjs && node test/menu-audience-host.mjs && node test/menus-snapshot.mjs && node test/menus-publication.mjs && node test/app-user-session.mjs && node test/menus-capture.mjs && node test/menus-preview-links.mjs",
-    "test:menus-mutation": "node test/menus-mutation.mjs && node test/app-user-session-mutation.mjs"
+    "test:menus-mutation": "node test/menus-mutation.mjs && node test/app-user-session-mutation.mjs && node test/menus-workflow-mutation.mjs"
   },
   "peerDependencies": {
     "@frontbase/compiler": "workspace:*",

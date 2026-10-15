@@ -1,6 +1,7 @@
 import type { DbRunner } from '@frontbase/edge-infra';
-import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, projectSharedDirectoryPreview, directoryLayoutQueries, landingRootSchema } from '@frontbase/edge-core/directory/configuration';
+import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, projectSharedDirectoryPreview, directoryLayoutQueries, landingRootSchema,standardPublicationQueries } from '@frontbase/edge-core/directory/configuration';
 import { SiteConfigurationStore } from './site-configuration-store.js';
+import { validateBlockVersions } from '@frontbase/edge-core/block-versions';
 
 /** Validate only the new opt-in root slot; never change unrelated legacy layout fields. */
 export async function validateDirectoryLayout(layout: unknown, tenant: string, runner?: DbRunner, publishing = false): Promise<{ status: 422 | 403 | 503; body: object } | null> {
@@ -8,9 +9,14 @@ export async function validateDirectoryLayout(layout: unknown, tenant: string, r
     if (typeof value === 'string') {
         try { value = JSON.parse(value); } catch { return null; }
     }
+    if (value && typeof value === 'object' && Array.isArray((value as any).content) && /"versions"/.test(JSON.stringify(value))) {
+        try { validateBlockVersions((value as any).content); }
+        catch { return { status: 422, body: { detail: 'Invalid block versions or component IDs' } }; }
+    }
     const root = (value as { root?: { directoryConfiguration?: unknown; siteConfiguration?: unknown; directoryLanding?:unknown } } | null)?.root;
     try {
         const queries = directoryLayoutQueries(value as any);
+        if(value&&typeof value==='object'&&Array.isArray((value as any).content))standardPublicationQueries(value as any);
         if (queries.length && root?.siteConfiguration === undefined && root?.directoryLanding===undefined) return { status: 422, body: { detail: 'Directory queries require shared settings' } };
     } catch { return { status: 422, body: { detail: 'Invalid directory data binding' } }; }
     if (root?.siteConfiguration !== undefined || root?.directoryLanding!==undefined) {

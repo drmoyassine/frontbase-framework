@@ -1,3 +1,4 @@
+import {evaluateCondition,conditionUsesClient,contextReader,resolveValue,valueUsesClient} from '../conditions.js';
 /**
  * LiquidJS template-resolution helpers.
  * Pure code move from PageRenderer; no logic change.
@@ -28,6 +29,9 @@ export async function resolveProps(
     const scope = { ...context, ...system };
 
     for (const [key, value] of Object.entries(props)) {
+        if(key==='actionBindings'&&Array.isArray(value)&&context.record){
+            resolved[key]=await Promise.all(value.map(action=>action&&typeof action==='object'&&!Array.isArray(action)?resolveProps(action,context):action));continue;
+        }
         if (typeof value === 'string' && (value.includes('{{') || value.includes('{%'))) {
             // Use LiquidJS for template rendering
             try {
@@ -60,58 +64,13 @@ export async function resolveHiddenFiltersSSR(
     const pending: any[] = [];
 
     for (const filter of hiddenFilters) {
-        const value = filter.value;
-        const operator = filter.operator;
-
-        if (operator === 'is_null' || operator === 'not_null') {
-            resolved.push({
-                column: filter.column,
-                op: operator,
-            });
-            continue;
-        }
-
-        if (typeof value !== 'string') {
-            resolved.push({
-                column: filter.column,
-                op: operator,
-                value: value
-            });
-            continue;
-        }
-
-        const containsClientScope = /\{\{\s*(session|local)\./.test(value);
-
-        if (containsClientScope) {
-            pending.push(filter);
-        } else if (value.includes('{{') || value.includes('{%')) {
-            try {
-                const rendered = await liquid.parseAndRender(value, context);
-                if (rendered !== undefined && rendered !== null && String(rendered).trim() !== '') {
-                    let resolvedVal: any = rendered;
-                    if (operator === 'in') {
-                        resolvedVal = String(rendered).split(',').map(s => s.trim()).filter(Boolean);
-                    }
-                    resolved.push({
-                        column: filter.column,
-                        op: operator,
-                        value: resolvedVal
-                    });
-                }
-            } catch (error) {
-                console.error(`[SSR Hidden Filter] Failed to render template: ${value}`, error);
-            }
-        } else {
-            let resolvedVal: any = value;
-            if (operator === 'in') {
-                resolvedVal = String(value).split(',').map(s => s.trim()).filter(Boolean);
-            }
-            resolved.push({
-                column: filter.column,
-                op: operator,
-                value: resolvedVal
-            });
-        }
+        if(conditionUsesClient(filter.when)||valueUsesClient(filter.value)){pending.push(filter);continue;}
+        if(!evaluateCondition(filter.when,contextReader(context as unknown as Record<string,unknown>)))continue;
+        const value=resolveValue(filter.value,contextReader(context as unknown as Record<string,unknown>));
+        if(filter.operator==='is_null'||filter.operator==='not_null')resolved.push({column:filter.column,op:filter.operator});
+        else if(filter.operator==='is_today')resolved.push({column:filter.column,op:filter.operator,value:''});
+        else if(value===null&&['eq','neq'].includes(filter.operator))resolved.push({column:filter.column,op:filter.operator==='eq'?'is_null':'not_null'});
+        else if(value!==undefined&&value!=='')resolved.push({column:filter.column,op:filter.operator,value:filter.operator==='in'&&typeof value==='string'?value.split(',').map(v=>v.trim()).filter(Boolean):value});
     }
 
     return { resolved, pending };

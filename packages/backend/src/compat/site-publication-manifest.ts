@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { stableStringify } from '@frontbase/compiler/manifest';
-import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, directoryLayoutQueries } from '@frontbase/edge-core/directory/configuration';
+import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, directoryLayoutQueries, standardPublicationQueries } from '@frontbase/edge-core/directory/configuration';
 import { publicationTemplateSchema, publicationPathSchema } from '@frontbase/edge-core/directory/publication';
 import {menuReferenceSchema} from '@frontbase/edge-core/menus';
 import type { PageLayoutData } from '@frontbase/edge-core';
@@ -78,7 +78,7 @@ export const sitePublicationManifestSchema = z.object({ schemaVersion: z.literal
         if (!ref.success || ref.data.role !== template.role) fail('template_role_mismatch');
         if (template.role === 'city') fail('template_role_not_supported');
         try {
-            const queries: string[] = directoryLayoutQueries(template.layout as unknown as PageLayoutData).map(q => q.binding.queryId);
+            const queries: string[] = [...directoryLayoutQueries(template.layout as unknown as PageLayoutData).map(q => q.binding.queryId),...standardPublicationQueries(template.layout as unknown as PageLayoutData)];
             const expected = template.role === 'editorial' ? ['directory.page.detail'] : template.role === 'article-index' ? ['directory.article.list']
                 : ['institution', 'program', 'article'].includes(template.role) ? [`directory.${template.role}.detail`]
                 : template.role === 'directory' ? [...(populations.get('institutions') ? ['directory.institution.list'] : []), ...(populations.get('programs') ? ['directory.program.list'] : [])] : [];

@@ -1,3 +1,4 @@
+import {clientVisibilityAttributes} from './visibility.js';
 /**
  * Layout-component renderer (Container/Section/Row/Column/Flex/Stack/Box/Paper/Panel/Group).
  * Pure code move from PageRenderer; no logic change. Template-literal whitespace
@@ -38,10 +39,7 @@ export function renderLayoutComponent(
         ? ` data-fb-props="${escapeHtml(JSON.stringify({ actionBindings }))}"`
         : '';
 
-    const showIf = props['data-show-if'] as string | undefined;
-    if (showIf) {
-        propsAttr += ` data-show-if="${escapeHtml(showIf)}"`;
-    }
+    propsAttr += clientVisibilityAttributes(props);
 
     switch (type) {
         case 'Container':

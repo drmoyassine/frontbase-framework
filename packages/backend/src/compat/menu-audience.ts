@@ -19,7 +19,7 @@ export interface MenuAudiencePorts {
 const anonymous=():VerifiedMenuAudience=>({authenticated:false});
 /** Resolve only the two mapped attributes for a provider-verified app user.
  * No admin principal, decoded JWT claims, email join or client-provided roles. */
-export async function resolveMenuAudience(owner:string,usersConfig:unknown,token:string|null,ports:MenuAudiencePorts):Promise<VerifiedMenuAudience>{
+export async function resolveMenuAudience(owner:string,usersConfig:unknown,token:string|null,ports:MenuAudiencePorts,includeUserId=false):Promise<VerifiedMenuAudience>{
     const parsed=configuration.safeParse(usersConfig);
     if(!owner||!parsed.success||!token||token.length>16384||/[\s\x00-\x1f]/.test(token))return anonymous();
     try{
@@ -27,7 +27,7 @@ export async function resolveMenuAudience(owner:string,usersConfig:unknown,token
         if(!auth)return anonymous();
         const identity=await ports.verify(auth,token);
         if(!identity||!z.string().uuid().safeParse(identity.id).success)return anonymous();
-        const result:VerifiedMenuAudience={authenticated:true};
+        const result:VerifiedMenuAudience={authenticated:true,...(includeUserId?{userId:identity.id}:{})};
         const contacts=cfg.contactsDbId&&cfg.contactsDbId!==cfg.authDataSourceId?await ports.account(owner,cfg.contactsDbId):auth;
         if(!contacts)return result;
         const mapping=cfg.columnMapping;

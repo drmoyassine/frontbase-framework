@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import type { PageComponent, PageLayoutData } from '../ssr/types.js';
 import { projectEditorialBody } from './editorial.js';
-import { validateDirectoryBrowsing } from './browsing.js';
-import { landingRootSchema } from './template-settings.js';
+import { validateDirectoryBrowsing, directoryBrowsingSchema } from './browsing.js';
+import { landingRootSchema,templateSettingsSchema } from './template-settings.js';
 
 const path = z.string().max(400).refine(v => {
     try { const decoded = decodeURIComponent(v); return v.startsWith('/') && !decoded.startsWith('//') && !/[\\?#{}\s\x00-\x20]/.test(decoded) && !decoded.split('/').some(p => p === '.' || p === '..'); }
     catch { return false; }
 });
-const listParams = z.object({ q: z.string().trim().max(100).optional(), offset: z.number().int().min(0).max(10000).optional(), limit: z.number().int().min(1).max(48).optional() }).strict();
+const listParams = z.object({ q: z.string().trim().max(100).optional(), offset: z.number().int().min(0).max(19999).optional(), limit: z.number().int().min(1).max(48).optional(), sort: z.enum(['title-asc','title-desc']).optional(), match: z.enum(['contains','startsWith','equals']).optional() }).strict();
 const programParams = listParams.extend({ institutionId: z.union([z.string().min(1).max(128), z.number().int().positive()]).optional() }).strict();
 const detailParams = z.object({ path }).strict();
 const binding = <T extends string, S extends z.ZodTypeAny>(queryId: T, params: S) => z.object({ version: z.literal(1), queryId: z.literal(queryId), params }).strict();
@@ -52,11 +52,12 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
             const props = node.props || {}; let isArticle = false;
             if(props.templateHeroState!==undefined || props.templateSearchState!==undefined)throw new Error('transient_template_state');
             for(const marker of ['templateHero','templateSearch'])if(props[marker]!==undefined){
-                z.object({version:z.literal(1)}).strict().parse(props[marker]);
+                (marker==='templateHero'?z.object({version:z.literal(1),settings:templateSettingsSchema.shape.hero.optional()}):z.object({version:z.literal(1),defaultCollection:z.enum(['institution','program']).optional()})).strict().parse(props[marker]);
                 if(node.type!=='Container' || inQuery || props.directoryQuery!==undefined || (node.children?.length??0)>0 || layout.root?.directoryLanding===undefined)throw new Error('invalid_template_component');
             }
             if(props.templateMenu!==undefined){z.object({version:z.literal(1)}).strict().parse(props.templateMenu);if(node.type!=='Container'||inQuery||layout.root?.directoryLanding===undefined)throw new Error('invalid_template_component');}
             validateDirectoryBrowsing(node, inQuery);
+            if(props.directoryControls !== undefined){directoryBrowsingSchema.parse(props.directoryControls);if(node.type!=='Repeater'||inQuery||props.directoryQuery===undefined)throw new Error('invalid_repeater_controls');}
             if (props.directoryBrowsing !== undefined && (++browsing > 1 || !['directory', 'article-index'].includes(String((layout.root?.siteConfiguration as {role?:string} | undefined)?.role)))) throw new Error('invalid_directory_browsing_role');
             validateSiteBinding(node);
             if (props.directoryQuery !== undefined) {
@@ -115,20 +116,30 @@ function formatEditorialDate(value: unknown, locale?: string): string {
 /** Transient plain-component projection through the SAME renderer; never save its rows. */
 export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, records: Map<string, Record<string, unknown>[]>, options: { locale?: string } = {}): T {
     directoryLayoutQueries(layout);
+    const ownControls = (nodes: PageComponent[]): boolean => nodes.some(node=>node.props?.directoryControls!==undefined || ownControls(node.children||[]));
+    const controlsOwned=ownControls(layout.content);
     let projected = 0;
     const walk = (node: PageComponent, row?: Record<string, unknown>, index = 0): PageComponent => {
         if (++projected > 4000) throw new Error('directory_projection_size');
         const props = { ...node.props }; const query = props.directoryQuery;
+        if(controlsOwned && props.directoryBrowsing!==undefined)return {...node,props:{},styles:{display:'none'},children:[]};
         if (query !== undefined) {
             const parsed = directoryQueryBindingSchema.parse(query); const rows = records.get(node.id);
             if (!rows || rows.length > (parsed.queryId.endsWith('.list') ? 48 : 1)) throw new Error('directory_records_unavailable');
-            const { directoryQuery: _query, ...rest } = props;
+            const { directoryQuery: _query, directoryControls: controls, ...rest } = props;
             const list = parsed.queryId.endsWith('.list'); const columns = Math.min(4, Math.max(1, Number(props.columns) || 3));
             if (list) rest.className = `${typeof rest.className === 'string' ? rest.className : ''} ${props.layout === 'list' ? 'flex flex-col' : `grid grid-cols-1 ${columns > 1 ? 'md:grid-cols-2' : ''} ${columns > 2 ? `lg:grid-cols-${Math.floor(columns)}` : ''}`} gap-6`;
-            return { ...node, type: 'Container', props: rest,
+            const projected: PageComponent = { ...node, type: 'Container', props: rest,
                 ...(list ? { styles: { gap: '24px', ...node.styles } } : {}),
                 children: rows.length ? rows.flatMap((record, i) => (node.children || []).map(child => walk(child, record, i)))
                     : [{ id: `${node.id}-empty`, type: 'Text', props: { text: 'No records matched this preview.' } }] };
+            if(list && controls !== undefined){
+                const options=directoryBrowsingSchema.parse(controls),position=options.paginationPosition||'top';
+                const top:PageComponent={id:`${node.id}-controls`,type:'Container',props:{directoryBrowsing:{...options,pagination:options.pagination && position!=='bottom'}}};
+                const bottom:PageComponent={id:`${node.id}-pagination`,type:'Container',props:{directoryBrowsing:{...options,tabs:false,search:false,sorting:false,filters:false,recordCount:false}}};
+                return {...node,type:'Container',props:{},styles:{},children:[top,{...projected,id:`${node.id}-records`},...(options.pagination && position!=='top'?[bottom]:[])]};
+            }
+            return projected;
         }
         const id = index ? `${node.id}-preview-${index}` : node.id;
         const { recordBindings: _bindings, ...rest } = props;

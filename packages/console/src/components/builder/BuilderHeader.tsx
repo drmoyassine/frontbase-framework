@@ -27,6 +27,7 @@ import {
   History,
   ExternalLink,
   ChevronDown,
+  Undo2,Redo2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBuilderStore } from '@/stores/builder';
@@ -60,6 +61,8 @@ export const BuilderHeader: React.FC<{
   onToggleLeftSidebar,
   onToggleRightSidebar
 }) => {
+    const undo=useBuilderStore(state=>state.undoLayout),redo=useBuilderStore(state=>state.redoLayout);
+    const canUndo=useBuilderStore(state=>state.layoutUndo.length>0),canRedo=useBuilderStore(state=>state.layoutRedo.length>0);
     const navigate = useNavigate();
     const { tenant, user } = useAuthStore();
     const tenantSlug = tenant?.slug || user?.tenant_slug;
@@ -363,6 +366,8 @@ export const BuilderHeader: React.FC<{
               <Grid3x3 className="h-4 w-4" />
             </Button>
           </div>
+          <Button variant="ghost" size="icon" aria-label="Undo" disabled={!canUndo} onClick={undo}><Undo2 className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Redo" disabled={!canRedo} onClick={redo}><Redo2 className="h-4 w-4" /></Button>
           <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 p-0" onClick={() => setShowVersionHistory(true)} aria-label="Version History" title="Version History"><History className="h-4 w-4" /></Button>
         </div>
 

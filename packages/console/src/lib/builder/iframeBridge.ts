@@ -61,6 +61,7 @@ export function walkLayout(
             if (node.children && node.children.length > 0) {
                 recurse(node.children, node.id, depth + 1);
             }
+            for (const version of node.versions ?? []) if (version.overrides.children) recurse(version.overrides.children as ComponentData[], node.id, depth + 1);
         }
     };
     recurse(nodes, undefined, 0);
@@ -154,6 +155,7 @@ export function findNodeLocation(
             const inner = findNodeLocation(node.children, id, node.id);
             if (inner) return inner;
         }
+        for(const version of node.versions??[]){if(version.overrides.children){const inner=findNodeLocation(version.overrides.children as ComponentData[],id,node.id);if(inner)return inner;}}
     }
     return null;
 }

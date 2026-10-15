@@ -33,6 +33,9 @@ const P = (p: string) => path.resolve(__dirname, '../console/packages', p);
 export default defineConfig({
     plugins: [react()],
     resolve: {
+        // These dependencies are installed and pinned in this package. All
+        // imported component packages must share its dispatcher/query context.
+        dedupe: ['react', 'react-dom', '@tanstack/react-query'],
         alias: {
             '@': path.resolve(__dirname, './src'),
             '@frontbase/types': P('types/src/index.ts'),
@@ -44,11 +47,7 @@ export default defineConfig({
             '@frontbase/grid': P('grid/src/index.ts'),
             '@frontbase/liquid-core': P('liquid-core/src/index.ts'),
         },
-        // No resolve.dedupe (unlike the product's edge build): dedupe resolves
-        // from THIS package's root, where the sub-packages' bare deps are not
-        // installed — they resolve by walking up into
-        // packages/console/node_modules. Single-entry rollup inlines each dep
-        // once anyway.
+        // Other bare dependencies continue resolving from the console packages.
     },
     build: {
         outDir: 'dist',

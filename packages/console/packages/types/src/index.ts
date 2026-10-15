@@ -3,7 +3,7 @@
  *
  * Single source of truth for the data-binding contract used by the
  * Chart, Grid and KPICard packages (and any future data component).
- * Keep this dependency-free so every package can consume it cheaply.
+ * Shared value/condition semantics come from the pure edge-core conditions entry.
  */
 
 /**
@@ -32,15 +32,23 @@ export interface HiddenFilter {
   id: string;
   column: string;
   operator: HiddenFilterOperator;
-  value?: string;
+  value?: import('@frontbase/edge-core/conditions').Operand | import('@frontbase/edge-core/conditions').JsonValue;
   previewValue?: string;
+  when?: import('./hiddenFilters').HiddenFilterCondition;
 }
+
+export {hiddenFilterApplies, resolveHiddenFilterRules, resolveBindingHiddenFilters, resolveFilterValue, readBrowserFilterVariable, subscribeFilterVariables, browserFilterUrlVariables} from './hiddenFilters';
+export type {HiddenFilterCondition, FilterVariableReader} from './hiddenFilters';
 
 /**
  * The unified data-binding object passed by the Builder at design time and
  * baked by the Edge publisher (carrying a `dataRequest`) at publish time.
  */
 export interface ComponentDataBinding {
+    viewId?:string;
+    viewName?:string;
+    source?: { kind: 'publication'; hash: string };
+    _blockVersionId?: string;
     componentId: string;
     dataSourceId: string;
     tableName: string;

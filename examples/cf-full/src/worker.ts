@@ -1,3 +1,4 @@
+import {audienceConditionUser} from '@frontbase/edge-core';
 /**
  * Cloudflare Worker entry — the FULL CMS as ONE worker: the eSSR engine
  * (@frontbase/edge-core) + the login-gated admin console (@frontbase/backend),
@@ -530,6 +531,10 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         environment: 'edge',
         swBundle: SW_BUNDLE,
         console: consoleApp,
+        resolveConditionUser: async req=>{
+            const page=await resolvePublishedPageForTenant(opts.runner,hostTenantFor(req)??'_root',new URL(req.url).pathname,cloud?{}:{crossTenantFallback:true});
+            return page?.owner?audienceConditionUser(await configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,Date.now,true)(page.owner,req)):null;
+        },
         // Serve published Builder pages (dynamic-first — they override the baked
         // demo). '/' → the homepage (is_homepage=1); '/<slug>' → by slug. Only
         // published, non-deleted pages. The SELECT moved into the framework
@@ -827,7 +832,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             || path === '/sw.js') return next();
         const tenant = hostTenantFor(c.req.raw);
         if (cloud && !tenant && hostKindOf(c.req.raw, cloud.baseDomain, cloud.appLabel) !== 'foreign') return next();
-        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE, resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch) });
+        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE, resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,Date.now,true) });
         if (reviewed) return reviewed;
         return next();
     });

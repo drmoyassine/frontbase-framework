@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
 import {renderNavbar} from '../dist/ssr/components/landing/Navbar.js';
+import {menuComponent} from '../dist/menu-components.js';
+import {createMenuDefinition} from '../dist/menus.js';
+import {FALLBACK_CSS} from '../dist/ssr/baseStyles.js';
 const props={logo:{type:'text',text:'Site'},menuItems:[{id:'one',label:'One',navType:'link',target:'/one/'}],primaryButton:{enabled:true,text:'Contact',target:'/contact/',navType:'link',variant:'outline'}};
 const pixel=renderNavbar('native', {...props,scale:1.5,navPaddingBase:'18px',menuFontSizeBase:'14px'});
 assert.ok(pixel.includes('padding: 27px 0'));assert.ok(pixel.includes('font-size: 21px'));assert.ok(!pixel.includes('27rem'));assert.ok(pixel.includes('border border-current hover:bg-accent'));assert.ok(pixel.includes('aria-label="Toggle navigation"'));assert.ok(pixel.includes('aria-controls="native-mobile-menu"'));assert.ok(pixel.includes('id="native-mobile-menu"'));
 const base=renderNavbar('native',props);assert.ok(base.includes('padding: 1rem 0'));assert.ok(base.includes('font-size: 0.875rem'));
+assert.match(FALLBACK_CSS,/\.fb-page \{[^}]*overflow-x: clip/);assert.ok(renderNavbar('sticky',{...props,sticky:true}).includes('sticky top-0 z-50'));
+const managed=menuComponent(createMenuDefinition('header','header'),null);assert.equal(managed.styles.values.maxWidth,undefined);assert.equal(managed.props.contentMaxWidth,1180);assert.ok(renderNavbar(managed.id,managed.props).includes('style="max-width: 1180px;"'));
 assert.ok(renderNavbar('native',{...props,navPaddingBase:'1.5em',scale:2}).includes('padding: 3em 0'));
+const theme=renderNavbar('appearance',{...props,showDarkModeToggle:true});for(const mode of ['light','dark','system'])assert.ok(theme.includes(`data-fb-theme-choice="${mode}"`));assert.ok(!theme.includes("localStorage.getItem('fb-theme')"));
 console.log('Native menu rendering: scale preserves px/rem/em, default dimensions and selected CTA styling PASS');

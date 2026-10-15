@@ -1,3 +1,4 @@
+import {inspectTable,parseFilterList,buildWhere} from './sync.js';
 /**
  * CF-22 Work A2 Tier 1 — Functional `database` surface (10 ops).
  * Datasource connection state + real table introspection & SQL execution.
@@ -285,11 +286,20 @@ export function registerDatabaseRoutes(
             }
         }
         try {
-            const rows = await source.activeRunner.query(`SELECT * FROM "${table}" LIMIT 50`);
+            const schema=await inspectTable(source.activeRunner,source.dialect,table);
+            const raw=c.req.query('filters'),parsed=raw?JSON.parse(raw):[];
+            const filters=parseFilterList(Array.isArray(parsed)?parsed:Object.entries(parsed).filter(([key])=>key!=='search').map(([column,value])=>({column,op:'eq',value:typeof value==='object'&&value!==null&&'value' in value?(value as {value:unknown}).value:value})));
+            const where=buildWhere(source.dialect,schema.columns,filters,c.req.query('search')??(!Array.isArray(parsed)?parsed.search:undefined));
+            const limit=Number(c.req.query('limit')??50),offset=Number(c.req.query('offset')??0);
+            if(!Number.isInteger(limit)||limit<1||limit>1000||!Number.isInteger(offset)||offset<0||offset>100000)throw new Error('invalid_pagination');
+            const order=c.req.query('orderBy'),direction=(c.req.query('orderDirection')??'asc').toLowerCase();
+            if(order&&!schema.columns.some(column=>column.name===order)||!['asc','desc'].includes(direction))throw new Error('invalid_order');
+            const count=await source.activeRunner.query(`SELECT COUNT(*) AS total FROM "${table}"${where.sql}`,where.params);
+            const rows=await source.activeRunner.query(`SELECT * FROM "${table}"${where.sql}${order?` ORDER BY "${order.replace(/"/g,'""')}" ${direction.toUpperCase()}`:''} LIMIT ${limit} OFFSET ${offset}`,where.params);
             return c.json({
                 success: true,
                 data: rows,
-                total: rows.length,
+                total: Number(count[0]?.total??0),
                 message: 'Data retrieved successfully',
             });
         } catch {

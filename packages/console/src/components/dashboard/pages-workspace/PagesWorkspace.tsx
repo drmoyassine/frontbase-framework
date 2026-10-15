@@ -100,11 +100,6 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
     {(['rename','move-folder','remove'] as const).map(kind=><DropdownMenuItem key={kind} disabled={!ready||saving} className={kind==='remove'?'text-destructive':''} onSelect={()=>{setSelection([]);setFolderSelection([]);openDialog({kind,id});}}>{kind==='rename'?'Rename folder':kind==='remove'?'Delete folder':'Move folder'}</DropdownMenuItem>)}
     <DropdownMenuSeparator/><DropdownMenuItem disabled={!ready||saving} onSelect={()=>reorderFolder(id,-1)}>Move up</DropdownMenuItem><DropdownMenuItem disabled={!ready||saving} onSelect={()=>reorderFolder(id,1)}>Move down</DropdownMenuItem>
   </DropdownMenuContent></DropdownMenu>;
-  const folderRows = (parentId: string|null, depth=0): React.ReactNode => organization.folders.filter(f=>f.parentId===parentId).sort((a,b)=>a.order-b.order).map(f=><React.Fragment key={f.id}>
-    <div className="flex min-w-0 items-center gap-1 rounded-md hover:bg-muted" style={{paddingLeft:depth*12}} draggable={ready&&!saving} onDragStart={event=>event.dataTransfer.setData('application/x-frontbase-page',JSON.stringify({kind:'folder',id:f.id}))} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.stopPropagation();void drop(e,f.id);}}>
-      <button className={`flex min-w-0 flex-1 items-center gap-2 p-2 text-left text-sm ${folderId===f.id?'font-semibold bg-muted rounded-md':''}`} onClick={()=>{setFolderId(f.id);setSelection([]);setFolderSelection([]);}}><Folder className="h-4 w-4 shrink-0"/><span className="truncate" title={f.name}>{f.name}</span></button>
-      {folderActions(f.id,f.name)}
-    </div>{folderRows(f.id,depth+1)}</React.Fragment>);
   const entryActions = (entry:WorkspaceEntry) => <div className="flex w-full flex-wrap items-center justify-end gap-1">
     {entry.pageId && <Button size="sm" onClick={()=>edit(entry.pageId!)}><Pencil className="mr-1 h-3.5 w-3.5"/>{entry.kind==='page'&&!entry.role?'Edit':'Design'}</Button>}
     {(entry.path || entry.paths?.length) && <Button variant="outline" size="sm" onClick={()=>setRoutes(entry)}><Eye className="mr-1 h-3.5 w-3.5"/>URLs</Button>}
@@ -150,18 +145,10 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="text-sm text-muted-foreground">{inventory ? inventory.publication ? `Published site version · generation ${inventory.publication.generation}` : 'No active whole-site version' : 'Publication inventory unavailable'} <Button variant="ghost" size="sm" onClick={()=>void load()} disabled={loading||saving}><RefreshCw className="mr-1 h-3 w-3"/>Reload</Button></div>
-      <div className="inline-flex rounded-md border p-1" role="group" aria-label="Page view"><Button variant={view==='cards'?'secondary':'ghost'} size="sm" aria-pressed={view==='cards'} onClick={()=>changeView('cards')}><LayoutGrid className="mr-1 h-4 w-4"/>Cards</Button><Button variant={view==='list'?'secondary':'ghost'} size="sm" aria-pressed={view==='list'} onClick={()=>changeView('list')}><List className="mr-1 h-4 w-4"/>List</Button></div>
+      <div className="flex flex-wrap items-center justify-end gap-2"><Button variant="outline" size="sm" disabled={!ready||saving} onClick={()=>openDialog({kind:'new'})}><FolderPlus className="mr-2 h-4 w-4"/>New folder</Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm">Filters</Button></DropdownMenuTrigger><DropdownMenuContent align="end"><label className="flex items-center gap-2 p-2 text-sm"><input type="checkbox" checked={development} onChange={e=>setDevelopment(e.target.checked)}/>Show migration/test documents</label></DropdownMenuContent></DropdownMenu><Button variant="ghost" size="sm" onClick={()=>navigateFolder(null)}>Unfiled</Button><div className="inline-flex rounded-md border p-1" role="group" aria-label="Page view"><Button variant={view==='cards'?'secondary':'ghost'} size="sm" aria-pressed={view==='cards'} onClick={()=>changeView('cards')}><LayoutGrid className="mr-1 h-4 w-4"/>Cards</Button><Button variant={view==='list'?'secondary':'ghost'} size="sm" aria-pressed={view==='list'} onClick={()=>changeView('list')}><List className="mr-1 h-4 w-4"/>List</Button></div></div>
     </div>
     {error && <div role="alert" className="rounded-md border border-destructive/40 p-3 text-sm">{error}</div>}
-    <div className="grid min-w-0 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
-      <aside className="self-start rounded-lg border p-2" aria-label="Page folders">
-        <Button variant="ghost" className="w-full justify-start" onClick={()=>{setFolderId('all');setSelection([]);setFolderSelection([]);}}>All site documents ({entries.length})</Button>
-        <div onDragOver={e=>e.preventDefault()} onDrop={e=>void drop(e,null)}><Button variant={folderId===null?'secondary':'ghost'} className="w-full justify-start" onClick={()=>{setFolderId(null);setSelection([]);setFolderSelection([]);}}>Unfiled</Button></div>
-        {folderRows(null)}
-        <Button variant="outline" size="sm" className="mt-2 w-full" disabled={!ready||saving} onClick={()=>openDialog({kind:'new'})}><FolderPlus className="mr-2 h-4 w-4"/>New folder</Button>
-        <p className="px-2 pt-2 text-xs text-muted-foreground">Folders organize documents. Moving items never changes public URLs.</p>
-        <label className="mt-3 flex items-center gap-2 px-2 text-xs"><input type="checkbox" checked={development} onChange={e=>setDevelopment(e.target.checked)}/>Show migration/test documents</label>
-      </aside>
+    <div className="min-w-0">
       <main className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2"><nav aria-label="Folder breadcrumb" className="min-w-0"><ol className="flex flex-wrap items-center gap-1 text-sm">
             <li>{folderId==='all'?<span aria-current="page" className="font-medium">All site documents</span>:<button className={crumbClass} onClick={()=>navigateFolder('all')}>All site documents</button>}</li>

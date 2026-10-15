@@ -10,6 +10,8 @@
  */
 import { Hono } from 'hono';
 import { renderPage } from './ssr/PageRenderer.js';
+import { publicBlockTree } from './block-versions.js';
+import { contextReader } from './conditions.js';
 import { buildSystemContext } from './ssr/lib/context.js';
 import type { TemplateContext } from './ssr/lib/context.js';
 import type { SiteManifest, PageEntry, RegisteredQuery } from './manifest.js';
@@ -23,6 +25,8 @@ import { engineConfig, type Principal } from './config.js';
 export type Environment = 'edge' | 'service-worker' | 'builder';
 
 export interface EngineOptions {
+    /** Host-verified minimal visitor context; never the console principal. */
+    resolveConditionUser?: (request:Request)=>Promise<Record<string,unknown>|null>;
     manifest: SiteManifest;
     data: DataProvider;
     environment: Environment;
@@ -72,7 +76,7 @@ export function enforceScope(q: RegisteredQuery, principal: Principal): { status
 }
 
 /** Deterministic template context — timestamps come from the manifest, never Date.now(). */
-function buildContext(page: PageEntry, path: string, records: Record<string, unknown>[], opts: EngineOptions): TemplateContext {
+function buildContext(page: PageEntry, path: string, records: Record<string, unknown>[], opts: EngineOptions, user:Record<string,unknown>|null=null): TemplateContext {
     return {
         page: {
             id: page.slug, title: page.title, url: path, slug: page.slug,
@@ -80,7 +84,7 @@ function buildContext(page: PageEntry, path: string, records: Record<string, unk
             createdAt: '', updatedAt: '',
             image: '', type: 'page', custom: {},
         },
-        user: null,
+        user,
         visitor: {} as TemplateContext['visitor'],
         url: {}, system: buildSystemContext(),
         cookies: {}, local: {}, session: {},
@@ -259,8 +263,11 @@ export function createEngine(opts: EngineOptions): Hono {
                 tenant: principal.tenant,
             });
         }
-        const body = await renderPage(page.layout, buildContext(page, path, records, opts));
-        const html = renderDocument(page, body, {
+        const renderContext = buildContext(page, path, records, opts, await opts.resolveConditionUser?.(c.req.raw).catch(()=>null)??null);
+        renderContext.url = Object.fromEntries(new URL(c.req.url).searchParams);
+        const publicPage = /"versions"/.test(JSON.stringify(page.layout)) ? { ...page, layout: { ...page.layout, content: publicBlockTree(page.layout.content, contextReader(renderContext as unknown as Record<string, unknown>)) } } : page;
+        const body = await renderPage(publicPage.layout, renderContext);
+        const html = renderDocument(publicPage, body, {
             environment,
             registerServiceWorker: environment === 'edge' && !!opts.swBundle,
             // Same resolver the gated branch and navbarFavicon use — the host

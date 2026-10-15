@@ -1,4 +1,5 @@
 export interface ComponentData {
+    versions?: import('@frontbase/edge-core/block-versions').BlockVersion[];
     id: string;
     type: string;
     props: Record<string, any>;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ComponentDataBinding } from '../types';
-import { resolveDateOperator, isBuilderCanvas } from '@frontbase/types';
+import { resolveDateOperator, isBuilderCanvas, resolveBindingHiddenFilters, readBrowserFilterVariable, subscribeFilterVariables } from '@frontbase/types';
 
 interface UseChartQueryProps {
     mode: 'builder' | 'edge';
@@ -334,64 +334,8 @@ export function useChartQuery({
 }: UseChartQueryProps) {
     const [storeVersion, setStoreVersion] = useState(0);
 
-    useEffect(() => {
-        const store = typeof window !== 'undefined' ? (window as any).__VARIABLE_STORE__ : null;
-        if (!store) return;
-        return store.subscribe(() => {
-            setStoreVersion((v) => v + 1);
-        });
-    }, []);
-
-    const resolvedHiddenFilters = useMemo(() => {
-        // Builder preview has no SSR-injected _resolved/_pending fields — resolve the
-        // raw authored hidden filters against the builder context (url/system).
-        if (mode === 'builder') {
-            return resolveBuilderHiddenFilters(binding.hiddenFilters);
-        }
-
-        const resolvedList = [...(binding._resolvedHiddenFilters || [])];
-        const pendingList = binding._pendingHiddenFilters || [];
-        const store = typeof window !== 'undefined' ? (window as any).__VARIABLE_STORE__ : null;
-
-        for (const filter of pendingList) {
-            const operator = filter.operator;
-            if (operator === 'is_null' || operator === 'not_null') {
-                resolvedList.push({
-                    column: filter.column,
-                    op: operator,
-                });
-                continue;
-            }
-
-            const value = filter.value;
-            let resolvedVal: any = '';
-            if (typeof value === 'string') {
-                if (store) {
-                    resolvedVal = resolveClientTemplate(value, store);
-                } else {
-                    resolvedVal = filter.previewValue || '';
-                }
-            } else {
-                resolvedVal = value;
-            }
-
-            // Date operators desugar to lt/lte/gt/gte (UTC) via the shared helper,
-            // which also emits the two-bound range for is_today.
-            const dateExpanded = resolveDateOperator({ column: filter.column, op: operator, value: resolvedVal });
-            if (dateExpanded !== null) {
-                resolvedList.push(...dateExpanded);
-                continue;
-            }
-
-            if (resolvedVal !== undefined && resolvedVal !== null && String(resolvedVal).trim() !== '') {
-                if (operator === 'in') {
-                    resolvedVal = String(resolvedVal).split(',').map((s: string) => s.trim()).filter(Boolean);
-                }
-                resolvedList.push({ column: filter.column, op: operator, value: resolvedVal });
-            }
-        }
-        return resolvedList;
-    }, [mode, binding.hiddenFilters, binding._resolvedHiddenFilters, binding._pendingHiddenFilters, storeVersion]);
+    useEffect(()=>subscribeFilterVariables(()=>setStoreVersion(v=>v+1)),[]);
+    const resolvedHiddenFilters=useMemo(()=>resolveBindingHiddenFilters(binding,readBrowserFilterVariable),[binding,storeVersion]);
 
     return useQuery({
         queryKey: ['chart-data-v2', mode, binding.dataSourceId, binding.tableName, binding.sorting, binding.filtering, binding.chartConfig, resolvedHiddenFilters],

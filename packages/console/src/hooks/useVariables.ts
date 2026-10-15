@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 export interface Variable {
     path: string;
     type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    source: 'page' | 'user' | 'visitor' | 'url' | 'system' | 'record' | 'local' | 'session' | 'cookies';
+    source: 'page' | 'user' | 'visitor' | 'url' | 'system' | 'record' | 'local' | 'session' | 'cookies' | 'app';
     description?: string;
 }
 
@@ -40,8 +40,8 @@ export function useVariables(pageId?: string) {
         queryFn: async () => {
             try {
                 const url = pageId
-                    ? `/api/variables/registry?page_id=${encodeURIComponent(pageId)}`
-                    : '/api/variables/registry';
+                    ? `/api/variables/registry/?page_id=${encodeURIComponent(pageId)}`
+                    : '/api/variables/registry/';
                 const response = await fetch(url, {
                     credentials: 'include'
                 });
@@ -98,6 +98,9 @@ export function getDefaultVariables(): VariablesResponse {
             { path: 'visitor.language', type: 'string', source: 'visitor', description: 'Preferred language' },
 
             // User
+            { path: 'user.contact_type', type: 'string', source: 'user', description: 'Verified Contact Type' },
+            { path: 'user.permission_level', type: 'string', source: 'user', description: 'Verified Permission Level' },
+            { path: 'user.authenticated', type: 'boolean', source: 'user', description: 'Verified app-user session' },
             { path: 'user.id', type: 'string', source: 'user', description: 'User ID' },
             { path: 'user.email', type: 'string', source: 'user', description: 'Email address' },
             { path: 'user.name', type: 'string', source: 'user', description: 'Full name' },

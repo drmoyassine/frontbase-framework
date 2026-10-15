@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {sqliteRunner} from '@frontbase/edge-infra';
-import {emptyDirectoryConfiguration} from '@frontbase/edge-core/directory/configuration';
+import {emptyDirectoryConfiguration,migrateExploreRepeater} from '@frontbase/edge-core/directory/configuration';
+import {readPublicationList} from '../dist/compat/publication-list-source.js';
+import {prepareElementSettingsCapture,publishElementSettingsCapture} from '../dist/compat/element-settings-capture.js';
 import {createDirectoryQueries} from '@frontbase/compiler/queries/directory';
 import {migrateUp} from '../dist/db/migrations.js';
 import {createSecretCipher} from '../dist/db/secret-cipher.js';
@@ -99,6 +101,14 @@ const firstResponse=await call('activate',{hash,expected:null});assert.equal(fir
 assert.equal(first.generation,1);
 const state=await app.request('/api/project/site-configuration/publication/state/'),live=await state.json();assert.equal(live.capture.runtimeVersion,'directory-chunks-v1');assert.equal(live.capture.counts.programs,121);assert.equal(live.capture.counts.pages,3);
 const publicPage=path=>renderReviewedSitePublication(db,'alpha',new Request('https://usa.test'+path));
+// Captured authoring preview and live delivery use identical query semantics.
+const capturedPreview=async params=>app.request('/api/project/site-configuration/preview/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({source:'published',expectedRevision:1,role:'program',mode:'list',params})});
+const sortedPreview=await capturedPreview({sort:'title-desc',q:'Program 12',match:'startsWith'});assert.equal(sortedPreview.status,200,await sortedPreview.clone().text());
+const sortedPayload=await sortedPreview.json();assert.equal(sortedPayload.source,'published');assert.equal(sortedPayload.captureHash,hash);assert.equal(sortedPayload.total,2);assert.deepEqual(sortedPayload.rows.map(row=>row.title),['Program 121','Program 120']);
+const sortedLive=await publicPage('/explore/?type=program&q=Program+12&match=startsWith&sort=title-desc');assert.equal(sortedLive.status,200);const sortedHtml=await sortedLive.text();assert.ok(sortedHtml.indexOf('Program 121')<sortedHtml.indexOf('Program 120'));
+assert.equal((await publicPage('/explore/?sort=malicious')).status,400);assert.equal((await publicPage('/explore/?match=malicious')).status,400);
+const stalePreview=await app.request('/api/project/site-configuration/preview/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({source:'published',expectedCapture:'0'.repeat(64),expectedRevision:1,role:'program',mode:'list',params:{}})});assert.equal(stalePreview.status,409);
+
 const alias=await publicPage('/blog/original-announcement/');assert.equal(alias.status,301);assert.equal(alias.headers.get('location'),'/original-announcement/');assert.equal(await alias.text(),'');assert.equal(alias.headers.get('x-site-version'),hash);
 assert.equal((await publicPage('/blog/original-announcement/?q=x')).status,400);
 const privateAlias=await app.request('/api/project/site-configuration/publication/render/?'+new URLSearchParams({hash,path:'/blog/original-announcement/'}));assert.equal(privateAlias.status,301);assert.equal(privateAlias.headers.get('location'),'/api/project/site-configuration/publication/render/?'+new URLSearchParams({hash,path:'/original-announcement/'}));assert.match(privateAlias.headers.get('cache-control'),/no-store/);assert.match(privateAlias.headers.get('x-robots-tag'),/noindex/);
@@ -145,6 +155,38 @@ const store=new SitePublicationStore(db,'alpha'),legacyHash=await store.prepare(
 assert.equal((await call('review',{hash:legacyHash,checks:reviewChecks,note:'Synthetic legacy rollback'})).status,200);
 const rollbackResponse=await call('activate',{hash:legacyHash,expected:first});assert.equal(rollbackResponse.status,200);const rollback=(await rollbackResponse.json()).pointer;assert.equal(rollback.generation,2);assert.ok((await (await publicPage('/campus/')).text()).includes('Legacy campus'));
 const restoreResponse=await call('activate',{hash,expected:rollback});assert.equal(restoreResponse.status,200);assert.equal((await restoreResponse.json()).pointer.generation,3);
+// Standard Repeater conversion preserves reviewed data through an owner-bound snapshot adapter.
+const convertedTemplates=manifest.templates.map(template=>template.role==='directory'?{...template,layout:migrateExploreRepeater(template.layout,hash,config)}:template);
+const convertedHash=await manifestStore.prepareLayouts(hash,{templates:convertedTemplates,staticPages:manifest.staticPages},now);
+assert.equal((await call('review',{hash:convertedHash,checks:reviewChecks,note:'Synthetic standard Repeater conversion'})).status,200);
+assert.equal((await call('activate',{hash:convertedHash,expected:(await store.activeVersion()).pointer})).status,200);
+const standardPage=await publicPage('/explore/?type=program');assert.equal(standardPage.status,200);const standardHtml=await standardPage.text();assert.ok(standardHtml.includes('Program 001'));assert.ok(standardHtml.includes('data-block-versions="institutions"'));assert.ok(!standardHtml.includes('PRIVATE_CONTRACT'));
+assert.equal((await publicPage('/explore/?type=arbitrary')).status,200); // Default fallback on standard versions.
+const listQuery={componentId:'institutions',versionId:'programs',page:0,pageSize:12,sortColumn:'title',direction:'desc',filters:[]};
+const listRequest=input=>new Request('https://study-in-usa.com/explore/?type=program',{headers:{'X-Frontbase-List':encodeURIComponent(JSON.stringify(input))}});
+const listResult=await renderReviewedSitePublication(db,'alpha',listRequest(listQuery));assert.equal(listResult.status,200);const listBody=await listResult.json();assert.equal(listBody.rows.length,12);assert.equal(listBody.total,121);assert.equal(listBody.rows[0].title,'Program 121');assert.ok(!JSON.stringify(listBody).includes('PRIVATE_'));assert.ok(listBody.rows.every(row=>row.body===undefined));
+const filtered=await renderReviewedSitePublication(db,'alpha',listRequest({...listQuery,filters:[{column:'title',op:'eq',value:'Program 120'}]}));assert.equal((await filtered.json()).total,1);
+assert.equal((await renderReviewedSitePublication(db,'alpha',listRequest({...listQuery,componentId:'not-a-page-element'}))).status,404);
+assert.equal((await renderReviewedSitePublication(db,'alpha',listRequest({...listQuery,versionId:'not-a-version'}))).status,403);
+const sourceBinding=convertedTemplates.find(template=>template.role==='directory').layout.content.find(node=>node.id==='institutions').props.binding;
+await assert.rejects(()=>readPublicationList(db,'beta',sourceBinding,listQuery));
+await assert.rejects(()=>readPublicationList(db,'alpha',sourceBinding,{...listQuery,pageSize:49}));
+await assert.rejects(()=>readPublicationList(db,'alpha',sourceBinding,{...listQuery,filters:[{column:'private_contract',op:'eq',value:'PRIVATE_CONTRACT'}]}));
+assert.equal((await call('activate',{hash,expected:(await store.activeVersion()).pointer})).status,200);
+const migrationBefore=(await store.activeVersion()).pointer;
+const migrated=await prepareElementSettingsCapture(db,'alpha',hash,now);
+assert.deepEqual((await store.activeVersion()).pointer,migrationBefore); // preview never activates
+const migratedArtifact=await store.getVersion(migrated.hash);
+assert.deepEqual(migratedArtifact.chunks,manifest.chunks);assert.deepEqual(migratedArtifact.index,manifest.index);
+await assert.rejects(()=>prepareElementSettingsCapture(db,'beta',hash,now));
+await assert.rejects(()=>publishElementSettingsCapture(db,'alpha',hash,hash,'reviewer',now));
+assert.deepEqual((await store.activeVersion()).pointer,migrationBefore);
+const migratedPublished=await publishElementSettingsCapture(db,'alpha',hash,migrated.hash,'reviewer',now);
+assert.equal(migratedPublished.pointer.hash,migrated.hash);
+await assert.rejects(()=>prepareElementSettingsCapture(db,'alpha',hash,now));
+await assert.rejects(()=>publishElementSettingsCapture(db,'alpha',hash,migrated.hash,'reviewer',now));
+assert.equal((await call('activate',{hash,expected:(await store.activeVersion()).pointer})).status,200);
+console.log('standard Repeater: reviewed source pinning, native SSR, first-match Programs version, paging/count/filter/order, unknown element/version and cross-owner/private-field refusals PASS');
 // Missing chunks are terminal and prevent review/activation; no mutable fallback.
 const chunk=manifest.chunks.find(ref=>ref.collection==='programs'),chunkKey=`site_publication:chunk:v1:${chunk.hash}`,chunkRaw=(await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',['alpha',chunkKey]))[0].value;
 await db.exec('DELETE FROM settings WHERE tenant_slug=? AND key=?',['alpha',chunkKey]);

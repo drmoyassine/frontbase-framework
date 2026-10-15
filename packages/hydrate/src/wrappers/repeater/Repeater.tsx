@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useGridQuery } from '@frontbase/grid';
 import { RecordContextProvider } from './RecordContext';
-import { RenderNode } from './RenderNode';
+import { NativeRecordNode } from './NativeRecordNode';
 
 interface TemplateNode {
     id?: string;
@@ -14,11 +14,22 @@ export interface RepeaterProps {
     /** Baked at publish time (carries `dataRequest` for edge-mode fetching). */
     binding?: any;
     columns?: number;
+    mobileColumns?:number;
+    tabletColumns?:number;
     layout?: 'grid' | 'list';
     /** The user-designed template subtree (raw component defs from __PAGE_DATA__). */
     template?: TemplateNode[];
     /** Cap rendered rows on the published page. */
     maxRows?: number;
+    gap?: number;
+    controls?: { count?: boolean; ordering?: boolean; search?: boolean; searchColumn?: string; searchLabel?: string; searchPlaceholder?: string; paginationPosition?: 'top'|'bottom'|'both'; paginationStyle?: 'previous-next'|'numbered'; filters?: {id:string;column:string;label:string;operator?:'eq'|'contains';type?:'text'|'number'}[] };
+    loadingText?: string;
+    emptyText?: string;
+    errorText?: string;
+    _blockVersionId?: string;
+    initialRows?:any[];
+    initialTotal?:number;
+    _initialQuery?:{page?:number;search?:string;sortColumn?:string;direction?:string};
 }
 
 function gridLayoutClass(columns: number): string {
@@ -37,10 +48,28 @@ function gridLayoutClass(columns: number): string {
 export function Repeater({
     binding,
     columns = 3,
+    mobileColumns=1,
+    tabletColumns=2,
     layout = 'grid',
     template = [],
     maxRows = 100,
+    gap = 16,
+    controls = {},
+    loadingText = 'Loading records…',
+    emptyText = 'No records matched.',
+    errorText = 'Data could not be loaded. Please try again.',
+    _blockVersionId = 'default',
+    initialRows,
+    initialTotal,
+    _initialQuery,
 }: RepeaterProps) {
+    const [page, setPage] = useState(_initialQuery?.page??0), [search, setSearch] = useState(_initialQuery?.search??'');
+    const [sortColumn, setSortColumn] = useState(binding?.sorting?.column ?? '');
+    const [direction, setDirection] = useState<'asc'|'desc'>(binding?.sorting?.direction ?? 'asc');
+    const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+    const sourceKey = JSON.stringify([binding?.dataSourceId, binding?.tableName, binding?.dataRequest]);
+    const previousSource=useRef(sourceKey);
+    useEffect(() => { if(previousSource.current===sourceKey)return;previousSource.current=sourceKey;setPage(0); setSearch(''); setFilterValues({}); setSortColumn(binding?.sorting?.column ?? ''); setDirection(binding?.sorting?.direction ?? 'asc'); }, [sourceKey]);
     const fallbackBinding = {
         dataSourceId: '',
         tableName: '',
@@ -50,10 +79,25 @@ export function Repeater({
         columnOverrides: {},
     };
 
-    const { data, isLoading } = useGridQuery({
+    const queryBinding = useMemo(() => {
+        const interactive=[
+            ...(search && controls.searchColumn ? [{ id:'repeater-search',column:controls.searchColumn,operator:'contains',value:search }] : []),
+            ...(controls.filters ?? []).filter(filter => filter.column && filterValues[filter.id] !== undefined && filterValues[filter.id] !== '').map(filter => ({ id:filter.id,column:filter.column,operator:filter.operator ?? 'eq',value:filter.type === 'number' ? Number(filterValues[filter.id]) : filterValues[filter.id] }))];
+        return { ...(binding || fallbackBinding),
+        _blockVersionId,
+        pagination: { ...binding?.pagination, page, pageSize: Math.min(100, Math.max(1, binding?.pagination?.pageSize || 12)) },
+        sorting: { ...binding?.sorting, column: sortColumn, direction },
+        hiddenFilters: [...binding?.hiddenFilters ?? [],...interactive],
+        // SSR has already resolved static hidden predicates. Visitor-entered
+        // controls are new literal predicates and must join that resolved set.
+        ...(binding?._resolvedHiddenFilters!==undefined?{_resolvedHiddenFilters:[...binding._resolvedHiddenFilters,...interactive.map(filter=>({column:filter.column,op:filter.operator,value:filter.value}))]}:{})
+    };}, [binding,page,search,sortColumn,direction,controls.searchColumn,controls.filters,filterValues,_blockVersionId]);
+    const { data, isLoading, error, totalCount } = useGridQuery({
         mode: 'edge',
-        binding: binding || fallbackBinding,
+        binding: queryBinding,
         enabled: !!binding?.tableName,
+        initialData: page===(_initialQuery?.page??0)&&search===(_initialQuery?.search??'')&&sortColumn===(_initialQuery?.sortColumn??binding?.sorting?.column??'')&&direction===(_initialQuery?.direction??binding?.sorting?.direction??'asc')?initialRows:undefined,
+        initialTotal,
     });
 
     if (!binding?.tableName) {
@@ -61,37 +105,37 @@ export function Repeater({
     }
 
     const rows: any[] = data || [];
-    const layoutClass = layout === 'list' ? 'flex flex-col gap-4' : gridLayoutClass(columns);
-
-    if (isLoading && rows.length === 0) {
-        return (
-            <div className={layoutClass}>
-                {Array.from({ length: Math.min(columns || 3, 4) }).map((_, i) => (
-                    <div key={i} className="rounded-lg border bg-card shadow-sm animate-pulse">
-                        <div className="h-32 bg-muted rounded-t-lg" />
-                        <div className="p-6 space-y-2">
-                            <div className="h-4 bg-muted rounded w-3/4" />
-                            <div className="h-3 bg-muted rounded w-1/2" />
-                        </div>
-                    </div>
-                ))}
-            </div>
-        );
-    }
-
-    if (rows.length === 0) {
-        return <div className="rounded-lg border bg-muted/20 p-6 text-center text-sm text-muted-foreground">No data available</div>;
-    }
+    const layoutClass = layout === 'list' ? 'flex flex-col' : 'fb-repeater-grid grid';
+    const pageSize = queryBinding.pagination.pageSize;
+    const hasNext = totalCount !== undefined ? (page + 1) * pageSize < totalCount : rows.length === pageSize;
+    const pageCount = totalCount !== undefined ? Math.max(1, Math.ceil(totalCount / pageSize)) : undefined;
+    const pagination = binding?.pagination?.enabled ? <nav aria-label="Pagination" className="flex flex-wrap items-center gap-2">
+        <button type="button" disabled={!page || isLoading} onClick={() => setPage(value => value - 1)}>Previous</button>
+        {controls.paginationStyle === 'numbered' && pageCount ? Array.from({length:Math.min(7,pageCount)},(_,i)=>Math.max(0,Math.min(page-3,pageCount-7))+i).map(number => <button type="button" key={number} aria-current={number === page ? 'page' : undefined} onClick={()=>setPage(number)}>{number+1}</button>) : <span>Page {page+1}{pageCount ? ` of ${pageCount}` : ''}</span>}
+        <button type="button" disabled={!hasNext || isLoading} onClick={() => setPage(value => value + 1)}>Next</button>
+    </nav> : null;
+    const position = controls.paginationPosition ?? 'bottom';
 
     return (
-        <div className={layoutClass}>
+        <div className="fb-repeater space-y-4" style={{gridColumn:'1 / -1',minWidth:0,width:'100%'}} aria-busy={isLoading}>
+            <div className="flex flex-wrap items-end gap-3">
+                {(controls.search ?? binding?.filtering?.searchEnabled) && controls.searchColumn && <label className="flex flex-col gap-1 text-sm">{controls.searchLabel || 'Search'}<input type="search" className="rounded border bg-background p-2" placeholder={controls.searchPlaceholder || 'Search records'} value={search} onChange={event=>{setSearch(event.target.value);setPage(0);}} /></label>}
+                {controls.ordering && <><label className="flex flex-col gap-1 text-sm">Order by<select value={sortColumn} className="rounded border bg-background p-2" onChange={event=>{setSortColumn(event.target.value);setPage(0);}}><option value="">Default</option>{(binding?.source?.kind==='publication'?['title','id']:binding?.columnOrder || []).map((column:string)=><option key={column} value={column}>{binding?.columnOverrides?.[column]?.displayName || column}</option>)}</select></label><label className="flex flex-col gap-1 text-sm">Direction<select className="rounded border bg-background p-2" value={direction} onChange={event=>{setDirection(event.target.value as 'asc'|'desc');setPage(0);}}><option value="asc">Ascending</option><option value="desc">Descending</option></select></label></>}
+                {controls.filters?.map(filter=><label key={filter.id} className="flex flex-col gap-1 text-sm">{filter.label || filter.column}<input type={filter.type === 'number' ? 'number' : 'text'} value={filterValues[filter.id] ?? ''} className="rounded border bg-background p-2" onChange={event=>{setFilterValues(values=>({...values,[filter.id]:event.target.value}));setPage(0);}} /></label>)}
+            </div>
+            {controls.count && <p role="status" className="text-sm">{totalCount !== undefined ? `${totalCount} records` : `${rows.length} records on this page`}</p>}
+            {(position === 'top' || position === 'both') && pagination}
+            <style>{'.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-mobile),minmax(0,1fr))}@media(min-width:768px){.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-tablet),minmax(0,1fr))}}@media(min-width:1024px){.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-desktop),minmax(0,1fr))}}'}</style>
+            {error ? <div role="alert" className="rounded border p-6 text-sm">{errorText}</div> : isLoading ? <p role="status">{loadingText}</p> : !rows.length ? <p role="status">{emptyText}</p> : <div className={layoutClass} style={{gap:Math.max(0,Math.min(64,gap)),'--fb-list-mobile':Math.min(4,Math.max(1,mobileColumns)),'--fb-list-tablet':Math.min(4,Math.max(1,tabletColumns)),'--fb-list-desktop':Math.min(4,Math.max(1,columns))} as React.CSSProperties}>
             {rows.slice(0, maxRows).map((row, i) => (
-                <RecordContextProvider key={i} value={row}>
+                <RecordContextProvider key={row.id ?? i} value={row}>
                     {template.map((node, j) => (
-                        <RenderNode key={node.id || j} node={node} />
+                        <NativeRecordNode key={node.id || j} node={node as any} instance={i===0?'':String(row.id ?? i)} />
                     ))}
                 </RecordContextProvider>
             ))}
+            </div>}
+            {(position === 'bottom' || position === 'both') && pagination}
         </div>
     );
 }

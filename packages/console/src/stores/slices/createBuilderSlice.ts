@@ -4,6 +4,7 @@ import { ComponentData } from '@/types/builder';
 import type { StylesData } from '@/lib/styles/types';
 import { BuilderState } from '../builder';
 import { toast } from '@/hooks/use-toast';
+import { applyBlockVersion, cloneBlockTree } from '@frontbase/edge-core/block-versions';
 import {
     findComponent,
     findComponentWithParent,
@@ -11,6 +12,7 @@ import {
     insertComponentIntoTree,
     updateComponentInTree
 } from '@/lib/tree-utils';
+import { inheritedVersionOwner } from '@/lib/tree-utils';
 
 export interface BuilderSlice {
     selectedComponentId: string | null;
@@ -69,7 +71,7 @@ export interface BuilderSlice {
     duplicateComponent: (componentId: string) => void;
 }
 
-export const createBuilderSlice: StateCreator<BuilderState, [], [], BuilderSlice> = (set, get) => ({
+const createBuilderSliceImplementation: StateCreator<BuilderState, [], [], BuilderSlice> = (set, get) => ({
     selectedComponentId: null,
     draggedComponentId: null,
     editingTextNode: null,
@@ -199,11 +201,15 @@ export const createBuilderSlice: StateCreator<BuilderState, [], [], BuilderSlice
 
             let content = page.layoutData?.content || [];
 
+            if (!componentId && component.type === 'Repeater' && !component.children?.length) {
+                component = { ...component, children: [{ id: uuidv4(), type: 'Card', props: { className: 'p-6' }, children: [{id:uuidv4(),type:'Heading',props:{text:'{{ record.title }}',level:'3'}}] }] };
+            }
+
             if (componentId) {
                 content = removeComponentFromTree(content, componentId);
             }
 
-            content = insertComponentIntoTree(content, parentId, component, targetIndex);
+            content = insertComponentIntoTree(content, parentId, component, targetIndex, state.editingVersions);
 
             page.layoutData = {
                 ...page.layoutData,
@@ -221,6 +227,15 @@ export const createBuilderSlice: StateCreator<BuilderState, [], [], BuilderSlice
     },
 
     updateComponentText: (componentId: string, textProperty: string, text: string) => {
+        const editingState=get(),editingVersion=editingState.editingVersions[componentId];
+        if(editingVersion&&editingVersion!=='default'){
+            const node=findComponent(editingState.pages.find(page=>page.id===editingState.currentPageId)?.layoutData?.content??[],componentId);
+            if(!node)return;
+            const props=structuredClone(applyBlockVersion(node,editingVersion).props),parts=textProperty.split('.');
+            if(parts.some(part=>['__proto__','constructor','prototype'].includes(part)))return;
+            let target=props;for(const part of parts.slice(0,-1))target=target[part]??=(/^\d+$/.test(part)?[]:{});
+            target[parts.at(-1)!]=text;editingState.updateComponent(componentId,{[parts[0]]:props[parts[0]]});return;
+        }
         set((state) => {
             const { pages, currentPageId } = state;
             if (!currentPageId) return state;
@@ -299,7 +314,15 @@ export const createBuilderSlice: StateCreator<BuilderState, [], [], BuilderSlice
                         page.layoutData.content,
                         componentId,
                         (comp) => {
-                            const { visibilityCondition, ...restProps } = propsUpdates;
+                            const { visibilityCondition, visibility, ...restProps } = propsUpdates;
+                            const editingVersion = state.editingVersions[componentId];
+                            if (editingVersion && editingVersion !== 'default' && comp.versions?.some(v => v.id === editingVersion)) {
+                                return { ...comp,
+                                    ...(visibilityCondition !== undefined ? { visibilityCondition } : {}),
+                                    versions: comp.versions.map(version => version.id === editingVersion ? {
+                                        ...version, overrides: { ...version.overrides, props: { ...version.overrides.props, ...restProps },...(visibility!==undefined?{visibility}:{}) }
+                                    } : version) };
+                            }
                             const updated: any = {
                                 ...comp,
                                 props: { ...comp.props, ...restProps }
@@ -307,6 +330,7 @@ export const createBuilderSlice: StateCreator<BuilderState, [], [], BuilderSlice
                             if (visibilityCondition !== undefined) {
                                 updated.visibilityCondition = visibilityCondition;
                             }
+                            if(visibility!==undefined)updated.visibility=visibility;
                             return updated;
                         }
                     )
@@ -340,7 +364,16 @@ export const createBuilderSlice: StateCreator<BuilderState, [], [], BuilderSlice
                     content: updateComponentInTree(
                         page.layoutData.content,
                         componentId,
-                        (comp) => ({ ...comp, stylesData })
+                        (comp) => {
+                            const editingVersion = state.editingVersions[componentId];
+                            if (!editingVersion || editingVersion === 'default') return { ...comp, stylesData };
+                            // Store only changed style values; unchanged values continue inheriting.
+                            const effective = applyBlockVersion(comp, editingVersion);
+                            const values = Object.fromEntries(Object.entries(stylesData.values ?? {}).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(comp.stylesData?.values?.[key])));
+                            return { ...comp, versions: comp.versions?.map(version => version.id === editingVersion ? {
+                                ...version, overrides: { ...version.overrides, stylesData: { ...effective.stylesData, ...stylesData, values } }
+                            } : version) };
+                        }
                     )
                 };
             }
@@ -487,7 +520,7 @@ export const createBuilderSlice: StateCreator<BuilderState, [], [], BuilderSlice
             return newComp;
         };
 
-        const newComponent = cloneWithNewIds(copiedComponent);
+        const newComponent = cloneBlockTree([copiedComponent], uuidv4)[0];
 
         set((state) => {
             const newPages = [...state.pages];
@@ -586,7 +619,7 @@ export const createBuilderSlice: StateCreator<BuilderState, [], [], BuilderSlice
             return newComp;
         };
 
-        const duplicate = cloneWithNewIds(result.component);
+        const duplicate = cloneBlockTree([result.component], uuidv4)[0];
 
         set((state) => {
             const newPages = [...state.pages];
@@ -642,3 +675,40 @@ export const createBuilderSlice: StateCreator<BuilderState, [], [], BuilderSlice
         });
     },
 });
+
+export const createBuilderSlice:StateCreator<BuilderState,[],[],BuilderSlice>=(set,get,api)=>{
+    const slice=createBuilderSliceImplementation(set,get,api);
+    const protect=(id:string|null|undefined,structure=false)=>{
+        if(!id)return false;
+        const state=get(),content=state.pages.find(page=>page.id===state.currentPageId)?.layoutData?.content??[];
+        const inherited=inheritedVersionOwner(content,id,state.editingVersions);
+        const node=findComponent(content,id),selected=node?.versions?.find(version=>version.id===state.editingVersions[id]);
+        if(inherited || structure && selected && !selected.overrides.children){
+            toast({title:'Inherited from Default',description:'Select the parent version and enable Override structure before editing these children.'});return true;
+        }
+        return false;
+    };
+    for(const key of ['updateComponent','updateComponentText','updateComponentStylesData','replaceComponent','removeComponent','duplicateComponent'] as const){
+        const action=slice[key] as (...args:any[])=>void;
+        (slice as any)[key]=(...args:any[])=>{if(!protect(args[0]))action(...args);};
+    }
+    const removeSelected=slice.deleteSelectedComponent;slice.deleteSelectedComponent=()=>{if(!protect(get().selectedComponentId))removeSelected();};
+    const move=slice.moveComponent;slice.moveComponent=(...args)=>{if(!protect(args[1])&&!protect(args[4],true))move(...args);};
+    slice.duplicateComponent=(id)=>{
+        if(protect(id))return;
+        const state=get(),content=state.pages.find(page=>page.id===state.currentPageId)?.layoutData?.content??[],found=findComponentWithParent(content,id);
+        if(!found||!state.currentPageId)return;
+        const copy=cloneBlockTree([found.component],uuidv4)[0];
+        slice.moveComponent(state.currentPageId,null,copy,found.index+1,found.parent?.id);
+        state.setSelectedComponentId(copy.id);
+    };
+    slice.pasteComponent=()=>{
+        const state=get();if(!state.copiedComponent||!state.currentPageId)return;
+        const content=state.pages.find(page=>page.id===state.currentPageId)?.layoutData?.content??[];
+        const target=state.selectedComponentId?findComponentWithParent(content,state.selectedComponentId):null;
+        const parent=target?.parent?.id;
+        if(protect(target?.component.id)||protect(parent,true))return;
+        const copy=cloneBlockTree([state.copiedComponent],uuidv4)[0];slice.moveComponent(state.currentPageId,null,copy,target?target.index+1:-1,parent);state.setSelectedComponentId(copy.id);
+    };
+    return slice;
+};

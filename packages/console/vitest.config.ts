@@ -27,6 +27,7 @@ export default defineConfig({
         },
     },
     resolve: {
+        dedupe: ['react', 'react-dom'],
         alias: {
             '@': path.resolve(__dirname, './src'),
             '@frontbase/types': path.resolve(__dirname, './packages/types/src/index.ts'),

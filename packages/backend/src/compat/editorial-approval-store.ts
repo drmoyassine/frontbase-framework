@@ -15,8 +15,17 @@ export class EditorialApprovalStore {
         return { documentRevision: revision, configurationRevision, fingerprint: record.fingerprint as string };
     }
     /** Internal preparation read. Metadata alone is never proof of content integrity. */
-    async snapshot(id: string, revision: number, draft: SiteConfigurationDraft, expectedFingerprint: string) {
-        const rows = await this.db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?', [this.tenant,this.key(id,revision,draft.revision)]);
+    /** Bounded bulk reads; the same snapshot validator still verifies every returned record. */
+    async readSnapshotRecords(refs:{id:string;revision:number}[],configurationRevision:number){
+        const keys=[...new Set(refs.map(ref=>this.key(ref.id,ref.revision,configurationRevision)))],output=new Map<string,string>();
+        for(let offset=0;offset<keys.length;offset+=64){const batch=keys.slice(offset,offset+64);
+            const rows=await this.db.query(`SELECT key, value FROM settings WHERE tenant_slug = ? AND key IN (${batch.map(()=>'?').join(',')})`,[this.tenant,...batch]);
+            for(const row of rows){const key=String(row.key);if(!batch.includes(key)||output.has(key))throw Error('approval_unavailable');output.set(key,String(row.value));}
+        }
+        return (id:string,revision:number)=>output.get(this.key(id,revision,configurationRevision))??null;
+    }
+    async snapshot(id: string, revision: number, draft: SiteConfigurationDraft, expectedFingerprint: string,recordValue?:string|null) {
+        const rows = recordValue===undefined?await this.db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?', [this.tenant,this.key(id,revision,draft.revision)]):recordValue===null?[]:[{value:recordValue}];
         if (!rows.length) return null;
         try {
             const record = JSON.parse(String(rows[0]!.value));

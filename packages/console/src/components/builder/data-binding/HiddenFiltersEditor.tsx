@@ -1,3 +1,5 @@
+import {ConditionsEditor} from '../ConditionsEditor';
+import {ConditionValueEditor,operandFromValue} from '../ConditionValueEditor';
 import React from 'react';
 import { Plus, X, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -87,7 +89,7 @@ export const HiddenFiltersEditor: React.FC<HiddenFiltersEditorProps> = ({
             </div>
 
             <p className="text-xs text-muted-foreground">
-                Hidden filters apply by default to all data fetches for this component. They are not visible to the user.
+                Filters restrict records in this binding. Apply them always, or only when a variable matches. Multiple active filters are combined with AND.
             </p>
 
             {isSupabase && (
@@ -104,6 +106,8 @@ export const HiddenFiltersEditor: React.FC<HiddenFiltersEditorProps> = ({
                     {(value || []).map((filter, idx) => (
                         <div key={filter.id} className="flex gap-2 items-start bg-muted/20 p-2 rounded-md border">
                             <div className="flex-1 space-y-2">
+                                <label className="flex items-center gap-2 text-xs"><input type="checkbox" aria-label={`Conditional filter ${idx+1}`} checked={!!filter.when} onChange={e=>updateFilter(idx,{when:e.target.checked?{all:[{left:{kind:'variable',path:''},operator:'eq',right:{kind:'literal',value:''}}]}:undefined})}/>Apply only when</label>
+                                {filter.when && <ConditionsEditor value={filter.when} onChange={when=>updateFilter(idx,{when})} title="Apply only when"/>}
                                 <div className="grid grid-cols-2 gap-2">
                                     <ColumnSelect
                                         value={filter.column}
@@ -133,21 +137,15 @@ export const HiddenFiltersEditor: React.FC<HiddenFiltersEditorProps> = ({
                                     filter.operator === 'is_within_last_days' ? (
                                         <Input
                                             type="number"
-                                            value={filter.value || ''}
+                                            value={typeof filter.value==='number'||typeof filter.value==='string'?filter.value:''}
                                             onChange={(e) => updateFilter(idx, { value: e.target.value })}
                                             placeholder="Number of days (e.g. 7)"
                                             className="h-8 text-xs bg-background"
                                             min="1"
                                         />
                                     ) : (
-                                        <VariableInput
-                                            value={filter.value || ''}
-                                            onChange={(val) => updateFilter(idx, { value: val })}
-                                            syntaxContext="scalar"
-                                            placeholder={filter.operator === 'in' ? "val1, val2 (or @ for variables)" : "Value (or @ for variables)"}
-                                            className="h-8 text-xs bg-background"
-                                            allowedGroups={['page', 'user', 'visitor', 'system', 'url', 'local', 'session', 'cookies']}
-                                        />
+                                        <ConditionValueEditor value={operandFromValue(filter.value)} onChange={value=>updateFilter(idx,{value})}/>
+
                                     )
                                 )}
                             </div>

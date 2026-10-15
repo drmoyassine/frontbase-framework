@@ -1,3 +1,4 @@
+import {clientVisibilityAttributes} from '../visibility.js';
 /**
  * Interactive Component Renderers
  *
@@ -22,8 +23,7 @@ function getCommonAttributes(
     const { className, styleString: propStyleString } = resolvePropsStyles(baseClass, props);
     const finalStyle = [extraStyle, propStyleString].filter(Boolean).join(';');
 
-    const showIf = props['data-show-if'] as string | undefined;
-    const showIfAttr = showIf ? ` data-show-if="${escapeHtml(showIf)}"` : '';
+    const showIfAttr = clientVisibilityAttributes(props);
 
     return `id="${id}" class="${className}" style="${finalStyle}" data-fb-hydrate="${hydrateType}" data-fb-props="${escapeHtml(propsJson)}"${showIfAttr}`;
 }

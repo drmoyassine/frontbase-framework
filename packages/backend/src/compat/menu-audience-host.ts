@@ -22,12 +22,12 @@ export function configuredMenuAudienceAccounts(db:DbRunner,cipher:ConstructorPar
         const config=await store.getEdgeResourceConfig(id);return config?{provider:resource.provider,config}:null;
     };
 }
-export function configuredMenuAudienceResolver(db:DbRunner,cipher:ConstructorParameters<typeof Phase2Store>[2],fetchImpl:CompatFetch,now:()=>number=Date.now){
+export function configuredMenuAudienceResolver(db:DbRunner,cipher:ConstructorParameters<typeof Phase2Store>[2],fetchImpl:CompatFetch,now:()=>number=Date.now,includeUserId=false){
     const ports=supabaseMenuAudiencePorts(configuredMenuAudienceAccounts(db,cipher),fetchImpl);
     return async(owner:string,request:Request)=>{
         try{const project=await new KeyValueStore(db,owner).getJson('project',{}) as Record<string,unknown>,cfg=project?.usersConfig as Record<string,unknown>|undefined;
             const raw=appUserToken(request),token=request.headers.has('Authorization')?raw:raw&&cipher&&typeof cfg?.authDataSourceId==='string'?await new AppUserSessions(db,owner,cipher).get(raw,cfg.authDataSourceId,now()):null;
-            return await resolveMenuAudience(owner,cfg,token,ports);
+            return await resolveMenuAudience(owner,cfg,token,ports,includeUserId);
         }catch{return{authenticated:false};}
     };
 }

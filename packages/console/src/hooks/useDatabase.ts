@@ -19,6 +19,7 @@ export interface TableDataParams {
     page?: number;
     pageSize?: number;
     filters?: Record<string, any>;
+    hiddenFilters?: import('@frontbase/types').WireFilter[];
     sort?: { column: string; direction: 'asc' | 'desc' } | null;
 }
 
@@ -101,7 +102,7 @@ export function useTableData(tableName: string | null, params: TableDataParams =
                 queryParams.append('orderBy', params.sort.column);
                 queryParams.append('orderDirection', params.sort.direction);
             }
-            if (params.filters) queryParams.append('filters', JSON.stringify(params.filters));
+            if(params.hiddenFilters?.length){const normal=Object.entries(params.filters||{}).filter(([key])=>key!=='search').map(([column,value])=>({column,op:'eq',value:typeof value==='object'&&value&&'value' in value?value.value:value}));queryParams.append('filters',JSON.stringify([...normal,...params.hiddenFilters]));if(params.filters?.search)queryParams.append('search',params.filters.search);}else if(params.filters)queryParams.append('filters',JSON.stringify(params.filters));
 
             // Calculate offset based on page (1-indexed?)
             // Assuming API expects offset/limit or page/pageSize?

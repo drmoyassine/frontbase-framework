@@ -8,7 +8,7 @@ for(const [label,path,find,replacement,pkg,directory,gate]of [
  ['Menu snapshot owner leak','packages/backend/src/compat/menus-snapshot.ts','[this.owner,`app_menus:publication:v1:${hash}`]',"['owner',`app_menus:publication:v1:${hash}`]",'@frontbase/backend',backend,'test/menus-snapshot.mjs'],
  ['Menu snapshot digest bypass','packages/backend/src/compat/menus-snapshot.ts','if(await publicationHash(document)!==hash)','if(false)','@frontbase/backend',backend,'test/menus-snapshot.mjs'],
  ['Menu private item leak','packages/edge-core/src/menus.ts','items.filter(i=>menuAudienceMatches(i.audience,audience))','items.filter(()=>true)','@frontbase/edge-core',backend,'test/menus-publication.mjs'],
- ['Menu permission-level bypass','packages/edge-core/src/menus.ts','if(r.permissionLevels.length&&','if(r.permissionLevels.length<0&&','@frontbase/edge-core',core,'test/menus.mjs'],
+ ['Menu permission-level bypass','packages/edge-core/src/menus.ts','if(r.permissionLevels.length)conditions.push(','if(false)conditions.push(','@frontbase/edge-core',core,'test/menus.mjs'],
 ]){
  await withSourceMutation(label,path,find,replacement,async()=>{if(!buildPackage(pkg))throw Error('Mutation did not compile');expectRed(label,runGate(directory,gate));});
  if(!buildPackage(pkg)||runGate(directory,gate)!==0)throw Error('Restored menu baseline failed: '+label);

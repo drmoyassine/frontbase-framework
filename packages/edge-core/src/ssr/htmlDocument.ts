@@ -7,6 +7,7 @@
 
 import { TrackingConfig } from './lib/tracking.js';
 import { FALLBACK_CSS } from './baseStyles.js';
+import {publicThemeScript} from '../public-theme.js';
 import { escapeHtml } from './components/lib/utils.js';
 
 // Re-export the canonical escapeHtml so existing callers (e.g. shell.ts) that
@@ -16,7 +17,7 @@ export { escapeHtml };
 // Cache-busting version - update this when hydration scripts change.
 // Exported so shell.ts (the canvas/published-page shell) references the SAME
 // version instead of a drifting copy.
-export const HYDRATE_VERSION = '20261012-homepage-2';
+export const HYDRATE_VERSION = '20261015-block-versions';
 
 // Default favicon path constant
 const DEFAULT_FAVICON = '/static/icon.png';
@@ -122,6 +123,7 @@ export function generateHtmlDocument(
         ${page.cssBundle || FALLBACK_CSS}
     </style>
     ${customHead}
+    ${bodyHtml.includes('data-fb-theme-picker')?`<script>${publicThemeScript()}</script>`:''}
 </head>
 <body>
     ${gtmNoscript}

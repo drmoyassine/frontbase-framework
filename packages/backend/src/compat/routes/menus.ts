@@ -7,6 +7,7 @@ import {MenusStore} from '../menus-store.js';
 import type {KeyValueStore} from '../store.js';
 import {PagesStore} from '../pages-store.js';
 import {renderPage,buildTemplateContext} from '@frontbase/edge-core';
+import {publicThemeScript} from '@frontbase/edge-core/browser/theme';
 import {menuDefinitionSchema,menuAudienceMatches} from '@frontbase/edge-core/menus';
 import {menuComponent} from '@frontbase/edge-core/menu-components';
 import {FALLBACK_CSS} from '@frontbase/edge-core/ssr/baseStyles';
@@ -14,6 +15,7 @@ import {menuPublicationPlan,prepareMenuCapture} from '../menus-capture.js';
 import {SiteConfigurationStore} from '../site-configuration-store.js';
 import {MenusSnapshotStore} from '../menus-snapshot.js';
 import {resolveAppMenuLayout,readPublicSiteName} from '../menus-runtime.js';
+import {previewSavedMenus,publishPreviewedMenus,discardMenuDraft} from '../menus-workflow.js';
 const input=z.object({expectedRevision:z.number().int().min(0).max(2147483646),menus:menuDocumentSchema.innerType().shape.menus}).strict();
 const admin=(c:any)=>['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(c.get('principal')?.user?.role);
 function options(project:Record<string,unknown>){
@@ -23,6 +25,21 @@ function options(project:Record<string,unknown>){
 }
 export function registerMenusRoutes(app:Hono<{Variables:ConsoleAuthVars}>,db:DbRunner,kvFor:(owner:string)=>KeyValueStore,now:()=>string){
     const boundedBody=async(request:Request,max:number)=>{const reader=request.body?.getReader(),decoder=new TextDecoder();let raw='',size=0;if(reader){while(true){const part=await reader.read();if(part.done)break;if((size+=part.value.length)>max){await reader.cancel();throw Error('body_too_large');}raw+=decoder.decode(part.value,{stream:true});}raw+=decoder.decode();}return JSON.parse(raw);};
+    for(const mode of ['preview-saved','publish','discard'] as const)app.post(`/api/project/menus/${mode}/`,async c=>{
+        c.header('Cache-Control','no-store');if(!admin(c))return c.json({detail:'Menus unavailable'},403);
+        if(new URL(c.req.url).search)return c.json({detail:'Invalid menu request'},422);
+        try{
+            const schema=z.object({expectedRevision:z.number().int().positive(),...(mode==='publish'?{hash:z.string().regex(/^[a-f0-9]{64}$/)}:{})}).strict();
+            const value=schema.parse(await boundedBody(c.req.raw,4096)),owner=c.get('tenant');
+            if(mode==='preview-saved')return c.json(await previewSavedMenus(db,owner,value.expectedRevision,now()));
+            if(mode==='discard')return c.json(await discardMenuDraft(db,owner,value.expectedRevision,now()));
+            const reviewer=c.get('principal').user?.id;if(!reviewer)return c.json({detail:'Reviewer unavailable'},403);
+            return c.json(await publishPreviewedMenus(db,owner,String(value.hash),value.expectedRevision,reviewer,now()));
+        }catch(error){const message=error instanceof Error?error.message:'';
+            const conflict=['menus_changed','menu_base_changed'].includes(message);
+            return c.json({detail:conflict?'Menus or the live site changed. Reload and preview again.':message==='menu_legacy_region_conflict'?'This site still has embedded menus. Use Advanced migration tools to replace them first.':message==='menu_placement_conflict'?'Resolve overlapping menus with equal priority before previewing.':message==='menu_first_publication_required'?'Publish the first site version before previewing menus.':'Menu action could not be confirmed. Reload before trying again.'},message==='body_too_large'?413:conflict?409:422);
+        }
+    });
     app.post('/api/project/menus/reference/',async c=>{
         c.header('Cache-Control','no-store');if(!admin(c))return c.json({detail:'Shared menus unavailable'},403);if(new URL(c.req.url).searchParams.size)return c.json({detail:'Invalid menu reference'},422);
         try{const input=z.object({pageId:z.string().uuid(),expectedRevision:z.number().int().positive()}).strict().parse(await boundedBody(c.req.raw,4096)),owner=c.get('tenant'),page=await new PagesStore(db,owner).get(input.pageId);
@@ -61,7 +78,8 @@ export function registerMenusRoutes(app:Hono<{Variables:ConsoleAuthVars}>,db:DbR
             const visible=menuAudienceMatches(value.menu.audience,value.audience);
             const siteName=(await new SiteConfigurationStore(db,c.get('tenant')).get())?.configuration.site.name??'';
             const html=visible?await renderPage({root:{},content:[menuComponent(value.menu,value.audience,siteName)]},context):'<p style="padding:24px">This menu is hidden for the selected audience.</p>';
-            return c.html(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src https: http:; base-uri 'none'; form-action 'none'"><style>${FALLBACK_CSS}</style></head><body>${html}</body></html>`);
+            const nonce=crypto.randomUUID().replaceAll('-','');
+            return c.html(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src https: http:; base-uri 'none'; form-action 'none'"><style>${FALLBACK_CSS}</style><script nonce="${nonce}">${publicThemeScript()}</script></head><body>${html}</body></html>`);
         }catch{return c.json({detail:'Menu preview unavailable or invalid'},422);}
     });
     app.get('/api/project/menus/',async c=>{

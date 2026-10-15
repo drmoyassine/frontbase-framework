@@ -1,3 +1,6 @@
+import {publicConditionContext, contextReader} from '../conditions.js';
+import { applyBlockVersion, selectBlockVersion, validateBlockVersions, blockVersionPossible, cloneBlockTree } from '../block-versions.js';
+import { escapeHtml } from './components/lib/utils.js';
 /**
  * Page Renderer - SSR Component Tree Renderer
  *
@@ -32,7 +35,7 @@ export type { PageComponent, PageLayoutData } from './types.js';
 import type { PageComponent, PageLayoutData } from './types.js';
 import { classifyComponent } from './classification.js';
 import { resolveProps, resolveHiddenFiltersSSR } from './resolve.js';
-import { evaluateVisibilityCondition, applyClientVisibilityInjection } from './visibility.js';
+import { evaluateVisibilityCondition, applyClientVisibilityInjection, clientVisibilityAttributes } from './visibility.js';
 import { applyNavbarFavicon } from './navbarFavicon.js';
 import { resolveRootStyles } from './rootStyles.js';
 import { renderBadge } from './badge.js';
@@ -47,8 +50,35 @@ import { renderLandingComponent } from './landingDispatcher.js';
  */
 async function renderComponent(
     component: PageComponent,
-    context: TemplateContext
+    context: TemplateContext,
+    budget = { remaining: 20000 }
 ): Promise<string> {
+    if (--budget.remaining < 0) throw Error('Block render budget exceeded');
+    if(component.stylesData?.values)component={...component,styles:{...component.styles,...component.stylesData.values}};
+    if (component.versions?.length) {
+        const read = contextReader(context as unknown as Record<string, unknown>);
+        // Apply whole-element visibility before emitting any inactive material.
+        if (component.visibilityCondition) {
+            const visibility = await evaluateVisibilityCondition(component.visibilityCondition, context);
+            if (!visibility.isClientSideCondition && !visibility.visibilityResult) return '';
+        }
+        const active = selectBlockVersion(component, read);
+        const presentation = (id:string):PageComponent => {
+            const effective=applyBlockVersion(component,id),props:Record<string,any>={...effective.props,_blockVersionId:id};
+            // Initial records belong to the one SSR-selected version. They are
+            // request data, never inherited authored properties of alternatives.
+            if(props._initialVersionId!==undefined&&props._initialVersionId!==id){delete props.initialRows;delete props.initialTotal;delete props._initialQuery;delete props._initialVersionId;}
+            return {...effective,props};
+        };
+        const alternatives = component.versions.filter(version => version.when !== undefined && blockVersionPossible(version.when, read));
+        const selected = await renderComponent(presentation(active), context, budget);
+        const templates = await Promise.all([...alternatives.map(version => ({ id: version.id, when: version.when })), { id: 'default', when: undefined }].map(async version => {
+            const when = version.when === undefined ? '' : typeof version.when === 'string' ? version.when : '@conditions:v1:' + JSON.stringify(version.when);
+            return `<template data-block-version="${escapeHtml(version.id)}"${when ? ` data-block-when="${escapeHtml(when)}"` : ''}>${version.id === active ? selected : await renderComponent(presentation(version.id), context, budget)}</template>`;
+        }));
+        const record=publicConditionContext(component,context as unknown as Record<string,unknown>).record;
+        return `<div data-block-versions="${escapeHtml(component.id)}" data-block-active="${escapeHtml(active)}"${record?` data-block-record="${escapeHtml(JSON.stringify(record))}"`:''} style="display:contents"><div data-block-content style="display:contents">${selected}</div>${templates.join('')}</div>`;
+    }
     let { id, type, props, styles, children, binding, visibilityCondition } = component;
 
     // Check visibility condition first
@@ -107,8 +137,12 @@ async function renderComponent(
     const classification = classifyComponent(type);
 
     // Render children recursively (async)
-    const childrenHtml = children
-        ? (await Promise.all(children.map(child => renderComponent(child, context)))).join('')
+    const initialRows=type==='Repeater'&&Array.isArray(props?.initialRows)?props.initialRows as Record<string,unknown>[]:undefined;
+    const childrenHtml = initialRows ? (await Promise.all(initialRows.map(async(row,index)=>{
+        let counter=0;const unit=index===0?children??[]:cloneBlockTree(children??[],()=>`${id}--row-${index}-${++counter}`);
+        return (await Promise.all(unit.map(child=>renderComponent(child,{...context,record:row},budget)))).join('');
+    }))).join('') : children
+        ? (await Promise.all(children.map(child => renderComponent(child, context, budget)))).join('')
         : '';
 
     if(type==='Container' && resolvedProps.templateMenu!==undefined){
@@ -133,6 +167,7 @@ async function renderComponent(
             return combinedCSS + renderInteractiveComponent(type, id, resolvedProps, childrenHtml);
 
         case 'data':
+            if (type === 'Repeater') resolvedProps.template = children ?? [];
             // Merge binding into props so renderDataComponent can access it
             if (binding) {
                 const { resolved, pending } = await resolveHiddenFiltersSSR(binding, context);
@@ -150,14 +185,20 @@ async function renderComponent(
 
         case 'landing':
             // Render landing page section components
-            return combinedCSS + renderLandingComponent(type, id, resolvedProps, component.styles);
+            return combinedCSS + (isClientSideCondition ? `<div style="display:contents"${clientVisibilityAttributes(resolvedProps)}>${renderLandingComponent(type,id,resolvedProps,component.styles)}</div>` : renderLandingComponent(type,id,resolvedProps,component.styles));
 
         default:
             // Unknown component - render as a generic div with data attribute
-            return combinedCSS + `<div data-fb-component="${type}" data-fb-id="${id}" class="fb-unknown">${childrenHtml}</div>`;
+            return combinedCSS + `<div data-fb-component="${type}" data-fb-id="${id}" class="fb-unknown"${clientVisibilityAttributes(resolvedProps)}>${childrenHtml}</div>`;
     }
 
 
+}
+
+/** Shared browser/canvas/SSR block rendering without a document shell or badge. */
+export async function renderBlock(component:PageComponent,context:TemplateContext):Promise<string>{
+    if(component.versions?.length)validateBlockVersions([component]);
+    return renderComponent(component,context);
 }
 
 // Style helpers are imported from ./styleHelpers.js:
@@ -174,21 +215,26 @@ export async function renderPage(
     if (!layoutData || !layoutData.content) {
         return '<div class="fb-empty">No content</div>';
     }
+    if (/"versions"/.test(JSON.stringify(layoutData.content))) validateBlockVersions(layoutData.content);
 
     // Apply root styles if present
     const rootProps = layoutData.root || {};
     const { rootStyle, rootClass } = resolveRootStyles(rootProps);
 
     // Render all top-level components (async) - wrapped for proper block layout
+    const budget = { remaining: 20000 };
     const contentHtml = (await Promise.all(
-        layoutData.content.map(component => renderComponent(component, context))
+        layoutData.content.map(component => renderComponent(component, context, budget))
     )).join('');
 
     // Community Edition Badge Injection
     const edition = engineConfig().edition;
     const badgeHtml = renderBadge(edition, engineConfig().licenseKey, context.system?.env, context.user);
 
-    return `<div class="fb-page ${rootClass}" style="${rootStyle}">${contentHtml}${badgeHtml}</div>`;
+    const needsContext=/"(?:visibilityCondition|hiddenFilters|versions)"/.test(JSON.stringify(layoutData));
+    const publicContext=publicConditionContext(layoutData,context as unknown as Record<string,unknown>);
+    const bootstrap=needsContext?`<script>window.__CONDITION_CONTEXT__=${JSON.stringify(publicContext).replace(/</g,'\\u003c')};</script>`:'';
+    return `<div class="fb-page ${rootClass}" style="${rootStyle}">${needsContext?'<style>[data-condition-hidden]{display:none!important}</style>':''}${contentHtml}${badgeHtml}</div>${bootstrap}`;
 }
 
 export type { TemplateContext };

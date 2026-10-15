@@ -3,6 +3,8 @@ import type { PageComponent, PageLayoutData } from '../ssr/types.js';
 
 export const directoryBrowsingSchema = z.object({
     version: z.literal(1), tabs: z.boolean(), search: z.boolean(), pagination: z.boolean(),
+    paginationMode:z.enum(['previous-next','numbered']).optional(), paginationPosition:z.enum(['top','bottom','both']).optional(),
+    recordCount: z.boolean().optional(), sorting: z.boolean().optional(), filters: z.boolean().optional(),
 }).strict();
 const localPath = z.string().min(1).max(400).refine(value => {
     try { const decoded = decodeURIComponent(value); return value.startsWith('/') && !decoded.startsWith('//')
@@ -12,8 +14,9 @@ const localPath = z.string().min(1).max(400).refine(value => {
 /** Transient captured-request state. An array keeps visitor text out of Liquid resolution. */
 export const directoryBrowsingStateSchema = z.tuple([z.object({
     path: localPath, collection: z.enum(['institution', 'program']).nullable(),
-    q: z.string().max(100), searchEnabled: z.boolean(), page: z.number().int().min(1).max(1667),
-    hasNext: z.boolean(),
+    q: z.string().max(100), searchEnabled: z.boolean(), page: z.number().int().min(1).max(20000),
+    hasNext: z.boolean(), total: z.number().int().min(0).optional(), pageSize: z.number().int().min(1).max(48).optional(),
+    sort: z.enum(['title-asc','title-desc']).optional(), match: z.enum(['contains','startsWith','equals']).optional(),
     previewHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).strict()]);
 export type DirectoryBrowsingState = z.infer<typeof directoryBrowsingStateSchema>;
@@ -30,7 +33,7 @@ export function validateDirectoryBrowsing(node: PageComponent, inQuery: boolean)
 export function projectDirectoryBrowsing(layout: PageLayoutData, state: DirectoryBrowsingState): PageLayoutData {
     const parsed = directoryBrowsingStateSchema.parse(state);
     const walk = (nodes: PageComponent[]): PageComponent[] => nodes.map(node => ({ ...node,
-        ...(node.props?.directoryBrowsing !== undefined ? { props: { ...node.props, directoryBrowsingState: parsed } } : {}),
+        ...(node.props?.directoryBrowsing !== undefined ? { props: { ...node.props, directoryBrowsingState: [{...parsed[0],searchEnabled:(node.props.directoryBrowsing as any).search}] } } : {}),
         ...(node.children ? { children: walk(node.children) } : {}),
     }));
     return { ...layout, content: walk(layout.content) };

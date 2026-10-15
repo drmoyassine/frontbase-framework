@@ -1,5 +1,51 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-15 owner-requested Git checkpoint — claimed
+
+Owner requests committing and pushing the verified Pages/Menus, appearance, conditions, Block Versions and configurable Repeater delivery on `codex/wordpress-pilot`. Include their prerequisite source, tests and delivery records; retain unrelated workflow/email changes, generated bundles and synchronization-conflict copies outside the index. Existing workspace check/build and focused, mutation, clean-image and staging results are recorded below and in the linked delivery plans. This checkpoint changes neither deployment nor release scope; remote publication is verified separately after the commit.
+
+## 2026-10-15 Block Versions / standard Repeater implementation — staging verified
+
+Owner authorizes the saved Block Versions plan end-to-end and retirement of Template Settings fields once equivalent element-level controls and saved-value migration are verified. This session owns core contracts/resolution, builder authoring, runtime selection, standard Repeater/view integration, Explore conversion and proportional tests. Preserve unrelated workflow/email diffs, Modified browser drafts, capture integrity and existing public pointers until reviewed migration succeeds. Do not remove global fields merely to hide incomplete element configuration. Delivery and remaining gaps must be recorded separately from this claim.
+
+Final workspace check/build, 25 focused tests, core/SQLite/10,049-record capacity, retained Menus/audience and clean-image gates pass; 4 version/source plus 2 conversion mutations prove refusals with restored baselines. Actual Homepage/Explore/Blog drafts migrated, duplicate Settings editors retired, converted capture active at generation20. Actual builder/public records/images, source switching/history, paging/search and responsive widths verified; pending owner Homepage and `/test` draft preserved. [Exact package/image/capture hashes, iterative repairs, recovery evidence and unclaimed generic-snapshot/provider limits](../plans/frontbase-block-versions-20261015.md). Uncommitted; no production/release claim.
+
+## 2026-10-15 Block Versions / Repeater planning — complete, implementation pending
+
+Owner requests updating the plan after agreeing same-type alternatives, first-match priority and inheritance only from Default with explicit overrides. [Saved plan](../plans/frontbase-block-versions-20261015.md) defines core/builder/runtime work and makes standard source/view selection, editable Card, all supported browsing/filter controls and actual specialized Explore conversion mandatory acceptance gates. Planning/document consistency reviewed; no code tests repeated for this documentation-only change. Existing unrelated diffs preserved. No code/deployment/publication change or release acceptance; next executable task is schema/source/tree inventory and fixtures.
+
+## 2026-10-14 Repeater Options dispatch repair — claimed
+
+Owner cannot see the deployed filters. Investigation finds Repeater absent from the bespoke multi-tab dispatch allowlist, suppressing Options before its actual property panel renders. Repair dispatch and verify the integrated PropertiesPanel, not only the isolated filter editor. Preserve specialized captured Explore binding, owner drafts and publication. No provider, canonical content or release change.
+
+## 2026-10-14 unified conditions — staging verified
+
+Owner authorizes unifying visibility and hidden-filter conditions and typed values using the existing @ variable scopes. This session owns a pure edge-core condition contract/evaluator, shared console condition/value editors, SSR/hydrate/filter adapters and minimal verified App Users context projection. Preserve existing saved layouts and drafts, provider/tenant boundaries and unrelated workflow/email work. Verify typed values, legacy conversion, malformed-expression refusal, SSR/browser parity and identity no-leak paths before staging delivery. No multiple bindings, policy weakening, production cutover, Git checkpoint or public-release claim.
+
+Delivered: one evaluator/value contract, common filter/visibility editors, Menus comparator reuse, typed JSON/@ values and minimal verified user attributes. Final check/build, 15 console tests, core/SQLite/protocol/isolation gates, 2/2 new plus 6/6 existing restored mutations and clean-image gates pass. Synthetic public/canvas records and image/card visibility react together, including history. Staging runtime and Image Options editor verified; generation19 and Modified drafts preserved. [Receipt, exact scope and unverified live-provider limits](../plans/frontbase-unified-conditions-20261014.md). Uncommitted, no production/release acceptance.
+
+## 2026-10-14 single-binding conditional hidden filters — staging verified
+
+Owner limits the next step to one table/view per List Component. Implement optional URL/local-state conditions on existing hidden filters and consistent reactive execution in builder/public Repeater, Grid and DataTable paths. Preserve unconditional filters, server access rules, owner drafts and existing specialized Explore binding; multiple-binding selection and saved-view creation remain separate work. This session owns shared filter contracts/resolution, filter editor, list query hooks and the discovered legacy read-path repair in database/sync helpers: the old endpoint ignored filters, so use existing schema-validated parameterized predicates, bounded paging and accurate filtered counts. This is a bounded owner-requested correctness repair, not resumption of paused CF-22. No production/release claim.
+
+Delivered: shared conditional predicates, reactive URL/local queries and canvas simulation, canonical query route, deduplicated React/query contexts and validated single-table SQL RPC fulfillment. Workspace check/build, eight focused tests, SQLite/query/isolation gates and 2/2 restored mutations pass. Clean-image gates and staging navigation/runtime smoke pass; actual synthetic public/canvas buttons and browser history update exact records. [Receipt and provider/auth limits](../plans/frontbase-single-binding-filters-20261014.md). Generation19 and owner drafts preserved; uncommitted, no production/release acceptance.
+
+## 2026-10-14 Repeater WYSIWYG repair — staging verified
+
+Explore canvas now previews the pinned active captured catalog and renders native browsing controls. Directory Repeaters configure tabs/search/pagination/count/order/title matching, page size and pagination style/position; existing controls are inherited. Actual browser verifies identical 12-title institution and program listings in canvas/public views. Workspace check/build, 12 UI tests, native and SQLite/chunk integration/capacity gates, and 6/6 preview mutations pass; clean-image staging deployment succeeds. [Receipt and limits](../plans/frontbase-repeater-parity-20261014.md). Arbitrary-field facets/multi-field sorts remain unsupported by this captured index. Saved owner drafts, generation19, unrelated workflow/email work and credentials preserved; uncommitted, no production/release claim.
+
+## 2026-10-14 public appearance delivered
+
+Light/Dark/System with default System, legacy preference compatibility and saved per-origin public choice are deployed. Actual public Dark changes body/cards/inputs/footer and survives reload; Light restores white surfaces; System follows OS dark preference and was restored after testing. Opaque nonce-only design preview also switches without same-origin access. Five focused DOM tests, native/template/SEO/API-CSP gates and workspace check/build pass; retained clean-image gates succeed. [Receipt](../plans/frontbase-public-appearance-20261014.md). Admin preference and user menu draft revision7 remain untouched. Source/docs uncommitted; no production or release claim.
+
+## 2026-10-14 sticky header / publication reads repaired
+
+Root overflow repair and bounded owner-scoped editorial approval batching are deployed. Browser scroll1723px leaves header top0 with parent overflow clip/visible. Approval gate validates130 records in3reads;2/2 source mutations, workspace check/build and clean-image Menus/SEO/capacity/integration gates pass. Current user draft revision6 prepares a private preview with Publish available; neither Publish nor Discard was clicked. Exact production Publish wall-clock improvement is not measured. [Receipt](../plans/frontbase-sticky-menu-publication-repair-20261014.md). Changes uncommitted, unrelated diffs preserved; no production/release claim.
+
+## 2026-10-14 Pages/Menus simplification delivered
+
+Owner-requested Pages sidebar removal and Save Draft → Preview → Publish/Discard are deployed on existing Node/Docker staging. Header/Footer backgrounds now span the viewport, with inner width preserved. Workspace check/build, 12 console tests, Menus API/capture/native gates and 3/3 new workflow mutations pass; source originals restored. Actual browser shows draft revision2 private preview with enabled Publish, collapsed migration tools, Pages without its sidebar and unchanged publication generation15. User draft was neither published nor discarded. Clean-image serving/SEO/capacity gates pass. [Receipt](../plans/frontbase-pages-menus-simplification-20261014.md). Unrelated edits preserved; this refinement is uncommitted, with no production or release claim.
+
 ## 2026-10-14 owner-authorized pilot checkpoint
 
 Owner requests a commit and status update. Checkpoint the verified homepage, relative navigation, Pages/Settings and Menus delivery sources/documentation. Preserve separate workflow/email changes, generated CMS output, conflict copies and local bytecode outside the checkpoint. Existing workspace/build/security and clean staging-image evidence is recorded in the delivery receipts; this Git action adds no deployment, production or release claim. No push requested.

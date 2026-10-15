@@ -127,8 +127,7 @@ export function validateRpcQueryBody(body: unknown): ValidatedRpcQuery {
                 return { ok: false, error: 'invalid filterType' };
             }
             if (value !== undefined && value !== null) {
-                const okValue = isScalar(value)
-                    || (Array.isArray(value) && value.length <= 1000 && value.every(isScalar));
+                const okValue = isScalar(value) || (isJsonValue(value) && JSON.stringify(value).length <= 24000);
                 if (!okValue) return { ok: false, error: 'invalid filter value' };
             }
         }
@@ -181,3 +180,4 @@ export function validateRpcQueryBody(body: unknown): ValidatedRpcQuery {
     }
     return { ok: true, payload, search: search_query !== undefined };
 }
+import {isJsonValue} from '@frontbase/edge-core/conditions';

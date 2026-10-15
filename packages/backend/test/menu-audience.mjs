@@ -16,6 +16,7 @@ const fetcher=async(input,init)=>{
 const ports=supabaseMenuAudiencePorts(accounts,fetcher);
 const run=(config=cfg,owner='owner',token='visitor-session')=>resolveMenuAudience(owner,config,token,ports);
 assert.deepEqual(await run(),{authenticated:true,contactType:'student',permissionLevel:'reader'});
+assert.deepEqual(await resolveMenuAudience('owner',cfg,'visitor-session',ports,true),{authenticated:true,userId:id,contactType:'student',permissionLevel:'reader'});calls=calls.slice(-2);
 assert.equal(calls.length,2);assert.equal(calls[0].headers.get('authorization'),'Bearer visitor-session');assert.equal(calls[0].headers.get('apikey'),'sb_publishable_AUTH');
 assert.equal(calls[1].headers.get('authorization'),null);assert.equal(calls[1].headers.get('apikey'),'sb_secret_CONTACT');
 assert.equal(calls[1].url.searchParams.get('select'),'type,level');assert.equal(calls[1].url.searchParams.get('auth_id'),`eq.${id}`);assert.equal(calls[1].url.searchParams.get('limit'),'2');

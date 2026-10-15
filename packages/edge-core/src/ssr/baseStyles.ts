@@ -15,8 +15,10 @@
  * the landing markup resolves with no runtime Tailwind.
  */
 import { UTILITIES_CSS } from './utilitiesCss.js';
+import {PUBLIC_THEME_CSS} from './components/landing/themeSwitcher.js';
 
 export const FALLBACK_CSS = `${UTILITIES_CSS}
+${PUBLIC_THEME_CSS}
 
 /* FALLBACK CSS - Used when cssBundle is not available (legacy pages) */
 :root {
@@ -65,7 +67,7 @@ export const FALLBACK_CSS = `${UTILITIES_CSS}
 *, *::before, *::after { box-sizing: border-box; }
 html { background-color: hsl(var(--background)); color: hsl(var(--foreground)); }
 body { margin: 0; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; background-color: hsl(var(--background)); color: hsl(var(--foreground)); }
-.fb-page { min-height: 100vh; width: 100%; overflow-x: hidden; display: flex; flex-direction: column; }
+.fb-page { min-height: 100vh; width: 100%; overflow-x: clip; display: flex; flex-direction: column; }
 .fb-button { display: inline-flex; align-items: center; justify-content: center; }
 .fb-heading { margin: 0; }
 .fb-heading-1 { font-size: 2.25rem; font-weight: 700; }

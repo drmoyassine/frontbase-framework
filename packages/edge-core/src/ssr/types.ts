@@ -4,6 +4,7 @@
  */
 
 export interface PageComponent {
+    versions?: import('../block-versions.js').BlockVersion[];
     id: string;
     type: string;
     props?: Record<string, unknown>;
