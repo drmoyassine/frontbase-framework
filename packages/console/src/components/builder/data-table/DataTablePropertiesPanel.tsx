@@ -1,4 +1,5 @@
 import {ListPresentationOptions} from '@/components/builder/data-binding/ListPresentationOptions';
+import {liveListPageSize} from '@frontbase/types';
 import {LiveSourceSelector,updateAuthoredBinding} from '@/components/builder/data-binding/LiveSourceSelector';
 import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
@@ -504,16 +505,17 @@ export const DataTablePropertiesPanel: React.FC<DataTablePropertiesPanelProps> =
                                         type="number"
                                         min={1}
                                         max={100}
-                                        value={binding.pagination?.pageSize || 20}
+                                        value={liveListPageSize(binding.pagination?.pageSize)}
                                         onChange={(e) =>
                                             updateBinding({
                                                 pagination: {
                                                     ...binding.pagination!,
-                                                    pageSize: parseInt(e.target.value) || 20
+                                                    pageSize: liveListPageSize(Number(e.target.value)), page:0
                                                 }
                                             })
                                         }
                                     />
+                                    <p className="text-xs text-muted-foreground">Maximum 100 records per page.</p>
                                 </div>
                             )}
                         </div>

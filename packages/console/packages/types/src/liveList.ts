@@ -33,6 +33,10 @@ export interface LiveListQuery {
     hidden?: WireFilter[];
 }
 
+export function liveListPageSize(value?:number,fallback=20) {
+    return Math.min(100,Math.max(1,Math.trunc(Number.isFinite(value)?value!:fallback)||fallback));
+}
+
 export function liveListIdentity(binding: LiveListBinding) {
     return [binding.dataSourceId, binding.tableName, binding.viewId, binding.dataRequest, binding.searchColumns, binding.frontendFilters, binding.filtering?.filters];
 }
@@ -58,7 +62,7 @@ export function liveListBody(binding: LiveListBinding, query: LiveListQuery) {
         table_name: binding.tableName || config?.tableName,
         columns: config?.columns || '*', joins: config?.joins || [],
         page: Math.max(0, Math.trunc(query.page) || 0) + 1,
-        page_size: Math.min(100, Math.max(1, Math.trunc(query.pageSize) || 20)),
+        page_size: liveListPageSize(query.pageSize),
         filters: [...filters, ...query.hidden ?? []],
         search_query: query.search || '', search_cols: binding.searchColumns || config?.searchColumns || [],
         sort_col: query.sortColumn || null, sort_dir: query.sortDirection || 'asc',

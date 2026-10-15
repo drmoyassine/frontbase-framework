@@ -1,4 +1,4 @@
-import {liveListSortAvailable} from '@frontbase/types';
+import {liveListSortAvailable,liveListPageSize} from '@frontbase/types';
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import type { DataTableProps, FilterConfig } from './types';
@@ -37,7 +37,7 @@ export function DataTable({
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [filterValues, setFilterValues] = useState<Record<string, any>>({});
 
-    const pageSize = binding?.pagination?.pageSize || 20;
+    const pageSize = liveListPageSize(binding?.pagination?.pageSize);
     const paginationEnabled = binding?.pagination?.enabled !== false;
     const sortingAvailable=!binding||liveListSortAvailable(binding,debouncedSearch);
     const sortingEnabled = binding?.sorting?.enabled !== false&&sortingAvailable;

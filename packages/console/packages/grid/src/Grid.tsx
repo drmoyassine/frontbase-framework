@@ -1,4 +1,4 @@
-import {liveListSortAvailable} from '@frontbase/types';
+import {liveListSortAvailable,liveListPageSize} from '@frontbase/types';
 import {useFilterOptions} from '../../datatable/src/hooks/useFilterOptions';
 import {FilterBar} from '../../datatable/src/components/FilterBar';
 import {Pagination} from '../../datatable/src/components/Pagination';
@@ -36,7 +36,7 @@ export function Grid({
     const sourceKey=JSON.stringify([binding?.dataSourceId,binding?.tableName,binding?.viewId,binding?.dataRequest,binding?.sorting,binding?.pagination?.pageSize]);
     const previousSource=useRef(sourceKey);
     useEffect(()=>{if(previousSource.current===sourceKey)return;previousSource.current=sourceKey;setPage(0);setSearch('');setFilters({});setSortColumn(binding?.sorting?.column??'');setDirection(binding?.sorting?.direction??'asc');},[sourceKey]);
-    const queryBinding=useMemo(()=>({...binding,componentId,dataSourceId:binding?.dataSourceId??'',tableName:binding?.tableName??'',columnOverrides:binding?.columnOverrides??{},pagination:{enabled:binding?.pagination?.enabled??true,pageSize:binding?.pagination?.pageSize??12,page},sorting:{...binding?.sorting,enabled:binding?.sorting?.enabled??false,column:sortColumn,direction},filtering:{...binding?.filtering,searchEnabled:binding?.filtering?.searchEnabled??false,filters:{...binding?.filtering?.filters,...filters,search}}}),[binding,componentId,page,sortColumn,direction,filters,search]);
+    const queryBinding=useMemo(()=>({...binding,componentId,dataSourceId:binding?.dataSourceId??'',tableName:binding?.tableName??'',columnOverrides:binding?.columnOverrides??{},pagination:{enabled:binding?.pagination?.enabled??true,pageSize:liveListPageSize(binding?.pagination?.pageSize,12),page},sorting:{...binding?.sorting,enabled:binding?.sorting?.enabled??false,column:sortColumn,direction},filtering:{...binding?.filtering,searchEnabled:binding?.filtering?.searchEnabled??false,filters:{...binding?.filtering?.filters,...filters,search}}}),[binding,componentId,page,sortColumn,direction,filters,search]);
     const {data,isLoading:loading,error,totalCount,refetch}=useGridQuery({mode,binding:queryBinding,initialData,initialTotal,enabled:!!binding?.tableName});
     const {data:fetchedOptions={}}=useFilterOptions({mode,filters:binding?.frontendFilters??[],tableName:binding?.tableName,dataSourceId:binding?.dataSourceId,cascadingFilters:filters,searchQuery:search,enabled:!!binding?.tableName});
     const sortingAvailable=!binding||liveListSortAvailable(binding,search);

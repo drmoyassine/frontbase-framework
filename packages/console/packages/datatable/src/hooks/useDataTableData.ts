@@ -1,7 +1,7 @@
 import {useState,useEffect,useMemo,useRef} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import type {DataTableBinding} from '../types';
-import {fetchLiveList,liveListIdentity,isBuilderCanvas,resolveBindingHiddenFilters,readBrowserFilterVariable,subscribeFilterVariables} from '@frontbase/types';
+import {fetchLiveList,liveListIdentity,liveListPageSize,isBuilderCanvas,resolveBindingHiddenFilters,readBrowserFilterVariable,subscribeFilterVariables} from '@frontbase/types';
 
 interface UseDataTableDataOptions {
     mode: 'builder' | 'edge';
@@ -48,7 +48,7 @@ export function useDataTableData({
             const result=await fetchLiveList(binding,{page,pageSize,sortColumn,sortDirection,filters,search:searchQuery,hidden:resolvedHiddenFilters},mode==='builder'||isBuilderCanvas()?'builder':'edge',signal);
             return {data:result.rows,total:result.total};
         },
-        initialData:initialData&&initialData===seed.current.rows&&identity===seed.current.identity&&!resolvedHiddenFilters.length?{data:initialData,total:initialTotal}:undefined,
+        initialData:initialData&&initialData.length<=liveListPageSize(pageSize)&&initialData===seed.current.rows&&identity===seed.current.identity&&!resolvedHiddenFilters.length?{data:initialData,total:initialTotal}:undefined,
         enabled: enabled && !!binding?.tableName,
         staleTime: 60_000, // 1 minute
         refetchInterval: binding?.refreshInterval && binding.refreshInterval > 0

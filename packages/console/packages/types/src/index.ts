@@ -268,5 +268,5 @@ export function isBuilderCanvas(): boolean {
     return typeof document!=='undefined'&&document.querySelector<HTMLMetaElement>('meta[name="chimera-rendered-by"]')?.content === 'builder';
 }
 
-export {fetchLiveList,liveListBody,liveListIdentity,liveListSortAvailable} from './liveList';
+export {fetchLiveList,liveListBody,liveListIdentity,liveListSortAvailable,liveListPageSize} from './liveList';
 export type {LiveListBinding,LiveListQuery,LiveListPresentation} from './liveList';

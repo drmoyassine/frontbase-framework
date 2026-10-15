@@ -117,3 +117,14 @@ it.each(['Table','Grid'])('%s preserves the initial SSR page rather than resetti
     expect(screen.getByText('SSR page two')).toBeTruthy();expect(screen.getByText('Page 2 of 2')).toBeTruthy();
     await waitFor(()=>expect(fetcher).not.toHaveBeenCalled());
 });
+
+it.each(['Table','Grid'])('%s uses the same page-size bound for requests and pagination',async(kind)=>{
+    const rows=Array.from({length:100},(_,id)=>({id,title:`Campus ${id}`}));
+    const fetcher=vi.fn(async()=>reply(rows,150));vi.stubGlobal('fetch',fetcher);
+    const props={binding:{...binding,pagination:{...binding.pagination,pageSize:500}},initialData:Array.from({length:500},(_,id)=>({id,title:`Campus ${id}`})),initialTotal:150,mode:'edge' as const,componentId:'page-bound'};
+    render(kind==='Grid'?<Grid {...props}/>:<DataTable {...props}/>,{wrapper:provider()});
+    await screen.findByText('Page 1 of 2');
+    await waitFor(()=>expect(screen.getAllByText(/^Campus \d+$/)).toHaveLength(100));
+    fireEvent.click(screen.getByRole('button',{name:'Next',exact:true}));
+    await waitFor(()=>expect(fetcher.mock.calls.some(call=>{const body=JSON.parse((call as any)[1].body).dataRequest.body;return body.page===2&&body.page_size===100;})).toBe(true));
+});

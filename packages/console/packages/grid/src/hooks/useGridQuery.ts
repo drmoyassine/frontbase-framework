@@ -1,7 +1,7 @@
 import {useState,useEffect,useMemo,useRef} from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ComponentDataBinding } from '../types';
-import { fetchLiveList,liveListIdentity,isBuilderCanvas,resolveBindingHiddenFilters,readBrowserFilterVariable,subscribeFilterVariables,type WireFilter } from '@frontbase/types';
+import { fetchLiveList,liveListIdentity,liveListPageSize,isBuilderCanvas,resolveBindingHiddenFilters,readBrowserFilterVariable,subscribeFilterVariables,type WireFilter } from '@frontbase/types';
 
 interface UseGridQueryProps {
     mode: 'builder' | 'edge';
@@ -39,7 +39,7 @@ export function useGridQuery({
             if(binding.source?.kind==='publication')return fetchSnapshot(binding,hidden,signal);
             return fetchLiveList(binding,{page:binding.pagination?.page??0,pageSize:binding.pagination?.enabled?binding.pagination.pageSize:100,sortColumn:binding.sorting?.column,sortDirection:binding.sorting?.direction,search:binding.filtering?.searchEnabled?String(binding.filtering?.filters?.search??''):'',hidden},mode==='builder'||isBuilderCanvas()?'builder':'edge',signal);
         },
-        initialData: hidden.length || identity!==seed.current.identity || !initialData || initialData!==seed.current.rows ? undefined : { rows: initialData, total: initialTotal },
+        initialData: hidden.length || (initialData?.length??0)>liveListPageSize(binding.pagination?.enabled?binding.pagination.pageSize:100) || identity!==seed.current.identity || !initialData || initialData!==seed.current.rows ? undefined : { rows: initialData, total: initialTotal },
         enabled: enabled && !!binding.tableName,
         staleTime: 5 * 60 * 1000,
         refetchInterval: binding.refreshInterval && binding.refreshInterval > 0
