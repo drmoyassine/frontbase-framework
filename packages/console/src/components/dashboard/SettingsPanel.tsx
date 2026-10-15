@@ -21,6 +21,7 @@ import { PublicSiteIdentityForm } from './settings/shared/PublicSiteIdentityForm
 import { SiteConfigurationForm } from './settings/shared/SiteConfigurationForm';
 import { TemplateSettingsForm } from './settings/shared/TemplateSettingsForm';
 import { ElementSettingsMigration } from './settings/shared/ElementSettingsMigration';
+import {LiveListMigration} from './settings/shared/LiveListMigration';
 import { AdminInviteForm } from './settings/shared/AdminInviteForm';
 import { EdgeAPIKeysForm } from './settings/shared/EdgeAPIKeysForm';
 import { EdgeProvidersSection } from './settings/shared/EdgeProvidersSection';
@@ -67,7 +68,7 @@ export const SettingsPanel: React.FC = () => {
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="template" className="space-y-6 mt-6"><SiteConfigurationForm /><TemplateSettingsForm /><ElementSettingsMigration /></TabsContent>
+        <TabsContent value="template" className="space-y-6 mt-6"><SiteConfigurationForm /><TemplateSettingsForm /><LiveListMigration /><ElementSettingsMigration /></TabsContent>
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6 mt-6">
           <PublicSiteIdentityForm />

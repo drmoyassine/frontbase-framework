@@ -42,7 +42,7 @@ interface ColumnInfo {
 
 async function listTables(runner: DbRunner, dialect: 'sqlite' | 'postgres'): Promise<string[]> {
     const rows = await runner.query(dialect === 'sqlite'
-        ? "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        ? "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY name"
         : "SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name");
     return rows.map((row) => String(row.name));
 }
@@ -597,7 +597,7 @@ export function registerSyncRoutes(
             if (isIntrospectable(kind)) {
                 const dialect = dialectOf(kind);
                 const sql = dialect === 'sqlite'
-                    ? "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                    ? "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%'"
                     : "SELECT table_name as name FROM information_schema.tables WHERE table_schema='public'";
                 const rows = await runner.query(sql);
                 tables = rows.map((r) => String(r.name));

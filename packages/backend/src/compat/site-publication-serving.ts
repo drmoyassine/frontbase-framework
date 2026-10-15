@@ -7,6 +7,7 @@ import { verifyManifestEditorial } from './site-publication-approval-check.js';
 import { capturedSiteSitemap } from './site-publication-sitemap.js';
 import { PublicationRequestError, resolveSitePublicationPage, resolvePublicationVersionPage } from './site-publication-runtime.js';
 import { publicationListResponse } from './publication-list-source.js';
+import type {PublishedLiveQuery} from './publication-list-source.js';
 
 export type SitePublicationResolution =
     | {status:'inactive'}
@@ -18,7 +19,7 @@ export type SitePublicationResolution =
     | {status:'resolved';hash:string;generation:number;result:NonNullable<Awaited<ReturnType<typeof resolveSitePublicationPage>>>};
 
 /** Trusted host owner only. Once active, missing/unavailable MUST NOT fall back to mutable pages. */
-export async function resolveReviewedSitePublication(db:DbRunner,owner:string,request:Request,audience:import('@frontbase/edge-core/menus').VerifiedMenuAudience|null=null):Promise<SitePublicationResolution> {
+export async function resolveReviewedSitePublication(db:DbRunner,owner:string,request:Request,audience:import('@frontbase/edge-core/menus').VerifiedMenuAudience|null=null,liveQuery?:PublishedLiveQuery):Promise<SitePublicationResolution> {
     if(!owner)throw new Error('publication_owner_required');
     try {
         const active=await new SitePublicationStore(db,owner).activeVersion();
@@ -39,18 +40,18 @@ export async function resolveReviewedSitePublication(db:DbRunner,owner:string,re
             if(active.artifact.schemaVersion===2){await new SitePublicationManifestStore(db,owner).verify(active.artifact);await verifyManifestEditorial(db,owner,active.artifact);}
             return {status:'sitemap',hash:active.pointer.hash,generation:active.pointer.generation,xml:capturedSiteSitemap(active.artifact)};
         }
-        const result=await resolvePublicationVersionPage(active.artifact,active.pointer.hash,owner,db,request,audience);
+        const result=await resolvePublicationVersionPage(active.artifact,active.pointer.hash,owner,db,request,audience,liveQuery);
         if(!result)return {status:'missing'};
         return {status:'resolved',hash:active.pointer.hash,generation:active.pointer.generation,result};
     }catch(error){return error instanceof PublicationRequestError ? {status:'invalid'} : {status:'unavailable'};}
 }
 
 /** Final page-dispatch boundary only: null means INACTIVE, never missing/corrupt. */
-export async function renderReviewedSitePublication(db:DbRunner,owner:string,request:Request,options:{swBundle?:string;resolveAudience?:(owner:string,request:Request)=>Promise<import('@frontbase/edge-core/menus').VerifiedMenuAudience>}={}):Promise<Response|null> {
+export async function renderReviewedSitePublication(db:DbRunner,owner:string,request:Request,options:{swBundle?:string;liveQuery?:PublishedLiveQuery;resolveAudience?:(owner:string,request:Request)=>Promise<import('@frontbase/edge-core/menus').VerifiedMenuAudience>}={}):Promise<Response|null> {
     if(!['GET','HEAD'].includes(request.method))throw new Error('publication_method_invalid');
     const audience=options.resolveAudience?await options.resolveAudience(owner,request).catch(()=>({authenticated:false})):null;
     const listResponse=await publicationListResponse(db,owner,request,audience);if(listResponse)return listResponse;
-    const resolution=await resolveReviewedSitePublication(db,owner,request,audience);
+    const resolution=await resolveReviewedSitePublication(db,owner,request,audience,options.liveQuery);
     if(resolution.status==='inactive')return null;
     const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     if(resolution.status==='redirect'){
@@ -73,7 +74,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
     try {
         const {page,version,document}=resolution.result,path=new URL(request.url).pathname;
         const manifest={version,pages:{[path]:page},queries:{}};
-        // Captured projection is complete. No mutable enrichment, resolver or query.
+        // Layout projection (including admitted live-list initial records) is complete.
         // Host may supply its network-only SW to replace older intercepting installations.
         const engine=createEngine({manifest,data:directProvider(manifest),environment:'edge',document,swBundle:options.swBundle,resolveConditionUser:async()=>audienceConditionUser(audience)});
         const rendered=await engine.fetch(new Request(request.url,{method:'GET'}));

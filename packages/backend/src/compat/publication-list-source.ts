@@ -9,6 +9,9 @@ import { SitePublicationStore } from './site-publication-store.js';
 import { SitePublicationReviewStore } from './site-publication-review-store.js';
 import { SitePublicationManifestStore } from './site-publication-manifest.js';
 import { verifyManifestEditorial } from './site-publication-approval-check.js';
+import {liveViewBindingSchema} from '@frontbase/edge-core/directory/configuration';
+
+export type PublishedLiveQuery=(owner:string,binding:Record<string,any>,query:Record<string,any>,request:Request)=>Promise<{rows:Record<string,unknown>[];total:number}>;
 
 export const publicationListRequestSchema = z.object({ componentId:z.string().min(1).max(200),versionId:z.string().min(1).max(128).default('default'),
     page:z.number().int().min(0).max(20000),pageSize:z.number().int().min(1).max(48),
@@ -43,19 +46,21 @@ export async function readPublicationList(db:DbRunner,owner:string,bindingInput:
 }
 
 /** Resolve only the selected source for initial HTML; alternatives stay query-free. */
-export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null):Promise<PageLayoutData>{
+export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery):Promise<PageLayoutData>{
     const url=new URL(request.url),read=contextReader({url:Object.fromEntries(url.searchParams),user});
     const walk=async(nodes:PageComponent[]):Promise<PageComponent[]>=>Promise.all(nodes.map(async node=>{
         const versionId=selectBlockVersion(node,read),effective=applyBlockVersion(node,versionId),binding=effective.props?.binding as any;
         let result=node;
-        if(binding?.source?.kind==='publication'){
+        if(binding?.source?.kind==='publication'||binding&&!binding.source){
+            const live=!binding.source;
+            if(live){liveViewBindingSchema.parse(binding);if(!liveQuery)throw Error('live_list_resolver_unavailable');}
             const controls=effective.props?.controls as any??{};
             const page=Math.max(0,Number(url.searchParams.get('page')||1)-1),search=url.searchParams.get('q')??'';
             const filters=[...Object.entries(binding.filtering?.filters??{}).filter(([,value])=>value!==undefined&&value!=='').map(([column,value])=>({column,op:'eq',value})),
                 ...(binding.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:resolveValue(filter.value,read)})),
                 ...(search&&controls.searchColumn?[{column:controls.searchColumn,op:'contains',value:search}]:[])];
             const query={componentId:node.id,versionId,page,pageSize:binding.pagination?.pageSize??12,sortColumn:binding.sorting?.column??'title',direction:binding.sorting?.direction??'asc',filters};
-            const records=await readPublicationList(db,owner,binding,query);
+            const records=live?await liveQuery!(owner,binding,query,request):await readPublicationList(db,owner,binding,query);
             const props={initialRows:records.rows,initialTotal:records.total,_initialVersionId:versionId,_initialQuery:{page,search,sortColumn:query.sortColumn,direction:query.direction}};
             if(versionId==='default')result={...node,props:{...node.props,...props}};
             else result={...node,versions:node.versions?.map(version=>version.id===versionId?{...version,overrides:{...version.overrides,props:{...version.overrides.props,...props}}}:version)};

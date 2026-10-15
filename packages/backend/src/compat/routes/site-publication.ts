@@ -20,6 +20,8 @@ import { publicationPaths,publicationRows,type PublicationVersion } from '../pub
 import { registerSitePublicationControls } from './site-publication-controls.js';
 import { SitePublicationManifestStore } from '../site-publication-manifest.js';
 import { verifyManifestEditorial } from '../site-publication-approval-check.js';
+import {publishedLiveQuery} from '../published-live-query.js';
+import {registerPilotLiveLists} from './pilot-live-lists.js';
 
 const previewRequest=z.object({hash:z.string().regex(/^[a-f0-9]{64}$/),path:publicationPathSchema,
     params:z.object({sort:z.enum(['title-asc','title-desc']).optional(),match:z.enum(['contains','startsWith','equals']).optional(),type:z.enum(['institution','program']).optional(),q:z.string().max(100).optional(),page:z.number().int().min(1).max(20000).optional()}).strict().default({})}).strict();
@@ -31,6 +33,7 @@ function metadata(artifact:PublicationVersion){
 export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVars}>,control:DbRunner,storeFor:(tenant:string)=>SyncStore,
     externalFetch:CompatFetch,accounts:AccountConfigFor,now:()=>string):void {
     registerSitePublicationControls(app,control,now);
+    registerPilotLiveLists(app,control,storeFor,externalFetch,accounts,now);
     app.get('/api/project/site-configuration/publication/render/',async c=>{
         c.header('Cache-Control','no-store');c.header('X-Robots-Tag','noindex, nofollow');
         const user=c.get('principal').user as {role?:string};
@@ -54,7 +57,8 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
             }
             const pageUrl=new URL(parsed.data.path,'https://publication-preview.invalid');
             for(const [key,value] of Object.entries(parsed.data.params))pageUrl.searchParams.set(key,String(value));
-            const result=await resolvePublicationVersionPage(artifact,parsed.data.hash,tenant,control,new Request(pageUrl));
+            const previewHeaders=new Headers();if(c.req.header('cookie'))previewHeaders.set('cookie',c.req.header('cookie')!);
+            const result=await resolvePublicationVersionPage(artifact,parsed.data.hash,tenant,control,new Request(pageUrl,{headers:previewHeaders}),null,publishedLiveQuery(request=>app.fetch(new Request(new URL('/api/data/execute',c.req.url),request))));
             if(!result)return c.json({detail:'No prepared page at this URL'},404);
             const paths=new Set([...publicationPaths(artifact),...(artifact.schemaVersion===2?artifact.redirects??[]:[]).map(alias=>alias.from)]);
             // Private preview navigation stays within the SAME captured version.
@@ -108,7 +112,8 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
                 if(!artifact)return c.json({detail:'Prepared site is unavailable'},404);
                 const url=new URL(request.data.path,'https://publication-preview.invalid');
                 for(const [key,value] of Object.entries(request.data.params))url.searchParams.set(key,String(value));
-                const result=await resolvePublicationVersionPage(artifact,request.data.hash,tenant,control,new Request(url));
+                const headers=new Headers();if(c.req.header('cookie'))headers.set('cookie',c.req.header('cookie')!);
+                const result=await resolvePublicationVersionPage(artifact,request.data.hash,tenant,control,new Request(url,{headers}),null,publishedLiveQuery(request=>app.fetch(new Request(new URL('/api/data/execute',c.req.url),request))));
                 if(!result)return c.json({detail:'No prepared page at this URL'},404);
                 return c.json({hash:request.data.hash,page:result.page,version:result.version,purpose:'private-prepared-preview',publicationAvailable:false});
             }catch{return c.json({detail:'Prepared preview is unavailable'},422);}

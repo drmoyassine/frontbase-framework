@@ -34,7 +34,7 @@ import { resolveStateDb, StateDbConfigError, type ResolvedStateDb } from './stat
 import { resolveSessionSecret } from './session-secret.js';
 import { tenantMiddleware, hostTenantOf, hostKindOf } from './tenancy.js';
 import { manifest } from './manifest.js';
-import { renderReviewedSitePublication } from '@frontbase/backend';
+import { renderReviewedSitePublication,publishedLiveQuery } from '@frontbase/backend';
 import {configuredMenuAudienceResolver} from '@frontbase/backend';
 import {resolveAppMenuLayout,readPublicSiteName} from '@frontbase/backend';
 import SW_BUNDLE from 'virtual:sw-bundle';
@@ -832,7 +832,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             || path === '/sw.js') return next();
         const tenant = hostTenantFor(c.req.raw);
         if (cloud && !tenant && hostKindOf(c.req.raw, cloud.baseDomain, cloud.appLabel) !== 'foreign') return next();
-        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE, resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,Date.now,true) });
+        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE, liveQuery:publishedLiveQuery(request=>compatApp.fetch(request)), resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,Date.now,true) });
         if (reviewed) return reviewed;
         return next();
     });

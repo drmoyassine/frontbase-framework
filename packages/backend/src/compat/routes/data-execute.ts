@@ -11,6 +11,7 @@ import { mergeAccountConfig, type AccountConfigFor } from '../providers/merge-ac
 import { validateRpcQueryBody } from '../rpc-body.js';
 import { inspectTable,parseFilterList } from './sync.js';
 import {executeSingleTableRpc} from '../single-table-rpc.js';
+import {consoleDataAdministrator,hasPublishedViewPolicy,publishedLiveReadAllowed} from '../published-live-access.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -170,6 +171,7 @@ export function registerDataExecuteRoute(
                         error: 'Unauthorized access to this datasource',
                     }, 403);
                 }
+                if(!consoleDataAdministrator(principal)&&!await publishedLiveReadAllowed(_runner,tenant,ds.id,dataRequest.viewId,dataRequest.body))return c.json({success:false,error:'Published view required'},403);
                 if(dataRequest.viewId){
                     const view=await store.getView(dataRequest.viewId);
                     const requestBody=dataRequest.body as Record<string,unknown>|undefined;
@@ -463,7 +465,7 @@ export function registerDataExecuteRoute(
     // edge fronts a single project database. Mirror: the tenant's single
     // datasource (none → 404; more than one → 400 — such tenants must publish
     // with a baked dataRequest, which carries the id).
-    const datasourceAndRunner = async (tenant: string, table: string) => {
+    const datasourceAndRunner = async (tenant: string, table: string,principal:{user:unknown}|null) => {
         const store = syncStoreFor(tenant);
         const datasources = await store.listDatasources();
         if (datasources.length === 0) return { error: 404 as const, detail: 'Datasource not found' };
@@ -472,6 +474,7 @@ export function registerDataExecuteRoute(
         }
         const ds = datasources[0];
         if (!ds) return { error: 404 as const, detail: 'Datasource not found' };
+        if(!consoleDataAdministrator(principal)&&await hasPublishedViewPolicy(_runner,tenant,ds.id))return {error:403 as const,detail:'Published view reads only'};
         const merged = await mergeAccountConfig(
             accountConfigFor, externalFetch, tenant, ds.kind, ds.config,
         ).catch(() => ds.config);
@@ -499,8 +502,8 @@ export function registerDataExecuteRoute(
 
     app.get('/api/data/:table/:recordId', async (c) => {
         try {
-            const { tenant } = await principalForRequest(c.req.raw);
-            const res = await datasourceAndRunner(tenant, c.req.param('table'));
+            const { tenant,principal } = await principalForRequest(c.req.raw);
+            const res = await datasourceAndRunner(tenant, c.req.param('table'),principal);
             if ('error' in res) return c.json({ detail: res.detail }, res.error);
             const rows = await res.runner.query(
                 `SELECT * FROM ${quoteTable(res.schema.table)} WHERE ${quoteTable(res.pk)} = ${ph(res.dialect, 1)} LIMIT 1`,
@@ -516,8 +519,8 @@ export function registerDataExecuteRoute(
 
     app.post('/api/data/:table', async (c) => {
         try {
-            const { tenant } = await principalForRequest(c.req.raw);
-            const res = await datasourceAndRunner(tenant, c.req.param('table'));
+            const { tenant,principal } = await principalForRequest(c.req.raw);
+            const res = await datasourceAndRunner(tenant, c.req.param('table'),principal);
             if ('error' in res) return c.json({ detail: res.detail }, res.error);
             const payload = pickColumns(await c.req.json().catch(() => ({})), res.schema.columns.map((column) => column.name));
             const keys = Object.keys(payload);
@@ -540,8 +543,8 @@ export function registerDataExecuteRoute(
 
     app.patch('/api/data/:table/:recordId', async (c) => {
         try {
-            const { tenant } = await principalForRequest(c.req.raw);
-            const res = await datasourceAndRunner(tenant, c.req.param('table'));
+            const { tenant,principal } = await principalForRequest(c.req.raw);
+            const res = await datasourceAndRunner(tenant, c.req.param('table'),principal);
             if ('error' in res) return c.json({ detail: res.detail }, res.error);
             const payload = pickColumns(
                 await c.req.json().catch(() => ({})),

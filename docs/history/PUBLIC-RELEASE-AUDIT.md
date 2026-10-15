@@ -1,5 +1,9 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-15 pilot live-view conversion — claimed
+
+Owner authorizes task1 from the deployment review: migrate existing pilot catalog listings to filtered live views, including publication integration and staging acceptance. Own the bounded live-view/publication/conversion path and tests; preserve unrelated workflow/email diffs, approved content dispositions, URLs/media and pending owner design edits. Keep one live binding per effective version; no generic snapshot feature, broad editorial review, production cutover or CF-22 activation. Establish source filters and fail-closed owner/projection boundaries before changing existing pilot bindings.
+
 ## 2026-10-15 live-list checkpoint, deployment and delta review — complete
 
 Owner-authorized source checkpoints `8be7c4b` and pagination-bound correction `0d99995` are committed/pushed. Reviewed correction package deployed to isolated studygram/usa-frontbase-staging at 2026-10-15 12:32:16 UTC; clean-image gates pass, including live-list API integration, 3/3 in-memory mutations, isolation, publication/SEO and capacity. Workspace check/build and 20 focused UI tests pass. [Exact source/image receipt, browser evidence and ordered open deltas](../plans/frontbase-live-list-deployment-review-20261015.md).

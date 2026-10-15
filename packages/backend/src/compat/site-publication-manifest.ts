@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { stableStringify } from '@frontbase/compiler/manifest';
-import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, directoryLayoutQueries, standardPublicationQueries } from '@frontbase/edge-core/directory/configuration';
+import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, directoryLayoutQueries, standardPublicationQueries,liveViewBindings } from '@frontbase/edge-core/directory/configuration';
 import { publicationTemplateSchema, publicationPathSchema } from '@frontbase/edge-core/directory/publication';
 import {menuReferenceSchema} from '@frontbase/edge-core/menus';
 import type { PageLayoutData } from '@frontbase/edge-core';
@@ -82,7 +82,8 @@ export const sitePublicationManifestSchema = z.object({ schemaVersion: z.literal
             const expected = template.role === 'editorial' ? ['directory.page.detail'] : template.role === 'article-index' ? ['directory.article.list']
                 : ['institution', 'program', 'article'].includes(template.role) ? [`directory.${template.role}.detail`]
                 : template.role === 'directory' ? [...(populations.get('institutions') ? ['directory.institution.list'] : []), ...(populations.get('programs') ? ['directory.program.list'] : [])] : [];
-            if (expected.some(query => !queries.includes(query))) fail('template_query_missing');
+            const live=liveViewBindings(template.layout as unknown as PageLayoutData);
+            if (!(live.length&&['directory','article-index'].includes(template.role))&&expected.some(query => !queries.includes(query))) fail('template_query_missing');
         } catch { fail('template_query_invalid'); }
     }
     for (const [role, collection] of [['directory', 'institutions'], ['directory', 'programs'], ['institution', 'institutions'],

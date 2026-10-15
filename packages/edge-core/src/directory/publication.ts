@@ -6,6 +6,7 @@ import type { PageLayoutData } from '../ssr/types.js';
 import {menuReferenceSchema} from '../menus.js';
 import {applyBlockVersion,validateBlockVersions} from '../block-versions.js';
 import {publicationListSourceSchema} from './standard-repeater.js';
+import {liveViewBindingSchema,liveViewBindings} from './live-list.js';
 
 /** Server-side capture contract. Never an input accepted from an anonymous browser. */
 export const publicationPathSchema = z.string().min(1).max(400).refine(value => {
@@ -43,8 +44,10 @@ const layout = z.record(z.unknown()).refine(value => {
                 const props = node.props as Record<string, unknown> | undefined;
                 if (props?.dataRequest || props?.queryConfig || props?.initialRows || props?.initialTotal!==undefined || props?._initialQuery) throw new Error('mutable_binding');
                 if(node.binding || props?.binding){
-                    if(node.type!=='Repeater')throw Error('mutable_binding');
-                    sourceBinding.parse(props?.binding??node.binding);
+                    if(!['Repeater','DataTable','Grid'].includes(String(node.type)))throw Error('mutable_binding');
+                    const binding=props?.binding??node.binding;
+                    if((binding as any)?.source?.kind==='publication')sourceBinding.parse(binding);
+                    else liveViewBindingSchema.parse(binding);
                     if(node.binding&&props?.binding&&JSON.stringify(node.binding)!==JSON.stringify(props.binding))throw Error('ambiguous_binding');
                 }
                 for(const version of (node.versions??[]) as any[])inspect([applyBlockVersion(node as any,version.id)]);
@@ -71,6 +74,7 @@ export const sitePublicationArtifactSchema = z.object({
     if (new TextEncoder().encode(JSON.stringify(artifact)).byteLength > 1024 * 1024) error('publication_too_large');
     const roles = new Set<string>();
     for (const page of artifact.templates) {
+        if(liveViewBindings(page.layout as unknown as PageLayoutData).length)error('live_lists_require_chunk_manifest');
         const menus=(page.layout.root as Record<string,unknown>|undefined)?.appMenus;
         if(menus!==undefined){const reference=menuReferenceSchema.safeParse(menus);if(!reference.success||reference.data.pageId!==page.pageId)error('menu_reference_invalid');}
         if (roles.has(page.role)) error('duplicate_template_role');

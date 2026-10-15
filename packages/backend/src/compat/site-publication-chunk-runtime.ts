@@ -6,10 +6,10 @@ import { publicationPathSchema } from '@frontbase/edge-core/directory/publicatio
 import { sitePublicationManifestSchema, type SitePublicationManifest } from './site-publication-manifest.js';
 import { createChunkDirectoryQueries } from './site-publication-chunk-queries.js';
 import { PublicationRequestError } from './site-publication-runtime.js';
-import { projectPublicationListRows } from './publication-list-source.js';
+import { projectPublicationListRows,type PublishedLiveQuery } from './publication-list-source.js';
 
 /** Existing renderer/query projection; immutable chunks only, never canonical/draft reads. */
-export async function resolveChunkPublicationPage(input:SitePublicationManifest,hash:string,owner:string,db:DbRunner,request:Request,user:Record<string,unknown>|null=null):Promise<{page:PageEntry;version:string;cacheKey:string;document:NonNullable<EngineOptions['document']>}|null>{
+export async function resolveChunkPublicationPage(input:SitePublicationManifest,hash:string,owner:string,db:DbRunner,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery):Promise<{page:PageEntry;version:string;cacheKey:string;document:NonNullable<EngineOptions['document']>}|null>{
     if(!owner || !/^[a-f0-9]{64}$/.test(hash))throw new Error('publication_context_required');
     const artifact=sitePublicationManifestSchema.parse(input),url=new URL(request.url),path=url.pathname;
     if(!publicationPathSchema.safeParse(path).success)return null;
@@ -59,7 +59,7 @@ const params:Record<string,unknown>=mode==='detail'?{path:parentPath??path}:role
     projected=projectTemplatePresentation(projected,artifact.configuration,artifact.staticPages?.find(page=>page.originalPath==='/')?readLandingSettings(artifact.staticPages.find(page=>page.originalPath==='/')!.layout as unknown as PageLayoutData):undefined);
     projected=projectRelativeSiteLinks(projected,artifact.configuration.site.origin);
     const title=typeof row?.title==='string'?row.title:template.title,description=typeof row?.summary==='string'?row.summary:template.description;
-    projected=await projectPublicationListRows(projected,db,owner,request,user);
+    projected=await projectPublicationListRows(projected,db,owner,request,user,liveQuery);
     const built=buildSiteManifest({pages:{[path]:{title,slug:path.replace(/^\//,''),description,layout:projected as unknown as Record<string,unknown>}},queries:{},versionPrefix:hash});
     const canonicalUrl=new URL(path,artifact.configuration.site.origin).href;
     return {page:built.pages[path]!,version:built.version,cacheKey:JSON.stringify([owner,hash,path,normalized]),document:{faviconUrl:'',language:typeof row?.language==='string'?row.language:artifact.configuration.site.locale||'en',canonicalUrl,robots:url.searchParams.size?'noindex, follow':'index, follow',
