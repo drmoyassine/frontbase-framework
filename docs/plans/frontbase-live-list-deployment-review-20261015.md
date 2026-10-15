@@ -1,5 +1,7 @@
 # Live-list deployment and open-delta review — 2026-10-15
 
+> 2026-10-16 update: priority1 below is now implemented and active on staging at generation21. [Live-view delivery receipt](frontbase-pilot-live-views-20261015.md) supersedes its pending status; the generation20 observations below remain historical. Real pilot PostgreSQL view/query/publication acceptance is proven; configured App Users identity acceptance remains separate.
+
 Owner requests commit, push, deployment and review of open tasks. Scope is the existing isolated USA staging service, not production traffic switching or a framework release. Generic frozen snapshots are excluded.
 
 ## Checkpoints and correction

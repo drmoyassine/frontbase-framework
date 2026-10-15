@@ -15,7 +15,12 @@ export function LiveListMigration(){
             const response=await fetch('/api/project/live-list-migration/',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,baseHash,...(mode==='publish'?{planHash:plan.planHash}:{})})});
             const result=await response.json();if(!response.ok)throw Error(result.code||result.detail||'Conversion unavailable');
             if(mode==='preview'){setPlan(result);setPath('/');setLoaded(false);}
-            else{setPlan(undefined);setMessage(`Live lists published at generation ${result.pointer.generation}. Draft design edits remain pending.`);}
+            else{
+                setPlan(undefined);setMessage(`Live lists published at generation ${result.pointer.generation}. Draft design edits remain pending.`);
+                // App initialization caches pages before the server-side conversion.
+                // Refresh only when no new browser edits appeared during publication.
+                if(!useBuilderStore.getState().hasUnsavedChanges)await useBuilderStore.getState().loadPagesFromDatabase(false,true);
+            }
         }catch(error){setMessage(error instanceof Error?error.message:'Conversion stopped. Check current state before retrying.');}
         finally{setBusy(false);}
     }

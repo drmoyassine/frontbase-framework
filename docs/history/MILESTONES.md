@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-16 pilot live views — generation21 active
+
+Homepage, Explore and Blog listing reads now use native filtered live views through the ordinary binding contract, preserving approved route membership and pending designs. Real PostgreSQL16/185/957 populations, invoker/role restrictions, public API projection/filter/paging and attack denials pass; fresh builder selectors/options verified. [Exact delivery receipt](../plans/frontbase-pilot-live-views-20261015.md). Source `65c360e` pushed; final teaser/cache corrections deployed in image `62205b17…` with workspace check/build and clean-image gates passing. Existing content/detail captures remain compatible; no generic snapshots, production cutover, release-scope or CF-22 change. Earlier task1-pending statements below are historical.
+
 ## 2026-10-15 live List Component consistency — staging verified
 
 Live table/view selection, shared query/filter semantics and actual browsing controls across Repeater, DataTable and Grid are committed/pushed (`8be7c4b`, `0d99995`) and deployed to isolated staging. Correction closes the saved-page-size/query-cap mismatch. Workspace check/build, 20 focused UI tests, API integration, 3/3 mutations and retained clean-image security/publication gates pass. [Deployment identity, actual/synthetic browser evidence and ordered backlog](../plans/frontbase-live-list-deployment-review-20261015.md). Generation20 and owner drafts preserved. Existing pilot catalog-to-live conversion and real configured-user acceptance remain open; generic snapshots excluded. Unrelated workflow/email work remains uncommitted. Release scope/CF-22 unchanged; older pending-deployment receipts superseded.

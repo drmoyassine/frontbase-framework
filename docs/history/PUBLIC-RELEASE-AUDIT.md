@@ -1,8 +1,10 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-15 pilot live-view conversion — claimed
+## 2026-10-16 pilot live-view conversion — complete on staging
 
 Owner authorizes task1 from the deployment review: migrate existing pilot catalog listings to filtered live views, including publication integration and staging acceptance. Own the bounded live-view/publication/conversion path and tests; preserve unrelated workflow/email diffs, approved content dispositions, URLs/media and pending owner design edits. Keep one live binding per effective version; no generic snapshot feature, broad editorial review, production cutover or CF-22 activation. Establish source filters and fail-closed owner/projection boundaries before changing existing pilot bindings.
+
+Live views are active at generation21/candidate `1f92306e…`; exact16/185/957 populations, native invoker/grant restrictions, anonymous public reads and tampered-query denials pass. Homepage pending design and `/test` Draft retained. Fresh builder exposes the actual live source/table/view/mappings and Hidden Filters. Source `65c360e` is pushed; teaser and admin-cache corrections are included in this delivery checkpoint. [Exact receipt and scope](../plans/frontbase-pilot-live-views-20261015.md). Final image `62205b17…` deployed successfully, workspace check/build and clean-image migration4/4 mutations/retained security/publication/capacity gates pass. Anonymous post-deployment SSR confirms exact active version21. No production/release claim.
 
 ## 2026-10-15 live-list checkpoint, deployment and delta review — complete
 

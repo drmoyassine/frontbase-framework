@@ -66,12 +66,15 @@ export function convertPilotLiveLists(layout:PageLayoutData,views:PilotLiveViews
             }
             const view=views[collection as keyof typeof roles];if(!view)throw Error('live_view_missing');
             const {directoryQuery,directoryControls,...props}=current.props??{},controls={...browsing,...(directoryControls as any??{})};
+            // Legacy homepage teasers never rendered directory browsing controls.
+            // Preserve their visible presentation; an explicitly authored standard controls group still wins.
+            const teaser=!!layout.root?.directoryLanding&&!old;
             const binding={componentId:node.id,dataSourceId:views.datasourceId,tableName:view.target_table,viewId:view.id,viewName:view.name,
-                pagination:old?.pagination??{enabled:controls.pagination??false,page:0,pageSize:legacy.params?.limit??12},
+                pagination:old?.pagination??{enabled:teaser?false:controls.pagination??false,page:0,pageSize:legacy.params?.limit??12},
                 sorting:old?.sorting??{enabled:true,column:'title',direction:'asc'},filtering:old?.filtering??{searchEnabled:false,filters:{}},
                 columnOrder:view.columns,columnOverrides:old?.columnOverrides??{},hiddenFilters:old?.hiddenFilters??[]};
             if(!binding.dataSourceId)throw Error('live_datasource_missing');
-            return {...current,type:'Repeater',binding:undefined,props:{...props,binding,controls:props.controls??{search:controls.search??false,searchColumn:'title',count:controls.recordCount??false,ordering:controls.sorting??false,paginationPosition:controls.paginationPosition??'bottom'}},children:mapItem(current.children??[])};
+            return {...current,type:'Repeater',binding:undefined,props:{...props,binding,controls:props.controls??{search:teaser?false:controls.search??false,searchColumn:'title',count:controls.recordCount??false,ordering:controls.sorting??false,paginationPosition:controls.paginationPosition??'bottom'}},children:mapItem(current.children??[])};
         };
         const converted=convert({...node,versions:undefined});
         return {...converted,...(node.versions?{versions:node.versions.map(version=>{
