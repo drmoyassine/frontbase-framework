@@ -37,7 +37,7 @@ export function useFilterOptions({
     enabled = true,
 }: UseFilterOptionsOptions) {
     return useQuery({
-        queryKey: ['filter-options', mode, tableName, filters.map((f) => f.column), cascadingFilters, searchQuery],
+        queryKey: ['filter-options', mode, dataSourceId, tableName, filters, cascadingFilters, searchQuery],
         queryFn: async () => {
             const options: Record<string, { label: string; value: string }[]> = {};
 

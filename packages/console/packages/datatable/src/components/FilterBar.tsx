@@ -51,7 +51,8 @@ export function FilterBar({
                         {filter.filterType === 'text' && (
                             <input
                                 type="text"
-                                value={value || ''}
+                                aria-label={label}
+                                value={value ?? ''}
                                 onChange={(e) => onFilterChange(filter.column, e.target.value)}
                                 placeholder={`Filter ${label}...`}
                                 className="px-2 py-1.5 rounded border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -60,7 +61,7 @@ export function FilterBar({
 
                         {filter.filterType === 'dropdown' && (
                             <SearchableSelect
-                                value={value || ''}
+                                value={value ?? ''}
                                 onChange={(v) => onFilterChange(filter.column, v)}
                                 options={options}
                                 placeholder="All"
@@ -76,6 +77,7 @@ export function FilterBar({
                             />
                         )}
 
+                        {filter.filterType === 'dateRange' && <div className="flex gap-2"><input type="date" aria-label={`${label} from`} value={value?.from??''} onChange={event=>onFilterChange(filter.column,{...value,from:event.target.value})}/><input type="date" aria-label={`${label} to`} value={value?.to??''} onChange={event=>onFilterChange(filter.column,{...value,to:event.target.value})}/></div>}
                         {filter.filterType === 'boolean' && (
                             <select
                                 value={value === undefined ? '' : String(value)}
@@ -96,7 +98,8 @@ export function FilterBar({
                         {filter.filterType === 'number' && (
                             <input
                                 type="number"
-                                value={value || ''}
+                                aria-label={label}
+                                value={value ?? ''}
                                 onChange={(e) =>
                                     onFilterChange(
                                         filter.column,

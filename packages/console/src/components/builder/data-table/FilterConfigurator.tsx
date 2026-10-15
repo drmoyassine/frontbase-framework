@@ -34,7 +34,7 @@ const FILTER_TYPE_LABELS: Record<string, string> = {
     text: 'Text',
     dropdown: 'Dropdown',
     multiselect: 'Multi-Select',
-    number: 'Number Range',
+    number: 'Number',
     dateRange: 'Date Range',
     boolean: 'Boolean'
 };

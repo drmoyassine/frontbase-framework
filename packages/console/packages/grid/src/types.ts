@@ -11,6 +11,7 @@ export interface GridProps {
     style?: React.CSSProperties;
     columns?: number;
     initialData?: any[];
+    initialTotal?:number;
     onConfigureBinding?: () => void;
     configureOverlay?: ReactNode;
     cardWrapper?: (item: any, content: ReactNode) => ReactNode;

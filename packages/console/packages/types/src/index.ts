@@ -45,6 +45,7 @@ export type {HiddenFilterCondition, FilterVariableReader} from './hiddenFilters'
  * baked by the Edge publisher (carrying a `dataRequest`) at publish time.
  */
 export interface ComponentDataBinding {
+    presentation?:import('./liveList').LiveListPresentation;
     viewId?:string;
     viewName?:string;
     source?: { kind: 'publication'; hash: string };
@@ -69,6 +70,8 @@ export interface ComponentDataBinding {
     };
     columnOverrides: Record<string, ColumnOverride>;
     columnOrder?: string[];
+    searchColumns?: string[];
+    frontendFilters?: {id:string;column:string;filterType: 'text'|'dropdown'|'multiselect'|'number'|'dateRange'|'boolean';label?:string;options?:string[];value?:any}[];
     hiddenFilters?: HiddenFilter[];
     _resolvedHiddenFilters?: any[];
     _pendingHiddenFilters?: any[];
@@ -262,5 +265,8 @@ export function resolveDateOperator(filter: { column: string; op?: string; value
  * patch-hydrate.mjs canvas fallbacks with a shared source-level gate.)
  */
 export function isBuilderCanvas(): boolean {
-    return document.querySelector('meta[name="chimera-rendered-by"]')?.content === 'builder';
+    return typeof document!=='undefined'&&document.querySelector<HTMLMetaElement>('meta[name="chimera-rendered-by"]')?.content === 'builder';
 }
+
+export {fetchLiveList,liveListBody,liveListIdentity,liveListSortAvailable} from './liveList';
+export type {LiveListBinding,LiveListQuery,LiveListPresentation} from './liveList';

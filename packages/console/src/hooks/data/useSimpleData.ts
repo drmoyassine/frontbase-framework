@@ -31,6 +31,7 @@ export interface HiddenFilter {
 }
 
 export interface ComponentDataBinding {
+    presentation?:import('@frontbase/types').LiveListPresentation;
     viewId?:string;
     viewName?:string;
     source?: { kind: 'publication'; hash: string };

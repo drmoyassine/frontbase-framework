@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 
 interface TableBodyProps {
     data: any[];
+    emptyText?:string;
     columns: string[];
     columnOverrides?: Record<string, ColumnOverride>;
     className?: string;
@@ -16,6 +17,7 @@ interface TableBodyProps {
  */
 export function TableBody({
     data,
+    emptyText,
     columns,
     columnOverrides,
     className,
@@ -25,10 +27,10 @@ export function TableBody({
             <tbody className={className}>
                 <tr>
                     <td
-                        colSpan={columns.length}
+                        colSpan={Math.max(1,columns.length)}
                         className="px-4 py-8 text-center text-muted-foreground"
                     >
-                        No data available
+                        {emptyText||'No data available'}
                     </td>
                 </tr>
             </tbody>

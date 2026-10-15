@@ -1,4 +1,8 @@
-import React, { useMemo } from 'react';
+import {liveListSortAvailable} from '@frontbase/types';
+import {useFilterOptions} from '../../datatable/src/hooks/useFilterOptions';
+import {FilterBar} from '../../datatable/src/components/FilterBar';
+import {Pagination} from '../../datatable/src/components/Pagination';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -17,30 +21,40 @@ export function Grid({
     style,
     columns = 3,
     initialData,
+    initialTotal,
     onConfigureBinding,
     configureOverlay,
     cardWrapper,
 }: GridProps) {
     // Cast to break cross-package csstype version incompatibility (see InfoList).
     const safeStyle = style as React.CSSProperties | undefined;
-    const {
-        data,
-        isLoading: loading,
-        error
-    } = useGridQuery({
-        mode,
-        binding: binding || {
-            componentId,
-            dataSourceId: '',
-            tableName: '',
-            pagination: { enabled: false, pageSize: 6, page: 0 },
-            sorting: { enabled: false },
-            filtering: { searchEnabled: false, filters: {} },
-            columnOverrides: {},
-        },
-        initialData,
-        enabled: !!binding?.tableName,
-    });
+    const [page,setPage]=useState(binding?.pagination?.page??0);
+    const [search,setSearch]=useState('');
+    const [sortColumn,setSortColumn]=useState(binding?.sorting?.column??'');
+    const [direction,setDirection]=useState<'asc'|'desc'>(binding?.sorting?.direction??'asc');
+    const [filters,setFilters]=useState<Record<string,any>>({});
+    const sourceKey=JSON.stringify([binding?.dataSourceId,binding?.tableName,binding?.viewId,binding?.dataRequest,binding?.sorting,binding?.pagination?.pageSize]);
+    const previousSource=useRef(sourceKey);
+    useEffect(()=>{if(previousSource.current===sourceKey)return;previousSource.current=sourceKey;setPage(0);setSearch('');setFilters({});setSortColumn(binding?.sorting?.column??'');setDirection(binding?.sorting?.direction??'asc');},[sourceKey]);
+    const queryBinding=useMemo(()=>({...binding,componentId,dataSourceId:binding?.dataSourceId??'',tableName:binding?.tableName??'',columnOverrides:binding?.columnOverrides??{},pagination:{enabled:binding?.pagination?.enabled??true,pageSize:binding?.pagination?.pageSize??12,page},sorting:{...binding?.sorting,enabled:binding?.sorting?.enabled??false,column:sortColumn,direction},filtering:{...binding?.filtering,searchEnabled:binding?.filtering?.searchEnabled??false,filters:{...binding?.filtering?.filters,...filters,search}}}),[binding,componentId,page,sortColumn,direction,filters,search]);
+    const {data,isLoading:loading,error,totalCount,refetch}=useGridQuery({mode,binding:queryBinding,initialData,initialTotal,enabled:!!binding?.tableName});
+    const {data:fetchedOptions={}}=useFilterOptions({mode,filters:binding?.frontendFilters??[],tableName:binding?.tableName,dataSourceId:binding?.dataSourceId,cascadingFilters:filters,searchQuery:search,enabled:!!binding?.tableName});
+    const sortingAvailable=!binding||liveListSortAvailable(binding,search);
+    const position=binding?.presentation?.paginationPosition??'bottom';
+    const pagination=binding?.pagination?.enabled?<Pagination currentPage={page} pageSize={queryBinding.pagination.pageSize} totalCount={totalCount} loadedCount={data?.length??0} showCount={binding?.presentation?.count!==false} loading={loading} onPageChange={setPage}/>:null;
+    const renderShell=(content:React.ReactNode)=><div className="space-y-4" aria-busy={loading}>
+        <div className="flex flex-wrap gap-3 items-end">
+            {binding?.filtering?.searchEnabled&&<label className="text-sm">{binding?.presentation?.searchLabel||'Search records'}<input type="search" aria-label={binding?.presentation?.searchLabel||'Search records'} placeholder={binding?.presentation?.searchPlaceholder||'Search records'} className="block rounded border bg-background p-2" value={search} onChange={event=>{setSearch(event.target.value);setPage(0);}}/></label>}
+            {binding?.sorting?.enabled&&<><label className="text-sm">Order by<select disabled={!sortingAvailable} aria-label="Order by" className="block rounded border bg-background p-2" value={sortColumn} onChange={event=>{setSortColumn(event.target.value);setPage(0);}}><option value="">Default</option>{(binding.columnOrder?.length?binding.columnOrder:Object.keys(data?.[0]??{})).map(column=><option key={column} value={column}>{binding.columnOverrides?.[column]?.displayName??column}</option>)}</select></label><label className="text-sm">Direction<select disabled={!sortingAvailable} aria-label="Direction" className="block rounded border bg-background p-2" value={direction} onChange={event=>{setDirection(event.target.value as 'asc'|'desc');setPage(0);}}><option value="asc">Ascending</option><option value="desc">Descending</option></select></label></>}
+            {binding?.presentation?.refresh!==false&&<button type="button" disabled={loading} onClick={()=>refetch()}>Refresh data</button>}
+        </div>
+        {!sortingAvailable&&<p role="status">This source uses its search result order. Clear search to choose sorting.</p>}
+        {!!binding?.frontendFilters?.length&&<FilterBar filters={binding.frontendFilters} filterValues={filters} fetchedOptions={fetchedOptions} onFilterChange={(column,value)=>{setFilters(old=>({...old,[column]:value}));setPage(0);}} onClearAll={()=>{setFilters({});setPage(0);}}/>}
+        {binding?.presentation?.count!==false&&!binding?.pagination?.enabled&&<p role="status">{totalCount===undefined?`${data?.length??0} records on this page`:`${totalCount} records`}</p>}
+        {(position==='top'||position==='both')&&pagination}
+        {content}
+        {(position==='bottom'||position==='both')&&pagination}
+    </div>;
 
     const cardClass = "rounded-lg border bg-card text-card-foreground shadow-sm";
     const headerClass = "pb-3 p-6";
@@ -78,7 +92,8 @@ export function Grid({
 
     // 2. Loading State (Matches SSR renderDataGrid exactly)
     if (loading && !data) {
-        return (
+        if(binding.presentation?.loadingText)return renderShell(<p role="status">{binding.presentation.loadingText}</p>);
+        return renderShell(
             <div className={cn(gridLayoutClass, className)} style={safeStyle}>
                 {Array.from({ length: columns || 3 }).map((_, index) => (
                     <div key={index} className={cn(cardClass)}>
@@ -99,12 +114,12 @@ export function Grid({
 
     // 3. Error State
     if (error) {
-        return (
+        return renderShell(
             <div className={cn(cardClass, className)} style={safeStyle}>
                 <div className="p-6 text-center space-y-4">
-                    <p className="text-destructive text-sm font-medium">Error loading data: {error instanceof Error ? error.message : String(error)}</p>
+                    <p className="text-destructive text-sm font-medium">{binding?.presentation?.errorText||'Failed to load data. Check the binding and access configuration.'}</p>
                     <button
-                        onClick={() => window.location.reload()}
+                        onClick={() => refetch()}
                         className="px-4 py-2 bg-destructive text-destructive-foreground text-sm font-medium rounded-md hover:bg-destructive/90 transition-colors"
                     >
                         Retry
@@ -115,10 +130,10 @@ export function Grid({
     }
 
     if (!data || data.length === 0) {
-        return (
+        return renderShell(
             <div className={cn(cardClass, className)} style={safeStyle}>
                 <div className="p-6 text-center text-muted-foreground text-sm">
-                    No data available
+                    {binding?.presentation?.emptyText||'No data available'}
                 </div>
             </div>
         );
@@ -212,7 +227,7 @@ export function Grid({
     const primaryColumn = contentColumns[0];
     const secondaryColumns = contentColumns.slice(1);
 
-    return (
+    return renderShell(
         <div className={cn(gridLayoutClass, className)} style={safeStyle}>
             {data.map((item: any, index: number) => {
                 const cardContent = (

@@ -5,7 +5,9 @@ import { cn } from '../lib/utils';
 interface PaginationProps {
     currentPage: number;
     pageSize: number;
-    totalCount: number;
+    totalCount?: number;
+    loadedCount?:number;
+    showCount?:boolean;
     loading?: boolean;
     onPageChange: (page: number) => void;
     className?: string;
@@ -18,13 +20,15 @@ export function Pagination({
     currentPage,
     pageSize,
     totalCount,
+    loadedCount=0,
+    showCount=true,
     loading = false,
     onPageChange,
     className,
 }: PaginationProps) {
-    const totalPages = Math.ceil(totalCount / pageSize);
-    const start = totalCount === 0 ? 0 : currentPage * pageSize + 1;
-    const end = Math.min((currentPage + 1) * pageSize, totalCount);
+    const totalPages = totalCount===undefined?undefined:Math.ceil(totalCount / pageSize);
+    const start = totalCount === 0 || totalCount===undefined&&!loadedCount ? 0 : currentPage * pageSize + 1;
+    const end = totalCount===undefined?currentPage*pageSize+loadedCount:Math.min((currentPage + 1) * pageSize, totalCount);
 
     return (
         <div
@@ -33,8 +37,8 @@ export function Pagination({
                 className
             )}
         >
-            <div className="text-sm text-muted-foreground">
-                {totalCount > 0 ? (
+            <div className="text-sm text-muted-foreground" hidden={!showCount}>
+                {totalCount === undefined ? <span>{`${loadedCount} records on this page`}</span> : totalCount > 0 ? (
                     <>
                         {/* Mobile: Short format */}
                         <span className="md:hidden">{`${start}-${end} of ${totalCount}`}</span>
@@ -63,12 +67,12 @@ export function Pagination({
                 </button>
 
                 <span className="text-sm px-2">
-                    Page {currentPage + 1} of {Math.max(1, totalPages)}
+                    Page {currentPage + 1}{totalPages===undefined?'':` of ${Math.max(1,totalPages)}`}
                 </span>
 
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
-                    disabled={currentPage >= totalPages - 1 || loading}
+                    disabled={(totalPages===undefined?loadedCount<pageSize:currentPage >= totalPages - 1) || loading}
                     className={cn(
                         'p-2 rounded-md border hover:bg-muted',
                         'disabled:opacity-50 disabled:cursor-not-allowed',

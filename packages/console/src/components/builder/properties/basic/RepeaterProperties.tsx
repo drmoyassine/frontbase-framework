@@ -1,3 +1,5 @@
+import {FilterConfigurator} from '@/components/builder/data-table/FilterConfigurator';
+import {LiveSourceSelector,updateAuthoredBinding} from '@/components/builder/data-binding/LiveSourceSelector';
 /**
  * Repeater Properties Panel
  * Configuration UI for the Repeater component.
@@ -8,14 +10,11 @@
  * column configurator.
  */
 
-import React, { useState } from 'react';
-import {useQuery} from '@tanstack/react-query';
+import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DataSourceSelector } from '@/components/data-binding/DataSourceSelector';
-import { TableSelector } from '@/components/data-binding/TableSelector';
 import { DefaultSortColumnSelector } from '@/components/builder/data-table/DataTablePropertiesPanel';
 import { useBindingColumns } from '@/hooks/data/useBindingColumns';
 import { HiddenFiltersEditor } from '@/components/builder/data-binding/HiddenFiltersEditor';
@@ -54,7 +53,6 @@ export const RepeaterProperties: React.FC<RepeaterPropertiesProps> = ({
     };
 
     const effectiveBinding = binding || defaultBinding;
-    const [sourceError,setSourceError]=useState('');
 
     const updateBinding = (updates: Partial<ComponentDataBinding>) => {
         const {dataRequest,_resolvedHiddenFilters,_pendingHiddenFilters,...authored}=effectiveBinding;
@@ -63,58 +61,13 @@ export const RepeaterProperties: React.FC<RepeaterPropertiesProps> = ({
 
     const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId);
     const queryColumns=effectiveBinding.source?.kind==='publication'?columns.filter(column=>['title','id','parentId'].includes(column.name)):columns;
-    const savedViews=useQuery({queryKey:['list-source-views',effectiveBinding.dataSourceId],enabled:!!effectiveBinding.dataSourceId&&effectiveBinding.source?.kind!=='publication',queryFn:async()=>{
-        const response=await fetch(`/api/sync/datasources/${encodeURIComponent(effectiveBinding.dataSourceId)}/views/`,{credentials:'include'});if(!response.ok)throw Error('Saved views unavailable');return response.json() as Promise<{id:string;name:string;target_table:string;column_order?:string[]}[]>;
-    }});
     const controls = props.controls ?? {};
     const updateControls = (patch: Record<string, unknown>) => updateComponentProp('controls', { ...controls, ...patch });
 
     if (activeTab === 'general') {
         return (
             <div className="space-y-4">
-                <label className="block text-sm">Data mode<select aria-label="Data mode" className="mt-1 w-full rounded border bg-background p-2" value={effectiveBinding.source?.kind==='publication'?'snapshot':'live'} onChange={async event=>{
-                    setSourceError('');
-                    if(event.target.value==='live'){const {source,...rest}=effectiveBinding;onBindingUpdate({...rest,dataSourceId:'',tableName:'',hiddenFilters:[],columnOrder:[]});return;}
-                    try{const response=await fetch('/api/project/site-configuration/publication/state/',{credentials:'include'});if(!response.ok)throw Error();const result=await response.json();if(!/^[a-f0-9]{64}$/.test(result.pointer?.hash))throw Error();onBindingUpdate({...defaultBinding,dataSourceId:'frontbase:publication',tableName:'institutions',source:{kind:'publication',hash:result.pointer.hash},columnOrder:['title','id','parentId','summary','cover','logo','originalPath']});}
-                    catch{setSourceError('A reviewed published snapshot is required. Existing binding is retained.');}
-                }}><option value="live">Live data</option><option value="snapshot">Published snapshot</option></select></label>
-                {sourceError&&<p role="alert" className="text-xs text-destructive">{sourceError}</p>}
-                {effectiveBinding.source?.kind==='publication'?<>
-                    <label className="block text-sm">Data source<input aria-label="Data source" className="mt-1 w-full rounded border bg-background p-2" readOnly value="Reviewed publication snapshot" /></label>
-                    <label className="block text-sm">Table / collection<select aria-label="Table / collection" className="mt-1 w-full rounded border bg-background p-2" value={effectiveBinding.tableName} onChange={event=>updateBinding({tableName:event.target.value,hiddenFilters:[],sorting:{enabled:true,column:'title',direction:'asc'}})}>{['institutions','programs','articles'].map(table=><option key={table}>{table}</option>)}</select></label>
-                    <p className="break-all text-xs text-muted-foreground">Pinned snapshot: {effectiveBinding.source.hash}. Search/filter/sort capabilities are limited to its published index.</p>
-                </>:<>
-                <div>
-                    <DataSourceSelector
-                        autoSelect={false}
-                        value={effectiveBinding.dataSourceId}
-                        onValueChange={(value) => { updateBinding({ dataSourceId: value, tableName: '', viewId:undefined,viewName:undefined,columnOrder: [], columnOverrides: {}, hiddenFilters: [], sorting: {enabled:false}, filtering:{searchEnabled:false,filters:{}} }); updateComponentProp('controls', {}); }}
-                    />
-                </div>
-                <div>
-                    <TableSelector
-                        value={effectiveBinding.tableName}
-                        onValueChange={(value) => {
-                            updateBinding({
-                                tableName: value,
-                                columnOverrides: {},
-                                columnOrder: [],
-                                sorting: { enabled: false, column: undefined, direction: 'asc' },
-                                hiddenFilters: [],
-                                filtering: { searchEnabled: false, filters: {} },
-                                viewId:undefined,viewName:undefined,
-                            });
-                        }}
-                        dataSourceId={effectiveBinding.dataSourceId}
-                    />
-                </div>
-                <label className="block text-sm">Saved view<select aria-label="Saved view" className="mt-1 w-full rounded border bg-background p-2" value={effectiveBinding.viewId??''} onChange={event=>{
-                    const view=savedViews.data?.find(view=>view.id===event.target.value);
-                    updateBinding({viewId:view?.id,viewName:view?.name,...(view?{tableName:view.target_table,columnOrder:view.column_order??[],hiddenFilters:[],sorting:{enabled:false},filtering:{searchEnabled:false,filters:{}}}:{})});
-                }}><option value="">Use table directly</option>{savedViews.data?.map(view=><option key={view.id} value={view.id}>{view.name}</option>)}</select></label>
-                {savedViews.error&&<p role="alert" className="text-xs text-destructive">Saved views could not be loaded.</p>}
-                <a className="text-xs underline" href="/frontbase-admin/data-studio/datasources">Configure saved views in Data</a>
-                </>}
+                {effectiveBinding.source?.kind==='publication'?<div className="space-y-3 rounded border p-3"><p className="text-sm">This existing component uses the published catalog.</p><p className="text-xs text-muted-foreground">{effectiveBinding.tableName}</p><button type="button" onClick={()=>onBindingUpdate({...defaultBinding})}>Switch to live data</button></div>:<LiveSourceSelector binding={effectiveBinding} onChange={onBindingUpdate} onSourceChange={()=>updateComponentProp('controls',{})}/>}
 
                 {/* Template hint */}
                 <div className="pt-4 border-t">
@@ -195,7 +148,7 @@ export const RepeaterProperties: React.FC<RepeaterPropertiesProps> = ({
                     <div className="space-y-6">
                         <fieldset disabled={!canEditProperty('controls')} className="space-y-3 rounded border p-4" aria-label="Visitor controls">
                             <Label className="font-medium">Visitor controls</Label>
-                            {(['count','ordering','search'] as const).map(key=><label key={key} className="flex items-center justify-between text-sm">{{count:'Record count',ordering:'Visitor ordering',search:'Search'}[key]}<input type="checkbox" aria-label={{count:'Record count',ordering:'Visitor ordering',search:'Search'}[key]} checked={!!controls[key]} onChange={event=>{updateControls({[key]:event.target.checked});if(key==='ordering'&&event.target.checked&&!binding.columnOrder?.length)updateBinding({columnOrder:columns.map(column=>column.name)});}} /></label>)}
+                            {(['count','ordering','search','refresh'] as const).map(key=><label key={key} className="flex items-center justify-between text-sm">{{count:'Record count',ordering:'Visitor ordering',search:'Search',refresh:'Refresh button'}[key]}<input type="checkbox" aria-label={{count:'Record count',ordering:'Visitor ordering',search:'Search',refresh:'Refresh button'}[key]} checked={!!controls[key]} onChange={event=>{updateControls({[key]:event.target.checked});if(key==='ordering'&&event.target.checked&&!binding.columnOrder?.length)updateBinding({columnOrder:columns.map(column=>column.name)});}} /></label>)}
                             {controls.search && <>
                                 <label className="block text-sm">Search column<select aria-label="Search column" className="mt-1 w-full rounded border bg-background p-2" value={controls.searchColumn || ''} onChange={event=>updateControls({searchColumn:event.target.value})}><option value="">Select a column</option>{queryColumns.filter(column=>effectiveBinding.source?.kind!=='publication'||column.name==='title').map(column=><option key={column.name}>{column.name}</option>)}</select></label>
                                 <label className="block text-sm">Search label<Input value={controls.searchLabel ?? 'Search'} onChange={event=>updateControls({searchLabel:event.target.value})} /></label>
@@ -310,6 +263,7 @@ export const RepeaterProperties: React.FC<RepeaterPropertiesProps> = ({
                             )}
                         </div>
 
+                        {binding.source?.kind!=='publication'&&<section className="space-y-3 rounded border p-4"><Label>Visible filters</Label><FilterConfigurator tableName={binding.tableName} dataSourceId={binding.dataSourceId} columnOrder={binding.columnOrder} filters={binding.frontendFilters??[]} onFiltersChange={frontendFilters=>updateBinding({frontendFilters})}/></section>}
                         {/* Hidden Filters */}
                         <HiddenFiltersEditor
                             tableName={binding.tableName}

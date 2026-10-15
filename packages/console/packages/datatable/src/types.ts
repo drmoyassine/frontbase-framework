@@ -70,6 +70,10 @@ export interface QueryConfig {
 // =============================================================================
 
 export interface DataTableBinding {
+    presentation?:import('@frontbase/types').LiveListPresentation;
+    viewId?:string;
+    viewName?:string;
+    _blockVersionId?:string;
     // Data source
     tableName?: string;
     dataSourceId?: string;

@@ -1,10 +1,10 @@
+import {ListPresentationOptions} from '@/components/builder/data-binding/ListPresentationOptions';
+import {LiveSourceSelector,updateAuthoredBinding} from '@/components/builder/data-binding/LiveSourceSelector';
 import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DataSourceSelector } from '@/components/data-binding/DataSourceSelector';
-import { TableSelector } from '@/components/data-binding/TableSelector';
 import { CompactColumnConfigurator } from './CompactColumnConfigurator';
 import { FilterConfigurator } from './FilterConfigurator';
 import { ComponentDataBinding } from '@/hooks/data/useSimpleData';
@@ -443,7 +443,7 @@ export const DataTablePropertiesPanel: React.FC<DataTablePropertiesPanelProps> =
     const effectiveBinding = binding || defaultBinding;
 
     const updateBinding = (updates: Partial<ComponentDataBinding>) => {
-        onBindingUpdate({ ...effectiveBinding, ...updates });
+        onBindingUpdate(updateAuthoredBinding(effectiveBinding,updates));
     };
 
     const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId);
@@ -451,30 +451,7 @@ export const DataTablePropertiesPanel: React.FC<DataTablePropertiesPanelProps> =
     if (activeTab === 'general') {
         return (
             <div className="space-y-4">
-                <div>
-                    <DataSourceSelector
-                        value={effectiveBinding.dataSourceId}
-                        onValueChange={(value) => updateBinding({ dataSourceId: value })}
-                    />
-                </div>
-
-                <div>
-                    <TableSelector
-                        value={effectiveBinding.tableName}
-                        onValueChange={(value) => {
-                            // When table changes, reset all schema-dependent fields
-                            updateBinding({
-                                tableName: value,
-                                columnOverrides: {},       // Clear column display settings
-                                columnOrder: [],           // Clear column order
-                                searchColumns: undefined,  // Clear search column selection
-                                frontendFilters: [],       // Clear configured filters
-                                sorting: { enabled: true, column: undefined, direction: 'asc' }, // Reset sort
-                            });
-                        }}
-                        dataSourceId={effectiveBinding.dataSourceId}
-                    />
-                </div>
+                <LiveSourceSelector binding={effectiveBinding} onChange={onBindingUpdate}/>
 
                 {effectiveBinding.tableName && binding && (
                     <div className="pt-4 border-t">
@@ -504,6 +481,7 @@ export const DataTablePropertiesPanel: React.FC<DataTablePropertiesPanelProps> =
             <div className="space-y-4">
                 {binding ? (
                     <div className="space-y-6">
+                        <ListPresentationOptions binding={binding} onChange={updateBinding}/>
                         {/* Pagination - FIRST */}
                         <div className="space-y-3 p-4 border rounded-lg">
                             <div className="flex items-center justify-between">

@@ -1,3 +1,5 @@
+import {useFilterOptions} from '../../../../console/packages/datatable/src/hooks/useFilterOptions';
+import {FilterBar} from '../../../../console/packages/datatable/src/components/FilterBar';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useGridQuery } from '@frontbase/grid';
 import { RecordContextProvider } from './RecordContext';
@@ -22,7 +24,7 @@ export interface RepeaterProps {
     /** Cap rendered rows on the published page. */
     maxRows?: number;
     gap?: number;
-    controls?: { count?: boolean; ordering?: boolean; search?: boolean; searchColumn?: string; searchLabel?: string; searchPlaceholder?: string; paginationPosition?: 'top'|'bottom'|'both'; paginationStyle?: 'previous-next'|'numbered'; filters?: {id:string;column:string;label:string;operator?:'eq'|'contains';type?:'text'|'number'}[] };
+    controls?: { refresh?:boolean; count?: boolean; ordering?: boolean; search?: boolean; searchColumn?: string; searchLabel?: string; searchPlaceholder?: string; paginationPosition?: 'top'|'bottom'|'both'; paginationStyle?: 'previous-next'|'numbered'; filters?: {id:string;column:string;label:string;operator?:'eq'|'contains';type?:'text'|'number'}[] };
     loadingText?: string;
     emptyText?: string;
     errorText?: string;
@@ -66,8 +68,8 @@ export function Repeater({
     const [page, setPage] = useState(_initialQuery?.page??0), [search, setSearch] = useState(_initialQuery?.search??'');
     const [sortColumn, setSortColumn] = useState(binding?.sorting?.column ?? '');
     const [direction, setDirection] = useState<'asc'|'desc'>(binding?.sorting?.direction ?? 'asc');
-    const [filterValues, setFilterValues] = useState<Record<string, string>>({});
-    const sourceKey = JSON.stringify([binding?.dataSourceId, binding?.tableName, binding?.dataRequest]);
+    const [filterValues, setFilterValues] = useState<Record<string, any>>({});
+    const sourceKey = JSON.stringify([binding?.dataSourceId, binding?.tableName, binding?.viewId, binding?.dataRequest]);
     const previousSource=useRef(sourceKey);
     useEffect(() => { if(previousSource.current===sourceKey)return;previousSource.current=sourceKey;setPage(0); setSearch(''); setFilterValues({}); setSortColumn(binding?.sorting?.column ?? ''); setDirection(binding?.sorting?.direction ?? 'asc'); }, [sourceKey]);
     const fallbackBinding = {
@@ -85,6 +87,7 @@ export function Repeater({
             ...(controls.filters ?? []).filter(filter => filter.column && filterValues[filter.id] !== undefined && filterValues[filter.id] !== '').map(filter => ({ id:filter.id,column:filter.column,operator:filter.operator ?? 'eq',value:filter.type === 'number' ? Number(filterValues[filter.id]) : filterValues[filter.id] }))];
         return { ...(binding || fallbackBinding),
         _blockVersionId,
+        filtering:{...binding?.filtering,filters:{...binding?.filtering?.filters,...Object.fromEntries((binding?.frontendFilters??[]).map((filter:any)=>[filter.column,filterValues[filter.column]]))}},
         pagination: { ...binding?.pagination, page, pageSize: Math.min(100, Math.max(1, binding?.pagination?.pageSize || 12)) },
         sorting: { ...binding?.sorting, column: sortColumn, direction },
         hiddenFilters: [...binding?.hiddenFilters ?? [],...interactive],
@@ -92,7 +95,7 @@ export function Repeater({
         // controls are new literal predicates and must join that resolved set.
         ...(binding?._resolvedHiddenFilters!==undefined?{_resolvedHiddenFilters:[...binding._resolvedHiddenFilters,...interactive.map(filter=>({column:filter.column,op:filter.operator,value:filter.value}))]}:{})
     };}, [binding,page,search,sortColumn,direction,controls.searchColumn,controls.filters,filterValues,_blockVersionId]);
-    const { data, isLoading, error, totalCount } = useGridQuery({
+    const { data, isLoading, error, totalCount, refetch } = useGridQuery({
         mode: 'edge',
         binding: queryBinding,
         enabled: !!binding?.tableName,
@@ -100,6 +103,7 @@ export function Repeater({
         initialTotal,
     });
 
+    const {data:fetchedOptions={}}=useFilterOptions({mode:'edge',filters:binding?.frontendFilters??[],tableName:binding?.tableName,dataSourceId:binding?.dataSourceId,cascadingFilters:filterValues,searchQuery:search,enabled:!!binding?.tableName});
     if (!binding?.tableName) {
         return <div className="rounded-lg border bg-muted/20 p-6 text-center text-sm text-muted-foreground">Repeater — no data source configured.</div>;
     }
@@ -119,10 +123,12 @@ export function Repeater({
     return (
         <div className="fb-repeater space-y-4" style={{gridColumn:'1 / -1',minWidth:0,width:'100%'}} aria-busy={isLoading}>
             <div className="flex flex-wrap items-end gap-3">
+                {controls.refresh&&<button type="button" disabled={isLoading} onClick={()=>refetch()}>Refresh data</button>}
                 {(controls.search ?? binding?.filtering?.searchEnabled) && controls.searchColumn && <label className="flex flex-col gap-1 text-sm">{controls.searchLabel || 'Search'}<input type="search" className="rounded border bg-background p-2" placeholder={controls.searchPlaceholder || 'Search records'} value={search} onChange={event=>{setSearch(event.target.value);setPage(0);}} /></label>}
                 {controls.ordering && <><label className="flex flex-col gap-1 text-sm">Order by<select value={sortColumn} className="rounded border bg-background p-2" onChange={event=>{setSortColumn(event.target.value);setPage(0);}}><option value="">Default</option>{(binding?.source?.kind==='publication'?['title','id']:binding?.columnOrder || []).map((column:string)=><option key={column} value={column}>{binding?.columnOverrides?.[column]?.displayName || column}</option>)}</select></label><label className="flex flex-col gap-1 text-sm">Direction<select className="rounded border bg-background p-2" value={direction} onChange={event=>{setDirection(event.target.value as 'asc'|'desc');setPage(0);}}><option value="asc">Ascending</option><option value="desc">Descending</option></select></label></>}
                 {controls.filters?.map(filter=><label key={filter.id} className="flex flex-col gap-1 text-sm">{filter.label || filter.column}<input type={filter.type === 'number' ? 'number' : 'text'} value={filterValues[filter.id] ?? ''} className="rounded border bg-background p-2" onChange={event=>{setFilterValues(values=>({...values,[filter.id]:event.target.value}));setPage(0);}} /></label>)}
             </div>
+            {!!binding?.frontendFilters?.length&&<FilterBar filters={binding.frontendFilters} filterValues={filterValues} fetchedOptions={fetchedOptions} onFilterChange={(column,value)=>{setFilterValues(old=>({...old,[column]:value}));setPage(0);}} onClearAll={()=>{setFilterValues({});setPage(0);}}/>}
             {controls.count && <p role="status" className="text-sm">{totalCount !== undefined ? `${totalCount} records` : `${rows.length} records on this page`}</p>}
             {(position === 'top' || position === 'both') && pagination}
             <style>{'.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-mobile),minmax(0,1fr))}@media(min-width:768px){.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-tablet),minmax(0,1fr))}}@media(min-width:1024px){.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-desktop),minmax(0,1fr))}}'}</style>

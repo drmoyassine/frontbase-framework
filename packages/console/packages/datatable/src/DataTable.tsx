@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import {liveListSortAvailable} from '@frontbase/types';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import type { DataTableProps, FilterConfig } from './types';
 import { useDataTableData } from './hooks/useDataTableData';
@@ -38,7 +39,12 @@ export function DataTable({
 
     const pageSize = binding?.pagination?.pageSize || 20;
     const paginationEnabled = binding?.pagination?.enabled !== false;
-    const sortingEnabled = binding?.sorting?.enabled !== false;
+    const sortingAvailable=!binding||liveListSortAvailable(binding,debouncedSearch);
+    const sortingEnabled = binding?.sorting?.enabled !== false&&sortingAvailable;
+
+    const sourceKey=JSON.stringify([binding?.dataSourceId,binding?.tableName,binding?.viewId,binding?.dataRequest,binding?.sorting,binding?.pagination?.pageSize]);
+    const previousSource=useRef(sourceKey);
+    useEffect(()=>{if(previousSource.current===sourceKey)return;previousSource.current=sourceKey;setCurrentPage(0);setSearchQuery('');setDebouncedSearch('');setFilterValues({});setSortColumn(binding?.sorting?.column||null);setSortDirection(binding?.sorting?.direction||'asc');},[sourceKey]);
 
     // Debounce search
     React.useEffect(() => {
@@ -56,6 +62,7 @@ export function DataTable({
         data: queryResult,
         isLoading,
         error,
+        refetch,
     } = useDataTableData({
         mode,
         binding,
@@ -66,11 +73,12 @@ export function DataTable({
         filters: filterValues,
         searchQuery: debouncedSearch,
         initialData: initialData.length > 0 ? initialData : undefined,
+        initialTotal,
         enabled: !!binding?.tableName,
     });
 
     const data = queryResult?.data || [];
-    const totalCount = queryResult?.total || initialTotal || 0;
+    const totalCount = queryResult?.total;
 
     // Filter options fetching
     const { data: fetchedOptions = {} } = useFilterOptions({
@@ -152,29 +160,18 @@ export function DataTable({
         );
     }
 
-    // Error state
-    if (error) {
-        return (
-            <div className={cn('rounded-md border border-red-200 bg-red-50 p-4', className)} style={style as any}>
-                <div className="text-red-700">
-                    {error instanceof Error ? error.message : 'Failed to load data'}
-                </div>
-            </div>
-        );
-    }
-
-    // Initial loading state
-    if (isLoading && data.length === 0) {
-        return (
-            <div className={cn('rounded-md border', className)} style={style as any}>
-                <div className="p-8 text-center text-muted-foreground">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                    <div>Loading data...</div>
-                </div>
-            </div>
-        );
-    }
-
+    const pagination=<>            {paginationEnabled && (
+                <Pagination
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    totalCount={totalCount}
+                    loadedCount={data.length}
+                    showCount={binding?.presentation?.count!==false}
+                    loading={isLoading}
+                    onPageChange={handlePageChange}
+                />
+            )}</>;
+    const position=binding?.presentation?.paginationPosition??'bottom';
     return (
         <div className={cn('space-y-4', className)} style={style as any}>
             {/* Title */}
@@ -182,13 +179,15 @@ export function DataTable({
                 <h3 className="text-lg font-semibold">{title}</h3>
             )}
 
+            {binding?.presentation?.refresh!==false&&<button type="button" disabled={isLoading} onClick={()=>refetch()}>Refresh data</button>}
             {/* Search bar */}
             {binding?.filtering?.searchEnabled && (
                 <div className="relative max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input
                         type="text"
-                        placeholder="Search..."
+                        aria-label={binding?.presentation?.searchLabel||'Search records'}
+                        placeholder={binding?.presentation?.searchPlaceholder||'Search...'}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -199,6 +198,7 @@ export function DataTable({
                 </div>
             )}
 
+            {!sortingAvailable&&<p role="status">This source uses its search result order. Clear search to choose sorting.</p>}
             {/* Filter bar */}
             {binding?.frontendFilters && binding.frontendFilters.length > 0 && (
                 <FilterBar
@@ -210,8 +210,12 @@ export function DataTable({
                 />
             )}
 
+            {!paginationEnabled&&binding?.presentation?.count!==false&&<p role="status">{totalCount===undefined?`${data.length} records on this page`:`${totalCount} records`}</p>}
+            {(position==='top'||position==='both')&&pagination}
+            {error&&<div role="alert" className="rounded border p-4">{binding?.presentation?.errorText||'Failed to load data. Check the binding and access configuration.'}</div>}
+            {isLoading&&<p role="status">{binding?.presentation?.loadingText||'Loading data...'}</p>}
             {/* Table */}
-            <div className="rounded-md border overflow-auto relative">
+            {!error&&!isLoading&&<div className="rounded-md border overflow-auto relative">
                 {isLoading && data.length > 0 && (
                     <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
                         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -228,23 +232,14 @@ export function DataTable({
                         headerCellWrapper={headerCellWrapper as any}
                     />
                     <TableBody
+                        emptyText={binding?.presentation?.emptyText}
                         data={data}
                         columns={columns}
                         columnOverrides={binding?.columnOverrides}
                     />
                 </table>
-            </div>
-
-            {/* Pagination */}
-            {paginationEnabled && (
-                <Pagination
-                    currentPage={currentPage}
-                    pageSize={pageSize}
-                    totalCount={totalCount}
-                    loading={isLoading}
-                    onPageChange={handlePageChange}
-                />
-            )}
+            </div>}
+            {(position==='bottom'||position==='both')&&pagination}
         </div>
     );
 }

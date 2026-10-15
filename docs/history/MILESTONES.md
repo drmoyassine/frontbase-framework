@@ -1,5 +1,13 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-15 live List Component consistency — local delivery, staging pending
+
+Owner excludes generic frozen snapshots. Shared live table/view selection and execution now serve Repeater, DataTable and Grid; actual Grid browsing controls, shared filtering/presentation options, accurate counts and request/cache/initial-page repairs are locally verified. Workspace check/build, 18 UI tests, component type checks, SQLite/API integration and 3/3 in-memory mutations pass. [Source-package receipt, provider limits and next deployment task](../plans/frontbase-live-list-consistency-20261015.md). EasyPanel access was refused by automatic approval review's usage limit; no remote deployment or new browser acceptance is claimed. Previous staging generation20 and owner drafts preserved; changes uncommitted. Earlier generic snapshot backlog suggestions are superseded. Release scope/CF-22 unchanged.
+
+## 2026-10-15 source checkpoint and next work — plan updated
+
+Verified delivery is committed/pushed as `8230f94`, with audit receipt `3ad32fa`; earlier uncommitted statements below are historical. The [updated work plan](../plans/frontbase-block-versions-20261015.md#updated-work-plan--2026-10-15) separates completed Pages/Menus/appearance/conditions/versions/Repeater/settings work from remaining datasource snapshots, List Component consistency, real configured-user acceptance, generic discovery/lead reuse and pilot launch readiness. Documentation-only reconciliation; no new shipped capability, production action or public-release scope change. This plan update remains uncommitted.
+
 ## 2026-10-15 Block Versions / configurable Repeater — staging verified
 
 Owner-agreed direct Default inheritance, same-type alternatives and first-match conditions are deployed with standard Repeater source/table/saved-view controls, editable Card/@ mappings, browsing/filter controls and guarded settings/Explore conversion. Workspace check/build, 25 focused tests, core/SQLite/capacity gates, 6 restored mutations and clean-image gates pass. Actual saved drafts migrated; generation20 conversion active; public/canvas titles/images, source switching/history, paging/search and responsive widths verified. [Receipt and limits](../plans/frontbase-block-versions-20261015.md). Pending owner edits preserved; generic provider snapshot creation and configured-provider acceptance remain unclaimed. Uncommitted; no production/public-release scope change.
