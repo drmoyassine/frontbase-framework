@@ -2,7 +2,7 @@
 
 ## 2026-10-15 owner limits List Components to live data
 
-Generic frozen datasource snapshots are out of scope. Repeater, DataTable and Grid share live datasource/table/saved-view authoring and query semantics, with existing server-owned view filters and access checks preserved. Keep one binding per effective Block Version. Retain existing pilot publication captures for compatibility rather than silently changing its published dataset; this does not authorize new snapshot tooling or automatic conversion to raw public tables. Controls must reflect source capability, including an explicit legacy direct-RPC search/sort limitation. [Local delivery and pending staging acceptance](../plans/frontbase-live-list-consistency-20261015.md). Prior snapshot backlog suggestions are superseded; six-package ownership, release scope and paused CF-22 remain unchanged.
+Generic frozen datasource snapshots are out of scope. Repeater, DataTable and Grid share live datasource/table/saved-view authoring and query semantics, with existing server-owned view filters and access checks preserved. Keep one binding per effective Block Version. Retain existing pilot publication captures for compatibility rather than silently changing its published dataset; this does not authorize new snapshot tooling or automatic conversion to raw public tables. Controls must reflect source capability, including an explicit legacy direct-RPC search/sort limitation. [Delivery and verified staging acceptance](../plans/frontbase-live-list-deployment-review-20261015.md). Prior snapshot backlog suggestions are superseded; six-package ownership, release scope and paused CF-22 remain unchanged.
 
 ## 2026-10-15 owner selects Block Versions with direct Default inheritance
 

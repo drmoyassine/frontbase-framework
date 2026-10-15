@@ -1,8 +1,8 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
-## 2026-10-15 live List Component consistency — local delivery, staging pending
+## 2026-10-15 live List Component consistency — staging verified
 
-Owner excludes generic frozen snapshots. Shared live table/view selection and execution now serve Repeater, DataTable and Grid; actual Grid browsing controls, shared filtering/presentation options, accurate counts and request/cache/initial-page repairs are locally verified. Workspace check/build, 18 UI tests, component type checks, SQLite/API integration and 3/3 in-memory mutations pass. [Source-package receipt, provider limits and next deployment task](../plans/frontbase-live-list-consistency-20261015.md). EasyPanel access was refused by automatic approval review's usage limit; no remote deployment or new browser acceptance is claimed. Previous staging generation20 and owner drafts preserved; changes uncommitted. Earlier generic snapshot backlog suggestions are superseded. Release scope/CF-22 unchanged.
+Live table/view selection, shared query/filter semantics and actual browsing controls across Repeater, DataTable and Grid are committed/pushed (`8be7c4b`, `0d99995`) and deployed to isolated staging. Correction closes the saved-page-size/query-cap mismatch. Workspace check/build, 20 focused UI tests, API integration, 3/3 mutations and retained clean-image security/publication gates pass. [Deployment identity, actual/synthetic browser evidence and ordered backlog](../plans/frontbase-live-list-deployment-review-20261015.md). Generation20 and owner drafts preserved. Existing pilot catalog-to-live conversion and real configured-user acceptance remain open; generic snapshots excluded. Unrelated workflow/email work remains uncommitted. Release scope/CF-22 unchanged; older pending-deployment receipts superseded.
 
 ## 2026-10-15 source checkpoint and next work — plan updated
 
