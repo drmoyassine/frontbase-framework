@@ -1,8 +1,8 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-15 owner-requested Git checkpoint — claimed
+## 2026-10-15 owner-requested Git checkpoint — complete
 
-Owner requests committing and pushing the verified Pages/Menus, appearance, conditions, Block Versions and configurable Repeater delivery on `codex/wordpress-pilot`. Include their prerequisite source, tests and delivery records; retain unrelated workflow/email changes, generated bundles and synchronization-conflict copies outside the index. Existing workspace check/build and focused, mutation, clean-image and staging results are recorded below and in the linked delivery plans. This checkpoint changes neither deployment nor release scope; remote publication is verified separately after the commit.
+Owner-requested source checkpoint `8230f94a79e43e52e019f6c4cfc40736d502984e` includes the verified Pages/Menus, appearance, conditions, Block Versions and configurable Repeater delivery and its prerequisite source, tests and records. Normal push to `origin/codex/wordpress-pilot` succeeded. Staged whitespace check passed; 135 staged files matched the reviewed deployment archive, with additional tests/configuration and documentation inspected separately. Existing workspace check/build and focused, mutation, clean-image and staging results are recorded below and in the linked delivery plans; no code changed during checkpointing. Unrelated workflow/email changes, generated bundles and synchronization-conflict copies remain uncommitted. Earlier uncommitted statements below describe delivery-time state and are superseded by this checkpoint. Deployment and release scope are unchanged. Next executable feature follow-up remains generic provider snapshot assets in Datasources.
 
 ## 2026-10-15 Block Versions / standard Repeater implementation — staging verified
 
