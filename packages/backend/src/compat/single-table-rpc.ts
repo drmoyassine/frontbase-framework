@@ -1,9 +1,10 @@
+import {savedWhere} from './saved-view-query.js';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {RpcQueryPayload} from './rpc-body.js';
 import {inspectTable,buildWhere,parseFilterList} from './routes/sync.js';
 
 /** Fulfill the existing validated list RPC contract on SQL adapters without RPCs. */
-export async function executeSingleTableRpc(db:DbRunner,dialect:'postgres'|'sqlite',input:RpcQueryPayload) {
+export async function executeSingleTableRpc(db:DbRunner,dialect:'postgres'|'sqlite',input:RpcQueryPayload,savedFilters?:unknown) {
     if(input.joins.length)throw Error('single_table_only');
     const schema=await inspectTable(db,dialect,input.table_name),names=schema.columns.map(column=>column.name);
     const quote=(value:string)=>`"${value.replace(/"/g,'""')}"`;
@@ -16,6 +17,12 @@ export async function executeSingleTableRpc(db:DbRunner,dialect:'postgres'|'sqli
         return field(match[2]??match[1]!)+(match[3]?` AS ${quote(match[3])}`:'');
     }).join(',');
     const where=buildWhere(dialect,schema.columns,parseFilterList(input.filters),input.search_query,input.search_cols);
+    if(savedFilters){
+        const saved=savedWhere(dialect,schema.columns,savedFilters);
+        const offset=where.params.length;
+        if(saved.sql)where.sql+= (where.sql?' AND ':' WHERE ')+saved.sql.replace(/^ WHERE /,'').replace(/\$(\d+)/g,(_,n)=>'$'+(Number(n)+offset));
+        where.params.push(...saved.params);
+    }
     const sort=input.sort_col?field(input.sort_col):schema.columns.find(column=>column.primary_key)?.name?quote(schema.columns.find(column=>column.primary_key)!.name):undefined;
     const total=await db.query(`SELECT COUNT(*) AS total FROM ${quote(schema.table)}${where.sql}`,where.params);
     const params=[...where.params,input.page_size,(input.page-1)*input.page_size];

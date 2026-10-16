@@ -1,4 +1,8 @@
 import {z} from 'zod';
+import {savedViewFilters} from '@frontbase/edge-core/saved-view-filters';
+import {liveViewBindings} from '@frontbase/edge-core/directory/configuration';
+import {applyEditableViews} from '../editable-view-conversion.js';
+import {executeSingleTableRpc} from '../single-table-rpc.js';
 import type {Hono} from 'hono';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {ConsoleAuthVars} from '../../mw/auth.js';
@@ -17,15 +21,78 @@ import type {PageLayoutData} from '@frontbase/edge-core';
 import {walkBlockTree,applyBlockVersion} from '@frontbase/edge-core/block-versions';
 import {protectPublishedLiveSource} from '../published-live-access.js';
 
+async function boundedMigrationBody(request:Request){
+    const reader=request.body?.getReader(),decoder=new TextDecoder();let text='',size=0;
+    if(reader)while(true){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.byteLength;if(size>4096){await reader.cancel();return null;}text+=decoder.decode(chunk.value,{stream:true});}
+    return text+decoder.decode();
+}
+
 export function registerPilotLiveLists(app:Hono<{Variables:ConsoleAuthVars}>,db:DbRunner,storeFor:(owner:string)=>SyncStore,externalFetch:CompatFetch,accounts:AccountConfigFor,now:()=>string){
+    app.post('/api/project/live-list-migration/editable/',async c=>{
+        c.header('Cache-Control','no-store');
+        const user=c.get('principal').user as {role?:string;id?:string},owner=c.get('tenant');
+        if(!user?.id||!['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(user.role??''))return c.json({detail:'Migration unavailable'},403);
+        if(c.req.header('content-type')?.split(';')[0]?.trim().toLowerCase()!=='application/json')return c.json({detail:'JSON required'},415);
+        const text=await boundedMigrationBody(c.req.raw);if(text===null)return c.json({detail:'Request too large'},413);
+        try{
+            const input=z.object({mode:z.enum(['preview','apply']),baseHash:z.string().regex(/^[a-f0-9]{64}$/),planHash:z.string().regex(/^[a-f0-9]{64}$/).optional()}).strict().parse(JSON.parse(text));
+            const active=await new SitePublicationStore(db,owner).activeVersion();
+            if(active?.artifact.schemaVersion!==2||active.pointer.hash!==input.baseHash)throw Error('base_changed');
+            const source=active.artifact.configuration.datasourceId,sync=storeFor(owner),ds=await sync.getDatasource(source);
+            if(!ds||!['supabase','postgres'].includes(ds.kind))throw Error('postgres_source_required');
+            const canonical=datasourceRunner(ds.kind,await mergeAccountConfig(accounts,externalFetch,owner,ds.kind,ds.config),externalFetch);
+            const receiptKey=`editable_live_views:receipt:${input.planHash}`;
+            if(input.mode==='apply'){
+                if(!input.planHash)throw Error('preview_required');
+                const stored=await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',[owner,`editable_live_views:plan:${input.planHash}`]);
+                const plan=JSON.parse(String(stored[0]?.value));if(await publicationHash(plan)!==input.planHash||plan.baseHash!==input.baseHash)throw Error('plan_changed');
+                if((await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',[owner,receiptKey])).length)throw Error('operation_already_attempted');
+                for(const item of plan.items)if(JSON.stringify(await sync.getView(item.before.id))!==JSON.stringify(item.before))throw Error('view_changed');
+                await db.exec('INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?)',[owner,receiptKey,JSON.stringify({state:'applying',planHash:input.planHash}),now()]);
+                try{
+                    await applyEditableViews(canonical,sync,plan.items,now,async()=>{
+                        if((await new SitePublicationStore(db,owner).activeVersion())?.pointer.hash!==input.baseHash)throw Error('base_changed');
+                    });
+                    for(const item of plan.items)await db.exec('INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?) ON CONFLICT(tenant_slug,key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at',[owner,`view_selection_storage:v1:${item.before.id}`,'saved-filters',now()]);
+                    await db.exec('UPDATE settings SET value=?,updated_at=? WHERE tenant_slug=? AND key=?',[JSON.stringify({state:'complete',planHash:input.planHash}),now(),owner,receiptKey]);
+                    return c.json({complete:true,views:plan.items.map((item:any)=>({id:item.before.id,total:item.expected})),generation:active.pointer.generation});
+                }catch(error){
+                    const recovered=error instanceof Error&&error.message==='conversion_restored';
+                    await db.exec('UPDATE settings SET value=?,updated_at=? WHERE tenant_slug=? AND key=?',[JSON.stringify({state:recovered?'restored':'recovery-required',planHash:input.planHash}),now(),owner,receiptKey]);
+                    throw Error(recovered?'conversion_restored':'recovery_required');
+                }
+            }
+            const published=[...active.artifact.templates,...(active.artifact.staticPages??[])].flatMap(page=>liveViewBindings(page.layout as unknown as PageLayoutData));
+            const existing=await sync.listViews(source),targets:Partial<Record<'institutions'|'programs'|'articles',string>>={};
+            for(const collection of ['institutions','programs','articles'] as const){
+                const view=existing.find(v=>v.target_table.startsWith('fb_live_')&&v.target_table.endsWith('_'+collection)&&published.some(binding=>binding.viewId===v.id&&binding.dataSourceId===source&&binding.tableName===v.target_table));
+                if(!view||!/^[A-Za-z_][A-Za-z0-9_]*$/.test(view.target_table))throw Error('pilot_view_missing');targets[collection]=view.target_table;
+            }
+            const definitions=await pilotLiveViewPlan(active.artifact,owner,input.baseHash,targets),items=[];
+            for(const definition of definitions){
+                const before=existing.find(v=>v.target_table===definition.table)!;
+                if((await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',[owner,`view_selection_storage:v1:${before.id}`]))[0]?.value==='saved-filters')throw Error('already_editable');
+                const rows=await canonical.query('SELECT pg_get_viewdef(oid,true) AS definition FROM pg_class WHERE oid=$1::regclass',['public.'+definition.table]);
+                const previous=String(rows[0]?.definition??'').trim().replace(/;$/,'');if(!previous.startsWith('SELECT')&&!previous.startsWith(' SELECT'))throw Error('view_definition_unavailable');
+                const priorColumns=await canonical.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1",[definition.table]);
+                const additions=definition.extraColumns.filter(name=>!priorColumns.some(row=>row.column_name===name));
+                const restoreSql=`CREATE OR REPLACE VIEW public."${definition.table}" WITH (security_invoker=true) AS SELECT previous.*${additions.length?','+additions.map(name=>`NULL::text AS "${name}"`).join(','):''} FROM (${previous}) previous;`;
+                const seen=new Set<string>();
+                const filters=savedViewFilters([...definition.filters,...(before.filters??[])]).filter(rule=>{const signature=JSON.stringify('logic' in rule?rule:{field:rule.field,operator:rule.operator,value:rule.value});if(seen.has(signature))return false;seen.add(signature);return true;});
+                items.push({before,filters,sql:definition.sql,restoreSql,expected:definition.expected});
+            }
+            const plan={baseHash:input.baseHash,items},planHash=await publicationHash(plan);
+            await db.exec('INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[owner,`editable_live_views:plan:${planHash}`,JSON.stringify(plan),now()]);
+            return c.json({planHash,baseHash:input.baseHash,views:items.map(item=>({id:item.before.id,name:item.before.name,total:item.expected})),message:'Selection filters will move into these saved views. Current membership and page designs remain unchanged.'});
+        }catch(error){return c.json({detail:error instanceof Error?error.message:'Conversion unavailable'},409);}
+    });
     app.post('/api/project/live-list-migration/',async c=>{
         c.header('Cache-Control','no-store');
         const user=c.get('principal').user as {role?:string;id?:string},owner=c.get('tenant');
         if(!user?.id||!['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(user.role??''))return c.json({detail:'Migration unavailable'},403);
         if(c.req.header('content-type')?.split(';')[0]?.trim().toLowerCase()!=='application/json')return c.json({detail:'JSON required'},415);
         try{
-            const reader=c.req.raw.body?.getReader(),decoder=new TextDecoder();let raw='',size=0;
-            if(reader){while(true){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.byteLength;if(size>4096){await reader.cancel();return c.json({detail:'Request too large'},413);}raw+=decoder.decode(chunk.value,{stream:true});}raw+=decoder.decode();}
+            const raw=await boundedMigrationBody(c.req.raw);if(raw===null)return c.json({detail:'Request too large'},413);
             const input=z.object({mode:z.enum(['preview','publish']),baseHash:z.string().regex(/^[a-f0-9]{64}$/),planHash:z.string().regex(/^[a-f0-9]{64}$/).optional()}).strict().parse(JSON.parse(raw));
             const store=new SitePublicationStore(db,owner),reviews=new SitePublicationReviewStore(db,owner),active=await store.activeVersion();
             if(!active||active.pointer.hash!==input.baseHash||active.artifact.schemaVersion!==2||!await reviews.get(input.baseHash))throw Error('base_changed');
@@ -63,14 +130,15 @@ export function registerPilotLiveLists(app:Hono<{Variables:ConsoleAuthVars}>,db:
             const existing=await sync.listViews(ds.id);
             for(const definition of definitions){
                 await canonical.exec(definition.sql);
-                const counts=await canonical.query(`SELECT COUNT(*) AS total FROM public."${definition.table}"`);
-                if(Number(counts[0]?.total)!==definition.expected)throw Error('live_population_changed');
+                const counts=await executeSingleTableRpc(canonical,'postgres',{table_name:definition.table,columns:'*',joins:[],page:1,page_size:1,filters:[],sort_col:null,sort_dir:'asc',search_query:'',search_cols:[]},definition.filters);
+                if(counts.total!==definition.expected)throw Error('live_population_changed');
                 let view=existing.find(view=>view.target_table===definition.table);
                 const columns=definition.columns;
                 if(!view){
                     const digest=await publicationHash({owner,table:definition.table}),id=`${digest.slice(0,8)}-${digest.slice(8,12)}-4${digest.slice(13,16)}-8${digest.slice(17,20)}-${digest.slice(20,32)}`;
-                    view=await sync.createView({datasource_id:ds.id,name:`Study in USA · ${definition.collection} · live`,target_table:definition.table,visible_columns:columns,column_order:columns,filters:[{column:'country_id',op:'eq',value:base.configuration.collections.institution.scope.value}],description:'Live SELECT projection. Approved route membership and article revisions are enforced in the underlying database view; no stored record copy.'},id,now());
+                    view=await sync.createView({datasource_id:ds.id,name:`Study in USA · ${definition.collection} · live`,target_table:definition.table,visible_columns:columns,column_order:columns,filters:definition.filters,description:'Public-field projection only. All listing selection rules are editable saved filters; no stored record copy.'},id,now());
                 }
+                await db.exec('INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?) ON CONFLICT(tenant_slug,key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at',[owner,`view_selection_storage:v1:${view.id}`,'saved-filters',now()]);
                 views[definition.collection]={id:view.id,name:view.name,target_table:view.target_table,columns};
             }
             const selected=(page:any)=>['directory','article-index'].includes(page.role)||!!page.layout?.root?.directoryLanding;

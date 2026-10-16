@@ -22,6 +22,7 @@ export interface DatasourceViewRecord {
     datasource_id: string;
     name: string;
     target_table: string;
+    default_sort?: {column:string;direction:'asc'|'desc'} | null;
     visible_columns: string[] | null;
     column_order: string[] | null;
     pinned_columns: string[] | null;
@@ -161,7 +162,7 @@ export class SyncStore {
 
     async listViews(datasourceId: string): Promise<DatasourceViewRecord[]> {
         const rows = await this.runner.query(
-            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND datasource_id = ? ORDER BY created_at ASC',
+            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND datasource_id = ? ORDER BY created_at ASC',
             [this.tenant, datasourceId],
         );
         return rows.map((r) => this.mapViewRow(r));
@@ -169,7 +170,7 @@ export class SyncStore {
 
     async getView(id: string): Promise<DatasourceViewRecord | null> {
         const rows = await this.runner.query(
-            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND id = ?',
+            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND id = ?',
             [this.tenant, id],
         );
         const row = rows[0];
@@ -181,6 +182,7 @@ export class SyncStore {
             datasource_id: string;
             name: string;
             target_table: string;
+    default_sort?: {column:string;direction:'asc'|'desc'} | null;
             visible_columns?: string[] | null;
             column_order?: string[] | null;
             pinned_columns?: string[] | null;
@@ -194,7 +196,7 @@ export class SyncStore {
         now: string,
     ): Promise<DatasourceViewRecord> {
         await this.runner.exec(
-            `INSERT INTO datasource_views (id, tenant_slug, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            `INSERT INTO datasource_views (id, tenant_slug, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
                 id,
                 this.tenant,
@@ -209,6 +211,7 @@ export class SyncStore {
                 input.webhooks ? JSON.stringify(input.webhooks) : null,
                 input.linked_views ? JSON.stringify(input.linked_views) : null,
                 input.description ?? null,
+                input.default_sort ? JSON.stringify(input.default_sort) : null,
                 now,
                 now,
             ],
@@ -226,6 +229,7 @@ export class SyncStore {
             webhooks: input.webhooks ?? null,
             linked_views: input.linked_views ?? null,
             description: input.description ?? null,
+            default_sort: input.default_sort ?? null,
             created_at: now,
             updated_at: now,
         };
@@ -235,9 +239,11 @@ export class SyncStore {
         id: string,
         patch: Partial<DatasourceViewRecord>,
         now: string,
+        expectedUpdatedAt?:string,
     ): Promise<DatasourceViewRecord | null> {
         const existing = await this.getView(id);
-        if (!existing) return null;
+        if (!existing || expectedUpdatedAt!==undefined&&existing.updated_at!==expectedUpdatedAt) return null;
+        const revision=Date.parse(now)<=Date.parse(existing.updated_at)?new Date(Date.parse(existing.updated_at)+1).toISOString():now;
 
         const merged: DatasourceViewRecord = {
             id,
@@ -252,13 +258,13 @@ export class SyncStore {
             webhooks: patch.webhooks !== undefined ? patch.webhooks : existing.webhooks,
             linked_views: patch.linked_views !== undefined ? patch.linked_views : existing.linked_views,
             description: patch.description !== undefined ? patch.description : existing.description,
+            default_sort: patch.default_sort !== undefined ? patch.default_sort : existing.default_sort,
             created_at: existing.created_at,
-            updated_at: now,
+            updated_at: revision,
         };
 
-        await this.runner.exec(
-            `UPDATE datasource_views SET name = ?, target_table = ?, visible_columns = ?, column_order = ?, pinned_columns = ?, filters = ?, field_mappings = ?, webhooks = ?, linked_views = ?, description = ?, updated_at = ? WHERE tenant_slug = ? AND id = ?`,
-            [
+        const sql=`UPDATE datasource_views SET name = ?, target_table = ?, visible_columns = ?, column_order = ?, pinned_columns = ?, filters = ?, field_mappings = ?, webhooks = ?, linked_views = ?, description = ?, default_sort = ?, updated_at = ? WHERE tenant_slug = ? AND id = ?`;
+        const params=[
                 merged.name,
                 merged.target_table,
                 merged.visible_columns ? JSON.stringify(merged.visible_columns) : null,
@@ -269,11 +275,14 @@ export class SyncStore {
                 merged.webhooks ? JSON.stringify(merged.webhooks) : null,
                 merged.linked_views ? JSON.stringify(merged.linked_views) : null,
                 merged.description ?? null,
-                now,
+                merged.default_sort ? JSON.stringify(merged.default_sort) : null,
+                revision,
                 this.tenant,
                 id,
-            ],
-        );
+            ];
+        if(expectedUpdatedAt!==undefined){
+            const changed=await this.runner.query(sql+' AND updated_at = ? RETURNING id',[...params,expectedUpdatedAt]);if(!changed.length)return null;
+        }else await this.runner.exec(sql,params);
         return merged;
     }
 
@@ -314,6 +323,7 @@ export class SyncStore {
             webhooks: this.safeParseJson<unknown[]>(row.webhooks),
             linked_views: this.safeParseJson<Record<string, unknown>>(row.linked_views),
             description: row.description ? String(row.description) : null,
+            default_sort: this.safeParseJson<{column:string;direction:'asc'|'desc'}>(row.default_sort),
             created_at: String(row.created_at),
             updated_at: String(row.updated_at),
         };

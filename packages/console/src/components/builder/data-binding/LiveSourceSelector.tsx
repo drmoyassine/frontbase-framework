@@ -36,6 +36,6 @@ export function LiveSourceSelector({binding,onChange,onSourceChange}:{binding:Co
         }}><option value="">Use table directly</option>{binding.viewId&&!views.data?.some(view=>view.id===binding.viewId)&&<option value={binding.viewId}>{binding.viewName||'Unavailable saved view'}</option>}{views.data?.map(view=><option key={view.id} value={view.id}>{view.name}</option>)}</select></label>
         {views.error&&<p role="alert" className="text-xs text-destructive">Saved views could not be loaded. <button type="button" className="underline" onClick={()=>views.refetch()}>Retry</button></p>}
         {binding.viewId&&views.isSuccess&&!views.data.some(view=>view.id===binding.viewId)&&<p role="alert" className="text-xs text-destructive">This saved view is unavailable. Choose another view or use the table directly.</p>}
-        <a className="text-xs underline" href="/frontbase-admin/data-studio/datasources">Configure saved views in Data</a>
+        <a className="text-xs underline" href={'/frontbase-admin/data-studio/saved-views'+(binding.viewId?'?view='+encodeURIComponent(binding.viewId):'')}>{binding.viewId?'Edit view':'Browse saved views'}</a>
     </div>;
 }

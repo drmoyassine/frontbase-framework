@@ -306,6 +306,7 @@ export const MIGRATIONS: Migration[] = [
         up: [`ALTER TABLE compat_pages ADD COLUMN last_write_operation TEXT`],
         down: [],
     },
+    {version:24,name:'datasource_view_default_sort',up:['ALTER TABLE datasource_views ADD COLUMN default_sort TEXT'],down:[]},
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

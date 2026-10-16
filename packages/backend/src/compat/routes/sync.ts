@@ -1,3 +1,7 @@
+import {savedWhere} from '../saved-view-query.js';
+import {savedViewFilters} from '@frontbase/edge-core/saved-view-filters';
+import {savedViewUsage} from '../view-usage.js';
+import {executeSingleTableRpc} from '../single-table-rpc.js';
 /**
  * CF-22 Work A — Full implementation of all 48 `/api/sync/*` DB-Synchronizer operations.
  *
@@ -477,7 +481,7 @@ export function registerSyncRoutes(
     app.get('/api/sync/datasources/', async (c) => {
         const store = syncStoreFor(c.get('tenant'));
         const list = await store.listDatasources();
-        return c.json(list.map(serializeDatasource));
+        return c.json(await Promise.all(list.map(async ds=>serializeDatasource(ds,(await store.listViews(ds.id)).map(serializeDatasourceView)))));
     });
 
     // POST /api/sync/datasources/
@@ -675,7 +679,7 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
-        return c.json(serializeDatasource(ds));
+        return c.json(serializeDatasource(ds,(await store.listViews(ds.id)).map(serializeDatasourceView)));
     });
 
     // PUT /api/sync/datasources/{datasource_id}/
@@ -1049,6 +1053,25 @@ export function registerSyncRoutes(
     // Wave A3 — Datasource Views (10 ops)
     // =========================================================================
 
+    app.get('/api/sync/views/',async c=>{
+        const owner=c.get('tenant'),store=syncStoreFor(owner),usage=await savedViewUsage(controlRunner,owner);
+        const storage=await controlRunner.query('SELECT key,value FROM settings WHERE tenant_slug=? AND key LIKE ?',[owner,'view_selection_storage:v1:%']);
+        const groups=await Promise.all((await store.listDatasources()).map(async ds=>(await store.listViews(ds.id)).map(view=>({...serializeDatasourceView(view),datasource_name:ds.name,usage:usage[view.id]??[],selection_storage:!view.target_table.startsWith('fb_live_')||storage.some(row=>row.key===`view_selection_storage:v1:${view.id}`&&row.value==='saved-filters')?'saved-filters':'legacy-sql'}))));
+        return c.json(groups.flat());
+    });
+    app.post('/api/sync/views/:view_id/preview/',async c=>{
+        try{
+            const store=syncStoreFor(c.get('tenant')),view=await store.getView(c.req.param('view_id'));
+            if(!view)return c.json({detail:'View not found'},404);
+            const ds=await store.getDatasource(view.datasource_id);if(!ds)return c.json({detail:'Datasource not found'},404);
+            const input=await c.req.json(),page=Number(input.page??1);
+            if(!Number.isSafeInteger(page)||page<1||page>10000)throw Error('invalid_page');
+            const runner=datasourceRunner(ds.kind,await mergeAccount(c.get('tenant'),ds.kind,ds.config),externalFetch);
+            const result=await executeSingleTableRpc(runner,dialectOf(ds.kind),{table_name:view.target_table,columns:'*',joins:[],page,page_size:25,filters:[],sort_col:view.default_sort?.column??null,sort_dir:view.default_sort?.direction??'asc',search_query:'',search_cols:[]},view.filters);
+            return c.json({...result,page,pageSize:25});
+        }catch{return c.json({detail:'View preview unavailable. Check filters and datasource.'},422);}
+    });
+
     // GET /api/sync/datasources/{datasource_id}/views/
     app.get('/api/sync/datasources/:datasource_id/views/', async (c) => {
         const dsId = c.req.param('datasource_id');
@@ -1090,7 +1113,8 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const view = await store.getView(viewId);
         if (!view) return c.json({ detail: 'View not found' }, 404);
-        return c.json(serializeDatasourceView(view));
+        const selection=(await controlRunner.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',[c.get('tenant'),`view_selection_storage:v1:${view.id}`]))[0]?.value;
+        return c.json({...serializeDatasourceView(view),selection_storage:!view.target_table.startsWith('fb_live_')||selection==='saved-filters'?'saved-filters':'legacy-sql'});
     });
 
     // PATCH /api/sync/views/{view_id}/
@@ -1113,8 +1137,15 @@ export function registerSyncRoutes(
                 return c.json({ detail: `Invalid target table: ${(error as Error).message}` }, 400);
             }
         }
-        const updated = await store.updateView(viewId, b, now());
-        if (!updated) return c.json({ detail: 'View not found' }, 404);
+        if(b.expected_updated_at!==undefined&&b.expected_updated_at!==existing.updated_at)return c.json({detail:'View changed. Reload before saving.'},409);
+        try{
+            const schema=await inspectTable(datasourceRunner(datasource.kind,await mergeAccount(c.get('tenant'),datasource.kind,datasource.config),externalFetch),dialectOf(datasource.kind),b.target_table??existing.target_table);
+            if(b.filters!==undefined){b.filters=savedViewFilters(b.filters);savedWhere(dialectOf(datasource.kind),schema.columns,b.filters);}
+            if(b.default_sort!==undefined&&b.default_sort!==null&&(!schema.columns.some(column=>column.name===b.default_sort.column)||!['asc','desc'].includes(b.default_sort.direction)))throw Error('invalid_sort');
+            for(const key of ['visible_columns','column_order'])if(b[key]!==undefined&&(!Array.isArray(b[key])||!b[key].every((name:unknown)=>schema.columns.some(column=>column.name===name))))throw Error('invalid_columns');
+        }catch{return c.json({detail:'Invalid view filters, columns or ordering'},422);}
+        const updated = await store.updateView(viewId, b, now(),b.expected_updated_at);
+        if (!updated) return c.json({ detail: 'View changed or unavailable. Reload before saving.' }, b.expected_updated_at!==undefined?409:404);
         return c.json(serializeDatasourceView(updated));
     });
 

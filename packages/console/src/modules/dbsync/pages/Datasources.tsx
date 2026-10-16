@@ -240,7 +240,7 @@ function DatasourceCard({
             {/* Views Section */}
             {datasource.views && datasource.views.length > 0 && (
                 <div className="mb-4 pt-3 border-t border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    <div className="flex items-center gap-1.5 text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">
                         <Filter className="w-3 h-3" />
                         Saved Views ({datasource.views.length})
                     </div>
@@ -250,13 +250,7 @@ function DatasourceCard({
                                 key={view.id}
                                 className="group flex items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-md text-[10px] font-medium text-gray-500 transition-all hover:border-primary-200 hover:bg-white dark:hover:bg-gray-800"
                             >
-                                <button
-                                    onClick={() => onInspect(view.target_table, view.filters, view.id, view.name, view.webhooks, view.pinned_columns, view.column_order)}
-                                    className="truncate max-w-[100px] hover:text-primary-600 transition-colors"
-                                    title={`Inspect ${view.name} (${view.target_table})`}
-                                >
-                                    {view.name}
-                                </button>
+                                <a href={'/frontbase-admin/data-studio/saved-views?view='+encodeURIComponent(view.id)} className="text-sm underline break-words" title={`Inspect ${view.name} (${view.target_table})`}>{view.name}</a>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();

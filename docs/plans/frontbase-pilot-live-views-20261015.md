@@ -1,5 +1,7 @@
 # Pilot listings on live views — 2026-10-15
 
+> Later2026-10-16 refinement: listing restrictions have moved from native SQL into discoverable editable Frontbase saved views. [Current delivery](frontbase-editable-saved-views-20261016.md) supersedes the selection-storage description below; original deployment/activation evidence remains historical. Generation21 and selection counts are unchanged.
+
 Status: live-view migration implemented, published and verified on isolated staging at generation21 on 2026-10-16. Final admin cache-refresh correction is deployed; local and clean-image gates pass. Owner authorizes task1 of the [prior deployment review](frontbase-live-list-deployment-review-20261015.md).
 
 ## Implementation boundary

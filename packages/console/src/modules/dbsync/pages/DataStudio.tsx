@@ -1,9 +1,10 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { Database, Plus } from 'lucide-react'
+import { Database, Plus, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const tabs = [
     { path: 'datasources', label: 'Datasources', icon: Database },
+    { path: 'saved-views', label: 'Saved Views', icon: Filter },
 ]
 
 export function DataStudio() {

@@ -3019,6 +3019,7 @@
       "DatasourceViewCreate": {
         "description": "Schema for creating a datasource view.",
         "properties": {
+          "default_sort": {"anyOf":[{"type":"object","properties":{"column":{"type":"string"},"direction":{"type":"string","enum":["asc","desc"]}},"required":["column","direction"],"additionalProperties":false},{"type":"null"}],"default":null},
           "column_order": {
             "items": {
               "type": "string"
@@ -3109,6 +3110,7 @@
       "DatasourceViewResponse": {
         "description": "Schema for datasource view response.",
         "properties": {
+          "default_sort": {"anyOf":[{"type":"object","properties":{"column":{"type":"string"},"direction":{"type":"string","enum":["asc","desc"]}},"required":["column","direction"],"additionalProperties":false},{"type":"null"}],"default":null},
           "column_order": {
             "items": {
               "type": "string"
@@ -3210,6 +3212,7 @@
       "DatasourceViewUpdate": {
         "description": "Schema for updating a datasource view.",
         "properties": {
+          "default_sort": {"anyOf":[{"type":"object","properties":{"column":{"type":"string"},"direction":{"type":"string","enum":["asc","desc"]}},"required":["column","direction"],"additionalProperties":false},{"type":"null"}],"default":null},
           "column_order": {
             "anyOf": [
               {

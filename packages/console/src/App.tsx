@@ -22,6 +22,7 @@ import { BASE_PATH, isCloud } from "@/lib/edition";
 import { Layout as UnifiedShell } from "./modules/dbsync/components/Layout";
 import { Dashboard as Overview } from "./modules/dbsync/pages/Dashboard";
 import { DataStudio } from "./modules/dbsync/pages/DataStudio";
+import {SavedViews} from "./modules/dbsync/pages/SavedViews";
 import { Datasources } from "./modules/dbsync/pages/Datasources";
 
 // Frontbase Panels
@@ -169,6 +170,7 @@ const AdminApp = () => {
                   <Route path="/data-studio" element={<DataStudio />}>
                     <Route index element={<Navigate to="datasources" replace />} />
                     <Route path="datasources" element={<Datasources />} />
+                    <Route path="saved-views" element={<SavedViews />} />
                   </Route>
 
                   <Route path="/users" element={<UsersPanel />} />

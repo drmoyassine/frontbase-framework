@@ -9,7 +9,7 @@ export function serializeDatasource(ds: {
     kind: string;
     created_at: string;
     updated_at: string;
-}): Record<string, unknown> {
+}, views: unknown[] = []): Record<string, unknown> {
     return {
         id: ds.id,
         name: ds.name,
@@ -27,7 +27,7 @@ export function serializeDatasource(ds: {
         created_at: ds.created_at,
         updated_at: ds.updated_at,
         extra_config: null,
-        views: [],
+        views,
     };
 }
 
@@ -36,6 +36,7 @@ export function serializeDatasourceView(v: {
     datasource_id: string;
     name: string;
     target_table: string;
+    default_sort?: {column:string;direction:'asc'|'desc'} | null;
     visible_columns: string[] | null;
     column_order: string[] | null;
     pinned_columns: string[] | null;
@@ -52,6 +53,7 @@ export function serializeDatasourceView(v: {
         datasource_id: v.datasource_id,
         name: v.name,
         target_table: v.target_table,
+        default_sort: v.default_sort ?? null,
         visible_columns: v.visible_columns ?? [],
         column_order: v.column_order ?? [],
         pinned_columns: v.pinned_columns ?? [],

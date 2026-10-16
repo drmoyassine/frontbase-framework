@@ -1,3 +1,4 @@
+import {SavedViewInspectorLoader} from './SavedViewInspector';
 import React, { useEffect, useState } from 'react';
 import { useDataPreview } from '../hooks/useDataPreview';
 import { DataPreviewModalProps } from '../types/data-preview';
@@ -9,7 +10,7 @@ import { TableSelectionView } from './data-preview/TableSelectionView';
 import { RelationshipsView } from './data-preview/RelationshipsView';
 import { Table, GitBranch } from 'lucide-react';
 
-const DataPreviewModal = (props: DataPreviewModalProps) => {
+const LegacyDataPreviewModal = (props: DataPreviewModalProps) => {
     const { isOpen, onClose, viewId } = props;
     const {
         state,
@@ -235,4 +236,5 @@ const DataPreviewModal = (props: DataPreviewModalProps) => {
     );
 };
 
+const DataPreviewModal=(props:DataPreviewModalProps)=>!props.isOpen?null:props.viewId?<SavedViewInspectorLoader id={props.viewId} datasourceName={props.datasourceName} onClose={props.onClose}/>:<LegacyDataPreviewModal {...props}/>;
 export default DataPreviewModal;

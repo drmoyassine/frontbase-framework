@@ -11,7 +11,7 @@ const faults=[
  ['stale publication','routes/pilot-live-lists.js','active.pointer.hash !== input.baseHash','false'],
 ];
 for(const [name,file,find,replacement] of faults){
- const hook=`import {registerHooks} from 'node:module'; registerHooks({load(url,context,next){const result=next(url,context);if(url.endsWith(${JSON.stringify('/dist/compat/'+file)})){const source=String(result.source);if(!source.includes(${JSON.stringify(find)}))throw Error('fault site missing');process.stderr.write('FAULT INSTALLED\\n');return {...result,source:source.replace(${JSON.stringify(find)},${JSON.stringify(replacement)})};}return result;}});`;
+ const hook=`import {registerHooks} from 'node:module'; registerHooks({load(url,context,next){const result=next(url,context);if(url.endsWith(${JSON.stringify('/dist/compat/'+file)})){const source=String(result.source);if(!source.includes(${JSON.stringify(find)}))throw Error('fault site missing');process.stderr.write('FAULT INSTALLED\\n');return {...result,source:source.replaceAll(${JSON.stringify(find)},${JSON.stringify(replacement)})};}return result;}});`;
  const result=run(hook),output=result.stdout+result.stderr;
  assert(output.includes('FAULT INSTALLED')&&output.includes('AssertionError')&&result.status!==0,`${name} must fail by behavior, not harness/compilation: ${output}`);
  console.log(`pilot live mutation ${name}: caught`);

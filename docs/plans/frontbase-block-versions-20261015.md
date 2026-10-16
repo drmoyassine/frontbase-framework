@@ -16,6 +16,7 @@ Current live-list source checkpoints: `8be7c4b` and `0d99995`, pushed on `codex/
 | Conditions | Shared typed condition/value evaluation and @ operands for visibility and hidden filters | [Unified conditions](frontbase-unified-conditions-20261014.md), [single-binding filters](frontbase-single-binding-filters-20261014.md) |
 | Block Versions | Same-type alternatives, direct Default inheritance, explicit overrides/reset and first-match priority | Implementation and acceptance evidence below |
 | Repeaters / Explore | Standard single-source binding per version, editable Card/field mapping and browsing/filter controls; Institutions Default and Programs alternative on the actual Explore page | Implementation and actual staging acceptance below |
+| Data / Saved Views | Searchable saved-view assets, source/table/usage, exact builder links and editable server-side selection filters; pilot restrictions removed from SQL without expansion | [Saved-view delivery](frontbase-editable-saved-views-20261016.md) |
 | Settings | Migrated saved element-specific values; retired duplicate Template Settings editors while retaining global appearance/capture settings | Guarded conversion and staging evidence below |
 
 ### Ordered remaining work

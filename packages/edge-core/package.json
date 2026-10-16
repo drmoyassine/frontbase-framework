@@ -8,6 +8,7 @@
     "./browser/render-block": {"types":"./dist/ssr/PageRenderer.d.ts","import":"./dist/ssr/PageRenderer.js"},
     "./browser/block-versions": {"types":"./dist/block-versions-browser.d.ts","import":"./dist/block-versions-browser.js"},
     "./block-versions": {"types":"./dist/block-versions.d.ts","import":"./dist/block-versions.js"},
+    "./saved-view-filters": {"types":"./dist/saved-view-filters.d.ts","import":"./dist/saved-view-filters.js"},
     "./conditions": {"types":"./dist/conditions.d.ts","import":"./dist/conditions.js"},
     "./browser/theme": {"types":"./dist/public-theme.d.ts","import":"./dist/public-theme.js"},
     "./menu-components": {"types":"./dist/menu-components.d.ts","import":"./dist/menu-components.js"},

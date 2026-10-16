@@ -8,35 +8,40 @@ const roles={institutions:'institution',programs:'program',articles:'article'} a
 const literal=(value:unknown)=>`'${String(value).replaceAll("'","''")}'`;
 const quote=(name:string)=>{if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))throw Error('invalid_live_view_identifier');return `"${name}"`;};
 
-/** Live SELECTs, with the existing approved route membership as an admission guard.
- * No record values are copied into a new table. Article revisions remain approval-bound. */
-export async function pilotLiveViewPlan(base:SitePublicationManifest,owner:string,baseHash:string){
+/** Native views shape public fields only. Every selection predicate is saved data. */
+export async function pilotLiveViewPlan(base:SitePublicationManifest,owner:string,baseHash:string,targets?:Partial<Record<keyof typeof roles,string>>){
     const namespace=(await publicationHash({owner})).slice(0,8),origin=base.configuration.site.origin;
     return (Object.keys(roles) as (keyof typeof roles)[]).map(collection=>{
         const mapping=base.configuration.collections[roles[collection]],entries=base.index.filter(row=>row.collection===collection);
         if(!entries.length)throw Error('live_view_population_missing');
-        const table=`fb_live_${namespace}_${baseHash.slice(0,8)}_${collection}`;
+        const table=targets?.[collection]??`fb_live_${namespace}_${baseHash.slice(0,8)}_${collection}`;
         const fields=['id','title','summary','cover','coverAlt','logo',...(collection==='programs'?['institutionId']:collection==='institutions'?['cityId']:['byline','publishedAt'])];
         const projection=fields.map(key=>{
             const field=mapping.fields[key as keyof typeof mapping.fields];
             return `${field?['cover','logo'].includes(key)?`NULLIF(BTRIM(d.${quote(field)}::text),'')`:key==='summary'?`LEFT(d.${quote(field)}::text,${collection==='articles'?10000:1000})`:`d.${quote(field)}`:key==='summary'||key==='coverAlt'?"''":'NULL'} AS ${quote(key)}`;
         });
-        projection.push('admitted.path AS "originalPath"',`d.${quote(mapping.scope.field)} AS "country_id"`);
-        if(collection==='articles')projection.push('d."revision" AS "revision"');
-        const values=entries.map(row=>`(${literal(row.id)},${literal(row.originalPath)},${collection==='articles'?String(row.revision):'NULL::integer'},${row.parentId===undefined?'NULL::text':literal(row.parentId)})`).join(',');
-        const predicate=[`d.${quote(mapping.fields.id)}::text=admitted.id`,`d.${quote(mapping.scope.field)}::text=${literal(mapping.scope.value)}`,
-            `(d.${quote(mapping.fields.originalPath)}=admitted.path OR d.${quote(mapping.fields.originalPath)}=${literal(origin)}||admitted.path)`];
-        if(collection==='articles')predicate.push('d."revision"=admitted.revision',`d.${quote(mapping.fields.contentRole)}='article'`,`d.${quote(mapping.fields.sourceOrigin)}=${literal(origin)}`);
-        else{
+        const path=`d.${quote(mapping.fields.originalPath)}::text`;
+        projection.push(`CASE WHEN LEFT(${path},${origin.length})=${literal(origin)} THEN SUBSTRING(${path} FROM ${origin.length+1}) ELSE ${path} END AS "originalPath"`,`d.${quote(mapping.scope.field)} AS "country_id"`);
+        const filters:any[]=[{field:'country_id',operator:'eq',value:mapping.scope.value,label:'Destination country'}];
+        let join='',extraColumns:string[]=[];
+        if(collection==='articles'){
+            projection.push('d."revision" AS "revision"',`d.${quote(mapping.fields.contentRole)}::text AS "contentRole"`,`d.${quote(mapping.fields.sourceOrigin)}::text AS "sourceOrigin"`);
+            filters.push({field:'contentRole',operator:'eq',value:'article'},{field:'sourceOrigin',operator:'eq',value:origin});extraColumns=['contentRole','sourceOrigin'];
+        }else{
             const parent=base.configuration.collections[collection==='institutions'?'city':'institution'];
-            const parentTable=collection==='programs'?`fb_live_${namespace}_${baseHash.slice(0,8)}_institutions`:parent.table;
-            predicate.push(`d.${quote(collection==='institutions'?mapping.fields.cityId:mapping.fields.institutionId)}::text=admitted.parent_id`,
-                `EXISTS(SELECT 1 FROM public.${quote(parentTable)} parent WHERE parent.${quote(collection==='programs'?'id':parent.fields.id)}::text=admitted.parent_id AND parent.${quote(collection==='programs'?'country_id':parent.scope.field)}::text=${literal(parent.scope.value)})`);
+            const fk=collection==='institutions'?mapping.fields.cityId:mapping.fields.institutionId;
+            join=` LEFT JOIN public.${quote(parent.table)} parent ON parent.${quote(parent.fields.id)}::text=d.${quote(fk)}::text`;
+            projection.push(`parent.${quote(parent.scope.field)}::text AS "parent_country_id"`);extraColumns=['parent_country_id'];
+            filters.push({field:'parent_country_id',operator:'eq',value:String(parent.scope.value),label:'Parent destination country'});
+            if(collection==='programs')filters.push({field:'institutionId',operator:'in',value:base.index.filter(row=>row.collection==='institutions').map(row=>row.id),label:'Selected parent institutions'});
         }
-        const select=`SELECT ${projection.join(',')} FROM public.${quote(mapping.table)} d JOIN (VALUES ${values}) AS admitted(id,path,revision,parent_id) ON ${predicate.join(' AND ')}`;
-        // One execute_sql RPC transaction; nested BEGIN/COMMIT is illegal in a Postgres function.
+        filters.push({logic:'or',label:'Migrated selection — edit or remove to change membership',conditions:entries.map(row=>({logic:'and',label:String(row.id),conditions:[
+            {field:'id',operator:'eq',value:row.id},{field:'originalPath',operator:'eq',value:row.originalPath},
+            ...(collection==='articles'?[{field:'revision',operator:'eq',value:row.revision}]:[{field:collection==='institutions'?'cityId':'institutionId',operator:'eq',value:row.parentId}])
+        ]}))});
+        const select=`SELECT ${projection.join(',')} FROM public.${quote(mapping.table)} d${join}`;
         const sql=`CREATE OR REPLACE VIEW public.${quote(table)} WITH (security_invoker=true) AS ${select}; REVOKE ALL ON public.${quote(table)} FROM PUBLIC,anon,authenticated; GRANT SELECT ON public.${quote(table)} TO service_role;`;
-        return {collection,table,sql,expected:entries.length,columns:[...fields,'originalPath','country_id',...(collection==='articles'?['revision']:[])]};
+        return {collection,table,sql,filters,extraColumns,expected:entries.length,columns:[...fields,'originalPath','country_id',...(collection==='articles'?['revision']:[]),...extraColumns]};
     });
 }
 export type PilotLiveViews=Record<keyof typeof roles,{id:string;name:string;target_table:string;columns:string[]}>&{datasourceId:string};

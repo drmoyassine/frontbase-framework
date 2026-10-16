@@ -1,4 +1,5 @@
 // CF-22 Work D — client hydration data plane
+import {savedViewFilters} from '@frontbase/edge-core/saved-view-filters';
 import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
@@ -9,7 +10,7 @@ import { resolveDatasourceConfig } from '../credential-resolver.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 import { mergeAccountConfig, type AccountConfigFor } from '../providers/merge-account.js';
 import { validateRpcQueryBody } from '../rpc-body.js';
-import { inspectTable,parseFilterList } from './sync.js';
+import { inspectTable } from './sync.js';
 import {executeSingleTableRpc} from '../single-table-rpc.js';
 import {consoleDataAdministrator,hasPublishedViewPolicy,publishedLiveReadAllowed} from '../published-live-access.js';
 
@@ -172,14 +173,15 @@ export function registerDataExecuteRoute(
                     }, 403);
                 }
                 if(!consoleDataAdministrator(principal)&&!await publishedLiveReadAllowed(_runner,tenant,ds.id,dataRequest.viewId,dataRequest.body))return c.json({success:false,error:'Published view required'},403);
+                let trustedViewFilters:unknown;
+                let trustedViewSort:{column:string;direction:'asc'|'desc'}|null|undefined;
                 if(dataRequest.viewId){
                     const view=await store.getView(dataRequest.viewId);
                     const requestBody=dataRequest.body as Record<string,unknown>|undefined;
                     if(!view||view.datasource_id!==ds.id||!requestBody||requestBody.table_name!==view.target_table||'query' in requestBody)return c.json({success:false,error:'Saved view unavailable'},403);
                     try{
-                        const aliases:Record<string,string>={'==':'eq','=':'eq','!=':'neq','<>':'neq','>':'gt','>=':'gte','<':'lt','<=':'lte'};
-                        const filters=parseFilterList(view.filters).map(filter=>({column:filter.column??filter.field,op:aliases[String(filter.op??filter.operator??'eq')]??filter.op??filter.operator??'eq',value:filter.value}));
-                        dataRequest.body={...requestBody,filters:[...filters,...(Array.isArray(requestBody.filters)?requestBody.filters:[])]};
+                        trustedViewFilters=savedViewFilters(view.filters);
+                        trustedViewSort=view.default_sort;
                     }catch{return c.json({success:false,error:'Invalid saved view filters'},422);}
                 }
 
@@ -245,9 +247,10 @@ export function registerDataExecuteRoute(
                         }, 400);
                     }
                     const rpcBase = String(config.url ?? '').replace(/\/+$/, '');
-                    if(['postgres','neon','sqlite','turso','d1'].includes(ds.kind)){
+                    if(trustedViewSort&&!validated.payload.sort_col){validated.payload.sort_col=trustedViewSort.column;validated.payload.sort_dir=trustedViewSort.direction;}
+                    if(['postgres','neon','sqlite','turso','d1'].includes(ds.kind)||!!trustedViewFilters){
                         try{
-                            const result=await executeSingleTableRpc(runner,dialectOf(ds.kind),validated.payload);
+                            const result=await executeSingleTableRpc(runner,dialectOf(ds.kind),validated.payload,trustedViewFilters);
                             return c.json({success:true,data:result.rows,count:result.rows.length,total:result.total});
                         }catch(error){
                             const message=error instanceof Error?error.message:'';

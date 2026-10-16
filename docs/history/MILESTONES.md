@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-16 editable saved views — staging verified
+
+Saved views are discoverable Data assets with search, source/table and Published/Draft/version usage; datasource cards and builder Edit view open the same inspector. All pilot selection criteria are now visible editable saved filters, with no SQL-embedded membership/country/revision restrictions. Actual native/public checks preserve16/185/957 selection and generation21, private-field/access protection and pending designs. Workspace/build,7 UI tests, API/conversion/recovery and4+4 fault gates plus clean-image retained checks pass. [Delivery receipt and existing auth typing limits](../plans/frontbase-editable-saved-views-20261016.md). Canonical data, production, release scope and CF-22 unchanged; unrelated workflow/email work excluded.
+
 ## 2026-10-16 pilot live views — generation21 active
 
 Homepage, Explore and Blog listing reads now use native filtered live views through the ordinary binding contract, preserving approved route membership and pending designs. Real PostgreSQL16/185/957 populations, invoker/role restrictions, public API projection/filter/paging and attack denials pass; fresh builder selectors/options verified. [Exact delivery receipt](../plans/frontbase-pilot-live-views-20261015.md). Source `65c360e` pushed; final teaser/cache corrections deployed in image `62205b17…` with workspace check/build and clean-image gates passing. Existing content/detail captures remain compatible; no generic snapshots, production cutover, release-scope or CF-22 change. Earlier task1-pending statements below are historical.
