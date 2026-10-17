@@ -1,5 +1,13 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-17 T2 accounting foundation — locally verified, not enabled
+
+[Receipt](../plans/frontbase-translation-accounting-foundation-20261017.md): provider-neutral accounting/runner port and atomic SQLite allowance/attempt adapter pass workspace build/check,8 faults, retained suites and external tarball acceptance. Reuses existing job transaction/lease/source authority; no provider call or owner schema change. HTTP accounting parity, actual PostgreSQL acceptance, pricing/retarget host policy and reviewed batches remain required. Deployed application staysT1/1073252.
+
+## 2026-10-17 T1 AI configuration — staging verified
+
+Source40b925c/generated1073252 committed/pushed and deployed as healthy image1b080ef0…; [receipt](../plans/frontbase-translation-ai-t1-20261017.md). Fresh AI settings controls, five public200 routes, anonymous settings401, generation21 and pending drafts verified. No saved selection or real model call. T2 accounting foundation continues locally; HTTP parity/full acceptance remain open.
+
 ## 2026-10-17 translation T1 — locally verified, undeployed
 
 [T1 receipt](../plans/frontbase-translation-ai-t1-20261017.md): shared injected HTTP invocation for configured workflow/translation, owned existing AI accounts and reference-only generation settings implemented. Build/check,13 UI cases,8 faults, backend/security/tenant/conformance and bounded external package/host proofs pass. No real provider call, SQL migration, staging selection or deployment. T2 accounting is required before generation; T3/T4 and visual publication remain open. Unrelated staged state preserved.

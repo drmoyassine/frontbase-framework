@@ -1,5 +1,7 @@
 # Current work plan — 2026-10-16
 
+**2026-10-17 delivery and accounting:** T1 committed40b925c/generated1073252, pushed and staging verified. [T2 allowance foundation](frontbase-translation-accounting-foundation-20261017.md) implements neutral policy/attempt contracts and atomic SQLite reference semantics locally. Next executable work is equivalent HTTP/PostgREST accounting capability plus actual transactional acceptance, followed by mandatory host policy/retarget reconciliation and reviewed batches. Full T2 remains open; no generation/spend enabled.
+
 **2026-10-17 T1 locally verified:** [Shared AI/configuration receipt](frontbase-translation-ai-t1-20261017.md). Uncommitted/undeployed; configuration saves do not call a model. Next executable task: T2 durable allowance and attempt accounting, then T3 reviewed batches/authenticated recovery and T4 controlled provider acceptance. No exposed generation endpoint until accounting passes.
 
 **Next translation slice, planned 2026-10-17:** [AI provider, durable allowance and dispatch plan](frontbase-translation-ai-dispatch-plan-20261017.md). Order: shared owned-provider invocation → atomic attempt/budget accounting → reviewed batches and authenticated recovery → small draft-only end-to-end acceptance. Reuse existing engine jobs, provider accounts, guarded HTTP, PostgREST and workflow delivery; the existing AI executor and in-memory queue helper require explicit gap closure. Planning only; no paid calls or implementation started.

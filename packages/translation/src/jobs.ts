@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { localizationScopeSchema, type LocalizationScope } from './contracts.js';
 import { revisionIntentSchema, sourceRecordSchema, TranslationLifecycle, validatePlainRevision, type SourceRecord, type TranslationPersistence } from './revisions.js';
 import { translationUnitId, messageSourceFingerprint, translationContextFingerprint } from './identity.js';
+import type { TranslationAttemptAccounting } from './accounting.js';
 
 const counter = z.number().int().nonnegative().safe();
 const id = revisionIntentSchema.shape.revisionId;
@@ -45,6 +46,7 @@ export interface TranslationRunnerOptions {
     authorize(job: TranslationJob, source: SourceRecord): Promise<boolean>;
     leaseMs?: number;
     providerTimeoutMs?: number;
+    accounting?: TranslationAttemptAccounting;
 }
 
 export class TranslationJobRunner {
@@ -79,8 +81,18 @@ export class TranslationJobRunner {
         let allowed = false;
         try { allowed = await this.options.authorize(job, source) === true; } catch { /* safe denial; no callback details persisted */ }
         if (!allowed) return fail('denied');
+        const accounting = this.options.accounting;
+        if (accounting) {
+            try { if (!await accounting.reserve(job)) return fail('denied'); }
+            catch { return fail('denied'); }
+        }
         // Persist before calling a provider; a crash after this point has uncertain external billing/delivery.
-        if (!await this.store.markJobDispatched(scope, jobId, job.leaseVersion)) return this.store.readJob(scope, jobId);
+        try {
+            if (!await (accounting ? accounting.dispatch(job) : this.store.markJobDispatched(scope, jobId, job.leaseVersion))) {
+                if (accounting) await accounting.release(job);
+                return this.store.readJob(scope, jobId);
+            }
+        } catch { return fail('denied'); }
         const controller = new AbortController();
         let timer: ReturnType<typeof setTimeout> | undefined;
         let timedOut = false;
@@ -92,9 +104,14 @@ export class TranslationJobRunner {
                 new Promise((_, reject) => { timer = setTimeout(() => { timedOut = true; controller.abort(); reject(Error('translation_timeout')); }, this.timeoutMs); }),
             ]);
         } catch (error) {
-            return fail(timedOut ? 'provider-timeout' : 'provider-error', timedOut || !(error instanceof TranslationProviderError) || error.retryable);
+            if (accounting) { try { await accounting.settle(job); } catch { /* persisted dispatch remains conservatively held */ } }
+            return fail(timedOut ? 'provider-timeout' : 'provider-error', !accounting && (timedOut || !(error instanceof TranslationProviderError) || error.retryable));
         } finally { if (timer !== undefined) clearTimeout(timer); }
         const parsed = translationProviderResultSchema.safeParse(response);
+        if (accounting) {
+            try { if (!await accounting.settle(job, parsed.success ? parsed.data.usage : undefined)) return fail('denied'); }
+            catch { return fail('denied'); }
+        }
         if (!parsed.success) return fail('invalid-result');
         const { jobId: ignoredJob, providerId: ignoredProvider, promptVersion: ignoredPrompt, maxAttempts: ignoredAttempts, ...revision } = intent;
         const lifecycle = new TranslationLifecycle(this.store);

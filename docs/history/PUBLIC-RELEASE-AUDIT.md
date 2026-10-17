@@ -1,8 +1,12 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-17 T1 delivery and T2 continuation — claimed
+## 2026-10-17 T2 allowance foundation — locally verified; HTTP continuation open
 
-Owner explicitly requests commit, deployment and next-step implementation. Scope T1 source/evidence and generated bundle in separate normal commits, normal push, existing studygram/usa-frontbase-staging upload deployment and verification without changing saved AI/storage selection or page publication. Then claim T2 durable allowance/attempt accounting using existing job/persistence/HTTP patterns. No paid calls or automatic owner-database protocol upgrade. Preserve unrelated staged changes using explicit path commits.
+Continue into provider-neutral durable attempt accounting in the existing translation package: immutable scoped allowance, atomic fenced reservation/dispatch, conservative unknown settlement and demonstrably-undispatched release. Reuse existing job persistence/runner and conformance. Begin with SQLite reference semantics and an injected accounting port; HTTP protocol parity and real transactional acceptance remain explicit gates before enabling generation. No owner database upgrade or paid request is implied. [Foundation receipt](../plans/frontbase-translation-accounting-foundation-20261017.md): full workspace build/check, functional/concurrent/restart tests,8 new faults, retained translation/backend/tenant gates and external accounting tarball proof pass. Source checkpoint is separate from deployed T1. HTTP parity, actual PostgreSQL accounting and mandatory host/batch integration remain open; no generation enabled.
+
+## 2026-10-17 T1 delivery verified; T2 continuation claimed
+
+Owner explicitly requests commit, deployment and next-step implementation. Scope T1 source/evidence and generated bundle in separate normal commits, normal push, existing studygram/usa-frontbase-staging upload deployment and verification without changing saved AI/storage selection or page publication. Then claim T2 durable allowance/attempt accounting using existing job/persistence/HTTP patterns. No paid calls or automatic owner-database protocol upgrade. Preserve unrelated staged changes using explicit path commits. Delivered40b925c/1073252 normally; [receipt](../plans/frontbase-translation-ai-t1-20261017.md) records healthy image1b080ef0…, public200, anonymous401, fresh authenticated UI and generation21/draft preservation. No actual selection/model call. T2 source changes are local and excluded from the deployment.
 
 ## 2026-10-17 translation T1 — locally verified
 

@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-17 accounting implementation boundary
+
+Under the accepted durable allowance requirement, the [T2 reference foundation](../plans/frontbase-translation-accounting-foundation-20261017.md) shares job transaction/lease authority; dispatch records physical attempts, while unknown outcomes retain reservations and prohibit silent refund/retry. Generic integer units do not imply a dollar budget without host pricing/bounds. Compatibility use of the standalone runner without accounting does not authorize a Frontbase generation endpoint; a future exposed handler must require accepted accounting and reviewed batch policy. HTTP parity and actual PostgreSQL evidence remain open. No database transport, package-count or release-direction change.
+
 ## 2026-10-17 implementation boundary for reused AI invocation
 
 Under the accepted HTTP-only/owned-account/standalone-engine requirements, [T1](../plans/frontbase-translation-ai-t1-20261017.md) adds a server-only injected invoker shared by configured workflows and translation; it does not add a provider SDK dependency or credentials store. Initial protocol acceptance is one existing OpenAI connection type; other provider adapters remain capability-gated. Existing SDK workflow defaults are preserved, not re-certified. Saving reference-only AI settings is not generation or spend authorization; no generation endpoint until durable accounting. This is an implementation boundary, not a new vendor-exclusivity, runtime-selection, release or package-count decision.

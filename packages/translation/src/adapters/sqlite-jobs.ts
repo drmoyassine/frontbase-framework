@@ -16,8 +16,8 @@ export class SqliteTranslationJobPersistence extends SqliteTranslationPersistenc
     constructor(connection: SqliteConnection, options: { tablePrefix?: string; clock?: () => number } = {}) {
         super(connection, options); this.clock = options.clock ?? Date.now;
     }
-    private now(): number { return counter.parse(this.clock()); }
-    private transaction<T>(operation: () => T): T {
+    protected now(): number { return counter.parse(this.clock()); }
+    protected transaction<T>(operation: () => T): T {
         this.connection.exec('BEGIN IMMEDIATE');
         try { const result = operation(); this.connection.exec('COMMIT'); return result; }
         catch { this.connection.exec('ROLLBACK'); throw Error('translation_job_store_failed'); }
@@ -41,7 +41,7 @@ export class SqliteTranslationJobPersistence extends SqliteTranslationPersistenc
             if (!meta) db.prepare(`INSERT INTO ${p}job_meta VALUES(1,1)`).run();
         });
     }
-    private getJob(scope: LocalizationScope, jobId: string): TranslationJob | null {
+    protected getJob(scope: LocalizationScope, jobId: string): TranslationJob | null {
         const row = this.connection.prepare(`SELECT * FROM ${this.prefix}jobs WHERE tenant_id = ? AND project_id = ? AND job_id = ?`)
             .get(scope.tenantId, scope.projectId, jobId) as Row | undefined;
         return row ? translationJobSchema.parse({ scope: { tenantId: row.tenant_id, projectId: row.project_id }, intent: JSON.parse(String(row.intent_json)),
@@ -49,16 +49,16 @@ export class SqliteTranslationJobPersistence extends SqliteTranslationPersistenc
             leaseUntil: row.lease_until === null ? null : Number(row.lease_until), dispatched: row.dispatched === 1,
             uncertainAttempts: Number(row.uncertain_attempts), lastError: row.last_error }) : null;
     }
-    private saveJob(jobInput: TranslationJob): void {
+    protected saveJob(jobInput: TranslationJob): void {
         const job = translationJobSchema.parse(jobInput);
         this.connection.prepare(`UPDATE ${this.prefix}jobs SET status = ?, lease_version = ?, attempt = ?, available_at = ?, lease_until = ?, dispatched = ?, uncertain_attempts = ?, last_error = ?
             WHERE tenant_id = ? AND project_id = ? AND job_id = ?`).run(job.status, job.leaseVersion, job.attempt, job.availableAt, job.leaseUntil,
             job.dispatched ? 1 : 0, job.uncertainAttempts, job.lastError, job.scope.tenantId, job.scope.projectId, job.intent.jobId);
     }
-    private live(job: TranslationJob | null, epoch: number): job is TranslationJob {
+    protected live(job: TranslationJob | null, epoch: number): job is TranslationJob {
         return !!job && job.status === 'leased' && job.leaseVersion === epoch && job.leaseUntil !== null && job.leaseUntil > this.now();
     }
-    private inputProblem(job: TranslationJob): 'input-changed' | 'head-changed' | 'manual-protected' | 'unsupported-format' | null {
+    protected inputProblem(job: TranslationJob): 'input-changed' | 'head-changed' | 'manual-protected' | 'unsupported-format' | null {
         const { scope, intent } = job, db = this.connection;
         const unit = db.prepare(`SELECT * FROM ${this.prefix}units WHERE tenant_id = ? AND project_id = ? AND unit_id = ?`)
             .get(scope.tenantId, scope.projectId, intent.unitId) as Row | undefined;
