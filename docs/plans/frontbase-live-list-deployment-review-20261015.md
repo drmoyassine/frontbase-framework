@@ -22,7 +22,9 @@ Final package is `frontbase-live-list-consistency-20261015-r2.zip`, SHA-256 `286
 
 Private screenshots: `live-list-staging-deployed-20261015.jpg` and `live-list-browser-parity-20261015.jpg`. The disposable proof server was stopped and its proof tabs closed before handoff. No synthetic datasource/page was created in the staging CMS.
 
-## Ordered open tasks and deltas
+## Historical open tasks and deltas
+
+Superseded by the [2026-10-16 current plan](frontbase-current-work-plan-20261016.md). Task 1 below is complete: live pilot conversion and editable Saved Views are deployed. Final r2 compatibility deployment is verified in the current saved-view receipt; other rows are historical scope/evidence, not current ordering.
 
 | Priority | Task | Evidence and next executable step |
 | --- | --- | --- |

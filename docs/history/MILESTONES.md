@@ -1,5 +1,49 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-17 owner-requested separate source checkpoints — complete
+
+Translation/HTTP source and evidence477930c, workflow/email98d57ae, generated CMS2e96e5c and separate recovery artifacts7208998 are committed; the accompanying documentation checkpoint reconciles current plans and release evidence. Fresh workspace check/build, translation22 faults, selected infra/core/backend security/tenant/conformance and12 workflow editor tests pass. These are source checkpoints, not complete behavior/external-package/clean-room acceptance. No push, deployment or CF-22 activation. See [audit details](PUBLIC-RELEASE-AUDIT.md).
+
+## 2026-10-17 R0 refresh — complete, release gates open
+
+[2026-10-17 R0 refresh](PUBLIC-RELEASE-R0-2026-10-17.md) retains Developer Preview, reconciles the accepted seventh translation candidate and orders source baseline, external type remedy, behavior/transport integrity, clean matrix, self-host operations and release documentation. No new product decision, release or CF-22 activation. [HTTP translation delivery](../plans/frontbase-translation-http-20261017.md) supersedes earlier direct-PG/pending-HTTP statements with retained bounded acceptance; datasource UI/AI/visual publication remain open. Documentation-only refresh, uncommitted.
+
+## 2026-10-17 translation database runner reuse — local bridge verified
+
+Async PostgreSQL revision/job persistence consumes Frontbase's existing transactional `DbRunner` through the new server-only edge-infra subpath. No second connection client or reverse engine dependency. [Receipt and explicit limits](../plans/frontbase-translation-runner-integration-20261017.md): workspace check/build, full infra suite, external translation tarball/type checks, core compatibility and23 faults pass. Async-port behavior is tested with a SQLite SQL/transaction harness; real PostgreSQL syntax/RLS/grants/cross-connection locks, saved-datasource UI integration and configured AI/budget/scheduler gates remain open. Uncommitted/unpublished/undeployed; CF-22 unchanged.
+
+## 2026-10-17 translation input history and durable jobs — local-provider slice verified
+
+`@frontbase/translation` now retains immutable selected source/context input, advances source versions on context edits and executes bounded provider jobs through required host authorization. SQLite schema1→2 backfill and separately versioned durable jobs provide scoped discovery, lease epochs, retries/cancellation and atomic revision/head/job completion. [Exact receipt/limits](../plans/frontbase-translation-jobs-20261017.md). Node24 SQLite restart, competing/replaced workers, stale source/context/manual writes, timeouts/opaque errors and rollback pass; eighteen faults, external tarball jobs/types, compatibility/conditions and workspace check/build pass. Edge history/lifecycle parity uses a test double; no durable Worker SQL, real AI service or PostgreSQL claim. Budget/attempt accounting, configured transports, host scheduler, extraction/memory and native visual/publication gates remain open. Uncommitted/unpublished/undeployed; no new dependencies or provider/production/CF-22 action.
+
+## 2026-10-16 translation revision lifecycle — bounded M1/SQLite slice verified
+
+Standalone engine now provides source/head CAS, monotonic source versions, immutable target history/idempotent retries and manual-head protection. Injected SQLite reference adapter verifies actual file persistence/reopen, two-connection conflicts, transactional rollback and same/separate source/destination databases. [Evidence and limitations](../plans/frontbase-translation-revisions-20261016.md). Twelve total fault checks, core compatibility/conditions, workspace check/build and offline external tarball types/lifecycle pass. Local workerd lifecycle parity uses a test double; no persistent Worker SQL or other-provider claim. Full source/context history, job/AI ports, leases, PostgreSQL and native editor/publication remain pending; M0/M1 not closed. Uncommitted/unpublished/undeployed, no new dependencies or provider/production action; CF-22 unchanged.
+
+## 2026-10-16 standalone translation package — M0 foundation extracted and independently consumed
+
+Owner adds `@frontbase/translation` as the seventh framework library candidate, an explicit exception to the earlier six-package-only boundary. Existing localization primitives now have one implementation there, with core compatibility exports. [Exact evidence and next work](../plans/frontbase-translation-package-20261016.md): offline external tarball functional/type checks, Node/local-workerd identity/rich-text parity, workspace check/build, compatibility and6/6 faults pass. Runtime dependency is existing Zod; no reverse dependency on Frontbase consumers or formatter/AI/DB SDK adoption. Full engine storage/jobs/AI/UI/publication remains pending; package is uncommitted and unpublished. The broader framework release consumer list includes it but that full gate was not rerun. No provider/production/CF-22 change.
+
+## 2026-10-16 localization M0 continuation — host fixtures pass; no-library option explicit
+
+Four pinned library paths and a limited native Intl reference pass matching Node/local-workerd fixtures, eight concurrent requests per host and escaped interpolation through the existing native Text renderer. [Receipt and reproduction](../plans/frontbase-localization-m0-foundation-20261016.md#no-library-option-and-actual-local-host-continuation). Owner confirms none of the shortlist is valid; no runtime is selected. Workspace check/build, localization functional tests and6/6 faults pass. Actual-browser, minimum-Node, full native rich-text/editor and store/job/context contracts remain M0 gates. Isolated scripts/docs only in this continuation; uncommitted, no provider/deployment/publication/release-scope change.
+
+## 2026-10-16 localization M0 — first local implementation slice verified
+
+[Receipt](../plans/frontbase-localization-m0-foundation-20261016.md): versioned core language/storage/resource/revision contracts, isolated stable identity/fingerprints, protected bounded rich-text patches and mandatory literal-preserving per-site/locale sitemap comparison are implemented behind a new core entry. Functional tests,6/6 in-memory faults, retained conditions, workspace check/build and pinned isolated runtime probes pass. No runtime library selected; full M0, storage adapters, jobs, editor, localized serving and M1–M7 remain open. Plan includes optional read-only GSC and explicit translated-slug review. Not deployed/committed; source data, publication, parked tasks, six-package/release scope and CF-22 unchanged. Unrelated staged/unstaged changes preserved.
+
+## 2026-10-16 AI-native translation architecture — planned, not implemented
+
+[Detailed architecture](../plans/frontbase-ai-native-translation-architecture-20261016.md) and [M0–M7 implementation plan](../plans/frontbase-ai-native-translation-implementation-20261016.md) define same-or-separate translation storage, stable units/contextual memory, protected manual edits, durable AI jobs, native visual authoring, localized releases/routes/RTL and exact localized list-query acceptance. Storage adapter support and runtime selection require measured gates; neither universal provider support nor a library choice is claimed. Translation-edge concepts are adapted without requiring its external HTML proxy. Parked pilot work stays parked. Documentation-only, uncommitted; no runtime/deployment/publication or public-release scope change. Next step: owner review of proposed defaults/contracts, then M0 if implementation is authorized.
+
+## 2026-10-16 r2 compatibility deployment — verified
+
+The final JSON-valued saved-filter correction is deployed as image `432654bc…`, successful at 10:05:49 Kuwait time. Refreshed action logs establish completion after stale Uploading UI. Clean-image gates and fresh admin/anonymous checks pass; generation21/exact capture,16/185/957 counts, Homepage pending edits and `/test` Draft preserved. [Exact receipt](../plans/frontbase-editable-saved-views-20261016.md#r2-deployment-closure--2026-10-16). Current plan item1 is complete; catalog criteria is next. Source `b369784` already pushed; documentation uncommitted. No dataset expansion, migration replay, production/release change or CF-22 activation.
+
+## 2026-10-16 saved-view checkpoint and current plan — reconciled
+
+Source `b369784` is pushed. Main Saved Views/migration delivery is staging-verified; final r2 JSON-filter compatibility upload remains pending, not deployed. The [current plan](../plans/frontbase-current-work-plan-20261016.md) replaces obsolete live-migration backlog entries with ordered delivery, catalog-coverage decision, reuse, configured-user, lead-flow and launch acceptance work. No automatic dataset expansion, new runtime verification, production/release-scope change or CF-22 activation. Documentation-only changes remain uncommitted; unrelated work preserved.
+
 ## 2026-10-16 editable saved views — staging verified
 
 Saved views are discoverable Data assets with search, source/table and Published/Draft/version usage; datasource cards and builder Edit view open the same inspector. All pilot selection criteria are now visible editable saved filters, with no SQL-embedded membership/country/revision restrictions. Actual native/public checks preserve16/185/957 selection and generation21, private-field/access protection and pending designs. Workspace/build,7 UI tests, API/conversion/recovery and4+4 fault gates plus clean-image retained checks pass. [Delivery receipt and existing auth typing limits](../plans/frontbase-editable-saved-views-20261016.md). Canonical data, production, release scope and CF-22 unchanged; unrelated workflow/email work excluded.

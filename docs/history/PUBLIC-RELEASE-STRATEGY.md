@@ -4,11 +4,13 @@
 
 **Status:** Active preparation
 
-**First edition accepted (2026-10-08):** Frontbase Framework Developer Preview, for developers and agents operating their own deployment; six Apache-2.0 library packages and separately built application artifacts. Cloudflare leads; other hosts retain evidence-specific support boundaries. [R0 findings and ordered backlog](PUBLIC-RELEASE-R0-2026-10-08.md) guide R1–R4. This is scope acceptance, not release availability, package publication or deployment authorization. Full template installation, migration, turnkey full CLI scaffolding and universal host/provider parity remain unclaimed; CF-22 stays paused.
+**First edition accepted (2026-10-08):** Frontbase Framework Developer Preview, for developers and agents operating their own deployment; six Apache-2.0 library packages and separately built application artifacts. Cloudflare leads; other hosts retain evidence-specific support boundaries. The [current R0 refresh and ordered backlog](PUBLIC-RELEASE-R0-2026-10-17.md) guide R1–R4; [original findings](PUBLIC-RELEASE-R0-2026-10-08.md) remain dated evidence. This is scope acceptance, not release availability, package publication or deployment authorization. Full template installation, migration, turnkey full CLI scaffolding and universal host/provider parity remain unclaimed; CF-22 stays paused.
+
+**2026-10-16 accepted package extension (implementation in progress):** The owner requires `@frontbase/translation` as a standalone edge-native AI translation engine. This is an explicit exception to the earlier six-package boundary: a seventh Apache-2.0 library candidate, not a published-package or complete-feature claim. Existing consumers integrate the same engine; the engine cannot require the CMS, builder or a hosted control plane. Its package/host/security/operability evidence is required before distribution, including before publishing an updated core that forwards localization imports. Earlier six-package evidence remains historical and does not automatically cover this addition. Local [revision/SQLite evidence](../plans/frontbase-translation-revisions-20261016.md) covers a bounded engine slice only; it does not close provider, full workflow or release gates. The [HTTP persistence delivery](../plans/frontbase-translation-http-20261017.md) supersedes the direct translation PostgreSQL runtime: the shared Supabase/PostgREST client and narrow invoker RPCs have retained actual HTTPS acceptance. Selected datasource UI, AI accounting and native visual publication remain open. [Input-history/durable-job evidence](../plans/frontbase-translation-jobs-20261017.md) adds deterministic local-provider recovery only, with configured AI/budget/host and visual gates still open. [Decision and package evidence](../plans/frontbase-translation-package-20261016.md). Developer Preview status and all existing release gates remain; CF-22 stays paused.
 
 **Owner:** Frontbase framework
 
-**Last updated:** 2026-10-09
+**Last updated:** 2026-10-17
 
 ## Release intent
 
@@ -89,6 +91,8 @@ The owner may change the release label or scope, but must not waive truth, secur
 NoCodeHero may use a released Frontbase version to teach Certified No-code Engineer. The course can provide valuable downstream evidence about onboarding, teachability, documentation, and common workflows. It does not determine Frontbase's release label or permit Frontbase to bypass its gates. Frontbase exposes versioned, verified capabilities; NoCodeHero decides which of those capabilities support its curriculum and credential claims.
 
 ## Immediate next action
+
+The [2026-10-17 R0 refresh](PUBLIC-RELEASE-R0-2026-10-17.md) retains Developer Preview scope and prioritizes a reviewable immutable baseline, distributable backend types, behavior/transport integrity, then clean-checkout and clean-room operations evidence. The following transport follow-ups remain bounded inputs to that backlog, not release clearance.
 
 The [Request-preserving guarded primitive](PUBLIC-RELEASE-R2-REQUEST-TRANSPORT-DELIVERY.md) now reaches the selected SDK paths in [bounded HTTP delivery](PUBLIC-RELEASE-R2-SDK-HTTP-DELIVERY.md): 15 functional cases, six independently restored mutations and integrated local gates pass. The two demonstrated Turso-vector/Supabase injection bypasses are closed within those tested paths. Next: review parallel behavior/type evidence and establish a safe Neon policy without per-request global SDK mutation. Native/operator, DNS/egress, remaining wrappers and actual provider/host acceptance retain explicit boundaries; this does not close R2 or M1.
 
