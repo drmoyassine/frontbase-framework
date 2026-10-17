@@ -1,6 +1,6 @@
 # Current work plan — 2026-10-16
 
-**2026-10-17 storage continuation:** [Datasource configuration and trusted host resolution](frontbase-translation-storage-20261017.md) are verified; staging delivery is pending. Next translation product task is AI provider/budget integration and durable dispatch through that selection. Parked pilot work and the separate external backend-type release gate remain unchanged.
+**2026-10-17 storage continuation:** [Datasource configuration and trusted host resolution](frontbase-translation-storage-20261017.md) are verified and deployed to staging from709f1f3; authenticated controls, public routes and preserved generation21/drafts are verified. No storage selection is saved. Next translation product task is AI provider/budget integration and durable dispatch through that selection. Parked pilot work and the separate external backend-type release gate remain unchanged.
 
 **2026-10-17 source checkpoint:** translation/HTTP477930c and workflow/email98d57ae are committed with generated artifacts separately. Current verification and scope are in the [audit](../history/PUBLIC-RELEASE-AUDIT.md); no push or deployment. Historical uncommitted statements below are superseded for checkpointed work. Datasource selection remains the next translation product task; external backend types remain the next release evidence task.
 

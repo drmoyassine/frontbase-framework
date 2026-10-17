@@ -1,6 +1,6 @@
 # Translation storage configuration — 2026-10-17
 
-Status: implementation and local/live read-only acceptance verified; staging delivery pending. This is the next bounded slice after [HTTP persistence](frontbase-translation-http-20261017.md). No AI generation, data migration or language publication is included.
+Status: implementation, local/live read-only acceptance and staging delivery verified. This is the next bounded slice after [HTTP persistence](frontbase-translation-http-20261017.md). No AI generation, data migration or language publication is included.
 
 ## Administrator flow
 
@@ -33,3 +33,11 @@ Framework-specific additive APIs: GET/PUT /api/project/translation-storage/ and 
 Initial fixture corrections are retained as limits: the cipher setup required await, datasource creation correctly returns201, and an old site-configuration test omitted the already-committed elementBrowsing:false field. Its exact expected response is corrected; the full race/auth/corruption test now passes. A mutation-script quote typo was corrected before acceptance. No production behavior or ledger was weakened to make a test pass.
 
 No npm publication, clean-room release acceptance, new provider certification, source content publication, formatter choice, parked pilot resumption or CF-22 activation. Next translation product task: existing AI provider integration, budget accounting and durable dispatch using the selected storage; no paid calls are authorized automatically.
+
+## Staging delivery — verified 2026-10-17
+
+Source709f1f3 (featurec4ce911, generated bundleb74ff66) was pushed normally and deployed to studygram/usa-frontbase-staging on newpanel.studygram.me. Immutable archive:6,433,020 bytes, SHA25615329cf06573160abc8bda0bdc89f934b7ae3f1ce8cf5cc5696dafdf389445ac. Archive excludes synchronization copies and Python caches. EasyPanel actioncmvc8f9qw000c07qqdrf628dj completed at10:07:56 UTC. New imagesha256:4395983def6de26712e29c8aff82b2039cef10f728985af8ccf822ab6294a581 replacesec4ba6632b9030c7cf8107efdfd8eb2b69a88a0f05f83d5ef372f6cd92f54094. Server Node22 frozen installation, workspace build and Docker gate pass; local acceptance used Node24. Runtime is healthy with zero failing streak and the original /data volume. No environment or mount changes. Actual rollback/full image security suite are not claimed.
+
+Health, Homepage, Explore Institutions, Explore Programs and Blog return200 over verified HTTPS. Both storage endpoints return401 without credentials. Authenticated browser verifies Settings → Translations, same/separate datasource and endpoint-format controls. Unsaved test selections were reloaded; no storage check/save/clear was submitted against real staging. Data → Datasources exposes the manual HTTPS URL and masked server-key inputs; fields remained blank and the modal was canceled. Existing datasource and three saved views remain. Pages retains generation21, Homepage Changes pending and test Draft. No AI call, destination write, content publication or actual storage configuration was performed.
+
+During final verification, unrelated staged reversions/replacement paths appeared in the shared index after the source push. They were preserved; this receipt checkpoint includes only its explicit documentation paths. A clean worktree is not claimed. The next executable product task remains AI provider/budget integration and durable dispatch; it has not been started by this delivery.
