@@ -12,7 +12,9 @@
  * `exec` returns affected-rows count where the driver reports it (A-17 portable).
  */
 import { createClient, type Client } from '@libsql/client';
-import { PostgrestClient } from '@supabase/postgrest-js';
+import { supabasePostgrestClient, type SupabaseOpts } from './supabase-http.js';
+export { supabasePostgrestClient } from './supabase-http.js';
+export type { SupabaseOpts } from './supabase-http.js';
 import type { DbRunner } from './types.js';
 import type { ServiceFetch } from '../cache/types.js';
 import { libsqlHttpConfig } from './libsql-http.js';
@@ -102,18 +104,6 @@ export function d1RunnerFromRest(opts: D1RestOpts): DbRunner {
 }
 
 /** Supabase Postgres connection options (CF-20). */
-export interface SupabaseOpts {
-    /** Supabase project URL: https://<ref>.supabase.co */
-    url: string;
-    /** Supabase API key (secret/publishable or legacy service_role/anon). Server-only. */
-    serviceKey: string;
-    /** Optional JWT bearer token for RLS (defaults to service key) */
-    jwt?: string;
-    /** Postgres schema to use (default: public) */
-    schema?: string;
-    /** Per-instance HTTP transport; native application-state callers are separate. */
-    fetchImpl?: ServiceFetch;
-}
 
 /**
  * Supabase Postgres via PostgREST (CF-20) — edge-safe HTTP adapter.
@@ -204,25 +194,10 @@ export function inlinePgParams(sql: string, params: unknown[]): string {
     });
 }
 
+/** One shared HTTP client setup for the existing runner and typed domain RPC adapters. */
+
 export function supabaseRunner(opts: SupabaseOpts): DbRunner {
-    const headers: Record<string, string> = {
-        apikey: opts.serviceKey,
-    };
-    // New opaque API keys authenticate only via apikey; a real user JWT still
-    // belongs in Authorization so its RLS context is preserved.
-    const bearer = opts.jwt ?? (opts.serviceKey.startsWith('sb_') ? undefined : opts.serviceKey);
-    if (bearer) headers.Authorization = `Bearer ${bearer}`;
-    if (opts.schema) {
-        headers['Accept-Profile'] = opts.schema;
-        headers['Content-Profile'] = opts.schema;
-    }
-
-    const client = new PostgrestClient(`${opts.url}/rest/v1`, {
-        headers,
-        schema: opts.schema ?? 'public',
-        fetch: opts.fetchImpl,
-    });
-
+    const client = supabasePostgrestClient(opts);
     return {
         async query(sql, params = []) {
             // For SELECT queries, use RPC to call execute_query if available

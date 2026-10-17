@@ -1,0 +1,18 @@
+{
+  "role": "service_role",
+  "schema": "translations",
+  "status": "ok",
+  "postgres": "17.11",
+  "rlsTables": 6,
+  "extensions": [
+    "plpgsql"
+  ],
+  "faultTriggers": 0,
+  "publicObjects": 0,
+  "canUpdateHistory": false,
+  "translationUnits": 0,
+  "translationTables": 6,
+  "apiRoleBypassesRls": false,
+  "canDeleteRevisions": false,
+  "rpcSecurityDefiner": false
+}

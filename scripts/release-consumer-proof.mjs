@@ -23,7 +23,7 @@ function run(args,cwd) {
     if(r.error||r.status!==0)throw new Error('Proof command failed: '+args.join(' ')+'\n'+(r.error?.message||r.stderr||r.stdout));
     return r.stdout;
 }
-const names=['edge-core','compiler','ui-components','edge-infra','backend','builder'];
+const names=['translation','edge-core','compiler','ui-components','edge-infra','backend','builder'];
 const dependencies={},overrides={},entries=[];
 try {
     for(const name of names) {

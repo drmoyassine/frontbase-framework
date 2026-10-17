@@ -507,6 +507,9 @@ importers:
 
   packages/edge-core:
     dependencies:
+      '@frontbase/translation':
+        specifier: workspace:*
+        version: link:../translation
       hono:
         specifier: ^4.6.0
         version: 4.12.28
@@ -535,6 +538,9 @@ importers:
 
   packages/edge-infra:
     dependencies:
+      '@frontbase/translation':
+        specifier: workspace:*
+        version: link:../translation
       '@aws-sdk/client-s3':
         specifier: ^3.1085.0
         version: 3.1085.0
@@ -595,6 +601,12 @@ importers:
       vite:
         specifier: 7.3.1
         version: 7.3.1(@types/node@26.1.1)(jiti@2.7.0)(yaml@2.9.0)
+
+  packages/translation:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
 
   packages/ui-components: {}
 
