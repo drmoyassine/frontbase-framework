@@ -1,5 +1,7 @@
 # AI-native translation implementation plan — 2026-10-16
 
+**2026-10-17 bounded storage delivery:** [Selection/host-resolution receipt](frontbase-translation-storage-20261017.md) covers tenant-owned configuration, server-generated persistent project isolation, canonical credentials/HTTP reuse and read-only protocol acceptance. Additional provider adapters, selected-role write certification, AI budgets/dispatch and native visual language publication remain open; this does not close the full M1–M7 plan.
+
 Status: implementation authorized; initial M0 core foundation and isolated Node/local-workerd runtime fixtures are verified locally. M0 is not complete; bounded revision/SQLite and source/context/durable-job slices of M1/M2 are implemented locally with local providers, with the remaining gates and M3–M7 pending. [Architecture and requirements](frontbase-ai-native-translation-architecture-20261016.md) are proposed for review. Foundation code and test fixtures exist; no external provider provisioning/schema mutation, billable translation, publication or production action has been performed. Tests create only disposable SQLite schemas. Previous pilot follow-ups remain parked. Runtime selection is a measured implementation gate, not a preference inferred from discussion.
 
 ## Standalone package prerequisite

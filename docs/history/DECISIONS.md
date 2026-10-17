@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-17 implementation boundary for optional translation storage
+
+Under the accepted same-or-separate datasource requirement, selection references an existing owned datasource rather than storing another credential copy. The current host persists a server-generated project UUID in tenant settings, retaining it through clear/retarget operations. Separate installations sharing a destination must not collide through a common default tenant/project name. Do not accept project identity or tenant from a settings request. Current protocol remains fixed to translations and Supabase/PostgREST HTTP; other kinds require equivalent acceptance. Read-only connection checks do not certify write permissions or install schemas. [Implementation and bounded evidence](../plans/frontbase-translation-storage-20261017.md). No additional package or release/CF-22 scope change.
+
 ## 2026-10-17 owner requires pure HTTP translation persistence and a lean database service
 
 The accepted translation runtime transport is HTTP through the existing Frontbase Supabase/PostgREST adapter. No direct PostgreSQL connection, TCP/socket API or Hyperdrive requirement for edge consumers. Atomic mutations belong in narrow database RPCs, one HTTP request per transaction; no arbitrary SQL runtime endpoint. This supersedes the direct PostgreSQL translation bridge choice recorded below. Owner additionally directs a separate PostgreSQL/PostgREST service and destruction of the full Supabase deployment. All translation objects use translations; public remains reserved. [Deployment evidence](../plans/frontbase-postgrest-owner-deployment-20261017.md) and [bounded HTTP implementation evidence](../plans/frontbase-translation-http-20261017.md). Existing framework providers outside this translation scope are not removed or certified by this decision. No framework release/CF-22 change.

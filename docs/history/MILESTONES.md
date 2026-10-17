@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-17 translation storage selection — verified locally, staging pending
+
+[Receipt](../plans/frontbase-translation-storage-20261017.md): Settings → Translations, manual HTTPS datasource credentials, owned/CAS settings, stable cross-host project identities and canonical HTTP resolution implemented. Final workspace check/build,10 UI tests,7 new faults,22 retained engine faults and backend security/tenant/conformance pass. Four real read-only owner-instance requests pass with isolated local test settings; no remote writes or AI calls. Destination write permissions, additional adapters and AI/visual workflow remain open. Staging delivery is the remaining authorized action; no storage connection is selected on behalf of the administrator.
+
 ## 2026-10-17 source checkpoints pushed and staging deployed — verified
 
 Normal source push through a708c3d succeeds; isolated USA staging runs imageec4ba663… with healthy container and original persistent volume. Public health/Homepage/Explore/Blog200, email no-credential401 and generation21/pending drafts verified. [Receipt and operational limits](../plans/frontbase-staging-checkpoint-deployment-20261017.md). No npm/production release, new translation UI, closed release gate or CF-22 activation.
