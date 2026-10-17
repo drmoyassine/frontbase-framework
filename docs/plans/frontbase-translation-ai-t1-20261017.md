@@ -1,6 +1,6 @@
 # Translation T1 — shared AI invocation and reference-only configuration
 
-Status: implemented and locally verified, uncommitted and undeployed. Working source continues baseline6156212; unrelated staged changes remain preserved. This completes the bounded T1 continuation of the [dispatch plan](frontbase-translation-ai-dispatch-plan-20261017.md), not a complete AI translation workflow.
+Status: committed, pushed and deployed to USA staging. Source40b925c and generated bundle1073252; unrelated staged changes remain preserved. This completes the bounded T1 continuation of the [dispatch plan](frontbase-translation-ai-dispatch-plan-20261017.md), not a complete AI translation workflow.
 
 ## Changes and reuse
 
@@ -31,3 +31,11 @@ No new dependency, SQL protocol migration, real model request, owner-destination
 ## Next executable task
 
 T2: add a provider-neutral durable allowance/attempt policy to the existing runner/persistence, with atomic reservations and settlement, conservative uncertain-call accounting, exact integer limits, cancellation/lease fencing and storage-retarget reconciliation. Extend existing transactional PostgREST operations and conformance before exposing any generation/start endpoint. T3 reviewed batches/recovery and T4 small approved provider acceptance follow. Paid data transmission requires a concrete selected batch and explicit allowance; current settings save does not provide that authorization.
+
+## Staging delivery — verified 2026-10-17
+
+Normal push through1073252; archive6,466,740 bytes /2,209 entries, SHA25613d500c0169ddcac191ffb2515abe88bc2df6b852f97941cd54f40ab7ad6d61b. Source-only immutable archive excludes synchronization copies/caches and contains no private environment files. EasyPanel newpanel.studygram.me → studygram/usa-frontbase-staging actioncmvci4qnw000k07qq5g8oes8q completed14:39:35 UTC. New imagesha256:1b080ef0c4e4c7457fe8d4173afc335e0f1b0ece4c182fdf4e284e8d9224d98a; previous4395983def6de26712e29c8aff82b2039cef10f728985af8ccf822ab6294a581. Server frozen install/workspace build/Docker gate pass. Container running/healthy, original studygram_usa-frontbase-staging_usa-staging-state mounted at/data. No environment/mount/config changes. Actual rollback or full-image security execution is not claimed.
+
+Verified HTTPS health, Homepage, Explore Institutions/Programs and Blog200; anonymous GET/PUT generation settings401. Public response byte lengths match the previous receipt. A fresh authenticated tab verifies Translation AI, existing accounts with unsupported ones disabled, blank model and disabled Save/Clear; no AI account or storage selection was saved. Generation21, Homepage Changes pending, test Draft and folders are preserved. Original user settings tab was left untouched: automatic review rejected reloading it because unsaved edits could be discarded; verification succeeded safely in a fresh tab. Sandbox DNS failed; verified HTTPS checks passed outside it. No real model call, content publication or database protocol upgrade.
+
+T2 work begins locally after this immutable T1 delivery and is not included in the deployed archive.
