@@ -28,6 +28,7 @@ import { registerThemesRoutes } from './routes/themes.js';
 import { registerProjectRoutes } from './routes/project.js';
 import { registerSiteConfigurationRoutes } from './routes/site-configuration.js';
 import { registerTranslationStorageRoutes } from './routes/translation-storage.js';
+import { registerTranslationGenerationRoutes } from './routes/translation-generation.js';
 import { registerDirectoryPreviewRoutes } from './routes/directory-preview.js';
 import { registerTemplatePreflightRoutes } from './routes/template-preflight.js';
 import { registerPageRouteAudit } from './routes/page-route-audit.js';
@@ -423,6 +424,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerMenusRoutes(app, runner, kvFor, now);
     registerSiteConfigurationRoutes(app, runner, now);
     registerTranslationStorageRoutes(app, runner, { syncFor: syncStoreFor, externalFetch, accountConfigFor: (tenant, id) => phase2For(tenant).getEdgeResourceConfig(id) }, now);
+    registerTranslationGenerationRoutes(app, runner, { accountsFor: phase2For, externalFetch }, now);
     registerTemplateArtifactRoutes(app);
     registerPageRouteAudit(app, runner);
     registerPagesWorkspaceRoutes(app, runner);

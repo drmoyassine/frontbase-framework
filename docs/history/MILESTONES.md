@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-17 translation T1 — locally verified, undeployed
+
+[T1 receipt](../plans/frontbase-translation-ai-t1-20261017.md): shared injected HTTP invocation for configured workflow/translation, owned existing AI accounts and reference-only generation settings implemented. Build/check,13 UI cases,8 faults, backend/security/tenant/conformance and bounded external package/host proofs pass. No real provider call, SQL migration, staging selection or deployment. T2 accounting is required before generation; T3/T4 and visual publication remain open. Unrelated staged state preserved.
+
 ## 2026-10-17 translation storage selection — staging verified
 
 [Receipt](../plans/frontbase-translation-storage-20261017.md): Settings → Translations, manual HTTPS datasource credentials, owned/CAS settings, stable cross-host project identities and canonical HTTP resolution implemented. Final workspace check/build,10 UI tests,7 new faults,22 retained engine faults and backend security/tenant/conformance pass. Four real read-only owner-instance requests pass with isolated local test settings; no remote writes or AI calls. Destination write permissions, additional adapters and AI/visual workflow remain open. Source709f1f3 is pushed and deployed as healthy image4395983d…; public routes200, anonymous storage401 and authenticated controls verified. Generation21 and pending drafts remain. No storage connection is selected on behalf of the administrator. Unrelated staged index changes are preserved.

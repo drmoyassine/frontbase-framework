@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-17 implementation boundary for reused AI invocation
+
+Under the accepted HTTP-only/owned-account/standalone-engine requirements, [T1](../plans/frontbase-translation-ai-t1-20261017.md) adds a server-only injected invoker shared by configured workflows and translation; it does not add a provider SDK dependency or credentials store. Initial protocol acceptance is one existing OpenAI connection type; other provider adapters remain capability-gated. Existing SDK workflow defaults are preserved, not re-certified. Saving reference-only AI settings is not generation or spend authorization; no generation endpoint until durable accounting. This is an implementation boundary, not a new vendor-exclusivity, runtime-selection, release or package-count decision.
+
 ## 2026-10-17 implementation boundary for optional translation storage
 
 Under the accepted same-or-separate datasource requirement, selection references an existing owned datasource rather than storing another credential copy. The current host persists a server-generated project UUID in tenant settings, retaining it through clear/retarget operations. Separate installations sharing a destination must not collide through a common default tenant/project name. Do not accept project identity or tenant from a settings request. Current protocol remains fixed to translations and Supabase/PostgREST HTTP; other kinds require equivalent acceptance. Read-only connection checks do not certify write permissions or install schemas. [Implementation and bounded evidence](../plans/frontbase-translation-storage-20261017.md). No additional package or release/CF-22 scope change.

@@ -1,0 +1,15 @@
+/** Packed AI subpath proof, outside workspace. Does not certify whole edge-infra installation. */
+import assert from 'node:assert/strict';
+import {mkdir,readFile,writeFile,realpath} from 'node:fs/promises';
+import {resolve,join,relative} from 'node:path';
+import {execFileSync} from 'node:child_process';
+const [npmArg,outArg]=process.argv.slice(2);if(!npmArg||!outArg)throw Error('npm CLI and new external output directory required');
+const root=await realpath(process.cwd()),out=resolve(outArg);assert.ok(relative(root,out).startsWith('..'));await mkdir(out,{recursive:true});
+const data=JSON.parse(execFileSync(process.execPath,[resolve(npmArg),'pack',resolve('packages/edge-infra'),'--offline','--ignore-scripts','--json','--pack-destination',out,'--cache',join(out,'cache')],{cwd:out,encoding:'utf8',windowsHide:true}))[0];assert.ok(data?.filename);assert.ok(data.files.some(f=>f.path==='dist/ai-http.d.ts'));
+const consumer=join(out,'consumer');await mkdir(consumer);await writeFile(join(consumer,'package.json'),JSON.stringify({private:true,type:'module'}));const installed=join(consumer,'node_modules','@frontbase','edge-infra');await mkdir(installed,{recursive:true});
+execFileSync('tar',['-xf',join(out,data.filename),'-C',installed,'--strip-components=1'],{windowsHide:true});assert.equal(await realpath(installed),installed);
+await writeFile(join(consumer,'test.mjs'),`import assert from 'node:assert/strict';import {httpTextInvoker} from '@frontbase/edge-infra/ai';const invoke=httpTextInvoker({baseUrl:'https://example.test/v1',apiKey:'fixture'},async()=>Response.json({choices:[{finish_reason:'stop',message:{content:'translated'}}]}));assert.deepEqual(await invoke({model:'fixture',maxOutputTokens:10,messages:[{role:'user',content:'source'}]}),{text:'translated'});`);
+execFileSync(process.execPath,['test.mjs'],{cwd:consumer,windowsHide:true});
+await writeFile(join(consumer,'test.ts'),`import {httpTextInvoker,type TextInvoker,type TextInvocation} from '@frontbase/edge-infra/ai';const f:TextInvoker=httpTextInvoker({baseUrl:'https://example.test',apiKey:'key'},fetch);const input:TextInvocation={model:'fixture',messages:[{role:'user',content:'source'}],maxOutputTokens:20};void f(input);`);
+execFileSync(process.execPath,[resolve('node_modules/typescript/bin/tsc'),'--target','ES2022','--module','NodeNext','--moduleResolution','NodeNext','--strict','--noEmit','test.ts'],{cwd:consumer,windowsHide:true});
+await writeFile(join(out,'result.json'),JSON.stringify({package:data.name,subpath:'./ai',outsideWorkspace:true,packedArtifact:true,functional:true,declarations:true,registryPublish:false,limitations:['Tarball extracted into isolated node_modules; full dependency installation and whole edge-infra consumability are not certified']},null,2));console.log('Packed AI subpath PASS: external NodeNext declarations and injected HTTP behavior');

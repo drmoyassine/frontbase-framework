@@ -1,7 +1,7 @@
 {
   "name": "@frontbase/edge-infra",
   "version": "0.0.0",
-  "description": "Frontbase edge infrastructure — concrete DataProviders, Edge Data Proxy auth, cache, queue, vault (Web Crypto), AI/MCP executors. SERVER-ONLY (never browser-imported).",
+  "description": "Frontbase edge infrastructure \u00e2\u20ac\u201d concrete DataProviders, Edge Data Proxy auth, cache, queue, vault (Web Crypto), AI/MCP executors. SERVER-ONLY (never browser-imported).",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -12,6 +12,10 @@
     "./translation": {
       "types": "./dist/translation.d.ts",
       "import": "./dist/translation.js"
+    },
+    "./ai": {
+      "types": "./dist/ai-http.d.ts",
+      "import": "./dist/ai-http.js"
     }
   },
   "files": [
@@ -20,7 +24,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node test/password.mjs && node test/session.mjs && node test/runners.mjs && node test/d1-rest-count.mjs && node test/postgres-state.mjs && node test/supabase-rpc-parse.mjs && node test/providers.mjs && node test/storage-sigv4.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/cache-remote.mjs && node test/qstash.mjs && node test/vector.mjs && node test/workflow-durable.mjs && node test/ratelimit.mjs && node test/no-leak.mjs && node test/translation.mjs",
+    "test": "tsc -p tsconfig.json && node test/password.mjs && node test/session.mjs && node test/runners.mjs && node test/d1-rest-count.mjs && node test/postgres-state.mjs && node test/supabase-rpc-parse.mjs && node test/providers.mjs && node test/storage-sigv4.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/cache-remote.mjs && node test/qstash.mjs && node test/vector.mjs && node test/workflow-durable.mjs && node test/ratelimit.mjs && node test/no-leak.mjs && node test/translation.mjs && node test/ai-http.mjs",
     "test:d1-rest-count": "node test/d1-rest-count.mjs",
     "test:mutation": "node test/mutation.mjs && node test/d1-rest-count-mutation.mjs",
     "test:translation": "node test/translation.mjs"

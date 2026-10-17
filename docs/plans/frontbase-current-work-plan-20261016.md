@@ -1,5 +1,9 @@
 # Current work plan — 2026-10-16
 
+**2026-10-17 T1 locally verified:** [Shared AI/configuration receipt](frontbase-translation-ai-t1-20261017.md). Uncommitted/undeployed; configuration saves do not call a model. Next executable task: T2 durable allowance and attempt accounting, then T3 reviewed batches/authenticated recovery and T4 controlled provider acceptance. No exposed generation endpoint until accounting passes.
+
+**Next translation slice, planned 2026-10-17:** [AI provider, durable allowance and dispatch plan](frontbase-translation-ai-dispatch-plan-20261017.md). Order: shared owned-provider invocation → atomic attempt/budget accounting → reviewed batches and authenticated recovery → small draft-only end-to-end acceptance. Reuse existing engine jobs, provider accounts, guarded HTTP, PostgREST and workflow delivery; the existing AI executor and in-memory queue helper require explicit gap closure. Planning only; no paid calls or implementation started.
+
 **2026-10-17 storage continuation:** [Datasource configuration and trusted host resolution](frontbase-translation-storage-20261017.md) are verified and deployed to staging from709f1f3; authenticated controls, public routes and preserved generation21/drafts are verified. No storage selection is saved. Next translation product task is AI provider/budget integration and durable dispatch through that selection. Parked pilot work and the separate external backend-type release gate remain unchanged.
 
 **2026-10-17 source checkpoint:** translation/HTTP477930c and workflow/email98d57ae are committed with generated artifacts separately. Current verification and scope are in the [audit](../history/PUBLIC-RELEASE-AUDIT.md); no push or deployment. Historical uncommitted statements below are superseded for checkpointed work. Datasource selection remains the next translation product task; external backend types remain the next release evidence task.

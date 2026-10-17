@@ -10,6 +10,7 @@
  */
 import type { ExecutorRegistry, NodeExecutor, NodeExecutorContext } from '@frontbase/edge-core/workflow';
 import { defaultExecutorRegistry } from '@frontbase/edge-core/workflow';
+import type { TextInvoker } from '../ai-http.js';
 
 type NodeLike = { id: string; type: string; inputs?: Array<{ name: string; value?: unknown }> | null };
 
@@ -31,6 +32,16 @@ export const aiChatExecutor: NodeExecutor = {
         return { text: result.text, usage: result.usage };
     },
 };
+
+/** Owned hosts supply the same invoker used by translation; legacy SDK mode stays opt-in through the existing executor. */
+export function configuredAIChatExecutor(resolve: (ctx: NodeExecutorContext) => Promise<TextInvoker>): NodeExecutor {
+    return { types: [...aiChatExecutor.types], async execute(node, _inputs, ctx) {
+        const invoke = await resolve(ctx);
+        return { ...await invoke({ model: String(input(node as NodeLike, 'model', '')),
+            messages: [{ role: 'user', content: String(input(node as NodeLike, 'prompt', '')) }],
+            maxOutputTokens: Number(input(node as NodeLike, 'maxOutputTokens', 1024)) }) };
+    } };
+}
 
 /** mcp.call executor — invokes a tool on an MCP server (@modelcontextprotocol/sdk). */
 export const mcpCallExecutor: NodeExecutor = {
@@ -84,9 +95,9 @@ export const queueTriggerExecutor: NodeExecutor = {
  * The full edge executor registry: edge-core's built-in control-flow executors
  * PLUS the AI/MCP/email/queue ones defined here. Hosts pass this to executeWorkflow.
  */
-export function fullExecutorRegistry(): ExecutorRegistry {
+export function fullExecutorRegistry(resolveAI?: (ctx: NodeExecutorContext) => Promise<TextInvoker>): ExecutorRegistry {
     return defaultExecutorRegistry()
-        .register(aiChatExecutor)
+        .register(resolveAI ? configuredAIChatExecutor(resolveAI) : aiChatExecutor)
         .register(mcpCallExecutor)
         .register(emailExecutor)
         .register(queueTriggerExecutor);

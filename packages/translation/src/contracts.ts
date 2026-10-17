@@ -100,3 +100,20 @@ export const EMPTY_TRANSLATION_CONTEXT_FINGERPRINT = 'd0c24e75893242d3b787aa9192
 export interface MessageResolver {
     format(input: { locale: string; format: MessageUnit['format']; text: string; values: Readonly<Record<string, string | number | boolean | Date>> }): string;
 }
+
+/** Reference-only generation policy. Selecting a provider never authorizes generation. */
+export const translationGenerationConfigurationSchema = z.object({
+    version: z.literal(1), accountId: id, model: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/),
+    sourceLocale: localeSchema, targetLocales: z.array(localeSchema).min(1).max(16),
+    promptVersion: z.literal('plain-v1'), maxOutputTokens: z.number().int().min(1).max(16384),
+}).strict().superRefine((value, ctx) => {
+    if (new Set(value.targetLocales).size !== value.targetLocales.length || value.targetLocales.includes(value.sourceLocale))
+        ctx.addIssue({ code: 'custom', message: 'Target languages must be unique and differ from source' });
+});
+export const translationGenerationSettingsSchema = z.object({ revision: z.number().int().nonnegative().safe(), configuration: translationGenerationConfigurationSchema.nullable() }).strict();
+export const translationGenerationSaveSchema = z.object({ expectedRevision: z.number().int().nonnegative().safe(), configuration: translationGenerationConfigurationSchema.nullable() }).strict();
+export const translationGenerationOptionsSchema = translationGenerationSettingsSchema.extend({
+    accounts: z.array(z.object({ id, name: z.string().max(1000), provider: z.string().max(100), supported: z.boolean() }).strict()).max(10000),
+    generationAvailable: z.literal(false),
+}).strict();
+export type TranslationGenerationConfiguration = z.infer<typeof translationGenerationConfigurationSchema>;
