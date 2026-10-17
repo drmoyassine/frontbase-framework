@@ -1,0 +1,154 @@
+{
+  "date": "2026-10-17",
+  "workspace": [
+    {
+      "gate": "build",
+      "exitCode": 0
+    },
+    {
+      "gate": "check",
+      "exitCode": 0
+    }
+  ],
+  "finalRebuiltSource": [
+    {
+      "gate": "accounting",
+      "exitCode": 0
+    },
+    {
+      "gate": "accounting-http",
+      "exitCode": 0
+    },
+    {
+      "gate": "accounting-http-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "storage",
+      "exitCode": 0
+    },
+    {
+      "gate": "bridge",
+      "exitCode": 0
+    },
+    {
+      "gate": "external",
+      "exitCode": 0
+    },
+    {
+      "gate": "infra-graph",
+      "exitCode": 0
+    },
+    {
+      "gate": "host-graph",
+      "exitCode": 0
+    }
+  ],
+  "retainedEngine": [
+    {
+      "gate": "packages/translation/test/localization.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/revisions.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/jobs.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/postgrest.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/accounting.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/accounting-http.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/localization-mutation.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/revisions-mutation.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/jobs-mutation.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/postgrest-mutation.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/accounting-mutation.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/translation/test/accounting-http-mutation.mjs",
+      "exitCode": 0
+    },
+    {
+      "gate": "packages/edge-infra/test/translation.mjs",
+      "exitCode": 0
+    }
+  ],
+  "retainedBackend": [
+    {
+      "gate": "storage",
+      "exitCode": 0
+    },
+    {
+      "gate": "generation",
+      "exitCode": 0
+    },
+    {
+      "gate": "sdk",
+      "exitCode": 0
+    },
+    {
+      "gate": "external",
+      "exitCode": 0
+    },
+    {
+      "gate": "security",
+      "exitCode": 0
+    },
+    {
+      "gate": "tenant",
+      "exitCode": 0
+    },
+    {
+      "gate": "conformance",
+      "exitCode": 0
+    }
+  ],
+  "storageMutation": {
+    "faultsCaught": 7,
+    "allSourceAndArtifactHashesRestored": true
+  },
+  "httpMutation": {
+    "faultsCaught": 6,
+    "inMemoryOnly": true
+  },
+  "sqlMutation": {
+    "faultsCaught": 3,
+    "restoredRacePass": true
+  },
+  "verificationOrder": "Storage mutation restored source/artifacts first; final workspace build/check then final functional, HTTP mutation, external package and host import graphs. Earlier overlapping build discarded as final evidence.",
+  "sourceBase": "1d1f508",
+  "ownerDatabaseChanged": false,
+  "stagingDeployed": false,
+  "paidProviderCalls": 0,
+  "limitations": [
+    "No deployed TLS/edge or owner accounting installation proof.",
+    "No actual AI/provider pricing, mandatory host budget policy or reviewed batch dispatch.",
+    "External package proof covers translation only, not all seven candidate libraries.",
+    "Full unrelated behavior/security corpus not repeated; configured check scope and existing warnings unchanged."
+  ]
+}

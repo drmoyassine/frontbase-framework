@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-17 T2 HTTP accounting — bounded parity verified
+
+[HTTP accounting receipt](../plans/frontbase-translation-accounting-http-20261017.md): additive accounting capability, shared HTTP adapter/owned host resolution and transactional SQL pass local PostgreSQL17.11/PostgREST14.18 reservation/dispatch races, rollback, role isolation and SQL fault gates. Workspace, external package/types and retained security gates pass. No owner installation/deployment or AI spend; mandatory host pricing/config/storage policy and reviewed batches remain required. Historical foundation-only statements below are superseded for this slice; deployed application remains T1/1073252.
+
 ## 2026-10-17 T2 accounting foundation — locally verified, not enabled
 
 [Receipt](../plans/frontbase-translation-accounting-foundation-20261017.md): provider-neutral accounting/runner port and atomic SQLite allowance/attempt adapter pass workspace build/check,8 faults, retained suites and external tarball acceptance. Reuses existing job transaction/lease/source authority; no provider call or owner schema change. HTTP accounting parity, actual PostgreSQL acceptance, pricing/retarget host policy and reviewed batches remain required. Deployed application staysT1/1073252.

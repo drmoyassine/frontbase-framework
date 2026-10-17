@@ -4,7 +4,7 @@ import { createCompatApp } from '../dist/compat/app.js';
 import { migrateUp } from '../dist/db/migrations.js';
 import { createSecretCipher } from '../dist/db/secret-cipher.js';
 import { SyncStore } from '../dist/compat/sync-store.js';
-import { TranslationStorageStore, configuredTranslationStorage, resolveTranslationStorage } from '../dist/compat/translation-storage.js';
+import { TranslationStorageStore, configuredTranslationStorage, configuredTranslationAccountingStorage, resolveTranslationStorage } from '../dist/compat/translation-storage.js';
 import { SiteConfigurationStore } from '../dist/compat/site-configuration-store.js';
 import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 
@@ -12,12 +12,13 @@ globalThis.fetch = async () => { throw Error('unexpected_raw_transport'); };
 const runner = sqliteRunner(':memory:'); await migrateUp(runner);
 const secret = 'translation-settings-test-key', cipher = await createSecretCipher(secret), now = '2026-10-17T00:00:00Z';
 const stores = new Map(); const syncFor = tenant => { if (!stores.has(tenant)) stores.set(tenant, new SyncStore(runner, tenant, cipher)); return stores.get(tenant); };
-const calls = []; let tenant = 'alpha', role = 'owner', authenticated = true, failure = false, redirect = false;
+const calls = []; let tenant = 'alpha', role = 'owner', authenticated = true, failure = false, redirect = false, accountingCapability = false;
 const externalFetch = async (input, init) => {
     const req = input instanceof Request ? input : new Request(input, init); const body = await req.json();
     calls.push({ url: req.url, headers: Object.fromEntries(req.headers), body, redirect: req.redirect });
     if (failure) throw Error('PRIVATE_TRANSLATION_TEST_SECRET');
     if (redirect) return new Response('', { status: 302, headers: { location: 'https://127.0.0.1/private' } });
+    if(req.url.endsWith('/translation_accounting_request'))return accountingCapability?Response.json({protocol:'frontbase-translation-accounting',version:1,jobProtocolVersion:1}):new Response('PRIVATE_MISSING_ACCOUNTING',{status:404});
     return Response.json(body.p_operation === 'capabilities' ? { protocol: 'frontbase-translation-postgrest', version: 1 } : { source: null, head: null, version: 0 });
 };
 for (const [id, owner, kind, config] of [
@@ -73,10 +74,13 @@ const identity=(await new TranslationStorageStore(runner,'alpha').get()).project
 const otherInstance=sqliteRunner(':memory:');await migrateUp(otherInstance);const otherSettings=await new TranslationStorageStore(otherInstance,'alpha').save(selection(),0,now);assert.notEqual(otherSettings.projectId,identity,'separate hosts with the same tenant name get isolated project identities');
 let session=await configuredTranslationStorage(host,runner,'alpha');await session.persistence.initialize();assert.equal(calls.at(-1).headers.apikey,'ROTATED_ONE');assert.equal(session.configurationRevision,3);assert.equal(session.scope.projectId,identity);
 key='ROTATED_TWO';session=await configuredTranslationStorage(host,runner,'alpha');await session.persistence.initialize();assert.equal(calls.at(-1).headers.apikey,'ROTATED_TWO');
+await assert.rejects(configuredTranslationAccountingStorage(host,runner,'alpha'),e=>e.message==='translation_accounting_rpc_failed');
+accountingCapability=true;const accounted=await configuredTranslationAccountingStorage(host,runner,'alpha');assert.equal(accounted.configurationRevision,3);assert.equal(accounted.scope.projectId,identity);assert.equal(accounted.scope.tenantId,'alpha');assert.ok(calls.at(-1).url.endsWith('/rpc/translation_accounting_request'));assert.equal(calls.at(-1).headers.apikey,'ROTATED_TWO');assert.equal(calls.at(-1).redirect,'manual');
+key='ROTATED_THREE';await configuredTranslationAccountingStorage(host,runner,'alpha');assert.equal(calls.at(-1).headers.apikey,'ROTATED_THREE');
 await assert.rejects(resolveTranslationStorage(host,'beta',selection('account'),'local-project'));
 await assert.rejects(resolveTranslationStorage(host,'alpha',selection('foreign-account'),'local-project'));
 assert.ok(!JSON.stringify(await new TranslationStorageStore(runner,'alpha').get()).includes('ROTATED_'));
-assert.equal((await save(3,null)).status,200);assert.equal((await new TranslationStorageStore(runner,'alpha').get()).projectId,identity);await assert.rejects(configuredTranslationStorage(host,runner,'alpha'),/unconfigured/);
+assert.equal((await save(3,null)).status,200);assert.equal((await new TranslationStorageStore(runner,'alpha').get()).projectId,identity);await assert.rejects(configuredTranslationStorage(host,runner,'alpha'),/unconfigured/);await assert.rejects(configuredTranslationAccountingStorage(host,runner,'alpha'),/unconfigured/);
 // Corrupt persisted configuration is not treated as an empty first save; inputs never escape.
 await runner.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',['PRIVATE_CORRUPT_TEST_SECRET','alpha','translation_storage:v1']);
 response=await request('GET');assert.equal(response.status,503);assert.ok(!(await response.text()).includes('PRIVATE_'));assert.equal((await save(0)).status,422);

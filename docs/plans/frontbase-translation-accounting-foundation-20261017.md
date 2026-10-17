@@ -24,6 +24,8 @@ Eight in-memory source faults are caught: allowance bound, concurrency bound, po
 
 ## Required continuation before T2/T3 can ship
 
+Update: steps1–2 are now verified within the bounded [HTTP accounting continuation](frontbase-translation-accounting-http-20261017.md), using disposable local PostgreSQL/PostgREST. The owner destination remains unchanged. Steps3–5 remain open; the list below retains the original ordered requirements.
+
 1. Implement equivalent narrow accounting operations in the existing PostgREST bridge/protocol with explicit capability/version negotiation; retain v1 storage compatibility and fail closed when accounting is absent. No generic SQL RPC.
 2. Prove actual PostgreSQL concurrent reservations/dispatch/settlement, role isolation, fencing and rollback on isolated approved fixtures. Install/upgrade only through a concrete reviewed administrative operation; the owner database is unchanged here.
 3. Compose a mandatory host accounting policy with pinned model/pricing/config and storage identity. Define exact token/currency bounds, retarget pauses and reconciliation; do not label the generic integer limit a monetary budget without those bounds.

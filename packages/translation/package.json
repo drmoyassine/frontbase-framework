@@ -49,6 +49,10 @@
     "./adapters/sqlite-accounting": {
       "types": "./dist/adapters/sqlite-accounting.d.ts",
       "import": "./dist/adapters/sqlite-accounting.js"
+    },
+    "./adapters/postgrest-accounting": {
+      "types": "./dist/adapters/postgrest-accounting.d.ts",
+      "import": "./dist/adapters/postgrest-accounting.js"
     }
   },
   "files": [
@@ -63,13 +67,15 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "node test/localization.mjs && node test/revisions.mjs && node test/jobs.mjs && node test/postgrest.mjs && node test/accounting.mjs",
-    "test:mutation": "node test/localization-mutation.mjs && node test/revisions-mutation.mjs && node test/jobs-mutation.mjs && node test/postgrest-mutation.mjs && node test/accounting-mutation.mjs",
+    "test": "node test/localization.mjs && node test/revisions.mjs && node test/jobs.mjs && node test/postgrest.mjs && node test/accounting.mjs && node test/accounting-http.mjs",
+    "test:mutation": "node test/localization-mutation.mjs && node test/revisions-mutation.mjs && node test/jobs-mutation.mjs && node test/postgrest-mutation.mjs && node test/accounting-mutation.mjs && node test/accounting-http-mutation.mjs",
     "test:revisions": "node test/revisions.mjs",
     "test:jobs": "node test/jobs.mjs",
     "test:postgrest": "node test/postgrest.mjs",
     "test:accounting": "node test/accounting.mjs",
-    "test:accounting-mutation": "node test/accounting-mutation.mjs"
+    "test:accounting-mutation": "node test/accounting-mutation.mjs",
+    "test:accounting-http": "node test/accounting-http.mjs",
+    "test:accounting-http-mutation": "node test/accounting-http-mutation.mjs"
   },
   "dependencies": {
     "zod": "^3.25.76"

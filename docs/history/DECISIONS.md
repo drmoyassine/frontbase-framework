@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-17 additive HTTP accounting implementation boundary
+
+Under the accepted HTTP-only and durable allowance requirements, [HTTP accounting receipt](../plans/frontbase-translation-accounting-http-20261017.md) preserves job protocol1 and negotiates accounting separately. Accounting and jobs share the same project transaction lock; dispatch and attempt state commit atomically. Unknown capabilities fail closed. SQL installation remains an explicit administrative operation, never runtime setup or a generic SQL endpoint. Real local transactional evidence does not certify the owner destination or complete mandatory host monetary policy. No package-count, release-direction or CF-22 change.
+
 ## 2026-10-17 accounting implementation boundary
 
 Under the accepted durable allowance requirement, the [T2 reference foundation](../plans/frontbase-translation-accounting-foundation-20261017.md) shares job transaction/lease authority; dispatch records physical attempts, while unknown outcomes retain reservations and prohibit silent refund/retry. Generic integer units do not imply a dollar budget without host pricing/bounds. Compatibility use of the standalone runner without accounting does not authorize a Frontbase generation endpoint; a future exposed handler must require accepted accounting and reviewed batch policy. HTTP parity and actual PostgreSQL evidence remain open. No database transport, package-count or release-direction change.

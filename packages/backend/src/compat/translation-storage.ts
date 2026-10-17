@@ -1,5 +1,5 @@
 import type { DbRunner } from '@frontbase/edge-infra';
-import { translationPersistenceFromSupabase } from '@frontbase/edge-infra/translation';
+import { translationPersistenceFromSupabase, translationAccountingFromSupabase } from '@frontbase/edge-infra/translation';
 import { translationStorageConfigurationSchema, translationStorageSettingsSchema,
     localizationScopeSchema, type TranslationStorageConfiguration, type TranslationStorageSettings } from '@frontbase/edge-core/localization';
 import type { SyncStore } from './sync-store.js';
@@ -39,6 +39,11 @@ export interface TranslationStorageHost {
 }
 /** Resolve only a tenant-owned existing datasource/account. Secrets never enter settings/API results. */
 export async function resolveTranslationStorage(host: TranslationStorageHost, tenant: string, selection: TranslationStorageConfiguration, projectId: string) {
+    const { scope, options } = await resolveOwnedTranslationConnection(host, tenant, selection, projectId);
+    return { scope, persistence: translationPersistenceFromSupabase(options) };
+}
+/** Shared owned-credential/guard resolution for both protocol capabilities. Never serialized to a visitor. */
+async function resolveOwnedTranslationConnection(host: TranslationStorageHost, tenant: string, selection: TranslationStorageConfiguration, projectId: string) {
     const parsed = translationStorageConfigurationSchema.parse(selection);
     const datasource = await host.syncFor(tenant).getDatasource(parsed.datasourceId);
     if (!datasource || datasource.kind !== 'supabase') throw Error('translation_storage_unavailable');
@@ -51,13 +56,13 @@ export async function resolveTranslationStorage(host: TranslationStorageHost, te
     const resolved = resolveDatasourceConfig(datasource.kind, config);
     const url = checkedExternalUrl(String(resolved.url ?? ''));
     if (url.search || url.hash) throw Error('translation_storage_unavailable');
-    const persistence = translationPersistenceFromSupabase({
+    const options: Parameters<typeof translationPersistenceFromSupabase>[0] = {
         url: url.href.replace(/\/$/, ''), serviceKey: String(resolved.serviceKey),
         ...(resolved.jwt ? { jwt: String(resolved.jwt) } : {}),
         ...(parsed.endpoint === 'postgrest' ? { restUrl: url.href.replace(/\/$/, '') } : {}),
         fetchImpl: (input, init) => guardedExternalFetch(host.externalFetch, input, init),
-    });
-    return { scope: localizationScopeSchema.parse({ tenantId: tenant, projectId }), persistence };
+    };
+    return { scope: localizationScopeSchema.parse({ tenantId: tenant, projectId }), options };
 }
 /** Read-only protocol + scoped table-read check. No DDL, mutations or write-privilege claim. */
 export async function checkTranslationStorage(host: TranslationStorageHost, tenant: string, selection: TranslationStorageConfiguration, projectId: string = crypto.randomUUID()): Promise<void> {
@@ -70,4 +75,13 @@ export async function configuredTranslationStorage(host: TranslationStorageHost,
     const settings = await new TranslationStorageStore(runner, tenant).get();
     if (!settings.configuration || !settings.projectId) throw Error('translation_storage_unconfigured');
     return { ...await resolveTranslationStorage(host, tenant, settings.configuration, settings.projectId), configurationRevision: settings.revision };
+}
+/** Workers explicitly opt into accounting. Missing additive SQL fails closed; no upgrade or fallback. */
+export async function configuredTranslationAccountingStorage(host: TranslationStorageHost, runner: DbRunner, tenant: string) {
+    const settings = await new TranslationStorageStore(runner, tenant).get();
+    if (!settings.configuration || !settings.projectId) throw Error('translation_storage_unconfigured');
+    const { scope, options } = await resolveOwnedTranslationConnection(host, tenant, settings.configuration, settings.projectId);
+    const persistence = translationAccountingFromSupabase(options);
+    await persistence.initialize();
+    return { scope, persistence, configurationRevision: settings.revision };
 }

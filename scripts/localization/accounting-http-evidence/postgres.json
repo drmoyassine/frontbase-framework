@@ -1,0 +1,91 @@
+{
+  "fixture": {
+    "passed": true,
+    "postgres": "17.11-alpine",
+    "postgrest": "14.18",
+    "realPostgres": true,
+    "realPostgrest": true,
+    "localDisposable": true,
+    "ownerDestinationTouched": false,
+    "paidCalls": 0,
+    "records": [
+      {
+        "gate": "legacy accounting absent/v1 remains usable",
+        "exitCode": 0
+      },
+      {
+        "gate": "shared actual HTTP accounting/rollback conformance",
+        "exitCode": 0
+      },
+      {
+        "gate": "SQL mutation: allowance upper bound",
+        "caught": true
+      },
+      {
+        "gate": "SQL mutation: post-dispatch refund",
+        "caught": true
+      },
+      {
+        "gate": "SQL mutation: project transaction lock",
+        "caught": true
+      },
+      {
+        "gate": "restored SQL race gate",
+        "exitCode": 0
+      },
+      {
+        "gate": "unknown accounting installation refused",
+        "exitCode": 0
+      }
+    ],
+    "cleanupComplete": true
+  },
+  "security": {
+    "publicObjects": 0,
+    "translationRls": 9,
+    "serviceBypass": false,
+    "anonExecute": false,
+    "allowanceUpdate": false,
+    "attemptDelete": false
+  },
+  "acceptance": {
+    "mode": "full",
+    "realPostgres": true,
+    "realPostgrest": true,
+    "transport": "disposable loopback HTTP through injected fixed-HTTPS test origin",
+    "runtimeTCP": false,
+    "calls": 193,
+    "operations": [
+      "capabilities",
+      "read",
+      "cas",
+      "create-allowance",
+      "enqueue",
+      "claim",
+      "reserve",
+      "dispatch",
+      "read-job",
+      "release",
+      "settle",
+      "read-attempt",
+      "read-allowance",
+      "cancel",
+      "read-source",
+      "fail",
+      "read-revision"
+    ],
+    "ownerDestinationTouched": false,
+    "realAI": false
+  },
+  "sourceSha256": {
+    "packages/translation/sql/postgrest-v1.sql": "baca379a2d987b0cfebb41d2d0d72fa6433869c4cb7abab6520d4db7e8d27b6b",
+    "packages/translation/sql/postgrest-accounting-v1.sql": "9f86cdefde9cd55c1e4c9795ee066d53f330b8855eaa01d4860454ec1bda0ba6",
+    "packages/translation/src/adapters/postgrest-accounting.ts": "74a05854b073df3a410b4f726b00035f9291cabe6ea2acd47bc002a94daaf70f"
+  },
+  "limits": [
+    "Disposable local Docker PostgreSQL/PostgREST only; owner database unchanged.",
+    "Loopback HTTP via fixed synthetic HTTPS mapping; not a deployed TLS/Cloudflare/backend SSRF proof.",
+    "Administrative psql setup is fixture-only; application runtime is HTTP RPC.",
+    "No paid provider or generation endpoint; no release gate closed."
+  ]
+}
