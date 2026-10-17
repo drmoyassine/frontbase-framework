@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Zap, GitBranch, Globe, Code, MessageSquare, Database, Timer, Send, Bell, ExternalLink, RefreshCw, Reply, Sliders } from 'lucide-react';
+import { Zap, GitBranch, Globe, Code, MessageSquare, Database, Timer, Send, Bell, ExternalLink, RefreshCw, Reply, Sliders, Mail, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActionsStore } from '@/stores/actions';
 import { getNodeSchema, getDefaultInputsFromSchema, getDefaultOutputsFromSchema } from '@/lib/workflow/nodeSchemas';
@@ -49,6 +49,13 @@ const nodeTypes: NodeTypeConfig[] = [
         icon: <Database className="w-4 h-4" />,
         category: 'triggers',
     },
+    {
+        type: 'email_trigger',
+        label: 'Email',
+        description: 'Trigger when an inbound email arrives',
+        icon: <Mail className="w-4 h-4" />,
+        category: 'triggers',
+    },
 
     // Actions
     {
@@ -56,6 +63,13 @@ const nodeTypes: NodeTypeConfig[] = [
         label: 'HTTP Request',
         description: 'Make an HTTP request',
         icon: <Send className="w-4 h-4" />,
+        category: 'actions',
+    },
+    {
+        type: 'agent',
+        label: 'Agent',
+        description: 'Send a message to an AI agent turn',
+        icon: <Bot className="w-4 h-4" />,
         category: 'actions',
     },
     {

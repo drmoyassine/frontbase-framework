@@ -5,7 +5,7 @@ import { useEdgeEngines } from '@/hooks/useEdgeInfrastructure';
 import { ExecutionLogPanel } from '@/components/actions/ExecutionLogPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Play, GitBranch, Workflow, Trash2, Search, X, CheckSquare, Square, Globe, Database, Clock, Zap, Server, Copy, Check } from 'lucide-react';
+import { Plus, Play, GitBranch, Workflow, Trash2, Search, X, CheckSquare, Square, Globe, Database, Clock, Zap, Server, Copy, Check, Mail } from 'lucide-react';
 import { WorkflowEditor } from '@/components/actions/editor/WorkflowEditor';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +69,7 @@ export default function ActionsPage() {
             case 'http_webhook': case 'webhook_trigger': return <Globe className="w-3 h-3" />;
             case 'data_change': case 'data_change_trigger': return <Database className="w-3 h-3" />;
             case 'scheduled': case 'schedule_trigger': return <Clock className="w-3 h-3" />;
+            case 'email': case 'email_trigger': return <Mail className="w-3 h-3" />;
             case 'manual': case 'manual_trigger': return <Play className="w-3 h-3" />;
             default: return <Zap className="w-3 h-3" />;
         }
@@ -79,6 +80,7 @@ export default function ActionsPage() {
             case 'http_webhook': case 'webhook_trigger': return 'Webhook';
             case 'data_change': case 'data_change_trigger': return 'Data Change';
             case 'scheduled': case 'schedule_trigger': return 'Scheduled';
+            case 'email': case 'email_trigger': return 'Email';
             case 'manual': case 'manual_trigger': return 'Manual';
             default: return type;
         }
@@ -398,6 +400,25 @@ export default function ActionsPage() {
                                         {draft.trigger_type.split(',').map((t, i) => {
                                             const type = t.trim();
                                             const isWebhook = type === 'http_webhook' || type === 'webhook_trigger';
+
+                                            // Email trigger: one system inbound endpoint per
+                                            // deployment (the worker itself), so the chip
+                                            // copies that URL instead of per-engine webhooks.
+                                            if (type === 'email') {
+                                                const inboundUrl = resolvePreviewUrl(undefined, '/api/system/email/inbound', undefined, undefined, true);
+                                                return (
+                                                    <span
+                                                        key={i}
+                                                        className="flex items-center gap-1 bg-secondary/30 px-2 py-1 rounded cursor-pointer hover:bg-secondary/50 transition-colors"
+                                                        title={inboundUrl || 'Inbound email endpoint'}
+                                                        onClick={(e) => { if (inboundUrl) handleCopyWebhookUrl(e, inboundUrl, draft.id); }}
+                                                    >
+                                                        {triggerIcon(type)}
+                                                        {triggerLabel(type)}
+                                                        {inboundUrl ? (copiedId === draft.id ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />) : null}
+                                                    </span>
+                                                );
+                                            }
 
                                             if (isWebhook && draft.deployed_engines && Object.keys(draft.deployed_engines).length > 0) {
                                                 return (

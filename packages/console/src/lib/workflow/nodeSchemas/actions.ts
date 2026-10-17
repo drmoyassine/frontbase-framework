@@ -1,5 +1,5 @@
 /**
- * Action Node Schemas — http_request, transform, log
+ * Action Node Schemas — http_request, agent, transform, log
  */
 import type { NodeSchema, SelectFieldDefinition, KeyValueFieldDefinition, CodeFieldDefinition } from './types';
 
@@ -347,5 +347,74 @@ export const logSchema: NodeSchema = {
     ],
     outputs: [
         { name: 'data', type: 'any', description: 'Pass-through input data' },
+    ],
+};
+
+/**
+ * Agent Node Schema — one turn against an agent-runtime deployment
+ * (DEC-105 v0 contract). POSTs the runtime's exact /turn shape.
+ */
+export const agentSchema: NodeSchema = {
+    type: 'agent',
+    label: 'Agent',
+    description: 'Send a message to an AI agent turn',
+    category: 'actions',
+    inputs: [
+        {
+            name: 'baseUrl',
+            type: 'string',
+            label: 'Agent Runtime URL',
+            required: true,
+            placeholder: 'https://agent.example.com',
+            description: 'Base URL of the agent-runtime deployment (the /turn endpoint is appended)',
+        },
+        {
+            name: 'apiKey',
+            type: 'password',
+            label: 'API Key',
+            description: 'Bearer key for the runtime (AGENT_TURN_API_KEY)',
+        },
+        {
+            name: 'agentSlug',
+            type: 'string',
+            label: 'Agent Slug',
+            required: true,
+            placeholder: 'support-agent',
+            description: 'Slug of the agent to run the turn against',
+        },
+        {
+            name: 'contactId',
+            type: 'number',
+            label: 'Contact ID',
+            required: true,
+            placeholder: '123',
+            description: 'Numeric contact the turn is attributed to',
+        },
+        {
+            name: 'threadId',
+            type: 'string',
+            label: 'Thread ID',
+            placeholder: 'Leave empty to start a new thread',
+            description: 'Existing conversation thread (UUID). Empty starts a new thread — the reply carries the new thread ID.',
+        },
+        {
+            name: 'message',
+            type: 'code',
+            label: 'Message',
+            required: true,
+            language: 'javascript',
+            placeholder: '{{ trigger.body }}',
+            description: 'Message body sent to the agent (supports expressions)',
+        } as CodeFieldDefinition,
+    ],
+    outputs: [
+        { name: 'reply', type: 'string', description: 'Agent reply text' },
+        { name: 'threadId', type: 'string', description: 'Thread the turn ran in' },
+        { name: 'turnId', type: 'string', description: 'Turn identifier' },
+        { name: 'turnStatus', type: 'string', description: 'Turn status (completed/running/received/failed)' },
+        { name: 'status', type: 'number', description: 'HTTP status code' },
+        { name: 'ok', type: 'boolean', description: 'Whether the turn request succeeded' },
+        { name: 'replay', type: 'boolean', description: 'True when an idempotent replay was served' },
+        { name: 'data', type: 'any', description: 'Raw response body' },
     ],
 };

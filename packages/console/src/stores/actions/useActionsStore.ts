@@ -20,7 +20,7 @@ export interface ActionsState {
     // Current draft info
     currentDraftId: string | null;
     draftName: string;
-    triggerType: 'manual' | 'http_webhook' | 'scheduled' | 'data_change';
+    triggerType: 'manual' | 'http_webhook' | 'scheduled' | 'data_change' | 'email';
 
     // React Flow state
     nodes: WorkflowNode[];

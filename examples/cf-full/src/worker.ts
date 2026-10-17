@@ -403,6 +403,9 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // Dual wiring: the parsed service env. Adopted is_default registry rows
         // still take precedence at resolve time; this is the deploy-time floor.
         envServices: opts.envServices,
+        // Email intake secret (DEC-105): the kernel's /channels/email/inbound
+        // webhook presents it as x-internal-secret. Unset → the endpoint 401s.
+        emailInboundSecret: opts.envServices?.emailInboundSecret,
         // Host fetch seam — the smoke routes its local embedding mock through
         // here; production omits it and gets globalThis.fetch.
         externalFetch: opts.externalFetch,

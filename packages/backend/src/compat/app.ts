@@ -61,6 +61,7 @@ import { registerEdgeGenericRoutes } from './routes/edge-generic.js';
 import { registerEdgeProvidersRoutes } from './routes/edge-providers.js';
 import { registerEdgeMiscRoutes } from './routes/edge-misc.js';
 import { registerSystemQueueRoutes } from './routes/system-queue.js';
+import { registerEmailInboundRoutes } from './routes/email-inbound.js';
 import { registerAgentCompatRoutes } from './routes/agent-compat.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerDataExecuteRoute } from './routes/data-execute.js';
@@ -142,6 +143,11 @@ export interface CreateCompatAppDeps {
      *  request's host tenant. Absent (self-host) ⇒ the `_root` fallback.
      *  Authenticated callers always use their principal's tenant first. */
     requestTenant?: (req: Request) => Promise<string | undefined>;
+    /** Shared secret for the unauthenticated email intake endpoint
+     *  (POST /api/system/email/inbound, header x-internal-secret). Host-parsed
+     *  env (e.g. FRONTBASE_EMAIL_INBOUND_SECRET). Unset → the endpoint 401s
+     *  every request (fail closed). */
+    emailInboundSecret?: string;
 }
 
 /** Build a per-tenant store cache. */
@@ -288,6 +294,15 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         resolver: serviceResolver,
         now,
         runRagIndex: (tenant, bucketId) => runRagIndex(ragDeps, tenant, bucketId),
+    });
+    // 4. Email intake (framework-only, DEC-105): the agent-channel email
+    //    trigger. UNAUTHENTICATED by design — authentication is the shared
+    //    inbound secret (constant-time, fail-closed when unset); the body's
+    //    tenant-scoped workflow lookup is the isolation boundary.
+    registerEmailInboundRoutes(app, {
+        phase2For,
+        now,
+        inboundSecret: deps.emailInboundSecret,
     });
     // Stripe signs the raw body, so this one public callback is mounted before
     // default-deny. Its HMAC and durable event ledger are its authentication.

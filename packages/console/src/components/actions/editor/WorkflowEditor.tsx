@@ -126,6 +126,17 @@ export function WorkflowEditor({
                 draftName: `${initialTriggerLabel || 'New'} Automation`,
             });
 
+            // Inverse of the save-time TRIGGER_TYPE_MAP: initialize the node
+            // type matching the requested trigger kind. 'trigger' (unknown
+            // kind) stays the legacy manual behavior on save.
+            const INITIAL_TRIGGER_NODE: Record<string, string> = {
+                manual: 'manual_trigger',
+                email: 'email_trigger',
+                http_webhook: 'webhook_trigger',
+                scheduled: 'schedule_trigger',
+                data_change: 'data_change_trigger',
+            };
+
             // Auto-place trigger node
             setNodes([{
                 id: 'trigger-init',
@@ -133,7 +144,7 @@ export function WorkflowEditor({
                 position: { x: 300, y: 100 },
                 data: {
                     label: initialTriggerLabel || 'Trigger',
-                    type: initialTriggerType === 'manual' ? 'manual_trigger' : 'trigger',
+                    type: INITIAL_TRIGGER_NODE[initialTriggerType] ?? 'trigger',
                     inputs: [],
                     outputs: [{ name: 'Trigger Output', type: 'any' }]
                 }
@@ -150,6 +161,7 @@ export function WorkflowEditor({
             webhook_trigger: 'http_webhook',
             schedule_trigger: 'scheduled',
             data_change_trigger: 'data_change',
+            email_trigger: 'email',
         };
         const triggerNodes = nodes.filter(n => TRIGGER_TYPE_MAP[n.data.type]);
         const derivedTriggerType = [...new Set(triggerNodes.map(n => TRIGGER_TYPE_MAP[n.data.type]))].join(',') || 'manual';

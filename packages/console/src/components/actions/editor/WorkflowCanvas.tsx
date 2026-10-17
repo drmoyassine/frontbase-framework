@@ -36,11 +36,13 @@ const nodeTypes = {
     schedule_trigger: TriggerNode,
     data_change_trigger: TriggerNode,
     ui_event_trigger: TriggerNode,
+    email_trigger: TriggerNode,
     // Core actions
     action: ActionNode,
     condition: ConditionNode,
     // Map specific action types to the generic ActionNode
     http_request: ActionNode,
+    agent: ActionNode,
     transform: ActionNode,
     log: ActionNode,
     database: ActionNode,

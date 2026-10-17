@@ -132,5 +132,106 @@ const pos = { x: 0, y: 0 };
     check('registering ai.chat makes it runnable', r.status === 'completed' && r.result.b?.text === 'hello from mock AI');
 }
 
+// 9. agent node — POSTs the runtime's exact /turn shape (DEC-105) and maps the
+//    snake_case reply fields onto the node output.
+{
+    const realFetch = globalThis.fetch;
+    const calls = [];
+    globalThis.fetch = async (url, init) => {
+        calls.push({ url: String(url), init });
+        return {
+            status: 200, ok: true,
+            json: async () => ({ turn_id: 'turn-1', thread_id: 'thr-1', status: 'completed', reply: 'Hello!' }),
+        };
+    };
+    const nodes = [
+        { id: 'a', type: 'trigger', position: pos },
+        {
+            id: 'b', type: 'agent', position: pos,
+            inputs: [
+                { name: 'baseUrl', value: 'https://agent.test/' },
+                { name: 'apiKey', value: 'k-secret' },
+                { name: 'agentSlug', value: 'support' },
+                { name: 'contactId', value: 7 },
+                { name: 'message', value: 'hi' },
+            ],
+        },
+    ];
+    const edges = [{ source: 'a', target: 'b' }];
+    const r = await executeWorkflow(uuid(), wf(nodes, edges), {}, {});
+    check('agent node completes', r.status === 'completed');
+    check('agent POSTs {baseUrl}/turn with Bearer key', calls[0]?.url === 'https://agent.test/turn' && calls[0]?.init?.headers?.Authorization === 'Bearer k-secret');
+    check('agent body is the runtime turn shape (agent/contact_id/message)',
+        calls[0]?.init?.body != null &&
+        JSON.parse(calls[0].init.body).agent === 'support' &&
+        JSON.parse(calls[0].init.body).contact_id === 7 &&
+        JSON.parse(calls[0].init.body).message === 'hi' &&
+        !('thread_id' in JSON.parse(calls[0].init.body)));
+    check('agent reply fields mapped onto the output',
+        r.result.b?.reply === 'Hello!' && r.result.b?.turnId === 'turn-1' &&
+        r.result.b?.threadId === 'thr-1' && r.result.b?.turnStatus === 'completed' &&
+        r.result.b?.status === 200 && r.result.b?.ok === true);
+
+    // thread_id included only when non-empty; replay flagged on idempotent replays.
+    calls.length = 0;
+    globalThis.fetch = async (url, init) => {
+        calls.push({ url: String(url), init });
+        return {
+            status: 200, ok: true,
+            json: async () => ({ turn_id: 'turn-1', thread_id: 'thr-1', status: 'completed', reply: 'again', replay: true }),
+        };
+    };
+    const nodes2 = [
+        {
+            id: 'b', type: 'agent', position: pos,
+            inputs: [
+                { name: 'baseUrl', value: 'https://agent.test' },
+                { name: 'agentSlug', value: 'support' },
+                { name: 'contactId', value: 7 },
+                { name: 'message', value: 'hi' },
+                { name: 'threadId', value: 'thr-1' },
+            ],
+        },
+    ];
+    const r2 = await executeWorkflow(uuid(), wf(nodes2, []), {}, {});
+    check('agent forwards a non-empty thread_id and flags replays',
+        JSON.parse(calls[0].init.body).thread_id === 'thr-1' && r2.result.b?.replay === true);
+    globalThis.fetch = realFetch;
+}
+
+// 10. email_trigger node — normalizes the DEC-105 InboundEmail run input.
+{
+    const nodes = [
+        {
+            id: 't', type: 'email_trigger', position: pos,
+            inputs: [{ name: 'subjectIncludes', value: 'visa' }],
+        },
+    ];
+    const r = await executeWorkflow(uuid(), wf(nodes, []), {
+        providerMessageId: 'msg-1', from: 's@x.test', to: ['support@x.test'],
+        subject: 'Visa question', text: 'hello', html: '<b>hello</b>',
+        receivedAt: '2026-10-12T00:00:00.000Z',
+    }, {});
+    check('email_trigger normalizes the inbound payload',
+        r.result.t?.from === 's@x.test' && r.result.t?.to === 'support@x.test' &&
+        r.result.t?.subject === 'Visa question' && r.result.t?.body === '<b>hello</b>' &&
+        r.result.t?.providerMessageId === 'msg-1');
+}
+
+// 10b. email_trigger fallbacks: missing subject/html degrade like the legacy
+//      Frontbase EmailTrigger (subject '(no subject)', body = html || text).
+{
+    const nodes = [{ id: 't', type: 'email_trigger', position: pos }];
+    const r = await executeWorkflow(uuid(), wf(nodes, []), { from: 's@x.test', text: 'plain' }, {});
+    check('email_trigger subject/body fallbacks', r.result.t?.subject === '(no subject)' && r.result.t?.body === 'plain');
+}
+
+// 11. Validation: the agent node's required fields abort before execution
+{
+    const nodes = [{ id: 'a', type: 'agent', position: pos, inputs: [{ name: 'baseUrl', value: 'https://agent.test' }] }];
+    const r = await executeWorkflow(uuid(), wf(nodes, []), {}, {});
+    check('agent missing required fields → error status', r.status === 'error' && /validation failed/i.test(r.error || ''));
+}
+
 console.log(failures === 0 ? '\nworkflow: PASS ✅' : `\nworkflow: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

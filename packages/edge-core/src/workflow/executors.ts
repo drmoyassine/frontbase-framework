@@ -3,8 +3,9 @@
  * Ported from engine/node-executors.ts (the AI/MCP/email/queue nodes are
  * excluded — they belong to @frontbase/edge-infra, M2.1).
  *
- * Types covered: trigger, http_request, transform/json_transform,
- * condition/if, log, set_variable, http_response, delay/wait.
+ * Types covered: trigger, email_trigger, http_request, agent,
+ * transform/json_transform, condition/if, log, set_variable,
+ * http_response, delay/wait.
  */
 import { safeEval } from './expr.js';
 import { ExecutorRegistry, type NodeExecutor, type NodeExecutorContext } from './providers.js';
@@ -33,6 +34,34 @@ const triggerExecutor: NodeExecutor = {
     },
 };
 
+/**
+ * Normalizes an inbound email run payload (DEC-105 InboundEmail shape:
+ * {providerMessageId, from, to, subject, text, html, receivedAt, ...}) into
+ * the flat fields downstream nodes read. Filters stay in the trigger node's
+ * inputs — the runtime applies them at dispatch, not here.
+ */
+const emailTriggerExecutor: NodeExecutor = {
+    types: ['email_trigger'],
+    async execute(_node, inputs) {
+        const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+        const to = Array.isArray(inputs.to) ? inputs.to.map(String).join(', ') : str(inputs.to);
+        const text = str(inputs.text);
+        const html = str(inputs.html);
+        return {
+            from: str(inputs.from),
+            to,
+            subject: str(inputs.subject) || '(no subject)',
+            body: html || text,
+            text,
+            html,
+            providerMessageId: inputs.providerMessageId,
+            conversationId: inputs.conversationId,
+            receivedAt: inputs.receivedAt ?? new Date().toISOString(),
+            data: inputs,
+        };
+    },
+};
+
 const httpRequestExecutor: NodeExecutor = {
     types: ['http_request'],
     async execute(node, inputs) {
@@ -48,6 +77,50 @@ const httpRequestExecutor: NodeExecutor = {
         });
         const data = await response.json().catch(() => response.text());
         return { status: response.status, ok: response.ok, data };
+    },
+};
+
+/**
+ * agent — one turn against an agent-runtime deployment (DEC-105 v0 contract).
+ * POSTs the runtime's exact /turn shape ({agent, contact_id, message,
+ * thread_id?} + Bearer key) and maps the snake_case reply fields onto the
+ * node output. SDK-free plain fetch, like http_request — so the node runs on
+ * BOTH execution paths (edge-core default registry and edge-infra's full one).
+ */
+const agentExecutor: NodeExecutor = {
+    types: ['agent'],
+    async execute(node, inputs) {
+        const get = reader(node as NodeLike, inputs);
+        const baseUrl = String(get('baseUrl') ?? '').replace(/\/+$/, '');
+        const apiKey = String(get('apiKey') ?? '');
+        const threadId = String(get('threadId') ?? '').trim();
+        const body: Record<string, unknown> = {
+            agent: String(get('agentSlug') ?? ''),
+            contact_id: Number(get('contactId')),
+            message: String(get('message') ?? ''),
+        };
+        if (threadId) body.thread_id = threadId;
+        const response = await fetch(`${baseUrl}/turn`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+            },
+            body: JSON.stringify(body),
+        });
+        const data = await response.json().catch(() => response.text());
+        const payload = typeof data === 'object' && data !== null ? data as Record<string, unknown> : {};
+        return {
+            status: response.status,
+            ok: response.ok,
+            turnId: payload.turn_id,
+            threadId: payload.thread_id,
+            turnStatus: payload.status,
+            reply: payload.reply,
+            replay: payload.replay === true,
+            error: payload.error,
+            data,
+        };
     },
 };
 
@@ -122,14 +195,17 @@ const delayExecutor: NodeExecutor = {
 };
 
 /**
- * The edge-core built-in registry: control-flow nodes only. AI (`ai.chat`),
- * MCP (`mcp.call`), email, and queue nodes are registered by edge-infra;
- * unregistered types throw `executor_not_registered` at runtime.
+ * The edge-core built-in registry: control-flow nodes, the agent turn node,
+ * and the email trigger normalizer. AI (`ai.chat`), MCP (`mcp.call`), send
+ * email, and queue nodes are registered by edge-infra; unregistered types
+ * throw `executor_not_registered` at runtime.
  */
 export function defaultExecutorRegistry(): ExecutorRegistry {
     return new ExecutorRegistry()
         .register(triggerExecutor)
+        .register(emailTriggerExecutor)
         .register(httpRequestExecutor)
+        .register(agentExecutor)
         .register(transformExecutor)
         .register(conditionExecutor)
         .register(logExecutor)

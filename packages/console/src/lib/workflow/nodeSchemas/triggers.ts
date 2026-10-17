@@ -1,5 +1,5 @@
 /**
- * Trigger Node Schemas — manual, webhook, schedule, data change
+ * Trigger Node Schemas — manual, webhook, schedule, data change, email, ui event
  */
 import type { NodeSchema, SelectFieldDefinition } from './types';
 
@@ -283,5 +283,51 @@ export const uiEventTriggerSchema: NodeSchema = {
         { name: 'modifiers', type: 'object', description: 'Key modifiers (ctrl, shift, alt, meta)' },
         { name: 'key', type: 'string', description: 'Key pressed (for keyboard events)' },
         { name: 'target', type: 'object', description: 'Event target reference' },
+    ],
+};
+
+/**
+ * Email Trigger Schema — starts a workflow when an agent-channel email
+ * arrives. The backend inbound endpoint (POST /api/system/email/inbound)
+ * matches ACTIVE workflows by this node type and applies these filters
+ * against the DEC-105 InboundEmail payload before starting a run.
+ */
+export const emailTriggerSchema: NodeSchema = {
+    type: 'email_trigger',
+    label: 'Email',
+    description: 'Trigger when an inbound email arrives',
+    category: 'triggers',
+    inputs: [
+        {
+            name: 'toAddress',
+            type: 'string',
+            label: 'To Address',
+            placeholder: 'support@example.com',
+            description: 'Only trigger when the email is addressed to this address (empty = any)',
+        },
+        {
+            name: 'subjectIncludes',
+            type: 'string',
+            label: 'Subject Contains',
+            placeholder: 'invoice',
+            description: 'Only trigger when the subject contains this text (case-insensitive, empty = any)',
+        },
+        {
+            name: 'fromDenyList',
+            type: 'string',
+            label: 'Sender Deny List',
+            placeholder: 'noreply@example.com, spam@bulk.example',
+            description: 'Comma-separated senders that never trigger (matched on the From address)',
+        },
+    ],
+    outputs: [
+        { name: 'from', type: 'string', description: 'Sender address' },
+        { name: 'to', type: 'string', description: 'Comma-separated recipient addresses' },
+        { name: 'subject', type: 'string', description: 'Email subject' },
+        { name: 'body', type: 'string', description: 'Body (HTML if present, else text)' },
+        { name: 'text', type: 'string', description: 'Plain-text body' },
+        { name: 'providerMessageId', type: 'string', description: 'Provider message identifier' },
+        { name: 'receivedAt', type: 'string', description: 'ISO receive timestamp' },
+        { name: 'data', type: 'object', description: 'Full inbound email payload' },
     ],
 };
