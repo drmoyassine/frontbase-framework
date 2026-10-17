@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-17 source checkpoints pushed and staging deployed — verified
+
+Normal source push through a708c3d succeeds; isolated USA staging runs imageec4ba663… with healthy container and original persistent volume. Public health/Homepage/Explore/Blog200, email no-credential401 and generation21/pending drafts verified. [Receipt and operational limits](../plans/frontbase-staging-checkpoint-deployment-20261017.md). No npm/production release, new translation UI, closed release gate or CF-22 activation.
+
 ## 2026-10-17 owner-requested separate source checkpoints — complete
 
 Translation/HTTP source and evidence477930c, workflow/email98d57ae, generated CMS2e96e5c and separate recovery artifacts7208998 are committed; the accompanying documentation checkpoint reconciles current plans and release evidence. Fresh workspace check/build, translation22 faults, selected infra/core/backend security/tenant/conformance and12 workflow editor tests pass. These are source checkpoints, not complete behavior/external-package/clean-room acceptance. No push, deployment or CF-22 activation. See [audit details](PUBLIC-RELEASE-AUDIT.md).
