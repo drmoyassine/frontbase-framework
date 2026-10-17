@@ -1,6 +1,6 @@
 # T2 accounting over HTTP — 2026-10-17
 
-Status: implementation, real local PostgreSQL/PostgREST proof and final workspace/host checkpoint verification complete; source checkpoint prepared. This continues the [accounting foundation](frontbase-translation-accounting-foundation-20261017.md) and [AI dispatch plan](frontbase-translation-ai-dispatch-plan-20261017.md). It does not complete mandatory host budgets, reviewed batches or AI generation, and it is not installed on the owner database or deployed to staging.
+Status: implementation, real local PostgreSQL/PostgREST proof and final workspace/host checkpoint verification complete; source87a84a4 and generated CMS4788a58 committed and normally pushed to codex/wordpress-pilot. This continues the [accounting foundation](frontbase-translation-accounting-foundation-20261017.md) and [AI dispatch plan](frontbase-translation-ai-dispatch-plan-20261017.md). It does not complete mandatory host budgets, reviewed batches or AI generation, and it is not installed on the owner database or deployed to staging.
 
 ## Reuse and compatibility
 
@@ -33,3 +33,5 @@ An initial SQL CASE expression needed parentheses before the first PostgreSQL in
 Next executable task: mandatory Frontbase host allowance policy with pinned provider/model/config/storage identity, conservative exact token/currency bounds and retarget/reconciliation behavior. Then reviewed batch intents, authenticated durable dispatch/status and a small explicitly allowed provider run. GenerationAvailable stays false until those controls pass. No AI spend, source content transmission, page publication, public-schema use or owner destination write occurred in this task.
 
 Source checkpoint contains only the listed translation HTTP code, focused fixtures, sanitized receipts and synchronized documentation. The pre-existing shared staged deletions/replacements are preserved. Generated CMS output is recorded separately; local source acceptance does not change the currently deployed T1 image.
+
+Generated CMS SHA256: `1224a3ae9d17e70eb6530dada818ed9b3275a3c7a48690045658287bd1bda745`. Push verified HEAD/origin divergence0/0. Staging remains the previously verified T1 image; this task performed no deployment. The shared worktree is still dirty from preserved unrelated entries. Next executable code task remains mandatory host policy, followed by reviewed batches.
