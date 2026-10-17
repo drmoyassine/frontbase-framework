@@ -1,0 +1,12 @@
+{
+  "status": "pass",
+  "protocol": "HTTPS/PostgREST",
+  "requests": 4,
+  "remoteOperations": [
+    "capabilities",
+    "read"
+  ],
+  "settings": "isolated encrypted in-memory state",
+  "remoteWrites": 0,
+  "aiCalls": 0
+}

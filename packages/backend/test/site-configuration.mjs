@@ -14,7 +14,7 @@ const request = (method, body) => app.request('/api/project/site-configuration/'
 const config = emptyDirectoryConfiguration(); config.site.name = 'USA'; config.datasourceId = 'alpha-source';
 const save = (expectedRevision, configuration = config, extras = {}) => request('PUT', { schemaVersion: 1, expectedRevision, configuration, ...extras });
 assert.equal((await request('GET')).status, 200);
-assert.deepEqual(await (await request('GET')).json(), { draft: null, revision: 0, readiness: ['configuration'], publicationAvailable: false });
+assert.deepEqual(await (await request('GET')).json(), { draft: null, revision: 0, readiness: ['configuration'], publicationAvailable: false, elementBrowsing: false });
 
 // Actual SQLite conditional insert/update races, not a fake runner predicting SQL.
 const creations = await Promise.all([save(0), save(0)]);

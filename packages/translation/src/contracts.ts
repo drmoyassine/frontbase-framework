@@ -26,6 +26,30 @@ export const translationStorageSchema = z.object({
     namespace: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/).optional(),
     tablePrefix: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/).default('fb_i18n_'),
 }).strict();
+/** Concrete storage selection: references existing encrypted credentials, never contains secrets.
+ * Endpoint format is explicit; changing content bindings never silently retargets translations.
+ * Only the installed translations protocol is supported by the current HTTP adapter.
+ */
+export const translationStorageConfigurationSchema = z.object({
+    version: z.literal(1), datasourceId: id,
+    endpoint: z.enum(['supabase', 'postgrest']), namespace: z.literal('translations'),
+}).strict();
+export const translationStorageSettingsSchema = z.object({
+    revision: z.number().int().nonnegative().safe(),
+    projectId: id.nullable(),
+    configuration: translationStorageConfigurationSchema.nullable(),
+}).strict().refine(value => value.configuration === null || value.projectId !== null, 'Project identity required');
+export const translationStorageOptionsSchema = translationStorageSettingsSchema.innerType().extend({
+    contentDatasourceId: id.nullable(),
+    datasources: z.array(z.object({ id, name: z.string().max(1000), kind: z.string().max(100), supported: z.boolean() }).strict()).max(10000),
+}).strict().refine(value => value.configuration === null || value.projectId !== null, 'Project identity required');
+export const translationStorageSaveSchema = z.object({
+    expectedRevision: z.number().int().nonnegative().safe(),
+    configuration: translationStorageConfigurationSchema.nullable(),
+}).strict();
+export type TranslationStorageConfiguration = z.infer<typeof translationStorageConfigurationSchema>;
+export type TranslationStorageSettings = z.infer<typeof translationStorageSettingsSchema>;
+
 export const languageConfigurationSchema = z.object({
     version: z.literal(1), scope: localizationScopeSchema, sourceLocale: localeSchema,
     locales: z.array(z.object({ code: localeSchema, direction: z.enum(['ltr', 'rtl']), enabled: z.boolean() }).strict()).min(1).max(128),

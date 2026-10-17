@@ -27,6 +27,7 @@ interface DatasourceModalProps {
 export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceModalProps) {
     const queryClient = useQueryClient();
     const isEditing = !!datasource;
+    const [manualHttp, setManualHttp] = useState(false);
 
     const [formData, setFormData] = useState({
         name: datasource?.name || '',
@@ -39,6 +40,7 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
         connection_uri: '',
         api_url: datasource?.api_url || '',
         anon_key: '',
+        service_role_key: '',
         api_key: '',
         provider_account_id: (datasource as any)?.provider_account_id || '',
         // WordPress Plugin specific fields (mapped to api_url/password by backend)
@@ -122,9 +124,11 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                                 value={formData.type}
                                 onChange={(e) => {
                                     const newType = e.target.value as any;
+                                    setManualHttp(false);
                                     setFormData({
                                         ...formData,
                                         type: newType,
+                                        ...(manualHttp ? { api_url: '', service_role_key: '', provider_account_id: '' } : {}),
                                         port: newType === 'mysql' ? 3306 : 5432
                                     });
                                 }}
@@ -139,14 +143,20 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                     </div>
 
                     <div className="space-y-4">
+                        {formData.type === 'supabase' && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={manualHttp} onChange={e => { setManualHttp(e.target.checked); setFormData({ ...formData, provider_account_id: '', api_url: '', service_role_key: '' }); }} />{isEditing ? 'Edit HTTPS URL and server key' : 'Connect using an HTTPS URL and server key'}</label>}
+                        {manualHttp && formData.type === 'supabase' && <div className="space-y-3">
+                            <label className="block text-sm">API base URL<input type="url" className="w-full rounded-md border bg-background px-3 py-2" value={formData.api_url} onChange={e => setFormData({ ...formData, api_url: e.target.value })} placeholder="https://your-database.example.com" required={!isEditing} /></label>
+                            <label className="block text-sm">Server API key<input type="password" autoComplete="new-password" className="w-full rounded-md border bg-background px-3 py-2" value={formData.service_role_key} onChange={e => setFormData({ ...formData, service_role_key: e.target.value })} required={!isEditing} /></label>
+                            <p className="text-xs text-muted-foreground">For Supabase or native PostgREST. Credentials are stored encrypted. For translation storage, save this connection and verify it in Settings → Translations. This connection can be used for translation storage without enabling table browsing. {isEditing && 'Leave blank values to preserve the saved connection.'}</p>
+                        </div>}
                         {/* Connected Account Picker — WordPress + Google Sheets + all DB types */}
-                        {formData.type.startsWith('wordpress_') ||
+                        {!(manualHttp && formData.type === 'supabase') && (formData.type.startsWith('wordpress_') ||
                          formData.type === 'google_sheets' ||
                          formData.type === 'postgres' ||
                          formData.type === 'mysql' ||
                          formData.type === 'supabase' ||
                          formData.type === 'neon' ||
-                         formData.type === 'turso' ? (
+                         formData.type === 'turso') ? (
                             <div className="space-y-3">
                                 <AccountResourcePicker
                                     compatibleProviders={DATASOURCE_PROVIDER_MAP[formData.type] || [formData.type]}
@@ -243,7 +253,7 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                     <button
                         type="button"
                         onClick={() => testRawMutation.mutate(formData)}
-                        disabled={testRawMutation.isPending || mutation.isPending}
+                        disabled={testRawMutation.isPending || mutation.isPending || (manualHttp && formData.type === 'supabase')}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold border-2 border-primary-600 text-primary-600 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all disabled:opacity-50"
                     >
                         {testRawMutation.isPending ? (
@@ -263,7 +273,7 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                         </button>
                         <button
                             onClick={handleSubmit}
-                            disabled={mutation.isPending || testRawMutation.isPending}
+                            disabled={mutation.isPending || testRawMutation.isPending || (!isEditing && manualHttp && formData.type === 'supabase' && (!/^https:\/\//.test(formData.api_url) || !formData.service_role_key))}
                             className="flex-1 px-4 py-3 text-sm font-bold bg-primary-600 text-primary-foreground rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50 shadow-lg shadow-primary-500/20"
                         >
                             {mutation.isPending ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Data Source')}

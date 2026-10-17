@@ -15,6 +15,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users } from 'lucide-react';
+import { TranslationStorageForm } from './settings/shared/TranslationStorageForm';
 import { PrivacySettingsForm } from './settings/shared/PrivacySettingsForm';
 import { ProjectDetailsForm } from './settings/shared/ProjectDetailsForm';
 import { PublicSiteIdentityForm } from './settings/shared/PublicSiteIdentityForm';
@@ -32,8 +33,8 @@ import { isCloud } from '@/lib/edition';
 
 const CLOUD = isCloud();
 const VALID_TABS: string[] = CLOUD
-  ? ['general', 'template', 'plan', 'team', 'privacy', 'keys', 'accounts', 'security']
-  : ['general', 'template', 'team', 'privacy', 'keys', 'accounts', 'security'];
+  ? ['general', 'translations', 'template', 'plan', 'team', 'privacy', 'keys', 'accounts', 'security']
+  : ['general', 'translations', 'template', 'team', 'privacy', 'keys', 'accounts', 'security'];
 type SettingsTab = string;
 
 export const SettingsPanel: React.FC = () => {
@@ -60,6 +61,7 @@ export const SettingsPanel: React.FC = () => {
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="template">Template settings</TabsTrigger>
+          <TabsTrigger value="translations">Translations</TabsTrigger>
           {CLOUD && <TabsTrigger value="plan">Plan & Usage</TabsTrigger>}
           <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="privacy">Privacy & Tracking</TabsTrigger>
@@ -68,6 +70,7 @@ export const SettingsPanel: React.FC = () => {
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="translations" className="space-y-6 mt-6"><TranslationStorageForm /></TabsContent>
         <TabsContent value="template" className="space-y-6 mt-6"><SiteConfigurationForm /><TemplateSettingsForm /><LiveListMigration /><ElementSettingsMigration /></TabsContent>
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6 mt-6">

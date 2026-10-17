@@ -1,0 +1,92 @@
+[
+  {
+    "package": "backend",
+    "gate": "translation-storage-mutation",
+    "exit": 0
+  },
+  {
+    "package": "backend",
+    "gate": "translation-storage",
+    "exit": 0
+  },
+  {
+    "package": "backend",
+    "gate": "site-configuration",
+    "exit": 0
+  },
+  {
+    "package": "backend",
+    "gate": "sdk-http",
+    "exit": 0
+  },
+  {
+    "package": "backend",
+    "gate": "external-request",
+    "exit": 0
+  },
+  {
+    "package": "backend",
+    "gate": "compat-security",
+    "exit": 0
+  },
+  {
+    "package": "backend",
+    "gate": "compat-database-security",
+    "exit": 0
+  },
+  {
+    "package": "backend",
+    "gate": "compat-tenant-matrix",
+    "exit": 0
+  },
+  {
+    "package": "backend",
+    "gate": "compat-conformance",
+    "exit": 0
+  },
+  {
+    "package": "translation",
+    "gate": "localization",
+    "exit": 0
+  },
+  {
+    "package": "translation",
+    "gate": "revisions",
+    "exit": 0
+  },
+  {
+    "package": "translation",
+    "gate": "jobs",
+    "exit": 0
+  },
+  {
+    "package": "translation",
+    "gate": "postgrest",
+    "exit": 0
+  },
+  {
+    "package": "translation",
+    "gate": "localization-mutation",
+    "exit": 0
+  },
+  {
+    "package": "translation",
+    "gate": "revisions-mutation",
+    "exit": 0
+  },
+  {
+    "package": "translation",
+    "gate": "jobs-mutation",
+    "exit": 0
+  },
+  {
+    "package": "translation",
+    "gate": "postgrest-mutation",
+    "exit": 0
+  },
+  {
+    "package": "backend",
+    "gate": "translation-storage-live-readonly",
+    "exit": 0
+  }
+]

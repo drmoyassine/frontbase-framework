@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { buildPackage, repoRoot } from '../../../scripts/mutation-lib.mjs';
 const faults=[
  ['libsql per-client fetch','packages/edge-infra/src/providers/libsql-http.ts','return { url, authToken, fetch: fetchImpl };','return { url, authToken };','FAIL vector Request POST auth body crosses injected guard'],
- ['PostgREST per-client fetch','packages/edge-infra/src/providers/runners.ts','fetch: opts.fetchImpl,','// deliberate fault: missing fetch injection','FAIL Supabase RPC query and exec preserve keys schema SQL and result'],
+ ['PostgREST per-client fetch','packages/edge-infra/src/providers/supabase-http.ts','fetch: opts.fetchImpl,','// deliberate fault: missing fetch injection','FAIL Supabase RPC query and exec preserve keys schema SQL and result'],
  ['D1 per-client fetch','packages/edge-infra/src/providers/runners.ts','const transport = opts.fetchImpl ?? globalThis.fetch;','const transport = globalThis.fetch;','FAIL D1 REST query and exec use injected owner transport'],
  ['datasource destination policy','packages/backend/src/db/datasource-runner.ts','const transport: CompatFetch = (input, init) => guardedExternalFetch(externalFetch, input, init);','const transport: CompatFetch = externalFetch;','FAIL private datasource URL never reaches any transport'],
  ['libsql remote transport policy','packages/edge-infra/src/providers/libsql-http.ts','if (fetchImpl) {','if (false) {','FAIL unsupported remote libsql transports refused before fallback'],
