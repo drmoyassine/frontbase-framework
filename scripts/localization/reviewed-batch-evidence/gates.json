@@ -1,0 +1,179 @@
+{
+  "date": "2026-10-18",
+  "sourceBase": "f9bb470",
+  "gates": [
+    {
+      "gate": "pnpm -r build",
+      "exitCode": 0,
+      "seconds": 54.25
+    },
+    {
+      "gate": "pnpm -r check",
+      "exitCode": 0,
+      "seconds": 30.25
+    },
+    {
+      "gate": "node packages/backend/test/translation-batches-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 68.411
+    },
+    {
+      "gate": "node packages/backend/test/translation-allowance-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 17.215
+    },
+    {
+      "gate": "node packages/backend/test/translation-allowance-lifecycle-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 24.004
+    },
+    {
+      "gate": "node packages/backend/test/translation-storage-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 22.817
+    },
+    {
+      "gate": "node packages/backend/test/translation-generation-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 27.312
+    },
+    {
+      "gate": "node packages/translation/test/localization-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.137
+    },
+    {
+      "gate": "node packages/translation/test/revisions-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.177
+    },
+    {
+      "gate": "node packages/translation/test/jobs-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.199
+    },
+    {
+      "gate": "node packages/translation/test/postgrest-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.16
+    },
+    {
+      "gate": "node packages/translation/test/accounting-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.215
+    },
+    {
+      "gate": "node packages/translation/test/accounting-http-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.143
+    },
+    {
+      "gate": "node packages/backend/test/translation-batches.mjs",
+      "exitCode": 0,
+      "seconds": 4.83
+    },
+    {
+      "gate": "node packages/backend/test/translation-allowance.mjs",
+      "exitCode": 0,
+      "seconds": 2.772
+    },
+    {
+      "gate": "node packages/backend/test/translation-allowance-lifecycle.mjs",
+      "exitCode": 0,
+      "seconds": 3.561
+    },
+    {
+      "gate": "node packages/backend/test/translation-storage.mjs",
+      "exitCode": 0,
+      "seconds": 3.696
+    },
+    {
+      "gate": "node packages/backend/test/translation-generation.mjs",
+      "exitCode": 0,
+      "seconds": 4.458
+    },
+    {
+      "gate": "node packages/backend/test/sdk-http.mjs",
+      "exitCode": 0,
+      "seconds": 4.98
+    },
+    {
+      "gate": "node packages/backend/test/external-request.mjs",
+      "exitCode": 0,
+      "seconds": 0.345
+    },
+    {
+      "gate": "node packages/backend/test/compat-security.mjs",
+      "exitCode": 0,
+      "seconds": 3.17
+    },
+    {
+      "gate": "node packages/backend/test/compat-tenant-matrix.mjs",
+      "exitCode": 0,
+      "seconds": 10.036
+    },
+    {
+      "gate": "node packages/backend/test/compat-conformance.mjs --gate",
+      "exitCode": 0,
+      "seconds": 7.468
+    },
+    {
+      "gate": "node packages/translation/test/localization.mjs",
+      "exitCode": 0,
+      "seconds": 0.142
+    },
+    {
+      "gate": "node packages/translation/test/revisions.mjs",
+      "exitCode": 0,
+      "seconds": 0.465
+    },
+    {
+      "gate": "node packages/translation/test/jobs.mjs",
+      "exitCode": 0,
+      "seconds": 0.295
+    },
+    {
+      "gate": "node packages/translation/test/postgrest.mjs",
+      "exitCode": 0,
+      "seconds": 0.155
+    },
+    {
+      "gate": "node packages/translation/test/accounting.mjs",
+      "exitCode": 0,
+      "seconds": 0.255
+    },
+    {
+      "gate": "node packages/translation/test/accounting-http.mjs",
+      "exitCode": 0,
+      "seconds": 0.213
+    },
+    {
+      "gate": "node packages/edge-infra/test/ai-http.mjs",
+      "exitCode": 0,
+      "seconds": 0.13
+    },
+    {
+      "gate": "node packages/edge-infra/test/translation.mjs",
+      "exitCode": 0,
+      "seconds": 0.187
+    },
+    {
+      "gate": "standalone offline tarball/types/external functional proof",
+      "exitCode": 0
+    },
+    {
+      "gate": "actual reviewed-batch route browser-compatible HTTP graph",
+      "exitCode": 0
+    }
+  ],
+  "faults": {
+    "reviewedBatch": 13,
+    "retainedHost": 29,
+    "retainedEngine": 36
+  },
+  "limits": [
+    "Injected fake provider and HTTP/SQLite fixtures; no real AI or owner SQL change",
+    "New framework routes tested separately from unchanged legacy OpenAPI denominator",
+    "No deployed edge/real queue/complete backend external type certification"
+  ]
+}

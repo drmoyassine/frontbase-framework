@@ -11,7 +11,7 @@ const faults=[
  ['undispatched proof',file,"if (attempt.state === 'reserved') {\n                    if (job.dispatched || job.uncertainAttempts > 0 || job.status === 'completed') throw Error();","if (attempt.state === 'reserved') {\n                    if (false) throw Error();"],
  ['explicit unknown acknowledgment',file,"choice.unknownDisposition === 'count-as-consumed'",'true'],
  ['original destination identity',file,'JSON.stringify(session.destination) !== JSON.stringify(destination)','false'],
- ['fresh allocation CAS',file,"AND value = ?',\n                [JSON.stringify(record)","AND ? IS NOT NULL',\n                [JSON.stringify(record)"],
+ ['fresh allocation CAS',file,'AND value = ? AND (?','AND ? IS NOT NULL AND (?'],
  ['closing progress CAS',file,"AND value = ?',\n            [JSON.stringify(next)","AND ? IS NOT NULL',\n            [JSON.stringify(next)"],
  ['archived identity cannot reopen',file,'if (await readValue(runner, tenant, archiveKey(review.allowanceId)) !== null) throw Error();','void 0;'],
 ];

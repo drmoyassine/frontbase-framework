@@ -1,0 +1,184 @@
+/** Bounded native page review/orchestration. Jobs and accounting remain authoritative in the existing engine. */
+import { z } from 'zod';
+import type { DbRunner } from '@frontbase/edge-infra';
+import { validateBlockVersions, type VersionedBlock } from '@frontbase/edge-core/block-versions';
+import { TranslationLifecycle, localeSchema, translationJobIntentSchema, translationUnitId, messageSourceFingerprint,
+    translationContextFingerprint, type MessageUnit, type TranslationContext } from '@frontbase/edge-core/localization';
+import { currentTranslationHostPin, translationHostPinSchema, prepareTranslationAllowance, configuredTranslationAllowanceRunner,
+    closeTranslationAllowance, translationAllowanceLifecycle, translationAllowanceReference } from './translation-allowance.js';
+import { resolveTranslationAccountingStorage, type TranslationStorageHost } from './translation-storage.js';
+import { translationMessages, type GenerationHost } from './translation-generation.js';
+import type { PagesStore } from './pages-store.js';
+
+const id = z.string().min(1).max(160), hash = z.string().regex(/^[a-f0-9]{64}$/), uuid = z.string().uuid();
+const selectionSchema = z.object({ pageId: id, blockId: id, field: z.enum(['content', 'text', 'value']) }).strict();
+const limitsSchema = z.object({ maxRequests: z.number().int().min(1).max(4), maxConcurrent: z.literal(1),
+    maxMessageBytes: z.number().int().min(512).max(65536) }).strict();
+export const translationBatchPlanSchema = z.object({ targetLocale: localeSchema, selections: z.array(selectionSchema).min(1).max(4), limits: limitsSchema }).strict();
+const itemSchema = z.object({ selection: selectionSchema, pageHash: hash, previousSourceVersion: z.number().int().positive().safe().nullable(), intent: translationJobIntentSchema }).strict();
+const reviewSchema = z.object({ version: z.literal(1), id: uuid, pin: translationHostPinSchema, targetLocale: localeSchema,
+    limits: limitsSchema, items: z.array(itemSchema).min(1).max(4), createdAt: z.string().datetime() }).strict();
+const recordSchema = z.object({ review: reviewSchema, reviewHash: hash, phase: z.enum(['planned', 'preparing', 'queued', 'done', 'cancelling', 'closed']),
+    cursor: z.number().int().min(0).max(4), approvedBy: id.nullable(), policyHash: hash.nullable() }).strict();
+type Batch = z.infer<typeof recordSchema>;
+export type TranslationBatchHost = TranslationStorageHost & GenerationHost & { pagesFor(tenant: string): Pick<PagesStore, 'get'> };
+const key = (value: string) => 'translation_batch:v1:' + uuid.parse(value);
+const digest = async (value: unknown) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(value)))), byte => byte.toString(16).padStart(2, '0')).join('');
+const FIELDS: Record<string, readonly string[]> = { Text: ['content', 'text', 'value'], Heading: ['content', 'text'], Paragraph: ['content', 'text'] };
+const boundTypes = new Set(['Repeater', 'DataTable', 'DataGrid', 'Grid']);
+async function extract(host: TranslationBatchHost, tenant: string, selection: z.infer<typeof selectionSchema>, pin: z.infer<typeof translationHostPinSchema>) {
+    const page = await host.pagesFor(tenant).get(selection.pageId);
+    if (!page || page.deleted_at || page.layout_data.length > 1_000_000) throw Error();
+    const layout = JSON.parse(page.layout_data), nodes = layout.content as VersionedBlock[];
+    validateBlockVersions(nodes);
+    let found: VersionedBlock | undefined, blocked = false;
+    const visit = (list: VersionedBlock[], inherited: boolean) => {
+        for (const node of list) {
+            const bound = inherited || !!node.binding || !!node.props?.binding || !!node.props?.dataBinding || boundTypes.has(node.type);
+            if (node.id === selection.blockId) { found = node; blocked = bound; }
+            if (node.children) visit(node.children, bound);
+        }
+    };
+    visit(nodes, false);
+    if (!found || blocked) throw Error();
+    const node = found as VersionedBlock, props = node.props ?? {}, fields = FIELDS[node.type];
+    if (!fields || fields.find(field => !!props[field]) !== selection.field || props.binding || props.dataBinding) throw Error();
+    const text = props[selection.field];
+    if (typeof text !== 'string' || !text.trim() || text.length > 4000 || /[{}<>]|@\{/.test(text)) throw Error();
+    const unit: MessageUnit = { version: 1, scope: pin.storage.scope, resource: { kind: 'component', documentId: page.id, blockId: node.id,
+        versionId: 'default', propertyPath: ['props', selection.field] }, sourceLocale: pin.generation.sourceLocale,
+        format: 'plain', text, segmenterVersion: 1, placeholders: [] };
+    const context: TranslationContext = { version: 1, role: node.type, resourceLabel: ('Page ' + page.name + ' / ' + selection.field).slice(0, 200) };
+    return { unit, context, pageHash: await digest({ layout: page.layout_data, name: page.name }) };
+}
+async function sessionFor(host: TranslationBatchHost, tenant: string, pin: Batch['review']['pin']) {
+    const d = pin.storage.destination;
+    const session = await resolveTranslationAccountingStorage(host, tenant, { version: 1, datasourceId: d.datasourceId, endpoint: d.endpoint, namespace: 'translations' }, pin.storage.scope.projectId);
+    if (JSON.stringify(session.destination) !== JSON.stringify(d) || JSON.stringify(session.scope) !== JSON.stringify(pin.storage.scope)) throw Error();
+    return session;
+}
+async function read(db: DbRunner, tenant: string, batchId: string) {
+    const rows = await db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?', [tenant, key(batchId)]);
+    if (!rows.length) throw Error();
+    const raw = String(rows[0]!.value), value = recordSchema.parse(JSON.parse(raw));
+    if (value.review.id !== batchId || value.review.pin.storage.scope.tenantId !== tenant || await digest(value.review) !== value.reviewHash
+        || value.cursor > value.review.items.length || (value.phase !== 'planned' && value.phase !== 'closed' && value.approvedBy === null)) throw Error();
+    return { raw, value };
+}
+async function save(db: DbRunner, tenant: string, previous: Awaited<ReturnType<typeof read>>, next: Batch, now: string) {
+    recordSchema.parse(next);
+    await db.exec('UPDATE settings SET value = ?, updated_at = ? WHERE tenant_slug = ? AND key = ? AND value = ?',
+        [JSON.stringify(next), now, tenant, key(next.review.id), previous.raw]);
+    return read(db, tenant, next.review.id);
+}
+async function stillCurrent(host: TranslationBatchHost, db: DbRunner, tenant: string, batch: Batch) {
+    if (JSON.stringify(await currentTranslationHostPin(host, db, tenant)) !== JSON.stringify(batch.review.pin)) return false;
+    for (const item of batch.review.items) if ((await extract(host, tenant, item.selection, batch.review.pin)).pageHash !== item.pageHash) return false;
+    return true;
+}
+/** Review is read-only against translation storage and never calls AI or registers source history. */
+export async function planTranslationBatch(host: TranslationBatchHost, db: DbRunner, tenant: string, input: unknown, now: string) {
+    const request = translationBatchPlanSchema.parse(input), pin = await currentTranslationHostPin(host, db, tenant);
+    if (!pin.generation.targetLocales.includes(request.targetLocale)) throw Error();
+    const unique = new Set(request.selections.map(s => JSON.stringify(s)));
+    if (unique.size !== request.selections.length) throw Error();
+    const batchId = crypto.randomUUID(), session = await sessionFor(host, tenant, pin), items: Batch['review']['items'] = [], preview = [];
+    for (const selection of request.selections) {
+        const source = await extract(host, tenant, selection, pin), unitId = await translationUnitId(pin.storage.scope, source.unit.resource);
+        const fingerprint = await messageSourceFingerprint(source.unit), contextFingerprint = await translationContextFingerprint(source.context);
+        if (new TextEncoder().encode(JSON.stringify(translationMessages(source, request.targetLocale))).byteLength > request.limits.maxMessageBytes) throw Error();
+        const snapshot = await session.persistence.read(pin.storage.scope, unitId, request.targetLocale);
+        if (snapshot.head?.provenance === 'manual') throw Error();
+        const same = snapshot.source?.fingerprint === fingerprint && snapshot.source.contextFingerprint === contextFingerprint;
+        items.push({ selection, pageHash: source.pageHash, previousSourceVersion: snapshot.source?.sourceVersion ?? null,
+            intent: { version: 1, jobId: 'b-' + batchId + '-' + items.length, revisionId: 'r-' + batchId + '-' + items.length, unitId,
+                sourceVersion: same ? snapshot.source!.sourceVersion : (snapshot.source?.sourceVersion ?? 0) + 1,
+                sourceFingerprint: fingerprint, contextFingerprint, expectedHead: snapshot.head?.revisionId ?? null,
+                locale: request.targetLocale, providerId: pin.generation.accountId, promptVersion: pin.generation.promptVersion, maxAttempts: 1 } });
+        preview.push({ selection, text: source.unit.text, context: source.context });
+    }
+    const review = reviewSchema.parse({ version: 1, id: batchId, pin, targetLocale: request.targetLocale, limits: request.limits, items, createdAt: now });
+    const value: Batch = { review, reviewHash: await digest(review), phase: 'planned', cursor: 0, approvedBy: null, policyHash: null };
+    await db.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?)', [tenant, key(batchId), JSON.stringify(value), now]);
+    return { id: batchId, reviewHash: value.reviewHash, sourceLocale: pin.generation.sourceLocale, targetLocale: review.targetLocale,
+        providerAccountId: pin.generation.accountId, model: pin.generation.model, limits: review.limits, maxOutputTokens: pin.generation.maxOutputTokens,
+        items: preview, monetaryEstimate: null, delivery: 'administrator-continuation' as const, draftOnly: true as const };
+}
+async function allocate(host: TranslationBatchHost, db: DbRunner, tenant: string, row: Awaited<ReturnType<typeof read>>, now: string) {
+    const b = row.value;
+    if (b.phase !== 'preparing' || b.policyHash || !await stillCurrent(host, db, tenant, b)) return row;
+    const allowance = await prepareTranslationAllowance(host, db, tenant, { allowanceId: 'batch:' + b.review.id, unit: 'provider-request',
+        ...b.review.limits, jobs: b.review.items.map(item => item.intent) }, now, { key: key(b.review.id), value: row.raw });
+    return save(db, tenant, row, { ...b, policyHash: allowance.policyHash }, now);
+}
+export async function startTranslationBatch(host: TranslationBatchHost, db: DbRunner, tenant: string, batchId: string, reviewHash: string, actorId: string, now: string) {
+    let row = await read(db, tenant, batchId);
+    if (row.value.reviewHash !== hash.parse(reviewHash) || !await stillCurrent(host, db, tenant, row.value)) throw Error();
+    if (row.value.phase === 'planned') row = await save(db, tenant, row, { ...row.value, phase: 'preparing', approvedBy: id.parse(actorId) }, now);
+    if (!['preparing', 'queued', 'done'].includes(row.value.phase) || row.value.approvedBy === null) throw Error();
+    if (row.value.phase === 'preparing') await allocate(host, db, tenant, row, now);
+}
+/** One preparation item or one leased model job per explicit administrator request. No timer/queue claim. */
+export async function continueTranslationBatch(host: TranslationBatchHost, db: DbRunner, tenant: string, batchId: string, reviewHash: string, now: string) {
+    let row = await read(db, tenant, batchId), b = row.value;
+    if (b.reviewHash !== hash.parse(reviewHash) || b.approvedBy === null || !['preparing', 'queued', 'done'].includes(b.phase) || !await stillCurrent(host, db, tenant, b)) throw Error();
+    if (b.phase === 'done') return;
+    if (!b.policyHash) { await allocate(host, db, tenant, row, now); return; }
+    const session = await sessionFor(host, tenant, b.review.pin);
+    if (b.phase === 'preparing') {
+        const item = b.review.items[b.cursor];
+        if (!item) throw Error();
+        const source = await extract(host, tenant, item.selection, b.review.pin), snapshot = await session.persistence.read(session.scope, item.intent.unitId, b.review.targetLocale);
+        if (snapshot.head?.revisionId !== (item.intent.expectedHead ?? undefined)) throw Error();
+        if (snapshot.source?.sourceVersion !== item.intent.sourceVersion || snapshot.source.fingerprint !== item.intent.sourceFingerprint || snapshot.source.contextFingerprint !== item.intent.contextFingerprint) {
+            const registered = await new TranslationLifecycle(session.persistence).syncSource(session.scope, source.unit, item.previousSourceVersion, source.context);
+            if (registered.status === 'conflict' || registered.sourceVersion !== item.intent.sourceVersion || registered.sourceFingerprint !== item.intent.sourceFingerprint || registered.contextFingerprint !== item.intent.contextFingerprint) throw Error();
+        }
+        const result = await session.persistence.enqueueJob(session.scope, item.intent);
+        if (!['created', 'already-exists'].includes(result)) throw Error();
+        await save(db, tenant, row, { ...b, cursor: b.cursor + 1, phase: b.cursor + 1 === b.review.items.length ? 'queued' : 'preparing' }, now);
+        return;
+    }
+    const permit = async () => { const current = (await read(db, tenant, batchId)).value; return current.phase === 'queued' && current.reviewHash === b.reviewHash && await stillCurrent(host, db, tenant, current); };
+    const executor = await configuredTranslationAllowanceRunner(host, db, tenant, permit);
+    for (const item of b.review.items) {
+        const job = await session.persistence.readJob(session.scope, item.intent.jobId);
+        if (!job) throw Error();
+        if (['queued', 'leased'].includes(job.status)) { await executor.runOnce(item.intent.jobId); return; }
+    }
+    await save(db, tenant, row, { ...b, phase: 'done' }, now);
+}
+export async function cancelTranslationBatch(host: TranslationBatchHost, db: DbRunner, tenant: string, batchId: string, reviewHash: string,
+    unknownDisposition: 'hold' | 'count-as-consumed', now: string) {
+    let row = await read(db, tenant, batchId);
+    if (row.value.reviewHash !== hash.parse(reviewHash)) throw Error();
+    if (row.value.phase === 'planned') { await save(db, tenant, row, { ...row.value, phase: 'closed' }, now); return; }
+    if (row.value.phase !== 'closed' && row.value.phase !== 'cancelling') row = await save(db, tenant, row, { ...row.value, phase: 'cancelling' }, now);
+    if (row.value.phase === 'closed') return;
+    const reference = row.value.policyHash ? { policyHash: row.value.policyHash } : await translationAllowanceReference(db, tenant, 'batch:' + batchId);
+    if (!reference) { await save(db, tenant, row, { ...row.value, phase: 'closed' }, now); return; }
+    const existing = await translationAllowanceLifecycle(db, tenant, reference.policyHash);
+    const result = existing?.phase === 'closed' ? existing : await closeTranslationAllowance(host, db, tenant, { policyHash: reference.policyHash, unknownDisposition }, now);
+    await save(db, tenant, row, { ...row.value, policyHash: reference.policyHash, phase: result.phase === 'closed' ? 'closed' : 'cancelling' }, now);
+}
+export async function translationBatchStatus(host: TranslationBatchHost, db: DbRunner, tenant: string, batchId: string) {
+    const b = (await read(db, tenant, batchId)).value, items = [];
+    let storageAvailable = true;
+    try {
+        if (b.approvedBy !== null) {
+            const session = await sessionFor(host, tenant, b.review.pin);
+            for (const item of b.review.items) {
+                const job = await session.persistence.readJob(session.scope, item.intent.jobId);
+                const attempt = job?.leaseVersion ? await session.persistence.readAttempt({ scope: session.scope, jobId: job.intent.jobId, leaseVersion: job.leaseVersion }) : null;
+                let current = false;
+                try { current = (await extract(host, tenant, item.selection, b.review.pin)).pageHash === item.pageHash; } catch { /* Deleted/inaccessible source never exposes result text. */ }
+                const result = current && job?.status === 'completed' ? await session.persistence.readRevision(session.scope, item.intent.unitId, item.intent.locale, item.intent.revisionId) : null;
+                items.push({ selection: item.selection, state: job?.status ?? 'not-prepared', error: job?.lastError ?? null, accounting: attempt?.state ?? null,
+                    outdated: !current, result: result?.text ?? null });
+            }
+        }
+    } catch { storageAvailable = false; }
+    const lifecycle = b.policyHash ? await translationAllowanceLifecycle(db, tenant, b.policyHash) : null;
+    return { id: b.review.id, reviewHash: b.reviewHash, state: lifecycle?.phase === 'closed' ? 'closed' : b.phase, preparedItems: b.cursor,
+        itemCount: b.review.items.length, approvedBy: b.approvedBy, storageAvailable, items, lifecycle, delivery: 'administrator-continuation' as const, draftOnly: true as const };
+}

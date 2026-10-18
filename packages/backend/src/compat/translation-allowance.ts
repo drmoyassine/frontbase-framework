@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { TranslationJobRunner, translationAttemptAccounting, translationJobIntentSchema, translationGenerationConfigurationSchema,
-    localizationScopeSchema, type TranslationJob, type SourceRecord, type TranslationAIProvider } from '@frontbase/edge-core/localization';
+    localizationScopeSchema, translationUnitId, type TranslationJob, type SourceRecord, type TranslationAIProvider } from '@frontbase/edge-core/localization';
 import { configuredTranslationAccountingStorage, configuredTranslationStorageIdentity, resolveTranslationAccountingStorage, type TranslationStorageHost } from './translation-storage.js';
 import { TranslationGenerationStore, resolveGenerationInvoker, translationAIProvider, translationMessages, type GenerationHost } from './translation-generation.js';
 
@@ -20,6 +20,7 @@ const identitySchema = z.object({ scope: localizationScopeSchema, configurationR
     destination: z.object({ datasourceId: z.string(), accountId: z.string().nullable(), endpoint: z.enum(['supabase', 'postgrest']), url: z.string().url() }).strict(),
 }).strict();
 const pinSchema = z.object({ storage: identitySchema, generationRevision: z.number().int().positive().safe(), generation: translationGenerationConfigurationSchema }).strict();
+export const translationHostPinSchema = pinSchema;
 const planSchema = z.object({ version: z.literal(1), review: translationAllowanceReviewSchema, pin: pinSchema }).strict();
 const recordSchema = z.object({ plan: planSchema, policyHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 type Host = TranslationStorageHost & GenerationHost;
@@ -58,6 +59,12 @@ async function currentPin(host: Host, runner: DbRunner, tenant: string) {
     return pinSchema.parse({ storage: await configuredTranslationStorageIdentity(host, runner, tenant),
         generationRevision: generation.revision, generation: generation.configuration });
 }
+export const currentTranslationHostPin = currentPin;
+export const translationAllowanceLifecycle = lifecycle;
+export async function translationAllowanceReference(runner: DbRunner, tenant: string, allowanceId: string) {
+    const record = await readRecord(runner, tenant);
+    return record?.plan.review.allowanceId === allowanceId ? { policyHash: record.policyHash } : null;
+}
 async function readRecord(runner: DbRunner, tenant: string): Promise<Record | null> {
     const rows = await runner.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?', [tenant, KEY]);
     if (!rows.length) return null;
@@ -76,7 +83,8 @@ async function unchanged(host: Host, runner: DbRunner, tenant: string, record: R
  * Host checkpoint precedes remote ledger creation. A crash/retarget retains it and blocks fresh allocation.
  * Repeating the identical active review repairs the same remote allowance. Replacement requires a closed predecessor.
  */
-export async function prepareTranslationAllowance(host: Host, runner: DbRunner, tenant: string, input: Review, now: string) {
+export async function prepareTranslationAllowance(host: Host, runner: DbRunner, tenant: string, input: Review, now: string,
+    checkpoint?: { key: string; value: string }) {
     try {
         const review = translationAllowanceReviewSchema.parse(input), pin = await currentPin(host, runner, tenant);
         for (const job of review.jobs) {
@@ -84,9 +92,11 @@ export async function prepareTranslationAllowance(host: Host, runner: DbRunner, 
                 || !pin.generation.targetLocales.includes(job.locale) || job.maxAttempts !== 1) throw Error();
         }
         const plan = planSchema.parse({ version: 1, review, pin }), record = { plan, policyHash: await policyHash(plan) };
+        if (checkpoint && (!/^translation_batch:v1:[a-f0-9-]{36}$/.test(checkpoint.key)
+            || await readValue(runner, tenant, checkpoint.key) !== checkpoint.value)) throw Error();
         if (await readValue(runner, tenant, archiveKey(review.allowanceId)) !== null) throw Error();
-        await runner.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug, key) DO NOTHING',
-            [tenant, KEY, JSON.stringify(record), now]);
+        await runner.exec("INSERT INTO settings (tenant_slug, key, value, updated_at) SELECT ?,?,?,? WHERE ? = '' OR EXISTS (SELECT 1 FROM settings WHERE tenant_slug = ? AND key = ? AND value = ?) ON CONFLICT(tenant_slug, key) DO NOTHING",
+            [tenant, KEY, JSON.stringify(record), now, checkpoint?.key ?? '', tenant, checkpoint?.key ?? '', checkpoint?.value ?? '']);
         const prior = await readRecord(runner, tenant);
         if (prior && prior.policyHash !== record.policyHash) {
             if ((await lifecycle(runner, tenant, prior.policyHash))?.phase !== 'closed'
@@ -98,8 +108,8 @@ export async function prepareTranslationAllowance(host: Host, runner: DbRunner, 
             await runner.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug, key) DO NOTHING',
                 [tenant, archive, JSON.stringify(prior), now]);
             if (await readValue(runner, tenant, archive) !== JSON.stringify(prior)) throw Error();
-            await runner.exec('UPDATE settings SET value = ?, updated_at = ? WHERE tenant_slug = ? AND key = ? AND value = ?',
-                [JSON.stringify(record), now, tenant, KEY, priorRaw]);
+            await runner.exec("UPDATE settings SET value = ?, updated_at = ? WHERE tenant_slug = ? AND key = ? AND value = ? AND (? = '' OR EXISTS (SELECT 1 FROM settings WHERE tenant_slug = ? AND key = ? AND value = ?))",
+                [JSON.stringify(record), now, tenant, KEY, priorRaw, checkpoint?.key ?? '', tenant, checkpoint?.key ?? '', checkpoint?.value ?? '']);
         }
         const saved = await readRecord(runner, tenant);
         if (!saved || saved.policyHash !== record.policyHash || !await unchanged(host, runner, tenant, saved)) throw Error();
@@ -204,7 +214,7 @@ export async function closeTranslationAllowance(host: Host, runner: DbRunner, te
     } catch { throw Error('translation_allowance_reconciliation_unavailable'); }
 }
 /** Mandatory accounting composition for future reviewed-batch handlers. No compatibility/unaccounted fallback. */
-export async function configuredTranslationAllowanceRunner(host: Host, runner: DbRunner, tenant: string) {
+export async function configuredTranslationAllowanceRunner(host: Host, runner: DbRunner, tenant: string, permit?: () => Promise<boolean>) {
     try {
         const record = await readRecord(runner, tenant);
         if (!record || !await unchanged(host, runner, tenant, record)) throw Error();
@@ -213,7 +223,7 @@ export async function configuredTranslationAllowanceRunner(host: Host, runner: D
         const allowance = await session.persistence.readAllowance(session.scope, review.allowanceId);
         if (!allowance || allowance.policyHash !== record.policyHash || allowance.limitUnits !== review.maxRequests
             || allowance.maxRequests !== review.maxRequests || allowance.maxConcurrent !== review.maxConcurrent) throw Error();
-        const guard = () => unchanged(host, runner, tenant, record);
+        const guard = async () => await unchanged(host, runner, tenant, record) && (!permit || await permit());
         const accounting = translationAttemptAccounting(session.persistence, { scope: session.scope, allowanceId: review.allowanceId,
             policyHash: record.policyHash, reservedUnits: 1, charge: () => 1 });
         const permitted = (job: TranslationJob, source: SourceRecord) => {
@@ -225,7 +235,14 @@ export async function configuredTranslationAllowanceRunner(host: Host, runner: D
         const bound = translationAIProvider(host, tenant, pin.generation);
         const provider: TranslationAIProvider = { id: bound.id, async generate(input, options) {
             if (!await guard() || new TextEncoder().encode(JSON.stringify(translationMessages(input.source, input.targetLocale))).byteLength > review.maxMessageBytes) throw Error('translation_allowance_unavailable');
-            return bound.generate(input, options);
+            const result = await bound.generate(input, options);
+            if (!await guard()) {
+                const unitId = await translationUnitId(session.scope, input.source.unit.resource);
+                const job = review.jobs.find(item => item.unitId === unitId && item.locale === input.targetLocale);
+                if (!job) throw Error('translation_allowance_unavailable');
+                await session.persistence.cancelJob(session.scope, job.jobId);
+            }
+            return result;
         } };
         const jobs = new TranslationJobRunner(session.persistence, provider, { authorize: async (job, source) => permitted(job, source) && await guard(), accounting: {
                 reserve: async job => await guard() && accounting.reserve(job), dispatch: async job => await guard() && accounting.dispatch(job),

@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-18 reviewed translation page-text batches — bounded verification
+
+[Receipt](../plans/frontbase-translation-reviewed-batches-20261018.md): authenticated sealed review/explicit approval, stable source/job preparation, one-job administrator continuation, persisted status and existing bounded cancellation/reconciliation. Atomic allocation checkpoints and final source/configuration/draft fences cover cancellation races. Workspace build/check,13 new/29 retained host/36 engine faults, security/tenant/legacy conformance, external engine package/types and HTTP-only route graph pass. Execution defaults disabled; no owner SQL, paid call or staging deployment. Next: native review/progress UI, menu/live-field extraction and separately approved provider acceptance; full T3/T4 remain open.
+
 ## 2026-10-18 translation allowance reconciliation — bounded verification
 
 [Receipt](../plans/frontbase-translation-allowance-reconciliation-20261018.md): durable freeze/cursor, job cancellation fence, proven undispatched release, explicit unknown-request consumption without ledger rewrite, original-destination recovery and historical/CAS-protected new allocation. Full workspace,8 new/13 retained host faults,36 engine faults, security/tenant/conformance and package/HTTP graph pass. Internal only; no owner SQL/provider/deployment action or complete T2/T3 claim. Next is authenticated reviewed batches and durable delivery.

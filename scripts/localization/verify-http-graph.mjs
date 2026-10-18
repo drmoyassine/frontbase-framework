@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 const [receiptPath, mode] = process.argv.slice(2);
-if (mode && !['--storage-host', '--allowance-host'].includes(mode)) throw Error('Unknown graph mode');
-const entryPoint = mode === '--allowance-host' ? 'packages/backend/dist/compat/translation-allowance.js' : mode === '--storage-host' ? 'packages/backend/dist/compat/translation-storage.js' : 'packages/edge-infra/dist/translation.js';
+if (mode && !['--storage-host', '--allowance-host', '--batch-host'].includes(mode)) throw Error('Unknown graph mode');
+const entryPoint = mode === '--batch-host' ? 'packages/backend/dist/compat/routes/translation-batches.js' : mode === '--allowance-host' ? 'packages/backend/dist/compat/translation-allowance.js' : mode === '--storage-host' ? 'packages/backend/dist/compat/translation-storage.js' : 'packages/edge-infra/dist/translation.js';
 if (!receiptPath) throw Error('Private receipt output path required');
 const built = await build({ entryPoints: [entryPoint], bundle: true, platform: 'browser', target: 'es2022',
     format: 'esm', write: false, metafile: true, logLevel: 'silent' });

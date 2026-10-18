@@ -42,7 +42,9 @@
     "test:translation-allowance": "node test/translation-allowance.mjs",
     "test:translation-allowance-mutation": "node test/translation-allowance-mutation.mjs",
     "test:translation-allowance-lifecycle": "node test/translation-allowance-lifecycle.mjs",
-    "test:translation-allowance-lifecycle-mutation": "node test/translation-allowance-lifecycle-mutation.mjs"
+    "test:translation-allowance-lifecycle-mutation": "node test/translation-allowance-lifecycle-mutation.mjs",
+    "test:translation-batches": "node test/translation-batches.mjs",
+    "test:translation-batches-mutation": "node test/translation-batches-mutation.mjs"
   },
   "peerDependencies": {
     "@frontbase/compiler": "workspace:*",

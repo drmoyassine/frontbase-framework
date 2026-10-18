@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-18 reviewed batch implementation boundary
+
+Under existing selected-content/explicit-allowance requirements, [bounded batch orchestration](../plans/frontbase-translation-reviewed-batches-20261018.md) composes the existing job/accounting lifecycle rather than a second queue. Initial extraction is native Default page plain text only; exact server review and explicit approval precede registration/dispatch. Start/Continue require a trusted host gate that defaults false. Delivery is bounded administrator continuation, not unattended scheduling. Atomic host checkpoint predicates and final source/configuration checks fence cancellation races; remote storage is not transactionally atomic with host settings. No real-provider authorization, protocol change, package/release-scope change or CF-22 activation.
+
 ## 2026-10-18 reconciliation implementation boundary
 
 Under the accepted explicit-allowance/HTTP requirements, [bounded reconciliation](../plans/frontbase-translation-allowance-reconciliation-20261018.md) freezes first and fences jobs before proving release. Unknown dispatches remain held unless explicitly counted as consumed requests; the original ledger is retained and physical completion is not implied. A persisted four-step cursor supports serverless continuation. Closed receipts/history and exact-value CAS gate fresh allocation; stale continuations cannot reopen closure. This is per-allocation request accounting, not a monetary/global-provider guarantee or authorization for real AI. No new protocol, transport, dependency, release direction or CF-22 scope.

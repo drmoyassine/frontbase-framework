@@ -29,6 +29,7 @@ import { registerProjectRoutes } from './routes/project.js';
 import { registerSiteConfigurationRoutes } from './routes/site-configuration.js';
 import { registerTranslationStorageRoutes } from './routes/translation-storage.js';
 import { registerTranslationGenerationRoutes } from './routes/translation-generation.js';
+import { registerTranslationBatchRoutes } from './routes/translation-batches.js';
 import { registerDirectoryPreviewRoutes } from './routes/directory-preview.js';
 import { registerTemplatePreflightRoutes } from './routes/template-preflight.js';
 import { registerPageRouteAudit } from './routes/page-route-audit.js';
@@ -80,6 +81,8 @@ import { embeddingFromEnv } from './rag/embedding.js';
 import { registerRagRoutes, runRagIndex, type RagRouteDeps } from './rag/routes.js';
 
 export interface CreateCompatAppDeps {
+    /** Internal rollout gate; no production AI execution until reviewed-batch acceptance/UI is complete. */
+    translationExecutionEnabled?: boolean;
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */
     makeRunner: () => Promise<DbRunner> | DbRunner;
     /** Resolve the calling principal (default-deny requires a real one). */
@@ -425,6 +428,8 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerSiteConfigurationRoutes(app, runner, now);
     registerTranslationStorageRoutes(app, runner, { syncFor: syncStoreFor, externalFetch, accountConfigFor: (tenant, id) => phase2For(tenant).getEdgeResourceConfig(id) }, now);
     registerTranslationGenerationRoutes(app, runner, { accountsFor: phase2For, externalFetch }, now);
+    registerTranslationBatchRoutes(app, runner, { pagesFor, syncFor: syncStoreFor, accountsFor: phase2For, externalFetch,
+        accountConfigFor: (tenant, id) => phase2For(tenant).getEdgeResourceConfig(id) }, now, deps.translationExecutionEnabled === true);
     registerTemplateArtifactRoutes(app);
     registerPageRouteAudit(app, runner);
     registerPagesWorkspaceRoutes(app, runner);
