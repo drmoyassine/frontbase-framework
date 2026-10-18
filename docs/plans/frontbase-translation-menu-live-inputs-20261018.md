@@ -1,6 +1,6 @@
 # Selected menu and live-record translation inputs — 2026-10-18
 
-Status: bounded implementation verified locally; source delivery pending. Extends the [native review UI](frontbase-translation-review-ui-20261018.md) through the same sealed review, immutable input history, jobs, allowance and cancellation flow. Execution remains disabled by default. No staging deployment, owner SQL upgrade, datasource selection or real provider call is included.
+Status: bounded implementation verified locally; source `66ada2e` and generated CMS `b89bdbd` committed separately and pushed normally on `codex/wordpress-pilot`. Extends the [native review UI](frontbase-translation-review-ui-20261018.md) through the same sealed review, immutable input history, jobs, allowance and cancellation flow. Execution remains disabled by default. No staging deployment, owner SQL upgrade, datasource selection or real provider call is included.
 
 ## Implemented boundary
 
@@ -29,3 +29,5 @@ An initial fault run encountered a Windows native access violation after a resto
 3. Build native locale refinement/preview/publication and public RTL/switcher; then localized live search/filter/sort/counts across Repeaters, Tables and Grids. Other adapters, unattended delivery, memory/glossary and multi-site operations remain separate. WordPress source/translated sitemap and slug comparison remains mandatory; CF-22 stays parked.
 
 Rollback keeps execution disabled and preserves durable review/job/accounting history and cancellation. Removing source pickers does not erase unknown usage or authorize refunds. Shared unrelated staged/worktree changes must remain preserved.
+
+Delivery checkpoint: no deployment performed. The historical T1/1073252 receipt is the last verified staging evidence; it does not accept this source. All owned source/artifact changes are committed. The1812 unrelated index entries retain their exact fingerprint; unfamiliar worktree changes remain untouched. Next executable work is saved-view-aware selection as listed above.
