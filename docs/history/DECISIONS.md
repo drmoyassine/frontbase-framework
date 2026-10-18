@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-18 saved-view translation integration boundary
+
+Under the accepted live-view/HTTP/selected-content requirements, [saved-view inputs](../plans/frontbase-translation-saved-view-inputs-20261018.md) reuse SyncStore ownership and the existing Data Inspector filter AST. The HTTP predicate adapter refuses unsupported semantics rather than dropping rules. Both projection reads and view-definition checkpoints participate in existing review/job fences; underlying row identity is shared with direct selection. Only typed determinate source changes convert to a false permit; transport failures keep conservative unknown accounting. No second saved-view format, queue, SQL-execution RPC, package or native source transport. Real-provider/native-publication acceptance, broader adapters and release gates remain separate; CF-22 stays paused.
+
 ## 2026-10-18 selected menu/live-input implementation boundary
 
 Under the accepted owned-content/HTTP-only requirements, [menu/live inputs](../plans/frontbase-translation-menu-live-inputs-20261018.md) extend the existing sealed review and job/accounting lifecycle. The initial live selector is an explicit public-schema table/key/text column, not a saved-view binding. It reuses the canonical Supabase/PostgREST client through a narrow export and existing owned credential resolver. Source projection, uniqueness and current connection/text checks are mandatory; record identity stays out of provider prompts. Same/separate translation storage remains optional. Saved-view selection, other source schemas/adapters and real-provider/native-publication acceptance remain explicit gates. No new queue, persistence protocol, package, native runtime transport, release direction or CF-22 activation.

@@ -9,7 +9,7 @@ import { currentTranslationHostPin, translationHostPinSchema, prepareTranslation
 import { resolveTranslationAccountingStorage, type TranslationStorageHost } from './translation-storage.js';
 import { translationMessages, type GenerationHost } from './translation-generation.js';
 import type { PagesStore, CompatPageRow } from './pages-store.js';
-import { translationInputHash, translationPlainText, extractMenuInput, extractRecordInput } from './translation-inputs.js';
+import { translationInputHash, translationPlainText, extractMenuInput, extractRecordInput, extractViewRecordInput, TranslationInputChanged, type TranslationViewHost } from './translation-inputs.js';
 import { batchSelectionSchema as selectionSchema, batchPageSelectionSchema, batchLimitsSchema as limitsSchema, batchPlanInputSchema,
     batchReviewSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema } from '@frontbase/edge-core/localization/batches';
 
@@ -21,7 +21,7 @@ const reviewSchema = z.object({ version: z.literal(1), id: uuid, pin: translatio
 const recordSchema = z.object({ review: reviewSchema, reviewHash: hash, phase: z.enum(['planned', 'preparing', 'queued', 'done', 'cancelling', 'closed']),
     cursor: z.number().int().min(0).max(4), approvedBy: id.nullable(), policyHash: hash.nullable() }).strict();
 type Batch = z.infer<typeof recordSchema>;
-export type TranslationBatchHost = TranslationStorageHost & GenerationHost & { pagesFor(tenant: string): Pick<PagesStore, 'get'> };
+export type TranslationBatchHost = TranslationViewHost & GenerationHost & { pagesFor(tenant: string): Pick<PagesStore, 'get'> };
 const key = (value: string) => 'translation_batch:v1:' + uuid.parse(value);
 const digest = translationInputHash;
 const FIELDS: Record<string, readonly string[]> = { Text: ['content', 'text', 'value'], Heading: ['content', 'text'], Paragraph: ['content', 'text'] };
@@ -74,7 +74,8 @@ export async function translationBatchReview(host: TranslationBatchHost, db: DbR
 }
 async function extract(host: TranslationBatchHost, db: DbRunner, tenant: string, selection: z.infer<typeof selectionSchema>, pin: z.infer<typeof translationHostPinSchema>,
     loaded?: { page: CompatPageRow; nodes: VersionedBlock[]; pageHash: string }) {
-    if ('kind' in selection) return selection.kind === 'menu' ? extractMenuInput(db, tenant, selection, pin) : extractRecordInput(host, tenant, selection, pin);
+    if ('kind' in selection) return selection.kind === 'menu' ? extractMenuInput(db, tenant, selection, pin)
+        : selection.kind === 'view-record' ? extractViewRecordInput(host, db, tenant, selection, pin) : extractRecordInput(host, tenant, selection, pin);
     const page = loaded?.page ?? await host.pagesFor(tenant).get(selection.pageId);
     if (!page || page.deleted_at || page.layout_data.length > 1_000_000) throw Error();
     const nodes = loaded?.nodes ?? JSON.parse(page.layout_data).content as VersionedBlock[];
@@ -120,7 +121,9 @@ async function save(db: DbRunner, tenant: string, previous: Awaited<ReturnType<t
 }
 async function stillCurrent(host: TranslationBatchHost, db: DbRunner, tenant: string, batch: Batch) {
     if (JSON.stringify(await currentTranslationHostPin(host, db, tenant)) !== JSON.stringify(batch.review.pin)) return false;
-    for (const item of batch.review.items) if ((await extract(host, db, tenant, item.selection, batch.review.pin)).pageHash !== item.pageHash) return false;
+    try {
+        for (const item of batch.review.items) if ((await extract(host, db, tenant, item.selection, batch.review.pin)).pageHash !== item.pageHash) return false;
+    } catch (error) { if (error instanceof TranslationInputChanged) return false; throw error; }
     return true;
 }
 /** Review is read-only against translation storage and never calls AI or registers source history. */

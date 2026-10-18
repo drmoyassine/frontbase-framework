@@ -2,11 +2,14 @@
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { supabasePostgrestClient } from '@frontbase/edge-infra/supabase-http';
-import { batchMenuSelectionSchema, batchRecordSelectionSchema, batchMenuFieldsSchema, batchMenusSchema, batchDatasourcesSchema } from '@frontbase/edge-core/localization/batches';
+import { batchMenuSelectionSchema, batchRecordSelectionSchema, batchViewSelectionSchema, batchMenuFieldsSchema, batchMenusSchema, batchDatasourcesSchema, batchViewsSchema } from '@frontbase/edge-core/localization/batches';
 import type { MessageUnit, TranslationContext, LocalizationScope } from '@frontbase/edge-core/localization';
 import type { MenuItem, MenuDocument } from '@frontbase/edge-core/menus';
 import { MenusStore } from './menus-store.js';
 import { resolveOwnedTranslationConnection, type TranslationStorageHost } from './translation-storage.js';
+import { savedViewHttpPredicate } from './saved-view-http.js';
+import type { SyncStore } from './sync-store.js';
+export type TranslationViewHost = Omit<TranslationStorageHost, 'syncFor'> & { syncFor(tenant: string): Pick<SyncStore, 'getDatasource' | 'getView'> };
 
 export const translationInputHash = async (value: unknown) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(value)))), byte => byte.toString(16).padStart(2, '0')).join('');
 export function translationPlainText(value: unknown): string {
@@ -14,6 +17,8 @@ export function translationPlainText(value: unknown): string {
     return value;
 }
 export interface TranslationInput { unit: MessageUnit; context: TranslationContext; pageHash: string }
+/** Determinate source invalidation; transport failures must remain distinguishable. */
+export class TranslationInputChanged extends Error {}
 type Pin = { storage: { scope: LocalizationScope }; generation: { sourceLocale: string } };
 export async function translationMenus(db: DbRunner, tenant: string) {
     const document = await new MenusStore(db, tenant).get();
@@ -23,6 +28,13 @@ export async function translationDatasources(db: DbRunner, tenant: string, after
     z.string().max(160).parse(after);
     const rows = await db.query("SELECT id, name FROM datasources WHERE tenant_slug = ? AND kind = 'supabase' AND id > ? ORDER BY id LIMIT 26", [tenant, after]);
     return batchDatasourcesSchema.parse({ datasources: rows.slice(0, 25).map(row => ({ id: row.id, name: String(row.name).slice(0, 500) })), next: rows.length > 25 ? rows[24]!.id : null });
+}
+export async function translationViews(db: DbRunner, host: TranslationStorageHost, tenant: string, datasourceId: string, after = '') {
+    z.string().min(1).max(160).parse(datasourceId); z.string().max(160).parse(after);
+    const datasource = await host.syncFor(tenant).getDatasource(datasourceId);
+    if (!datasource || datasource.kind !== 'supabase') throw Error();
+    const rows = await db.query('SELECT id, name, target_table FROM datasource_views WHERE tenant_slug = ? AND datasource_id = ? AND id > ? ORDER BY id LIMIT 26', [tenant, datasourceId, after]);
+    return batchViewsSchema.parse({ views: rows.slice(0, 25).map(row => ({ id: row.id, name: String(row.name).slice(0, 500), table: row.target_table })), next: rows.length > 25 ? rows[24]!.id : null });
 }
 export async function extractMenuInput(db: DbRunner, tenant: string, raw: unknown, pin: Pin,
     loaded?: { document: MenuDocument; pageHash: string }): Promise<TranslationInput> {
@@ -61,7 +73,8 @@ export async function translationMenuFields(db: DbRunner, tenant: string, menuId
     return batchMenuFieldsSchema.parse({ menuId, items, next: selections.length > offset + 100 ? String(offset + 100) : null });
 }
 /** Read exactly the selected key/text projection; ambiguous keys fail instead of selecting an arbitrary row. */
-export async function extractRecordInput(host: TranslationStorageHost, tenant: string, raw: unknown, pin: Pin): Promise<TranslationInput> {
+export async function extractRecordInput(host: TranslationStorageHost, tenant: string, raw: unknown, pin: Pin,
+    view?: { predicate: string | undefined; checkpoint: unknown }): Promise<TranslationInput> {
     const selection = batchRecordSelectionSchema.parse(raw);
     const connection = await resolveOwnedTranslationConnection(host, tenant, { version: 1, datasourceId: selection.datasourceId, endpoint: selection.endpoint, namespace: 'translations' }, pin.storage.scope.projectId);
     const client = supabasePostgrestClient({ ...connection.options, schema: 'public' });
@@ -70,8 +83,30 @@ export async function extractRecordInput(host: TranslationStorageHost, tenant: s
     const row = z.record(z.unknown()).parse(data[0]), key = z.union([z.string().max(4000), z.number().int().safe(), z.boolean()]).parse(row[selection.keyColumn]);
     if (String(key) !== String(selection.keyValue)) throw Error();
     const text = translationPlainText(row[selection.field]);
+    if (view) {
+        let query = client.from(selection.table).select(selection.keyColumn + ',' + selection.field).eq(selection.keyColumn, selection.keyValue).limit(2);
+        if (view.predicate) query = query.or(view.predicate);
+        const member = await query;
+        if (member.error || !Array.isArray(member.data)) throw Error();
+        if (member.data.length !== 1) throw new TranslationInputChanged();
+        const checked = z.record(z.unknown()).parse(member.data[0]);
+        if (checked[selection.keyColumn] !== key || checked[selection.field] !== text) throw new TranslationInputChanged();
+    }
     return { unit: { version: 1, scope: pin.storage.scope, resource: { kind: 'record', connectionId: selection.datasourceId, collection: selection.table,
         key: [{ column: selection.keyColumn, value: key }], propertyPath: [selection.field] }, sourceLocale: pin.generation.sourceLocale, format: 'plain', text, segmenterVersion: 1, placeholders: [] },
         context: { version: 1, role: 'record-field', resourceLabel: ('Record ' + selection.table + ' / ' + selection.field).slice(0, 200) },
-        pageHash: await translationInputHash({ destination: connection.destination, selection: { ...selection, keyValue: key }, text }) };
+        pageHash: await translationInputHash({ destination: connection.destination, selection: { ...selection, keyValue: key }, text, ...(view ? { view: view.checkpoint } : {}) }) };
+}
+export async function extractViewRecordInput(host: TranslationViewHost, db: DbRunner, tenant: string, raw: unknown, pin: Pin): Promise<TranslationInput> {
+    const selection = batchViewSelectionSchema.parse(raw), store = host.syncFor(tenant), view = await store.getView(selection.viewId);
+    if (!view) throw new TranslationInputChanged();
+    // Legacy SQL-restricted pilot views must first be converted in Data Inspector.
+    if (view.target_table.startsWith('fb_live_') && (await db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?', [tenant, 'view_selection_storage:v1:' + view.id]))[0]?.value !== 'saved-filters') throw Error();
+    if (!view.visible_columns?.includes(selection.keyColumn) || !view.visible_columns.includes(selection.field)) throw Error();
+    const predicate = savedViewHttpPredicate(view.filters);
+    const input = await extractRecordInput(host, tenant, { kind: 'record', datasourceId: view.datasource_id, endpoint: selection.endpoint,
+        table: view.target_table, keyColumn: selection.keyColumn, keyValue: selection.keyValue, field: selection.field }, pin, { predicate, checkpoint: view });
+    // Re-read the owned definition after HTTP I/O to catch edits during extraction.
+    if (await translationInputHash(await store.getView(selection.viewId)) !== await translationInputHash(view)) throw Error();
+    return input;
 }

@@ -1,0 +1,192 @@
+{
+  "date": "2026-10-18",
+  "sourceBase": "b04dacf",
+  "gates": [
+    {
+      "gate": "pnpm -r build",
+      "exitCode": 0,
+      "seconds": 169.203
+    },
+    {
+      "gate": "pnpm -r check",
+      "exitCode": 0,
+      "seconds": 46.112
+    },
+    {
+      "gate": "node packages/backend/test/translation-view-inputs-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 266.572
+    },
+    {
+      "gate": "node packages/backend/test/translation-batches-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 251.385
+    },
+    {
+      "gate": "node packages/backend/test/translation-allowance-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 18.932
+    },
+    {
+      "gate": "node packages/backend/test/translation-allowance-lifecycle-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 25.828
+    },
+    {
+      "gate": "node packages/backend/test/translation-storage-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 26.431
+    },
+    {
+      "gate": "node packages/backend/test/translation-generation-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 29.721
+    },
+    {
+      "gate": "node packages/translation/test/localization-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.175
+    },
+    {
+      "gate": "node packages/translation/test/revisions-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.227
+    },
+    {
+      "gate": "node packages/translation/test/jobs-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.234
+    },
+    {
+      "gate": "node packages/translation/test/postgrest-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.186
+    },
+    {
+      "gate": "node packages/translation/test/accounting-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.246
+    },
+    {
+      "gate": "node packages/translation/test/accounting-http-mutation.mjs",
+      "exitCode": 0,
+      "seconds": 0.184
+    },
+    {
+      "gate": "node packages/backend/test/translation-view-inputs.mjs",
+      "exitCode": 0,
+      "seconds": 10.835
+    },
+    {
+      "gate": "node packages/backend/test/translation-batches.mjs",
+      "exitCode": 0,
+      "seconds": 7.546
+    },
+    {
+      "gate": "node packages/backend/test/translation-allowance.mjs",
+      "exitCode": 0,
+      "seconds": 2.364
+    },
+    {
+      "gate": "node packages/backend/test/translation-allowance-lifecycle.mjs",
+      "exitCode": 0,
+      "seconds": 1.932
+    },
+    {
+      "gate": "node packages/backend/test/translation-storage.mjs",
+      "exitCode": 0,
+      "seconds": 1.84
+    },
+    {
+      "gate": "node packages/backend/test/translation-generation.mjs",
+      "exitCode": 0,
+      "seconds": 3.236
+    },
+    {
+      "gate": "node packages/backend/test/sdk-http.mjs",
+      "exitCode": 0,
+      "seconds": 5.321
+    },
+    {
+      "gate": "node packages/backend/test/external-request.mjs",
+      "exitCode": 0,
+      "seconds": 0.191
+    },
+    {
+      "gate": "node packages/backend/test/compat-security.mjs",
+      "exitCode": 0,
+      "seconds": 1.315
+    },
+    {
+      "gate": "node packages/backend/test/compat-tenant-matrix.mjs",
+      "exitCode": 0,
+      "seconds": 7.891
+    },
+    {
+      "gate": "node packages/backend/test/compat-conformance.mjs --gate",
+      "exitCode": 0,
+      "seconds": 7.926
+    },
+    {
+      "gate": "node packages/translation/test/localization.mjs",
+      "exitCode": 0,
+      "seconds": 0.176
+    },
+    {
+      "gate": "node packages/translation/test/revisions.mjs",
+      "exitCode": 0,
+      "seconds": 0.495
+    },
+    {
+      "gate": "node packages/translation/test/jobs.mjs",
+      "exitCode": 0,
+      "seconds": 0.337
+    },
+    {
+      "gate": "node packages/translation/test/postgrest.mjs",
+      "exitCode": 0,
+      "seconds": 0.202
+    },
+    {
+      "gate": "node packages/translation/test/accounting.mjs",
+      "exitCode": 0,
+      "seconds": 0.306
+    },
+    {
+      "gate": "node packages/translation/test/accounting-http.mjs",
+      "exitCode": 0,
+      "seconds": 0.239
+    },
+    {
+      "gate": "node packages/edge-infra/test/ai-http.mjs",
+      "exitCode": 0,
+      "seconds": 0.153
+    },
+    {
+      "gate": "node packages/edge-infra/test/translation.mjs",
+      "exitCode": 0,
+      "seconds": 0.209
+    },
+    {
+      "gate": "pnpm --filter @frontbase/console exec vitest run src/components/dashboard/settings/shared/TranslationBatchForm.test.tsx src/components/dashboard/settings/shared/TranslationGenerationForm.test.tsx src/components/dashboard/settings/shared/TranslationStorageForm.test.tsx",
+      "exitCode": 0,
+      "tests": 29,
+      "seconds": 45.54
+    }
+  ],
+  "faults": {
+    "savedView": 14,
+    "retainedBatch": 25,
+    "retainedHost": 29,
+    "retainedEngine": 36,
+    "total": 104
+  },
+  "cmsSha256": "8081d6f5a55de5102975f60287d6bc3a083a2956760252ccbad6293cb26cd739",
+  "notes": [
+    "Injected HTTP/fake providers only; no actual PostgREST predicate execution, owner SQL upgrade, paid call or deployment",
+    "First retained batch run stopped at a non-unique test anchor; raw key guard anchor made exact, all25 anchors checked, full retained suite rerun and passed. Failed run is not counted as complete passing evidence.",
+    "New14 saved-view faults passed before the anchor-only test correction; production sources unchanged by that correction. All mutation suites restored exact source/artifact hashes before final build.",
+    "Full workspace includes scoped console type gate; existing build/router warnings remain. Shared-worktree checks do not certify clean install, all external package types or public release.",
+    "Unchanged standalone engine/packed HTTP client consumer evidence retained in the previous menu-live-inputs receipt; no new consumer proof claimed."
+  ]
+}

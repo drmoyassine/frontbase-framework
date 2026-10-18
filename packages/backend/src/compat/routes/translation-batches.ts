@@ -4,8 +4,8 @@ import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { planTranslationBatch, startTranslationBatch, continueTranslationBatch, cancelTranslationBatch, translationBatchStatus,
     translationBatchPlanSchema, translationBatchPages, translationBatchFields, translationBatchHistory, translationBatchReview, type TranslationBatchHost } from '../translation-batches.js';
-import { batchReviewSchema, batchStatusSchema, batchRecordSelectionSchema, batchPreviewItemSchema } from '@frontbase/edge-core/localization/batches';
-import { translationMenus, translationMenuFields, translationDatasources, extractRecordInput } from '../translation-inputs.js';
+import { batchReviewSchema, batchStatusSchema, batchRecordSelectionSchema, batchViewSelectionSchema, batchPreviewItemSchema } from '@frontbase/edge-core/localization/batches';
+import { translationMenus, translationMenuFields, translationDatasources, translationViews, extractRecordInput, extractViewRecordInput } from '../translation-inputs.js';
 import { currentTranslationHostPin } from '../translation-allowance.js';
 
 const actionSchema = z.object({ reviewHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
@@ -34,7 +34,7 @@ export function registerTranslationBatchRoutes(app: Hono<{ Variables: ConsoleAut
             return c.json({ detail: 'Translation batches are unavailable' }, 403);
         await next();
     });
-    app.get(root, c => c.json({ version: 1, executionAvailable: executionEnabled, sourceKinds: ['page-default-plain-text','menu-plain-text','record-plain-text'],
+    app.get(root, c => c.json({ version: 1, executionAvailable: executionEnabled, sourceKinds: ['page-default-plain-text','menu-plain-text','record-plain-text','view-record-plain-text'],
         maxItems: 4, maxJobsPerContinuation: 1, delivery: 'administrator-continuation', draftOnly: true }));
     app.get(`${root}menus/`, async c => {
         try { return c.json(await translationMenus(db, c.get('tenant'))); }
@@ -47,6 +47,16 @@ export function registerTranslationBatchRoutes(app: Hono<{ Variables: ConsoleAut
     app.get(`${root}datasources/`, async c => {
         try { return c.json(await translationDatasources(db, c.get('tenant'), c.req.query('after'))); }
         catch { return c.json({ detail: 'Datasource selection is unavailable' }, 422); }
+    });
+    app.get(`${root}datasources/:datasourceId/views/`, async c => {
+        try { return c.json(await translationViews(db, host, c.get('tenant'), c.req.param('datasourceId'), c.req.query('after'))); }
+        catch { return c.json({ detail: 'Saved views are unavailable' }, 422); }
+    });
+    app.post(`${root}view-field/`, async c => {
+        try { const selection = batchViewSelectionSchema.parse(await body(c.req.raw)), tenant = c.get('tenant');
+            const input = await extractViewRecordInput(host, db, tenant, selection, await currentTranslationHostPin(host, db, tenant));
+            return c.json(batchPreviewItemSchema.parse({ selection, text: input.unit.text, context: input.context }));
+        } catch { return c.json({ detail: 'Saved-view field is unavailable. Check visible key/text columns, current filters and the owned HTTP connection.' }, 422); }
     });
     app.post(`${root}record-field/`, async c => {
         try { const selection = batchRecordSelectionSchema.parse(await body(c.req.raw)), tenant = c.get('tenant');
