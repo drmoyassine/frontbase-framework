@@ -1,6 +1,6 @@
 # Native translation batch review UI — 2026-10-18
 
-Status: bounded implementation verified locally; source/artifact checkpoint pending. Builds on [reviewed batches](frontbase-translation-reviewed-batches-20261018.md) and the [dispatch plan](frontbase-translation-ai-dispatch-plan-20261017.md). This is native Settings → Translations for selected Default page plain text, not completed multilingual authoring, production generation or deployment.
+Status: bounded implementation verified locally; source `f923299` and generated CMS `47efd99` committed separately and pushed normally. Builds on [reviewed batches](frontbase-translation-reviewed-batches-20261018.md) and the [dispatch plan](frontbase-translation-ai-dispatch-plan-20261017.md). This is native Settings → Translations for selected Default page plain text, not completed multilingual authoring, production generation or deployment.
 
 ## Delivered flow
 
@@ -37,3 +37,5 @@ A temporary localhost browser fixture rendered the actual component with the rea
 3. Native locale refinement/preview/publication and public RTL/switcher, then localized search/filter/sort/counts across Repeaters, Tables and Grids. Unattended delivery, other writable adapters, memory/glossary and multi-site operations remain separate. WordPress sitemap/translated-slug comparison remains mandatory; no snapshots or CF-22 reactivation.
 
 Rollback: keep execution disabled, preserve durable batch/allowance/job history, and retain cancellation/reconciliation while removing optional UI/discovery. Reverting UI is not a refund or permission to delete unknown attempts. Shared unrelated staged/worktree changes are preserved.
+
+Delivery checkpoint: source and generated artifact pushed on `codex/wordpress-pilot`; no deployment was performed. Last verified staging remains the historical T1/1073252 receipt, not acceptance of this source. All owned changes are committed; unrelated shared index entries remain preserved. Next task is menu/live-field extraction using the same review/job controls.
