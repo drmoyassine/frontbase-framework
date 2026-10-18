@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-18 OpenRouter translation — bounded local verification complete
+
+[Receipt](../plans/frontbase-translation-openrouter-20261018.md): OpenRouter Connected Accounts registration, fixed guarded key check, shared HTTP protocol, owned translation selection and free-price/routing controls implemented. Workspace build/check,30 native translation UI cases,14 functional suites,15 restored provider faults, strict conformance, external packed adapter and pure-HTTP graph pass. Execution remains disabled by default; no actual model call, deployment or content publication. Scoped checkpoint/delivery remains next. Shared worktree state and public-release gates preserved.
+
 ## 2026-10-18 native translation review — bounded staging delivery
 
 [Receipt](../plans/frontbase-translation-review-staging-20261018.md): immutablef495591 archive deployed to existing USA staging; server frozen install/workspace build/docker/client gates pass, healthy replacement, configuration/volume preserved. Public200 hashes match, anonymous translation401 remains, fresh authenticated UI shows new source kinds/three owned saved views and server executionAvailable:false. Generation21/pending drafts and absent AI/storage selection preserved. New HTTP membership/protocol and real-provider acceptance await selected configuration/explicit allowance; no paid call, owner SQL, content publication or production action. Full multilingual visual publication and public-release gates remain open.

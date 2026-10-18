@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-18 owner adds OpenRouter translation support
+
+OpenRouter is an additional owned provider connection for the existing translation host, not a second engine or queue. Reuse the canonical injected HTTP AI transport with a bounded protocol option, fixed guarded origin, encrypted account reference and existing review/allowance lifecycle. Free model IDs additionally request zero pricing; required parameters, no provider fallbacks and denied provider data collection fail closed if unavailable. Keep the model explicitly selected and execution disabled by default. [Implementation and evidence](../plans/frontbase-translation-openrouter-20261018.md). Real-provider acceptance, deployment and release gates remain separate; no new package or CF-22 change.
+
 ## 2026-10-18 saved-view translation integration boundary
 
 Under the accepted live-view/HTTP/selected-content requirements, [saved-view inputs](../plans/frontbase-translation-saved-view-inputs-20261018.md) reuse SyncStore ownership and the existing Data Inspector filter AST. The HTTP predicate adapter refuses unsupported semantics rather than dropping rules. Both projection reads and view-definition checkpoints participate in existing review/job fences; underlying row identity is shared with direct selection. Only typed determinate source changes convert to a false permit; transport failures keep conservative unknown accounting. No second saved-view format, queue, SQL-execution RPC, package or native source transport. Real-provider/native-publication acceptance, broader adapters and release gates remain separate; CF-22 stays paused.
