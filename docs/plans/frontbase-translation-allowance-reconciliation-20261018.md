@@ -1,6 +1,6 @@
 # Translation allowance cancellation and reconciliation — 2026-10-18
 
-Status: bounded internal implementation verified; source checkpoint prepared. Continues the [host request allowance](frontbase-translation-host-allowance-20261017.md). This is not an exposed batch/start UI, monetary budget feature, real provider acceptance or deployment. No owner connection/settings changes, SQL installation or paid call.
+Status: bounded internal implementation verified; source f72827c/generated CMS33bf768 committed separately and normally pushed to codex/wordpress-pilot. Continues the [host request allowance](frontbase-translation-host-allowance-20261017.md). This is not an exposed batch/start UI, monetary budget feature, real provider acceptance or deployment. No owner connection/settings changes, SQL installation or paid call.
 
 ## Lifecycle and reuse
 
@@ -33,3 +33,5 @@ The underlying SQL is unchanged. Its prior [real disposable PostgreSQL/PostgREST
 Build the authenticated reviewed-batch vertical slice over these controls: select bounded page/menu text or live record fields, register source/context history, review transmission scope/limits, persist exact intents, start/status/cancel/reconcile, and recover lost delivery using existing leases and durable scheduling seams. Show request/input/output caps and unknown monetary cost honestly. A resumed cancelled batch needs new reviewed job/allowance identities; no automatic unknown-call retry. Keep generationAvailable false until that complete administrative/recovery path passes. A real provider run still needs a selected batch and explicit allowance; native visual locale preview/publication remains later.
 
 Parked pilot work, CF-22 and public-release scope remain unchanged. Shared unrelated staged changes are preserved.
+
+Delivery checkpoint: CMS SHA256 `002ad05f14c2e0887732855f7829ee637837462286668a493b84299153326e4a`. Source/artifact push verified HEAD/origin divergence0/0. No staging deployment or owner database change. All owned paths are committed; unrelated shared staged/worktree changes remain preserved. Next is authenticated reviewed-batch planning/start/status/delivery, not automatic provider execution.
