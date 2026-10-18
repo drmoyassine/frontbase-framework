@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-18 reconciliation implementation boundary
+
+Under the accepted explicit-allowance/HTTP requirements, [bounded reconciliation](../plans/frontbase-translation-allowance-reconciliation-20261018.md) freezes first and fences jobs before proving release. Unknown dispatches remain held unless explicitly counted as consumed requests; the original ledger is retained and physical completion is not implied. A persisted four-step cursor supports serverless continuation. Closed receipts/history and exact-value CAS gate fresh allocation; stale continuations cannot reopen closure. This is per-allocation request accounting, not a monetary/global-provider guarantee or authorization for real AI. No new protocol, transport, dependency, release direction or CF-22 scope.
+
 ## 2026-10-18 host allowance implementation boundary
 
 Under the accepted explicit-allowance and HTTP-only requirements, the [host request policy](../plans/frontbase-translation-host-allowance-20261017.md) first enforces physical request/concurrency/input-message-byte and provider output request bounds. It does not invent a tokenizer or monetary price guarantee. One immutable host checkpoint precedes remote allocation; changes deny further dispatch and cannot reset capacity. Settlement stays on the original ledger. There is no automatic close/reset; explicit cancellation/reconciliation precedes future reallocation. This is bounded implementation evidence, not a new provider, release direction or paid-generation authorization.

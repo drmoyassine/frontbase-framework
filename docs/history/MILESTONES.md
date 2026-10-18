@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-18 translation allowance reconciliation — bounded verification
+
+[Receipt](../plans/frontbase-translation-allowance-reconciliation-20261018.md): durable freeze/cursor, job cancellation fence, proven undispatched release, explicit unknown-request consumption without ledger rewrite, original-destination recovery and historical/CAS-protected new allocation. Full workspace,8 new/13 retained host faults,36 engine faults, security/tenant/conformance and package/HTTP graph pass. Internal only; no owner SQL/provider/deployment action or complete T2/T3 claim. Next is authenticated reviewed batches and durable delivery.
+
 ## 2026-10-18 translation host request allowance — bounded verification
 
 [Receipt](../plans/frontbase-translation-host-allowance-20261017.md): immutable project checkpoint, reviewed exact intents, trusted-scope runner and configuration/destination checks compose existing accounting/HTTP/AI paths. Request/concurrency/message-byte/output request caps; no monetary guarantee. Workspace,6 new/15 retained host faults, engine/security/tenant/conformance and external/HTTP graph gates pass. No deployed/paid AI; reconciliation/reallocation and authenticated batch lifecycle remain next. Historical broader-host-pending statements below are superseded only within these bounds.

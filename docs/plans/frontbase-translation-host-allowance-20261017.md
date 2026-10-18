@@ -1,5 +1,7 @@
 # Translation host request allowance — 2026-10-17
 
+Continuation2026-10-18: [bounded cancellation/reconciliation](frontbase-translation-allowance-reconciliation-20261018.md) supersedes the no-close/next-step1 limitation below. Historical initial-slice evidence remains; authenticated batches and real AI remain pending.
+
 Status: bounded internal implementation verified2026-10-18 (started2026-10-17); source d837f4a and generated CMS076a549 committed separately and normally pushed to codex/wordpress-pilot. Continues the [HTTP accounting slice](frontbase-translation-accounting-http-20261017.md). This is an internal host composition, not an exposed generation feature or a completed T2/T3 workflow. No owner settings/database changes, real provider calls or staging deployment.
 
 ## Reused paths and actual policy

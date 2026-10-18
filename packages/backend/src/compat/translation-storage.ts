@@ -88,8 +88,12 @@ export async function configuredTranslationStorage(host: TranslationStorageHost,
 export async function configuredTranslationAccountingStorage(host: TranslationStorageHost, runner: DbRunner, tenant: string) {
     const settings = await new TranslationStorageStore(runner, tenant).get();
     if (!settings.configuration || !settings.projectId) throw Error('translation_storage_unconfigured');
-    const { scope, options } = await resolveOwnedTranslationConnection(host, tenant, settings.configuration, settings.projectId);
+    return { ...await resolveTranslationAccountingStorage(host, tenant, settings.configuration, settings.projectId), configurationRevision: settings.revision };
+}
+/** Administrative recovery resolves the original owned connection, never routes a new key to a saved URL. */
+export async function resolveTranslationAccountingStorage(host: TranslationStorageHost, tenant: string, selection: TranslationStorageConfiguration, projectId: string) {
+    const { scope, options, destination } = await resolveOwnedTranslationConnection(host, tenant, selection, projectId);
     const persistence = translationAccountingFromSupabase(options);
     await persistence.initialize();
-    return { scope, persistence, configurationRevision: settings.revision };
+    return { scope, persistence, destination };
 }

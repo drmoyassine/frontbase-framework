@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { repoRoot } from '../../../scripts/mutation-lib.mjs';
 import ts from 'typescript';
 const faults=[
- ['immutable allocation','packages/backend/src/compat/translation-allowance.ts','saved.policyHash !== record.policyHash','false'],
+ ['immutable allocation','packages/backend/src/compat/translation-allowance.ts',"(await lifecycle(runner, tenant, prior.policyHash))?.phase !== 'closed'",'false'],
  ['configuration/destination pin','packages/backend/src/compat/translation-allowance.ts','JSON.stringify(await currentPin(host, runner, tenant)) === JSON.stringify(record.plan.pin)','true'],
  ['reviewed exact intent','packages/backend/src/compat/translation-allowance.ts','JSON.stringify(translationJobIntentSchema.parse(job.intent)) === JSON.stringify(expected)','true'],
  ['input transmission bound','packages/backend/src/compat/translation-allowance.ts','new TextEncoder().encode(JSON.stringify(translationMessages(source, job.intent.locale))).byteLength <= review.maxMessageBytes','true'],
