@@ -94,7 +94,7 @@
   },
   "limitations": [
     "No actual provider request or real credentials",
-    "No deployment or saved configuration changes",
+    "Local gate evidence only; deployment is recorded separately in deployment.json; no saved configuration changes",
     "Remote isolation variants remain credential-gated",
     "Shared worktree, not clean-install or full legacy UI type proof"
   ]

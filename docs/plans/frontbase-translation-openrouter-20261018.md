@@ -1,6 +1,6 @@
 # OpenRouter translation support
 
-2026-10-18. Owner requests OpenRouter for the first real translation job. This is a bounded provider integration on source base6328570, not authorization to choose a model, reuse unrelated credentials or transmit content. Verified source37eadda and generated CMSf666361 are committed separately. Staging delivery is next under the existing commit/push/deploy authorization; real-provider acceptance remains open.
+2026-10-18. Owner requests OpenRouter for the first real translation job. This is a bounded provider integration on source base6328570, not authorization to choose a model, reuse unrelated credentials or transmit content. Verified source37eadda and generated CMSf666361 are committed separately and pushed with receipt8f81272. That immutable checkpoint is deployed and verified on USA staging; real-provider acceptance remains open.
 
 ## Implementation
 
@@ -27,4 +27,14 @@ The shared worktree is not a clean-checkout or public release proof. Full multil
 
 ## Next executable step
 
-Commit/push the scoped source and generated CMS separately and deploy the immutable checkpoint to staging when carrying forward the authorized delivery. Select/connect the user's exact OpenRouter model and intended translation storage before reviewing a bounded batch and explicit request allowance. No owner SQL upgrade, configuration save, actual model request, publication, deployment or npm release was performed by this local integration.
+Select/connect the user's exact OpenRouter model and intended translation storage before reviewing a bounded batch and explicit request allowance. No owner SQL upgrade, configuration save, actual model request, content publication or npm release was performed. The native visual locale refinement/publication work remains separate.
+
+## Staging delivery — verified
+
+[Sanitized delivery evidence](../../scripts/localization/openrouter-evidence/deployment.json): immutable source8f812721fcc3e63d982bc2e2895d6b7b283cabf0 archive6,643,654 bytes/2,288 entries, SHA2566fcb7c295d2d70e162435eebb78ea4db3aa951daace2fb1a83505251d782ab57. Excludes12 synchronization/cache/private paths. The one allowed community env file contains only comments and the public VITE_DEPLOYMENT_MODE=self-host flag; initial packaging validation rejected comments before the exact noncomment assignment was validated. No private-file guard was weakened and no failed archive was uploaded.
+
+One upload automatically starts EasyPanel newpanel.studygram.me → studygram/usa-frontbase-staging actioncmvdvuxy3003707qq0l1f84ns; done2026-10-18 13:51:50 UTC (16:51:50 Kuwait). Server frozen-install/workspace-build/client-symbol/docker gates pass. New container9fbb2b8c… is healthy on imagesha256:c4f97a18816a3fbb2a8aac47cf6853a1e1cb82d2eaeca8bf0efc21b3749fb867. Previous imagebd414cbb… retained as historical identity; no actual rollback or full image security-suite execution is claimed.
+
+Exact in-memory comparisons preserve environment, mounts, deploy/build settings and ports. All8 before/after public/auth-denial statuses, byte lengths and SHA256 hashes match: health/Homepage/Explore institution/Explore program/Blog200, anonymous generation/storage/batches401. Fresh authenticated Pages preserves generation21, Homepage Changes pending and test/test Draft. Native Connected Accounts visibly offers OpenRouter and selects its blank API-key form; no key entered, connection test or save submitted. Translation settings show OpenAI/OpenRouter support, blank model, absent saved AI selection and disabled save/clear. Authenticated batch capability remains executionAvailable:false. Original user tab was not reloaded or edited; the temporary provider dialog was cancelled.
+
+Source/generated/initial docs are pushed normally. Delivery docs/evidence are a separate checkpoint. Unrelated1826 staged index entries retain SHA25639a64bf3f4b29e82b1afd3c612c8a7962889fc50de4dd9a48c90a4d1022bad1c. Local full build/check and focused gates precede deployment; docs-only follow-up does not renew them or claim clean-checkout acceptance. No secret connector output was printed during this delivery; connector configurations/logs were kept private and only allowlisted status fields were rendered.

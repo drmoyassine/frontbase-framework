@@ -14,7 +14,7 @@ The owner-approved framework extension `@frontbase/translation` is in developmen
 
 ---
 
-[OpenRouter translation integration](docs/plans/frontbase-translation-openrouter-20261018.md) has bounded local verification alongside OpenAI through the existing HTTP adapter and owned Connected Accounts. Free-model routing controls do not replace reviewed batch approval or request accounting; real-provider acceptance and staging delivery remain separate.
+[OpenRouter translation integration](docs/plans/frontbase-translation-openrouter-20261018.md) has bounded local and USA staging verification alongside OpenAI through the existing HTTP adapter and owned Connected Accounts. Free-model routing controls do not replace reviewed batch approval or request accounting; actual provider/model acceptance remains open.
 
 ## Why Frontbase
 

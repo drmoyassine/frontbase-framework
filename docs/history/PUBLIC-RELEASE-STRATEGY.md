@@ -4,7 +4,7 @@
 
 **Status:** Active preparation
 
-**2026-10-18 bounded provider extension:** [OpenRouter translation integration](../plans/frontbase-translation-openrouter-20261018.md) reuses owned Connected Accounts and the current HTTP/allowance engine alongside OpenAI. Local implementation verification does not imply staging delivery, real-model acceptance, new package scope or release availability. Execution remains disabled by default; CF-22 remains paused.
+**2026-10-18 bounded provider extension:** [OpenRouter translation integration](../plans/frontbase-translation-openrouter-20261018.md) reuses owned Connected Accounts and the current HTTP/allowance engine alongside OpenAI. Bounded local/USA staging acceptance is recorded; real-model acceptance, new package scope and release availability are not implied. Execution remains disabled by default; CF-22 remains paused.
 
 **First edition accepted (2026-10-08):** Frontbase Framework Developer Preview, for developers and agents operating their own deployment; six Apache-2.0 library packages and separately built application artifacts. Cloudflare leads; other hosts retain evidence-specific support boundaries. The [current R0 refresh and ordered backlog](PUBLIC-RELEASE-R0-2026-10-17.md) guide R1–R4; [original findings](PUBLIC-RELEASE-R0-2026-10-08.md) remain dated evidence. This is scope acceptance, not release availability, package publication or deployment authorization. Full template installation, migration, turnkey full CLI scaffolding and universal host/provider parity remain unclaimed; CF-22 stays paused.
 
