@@ -19,6 +19,9 @@ const faults=[
  ['initial allocation cancellation checkpoint',allowance,"WHERE ? = '' OR EXISTS","WHERE ? != '' OR EXISTS"],
  ['replacement cancellation checkpoint',allowance,"AND (? = '' OR EXISTS","AND (? != '' OR EXISTS"],
  ['changed-source result withheld',batch,"current && job?.status === 'completed'","job?.status === 'completed'"],
+ ['owned page discovery',batch,'WHERE tenant_slug = ? AND deleted_at IS NULL AND id > ?','WHERE ? IS NOT NULL AND deleted_at IS NULL AND id > ?'],
+ ['owned saved history',batch,'WHERE tenant_slug = ? AND key > ? AND key < ?','WHERE ? IS NOT NULL AND key > ? AND key < ?'],
+ ['fresh recovered review',batch,'if (!await stillCurrent(host, db, tenant, b)) throw Error();','void 0;'],
 ];
 const originals=new Map(faults.map(([,file])=>[file,readFileSync(repoRoot+file,'utf8')]));
 const artifact=file=>repoRoot+file.replace('/src/','/dist/').replace(/\.ts$/,'.js');
@@ -44,4 +47,4 @@ try{
  for(const [file,raw] of originals){writeFileSync(repoRoot+file,raw);writeFileSync(artifact(file),artifacts.get(file));}
  green();for(const [file,raw] of originals){assert.equal(digest(readFileSync(repoRoot+file)),digest(raw));assert.equal(digest(readFileSync(artifact(file))),digest(artifacts.get(file)));}
 }
-console.log('translation batch mutation13/13; exact source/artifact hashes restored');
+console.log('translation batch mutation16/16; exact source/artifact hashes restored');

@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-18 native page-text review/progress UI — bounded verification
+
+[Receipt](../plans/frontbase-translation-review-ui-20261018.md): Settings page/field selection, sealed review/explicit consent, saved-batch recovery, status/continuation/cancel/reconcile; bounded tenant-owned discovery/history and shared host schemas. Workspace build/check now includes the form;25 UI cases,81 fault checks, API/security/tenant/legacy conformance, external standalone engine and HTTP-only graph pass. Actual-component desktop browser fixture verifies synthetic Arabic draft. Gate remains disabled by default; no staging/owner SQL/paid call. Next: menus and selected live fields, separately approved provider acceptance, then native locale visual refinement/publication. Full T3/T4 and M3 remain open.
+
 ## 2026-10-18 reviewed translation page-text batches — bounded verification
 
 [Receipt](../plans/frontbase-translation-reviewed-batches-20261018.md): authenticated sealed review/explicit approval, stable source/job preparation, one-job administrator continuation, persisted status and existing bounded cancellation/reconciliation. Atomic allocation checkpoints and final source/configuration/draft fences cover cancellation races. Workspace build/check,13 new/29 retained host/36 engine faults, security/tenant/legacy conformance, external engine package/types and HTTP-only route graph pass. Execution defaults disabled; no owner SQL, paid call or staging deployment. Next: native review/progress UI, menu/live-field extraction and separately approved provider acceptance; full T3/T4 remain open.

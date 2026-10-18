@@ -53,7 +53,7 @@ export function TranslationGenerationForm() {
             <div><Label htmlFor="translation-source-locale">Source language code</Label><input id="translation-source-locale" className={inputClass} value={source} onChange={e => setSource(e.target.value)} /></div>
             <div><Label htmlFor="translation-target-locales">Target language codes, separated by commas</Label><input id="translation-target-locales" className={inputClass} value={targets} onChange={e => setTargets(e.target.value)} /></div>
             <div><Label htmlFor="translation-ai-limit">Maximum output tokens per request</Label><input id="translation-ai-limit" type="number" min={1} max={16384} className={inputClass} value={limit} onChange={e => setLimit(e.target.value)} /></div>
-            <p className="text-sm text-muted-foreground">Generation will become available after durable budget and batch controls are implemented. This output limit is not a spending allowance. The initial connection type is OpenAI; other providers remain unavailable.</p>
+            <p className="text-sm text-muted-foreground">Use the page-text batch controls below to review selected content and check host availability. This output limit is not a spending allowance. The initial connection type is OpenAI; other providers remain unavailable.</p>
         </fieldset>
         <div className="flex flex-wrap gap-2"><Button type="button" disabled={busy} variant="outline" onClick={() => void load()}>Reload AI settings</Button>
             <Button type="button" disabled={busy || blocked || !parsed.success || !selected?.supported} onClick={() => void save()}>Save AI settings</Button>

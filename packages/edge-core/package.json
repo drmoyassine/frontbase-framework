@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     "./localization": {"types":"./dist/localization/index.d.ts","import":"./dist/localization/index.js"},
+    "./localization/batches": {"types":"./dist/localization/batches.d.ts","import":"./dist/localization/batches.js"},
     "./browser/render-block": {"types":"./dist/ssr/PageRenderer.d.ts","import":"./dist/ssr/PageRenderer.js"},
     "./browser/block-versions": {"types":"./dist/block-versions-browser.d.ts","import":"./dist/block-versions-browser.js"},
     "./block-versions": {"types":"./dist/block-versions.d.ts","import":"./dist/block-versions.js"},

@@ -8,7 +8,7 @@
     "build": "vite build --mode community",
     "build:cloud": "vite build --mode cloud",
     "build:dev": "vite build --mode development",
-    "check": "tsc -p tsconfig.check.json --noEmit",
+    "check": "tsc -p tsconfig.check.json --noEmit && tsc -p tsconfig.translation-batches.json --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

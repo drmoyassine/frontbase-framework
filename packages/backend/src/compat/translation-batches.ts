@@ -8,13 +8,12 @@ import { currentTranslationHostPin, translationHostPinSchema, prepareTranslation
     closeTranslationAllowance, translationAllowanceLifecycle, translationAllowanceReference } from './translation-allowance.js';
 import { resolveTranslationAccountingStorage, type TranslationStorageHost } from './translation-storage.js';
 import { translationMessages, type GenerationHost } from './translation-generation.js';
-import type { PagesStore } from './pages-store.js';
+import type { PagesStore, CompatPageRow } from './pages-store.js';
+import { batchSelectionSchema as selectionSchema, batchLimitsSchema as limitsSchema, batchPlanInputSchema,
+    batchReviewSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema } from '@frontbase/edge-core/localization/batches';
 
 const id = z.string().min(1).max(160), hash = z.string().regex(/^[a-f0-9]{64}$/), uuid = z.string().uuid();
-const selectionSchema = z.object({ pageId: id, blockId: id, field: z.enum(['content', 'text', 'value']) }).strict();
-const limitsSchema = z.object({ maxRequests: z.number().int().min(1).max(4), maxConcurrent: z.literal(1),
-    maxMessageBytes: z.number().int().min(512).max(65536) }).strict();
-export const translationBatchPlanSchema = z.object({ targetLocale: localeSchema, selections: z.array(selectionSchema).min(1).max(4), limits: limitsSchema }).strict();
+export const translationBatchPlanSchema = batchPlanInputSchema;
 const itemSchema = z.object({ selection: selectionSchema, pageHash: hash, previousSourceVersion: z.number().int().positive().safe().nullable(), intent: translationJobIntentSchema }).strict();
 const reviewSchema = z.object({ version: z.literal(1), id: uuid, pin: translationHostPinSchema, targetLocale: localeSchema,
     limits: limitsSchema, items: z.array(itemSchema).min(1).max(4), createdAt: z.string().datetime() }).strict();
@@ -26,10 +25,57 @@ const key = (value: string) => 'translation_batch:v1:' + uuid.parse(value);
 const digest = async (value: unknown) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(value)))), byte => byte.toString(16).padStart(2, '0')).join('');
 const FIELDS: Record<string, readonly string[]> = { Text: ['content', 'text', 'value'], Heading: ['content', 'text'], Paragraph: ['content', 'text'] };
 const boundTypes = new Set(['Repeater', 'DataTable', 'DataGrid', 'Grid']);
-async function extract(host: TranslationBatchHost, tenant: string, selection: z.infer<typeof selectionSchema>, pin: z.infer<typeof translationHostPinSchema>) {
-    const page = await host.pagesFor(tenant).get(selection.pageId);
+/** Bounded metadata only; canonical extractor below remains the only eligibility authority. */
+export async function translationBatchPages(db: DbRunner, tenant: string, after = '') {
+    if (after) id.parse(after);
+    const rows = await db.query('SELECT id, name FROM compat_pages WHERE tenant_slug = ? AND deleted_at IS NULL AND id > ? ORDER BY id LIMIT 26', [tenant, after]);
+    return batchPagesSchema.parse({ pages: rows.slice(0, 25).map(row => ({ id: row.id, name: String(row.name).slice(0, 500) })), next: rows.length > 25 ? rows[24]!.id : null });
+}
+export async function translationBatchFields(host: TranslationBatchHost, db: DbRunner, tenant: string, pageId: string, after = '0') {
+    id.parse(pageId);
+    z.string().regex(/^\d{1,5}$/).parse(after); const offset = Number(after);
+    const pin = await currentTranslationHostPin(host, db, tenant), page = await host.pagesFor(tenant).get(pageId);
     if (!page || page.deleted_at || page.layout_data.length > 1_000_000) throw Error();
-    const layout = JSON.parse(page.layout_data), nodes = layout.content as VersionedBlock[];
+    const nodes = JSON.parse(page.layout_data).content as VersionedBlock[]; validateBlockVersions(nodes);
+    const candidates: z.infer<typeof selectionSchema>[] = [];
+    const visit = (list: VersionedBlock[]) => { for (const node of list) {
+        const field = FIELDS[node.type]?.find(field => !!node.props?.[field]);
+        if (field) candidates.push(selectionSchema.parse({ pageId, blockId: node.id, field }));
+        if (node.children) visit(node.children);
+    } }; visit(nodes);
+    const items = [], loaded = { page, nodes, pageHash: await digest({ layout: page.layout_data, name: page.name }) };
+    for (const selection of candidates.slice(offset, offset + 100)) {
+        try { const source = await extract(host, tenant, selection, pin, loaded); items.push({ selection, text: source.unit.text, context: source.context }); }
+        catch { continue; } // Unsupported dynamic/bound text is never offered for selection.
+        if (items.length === 100) break;
+    }
+    const truncated = candidates.length > offset + 100;
+    return batchFieldsSchema.parse({ pageId, items, truncated, next: truncated ? String(offset + 100) : null });
+}
+export async function translationBatchHistory(db: DbRunner, tenant: string, after = '') {
+    if (after) uuid.parse(after);
+    const rows = await db.query('SELECT key FROM settings WHERE tenant_slug = ? AND key > ? AND key < ? ORDER BY key LIMIT 21', [tenant, 'translation_batch:v1:' + after, 'translation_batch:v1:~']);
+    const items = [];
+    for (const row of rows.slice(0, 20)) {
+        const b = (await read(db, tenant, String(row.key).slice('translation_batch:v1:'.length))).value;
+        items.push({ id: b.review.id, reviewHash: b.reviewHash, targetLocale: b.review.targetLocale, state: b.phase, createdAt: b.review.createdAt });
+    }
+    return batchHistorySchema.parse({ items, next: rows.length > 20 ? items[19]!.id : null });
+}
+export async function translationBatchReview(host: TranslationBatchHost, db: DbRunner, tenant: string, batchId: string) {
+    const b = (await read(db, tenant, batchId)).value;
+    if (!await stillCurrent(host, db, tenant, b)) throw Error();
+    const items = [];
+    for (const item of b.review.items) { const source = await extract(host, tenant, item.selection, b.review.pin); items.push({ selection: item.selection, text: source.unit.text, context: source.context }); }
+    return batchReviewSchema.parse({ id: b.review.id, reviewHash: b.reviewHash, sourceLocale: b.review.pin.generation.sourceLocale, targetLocale: b.review.targetLocale,
+        providerAccountId: b.review.pin.generation.accountId, model: b.review.pin.generation.model, limits: b.review.limits, maxOutputTokens: b.review.pin.generation.maxOutputTokens,
+        items, monetaryEstimate: null, delivery: 'administrator-continuation', draftOnly: true });
+}
+async function extract(host: TranslationBatchHost, tenant: string, selection: z.infer<typeof selectionSchema>, pin: z.infer<typeof translationHostPinSchema>,
+    loaded?: { page: CompatPageRow; nodes: VersionedBlock[]; pageHash: string }) {
+    const page = loaded?.page ?? await host.pagesFor(tenant).get(selection.pageId);
+    if (!page || page.deleted_at || page.layout_data.length > 1_000_000) throw Error();
+    const nodes = loaded?.nodes ?? JSON.parse(page.layout_data).content as VersionedBlock[];
     validateBlockVersions(nodes);
     let found: VersionedBlock | undefined, blocked = false;
     const visit = (list: VersionedBlock[], inherited: boolean) => {
@@ -49,7 +95,7 @@ async function extract(host: TranslationBatchHost, tenant: string, selection: z.
         versionId: 'default', propertyPath: ['props', selection.field] }, sourceLocale: pin.generation.sourceLocale,
         format: 'plain', text, segmenterVersion: 1, placeholders: [] };
     const context: TranslationContext = { version: 1, role: node.type, resourceLabel: ('Page ' + page.name + ' / ' + selection.field).slice(0, 200) };
-    return { unit, context, pageHash: await digest({ layout: page.layout_data, name: page.name }) };
+    return { unit, context, pageHash: loaded?.pageHash ?? await digest({ layout: page.layout_data, name: page.name }) };
 }
 async function sessionFor(host: TranslationBatchHost, tenant: string, pin: Batch['review']['pin']) {
     const d = pin.storage.destination;

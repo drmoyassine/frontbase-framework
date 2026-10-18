@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users } from 'lucide-react';
 import { TranslationStorageForm } from './settings/shared/TranslationStorageForm';
 import { TranslationGenerationForm } from './settings/shared/TranslationGenerationForm';
+import { TranslationBatchForm } from './settings/shared/TranslationBatchForm';
 import { PrivacySettingsForm } from './settings/shared/PrivacySettingsForm';
 import { ProjectDetailsForm } from './settings/shared/ProjectDetailsForm';
 import { PublicSiteIdentityForm } from './settings/shared/PublicSiteIdentityForm';
@@ -71,7 +72,7 @@ export const SettingsPanel: React.FC = () => {
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="translations" className="space-y-6 mt-6"><TranslationStorageForm /><TranslationGenerationForm /></TabsContent>
+        <TabsContent value="translations" className="space-y-6 mt-6"><TranslationStorageForm /><TranslationGenerationForm /><TranslationBatchForm /></TabsContent>
         <TabsContent value="template" className="space-y-6 mt-6"><SiteConfigurationForm /><TemplateSettingsForm /><LiveListMigration /><ElementSettingsMigration /></TabsContent>
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6 mt-6">

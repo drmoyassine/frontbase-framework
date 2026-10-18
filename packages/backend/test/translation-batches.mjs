@@ -122,4 +122,27 @@ for(const replace of [false,true]){
  const raw=JSON.parse((await f.db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',['alpha','translation_batch:v1:'+p.id]))[0].value);
  assert.equal(raw.phase,'closed','exact-value progress CAS preserves cancellation');assert.equal(f.aiCalls(),0);f.close();
 }
-console.log('translation-batches PASS: authenticated sealed review, owned native text, explicit gate/consent, stable bounded restart/concurrency, source/settings fences, conservative reconciliation, no-call status and cancellation/allocation race');
+{
+ const f=await setup(),p=await f.plan();
+ const pages=await f.json('sources/');assert.deepEqual(pages.pages,[{id:'page',name:'Discovery'}]);assert.equal(pages.next,null);
+ const fields=await f.json('sources/page/');assert.equal(fields.items.length,2);assert.equal(fields.items[0].text,'Apply');assert.deepEqual(fields.items[0].selection,f.input.selections[0]);
+ const history=await f.json('reviews/');assert.equal(history.items.length,1);assert.equal(history.items[0].id,p.id);assert.ok(!JSON.stringify(history).includes('Apply'));
+ assert.deepEqual(await f.json(p.id+'/review/'),p);assert.equal(f.aiCalls(),0,'discovery and recovery never call AI');
+ f.setTenant('beta');assert.equal((await f.json('sources/')).pages[0].id,'foreign');assert.equal((await f.json('reviews/')).items.length,0);assert.equal((await f.request('sources/page/')).status,422);assert.equal((await f.request(p.id+'/review/')).status,409);f.setTenant('alpha');
+ for(const auth of [false,true]){f.setAuth(auth);f.setRole('viewer');for(const path of ['sources/','sources/page/','reviews/',p.id+'/review/'])assert.equal((await f.request(path)).status,auth?403:401);}f.setAuth(true);f.setRole('owner');
+ await f.edit([{...f.nodes[0],props:{content:'A valid source edit'}},f.nodes[1]]);
+ assert.equal((await f.request(p.id+'/review/')).status,409,'valid changed text still requires a fresh review');
+ await f.edit([{id:'wrapper',type:'Repeater',props:{},children:[f.nodes[0]]},f.nodes[1]]);
+ assert.deepEqual((await f.json('sources/page/')).items.map(i=>i.selection.blockId),['text'],'inventory uses execution eligibility');
+ assert.equal((await f.request(p.id+'/review/')).status,409,'stale review cannot be reapproved');await f.cancel(p);
+ await f.db.exec('UPDATE compat_pages SET deleted_at=? WHERE tenant_slug=? AND id=?',[now,'alpha','page']);assert.equal((await f.json('sources/')).pages.length,0);assert.equal((await f.request('sources/page/')).status,422);f.close();
+}
+{
+ const f=await setup();for(let i=0;i<27;i++)await f.pages.create({name:'Page '+i,slug:'p-'+i,layout_data:{content:f.nodes,root:{}}},'p-'+String(i).padStart(2,'0'),now);
+ const first=await f.json('sources/');assert.equal(first.pages.length,25);assert.ok(first.next);const second=await f.json('sources/?after='+first.next);assert.equal(second.pages.length,3);assert.equal(second.next,null);assert.equal(new Set([...first.pages,...second.pages].map(p=>p.id)).size,28);
+ for(let i=0;i<22;i++)await f.plan();const reviews=await f.json('reviews/');assert.equal(reviews.items.length,20);const rest=await f.json('reviews/?after='+reviews.next);assert.equal(rest.items.length,2);assert.equal(rest.next,null);assert.equal(new Set([...reviews.items,...rest.items].map(p=>p.id)).size,22);
+ assert.equal((await f.request('reviews/?after=invalid')).status,422);
+ await f.edit(Array.from({length:105},(_,i)=>({id:'heading-'+i,type:'Heading',props:{content:'Text '+i}})));const fields=await f.json('sources/page/');assert.equal(fields.items.length,100);assert.equal(fields.truncated,true);
+ const restFields=await f.json('sources/page/?after='+fields.next);assert.equal(restFields.items.length,5);assert.equal(restFields.next,null);assert.equal((await f.request('sources/page/?after=-1')).status,422);assert.equal(f.aiCalls(),0);f.close();
+}
+console.log('translation-batches PASS: authenticated sealed review, owned native discovery/recovery, bounded pagination, explicit gate/consent, stable bounded restart/concurrency, source/settings fences, conservative reconciliation, no-call status and cancellation/allocation race');

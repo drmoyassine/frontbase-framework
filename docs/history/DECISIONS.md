@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-18 native batch UI integration boundary
+
+Under the accepted selected-content/explicit-approval requirements, [native Settings review](../plans/frontbase-translation-review-ui-20261018.md) uses server discovery and the existing execution extractor, sealed reviews and persisted jobs. Shared host/UI schemas live in the narrow `@frontbase/edge-core/localization/batches` subpath; the standalone engine remains independent. No browser cache/queue or client-side eligibility authority. Explicit bounded continuation is still the initial delivery mode; default-disabled host execution, real-provider approval and protocol-upgrade boundaries remain unchanged. No new provider/package/release direction or CF-22 activation.
+
 ## 2026-10-18 reviewed batch implementation boundary
 
 Under existing selected-content/explicit-allowance requirements, [bounded batch orchestration](../plans/frontbase-translation-reviewed-batches-20261018.md) composes the existing job/accounting lifecycle rather than a second queue. Initial extraction is native Default page plain text only; exact server review and explicit approval precede registration/dispatch. Start/Continue require a trusted host gate that defaults false. Delivery is bounded administrator continuation, not unattended scheduling. Atomic host checkpoint predicates and final source/configuration checks fence cancellation races; remote storage is not transactionally atomic with host settings. No real-provider authorization, protocol change, package/release-scope change or CF-22 activation.

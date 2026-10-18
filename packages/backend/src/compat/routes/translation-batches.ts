@@ -3,7 +3,8 @@ import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { planTranslationBatch, startTranslationBatch, continueTranslationBatch, cancelTranslationBatch, translationBatchStatus,
-    translationBatchPlanSchema, type TranslationBatchHost } from '../translation-batches.js';
+    translationBatchPlanSchema, translationBatchPages, translationBatchFields, translationBatchHistory, translationBatchReview, type TranslationBatchHost } from '../translation-batches.js';
+import { batchReviewSchema, batchStatusSchema } from '@frontbase/edge-core/localization/batches';
 
 const actionSchema = z.object({ reviewHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const startSchema = actionSchema.extend({ approveContentTransmission: z.literal(true) }).strict();
@@ -33,33 +34,49 @@ export function registerTranslationBatchRoutes(app: Hono<{ Variables: ConsoleAut
     });
     app.get(root, c => c.json({ version: 1, executionAvailable: executionEnabled, sourceKinds: ['page-default-plain-text'],
         maxItems: 4, maxJobsPerContinuation: 1, delivery: 'administrator-continuation', draftOnly: true }));
+    app.get(`${root}sources/`, async c => {
+        try { return c.json(await translationBatchPages(db, c.get('tenant'), c.req.query('after'))); }
+        catch { return c.json({ detail: 'Page selection is unavailable' }, 422); }
+    });
+    app.get(`${root}sources/:pageId/`, async c => {
+        try { return c.json(await translationBatchFields(host, db, c.get('tenant'), c.req.param('pageId'), c.req.query('after'))); }
+        catch { return c.json({ detail: 'Text selection is unavailable. Check page ownership and saved translation settings.' }, 422); }
+    });
+    app.get(`${root}reviews/`, async c => {
+        try { return c.json(await translationBatchHistory(db, c.get('tenant'), c.req.query('after'))); }
+        catch { return c.json({ detail: 'Saved batches are unavailable' }, 422); }
+    });
+    app.get(`${root}:id/review/`, async c => {
+        try { return c.json(await translationBatchReview(host, db, c.get('tenant'), c.req.param('id'))); }
+        catch { return c.json({ detail: 'Review is outdated or unavailable. Cancel this batch and create a new review.' }, 409); }
+    });
     app.post(`${root}plans/`, async c => {
         try { const input = translationBatchPlanSchema.parse(await body(c.req.raw));
-            return c.json(await planTranslationBatch(host, db, c.get('tenant'), input, now()), 201);
+            return c.json(batchReviewSchema.parse(await planTranslationBatch(host, db, c.get('tenant'), input, now())), 201);
         } catch { return c.json({ detail: 'Review could not be prepared. Check owned plain-text selections and current translation settings.' }, 422); }
     });
     app.get(`${root}:id/`, async c => {
-        try { return c.json(await translationBatchStatus(host, db, c.get('tenant'), c.req.param('id'))); }
+        try { return c.json(batchStatusSchema.parse(await translationBatchStatus(host, db, c.get('tenant'), c.req.param('id')))); }
         catch { return c.json({ detail: 'Translation batch is unavailable' }, 404); }
     });
     app.post(`${root}:id/start/`, async c => {
         if (!executionEnabled) return c.json({ detail: 'Translation execution is not enabled on this host' }, 503);
         try { const input = startSchema.parse(await body(c.req.raw)), tenant = c.get('tenant');
             await startTranslationBatch(host, db, tenant, c.req.param('id'), input.reviewHash, String(c.get('principal').user!.id), now());
-            return c.json(await translationBatchStatus(host, db, tenant, c.req.param('id')));
+            return c.json(batchStatusSchema.parse(await translationBatchStatus(host, db, tenant, c.req.param('id'))));
         } catch { return c.json({ detail: 'Batch could not start. Reload the review and check its allowance/settings.' }, 409); }
     });
     app.post(`${root}:id/continue/`, async c => {
         if (!executionEnabled) return c.json({ detail: 'Translation execution is not enabled on this host' }, 503);
         try { const input = actionSchema.parse(await body(c.req.raw)), tenant = c.get('tenant');
             await continueTranslationBatch(host, db, tenant, c.req.param('id'), input.reviewHash, now());
-            return c.json(await translationBatchStatus(host, db, tenant, c.req.param('id')));
+            return c.json(batchStatusSchema.parse(await translationBatchStatus(host, db, tenant, c.req.param('id'))));
         } catch { return c.json({ detail: 'Batch could not continue. Check source/settings changes or reconcile its allowance.' }, 409); }
     });
     app.post(`${root}:id/cancel/`, async c => {
         try { const input = cancelSchema.parse(await body(c.req.raw)), tenant = c.get('tenant');
             await cancelTranslationBatch(host, db, tenant, c.req.param('id'), input.reviewHash, input.unknownDisposition, now());
-            return c.json(await translationBatchStatus(host, db, tenant, c.req.param('id')));
+            return c.json(batchStatusSchema.parse(await translationBatchStatus(host, db, tenant, c.req.param('id'))));
         } catch { return c.json({ detail: 'Cancellation needs reconciliation. Restore the original owned destination and retry.' }, 409); }
     });
 }
