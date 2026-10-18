@@ -1,5 +1,9 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-18 searchable translation model/languages — bounded local verification complete
+
+Owner requests searchable model and language dropdowns. [Receipt](../plans/frontbase-translation-searchable-pickers-20261018.md): shared Command/Popover single/multiple pickers, native language labels and owned bounded model metadata discovery reuse existing configuration/auth/key/HTTP patterns. Full workspace build/check,35 UI cases,13 functional suites,19 restored provider/catalog faults, strict conformance and actual pure-HTTP route graph pass. Saved selections, account-switch races and ambiguity safeguards are preserved. Next: scoped checkpoint/push and immutable USA staging delivery, read-only actual catalog/search acceptance. No saved settings, credentials, generation, SQL or content publication. Shared work preserved; R0 already complete, CF-22/release scope unchanged.
+
 ## 2026-10-18 OpenRouter translation provider — local and staging verification complete
 
 Delivery: source37eadda/generatedf666361/receipt8f81272 pushed normally. Immutable8f81272 archive uploaded once to existing newpanel.studygram.me studygram/usa-frontbase-staging; actioncmvdvuxy3003707qq0l1f84ns done13:51:50 UTC with healthy imagec4f97a18…. Environment/mount/build/deploy/ports preserved;8 public/auth-denial status/hash checks match; native OpenRouter blank-key form and updated translation copy verified, generation21/pending drafts retained, executionAvailable:false. No credentials/model/storage selection, model call, SQL install or content publication. [Exact delivery evidence](../plans/frontbase-translation-openrouter-20261018.md#staging-delivery--verified).
