@@ -1,6 +1,6 @@
 # Translation host request allowance — 2026-10-17
 
-Status: bounded internal implementation verified2026-10-18 (started2026-10-17); source checkpoint prepared. Continues the [HTTP accounting slice](frontbase-translation-accounting-http-20261017.md). This is an internal host composition, not an exposed generation feature or a completed T2/T3 workflow. No owner settings/database changes, real provider calls or staging deployment.
+Status: bounded internal implementation verified2026-10-18 (started2026-10-17); source d837f4a and generated CMS076a549 committed separately and normally pushed to codex/wordpress-pilot. Continues the [HTTP accounting slice](frontbase-translation-accounting-http-20261017.md). This is an internal host composition, not an exposed generation feature or a completed T2/T3 workflow. No owner settings/database changes, real provider calls or staging deployment.
 
 ## Reused paths and actual policy
 
@@ -31,3 +31,5 @@ This host suite does not certify actual owner-instance PostgreSQL or a real AI p
 3. Expose the request/input/output limits and unknown monetary cost honestly in the existing Translations UI. Keep generationAvailable false until the complete authenticated lifecycle and recovery gates pass. A real provider run still requires a selected content batch and explicit allowance; native visual locale publication follows separately.
 
 No new accepted release direction, npm publication, CF-22 activity, public-schema use or paid call. Shared unrelated staged changes remain preserved.
+
+Delivery checkpoint: generated CMS SHA256 `93d34344bc3cda2cb785ef872f022914e036bd4ab561e01880ab82dcc63bd965`; HEAD/origin divergence0/0 after the normal source/artifact push. No staging deployment. All owned checkpoint paths are committed; the unrelated shared index/worktree remains dirty and preserved.
