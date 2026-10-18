@@ -1,6 +1,6 @@
 # Translation saved-view inputs — 2026-10-18
 
-Status: bounded implementation verified locally; source delivery pending. Continues [selected menu/live inputs](frontbase-translation-menu-live-inputs-20261018.md). No deployment, owner database upgrade, paid provider call or enabling of generation is included.
+Status: bounded implementation verified locally; source `2a1cce1` and generated CMS `a66a09c` committed separately and pushed normally on `codex/wordpress-pilot`. Continues [selected menu/live inputs](frontbase-translation-menu-live-inputs-20261018.md). No deployment, owner database upgrade, paid provider call or enabling of generation is included.
 
 ## Delivered boundary
 
@@ -25,3 +25,5 @@ Confirmed loss of membership or mismatched projection is a typed deterministic s
 3. Unattended delivery, memory/glossary, wider locale/multi-site operations and WordPress migration follow later. Migration still compares original/translated sitemap literals and slugs; snapshots and CF-22 remain out of scope.
 
 Rollback keeps the host execution gate disabled and retains reviews/jobs/accounting and cancellation history. Removing an optional source picker is not a refund or permission to erase unknown attempts. Preserve unrelated shared staged/worktree changes.
+
+Delivery checkpoint: no deployment performed. Historical T1/1073252 remains the last verified staging receipt, not acceptance of this code. All owned changes are committed. The1822 unrelated index entries retain their exact fingerprint; unfamiliar worktree edits are untouched. Next executable task is staging review with generation disabled and saved settings/drafts preserved, followed by actual read-only membership/protocol acceptance before any approved paid batch.
