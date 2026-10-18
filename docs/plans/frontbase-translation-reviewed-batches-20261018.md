@@ -1,6 +1,6 @@
 # Reviewed translation batches — 2026-10-18
 
-Status: bounded backend implementation verified locally; source and generated checkpoint pending. Continues the [AI dispatch plan](frontbase-translation-ai-dispatch-plan-20261017.md) and [allowance reconciliation](frontbase-translation-allowance-reconciliation-20261018.md). This is a bounded backend slice, not the completed multilingual product or a staging deployment. Real-provider execution remains disabled by default.
+Status: bounded backend implementation verified locally; source `8f79cee` and generated CMS `b4a3a0e` committed separately and pushed normally. Continues the [AI dispatch plan](frontbase-translation-ai-dispatch-plan-20261017.md) and [allowance reconciliation](frontbase-translation-allowance-reconciliation-20261018.md). This is a bounded backend slice, not the completed multilingual product or a staging deployment. Real-provider execution remains disabled by default.
 
 ## Scope and reuse
 
@@ -44,3 +44,5 @@ This slice uses deterministic injected HTTP/SQLite fixtures. Earlier real dispos
 3. Add native visual locale refinement/preview/publication, RTL, public switching and localized search/sort/count behavior across Repeaters, Tables and Grids. Then broader providers/memory/glossary/operations and sitemap-first migration with mandatory per-locale translated-slug comparison. No snapshot feature or CF-22 reactivation.
 
 Rollback: keep host execution disabled and use the bounded cancellation route before removing orchestration handlers; retain allowance/history/unknown records. Reverting source is not a refund, destination downgrade or reason to delete durable jobs. Shared unrelated staged/worktree changes remain preserved.
+
+Delivery checkpoint: source and generated artifact are pushed on `codex/wordpress-pilot`; staging remains the previously verified T1 deployment (1073252), not this checkpoint. All owned source/evidence paths are committed; the unrelated shared index remains preserved. The generated CMS is a shared-worktree build and does not imply a clean-checkout public release proof. Next task is the native selected-text review/progress UI described above.
