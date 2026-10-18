@@ -1,0 +1,93 @@
+{
+  "date": "2026-10-18",
+  "sourceBase": "015cb90",
+  "workspaceBuild": true,
+  "workspaceCheck": true,
+  "translationUI": {
+    "files": 3,
+    "passed": 35
+  },
+  "mutations": {
+    "passed": 19,
+    "sourceAndArtifactsRestored": true
+  },
+  "functional": [
+    {
+      "file": "packages/backend/test/translation-models.mjs",
+      "exitCode": 0,
+      "seconds": 18.934
+    },
+    {
+      "file": "packages/backend/test/translation-generation.mjs",
+      "exitCode": 0,
+      "seconds": 2.664
+    },
+    {
+      "file": "packages/backend/test/providers-openrouter.mjs",
+      "exitCode": 0,
+      "seconds": 1.043
+    },
+    {
+      "file": "packages/backend/test/translation-allowance.mjs",
+      "exitCode": 0,
+      "seconds": 3.117
+    },
+    {
+      "file": "packages/backend/test/translation-allowance-lifecycle.mjs",
+      "exitCode": 0,
+      "seconds": 2.268
+    },
+    {
+      "file": "packages/backend/test/translation-batches.mjs",
+      "exitCode": 0,
+      "seconds": 8.689
+    },
+    {
+      "file": "packages/backend/test/translation-view-inputs.mjs",
+      "exitCode": 0,
+      "seconds": 17.593
+    },
+    {
+      "file": "packages/backend/test/sdk-http.mjs",
+      "exitCode": 0,
+      "seconds": 3.115
+    },
+    {
+      "file": "packages/backend/test/compat-security.mjs",
+      "exitCode": 0,
+      "seconds": 2.083
+    },
+    {
+      "file": "packages/backend/test/compat-tenant-matrix.mjs",
+      "exitCode": 0,
+      "seconds": 9.433
+    },
+    {
+      "file": "packages/backend/test/compat-conformance.mjs",
+      "exitCode": 0,
+      "seconds": 9.261
+    },
+    {
+      "file": "packages/edge-infra/test/ai-http.mjs",
+      "exitCode": 0,
+      "seconds": 0.21
+    },
+    {
+      "file": "packages/edge-infra/test/no-leak.mjs",
+      "exitCode": 0,
+      "seconds": 0.28
+    }
+  ],
+  "conformance": {
+    "contracts": 257,
+    "verifiedRefusals": 77,
+    "violations": 0,
+    "unreachable": 0
+  },
+  "limits": [
+    "Local fixtures, not real model requests",
+    "No saved settings/credentials or source-data writes",
+    "Full legacy UI type debt and whole-framework external package acceptance not claimed",
+    "Live staging metadata/search acceptance recorded separately"
+  ]
+}

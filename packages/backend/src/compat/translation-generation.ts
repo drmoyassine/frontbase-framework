@@ -34,12 +34,16 @@ export interface GenerationHost {
 }
 export const isTranslationAIProvider = (provider: unknown): provider is 'openai' | 'openrouter' => provider === 'openai' || provider === 'openrouter';
 /** Owned metadata is checked before decrypting; deleted/foreign/wrong-kind resources fail closed. No network call. */
-export async function resolveGenerationInvoker(host: GenerationHost, tenant: string, accountId: string) {
+export async function resolveGenerationAccount(host: GenerationHost, tenant: string, accountId: string) {
     const store = host.accountsFor(tenant), account = await store.getEdgeResource(accountId);
     if (!account || account.kind !== 'provider' || !isTranslationAIProvider(account.provider) || account.status !== 'active') throw Error('translation_ai_unavailable');
     const config = await store.getEdgeResourceConfig(accountId);
     const apiKey = [config?.api_key, config?.token, config?.apiKey].find(v => typeof v === 'string' && v.length) as string | undefined;
     if (!apiKey) throw Error('translation_ai_unavailable');
+    return { provider: account.provider, apiKey };
+}
+export async function resolveGenerationInvoker(host: GenerationHost, tenant: string, accountId: string) {
+    const account = await resolveGenerationAccount(host, tenant, accountId), apiKey = account.apiKey;
     // Fixed provider origins: custom credential fields cannot redirect the key.
     const url = checkedExternalUrl(account.provider === 'openrouter' ? 'https://openrouter.ai/api/v1' : 'https://api.openai.com/v1');
     return httpTextInvoker({ baseUrl: url.href, apiKey, protocol: account.provider }, (input, init) => guardedExternalFetch(host.externalFetch, input, init));

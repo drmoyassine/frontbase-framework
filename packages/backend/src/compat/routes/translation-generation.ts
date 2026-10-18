@@ -3,6 +3,7 @@ import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { translationGenerationSaveSchema } from '@frontbase/edge-core/localization';
 import { TranslationGenerationStore, resolveGenerationInvoker, isTranslationAIProvider, type GenerationHost } from '../translation-generation.js';
+import { translationModels } from '../translation-models.js';
 
 /** Configuration only. No probe/model call or generation endpoint until durable allowance accounting exists. */
 export function registerTranslationGenerationRoutes(app: Hono<{ Variables: ConsoleAuthVars }>, runner: DbRunner, host: GenerationHost, now: () => string): void {
@@ -20,6 +21,13 @@ export function registerTranslationGenerationRoutes(app: Hono<{ Variables: Conso
             return c.json({ ...await new TranslationGenerationStore(runner, tenant).get(), generationAvailable: false,
                 accounts: rows.map(row => ({ id: String(row.id), name: String(row.name), provider: String(row.provider), supported: isTranslationAIProvider(row.provider) && row.status === 'active' })) });
         } catch { return c.json({ detail: 'Translation AI could not be loaded' }, 503); }
+    });
+    app.get(`${endpoint}models/:accountId`, async c => {
+        try {
+            const accountId = c.req.param('accountId');
+            if (!accountId || accountId.length > 160) throw Error();
+            return c.json(await translationModels(host, c.get('tenant'), accountId));
+        } catch { return c.json({ detail: 'Models could not be loaded. Check the connection and retry.' }, 422); }
     });
     app.put(endpoint, async c => {
         let body: unknown;

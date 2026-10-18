@@ -14,6 +14,10 @@ const faults=[
  ['OpenRouter fallback policy','packages/edge-infra/src/ai-http.ts','allow_fallbacks: false','allow_fallbacks: true'],
  ['OpenRouter required parameters','packages/edge-infra/src/ai-http.ts','require_parameters: true','require_parameters: false'],
  ['OpenRouter free variant detection','packages/edge-infra/src/ai-http.ts',"input.model.endsWith(':free')",'false'],
+ ['Model discovery origin','packages/backend/src/compat/translation-models.ts',"'https://openrouter.ai/api/v1/models?output_modalities=text'","'https://api.openai.com/v1/models'"],
+ ['Model discovery declared bound','packages/backend/src/compat/translation-models.ts',"Number(response.headers.get('content-length')) > 8 * 1024 * 1024",'false'],
+ ['Model discovery streaming bound','packages/backend/src/compat/translation-models.ts','size > 8 * 1024 * 1024','false'],
+ ['Model discovery text output','packages/backend/src/compat/translation-models.ts',"!row.architecture.output_modalities.includes('text')",'false'],
  ['AI account ownership','packages/backend/src/compat/translation-generation.ts','const store = host.accountsFor(tenant)',"const store = host.accountsFor('alpha')"],
  ['AI atomic settings CAS','packages/backend/src/compat/translation-generation.ts','AND key = ? AND value = ?','AND key = ? AND ? IS NOT NULL'],
  ['AI target-language authorization','packages/backend/src/compat/translation-generation.ts','!config.targetLocales.includes(targetLocale)','false'],
@@ -31,7 +35,7 @@ function compile(file,source){const output=ts.transpileModule(source,{fileName:f
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function gate(){
  let stdout='',stderr='';
- for(const file of ['packages/edge-infra/test/ai-http.mjs','packages/backend/test/translation-generation.mjs']){
+ for(const file of ['packages/edge-infra/test/ai-http.mjs','packages/backend/test/translation-generation.mjs','packages/backend/test/translation-models.mjs']){
   const r=spawnSync(process.execPath,[repoRoot+file],{cwd:repoRoot,encoding:'utf8',timeout:60000,windowsHide:true});assert.equal(r.error,undefined);assert.equal(r.signal,null);stdout+=r.stdout;stderr+=r.stderr;if(r.status!==0)return {...r,stdout,stderr};
  }
  return {status:0,stdout,stderr};
@@ -50,4 +54,4 @@ try{
     for(const [file,original] of originals){writeFileSync(repoRoot+file,original);writeFileSync(artifact(file),originalArtifacts.get(file));}
     green('final baseline');for(const [file,original] of originals){assert.equal(hash(readFileSync(repoRoot+file)),hash(original));assert.equal(hash(readFileSync(artifact(file))),hash(originalArtifacts.get(file)));}
 }
-console.log('translation AI mutation15/15; all source/artifact hashes restored');
+console.log('translation AI mutation19/19; all source/artifact hashes restored');
