@@ -1,6 +1,6 @@
 # Searchable translation model and language pickers
 
-2026-10-18. Owner requests a searchable model dropdown and language lists. Source base015cb90. Local implementation is verified; scoped commits and staging delivery are next. This does not authorize choosing/saving a model, changing language/storage configuration or generating translations.
+2026-10-18. Owner requests a searchable model dropdown and language lists. Source base015cb90. Source5692e30/generateda0f3c7d/receipt2087c93 are committed, pushed and deployed to USA staging. Local gates and actual OpenRouter metadata/search acceptance are verified. This does not authorize changing saved model/language/storage configuration or generating translations.
 
 ## User experience
 
@@ -27,4 +27,16 @@ Existing bundle warnings remain. Console type checks retain scoped coverage; ful
 
 ## Next executable step
 
-Commit/push source/evidence, generated CMS and documentation separately. Deploy the immutable checkpoint to existing USA staging under the ongoing delivery authorization, preserving environment/mounts/publication/drafts. Verify the owned OpenRouter catalog and embedded model/language search read-only; cancel ephemeral selections without saving or generating. Then the user can choose model/languages through these controls before reviewing the first bounded translation batch and allowance.
+The user can choose model/languages through these controls and explicitly save the configuration. Intended translation storage/protocol acceptance and a reviewed bounded batch/allowance precede the first real translation request. Native visual locale editing/publication remains separate; execution is still disabled on staging.
+
+## Staging delivery — verified
+
+[Sanitized deployment evidence](../../scripts/localization/pickers-evidence/deployment.json): immutable2087c9353cbfd2eb4c703275f473dc93f7ddda1f archive6,659,517 bytes/2,297 entries, SHA2565cb9e41a4d4793b11d3121d3ac09a758473c6b57573f5e4a32d1cf79025959b9. Source-only archive excludes12 synchronization/cache/private paths and validates the allowed public community build flag; no worktree overlay or secret files.
+
+One upload to newpanel.studygram.me → studygram/usa-frontbase-staging starts actioncmve9iv6n003h07qq2xs46u7f, done2026-10-18 20:14:31 UTC (23:14:31 Kuwait). Server frozen install, workspace build, client-symbol and Docker gates pass. New containerc0d0bd97… is healthy on imagesha256:dcb93b5547e7049f1fa73aff894bc65256e95326f36fb243c750bc4a65246d53; previous imagec4f97a18… is historical identity, not an actual rollback test. Full image security-suite execution is not renewed.
+
+Environment, mounts, build/deploy settings and ports exact-match before/after. All8 public/auth-denial statuses, byte lengths and hashes match: health/Homepage/Explore institutions/Explore programs/Blog200 and anonymous translation generation/storage/batches401. Fresh Pages preserves generation21, Homepage Changes pending and test/test Draft.
+
+The user had independently saved an OpenRouter connection, modelopenrouter/free, sourceen and targetar since the preceding delivery. The fresh verification tab automatically loads the actual owned OpenRouter catalog, resolves the saved model to its Free Models Router label, searches model IDs and language names, and supports temporary French/Spanish multiselection. Only catalog metadata is fetched; no prompt or generation is submitted. Temporary form edits are discarded by reloading only the agent's fresh verification tab. Saved OpenRouter/free/en/ar values restore and host execution remains disabled. No Save AI/storage settings or connection test, credentials, SQL, publication or model-generation action is performed; existing user tabs are untouched.
+
+Source/generated/initial receipt checkpoints are pushed; delivery evidence is a separate documentation checkpoint. Unrelated1,840 index entries remain byte-identical, SHA25679cf82907c9d15909354dc44ba473dd55432f802607e754535e61ee85ede623d. Read-only actual OpenRouter catalog acceptance does not certify OpenAI credentials, translation output quality, billing or full multilingual publication. No new release/CF-22 claim.

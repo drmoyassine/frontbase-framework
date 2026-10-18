@@ -1,8 +1,8 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-18 searchable translation model/languages — bounded local verification complete
+## 2026-10-18 searchable translation model/languages — local/staging verification complete
 
-Owner requests searchable model and language dropdowns. [Receipt](../plans/frontbase-translation-searchable-pickers-20261018.md): shared Command/Popover single/multiple pickers, native language labels and owned bounded model metadata discovery reuse existing configuration/auth/key/HTTP patterns. Full workspace build/check,35 UI cases,13 functional suites,19 restored provider/catalog faults, strict conformance and actual pure-HTTP route graph pass. Saved selections, account-switch races and ambiguity safeguards are preserved. Next: scoped checkpoint/push and immutable USA staging delivery, read-only actual catalog/search acceptance. No saved settings, credentials, generation, SQL or content publication. Shared work preserved; R0 already complete, CF-22/release scope unchanged.
+Owner requests searchable model and language dropdowns. [Receipt](../plans/frontbase-translation-searchable-pickers-20261018.md): shared Command/Popover single/multiple pickers, native language labels and owned bounded model metadata discovery reuse existing configuration/auth/key/HTTP patterns. Full workspace build/check,35 UI cases,13 functional suites,19 restored provider/catalog faults, strict conformance and actual pure-HTTP route graph pass. Source5692e30/generateda0f3c7d/receipt2087c93 pushed; immutable2087c93 deployed, healthy replacement and exact configuration/public hashes/drafts preserved. Actual owned OpenRouter catalog/model/language search and multiselect verified; user-savedopenrouter/free/en/ar restores after temporary edits are discarded. No saved settings, credentials, generation, SQL or content publication; execution remains disabled. Next: intended storage/protocol and explicitly reviewed first batch/allowance. Shared work preserved; R0 already complete, CF-22/release scope unchanged.
 
 ## 2026-10-18 OpenRouter translation provider — local and staging verification complete
 

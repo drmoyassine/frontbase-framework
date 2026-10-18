@@ -1,8 +1,8 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
-## 2026-10-18 translation model/language search — bounded local verification
+## 2026-10-18 translation model/language search — bounded local/staging verification
 
-[Receipt](../plans/frontbase-translation-searchable-pickers-20261018.md): model name/ID/free search, native-name/code language search and bounded target multiselect, owned metadata-only catalog on the existing encrypted account/HTTP seam. Full build/check,35 UI cases,13 functional suites,19 restored faults, strict conformance and pure-HTTP route graph pass. Saved values/edits remain explicit; no credentials, settings save or generation. Scoped checkpoint/staging delivery and read-only live catalog verification remain next; public-release/CF-22 status unchanged.
+[Receipt](../plans/frontbase-translation-searchable-pickers-20261018.md): model name/ID/free search, native-name/code language search and bounded target multiselect, owned metadata-only catalog on the existing encrypted account/HTTP seam. Full build/check,35 UI cases,13 functional suites,19 restored faults, strict conformance and pure-HTTP route graph pass. Source5692e30/generateda0f3c7d/receipt2087c93 pushed and immutable2087c93 deployed to USA staging; healthy replacement, exact configuration/public hashes and drafts retained. Actual OpenRouter metadata/search and multiselect verified; savedmodelopenrouter/free/sourceen/targetar preserved. No credentials, settings save or generation; execution remains disabled. First explicitly reviewed provider batch/storage acceptance remains next; public-release/CF-22 status unchanged.
 
 ## 2026-10-18 OpenRouter translation — bounded local/staging verification complete
 
