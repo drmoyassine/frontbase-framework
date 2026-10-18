@@ -35,3 +35,5 @@ Broad EasyPanel inventory results were mistakenly rendered with existing service
 3. Native visual language refinement/preview/publish and public RTL/switcher follow; localized live queries across all List Components, other adapters, unattended delivery and memory/glossary remain later gates. WP source/translated sitemap/slug comparison remains mandatory. No frozen datasource feature, production cutover, npm release, GA claim or CF-22 reactivation.
 
 The documentation-only receipt commit will not alter the deployed archive. Unrelated shared staged/worktree changes remain preserved; this is not a clean-checkout release claim.
+
+Documentation checkpoint6fede5c is committed and pushed on `codex/wordpress-pilot`. The deployed source remainsf495591; no second application deployment followed documentation changes. All owned changes are committed;1837 unrelated index entries retain their fingerprint. An owner question is pending for the first provider/model; no credential values were requested.
