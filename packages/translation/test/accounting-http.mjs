@@ -1,16 +1,14 @@
 import assert from 'node:assert/strict';
+import {accountingTransports} from './accounting-transports.mjs';
 import {PostgrestTranslationAccountingPersistence} from '@frontbase/translation/adapters/postgrest-accounting';
 import {TranslationLifecycle,TranslationJobRunner} from '@frontbase/translation';
 import {SqliteTranslationAccountingPersistence} from '@frontbase/translation/adapters/sqlite-accounting';
 import {fixture} from './job-fixtures.mjs';
 import {runAccountingConformance} from './accounting-conformance.mjs';
 const capability={protocol:'frontbase-translation-accounting',version:1,jobProtocolVersion:1},calls=[];
-function transports(store){
- return {jobs:{async call(op,scope,i){calls.push(op);const methods={capabilities:()=>({protocol:'frontbase-translation-postgrest',version:1}),read:()=>store.read(scope,i.unitId,i.locale??undefined),'read-source':()=>store.readSourceVersion(scope,i.unitId,i.version),'read-revision':()=>store.readRevision(scope,i.unitId,i.locale,i.revisionId),cas:()=>store.compareAndSwap(scope,i.unitId,i.expectedVersion,i.change),enqueue:()=>store.enqueueJob(scope,i.intent),'read-job':()=>store.readJob(scope,i.jobId),'ready-jobs':()=>store.listReadyJobs(scope,i.limit),claim:()=>store.claimJob(scope,i.jobId,i.leaseMs),renew:()=>store.renewJob(scope,i.jobId,i.leaseVersion,i.leaseMs),dispatch:()=>store.markJobDispatched(scope,i.jobId,i.leaseVersion),fail:()=>store.failJob(scope,i.jobId,i.leaseVersion,{code:i.code,retryable:i.retryable,delayMs:i.delayMs}),cancel:()=>store.cancelJob(scope,i.jobId)};return methods[op]();}},
- accounting:{async call(op,scope,i){calls.push('accounting:'+op);const key={scope,jobId:i.jobId,leaseVersion:i.leaseVersion};const methods={capabilities:()=>capability,'create-allowance':()=>store.createAllowance(i.allowance),'read-allowance':()=>store.readAllowance(scope,i.allowanceId),reserve:()=>store.reserveAttempt({...i,scope}),'read-attempt':()=>store.readAttempt(key),dispatch:()=>store.dispatchAttempt(key),settle:()=>store.settleAttempt(key,i.chargedUnits),release:()=>store.releaseAttempt(key)};return JSON.parse(JSON.stringify(await methods[op]()));}}};
-}
+
 await runAccountingConformance(async()=>{
- const f=await fixture({Persistence:SqliteTranslationAccountingPersistence}),t=transports(f.store),store=new PostgrestTranslationAccountingPersistence(t.jobs,t.accounting);await store.initialize();
+ const f=await fixture({Persistence:SqliteTranslationAccountingPersistence}),t=accountingTransports(f.store,calls),store=new PostgrestTranslationAccountingPersistence(t.jobs,t.accounting);await store.initialize();
  return {...f,store,engine:new TranslationLifecycle(store),runner:(provider,options={})=>new TranslationJobRunner(store,provider,{authorize:async()=>true,...options})};
 });
 const jobs={call:async()=>({protocol:'frontbase-translation-postgrest',version:1})},scope={tenantId:'tenant',projectId:'project'},key={scope,jobId:'job',leaseVersion:1};

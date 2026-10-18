@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-18 host allowance implementation boundary
+
+Under the accepted explicit-allowance and HTTP-only requirements, the [host request policy](../plans/frontbase-translation-host-allowance-20261017.md) first enforces physical request/concurrency/input-message-byte and provider output request bounds. It does not invent a tokenizer or monetary price guarantee. One immutable host checkpoint precedes remote allocation; changes deny further dispatch and cannot reset capacity. Settlement stays on the original ledger. There is no automatic close/reset; explicit cancellation/reconciliation precedes future reallocation. This is bounded implementation evidence, not a new provider, release direction or paid-generation authorization.
+
 ## 2026-10-17 additive HTTP accounting implementation boundary
 
 Under the accepted HTTP-only and durable allowance requirements, [HTTP accounting receipt](../plans/frontbase-translation-accounting-http-20261017.md) preserves job protocol1 and negotiates accounting separately. Accounting and jobs share the same project transaction lock; dispatch and attempt state commit atomically. Unknown capabilities fail closed. SQL installation remains an explicit administrative operation, never runtime setup or a generic SQL endpoint. Real local transactional evidence does not certify the owner destination or complete mandatory host monetary policy. No package-count, release-direction or CF-22 change.

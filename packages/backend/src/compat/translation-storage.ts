@@ -62,7 +62,15 @@ async function resolveOwnedTranslationConnection(host: TranslationStorageHost, t
         ...(parsed.endpoint === 'postgrest' ? { restUrl: url.href.replace(/\/$/, '') } : {}),
         fetchImpl: (input, init) => guardedExternalFetch(host.externalFetch, input, init),
     };
-    return { scope: localizationScopeSchema.parse({ tenantId: tenant, projectId }), options };
+    return { scope: localizationScopeSchema.parse({ tenantId: tenant, projectId }), options,
+        destination: { datasourceId: parsed.datasourceId, accountId: accountId || null, endpoint: parsed.endpoint, url: options.url } };
+}
+/** Server-only non-secret destination identity. Credential rotation is deliberately not an identity change. */
+export async function configuredTranslationStorageIdentity(host: TranslationStorageHost, runner: DbRunner, tenant: string) {
+    const settings = await new TranslationStorageStore(runner, tenant).get();
+    if (!settings.configuration || !settings.projectId) throw Error('translation_storage_unconfigured');
+    const { scope, destination } = await resolveOwnedTranslationConnection(host, tenant, settings.configuration, settings.projectId);
+    return { scope, destination, configurationRevision: settings.revision };
 }
 /** Read-only protocol + scoped table-read check. No DDL, mutations or write-privilege claim. */
 export async function checkTranslationStorage(host: TranslationStorageHost, tenant: string, selection: TranslationStorageConfiguration, projectId: string = crypto.randomUUID()): Promise<void> {

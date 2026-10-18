@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-18 translation host request allowance — bounded verification
+
+[Receipt](../plans/frontbase-translation-host-allowance-20261017.md): immutable project checkpoint, reviewed exact intents, trusted-scope runner and configuration/destination checks compose existing accounting/HTTP/AI paths. Request/concurrency/message-byte/output request caps; no monetary guarantee. Workspace,6 new/15 retained host faults, engine/security/tenant/conformance and external/HTTP graph gates pass. No deployed/paid AI; reconciliation/reallocation and authenticated batch lifecycle remain next. Historical broader-host-pending statements below are superseded only within these bounds.
+
 ## 2026-10-17 T2 HTTP accounting — bounded parity verified
 
 [HTTP accounting receipt](../plans/frontbase-translation-accounting-http-20261017.md): additive accounting capability, shared HTTP adapter/owned host resolution and transactional SQL pass local PostgreSQL17.11/PostgREST14.18 reservation/dispatch races, rollback, role isolation and SQL fault gates. Workspace, external package/types and retained security gates pass. No owner installation/deployment or AI spend; mandatory host pricing/config/storage policy and reviewed batches remain required. Historical foundation-only statements below are superseded for this slice; deployed application remains T1/1073252.

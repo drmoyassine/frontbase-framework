@@ -43,7 +43,7 @@ const installed = join(consumer, 'node_modules', '@frontbase', 'translation');
 assert.equal(await realpath(installed), installed, 'External package must be installed, not workspace-linked');
 await writeFile(join(consumer, 'test.mjs'), await readFile('packages/translation/test/localization.mjs', 'utf8'), 'utf8');
 let functionalOutput = execFileSync(process.execPath, ['--disallow-code-generation-from-strings', 'test.mjs'], { cwd: consumer, encoding: 'utf8' });
-for (const name of ['revisions.mjs', 'memory-persistence.mjs', 'jobs.mjs', 'job-fixtures.mjs', 'postgrest.mjs', 'accounting.mjs', 'accounting-conformance.mjs', 'accounting-http.mjs']) await writeFile(join(consumer, name), await readFile('packages/translation/test/' + name, 'utf8'), 'utf8');
+for (const name of ['revisions.mjs', 'memory-persistence.mjs', 'jobs.mjs', 'job-fixtures.mjs', 'postgrest.mjs', 'accounting.mjs', 'accounting-conformance.mjs', 'accounting-transports.mjs', 'accounting-http.mjs']) await writeFile(join(consumer, name), await readFile('packages/translation/test/' + name, 'utf8'), 'utf8');
 functionalOutput += execFileSync(process.execPath, ['--disallow-code-generation-from-strings', 'revisions.mjs'], { cwd: consumer, encoding: 'utf8' });
 functionalOutput += execFileSync(process.execPath, ['--disallow-code-generation-from-strings', 'jobs.mjs'], { cwd: consumer, encoding: 'utf8' });
 functionalOutput += execFileSync(process.execPath, ['--disallow-code-generation-from-strings', 'postgrest.mjs'], { cwd: consumer, encoding: 'utf8' });
