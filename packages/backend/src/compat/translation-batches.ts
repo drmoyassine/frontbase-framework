@@ -9,7 +9,8 @@ import { currentTranslationHostPin, translationHostPinSchema, prepareTranslation
 import { resolveTranslationAccountingStorage, type TranslationStorageHost } from './translation-storage.js';
 import { translationMessages, type GenerationHost } from './translation-generation.js';
 import type { PagesStore, CompatPageRow } from './pages-store.js';
-import { batchSelectionSchema as selectionSchema, batchLimitsSchema as limitsSchema, batchPlanInputSchema,
+import { translationInputHash, translationPlainText, extractMenuInput, extractRecordInput } from './translation-inputs.js';
+import { batchSelectionSchema as selectionSchema, batchPageSelectionSchema, batchLimitsSchema as limitsSchema, batchPlanInputSchema,
     batchReviewSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema } from '@frontbase/edge-core/localization/batches';
 
 const id = z.string().min(1).max(160), hash = z.string().regex(/^[a-f0-9]{64}$/), uuid = z.string().uuid();
@@ -22,7 +23,7 @@ const recordSchema = z.object({ review: reviewSchema, reviewHash: hash, phase: z
 type Batch = z.infer<typeof recordSchema>;
 export type TranslationBatchHost = TranslationStorageHost & GenerationHost & { pagesFor(tenant: string): Pick<PagesStore, 'get'> };
 const key = (value: string) => 'translation_batch:v1:' + uuid.parse(value);
-const digest = async (value: unknown) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(value)))), byte => byte.toString(16).padStart(2, '0')).join('');
+const digest = translationInputHash;
 const FIELDS: Record<string, readonly string[]> = { Text: ['content', 'text', 'value'], Heading: ['content', 'text'], Paragraph: ['content', 'text'] };
 const boundTypes = new Set(['Repeater', 'DataTable', 'DataGrid', 'Grid']);
 /** Bounded metadata only; canonical extractor below remains the only eligibility authority. */
@@ -37,15 +38,15 @@ export async function translationBatchFields(host: TranslationBatchHost, db: DbR
     const pin = await currentTranslationHostPin(host, db, tenant), page = await host.pagesFor(tenant).get(pageId);
     if (!page || page.deleted_at || page.layout_data.length > 1_000_000) throw Error();
     const nodes = JSON.parse(page.layout_data).content as VersionedBlock[]; validateBlockVersions(nodes);
-    const candidates: z.infer<typeof selectionSchema>[] = [];
+    const candidates: z.infer<typeof batchPageSelectionSchema>[] = [];
     const visit = (list: VersionedBlock[]) => { for (const node of list) {
         const field = FIELDS[node.type]?.find(field => !!node.props?.[field]);
-        if (field) candidates.push(selectionSchema.parse({ pageId, blockId: node.id, field }));
+        if (field) candidates.push(batchPageSelectionSchema.parse({ pageId, blockId: node.id, field }));
         if (node.children) visit(node.children);
     } }; visit(nodes);
     const items = [], loaded = { page, nodes, pageHash: await digest({ layout: page.layout_data, name: page.name }) };
     for (const selection of candidates.slice(offset, offset + 100)) {
-        try { const source = await extract(host, tenant, selection, pin, loaded); items.push({ selection, text: source.unit.text, context: source.context }); }
+        try { const source = await extract(host, db, tenant, selection, pin, loaded); items.push({ selection, text: source.unit.text, context: source.context }); }
         catch { continue; } // Unsupported dynamic/bound text is never offered for selection.
         if (items.length === 100) break;
     }
@@ -66,13 +67,14 @@ export async function translationBatchReview(host: TranslationBatchHost, db: DbR
     const b = (await read(db, tenant, batchId)).value;
     if (!await stillCurrent(host, db, tenant, b)) throw Error();
     const items = [];
-    for (const item of b.review.items) { const source = await extract(host, tenant, item.selection, b.review.pin); items.push({ selection: item.selection, text: source.unit.text, context: source.context }); }
+    for (const item of b.review.items) { const source = await extract(host, db, tenant, item.selection, b.review.pin); items.push({ selection: item.selection, text: source.unit.text, context: source.context }); }
     return batchReviewSchema.parse({ id: b.review.id, reviewHash: b.reviewHash, sourceLocale: b.review.pin.generation.sourceLocale, targetLocale: b.review.targetLocale,
         providerAccountId: b.review.pin.generation.accountId, model: b.review.pin.generation.model, limits: b.review.limits, maxOutputTokens: b.review.pin.generation.maxOutputTokens,
         items, monetaryEstimate: null, delivery: 'administrator-continuation', draftOnly: true });
 }
-async function extract(host: TranslationBatchHost, tenant: string, selection: z.infer<typeof selectionSchema>, pin: z.infer<typeof translationHostPinSchema>,
+async function extract(host: TranslationBatchHost, db: DbRunner, tenant: string, selection: z.infer<typeof selectionSchema>, pin: z.infer<typeof translationHostPinSchema>,
     loaded?: { page: CompatPageRow; nodes: VersionedBlock[]; pageHash: string }) {
+    if ('kind' in selection) return selection.kind === 'menu' ? extractMenuInput(db, tenant, selection, pin) : extractRecordInput(host, tenant, selection, pin);
     const page = loaded?.page ?? await host.pagesFor(tenant).get(selection.pageId);
     if (!page || page.deleted_at || page.layout_data.length > 1_000_000) throw Error();
     const nodes = loaded?.nodes ?? JSON.parse(page.layout_data).content as VersionedBlock[];
@@ -89,8 +91,7 @@ async function extract(host: TranslationBatchHost, tenant: string, selection: z.
     if (!found || blocked) throw Error();
     const node = found as VersionedBlock, props = node.props ?? {}, fields = FIELDS[node.type];
     if (!fields || fields.find(field => !!props[field]) !== selection.field || props.binding || props.dataBinding) throw Error();
-    const text = props[selection.field];
-    if (typeof text !== 'string' || !text.trim() || text.length > 4000 || /[{}<>]|@\{/.test(text)) throw Error();
+    const text = translationPlainText(props[selection.field]);
     const unit: MessageUnit = { version: 1, scope: pin.storage.scope, resource: { kind: 'component', documentId: page.id, blockId: node.id,
         versionId: 'default', propertyPath: ['props', selection.field] }, sourceLocale: pin.generation.sourceLocale,
         format: 'plain', text, segmenterVersion: 1, placeholders: [] };
@@ -119,7 +120,7 @@ async function save(db: DbRunner, tenant: string, previous: Awaited<ReturnType<t
 }
 async function stillCurrent(host: TranslationBatchHost, db: DbRunner, tenant: string, batch: Batch) {
     if (JSON.stringify(await currentTranslationHostPin(host, db, tenant)) !== JSON.stringify(batch.review.pin)) return false;
-    for (const item of batch.review.items) if ((await extract(host, tenant, item.selection, batch.review.pin)).pageHash !== item.pageHash) return false;
+    for (const item of batch.review.items) if ((await extract(host, db, tenant, item.selection, batch.review.pin)).pageHash !== item.pageHash) return false;
     return true;
 }
 /** Review is read-only against translation storage and never calls AI or registers source history. */
@@ -130,7 +131,8 @@ export async function planTranslationBatch(host: TranslationBatchHost, db: DbRun
     if (unique.size !== request.selections.length) throw Error();
     const batchId = crypto.randomUUID(), session = await sessionFor(host, tenant, pin), items: Batch['review']['items'] = [], preview = [];
     for (const selection of request.selections) {
-        const source = await extract(host, tenant, selection, pin), unitId = await translationUnitId(pin.storage.scope, source.unit.resource);
+        const source = await extract(host, db, tenant, selection, pin), unitId = await translationUnitId(pin.storage.scope, source.unit.resource);
+        if (items.some(item => item.intent.unitId === unitId)) throw Error();
         const fingerprint = await messageSourceFingerprint(source.unit), contextFingerprint = await translationContextFingerprint(source.context);
         if (new TextEncoder().encode(JSON.stringify(translationMessages(source, request.targetLocale))).byteLength > request.limits.maxMessageBytes) throw Error();
         const snapshot = await session.persistence.read(pin.storage.scope, unitId, request.targetLocale);
@@ -174,7 +176,7 @@ export async function continueTranslationBatch(host: TranslationBatchHost, db: D
     if (b.phase === 'preparing') {
         const item = b.review.items[b.cursor];
         if (!item) throw Error();
-        const source = await extract(host, tenant, item.selection, b.review.pin), snapshot = await session.persistence.read(session.scope, item.intent.unitId, b.review.targetLocale);
+        const source = await extract(host, db, tenant, item.selection, b.review.pin), snapshot = await session.persistence.read(session.scope, item.intent.unitId, b.review.targetLocale);
         if (snapshot.head?.revisionId !== (item.intent.expectedHead ?? undefined)) throw Error();
         if (snapshot.source?.sourceVersion !== item.intent.sourceVersion || snapshot.source.fingerprint !== item.intent.sourceFingerprint || snapshot.source.contextFingerprint !== item.intent.contextFingerprint) {
             const registered = await new TranslationLifecycle(session.persistence).syncSource(session.scope, source.unit, item.previousSourceVersion, source.context);
@@ -217,7 +219,7 @@ export async function translationBatchStatus(host: TranslationBatchHost, db: DbR
                 const job = await session.persistence.readJob(session.scope, item.intent.jobId);
                 const attempt = job?.leaseVersion ? await session.persistence.readAttempt({ scope: session.scope, jobId: job.intent.jobId, leaseVersion: job.leaseVersion }) : null;
                 let current = false;
-                try { current = (await extract(host, tenant, item.selection, b.review.pin)).pageHash === item.pageHash; } catch { /* Deleted/inaccessible source never exposes result text. */ }
+                try { current = (await extract(host, db, tenant, item.selection, b.review.pin)).pageHash === item.pageHash; } catch { /* Deleted/inaccessible source never exposes result text. */ }
                 const result = current && job?.status === 'completed' ? await session.persistence.readRevision(session.scope, item.intent.unitId, item.intent.locale, item.intent.revisionId) : null;
                 items.push({ selection: item.selection, state: job?.status ?? 'not-prepared', error: job?.lastError ?? null, accounting: attempt?.state ?? null,
                     outdated: !current, result: result?.text ?? null });

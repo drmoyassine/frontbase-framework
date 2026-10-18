@@ -1,4 +1,8 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
+## 2026-10-18 selected menu/live inputs — bounded verification
+
+[Receipt](../plans/frontbase-translation-menu-live-inputs-20261018.md): the same native review/job/allowance flow now accepts authored menu text and explicit single-table live text fields over existing guarded HTTP credentials/client, with same/separate translation storage. Selected projection, key uniqueness, source/connection freshness and private-field exclusion are enforced. Full workspace build/check,27 UI cases,90 faults, API/security/tenant/legacy conformance and isolated engine/HTTP subpath/edge graph pass. Gate remains disabled; no SQL upgrade, paid call or deployment. Saved-view-aware discovery, other source schemas/adapters, real-provider and native visual/publication acceptance remain open; full T3/T4/M3 are not closed.
+
 
 ## 2026-10-18 native page-text review/progress UI — bounded verification
 

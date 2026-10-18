@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {sqliteRunner} from '@frontbase/edge-infra';
+import {createClient} from '@libsql/client';
+import {libsqlRunner} from '@frontbase/edge-infra';
 import {TranslationLifecycle} from '@frontbase/edge-core/localization';
 import {SqliteTranslationAccountingPersistence} from '../../translation/dist/adapters/sqlite-accounting.js';
 import {fixture} from '../../translation/test/job-fixtures.mjs';
@@ -15,7 +16,7 @@ import {prepareTranslationAllowance,configuredTranslationAllowanceRunner,transla
 globalThis.fetch=()=>{throw Error('raw_network_forbidden')};
 export const now='2026-10-17T00:00:00Z';
 export async function allowanceFixture({bytes=65536,maxRequests=1}={}) {
-    const db=sqliteRunner(':memory:');await migrateUp(db);
+    const client=createClient({url:':memory:'}),db=libsqlRunner(client);await migrateUp(db);
     const cipher=await createSecretCipher('allowance-private-fixture'),accountsFor=tenant=>new Phase2Store(db,tenant,cipher);
     const accounts=accountsFor('alpha');
     const account=async key=>accounts.upsertEdgeResource({id:'ai',name:'AI',kind:'provider',provider:'openai',status:'active',config:await cipher.encrypt(JSON.stringify({api_key:key}))},now);
@@ -50,6 +51,6 @@ export async function allowanceFixture({bytes=65536,maxRequests=1}={}) {
         prepare:(input=review)=>prepareTranslationAllowance(host,db,'alpha',input,now),
         configured:()=>configuredTranslationAllowanceRunner(host,db,'alpha'),
         enqueue:async id=>{assert.equal(await f.store.enqueueJob(scope,intent(id)),'created')},
-        close:()=>{f.close();db.close?.()},
+        close:()=>{try{f.close()}finally{client.close()}},
     };
 }

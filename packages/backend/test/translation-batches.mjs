@@ -3,10 +3,14 @@ import {allowanceFixture,now} from './translation-allowance-fixture.mjs';
 import {createCompatApp} from '../dist/compat/app.js';
 import {PagesStore} from '../dist/compat/pages-store.js';
 import {deferred} from '../../translation/test/job-fixtures.mjs';
+import {MenusStore} from '../dist/compat/menus-store.js';
+import {createMenuDefinition} from '@frontbase/edge-core/menus';
+import {extractMenuInput} from '../dist/compat/translation-inputs.js';
 
 const root='/api/project/translation-batches/';
-async function setup(enabled=true){
+async function setup(enabled=true,wrapFetch){
  const f=await allowanceFixture(),pages=new PagesStore(f.db,'alpha');
+ if(wrapFetch){const original=f.host.externalFetch;f.host.externalFetch=(input,init)=>wrapFetch(input,init,original);}
  const nodes=[{id:'heading',type:'Heading',props:{content:'Apply'}},{id:'text',type:'Text',props:{content:'Study abroad'}}];
  await pages.create({name:'Discovery',slug:'discovery',layout_data:{content:nodes,root:{}}},'page',now);
  await new PagesStore(f.db,'beta').create({name:'Foreign',slug:'foreign',layout_data:{content:nodes,root:{}}},'foreign',now);
@@ -145,4 +149,63 @@ for(const replace of [false,true]){
  await f.edit(Array.from({length:105},(_,i)=>({id:'heading-'+i,type:'Heading',props:{content:'Text '+i}})));const fields=await f.json('sources/page/');assert.equal(fields.items.length,100);assert.equal(fields.truncated,true);
  const restFields=await f.json('sources/page/?after='+fields.next);assert.equal(restFields.items.length,5);assert.equal(restFields.next,null);assert.equal((await f.request('sources/page/?after=-1')).status,422);assert.equal(f.aiCalls(),0);f.close();
 }
-console.log('translation-batches PASS: authenticated sealed review, owned native discovery/recovery, bounded pagination, explicit gate/consent, stable bounded restart/concurrency, source/settings fences, conservative reconciliation, no-call status and cancellation/allocation race');
+async function liveFixture(separate=false){
+ let rows=[{id:1,title:'Discover institutions',private_note:'PRIVATE_RECORD_NOTE'}];const reads=[];
+ const f=await setup(true,async(input,init,original)=>{
+  const request=input instanceof Request?input:new Request(input,init),url=new URL(request.url);
+  if(request.method==='GET'&&url.pathname.endsWith('/institutions')){
+   reads.push(request);assert.equal(url.searchParams.get('select'),'id,title','only selected text and key are requested');assert.equal(url.searchParams.get('id'),'eq.1');assert.equal(url.searchParams.get('limit'),'2');assert.equal(request.headers.get('accept-profile'),'public');
+   return Response.json(rows.map(row=>({id:row.id,title:row.title})));
+  }return original(request);
+ });
+ if(separate)await f.sync.createDatasource({name:'Content',kind:'supabase',config:{url:'https://content.example.test',serviceKey:'PRIVATE_SOURCE'}},'content',now);
+ const selection={kind:'record',datasourceId:separate?'content':'data',endpoint:'postgrest',table:'institutions',keyColumn:'id',keyValue:'1',field:'title'};
+ const menu=createMenuDefinition('header','header');menu.design.brand='Study in USA';menu.items=[{id:'institutions',label:'Institutions',href:'https://example.test/PRIVATE_TARGET',audience:{authentication:'authenticated',contactTypes:['PRIVATE_AUDIENCE'],permissionLevels:[]},children:[]}];
+ const menus=new MenusStore(f.db,'alpha');assert.ok(await menus.save([menu],0,now));
+ return {...f,selection,menu,menus,reads,setRows:value=>{rows=value},recordPlan:()=>f.plan({...f.input,selections:[selection]})};
+}
+for(const separate of [false,true]){
+ const f=await liveFixture(separate);
+ assert.ok((await f.json('datasources/')).datasources.some(ds=>ds.id===f.selection.datasourceId));assert.equal((await f.json('menus/')).menus[0].id,'header');
+ const fields=await f.json('menus/header/');assert.equal(fields.items.length,2);assert.equal(f.aiCalls(),0);
+ await assert.rejects(extractMenuInput(f.db,'beta',{kind:'menu',menuId:'header',field:'brand'},{storage:{scope:{...f.scope,tenantId:'beta'}},generation:{sourceLocale:'en'}}),'foreign menu cannot be extracted even by a direct trusted host caller');
+ const preview=await f.json('record-field/','POST',f.selection);assert.equal(preview.text,'Discover institutions');assert.equal(f.aiCalls(),0);
+ const selections=[f.input.selections[0],fields.items.find(i=>i.selection.field==='label').selection,f.selection];
+ const p=await f.plan({...f.input,selections,limits:{...f.input.limits,maxRequests:3}});await queued(f,p);await f.restart();
+ for(let i=0;i<3;i++)await f.step(p);await f.step(p);const result=await f.status(p);assert.equal(result.state,'done');assert.equal(result.items.filter(i=>i.state==='completed').length,3);assert.equal(f.aiCalls(),3);
+ const prompts=f.calls.filter(call=>new URL(call.url).host==='api.openai.com').map(call=>JSON.parse(call.body.messages[1].content));
+ assert.deepEqual(prompts.map(p=>p.text),['Apply','Institutions','Discover institutions']);assert.doesNotMatch(JSON.stringify(prompts),/PRIVATE_|keyValue|keyColumn|destination/);
+ assert.equal((await f.menus.get()).revision,1,'translation never edits menu source');assert.equal((await f.pages.get('page')).name,'Discovery');assert.ok(f.reads.length>0);assert.equal(f.reads[0].headers.get('apikey'),separate?'PRIVATE_SOURCE':'PRIVATE_DB');
+ assert.ok(f.reads.every(req=>new URL(req.url).pathname==='/institutions'),'native PostgREST has no Supabase path suffix');await closed(f,p);f.close();
+}
+{
+ const f=await liveFixture();const before=f.reads.length;
+ for(const patch of [{sql:'select *'},{viewId:'hidden-view'},{field:'title,password'},{table:'institutions?select=*'},{keyColumn:'__proto__'},{field:'id'},{keyValue:9007199254740992},{datasourceId:'foreign'}])assert.equal((await f.request('record-field/','POST',{...f.selection,...patch})).status,422);
+ assert.equal(f.reads.length,before,'invalid identities/foreign connections never read content');
+ for(const rows of [[],[{id:1,title:'One'},{id:1,title:'Duplicate'}],[{id:2,title:'Wrong identity'}],[{id:1,title:'<b>Rich text</b>'}],[{id:1,title:'Hi {{name}}'}],[{id:1,title:{private:'PRIVATE_NESTED'}}]]){
+  f.setRows(rows);assert.equal((await f.request('record-field/','POST',f.selection)).status,422);
+ }
+ assert.equal(f.aiCalls(),0);f.setRows([{id:1,title:'Discover institutions'}]);
+ assert.equal((await f.request('plans/','POST',{...f.input,selections:[f.selection,{...f.selection,keyValue:1}],limits:{...f.input.limits,maxRequests:2}})).status,422,'one logical unit cannot be reviewed twice with key type aliases');
+ for(const auth of [false,true]){f.setAuth(auth);f.setRole('viewer');for(const path of ['menus/','menus/header/','datasources/'])assert.equal((await f.request(path)).status,auth?403:401);assert.equal((await f.request('record-field/','POST',f.selection)).status,auth?403:401);}
+ f.setAuth(true);f.setRole('owner');f.setTenant('beta');assert.equal((await f.json('menus/')).menus.length,0);assert.equal((await f.json('datasources/')).datasources.length,0);assert.equal((await f.request('menus/header/')).status,422);assert.equal(f.aiCalls(),0);f.close();
+}
+{
+ const f=await liveFixture(true),p=await f.recordPlan();
+ await f.sync.updateDatasource('content',{config:{url:'https://retarget.example.test',serviceKey:'PRIVATE_NEW_SOURCE'}},now);
+ assert.equal((await f.request(p.id+'/start/','POST',{reviewHash:p.reviewHash,approveContentTransmission:true})).status,409,'source retarget invalidates review independently of translation storage');assert.equal(f.aiCalls(),0);await f.cancel(p);f.close();
+}
+{
+ const f=await liveFixture(),p=await f.recordPlan();f.setRows([{id:1,title:'Changed before approval'}]);
+ assert.equal((await f.request(p.id+'/start/','POST',{reviewHash:p.reviewHash,approveContentTransmission:true})).status,409);await f.cancel(p);
+ const fresh=await f.recordPlan();await queued(f,fresh);f.setHook(async()=>{f.setRows([{id:1,title:'Changed during provider call'}])});await f.step(fresh);
+ const result=await f.status(fresh);assert.equal(result.items[0].state,'cancelled');assert.equal(result.items[0].accounting,'settled');assert.equal(result.items[0].result,null);assert.equal(result.items[0].outdated,true);assert.equal(f.aiCalls(),1);await closed(f,fresh);f.close();
+}
+{
+ const f=await liveFixture(),selection={kind:'menu',menuId:'header',itemId:'institutions',field:'label'},p=await f.plan({...f.input,selections:[selection]});
+ const changed=structuredClone(f.menu);changed.items[0].href='/changed';assert.ok(await f.menus.save([changed],1,now));
+ assert.equal((await f.request(p.id+'/start/','POST',{reviewHash:p.reviewHash,approveContentTransmission:true})).status,409,'menu configuration edits invalidate its reviewed input');await f.cancel(p);
+ const fresh=await f.plan({...f.input,selections:[selection]});await queued(f,fresh);f.setHook(async()=>{const next=structuredClone(changed);next.items[0].label='Programs';assert.ok(await f.menus.save([next],2,now));});await f.step(fresh);
+ assert.equal((await f.status(fresh)).items[0].state,'cancelled');assert.equal((await f.status(fresh)).items[0].result,null);await closed(f,fresh);f.close();
+}
+console.log('translation-batches PASS: mixed page/menu/live-field review, owned HTTP projection, key uniqueness, private-field exclusion, retarget/edit fencing, discovery/recovery/pagination, explicit consent, restart/concurrency and conservative cancellation');

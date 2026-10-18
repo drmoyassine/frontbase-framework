@@ -5,6 +5,10 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
+    "./supabase-http": {
+      "types": "./dist/providers/supabase-http.d.ts",
+      "import": "./dist/providers/supabase-http.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"

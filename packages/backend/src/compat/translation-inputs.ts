@@ -1,0 +1,77 @@
+/** Owned authored-menu and live single-field extraction; no browser-supplied content or SQL. */
+import { z } from 'zod';
+import type { DbRunner } from '@frontbase/edge-infra';
+import { supabasePostgrestClient } from '@frontbase/edge-infra/supabase-http';
+import { batchMenuSelectionSchema, batchRecordSelectionSchema, batchMenuFieldsSchema, batchMenusSchema, batchDatasourcesSchema } from '@frontbase/edge-core/localization/batches';
+import type { MessageUnit, TranslationContext, LocalizationScope } from '@frontbase/edge-core/localization';
+import type { MenuItem, MenuDocument } from '@frontbase/edge-core/menus';
+import { MenusStore } from './menus-store.js';
+import { resolveOwnedTranslationConnection, type TranslationStorageHost } from './translation-storage.js';
+
+export const translationInputHash = async (value: unknown) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(value)))), byte => byte.toString(16).padStart(2, '0')).join('');
+export function translationPlainText(value: unknown): string {
+    if (typeof value !== 'string' || !value.trim() || value.length > 4000 || /[{}<>]|@\{/.test(value)) throw Error();
+    return value;
+}
+export interface TranslationInput { unit: MessageUnit; context: TranslationContext; pageHash: string }
+type Pin = { storage: { scope: LocalizationScope }; generation: { sourceLocale: string } };
+export async function translationMenus(db: DbRunner, tenant: string) {
+    const document = await new MenusStore(db, tenant).get();
+    return batchMenusSchema.parse({ menus: document.menus.map(menu => ({ id: menu.id, name: menu.name, slot: menu.slot })) });
+}
+export async function translationDatasources(db: DbRunner, tenant: string, after = '') {
+    z.string().max(160).parse(after);
+    const rows = await db.query("SELECT id, name FROM datasources WHERE tenant_slug = ? AND kind = 'supabase' AND id > ? ORDER BY id LIMIT 26", [tenant, after]);
+    return batchDatasourcesSchema.parse({ datasources: rows.slice(0, 25).map(row => ({ id: row.id, name: String(row.name).slice(0, 500) })), next: rows.length > 25 ? rows[24]!.id : null });
+}
+export async function extractMenuInput(db: DbRunner, tenant: string, raw: unknown, pin: Pin,
+    loaded?: { document: MenuDocument; pageHash: string }): Promise<TranslationInput> {
+    const selection = batchMenuSelectionSchema.parse(raw), document = loaded?.document ?? await new MenusStore(db, tenant).get();
+    const menu = document.menus.find(menu => menu.id === selection.menuId);
+    if (!menu) throw Error();
+    let value: unknown, propertyPath: string[];
+    if (selection.field === 'label') {
+        let found: MenuItem | undefined;
+        const walk = (items: MenuItem[]) => { for (const item of items) { if (item.id === selection.itemId) found = item; walk(item.children); } }; walk(menu.items);
+        if (!found) throw Error();
+        value = found.label; propertyPath = ['items', found.id, 'label'];
+    } else if (selection.field === 'description') {
+        if (menu.slot !== 'footer') throw Error();
+        value = menu.design.componentProps?.description; propertyPath = ['design', 'componentProps', 'description'];
+    } else {
+        if (selection.field === 'copyright' && menu.slot !== 'footer') throw Error();
+        value = menu.design[selection.field]; propertyPath = ['design', selection.field];
+    }
+    const text = translationPlainText(value);
+    return { unit: { version: 1, scope: pin.storage.scope, resource: { kind: 'component', documentId: 'app-menus', blockId: menu.id,
+        versionId: 'default', propertyPath }, sourceLocale: pin.generation.sourceLocale, format: 'plain', text, segmenterVersion: 1, placeholders: [] },
+        context: { version: 1, role: 'menu-' + selection.field, resourceLabel: ('Menu ' + menu.name + ' / ' + selection.field).slice(0, 200) },
+        pageHash: loaded?.pageHash ?? await translationInputHash({ revision: document.revision, menu }) };
+}
+export async function translationMenuFields(db: DbRunner, tenant: string, menuId: string, pin: Pin, after = '0') {
+    z.string().regex(/^\d{1,5}$/).parse(after); const offset = Number(after);
+    const document = await new MenusStore(db, tenant).get(), menu = document.menus.find(menu => menu.id === menuId);
+    if (!menu) throw Error();
+    const selections: z.infer<typeof batchMenuSelectionSchema>[] = ['brand', 'copyright', 'description'].map(field => ({ kind: 'menu', menuId, field: field as 'brand'|'copyright'|'description' }));
+    const walk = (items: MenuItem[]) => { for (const item of items) { selections.push({ kind: 'menu', menuId, itemId: item.id, field: 'label' }); walk(item.children); } }; walk(menu.items);
+    const items = [], loaded = { document, pageHash: await translationInputHash({ revision: document.revision, menu }) };
+    for (const selection of selections.slice(offset, offset + 100)) {
+        try { const input = await extractMenuInput(db, tenant, selection, pin, loaded); items.push({ selection, text: input.unit.text, context: input.context }); } catch { /* Empty/unsupported/dynamic field. */ }
+    }
+    return batchMenuFieldsSchema.parse({ menuId, items, next: selections.length > offset + 100 ? String(offset + 100) : null });
+}
+/** Read exactly the selected key/text projection; ambiguous keys fail instead of selecting an arbitrary row. */
+export async function extractRecordInput(host: TranslationStorageHost, tenant: string, raw: unknown, pin: Pin): Promise<TranslationInput> {
+    const selection = batchRecordSelectionSchema.parse(raw);
+    const connection = await resolveOwnedTranslationConnection(host, tenant, { version: 1, datasourceId: selection.datasourceId, endpoint: selection.endpoint, namespace: 'translations' }, pin.storage.scope.projectId);
+    const client = supabasePostgrestClient({ ...connection.options, schema: 'public' });
+    const { data, error } = await client.from(selection.table).select(selection.keyColumn + ',' + selection.field).eq(selection.keyColumn, selection.keyValue).limit(2);
+    if (error || !Array.isArray(data) || data.length !== 1) throw Error();
+    const row = z.record(z.unknown()).parse(data[0]), key = z.union([z.string().max(4000), z.number().int().safe(), z.boolean()]).parse(row[selection.keyColumn]);
+    if (String(key) !== String(selection.keyValue)) throw Error();
+    const text = translationPlainText(row[selection.field]);
+    return { unit: { version: 1, scope: pin.storage.scope, resource: { kind: 'record', connectionId: selection.datasourceId, collection: selection.table,
+        key: [{ column: selection.keyColumn, value: key }], propertyPath: [selection.field] }, sourceLocale: pin.generation.sourceLocale, format: 'plain', text, segmenterVersion: 1, placeholders: [] },
+        context: { version: 1, role: 'record-field', resourceLabel: ('Record ' + selection.table + ' / ' + selection.field).slice(0, 200) },
+        pageHash: await translationInputHash({ destination: connection.destination, selection: { ...selection, keyValue: key }, text }) };
+}

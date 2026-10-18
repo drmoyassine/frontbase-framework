@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {repoRoot} from '../../../scripts/mutation-lib.mjs';
 import ts from 'typescript';
 const batch='packages/backend/src/compat/translation-batches.ts',route='packages/backend/src/compat/routes/translation-batches.ts',allowance='packages/backend/src/compat/translation-allowance.ts';
+const inputs='packages/backend/src/compat/translation-inputs.ts';
 const faults=[
  ['administrator gate',route,"!['owner', 'admin', 'tenant_admin', 'master_admin', 'master_admin_root'].includes(user.role)",'false'],
  ['explicit execution gate',route,'if (!executionEnabled)','if (false)'],
@@ -12,7 +13,7 @@ const faults=[
  ['owned source lookup',batch,'host.pagesFor(tenant).get(selection.pageId)',"host.pagesFor(selection.pageId === 'foreign' ? 'beta' : tenant).get(selection.pageId)"],
  ['bound subtree refusal',batch,'if (!found || blocked) throw Error();','if (!found) throw Error();'],
  ['immutable review seal',batch,'await digest(value.review) !== value.reviewHash','false'],
- ['source pin',batch,'if ((await extract(host, tenant, item.selection, batch.review.pin)).pageHash !== item.pageHash) return false;','if (false) return false;'],
+ ['source pin',batch,'if ((await extract(host, db, tenant, item.selection, batch.review.pin)).pageHash !== item.pageHash) return false;','if (false) return false;'],
  ['post-result draft fence',allowance,'if (!await guard()) {\n                const unitId','if (false) {\n                const unitId'],
  ['last-call batch permit',allowance,'&& (!permit || await permit())',''],
  ['batch progress CAS',batch,"AND value = ?',\n        [JSON.stringify(next)","AND ? IS NOT NULL',\n        [JSON.stringify(next)"],
@@ -22,6 +23,15 @@ const faults=[
  ['owned page discovery',batch,'WHERE tenant_slug = ? AND deleted_at IS NULL AND id > ?','WHERE ? IS NOT NULL AND deleted_at IS NULL AND id > ?'],
  ['owned saved history',batch,'WHERE tenant_slug = ? AND key > ? AND key < ?','WHERE ? IS NOT NULL AND key > ? AND key < ?'],
  ['fresh recovered review',batch,'if (!await stillCurrent(host, db, tenant, b)) throw Error();','void 0;'],
+ ['owned menu extraction',inputs,'loaded?.document ?? await new MenusStore(db, tenant).get()',"loaded?.document ?? await new MenusStore(db, 'alpha').get()"],
+ ['selected-field projection',inputs,".select(selection.keyColumn + ',' + selection.field)",".select('*')"],
+ ['unique record key',inputs,'data.length !== 1','data.length < 1'],
+ ['returned record identity',inputs,'if (String(key) !== String(selection.keyValue)) throw Error();','void 0;'],
+ ['unique logical input',batch,'if (items.some(item => item.intent.unitId === unitId)) throw Error();','void 0;'],
+ ['live connection pin',inputs,'destination: connection.destination','destination: null'],
+ ['menu configuration pin',inputs,'translationInputHash({ revision: document.revision, menu })','translationInputHash({ revision: 0, menu: menu.id })'],
+ ['dynamic/markup refusal',inputs,'/[{}<>]|@\\{/.test(value)','false'],
+ ['owned source catalog',inputs,"WHERE tenant_slug = ? AND kind = 'supabase' AND id > ?","WHERE ? IS NOT NULL AND kind = 'supabase' AND id > ?"],
 ];
 const originals=new Map(faults.map(([,file])=>[file,readFileSync(repoRoot+file,'utf8')]));
 const artifact=file=>repoRoot+file.replace('/src/','/dist/').replace(/\.ts$/,'.js');
@@ -34,7 +44,7 @@ try{
  for(const [name,file,before,after] of faults){
   const raw=originals.get(file),normal=raw.replaceAll('\r\n','\n');
   // The host execution gate deliberately appears on both start and continue.
-  assert.equal(normal.split(before).length,name==='explicit execution gate'?3:2,name+' anchor');
+  assert.equal(normal.split(before).length,['explicit execution gate','menu configuration pin'].includes(name)?3:2,name+' anchor');
   try{
    const changed=normal.replaceAll(before,after);writeFileSync(repoRoot+file,changed);
    const output=ts.transpileModule(changed,{fileName:file,reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,verbatimModuleSyntax:true}});
@@ -47,4 +57,4 @@ try{
  for(const [file,raw] of originals){writeFileSync(repoRoot+file,raw);writeFileSync(artifact(file),artifacts.get(file));}
  green();for(const [file,raw] of originals){assert.equal(digest(readFileSync(repoRoot+file)),digest(raw));assert.equal(digest(readFileSync(artifact(file))),digest(artifacts.get(file)));}
 }
-console.log('translation batch mutation16/16; exact source/artifact hashes restored');
+console.log('translation batch mutation25/25; exact source/artifact hashes restored');

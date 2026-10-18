@@ -43,7 +43,7 @@ export async function resolveTranslationStorage(host: TranslationStorageHost, te
     return { scope, persistence: translationPersistenceFromSupabase(options) };
 }
 /** Shared owned-credential/guard resolution for both protocol capabilities. Never serialized to a visitor. */
-async function resolveOwnedTranslationConnection(host: TranslationStorageHost, tenant: string, selection: TranslationStorageConfiguration, projectId: string) {
+export async function resolveOwnedTranslationConnection(host: TranslationStorageHost, tenant: string, selection: TranslationStorageConfiguration, projectId: string) {
     const parsed = translationStorageConfigurationSchema.parse(selection);
     const datasource = await host.syncFor(tenant).getDatasource(parsed.datasourceId);
     if (!datasource || datasource.kind !== 'supabase') throw Error('translation_storage_unavailable');

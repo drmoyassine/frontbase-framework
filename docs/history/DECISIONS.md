@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-18 selected menu/live-input implementation boundary
+
+Under the accepted owned-content/HTTP-only requirements, [menu/live inputs](../plans/frontbase-translation-menu-live-inputs-20261018.md) extend the existing sealed review and job/accounting lifecycle. The initial live selector is an explicit public-schema table/key/text column, not a saved-view binding. It reuses the canonical Supabase/PostgREST client through a narrow export and existing owned credential resolver. Source projection, uniqueness and current connection/text checks are mandatory; record identity stays out of provider prompts. Same/separate translation storage remains optional. Saved-view selection, other source schemas/adapters and real-provider/native-publication acceptance remain explicit gates. No new queue, persistence protocol, package, native runtime transport, release direction or CF-22 activation.
+
 ## 2026-10-18 native batch UI integration boundary
 
 Under the accepted selected-content/explicit-approval requirements, [native Settings review](../plans/frontbase-translation-review-ui-20261018.md) uses server discovery and the existing execution extractor, sealed reviews and persisted jobs. Shared host/UI schemas live in the narrow `@frontbase/edge-core/localization/batches` subpath; the standalone engine remains independent. No browser cache/queue or client-side eligibility authority. Explicit bounded continuation is still the initial delivery mode; default-disabled host execution, real-provider approval and protocol-upgrade boundaries remain unchanged. No new provider/package/release direction or CF-22 activation.

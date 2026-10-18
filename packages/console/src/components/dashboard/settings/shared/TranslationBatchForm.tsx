@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { translationGenerationOptionsSchema } from '@frontbase/edge-core/localization';
 import { batchCapabilitiesSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema, batchReviewSchema, batchStatusSchema,
-    type batchPreviewItemSchema } from '@frontbase/edge-core/localization/batches';
+    batchMenusSchema, batchMenuFieldsSchema, batchDatasourcesSchema, batchRecordSelectionSchema, batchPreviewItemSchema } from '@frontbase/edge-core/localization/batches';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,10 @@ export function TranslationBatchForm() {
     const [cap, setCap] = useState<z.infer<typeof batchCapabilitiesSchema>>();
     const [pages, setPages] = useState<z.infer<typeof batchPagesSchema>>(), [history, setHistory] = useState<z.infer<typeof batchHistorySchema>>();
     const [fields, setFields] = useState<z.infer<typeof batchFieldsSchema>>(), [selected, setSelected] = useState<Item[]>([]);
+    const [sourceKind, setSourceKind] = useState('page'), [menus, setMenus] = useState<z.infer<typeof batchMenusSchema>>(), [menuFields, setMenuFields] = useState<z.infer<typeof batchMenuFieldsSchema>>();
+    const [menuId, setMenu] = useState(''), [datasources, setDatasources] = useState<z.infer<typeof batchDatasourcesSchema>>();
+    const [datasourceId, setDatasource] = useState(''), [endpointKind, setEndpoint] = useState('supabase'), [table, setTable] = useState('');
+    const [keyColumn, setKeyColumn] = useState('id'), [keyValue, setKeyValue] = useState(''), [column, setColumn] = useState(''), [recordField, setRecordField] = useState<Item>();
     const [targets, setTargets] = useState<string[]>([]), [target, setTarget] = useState(''), [pageId, setPage] = useState('');
     const [review, setReview] = useState<Review>(), [status, setStatus] = useState<Status>();
     const [approved, setApproved] = useState(false), [acknowledged, setAcknowledged] = useState(false);
@@ -48,10 +52,21 @@ export function TranslationBatchForm() {
             if (current !== epoch.current) return;
             setCap(nextCap); setPages(nextPages); setHistory(nextHistory); setTargets(ai.configuration?.targetLocales ?? []);
             setTarget(ai.configuration?.targetLocales[0] ?? ''); setPage(''); setFields(undefined); setSelected([]);
+            setSourceKind('page'); setMenu(''); setMenus(undefined); setMenuFields(undefined); setDatasources(undefined); setRecordField(undefined); setDatasource('');
             setReview(undefined); setStatus(undefined); setApproved(false); setAcknowledged(false); setBlocked(false);
         }, 'Could not load batch controls. Check saved AI/storage settings and reload.');
     }
     useEffect(() => { void load(); return () => { epoch.current++; lock.current = false; }; }, []);
+    async function chooseKind(value: string) {
+        setSourceKind(value); setFields(undefined); setMenuFields(undefined); setRecordField(undefined); setPage(''); setMenu('');
+        if (value === 'page') return;
+        await work(async () => { const current = epoch.current;
+            if (value === 'menu') { const next = await get('menus/', batchMenusSchema); if (current === epoch.current) setMenus(next); }
+            else { const next = await get('datasources/', batchDatasourcesSchema); if (current === epoch.current) setDatasources(next); }
+        }, 'Could not load owned content sources. Reload to retry.');
+    }
+    const recordInput = batchRecordSelectionSchema.safeParse({ kind: 'record', datasourceId, endpoint: endpointKind, table, keyColumn, keyValue, field: column });
+    const visibleItems = sourceKind === 'page' ? fields?.items : sourceKind === 'menu' ? menuFields?.items : recordField ? [recordField] : undefined;
     async function choosePage(value: string) {
         setPage(value); setFields(undefined);
         if (!value) return;
@@ -104,20 +119,38 @@ export function TranslationBatchForm() {
         }, 'Status is unavailable. Existing jobs and usage are retained; reload or restore the original connection.');
     }
     const unknown = status?.lifecycle?.totals.retainedUnknownRequests ?? 0;
-    return <Card><CardHeader><CardTitle>Translate page text</CardTitle><CardDescription>Select up to four text fields, review, then explicitly approve generation. Results are drafts.</CardDescription></CardHeader>
+    return <Card><CardHeader><CardTitle>Translate selected text</CardTitle><CardDescription>Select up to four page, menu or live record fields, review, then explicitly approve generation. Results are drafts.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
             {cap && !cap.executionAvailable && <p role="note" className="text-sm text-muted-foreground">Generation is disabled on this host. You can prepare a review and recover or cancel saved batches.</p>}
             <Button type="button" variant="outline" disabled={busy} onClick={() => void load()}>Reload batch controls</Button>
             {!batch && <fieldset disabled={busy || blocked} className="space-y-4">
-                <div><Label htmlFor="translation-batch-page">Page</Label><select id="translation-batch-page" className={inputClass} value={pageId} onChange={e => void choosePage(e.target.value)}>
+                <div><Label htmlFor="translation-batch-source-kind">Content source</Label><select id="translation-batch-source-kind" className={inputClass} value={sourceKind} onChange={e => void chooseKind(e.target.value)}>
+                    <option value="page">Page</option><option value="menu" disabled={!cap?.sourceKinds.includes('menu-plain-text')}>Menu</option><option value="record" disabled={!cap?.sourceKinds.includes('record-plain-text')}>Live record field</option>
+                </select></div>
+                {sourceKind === 'page' && <div><Label htmlFor="translation-batch-page">Page</Label><select id="translation-batch-page" className={inputClass} value={pageId} onChange={e => void choosePage(e.target.value)}>
                     <option value="">Select a page</option>{pages?.pages.map(page => <option key={page.id} value={page.id}>{page.name}</option>)}
-                </select>{pages?.next && <Button type="button" variant="outline" onClick={() => void work(async () => { const next = await get('sources/?after=' + encodeURIComponent(pages.next!), batchPagesSchema); setPages(next); setPage(''); setFields(undefined); }, 'Could not load the next pages. Reload to retry.')}>Next pages</Button>}</div>
-                {fields && <div className="space-y-2"><p className="text-sm">Default plain text only. Dynamic, bound and rich-text fields are excluded.</p>
-                    {fields.items.length === 0 && <p>No eligible text on this page.</p>}{fields.items.map(item => {
+                </select>{pages?.next && <Button type="button" variant="outline" onClick={() => void work(async () => { const next = await get('sources/?after=' + encodeURIComponent(pages.next!), batchPagesSchema); setPages(next); setPage(''); setFields(undefined); }, 'Could not load the next pages. Reload to retry.')}>Next pages</Button>}</div>}
+                {sourceKind === 'menu' && <div><Label htmlFor="translation-batch-menu">Menu</Label><select id="translation-batch-menu" className={inputClass} value={menuId} onChange={e => {
+                    const value = e.target.value; setMenu(value); setMenuFields(undefined); if (value) void work(async () => { const current = epoch.current, next = await get('menus/' + encodeURIComponent(value) + '/', batchMenuFieldsSchema); if (current === epoch.current) setMenuFields(next); }, 'Could not load menu text. Reload to retry.');
+                }}><option value="">Select a menu</option>{menus?.menus.map(menu => <option key={menu.id} value={menu.id}>{menu.name} · {menu.slot}</option>)}</select></div>}
+                {sourceKind === 'record' && <div className="space-y-3">
+                    <p className="text-sm">Select one text field by a key that identifies exactly one row. Only that field and key are read. This selects a table directly; saved-view filters are not applied. Initial support is Supabase/PostgREST over HTTPS.</p>
+                    <div><Label htmlFor="translation-record-datasource">Content datasource</Label><select id="translation-record-datasource" className={inputClass} value={datasourceId} onChange={e => { setDatasource(e.target.value); setRecordField(undefined); }}><option value="">Select an owned connection</option>{datasources?.datasources.map(ds => <option key={ds.id} value={ds.id}>{ds.name}</option>)}</select>
+                        {datasources?.next && <Button type="button" variant="outline" onClick={() => void work(async () => setDatasources(await get('datasources/?after=' + encodeURIComponent(datasources.next!), batchDatasourcesSchema)), 'Could not load more connections. Reload to retry.')}>More connections</Button>}</div>
+                    <div><Label htmlFor="translation-record-endpoint">Connection endpoint</Label><select id="translation-record-endpoint" className={inputClass} value={endpointKind} onChange={e => { setEndpoint(e.target.value); setRecordField(undefined); }}><option value="supabase">Supabase</option><option value="postgrest">Native PostgREST</option></select></div>
+                    <div><Label htmlFor="translation-record-table">Table</Label><input id="translation-record-table" className={inputClass} maxLength={63} value={table} onChange={e => { setTable(e.target.value); setRecordField(undefined); }} /></div>
+                    <div><Label htmlFor="translation-record-key-column">Record key column</Label><input id="translation-record-key-column" className={inputClass} maxLength={63} value={keyColumn} onChange={e => { setKeyColumn(e.target.value); setRecordField(undefined); }} /></div>
+                    <div><Label htmlFor="translation-record-key-value">Record key value</Label><input id="translation-record-key-value" className={inputClass} maxLength={500} value={keyValue} onChange={e => { setKeyValue(e.target.value); setRecordField(undefined); }} /></div>
+                    <div><Label htmlFor="translation-record-column">Text column</Label><input id="translation-record-column" className={inputClass} maxLength={63} value={column} onChange={e => { setColumn(e.target.value); setRecordField(undefined); }} /></div>
+                    <Button type="button" variant="outline" disabled={!recordInput.success} onClick={() => void work(async () => { if (!recordInput.success) return; const current = epoch.current, next = await get('record-field/', batchPreviewItemSchema, recordInput.data); if (current === epoch.current) setRecordField(next); }, 'Could not read this field. Check the unique key and owned HTTP connection, then reload.')}>Load selected field</Button>
+                </div>}
+                {visibleItems && <div className="space-y-2"><p className="text-sm">Plain text only. Dynamic references and rich text are excluded.</p>
+                    {visibleItems.length === 0 && <p>No eligible text for this selection.</p>}{visibleItems.map(item => {
                         const checked = selected.some(s => identity(s) === identity(item));
                         return <label key={identity(item)} className="flex items-start gap-2 rounded-md border p-3 text-sm"><input type="checkbox" checked={checked} disabled={!checked && selected.length >= 4}
                             onChange={e => setSelected(previous => e.target.checked ? [...previous, item] : previous.filter(s => identity(s) !== identity(item)))} /><span className="whitespace-pre-wrap break-words">{item.text}</span></label>;
-                    })}{fields.next && <Button type="button" variant="outline" onClick={() => void work(async () => setFields(await get('sources/' + encodeURIComponent(pageId) + '/?after=' + fields.next, batchFieldsSchema)), 'Could not load more fields. Reload to retry.')}>More text fields</Button>}</div>}
+                    })}{sourceKind === 'page' && fields?.next && <Button type="button" variant="outline" onClick={() => void work(async () => setFields(await get('sources/' + encodeURIComponent(pageId) + '/?after=' + fields.next, batchFieldsSchema)), 'Could not load more fields. Reload to retry.')}>More text fields</Button>}
+                    {sourceKind === 'menu' && menuFields?.next && <Button type="button" variant="outline" onClick={() => void work(async () => setMenuFields(await get('menus/' + encodeURIComponent(menuId) + '/?after=' + menuFields.next, batchMenuFieldsSchema)), 'Could not load more menu fields. Reload to retry.')}>More menu fields</Button>}</div>}
                 <p className="text-sm">{selected.length} of 4 fields selected</p>
                 <div><Label htmlFor="translation-batch-language">Translate into</Label><select id="translation-batch-language" className={inputClass} value={target} onChange={e => setTarget(e.target.value)}>
                     <option value="">Select a saved target language</option>{targets.map(locale => <option key={locale} value={locale}>{locale}</option>)}
