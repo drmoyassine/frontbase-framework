@@ -1,5 +1,10 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-18 native translation review — bounded staging delivery
+
+[Receipt](../plans/frontbase-translation-review-staging-20261018.md): immutablef495591 archive deployed to existing USA staging; server frozen install/workspace build/docker/client gates pass, healthy replacement, configuration/volume preserved. Public200 hashes match, anonymous translation401 remains, fresh authenticated UI shows new source kinds/three owned saved views and server executionAvailable:false. Generation21/pending drafts and absent AI/storage selection preserved. New HTTP membership/protocol and real-provider acceptance await selected configuration/explicit allowance; no paid call, owner SQL, content publication or production action. Full multilingual visual publication and public-release gates remain open.
+
+
 ## 2026-10-18 translation saved-view inputs — bounded verification
 
 [Receipt](../plans/frontbase-translation-saved-view-inputs-20261018.md): owned paginated view selection and existing Data Inspector link, shared saved-filter AST → bounded HTTP predicates, visible key/text projection, candidate uniqueness, membership/definition/destination fences and shared underlying resource identity. Typed determinate invalidation preserves known settlement; transport failures remain uncertain. Workspace build/check,29 UI cases,104 faults, functional/security/tenant/legacy conformance and HTTP-only graph pass. Execution stays disabled; no owner SQL, paid call or deployment. Next: staging review and actual read-only membership/protocol acceptance before approved real-provider execution; native visual locale publication follows. Full T3/T4/M3 and broader source-adapter/release gates remain open.
