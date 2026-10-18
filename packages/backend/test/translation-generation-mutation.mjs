@@ -6,7 +6,14 @@ import { repoRoot } from '../../../scripts/mutation-lib.mjs';
 import ts from 'typescript';
 const faults=[
  ['AI admin role gate','packages/backend/src/compat/routes/translation-generation.ts',"if (!role || !['owner', 'admin', 'tenant_admin', 'master_admin', 'master_admin_root'].includes(role))",'if (!role)'],
- ['AI account capability','packages/backend/src/compat/translation-generation.ts',"account.provider !== 'openai'","false"],
+ ['AI account capability','packages/backend/src/compat/translation-generation.ts',"!isTranslationAIProvider(account.provider)","false"],
+ ['OpenRouter fixed origin','packages/backend/src/compat/translation-generation.ts',"'https://openrouter.ai/api/v1'","'https://api.openai.com/v1'"],
+ ['OpenRouter token cap wire field','packages/edge-infra/src/ai-http.ts','max_tokens: input.maxOutputTokens','max_tokens: 1'],
+ ['OpenRouter free pricing','packages/edge-infra/src/ai-http.ts','prompt: 0, completion: 0, request: 0','prompt: 1, completion: 1, request: 1'],
+ ['OpenRouter data policy','packages/edge-infra/src/ai-http.ts',"data_collection: 'deny'","data_collection: 'allow'"],
+ ['OpenRouter fallback policy','packages/edge-infra/src/ai-http.ts','allow_fallbacks: false','allow_fallbacks: true'],
+ ['OpenRouter required parameters','packages/edge-infra/src/ai-http.ts','require_parameters: true','require_parameters: false'],
+ ['OpenRouter free variant detection','packages/edge-infra/src/ai-http.ts',"input.model.endsWith(':free')",'false'],
  ['AI account ownership','packages/backend/src/compat/translation-generation.ts','const store = host.accountsFor(tenant)',"const store = host.accountsFor('alpha')"],
  ['AI atomic settings CAS','packages/backend/src/compat/translation-generation.ts','AND key = ? AND value = ?','AND key = ? AND ? IS NOT NULL'],
  ['AI target-language authorization','packages/backend/src/compat/translation-generation.ts','!config.targetLocales.includes(targetLocale)','false'],
@@ -43,4 +50,4 @@ try{
     for(const [file,original] of originals){writeFileSync(repoRoot+file,original);writeFileSync(artifact(file),originalArtifacts.get(file));}
     green('final baseline');for(const [file,original] of originals){assert.equal(hash(readFileSync(repoRoot+file)),hash(original));assert.equal(hash(readFileSync(artifact(file))),hash(originalArtifacts.get(file)));}
 }
-console.log('translation AI mutation8/8; all source/artifact hashes restored');
+console.log('translation AI mutation15/15; all source/artifact hashes restored');

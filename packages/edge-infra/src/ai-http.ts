@@ -17,7 +17,7 @@ export class AIInvocationError extends Error {
 }
 const bounded = (n: unknown, max: number): n is number => Number.isSafeInteger(n) && Number(n) >= 0 && Number(n) <= max;
 /** Host MUST supply its guarded fetch. This low-level adapter does not resolve accounts. */
-export function httpTextInvoker(config: { baseUrl: string; apiKey: string }, fetchImpl: ServiceFetch): TextInvoker {
+export function httpTextInvoker(config: { baseUrl: string; apiKey: string; protocol?: 'openai' | 'openrouter' }, fetchImpl: ServiceFetch): TextInvoker {
     let endpoint: string;
     try {
         const url = new URL(config.baseUrl);
@@ -28,7 +28,12 @@ export function httpTextInvoker(config: { baseUrl: string; apiKey: string }, fet
         if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(input.model) || !bounded(input.maxOutputTokens, 16384) || input.maxOutputTokens < 1
             || !Array.isArray(input.messages) || input.messages.length < 1 || input.messages.length > 8
             || input.messages.some(m => !['system', 'user'].includes(m.role) || typeof m.content !== 'string')) throw new AIInvocationError('input');
-        const body = JSON.stringify({ model: input.model, messages: input.messages, max_completion_tokens: input.maxOutputTokens, stream: false, store: false });
+        const openrouter = config.protocol === 'openrouter';
+        const free = input.model.endsWith(':free') || input.model === 'openrouter/free';
+        const body = JSON.stringify({ model: input.model, messages: input.messages,
+            ...(openrouter ? { max_tokens: input.maxOutputTokens, provider: { allow_fallbacks: false, require_parameters: true,
+                data_collection: 'deny', ...(free ? { max_price: { prompt: 0, completion: 0, request: 0 } } : {}) } }
+                : { max_completion_tokens: input.maxOutputTokens, store: false }), stream: false });
         if (new TextEncoder().encode(body).byteLength > 131072) throw new AIInvocationError('input');
         const controller = new AbortController();
         const abort = () => controller.abort();

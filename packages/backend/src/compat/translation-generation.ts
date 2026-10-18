@@ -32,16 +32,17 @@ export interface GenerationHost {
     accountsFor(tenant: string): Pick<Phase2Store, 'getEdgeResource' | 'getEdgeResourceConfig'>;
     externalFetch: CompatFetch;
 }
+export const isTranslationAIProvider = (provider: unknown): provider is 'openai' | 'openrouter' => provider === 'openai' || provider === 'openrouter';
 /** Owned metadata is checked before decrypting; deleted/foreign/wrong-kind resources fail closed. No network call. */
 export async function resolveGenerationInvoker(host: GenerationHost, tenant: string, accountId: string) {
     const store = host.accountsFor(tenant), account = await store.getEdgeResource(accountId);
-    if (!account || account.kind !== 'provider' || account.provider !== 'openai' || account.status !== 'active') throw Error('translation_ai_unavailable');
+    if (!account || account.kind !== 'provider' || !isTranslationAIProvider(account.provider) || account.status !== 'active') throw Error('translation_ai_unavailable');
     const config = await store.getEdgeResourceConfig(accountId);
     const apiKey = [config?.api_key, config?.token, config?.apiKey].find(v => typeof v === 'string' && v.length) as string | undefined;
     if (!apiKey) throw Error('translation_ai_unavailable');
-    // First supported provider uses its canonical origin: custom credentials cannot redirect the key.
-    const url = checkedExternalUrl('https://api.openai.com/v1');
-    return httpTextInvoker({ baseUrl: url.href, apiKey }, (input, init) => guardedExternalFetch(host.externalFetch, input, init));
+    // Fixed provider origins: custom credential fields cannot redirect the key.
+    const url = checkedExternalUrl(account.provider === 'openrouter' ? 'https://openrouter.ai/api/v1' : 'https://api.openai.com/v1');
+    return httpTextInvoker({ baseUrl: url.href, apiKey, protocol: account.provider }, (input, init) => guardedExternalFetch(host.externalFetch, input, init));
 }
 /** One prompt construction path for invocation and the host's exact UTF-8 transmission bound. */
 export function translationMessages(source: Pick<SourceRecord, 'unit' | 'context'>, targetLocale: string) {

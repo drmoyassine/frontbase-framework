@@ -37,7 +37,7 @@
     "test:translation-storage-mutation": "node test/translation-storage-mutation.mjs",
     "test:menus": "node test/menus.mjs && node test/menu-audience.mjs && node test/menu-audience-host.mjs && node test/menus-snapshot.mjs && node test/menus-publication.mjs && node test/app-user-session.mjs && node test/menus-capture.mjs && node test/menus-preview-links.mjs",
     "test:menus-mutation": "node test/menus-mutation.mjs && node test/app-user-session-mutation.mjs && node test/menus-workflow-mutation.mjs",
-    "test:translation-generation": "node test/translation-generation.mjs",
+    "test:translation-generation": "node test/translation-generation.mjs && node test/providers-openrouter.mjs",
     "test:translation-generation-mutation": "node test/translation-generation-mutation.mjs",
     "test:translation-allowance": "node test/translation-allowance.mjs",
     "test:translation-allowance-mutation": "node test/translation-allowance-mutation.mjs",

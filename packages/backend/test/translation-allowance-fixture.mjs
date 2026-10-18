@@ -15,18 +15,18 @@ import {prepareTranslationAllowance,configuredTranslationAllowanceRunner,transla
 
 globalThis.fetch=()=>{throw Error('raw_network_forbidden')};
 export const now='2026-10-17T00:00:00Z';
-export async function allowanceFixture({bytes=65536,maxRequests=1}={}) {
+export async function allowanceFixture({bytes=65536,maxRequests=1,provider='openai',model='fixture-model'}={}) {
     const client=createClient({url:':memory:'}),db=libsqlRunner(client);await migrateUp(db);
     const cipher=await createSecretCipher('allowance-private-fixture'),accountsFor=tenant=>new Phase2Store(db,tenant,cipher);
     const accounts=accountsFor('alpha');
-    const account=async key=>accounts.upsertEdgeResource({id:'ai',name:'AI',kind:'provider',provider:'openai',status:'active',config:await cipher.encrypt(JSON.stringify({api_key:key}))},now);
+    const account=async key=>accounts.upsertEdgeResource({id:'ai',name:'AI',kind:'provider',provider,status:'active',config:await cipher.encrypt(JSON.stringify({api_key:key}))},now);
     await account('PRIVATE_AI');
     const sync=new SyncStore(db,'alpha',cipher),syncFor=tenant=>new SyncStore(db,tenant,cipher);
     const datasource=async(url='https://data.example.test',key='PRIVATE_DB')=>sync.updateDatasource('data',{config:{url,serviceKey:key}},now);
     await sync.createDatasource({name:'Data',kind:'supabase',config:{url:'https://data.example.test',serviceKey:'PRIVATE_DB'}},'data',now);
     const storage=new TranslationStorageStore(db,'alpha'),selection={version:1,datasourceId:'data',endpoint:'postgrest',namespace:'translations'};
     const saved=await storage.save(selection,0,now),scope={tenantId:'alpha',projectId:saved.projectId};
-    const configuration={version:1,accountId:'ai',model:'fixture-model',sourceLocale:'en',targetLocales:['ar'],promptVersion:'plain-v1',maxOutputTokens:100};
+    const configuration={version:1,accountId:'ai',model,sourceLocale:'en',targetLocales:['ar'],promptVersion:'plain-v1',maxOutputTokens:100};
     const generation=new TranslationGenerationStore(db,'alpha');await generation.save(configuration,0,now);
     const f=await fixture({Persistence:SqliteTranslationAccountingPersistence}),transport=accountingTransports(f.store),engine=new TranslationLifecycle(f.store);
     const source=await engine.syncSource(scope,{...f.unit,scope},null,f.context);
@@ -36,8 +36,8 @@ export async function allowanceFixture({bytes=65536,maxRequests=1}={}) {
     const calls=[];let aiCalls=0,hook=async()=>{},dispatchHook=async()=>{},usage=true,throwAI=false,missingCapability=false;
     const host={syncFor,accountsFor,accountConfigFor:async()=>null,externalFetch:async(input,init)=>{
         const req=input instanceof Request?input:new Request(input,init),body=await req.json();calls.push({url:req.url,body,authorization:req.headers.get('authorization'),apikey:req.headers.get('apikey')});
-        if(new URL(req.url).host==='api.openai.com'){
-            aiCalls++;assert.equal(body.max_completion_tokens,100);await hook();if(throwAI)throw Error('PRIVATE_PROVIDER_BODY');
+        if(new URL(req.url).host===(provider==='openrouter'?'openrouter.ai':'api.openai.com')){
+            aiCalls++;assert.equal(provider==='openrouter'?body.max_tokens:body.max_completion_tokens,100);await hook();if(throwAI)throw Error('PRIVATE_PROVIDER_BODY');
             return Response.json({choices:[{finish_reason:'stop',message:{content:'قدّم'}}],...(usage?{usage:{prompt_tokens:20,completion_tokens:5}}:{})});
         }
         const accounting=req.url.endsWith('/translation_accounting_request');

@@ -3,6 +3,18 @@ import {allowanceFixture as setup, now} from './translation-allowance-fixture.mj
 import {configuredTranslationAllowanceRunner,translationAllowanceReviewSchema} from '../dist/compat/translation-allowance.js';
 const denied=promise=>assert.rejects(promise,e=>e.message==='translation_allowance_unavailable');
 const key=(f,id)=>({scope:f.scope,jobId:id,leaseVersion:1});
+for(const unknown of [false,true]){
+    const f=await setup({provider:'openrouter',model:'vendor/text:free'});
+    try{
+        await f.prepare();assert.equal(f.aiCalls(),0);await f.enqueue('one');await f.enqueue('two');
+        if(unknown)f.withoutUsage();const session=await f.configured();const job=await session.runOnce('one');
+        const attempt=await f.f.store.readAttempt(key(f,'one'));assert.equal(f.aiCalls(),1);
+        assert.equal(f.calls.find(c=>c.url.includes('openrouter.ai')).body.model,'vendor/text:free');
+        if(unknown){assert.equal(attempt.state,'uncertain');await session.runOnce('one');assert.equal(f.aiCalls(),1);}
+        else{assert.equal(job.status,'completed');assert.equal(attempt.chargedUnits,1);}
+        await session.runOnce('two');assert.equal(f.aiCalls(),1,'OpenRouter shares the exact existing request allowance');
+    }finally{f.close();}
+}
 {
     const f=await setup();const plan=await f.prepare();assert.equal(f.aiCalls(),0);assert.deepEqual(await f.prepare(),plan);
     const saved=await f.db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',['alpha','translation_allowance:v1']);assert.ok(!String(saved[0].value).includes('PRIVATE_'));

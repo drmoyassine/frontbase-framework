@@ -48,6 +48,7 @@ const LUCIDE_FALLBACKS: Record<string, React.FC<any>> = {
     google_sheets: Table,
     turso: Cloud,
     openai: Bot,
+    openrouter: Bot,
     anthropic: Cpu,
     ollama: Server,
     resend: Mail,
@@ -355,6 +356,15 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
             { key: 'api_key', label: 'API Key', placeholder: 'sk-...', type: 'password', required: true },
         ],
         helpText: <>Get your API key from the <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">OpenAI dashboard</a>.</>,
+    },
+    openrouter: {
+        label: 'OpenRouter',
+        defaultName: 'OpenRouter Account',
+        capabilities: ['gpu'],
+        fields: [
+            { key: 'api_key', label: 'API Key', placeholder: 'sk-or-...', type: 'password', required: true },
+        ],
+        helpText: <>Get your API key from <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">OpenRouter</a>. Translation supports explicit model IDs, including available :free variants.</>,
     },
     anthropic: {
         label: 'Anthropic',

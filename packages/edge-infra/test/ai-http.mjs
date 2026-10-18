@@ -26,4 +26,13 @@ reply=undefined;let ctxSeen;const resolve=async ctx=>{ctxSeen=ctx;return invoke;
 const node={id:'n',type:'ai.chat',inputs:[{name:'model',value:'chosen-model'},{name:'prompt',value:'Hello'},{name:'maxOutputTokens',value:100}]},ctx={tenantSlug:'alpha'};
 assert.equal((await configuredAIChatExecutor(resolve).execute(node,{},ctx)).text,'مرحبا');assert.equal(ctxSeen,ctx);
 assert.equal(fullExecutorRegistry().resolve('ai.chat'),aiChatExecutor);assert.equal((await fullExecutorRegistry(resolve).resolve('ai.chat').execute(node,{},ctx)).text,'مرحبا');
-console.log('ai-http PASS: bounded single-call transport, cancellation, redacted failures, incomplete/refusal/usage rejection, shared workflow invocation and legacy registry compatibility');
+const router=httpTextInvoker({baseUrl:'https://openrouter.ai/api/v1',apiKey:'PRIVATE_ROUTER',protocol:'openrouter'},transport);
+for(const model of ['vendor/text:free','openrouter/free','vendor/paid']){
+ assert.equal((await router({...input,model})).text,'مرحبا');const body=calls.at(-1).body;
+ assert.equal(body.max_tokens,100);assert.ok(!('max_completion_tokens' in body));assert.ok(!('store' in body));assert.equal(body.stream,false);
+ assert.equal(body.provider.allow_fallbacks,false);assert.equal(body.provider.require_parameters,true);assert.equal(body.provider.data_collection,'deny');
+ assert.deepEqual(body.provider.max_price,model==='vendor/paid'?undefined:{prompt:0,completion:0,request:0});
+}
+reply=new Response('PRIVATE_ROUTER_ERROR',{status:429});before=calls.length;await assert.rejects(router(input),/ai_response/);assert.equal(calls.length,before+1);
+reply=Response.json(success({error:{message:'PRIVATE_ROUTER_ERROR'},choices:[]}));await assert.rejects(router(input),/ai_incomplete/);
+console.log('ai-http PASS: bounded OpenAI/OpenRouter wire protocols, free pricing, routing policies, single-call cancellation/failure/usage gates and shared workflow invocation');

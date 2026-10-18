@@ -183,6 +183,10 @@ export function initBearerStrategies(externalFetch: CompatFetch): void {
             endpoint: 'https://api.openai.com/v1/models',
             tokenKeys: ['api_key', 'token', 'apiKey'],
         }],
+        ['openrouter', {
+            endpoint: 'https://openrouter.ai/api/v1/key',
+            tokenKeys: ['api_key', 'token', 'apiKey'],
+        }],
         ['anthropic', {
             endpoint: 'https://api.anthropic.com/v1/models',
             tokenKeys: ['api_key', 'token', 'apiKey'],

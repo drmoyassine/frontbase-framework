@@ -2,7 +2,7 @@ import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { translationGenerationSaveSchema } from '@frontbase/edge-core/localization';
-import { TranslationGenerationStore, resolveGenerationInvoker, type GenerationHost } from '../translation-generation.js';
+import { TranslationGenerationStore, resolveGenerationInvoker, isTranslationAIProvider, type GenerationHost } from '../translation-generation.js';
 
 /** Configuration only. No probe/model call or generation endpoint until durable allowance accounting exists. */
 export function registerTranslationGenerationRoutes(app: Hono<{ Variables: ConsoleAuthVars }>, runner: DbRunner, host: GenerationHost, now: () => string): void {
@@ -18,7 +18,7 @@ export function registerTranslationGenerationRoutes(app: Hono<{ Variables: Conso
             const tenant = c.get('tenant');
             const rows = await runner.query("SELECT id, name, provider, status FROM edge_resources WHERE tenant_slug = ? AND kind = 'provider' ORDER BY updated_at DESC", [tenant]);
             return c.json({ ...await new TranslationGenerationStore(runner, tenant).get(), generationAvailable: false,
-                accounts: rows.map(row => ({ id: String(row.id), name: String(row.name), provider: String(row.provider), supported: row.provider === 'openai' && row.status === 'active' })) });
+                accounts: rows.map(row => ({ id: String(row.id), name: String(row.name), provider: String(row.provider), supported: isTranslationAIProvider(row.provider) && row.status === 'active' })) });
         } catch { return c.json({ detail: 'Translation AI could not be loaded' }, 503); }
     });
     app.put(endpoint, async c => {
