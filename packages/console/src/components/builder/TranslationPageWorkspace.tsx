@@ -29,6 +29,14 @@ export function localePreviewHtml(html: string, locale: string): string {
     doc.documentElement.dir = /^(ar|fa|he|ur|ps|sd|ug|yi)(-|$)/i.test(locale) ? 'rtl' : 'ltr';
     return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
 }
+export function attachTranslationPreviewSelection(doc: Document, onSelectField?: (id: string) => void) {
+    doc.addEventListener('click', event => {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const node = (event.target as Element | null)?.closest('[id]');
+        if (node?.id) onSelectField?.(node.id);
+    }, true);
+    doc.addEventListener('submit', event => { event.preventDefault(); event.stopImmediatePropagation(); }, true);
+}
 function TranslationCanvas({ page, locale, onSelectField }: { page: Page; locale: string; onSelectField?(id: string): void }) {
     const systemEdgeUrl = useSystemEdgeUrl();
     const { html, status, error } = useIframeCanvas(page, systemEdgeUrl, true);
@@ -40,9 +48,7 @@ function TranslationCanvas({ page, locale, onSelectField }: { page: Page; locale
             onLoad={event => { const frame = event.currentTarget; const doc = frame.contentDocument;
                 if (doc) { frame.style.height = Math.max(800, doc.documentElement.scrollHeight) + 'px';
                     // Preview interactions cannot navigate, submit a form or edit the source page.
-                    doc.addEventListener('click', e => { e.preventDefault(); const target = e.target as Element | null;
-                        const node = target?.closest('[id]'); if (node?.id) onSelectField?.(node.id); }, true);
-                    doc.addEventListener('submit', e => e.preventDefault(), true); }
+                    attachTranslationPreviewSelection(doc, onSelectField); }
             }} />
     </div>;
 }

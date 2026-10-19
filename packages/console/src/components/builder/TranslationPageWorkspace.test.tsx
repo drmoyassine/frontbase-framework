@@ -1,7 +1,7 @@
 import React from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { TranslationPageWorkspace, translatedPreviewPage, localePreviewHtml } from './TranslationPageWorkspace';
+import { TranslationPageWorkspace, translatedPreviewPage, localePreviewHtml, attachTranslationPreviewSelection } from './TranslationPageWorkspace';
 vi.mock('./canvas/useIframeCanvas',()=>({useIframeCanvas:()=>({html:'<!DOCTYPE html><html lang="en"><body><h1>Preview</h1></body></html>',status:'ready',error:null})}));
 vi.mock('./canvas/useSystemEdgeUrl',()=>({useSystemEdgeUrl:()=>undefined}));
 vi.mock('../dashboard/settings/shared/TranslationPicker',()=>({TranslationPicker:({label,selected,onChange,choices,disabled}:any)=><select aria-label={label} value={selected[0]??''} onChange={e=>onChange([e.target.value])} disabled={disabled}>{choices.map((c:any)=><option key={c.value} value={c.value}>{c.label}</option>)}</select>}));
@@ -26,4 +26,11 @@ it('saves only a manual translation token and refreshes the returned preview',as
 it('removes stale preview after a save conflict and preserves source content',async()=>{
  vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>options?.method==='POST'?new Response('PRIVATE_REMOTE',{status:409}):Response.json(url.includes('translation-generation')?{configuration:config}:preview)));
  render(<TranslationPageWorkspace page={page} onClose={()=>{}}/>);await screen.findByDisplayValue('العربية');fireEvent.change(screen.getByLabelText('Translation'),{target:{value:'New'}});fireEvent.click(screen.getByRole('button',{name:'Save translation draft'}));await screen.findByRole('alert');expect(screen.queryByLabelText('Translation field editor')).toBeNull();expect(screen.queryByText('PRIVATE_REMOTE')).toBeNull();expect(page.layoutData.content[0].props.content).toBe('English');
+});
+
+it('selects preview text while preventing source click workflows and form handlers',()=>{
+ const doc=document.implementation.createHTMLDocument();doc.body.innerHTML='<div id="field"><button>Click</button></div><form><button>Submit</button></form>';
+ const action=vi.fn(),selection=vi.fn();doc.querySelector('button')!.addEventListener('click',action);doc.querySelector('form')!.addEventListener('submit',action);
+ attachTranslationPreviewSelection(doc,selection);doc.querySelector('button')!.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));doc.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+ expect(selection).toHaveBeenCalledWith('field');expect(action).not.toHaveBeenCalled();
 });
