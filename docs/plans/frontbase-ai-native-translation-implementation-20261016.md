@@ -2,6 +2,8 @@
 
 ## Current execution order — 2026-10-20
 
+**Owner-requested parallel execution scope:** the [autonomous Study in USA handoff](frontbase-study-in-usa-translation-autonomous-handoff-20261020.md) expands the remaining work into tasks 1–14 with explicit exits, isolation, deployment coordination and evidence requirements. Study in USA is the only real site/migration target for this stream; older multi-site rollout wording is product capability intent, not permission to target other WordPress sites. Synthetic isolation fixtures remain required. The handoff is prepared, not yet executed.
+
 This is the active work order; the milestone definitions below describe target capabilities, not blanket completion. [Homepage and navigation receipt](frontbase-homepage-arabic-publication-20261019.md) is the delivery evidence. Public-release readiness and paused CF-22 remain separate.
 
 ### Delivered and verified on staging

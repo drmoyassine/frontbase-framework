@@ -1,5 +1,9 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-20 Study in USA autonomous translation handoff — prepared
+
+Owner requests a complete, independently executable handoff for a separate parallel agent to deliver translation tasks 1–14 exclusively against Study in USA. This preparation owns the handoff document and links in this audit/active plan. No implementation agent is launched by preparing the stream, and no other WordPress site, shared deployment or parked feature is included. Preserve shared index changes; require an isolated worktree and explicit deployment coordination. The [handoff](../plans/frontbase-study-in-usa-translation-autonomous-handoff-20261020.md) records all 14 tasks and exit gates, exact baseline/resources, existing patterns, independent-worktree setup, shared staging lock, coverage/provenance/accounting requirements and a standalone launch prompt. Active plan links this scoped stream. Documentation links/whitespace and preserved index state are verified; no code/provider/deployment/cutover/distribution operation or agent launch occurred. Execution remains pending a separate session; the stream is not claimed delivered.
+
 ## 2026-10-20 shared administrator session recovery — staging verified
 
 Owner authorizes proceeding with the next planned defect. Correct self-host cookie validation against the existing authenticated `/api/auth/me` contract; persisted UI flags are not proof. Share bounded same-origin 401 revalidation across both API clients/native fetch, distinguish 403/network/upstream credential failures and preserve mounted unsaved work during reauthentication. Resume only the same identity/tenant/role; no automatic replay of writes or credential changes. Reuse existing auth clients/store, route guard and dialog. Verify isolated auth, concurrency, safe-return and draft retention plus staging behavior; preserve unrelated index/code and release boundaries.
