@@ -40,8 +40,8 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
     if(!config||!config.targetLocales.includes(target))throw Error('configured_locale_required');
     const storage=await configuredTranslationStorage(host,db,tenant),identity=await configuredTranslationStorageIdentity(host,db,tenant);
     if(identity.configurationRevision!==storage.configurationRevision||JSON.stringify(identity.destination)!==JSON.stringify(storage.destination))throw Error();
-    await storage.persistence.initialize();
-    const capture=await captureHomepage(db,tenant,request,liveQuery),page=await host.pagesFor(tenant).get(capture.pageId);
+    await storage.persistence.initialize().catch(()=>{throw Error('translation_storage_unavailable');});
+    const capture=await captureHomepage(db,tenant,request,liveQuery).catch(()=>{throw Error('homepage_source_unavailable');}),page=await host.pagesFor(tenant).get(capture.pageId);
     const configHash=await publicationHash({identity,sourceLocale:config.sourceLocale,targetLocales:config.targetLocales});
     const token=await publicationHash({site:capture.active.pointer.hash,source:capture.sourceHash,config:configHash});
     const fields=await mapLimit(capture.fields,async field=>{
@@ -61,17 +61,17 @@ async function readField(s:Session,f:Session['fields'][number]){
     return {snapshot,value:{id:f.id,label:f.label,source:f.text,translation:current?head!.text:null,state:head?current?'draft' as const:'outdated' as const:'missing' as const,token:await publicationHash({token:s.token,id:f.id,snapshot})}};
 }
 export async function reviewHomepage(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery){
-    const s=await session(host,db,tenant,request,target,liveQuery),fields=await mapLimit(s.fields,async f=>(await readField(s,f)).value);
+    const s=await session(host,db,tenant,request,target,liveQuery),fields=await mapLimit(s.fields,async f=>(await readField(s,f).catch(()=>{throw Error('translation_read_unavailable');})).value);
     return translationHomepageReviewSchema.parse({locale:target,sourceLocale:s.config.sourceLocale,token:s.token,siteHash:s.capture.active.pointer.hash,fields,complete:fields.every(f=>f.state==='draft'),active:await readHomepagePointer(db,tenant,target)});
 }
 export async function saveHomepageTranslations(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,input:unknown,liveQuery?:PublishedLiveQuery){
-    const body=translationHomepageSaveSchema.parse(input),s=await session(host,db,tenant,request,body.locale,liveQuery);
+    const body=translationHomepageSaveSchema.parse(input);let s:Session;try{s=await session(host,db,tenant,request,body.locale,liveQuery);}catch{throw Error('homepage_review_unavailable');}
     if(body.token!==s.token)throw Error('source_changed');
-    const pending=await mapLimit(body.entries,async e=>{const field=s.fields.find(f=>f.id===e.id);if(!field)throw Error();const prior=await readField(s,field);if(prior.value.token!==e.token)throw Error('revision_changed');return{e,field,...prior};});
+    const pending=await mapLimit(body.entries,async e=>{const field=s.fields.find(f=>f.id===e.id);if(!field)throw Error('unknown_field');const prior=await readField(s,field);if(prior.value.token!==e.token)throw Error('revision_changed');return{e,field,...prior};});
     const engine=new TranslationLifecycle(s.persistence);
     for(const item of pending){
-        const source=await engine.syncSource(s.scope,item.field.unit,item.snapshot.source?.sourceVersion??null,item.field.context);if(source.status==='conflict')throw Error();
-        const written=await engine.writeManual(s.scope,{version:1,unitId:source.unitId,locale:body.locale,sourceVersion:source.sourceVersion,sourceFingerprint:source.sourceFingerprint,contextFingerprint:source.contextFingerprint,expectedHead:item.snapshot.head?.revisionId??null,revisionId:crypto.randomUUID(),text:item.e.text});if(written.status==='rejected')throw Error();
+        const source=await engine.syncSource(s.scope,item.field.unit,item.snapshot.source?.sourceVersion??null,item.field.context).catch(()=>{throw Error('source_sync_unavailable');});if(source.status==='conflict')throw Error('source_sync_conflict');
+        const written=await engine.writeManual(s.scope,{version:1,unitId:source.unitId,locale:body.locale,sourceVersion:source.sourceVersion,sourceFingerprint:source.sourceFingerprint,contextFingerprint:source.contextFingerprint,expectedHead:item.snapshot.head?.revisionId??null,revisionId:crypto.randomUUID(),text:item.e.text}).catch(()=>{throw Error('translation_write_unavailable');});if(written.status==='rejected')throw Error('translation_write_refused');
     }
     const latest=await captureHomepage(db,tenant,request,liveQuery);if(latest.sourceHash!==s.capture.sourceHash||latest.active.pointer.hash!==s.capture.active.pointer.hash)throw Error('source_changed');
     return {saved:pending.length};

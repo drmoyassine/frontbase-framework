@@ -25,7 +25,7 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
 }
 export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
     const result:DisplayField[]=[];
-    const add=(blockId:string,path:string[],value:unknown,label:string)=>{if(typeof value==='string'&&value.length>12000)throw Error('locale_text_limit');if(typeof value==='string'&&value.trim()&&!/^(?:https?:|mailto:|tel:|\/)/.test(value))result.push({blockId,path,text:value,label});};
+    const add=(blockId:string,path:string[],value:unknown,label:string)=>{if(typeof value==='string'&&value.length>12000)throw Error('locale_text_limit');if(typeof value==='string'&&value.trim()&&!/\{\{|@\{/.test(value)&&!/^(?:https?:|mailto:|tel:|\/)/.test(value))result.push({blockId,path,text:value,label});};
     const nested=(blockId:string,value:any,path:string[],keys:Set<string>)=>{if(Array.isArray(value)){value.forEach((v,i)=>nested(blockId,v,[...path,String(i)],keys));return;}if(value&&typeof value==='object'){for(const [k,v]of Object.entries(value)){if(keys.has(k))add(blockId,[...path,k],v,k);else if(v&&typeof v==='object')nested(blockId,v,[...path,k],keys);}}};
     const walk=(nodes:PageComponent[])=>{for(const node of nodes){const p=node.props??{},base=['props'];
         if(textTypes.has(node.type)){const key=['content','text','value','label'].find(k=>typeof p[k]==='string'&&!!p[k]);if(key&&!/\{\{|@\{/.test(String(p[key])))add(node.id,[...base,key],p[key],node.type);}

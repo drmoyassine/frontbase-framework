@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
+import {homepageDisplayFields} from '@frontbase/edge-core/localization';
+assert.deepEqual(homepageDisplayFields({content:[{id:'bound',type:'Image',props:{alt:'{{ record.coverAlt | default: record.title }}',ariaLabel:'{{ record.title }}'}},{id:'static',type:'Image',props:{alt:'Campus'}}]}).map(f=>f.text),['Campus'],'binding expressions are references, never translation messages');
 import {allowanceFixture,now} from './translation-allowance-fixture.mjs';
 import {emptyDirectoryConfiguration,defaultTemplateSettings} from '@frontbase/edge-core/directory/configuration';
 import {createCompatApp} from '../dist/compat/app.js';
