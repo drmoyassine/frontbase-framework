@@ -29,6 +29,7 @@ import { SUPABASE_SETUP_SQL } from '../supabase-setup-sql.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
 import { testPostgrestConnection } from '../postgrest-connection-test.js';
 import { resolveSupabase } from '../providers/supabase.js';
+import { isNativePostgrest, nativePostgrestInspector } from '../postgrest-inspector.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -286,6 +287,7 @@ async function searchDatasource(
     externalFetch: CompatFetch,
 ): Promise<Record<string, unknown>[]> {
     if (!query || limit <= 0) return [];
+    if (isNativePostgrest(datasource)) return (await nativePostgrestInspector(datasource.config, externalFetch)).search(query, limit);
     const runner = datasourceRunner(datasource.kind, datasource.config, externalFetch);
     const dialect = dialectOf(datasource.kind);
     const matches: Record<string, unknown>[] = [];
@@ -749,6 +751,7 @@ export function registerSyncRoutes(
         const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
         try {
+            if (isNativePostgrest(ds)) return c.json((await nativePostgrestInspector(await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch)).tables);
             const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             return c.json(await listTables(runner, dialect));
@@ -771,6 +774,10 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
+            if (isNativePostgrest(ds)) {
+                const metadata = (await nativePostgrestInspector(await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch)).schema(rawTable);
+                return c.json({table_name:metadata.table,columns:metadata.columns,foreign_keys:metadata.foreignKeys});
+            }
             const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             const schema = await inspectTable(runner, dialect, rawTable);
@@ -801,6 +808,11 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
+            if (isNativePostgrest(ds)) {
+                const inspector = await nativePostgrestInspector(await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
+                const result = await inspector.rows(rawTable, {offset,limit,filters:rawFilters ? JSON.parse(rawFilters) : [],sort:rawSort,order,search,searchColumns:rawSearchColumns ? JSON.parse(rawSearchColumns) : undefined});
+                return c.json({...result,timestamp_utc:now()});
+            }
             const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             const schema = await inspectTable(runner, dialect, rawTable);
@@ -1077,6 +1089,11 @@ export function registerSyncRoutes(
             const ds=await store.getDatasource(view.datasource_id);if(!ds)return c.json({detail:'Datasource not found'},404);
             const input=await c.req.json(),page=Number(input.page??1);
             if(!Number.isSafeInteger(page)||page<1||page>10000)throw Error('invalid_page');
+            if(isNativePostgrest(ds)){
+                const inspector=await nativePostgrestInspector(await mergeAccount(c.get('tenant'),ds.kind,ds.config),externalFetch);
+                const result=await inspector.rows(view.target_table,{offset:(page-1)*25,limit:25,filters:view.filters,sort:view.default_sort?.column,order:view.default_sort?.direction});
+                return c.json({rows:result.records,total:result.total,page,pageSize:25});
+            }
             const runner=datasourceRunner(ds.kind,await mergeAccount(c.get('tenant'),ds.kind,ds.config),externalFetch);
             const result=await executeSingleTableRpc(runner,dialectOf(ds.kind),{table_name:view.target_table,columns:'*',joins:[],page,page_size:25,filters:[],sort_col:view.default_sort?.column??null,sort_dir:view.default_sort?.direction??'asc',search_query:'',search_cols:[]},view.filters);
             return c.json({...result,page,pageSize:25});
@@ -1181,6 +1198,13 @@ export function registerSyncRoutes(
         if (!view) return c.json({ detail: 'View not found' }, 404);
 
         const ds = await store.getDatasource(view.datasource_id);
+        if (ds && isNativePostgrest(ds)) {
+            try {
+                const inspector=await nativePostgrestInspector(await mergeAccount(c.get('tenant'),ds.kind,ds.config),externalFetch);
+                const result=await inspector.rows(view.target_table,{offset:(page-1)*perPage,limit:perPage,filters:view.filters,sort:view.default_sort?.column,order:view.default_sort?.direction});
+                return c.json({records:result.records,total_records:result.total,current_page:page,total_pages:Math.max(1,Math.ceil(result.total/perPage)),per_page:perPage,view_name:view.name,datasource_name:ds.name,target_table:view.target_table,visible_columns:view.visible_columns??[],timestamp_utc:now()});
+            } catch { return c.json({detail:'Native saved-view read failed. Check table, filters and schema permissions.'},502); }
+        }
         let records: Record<string, unknown>[] = [];
         let total = 0;
 
@@ -1236,6 +1260,13 @@ export function registerSyncRoutes(
         if (!view) return c.json({ detail: 'View not found' }, 404);
 
         const ds = await store.getDatasource(view.datasource_id);
+        if (ds && isNativePostgrest(ds)) {
+            try {
+                const inspector=await nativePostgrestInspector(await mergeAccount(c.get('tenant'),ds.kind,ds.config),externalFetch);
+                const result=await inspector.rows(view.target_table,{limit:1,filters:view.filters,countOnly:true});
+                return c.json({view_id:viewId,total_records:result.total,view_name:view.name,datasource_name:ds.name,target_table:view.target_table,timestamp_utc:now()});
+            } catch { return c.json({detail:'Native saved-view count failed.'},502); }
+        }
         let count = 0;
         if (ds) {
             try {
@@ -1413,6 +1444,10 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
 
         try {
+            if (isNativePostgrest(ds)) {
+                const inspector=await nativePostgrestInspector(await mergeAccount(c.get('tenant'),ds.kind,ds.config),externalFetch);
+                return c.json({tables:inspector.tables,relationships:inspector.relationships()});
+            }
             const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             const dialect = dialectOf(ds.kind);
             const tables = await listTables(runner, dialect);
