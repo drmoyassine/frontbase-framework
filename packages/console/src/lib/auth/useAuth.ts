@@ -140,6 +140,8 @@ export function useAuth(autoCheck = true): UseAuthReturn {
     }
   }, [autoCheck, checkAuth]);
 
+  useEffect(()=>{const recovered=()=>{void checkAuth();};window.addEventListener('frontbase:session-recovered',recovered);return()=>window.removeEventListener('frontbase:session-recovered',recovered);},[checkAuth]);
+
   const login = useCallback(async (credentials: LoginCredentials): Promise<AuthResult> => {
     setIsLoading(true);
     setError(null);

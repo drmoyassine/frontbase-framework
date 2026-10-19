@@ -10,7 +10,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { isCloud } from '@/lib/edition';
-import { createAuthClient } from '@/lib/auth/AuthClientFactory';
+import { createAuthClient, getAuthClient } from '@/lib/auth/AuthClientFactory';
 
 // User interface — extended for cloud tenancy
 export interface User {
@@ -231,7 +231,7 @@ export const useAuthStore = create<AuthState>()(
         _checkAuthPromise = (async () => {
           set({ isLoading: true });
           try {
-            const authClient = createAuthClient({ apiBaseUrl: API_BASE });
+            const authClient = isCloud()?createAuthClient({apiBaseUrl:API_BASE}):getAuthClient({ apiBaseUrl: API_BASE });
             const result = await authClient.getSession();
 
             if (result.isAuthenticated && result.user) {
@@ -253,10 +253,10 @@ export const useAuthStore = create<AuthState>()(
                 });
               }
             } else {
-              set({ user: null, tenant: null, token: null, isAuthenticated: false, isLoading: false });
+              set({ user: null, tenant: null, token: null, isAuthenticated: false, isLoading: false,isImpersonating:false,_realUser:null,_realTenant:null });
             }
           } catch {
-            set({ user: null, tenant: null, token: null, isAuthenticated: false, isLoading: false });
+            set({isLoading:false,error:'Could not check your session. Check your connection and try again.'});
           } finally {
             _checkAuthPromise = null;
           }

@@ -1,3 +1,4 @@
+import {isSessionRecoveryFailure} from '@/lib/sessionRecovery';
 import { StateCreator } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { Page } from '@/types/builder';
@@ -471,6 +472,7 @@ export const createPageSlice: StateCreator<BuilderState, [], [], PageSlice> = (s
                 });
             } catch (error: any) {
                 if (myGen !== _loadGen) return;
+                if(isSessionRecoveryFailure(error)){set({isInitialized:true});return;}
                 console.error('Failed to load pages:', error);
                 toast({
                     title: "Error loading pages",

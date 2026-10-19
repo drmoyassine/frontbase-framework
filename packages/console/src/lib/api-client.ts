@@ -1,3 +1,4 @@
+import {handleAdminUnauthorized,assertAdminSessionRequest} from './sessionRecovery';
 /**
  * Runtime configuration for the GENERATED API client (CF-22 P0 / W2).
  *
@@ -27,6 +28,7 @@ client.setConfig({
 });
 
 client.instance.interceptors.request.use(async (config) => {
+    assertAdminSessionRequest(config.url);
     if (isCloud()) {
         let token: string | null = null;
 
@@ -53,5 +55,7 @@ client.instance.interceptors.request.use(async (config) => {
     }
     return config;
 });
+
+client.instance.interceptors.response.use(response=>response,async error=>{if(await handleAdminUnauthorized(error.config?.url,error.response?.status))error.sessionRecoveryHandled=true;return Promise.reject(error);});
 
 export { client };

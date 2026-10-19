@@ -1,3 +1,4 @@
+import {safeAdminReturn} from '@/lib/sessionRecovery';
 /**
  * LoginPage - Admin Authentication
  *
@@ -28,7 +29,9 @@ export default function LoginPage() {
     const siteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '';
 
     // Get redirect destination (default to dashboard, not landing page)
-    const from = (location.state as { from?: Location })?.from?.pathname || '/dashboard';
+    const previous=(location.state as {from?:{pathname?:string;search?:string;hash?:string}})?.from;
+    const from=safeAdminReturn(new URLSearchParams(location.search).get('returnTo')||(previous?.pathname?previous.pathname+(previous.search??'')+(previous.hash??''):'/dashboard'));
+    const reauth=new URLSearchParams(location.search).get('reauth')==='1';
 
     // Auto-redirect if already authenticated
     useEffect(() => {
@@ -101,6 +104,7 @@ export default function LoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
+                    {reauth&&<p role="status" className="mb-4">Your session has ended. Sign in again, then return to your original tab to continue your unsaved work.</p>}
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {error && (
                             <Alert variant="destructive">

@@ -6,7 +6,8 @@ import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect,useRef,useSyncExternalStore } from "react";
+import {SessionDataGate,recoverySnapshot,subscribeRecovery} from "@/lib/sessionRecovery";
 import { useDashboardStore } from "@/stores/dashboard";
 import { useBuilderStore } from "@/stores/builder";
 import { useShallow } from 'zustand/react/shallow';
@@ -93,12 +94,16 @@ const AdminApp = () => {
   const { fetchConnections } = useDashboardStore();
   const { loadPagesFromDatabase, loadVariablesFromDatabase, loadProjectFromDatabase } = useBuilderStore(useShallow(s => ({ loadPagesFromDatabase: s.loadPagesFromDatabase, loadVariablesFromDatabase: s.loadVariablesFromDatabase, loadProjectFromDatabase: s.loadProjectFromDatabase })));
   const { isAuthenticated } = useAuth();
+  const recovery=useSyncExternalStore(subscribeRecovery,recoverySnapshot,recoverySnapshot);
+  const sessionDataGate=useRef(new SessionDataGate());
 
     // authCheck is handled automatically by useAuth(autoCheck = true) on mount
 
   // Initialize app data only when authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
+    const sessionAction=sessionDataGate.current.decide(isAuthenticated,recovery.status);
+    if(sessionAction==='hold')return;
+    if (sessionAction==='clear') {
       useDashboardStore.getState().reset();
       useBuilderStore.getState().reset();
       queryClient.clear();
@@ -124,7 +129,7 @@ const AdminApp = () => {
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [isAuthenticated, fetchConnections, loadProjectFromDatabase, loadPagesFromDatabase, loadVariablesFromDatabase]);
+  }, [isAuthenticated, recovery.status, fetchConnections, loadProjectFromDatabase, loadPagesFromDatabase, loadVariablesFromDatabase]);
 
   return (
     <ErrorBoundary>

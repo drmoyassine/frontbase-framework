@@ -11,7 +11,9 @@
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth/useAuth';
-import { useEffect } from 'react';
+import {useSyncExternalStore} from 'react';
+import {recoverySnapshot,subscribeRecovery} from '@/lib/sessionRecovery';
+import {SessionRecoveryDialog} from './SessionRecoveryDialog';
 
 interface ProtectedRouteProps {
     children?: React.ReactNode;
@@ -20,12 +22,13 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
     const { isAuthenticated, isLoading } = useAuth();
     const location = useLocation();
+    const recovering=useSyncExternalStore(subscribeRecovery,recoverySnapshot,recoverySnapshot).status!=='idle';
 
     // authCheck is handled automatically by useAuth(autoCheck = true) on mount
 
     // Show loading state while checking auth, but only if we don't know the state yet!
     // This prevents React Error #310 caused by unmounting <Outlet /> during transitions.
-    if (isLoading && !isAuthenticated) {
+    if (isLoading && !isAuthenticated && !recovering) {
         return (
             <div className="flex items-center justify-center h-screen">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -34,12 +37,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
 
     // Redirect to login if not authenticated
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !recovering) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     // Render children or outlet
-    return children ? <>{children}</> : <Outlet />;
+    return <>{children ?? <Outlet />}<SessionRecoveryDialog/></>;
 }
 
 export default ProtectedRoute;

@@ -40,12 +40,12 @@ export class CookieAuthClient implements AuthClient {
 
     // Sync with global Zustand store logouts
     useAuthStore.subscribe((state, prevState) => {
-      if (prevState.isAuthenticated && !state.isAuthenticated) {
+      if (prevState.isAuthenticated!==state.isAuthenticated||prevState.user!==state.user||prevState.tenant!==state.tenant) {
         this.notifyStateChange({
-          user: null,
-          tenant: null,
+          user: state.isAuthenticated?state.user:null,
+          tenant: state.isAuthenticated?state.tenant:null,
           token: null,
-          isAuthenticated: false
+          isAuthenticated: state.isAuthenticated
         });
       }
     });
@@ -179,13 +179,12 @@ export class CookieAuthClient implements AuthClient {
   }
 
   async getSession(): Promise<AuthSession> {
-    const state = useAuthStore.getState();
-    return {
-      user: state.user,
-      tenant: state.tenant,
-      token: null,
-      isAuthenticated: state.isAuthenticated,
-    };
+    const response=await fetch(`${this.config.apiBaseUrl}/api/auth/me`,{credentials:'include',signal:AbortSignal.timeout(10000)});
+    if(response.status===401)return {user:null,tenant:null,token:null,isAuthenticated:false};
+    if(!response.ok)throw new AuthError(AuthErrorType.NETWORK_ERROR,'Could not verify session');
+    const data=await response.json();
+    if(!data.user||typeof data.user.id!=='string')throw new AuthError(AuthErrorType.NETWORK_ERROR,'Invalid session response');
+    return {user:data.user,tenant:data.tenant??null,token:null,isAuthenticated:true};
   }
 
   async refreshToken(): Promise<AuthResult> {

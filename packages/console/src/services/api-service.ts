@@ -1,3 +1,4 @@
+import {handleAdminUnauthorized,assertAdminSessionRequest} from '@/lib/sessionRecovery';
 import axios from 'axios';
 import { PORT_CONFIG } from '../lib/portConfig';
 
@@ -29,7 +30,7 @@ const createApiInstance = () => {
     console.log('[API Service] Creating API instance with config:', config);
   }
 
-  return axios.create({
+  const instance=axios.create({
     baseURL: config.baseUrl,
     timeout: 10_000, // 10s timeout — prevents request pile-up when backend is unresponsive
     headers: {
@@ -37,6 +38,9 @@ const createApiInstance = () => {
     },
     withCredentials: true,
   });
+  instance.interceptors.request.use(config=>{assertAdminSessionRequest(config.url);return config;});
+  instance.interceptors.response.use(response=>response,async error=>{if(await handleAdminUnauthorized(error.config?.url,error.response?.status))error.sessionRecoveryHandled=true;return Promise.reject(error);});
+  return instance;
 };
 
 // Create the initial API instance
