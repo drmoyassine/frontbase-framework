@@ -41,9 +41,37 @@ Dependency notes: 1→(2,4,6,7); 2→3; 4→6; 6→7→8; 9 after 6; 12 independ
 
 ## Environment/tooling discoveries (append as found)
 
-- (pending) EasyPanel connector availability for staging deploys.
+- **EasyPanel tooling (discovered 2026-10-20):** REST API documented at `<panel>/api/openapi.json`, bearer auth `authorization: <key>`. Key endpoints: `listProjectsAndServices`, `inspectAppService`, `uploadAppCodeArchive` (POST — how receipts' "immutable Git archive" uploads work), `deployAppService` (POST → returns action id), `getAction?id=` (poll; receipts' `cmv…` ids), `restartAppService`, `listDatabaseBackups`/`createDatabaseBackup`/`restoreDatabaseBackup`, `queryServiceLogs`. Helper scripts in temp dir `frontbase-sius/` (`easypanel.mjs`, sanitized).
+- **CREDENTIAL GATE — staging deploys:** env has `EASYPANEL_API_KEY`/`EASYPANEL_API_URL` but they point at `admin.frontbase.dev` = the **owner database infra panel** (projects: `management`, `tenants`, `frontbase`; the `admin_frontbase_easypanel` connector). **No API key exists in this session for `newpanel.studygram.me` (project `studygram`, app `usa-frontbase-staging`).** → All staging deployments are EXTERNALLY GATED until the owner supplies the newpanel key. Implementation, fixtures, tests, migration inventory, packaging evidence all proceed independently. Infra panel's backup/restore endpoints are relevant to task 11 against owner DB.
 - (pending) Browser tooling availability for native UI verification/screenshots.
+- Scratch/temp cache lives OUTSIDE the repo at `C:/Users/drmoy/AppData/Local/Temp/frontbase-sius/` (worktree `.git` is a file, not a dir — cannot append local excludes; never commit raw sitemap downloads).
+- Fresh-worktree gotcha: `pnpm -r check` fails at edge-core with `Cannot find module '@frontbase/translation'` until `pnpm -r build` has run once (dist types). Build-first ordering on fresh clones.
+
+## Baseline verification (2026-10-20, this worktree at f8d7354+claim)
+
+- `pnpm -r build`: **PASS**. CF worker artifact 2468.8 KB min / **621.5 KB min+gzip PASS** (<1024 limit); vercel 619.7 KB; deno 620.6 KB; prohibited-client-symbol gate PASS; console build OK (builder-sw 436.8 KB raw).
+- `pnpm -r check`: **PASS** (after one-time build; fresh-clone ordering artifact noted above).
+- **Locale discovery (site-origin evidence, 2026-10-20):** `study-in-usa.com` homepage HTTP 200, `og:locale=en_US`, **zero hreflang alternates**, generator = WordPress + Elementor 4.3.5 + Site Kit (no GTranslate meta on homepage). robots.txt declares only `/sitemap.xml` + 3 child maps; `/ar/robots.txt` = 200. Published locale set = **en (source) + ar (/ar/)**. No other locale sitemaps/robots exist. English/Arabic complete acceptance confirmed; additional locales: none discovered (explicit "none found" state, not hidden).
+- **Sitemap inventory re-fetched 2026-10-20 (matches 2026-10-16 observation exactly):** source index 200 → sitemap-home.xml (1), sitemap-posts.xml (500), sitemap-posts.xml?page=2 (455), sitemap-custom-posts.xml?type=job_listing (310) = **1,266 entries**; ar index 200 → identical 1/500/455/310 = **1,266 entries**. Raw XML cached in temp dir. All non-home URLs historically matched after stripping `/ar/` (prefix-only mapping); positional inference still forbidden.
+
+## Task 1 design (working notes, refined after survey)
+
+**Current state (read firsthand):**
+- `@frontbase/translation` contracts already define `resourceRef` with `component` (documentId/blockId/versionId/propertyPath), `record` (connectionId/collection/typed composite key/propertyPath), `system` kinds; unit ID = SHA-256 over canonical ref + scope; source changes bump `sourceVersion`/fingerprint without changing unit ID (identity.ts, contracts.ts).
+- Backend Homepage flow (`translation-homepage.ts`): capture → fields → units(kind=component) → review(states missing/draft/outdated) → saveManual CAS → prepare release (catalog≤502, path='/') → activate via CAS pointer in `settings` table (`translation_homepage:active:v1:<locale>`). `projectHomepageLocale` overlays released text onto a fresh live capture.
+- **Defect targeted by task 1:** `homepageDisplayFields` (edge-core/src/localization/surfaces.ts) keys Repeater live rows by rendered position `['props','initialRows',String(i),key]` — reordering re-binds translations to different records. Exit gate requires record-key identity.
+- Block Versions refused today (`locale_alternate_versions_not_supported`), interactive lists refused (`localized_interactive_list_not_supported`), catalog capped at 502 fields, single page path '/'.
+- Directory template (`edge-core/src/directory/bindings.ts`): `directoryQueryBindingSchema` (queryId+params), `recordBindings` (text/href/src/alt/ariaLabel columns), server-side projection `projectDirectoryRecords` through the same renderer. This is the Explore-specific path that must NOT remain the hidden general mechanism.
+- Batch flow (`translation-batches.ts` + batches.ts contracts): 4-item admin-continuation batches, menu/record/view-record selection kinds exist; record extraction (`extractRecordInput`) already builds kind=record refs with single-column keys + saved-view membership predicate checks (`translation-inputs.ts`).
+
+**Task 1 planned shape (extends, never replaces):**
+1. New shared "translation surface" extractor for ANY published page (not just '/'): generalize `captureHomepage`→`capturePublishedPage(path)`, keeping homepage behavior as the path='/' case; extract from the SAME reviewed anonymous public source selection.
+2. Repeater live-record fields: replace positional identity with `kind:'record'` refs — resolve each `initialRows[i]` to its stable record key via the Repeater's source binding (saved view/datasource+table+keyColumn already known to the binding contracts; composite keys supported by contracts). Field path stays `[field]`; block/row binding becomes record ref + owning block id (blockId retained in display metadata only, not identity).
+3. Menus: already stable (menuId+itemId+field). Block Versions: allow explicit `versionId` identity — extract effective authored props for Default and alternatives, inherited fields follow Default ref, overridden fields own refs.
+4. Inheritance rule: a field in an alternative version with no local override references the Default version's unit (shared identity); an explicit override creates its own unit. Verify both.
+5. Fixtures: tenant isolation; reorder rows → identity follows record key, not position; pagination window change → same; override vs inherited review states differ; composite key records.
 
 ## Execution log (append per slice)
 
-- 2026-10-20: Stream claimed; worktree created from f8d7354; audit lock written; ledger created. `pnpm install` started. Next: baseline `pnpm -r check`/`build`, then codebase survey mapping tasks→surfaces.
+- 2026-10-20: Stream claimed; worktree created from f8d7354; audit lock written; ledger created. `pnpm install` OK.
+- 2026-10-20: Commit `e4d1519` (claim + ledger). Baseline build PASS (621.5 KiB gzip, symbols clean). Sitemap + locale discovery re-verified. Codebase survey workflow launched (10 areas).
