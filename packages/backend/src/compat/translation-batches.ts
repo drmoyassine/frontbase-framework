@@ -24,7 +24,7 @@ type Batch = z.infer<typeof recordSchema>;
 export type TranslationBatchHost = TranslationViewHost & GenerationHost & { pagesFor(tenant: string): Pick<PagesStore, 'get'> };
 const key = (value: string) => 'translation_batch:v1:' + uuid.parse(value);
 const digest = translationInputHash;
-const FIELDS: Record<string, readonly string[]> = { Text: ['content', 'text', 'value'], Heading: ['content', 'text'], Paragraph: ['content', 'text'] };
+export const TRANSLATION_PAGE_FIELDS: Record<string, readonly string[]> = { Text: ['content', 'text', 'value'], Heading: ['content', 'text'], Paragraph: ['content', 'text'] };
 const boundTypes = new Set(['Repeater', 'DataTable', 'DataGrid', 'Grid']);
 /** Bounded metadata only; canonical extractor below remains the only eligibility authority. */
 export async function translationBatchPages(db: DbRunner, tenant: string, after = '') {
@@ -40,7 +40,7 @@ export async function translationBatchFields(host: TranslationBatchHost, db: DbR
     const nodes = JSON.parse(page.layout_data).content as VersionedBlock[]; validateBlockVersions(nodes);
     const candidates: z.infer<typeof batchPageSelectionSchema>[] = [];
     const visit = (list: VersionedBlock[]) => { for (const node of list) {
-        const field = FIELDS[node.type]?.find(field => !!node.props?.[field]);
+        const field = TRANSLATION_PAGE_FIELDS[node.type]?.find(field => !!node.props?.[field]);
         if (field) candidates.push(batchPageSelectionSchema.parse({ pageId, blockId: node.id, field }));
         if (node.children) visit(node.children);
     } }; visit(nodes);
@@ -76,6 +76,13 @@ async function extract(host: TranslationBatchHost, db: DbRunner, tenant: string,
     loaded?: { page: CompatPageRow; nodes: VersionedBlock[]; pageHash: string }) {
     if ('kind' in selection) return selection.kind === 'menu' ? extractMenuInput(db, tenant, selection, pin)
         : selection.kind === 'view-record' ? extractViewRecordInput(host, db, tenant, selection, pin) : extractRecordInput(host, tenant, selection, pin);
+    return extractTranslationPageInput(host, tenant, selection, pin, loaded);
+}
+/** Same eligibility and identity for generation and private visual authoring. */
+export async function extractTranslationPageInput(host: Pick<TranslationBatchHost, 'pagesFor'>, tenant: string,
+    selection: z.infer<typeof batchPageSelectionSchema>,
+    pin: { storage: { scope: MessageUnit['scope'] }; generation: { sourceLocale: string } },
+    loaded?: { page: CompatPageRow; nodes: VersionedBlock[]; pageHash: string }) {
     const page = loaded?.page ?? await host.pagesFor(tenant).get(selection.pageId);
     if (!page || page.deleted_at || page.layout_data.length > 1_000_000) throw Error();
     const nodes = loaded?.nodes ?? JSON.parse(page.layout_data).content as VersionedBlock[];
@@ -90,7 +97,7 @@ async function extract(host: TranslationBatchHost, db: DbRunner, tenant: string,
     };
     visit(nodes, false);
     if (!found || blocked) throw Error();
-    const node = found as VersionedBlock, props = node.props ?? {}, fields = FIELDS[node.type];
+    const node = found as VersionedBlock, props = node.props ?? {}, fields = TRANSLATION_PAGE_FIELDS[node.type];
     if (!fields || fields.find(field => !!props[field]) !== selection.field || props.binding || props.dataBinding) throw Error();
     const text = translationPlainText(props[selection.field]);
     const unit: MessageUnit = { version: 1, scope: pin.storage.scope, resource: { kind: 'component', documentId: page.id, blockId: node.id,

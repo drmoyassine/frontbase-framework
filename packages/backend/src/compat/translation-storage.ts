@@ -39,8 +39,8 @@ export interface TranslationStorageHost {
 }
 /** Resolve only a tenant-owned existing datasource/account. Secrets never enter settings/API results. */
 export async function resolveTranslationStorage(host: TranslationStorageHost, tenant: string, selection: TranslationStorageConfiguration, projectId: string) {
-    const { scope, options } = await resolveOwnedTranslationConnection(host, tenant, selection, projectId);
-    return { scope, persistence: translationPersistenceFromSupabase(options) };
+    const { scope, options, destination } = await resolveOwnedTranslationConnection(host, tenant, selection, projectId);
+    return { scope, persistence: translationPersistenceFromSupabase(options), destination };
 }
 /** Shared owned-credential/guard resolution for both protocol capabilities. Never serialized to a visitor. */
 export async function resolveOwnedTranslationConnection(host: TranslationStorageHost, tenant: string, selection: TranslationStorageConfiguration, projectId: string) {

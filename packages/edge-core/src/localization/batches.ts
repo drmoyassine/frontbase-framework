@@ -43,3 +43,13 @@ export const batchStatusSchema = z.object({ id: uuid, reviewHash: hash, state: b
         state: z.enum(['not-prepared', 'queued', 'leased', 'completed', 'failed', 'cancelled']), error: z.string().nullable(),
         accounting: z.enum(['reserved', 'dispatched', 'settled', 'uncertain', 'released']).nullable(), outdated: z.boolean(), result: z.string().nullable() }).strict()).max(4),
     lifecycle: batchLifecycleSchema.nullable(), delivery: z.literal('administrator-continuation'), draftOnly: z.literal(true) }).strict();
+
+/** Private saved-page authoring; no job or provider authority. */
+export const translationPageFieldSchema = z.object({ selection: batchPageSelectionSchema, source: z.string().max(4000),
+    translation: z.string().max(4000).nullable(), state: z.enum(['missing','draft','outdated']),
+    provenance: z.enum(['ai','manual','import']).nullable(), revisionId: id.nullable(), token: hash }).strict();
+export const translationPagePreviewSchema = z.object({ pageId: id, pageHash: hash, locale: localeSchema, sourceLocale: localeSchema,
+    targetLocales: z.array(localeSchema).max(16), layout: z.object({ content: z.array(z.unknown()).max(10000), root: z.record(z.unknown()) }).passthrough(), fields: z.array(translationPageFieldSchema).max(100),
+    draftOnly: z.literal(true) }).strict();
+export const translationPageSaveSchema = z.object({ selection: batchPageSelectionSchema, locale: localeSchema,
+    token: hash, text: z.string().min(1).max(4000) }).strict();

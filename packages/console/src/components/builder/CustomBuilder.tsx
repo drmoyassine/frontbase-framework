@@ -29,7 +29,7 @@ import { getDefaultProps } from '@/lib/componentDefaults';
 import * as LucideIcons from 'lucide-react';
 import './builder.css';
 
-export const CustomBuilder: React.FC = () => {
+export const CustomBuilder: React.FC<{ onTranslate?(): void }> = ({ onTranslate }) => {
   const {
     currentPageId,
     pages,
@@ -381,6 +381,7 @@ export const CustomBuilder: React.FC = () => {
       onDragEnd={handleDragEnd}
     >
       <div className="builder-shell h-screen flex flex-col bg-background">
+        {onTranslate && <button type="button" className="self-end border rounded px-3 py-1 text-sm" onClick={onTranslate}>Translate saved page</button>}
         <BuilderHeader
           isMobile={isMobile}
           onToggleLeftSidebar={() => setLeftSidebarOpen(!leftSidebarOpen)}

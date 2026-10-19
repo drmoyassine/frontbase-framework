@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { translationPagePreview, saveTranslationPageField } from '../translation-page-preview.js';
 import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
@@ -33,6 +34,14 @@ export function registerTranslationBatchRoutes(app: Hono<{ Variables: ConsoleAut
         if (!user?.id || !user.role || !['owner', 'admin', 'tenant_admin', 'master_admin', 'master_admin_root'].includes(user.role))
             return c.json({ detail: 'Translation batches are unavailable' }, 403);
         await next();
+    });
+    app.get(`${root}page-preview/:pageId/`, async c => {
+        try { return c.json(await translationPagePreview(host, db, c.get('tenant'), c.req.param('pageId'), c.req.query('locale') ?? '')); }
+        catch { return c.json({ detail: 'Saved-page translation preview is unavailable. Check language/storage settings and reload the saved page.' }, 422); }
+    });
+    app.post(`${root}page-preview/field/`, async c => {
+        try { return c.json(await saveTranslationPageField(host, db, c.get('tenant'), await body(c.req.raw))); }
+        catch { return c.json({ detail: 'Translation could not be saved. Reload translations; the source, settings or revision may have changed.' }, 409); }
     });
     app.get(root, c => c.json({ version: 1, executionAvailable: executionEnabled, sourceKinds: ['page-default-plain-text','menu-plain-text','record-plain-text','view-record-plain-text'],
         maxItems: 4, maxJobsPerContinuation: 1, delivery: 'administrator-continuation', draftOnly: true }));
