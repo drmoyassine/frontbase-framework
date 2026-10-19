@@ -1,0 +1,30 @@
+# Arabic Homepage and native language publication — 2026-10-19
+
+## Authorized outcome
+
+Complete the actual USA staging Homepage and its header language switcher autonomously. The owner's current instruction supersedes the earlier blocking-hold choice. Preserve completed translations and uncertain provider accounting; free-endpoint failures are not a reason to abandon delivery. No paid-model fallback is authorized.
+
+## Implemented boundary
+
+Source `021b100` and correction `7c2a69f` extend the existing renderer, reviewed site publication, stable translation identities, external HTTP revisions and native builder. The review inventory covers the active anonymous Homepage, native header/footer, transient Hero/Search labels, ordinary display text, current live card display fields, accessibility strings and page metadata. Binding expressions, URLs, actions and source records are not translated or rewritten. Current staging inventory is 85 fields. Two prior AI drafts are reused; remaining Arabic copy is authored by the agent through native manual revision APIs, without a new provider call.
+
+Native path: Pages → Homepage → Edit → Translate saved page → Publish homepage language. Complete fresh coverage and explicit review enable Preview language; only a prepared immutable catalog can be published. Generation/hash CAS, current site/source/configuration fingerprints and external revision checks prevent stale/conflicting activation. Source and Arabic use the same rendering engine. English remains `/`; Arabic is `/ar/` with document `lang=ar`, RTL, language links, canonical/hreflang and sitemap inclusion. Only activated fresh languages appear in the header. Explicit language clicks save a visitor preference; they do not force a redirect from a user-selected URL.
+
+Canonical translation revisions remain in the configured Transo/native PostgREST `translations` namespace. The host publication artifact is a derived immutable display catalog, not frozen source data. Homepage rows still resolve live on each request; source changes require re-review/republication and cannot silently expose English fallback as a complete Arabic page. Interactive localized lists and alternative block versions are refused in this bounded workflow. Other pages, general locale-aware live search/filter/sort/pagination, migration and full-site language routing remain separate work.
+
+## Verification
+
+- Full workspace `pnpm -r check` and `pnpm -r build` passed; a final focused console build verifies the added safe diagnostics. CF artifact remains approximately 620 KiB gzip and the client prohibited-symbol gate passes.
+- New backend homepage suite: complete coverage, manual external revisions, zero AI, stale source/field/CAS, explicit consent, administrator/project/tenant boundaries, private preview, SSR language/RTL/switcher/SEO and source resilience.
+- Five in-memory compiled faults caught: configured locale admission, field revision fence, activation CAS, unpublished locale refusal and explicit review consent. Source/artifacts remain unchanged.
+- Seven focused Homepage/private-page translation UI tests pass. An initial sandbox-only Vite temporary-cache rename failure was rerun successfully outside the sandbox.
+- Retained template landing/native menus, fourteen WYSIWYG cases, private page preview, menu publication, compatibility security and response conformance pass. Existing 334-operation conformance remains 257 conformances / 77 documented refusals / zero divergences; this is not a claim that new routes were regenerated into that legacy inventory.
+- Whole-console imported builder type debt (17 pre-existing diagnostics) and public-release-wide gates are not closed by this delivery.
+
+## Staging evidence — verified
+
+Immutable `7c2a69f` archive SHA-256 `539840229e4d8cd1ca5df3b91b57cec24a36ad5309555215b45b185c5c4f7343`, 2,034 entries. EasyPanel action `cmvfh5joy008407qq9s3q8jpk` completed at 16:35:37 UTC. Healthy image `a75bda3afa3c26c79b4b28c53e278d0ee4df20db0df4369b0fad484e782a1dad`. Exact service settings apart from uploaded source are unchanged. No credentials, SQL, grants, schema or infrastructure changes. Initial admin session refresh used normal browser-filled sign-in. A large draft-save response failed after committing its first sixteen fields; native reload recovered them, and bounded groups retained progress. All 85 fields were saved/reloaded; the review matches the supplied translations exactly and excludes binding expressions. Native Preview language rendered every section and explicit Publish language activated catalog `6f0ac44708e3c373bde2bb2e6f0273d37546fe6291d2491210af0523fa02d948`, source site `1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4`, generation 21. Anonymous `/ar/` returned 200 with Content-Language ar, `lang=ar`, `dir=rtl`, configured production canonical/hreflang and retained staging noindex. Actual browser clicks English → العربية → English → العربية succeed. Anonymous sitemap is HTTP200 and includes the production Arabic URL; `/fr/` is 404 and the private homepage review endpoint is 401. Python’s local certificate store refused the HTTPS chain; these network checks used Windows curl with certificate verification enabled, without bypassing TLS. All rendered English prose is absent except the intentional English selector and Frontbase brand. Screenshot `homepage-arabic-published.png` records the live result. Native batch reconciliation cancelled the unsent job and retained two settled requests plus one uncertain request; lifecycle remains in review because unknown usage was not invented or counted away. Publication proceeds independently. Existing source pages/records and provider settings were not edited.
+
+## Shared-work preservation
+
+Twenty-eight explicit source paths were committed separately. Nine prior staged blobs, four prior staged deletions and 1,873 unrelated index entries are preserved. Generated CMS output remains uncommitted rather than mixing other sessions' work. Public-release scope, six-package framework governance and paused CF-22 are unchanged.

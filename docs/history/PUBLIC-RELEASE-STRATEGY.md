@@ -1,5 +1,10 @@
 # Frontbase Public Release Strategy
 
+## 2026-10-19 bounded Homepage language publication — delivered
+
+[Receipt](../plans/frontbase-homepage-arabic-publication-20261019.md): actual 85/85 Arabic Homepage fields published through native complete-coverage review, immutable preview and CAS activation. Same renderer, external HTTP revisions, RTL, header language links, source preservation and SEO metadata are verified on staging (`021b100`/`7c2a69f`). No new provider call. Prior generated drafts are retained; obsolete unsent work is cancelled while one uncertain request remains truthfully recorded in reconciliation review. This supersedes earlier “hold unchanged / locale publication next” descriptions for this bounded Homepage slice. Broader page/version/history and live localized query coverage, migration and release gates remain open. Next executable task is generalizing the same review/publication contract to selected pages and stable live-record identities, with history/coverage UX and tests before any broader language claim. CF-22 stays paused.
+
+
 > **2026-09-06 owner priority — paid Cloud launch:** A-26 authorizes completing the framework's Supabase application-database/auth and Stripe migrations. The free-tier implementation is a baseline, not the launch acceptance gate. Track execution in [CLOUD-LAUNCH.md](../CLOUD-LAUNCH.md). Public-framework release gates and paused CF-22 remain separate.
 
 **Status:** Active preparation

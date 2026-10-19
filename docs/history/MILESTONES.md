@@ -1,5 +1,10 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-19 bounded Homepage language publication — delivered
+
+[Receipt](../plans/frontbase-homepage-arabic-publication-20261019.md): actual 85/85 Arabic Homepage fields published through native complete-coverage review, immutable preview and CAS activation. Same renderer, external HTTP revisions, RTL, header language links, source preservation and SEO metadata are verified on staging (`021b100`/`7c2a69f`). No new provider call. Prior generated drafts are retained; obsolete unsent work is cancelled while one uncertain request remains truthfully recorded in reconciliation review. This supersedes earlier “hold unchanged / locale publication next” descriptions for this bounded Homepage slice. Broader page/version/history and live localized query coverage, migration and release gates remain open. Next executable task is generalizing the same review/publication contract to selected pages and stable live-record identities, with history/coverage UX and tests before any broader language claim. CF-22 stays paused.
+
+
 ## 2026-10-19 M3a saved-page translation preview — bounded staging verified
 
 [Receipt](../plans/frontbase-translation-visual-preview-20261019.md): builder entry, source/target language picker, same-renderer saved Default plain page preview, Arabic RTL and translation-only manual CAS editing. Two existing Arabic drafts render in Homepage; missing/outdated fields use marked source fallback. Source `dc1c46c`/`2794b75` deployed healthy with unchanged service settings/eight public hashes. Workspace check/build, 4 final preview UI cases, 17 retained batch UI cases, backend manual/freshness/isolation tests, 5 preview faults and 25 retained batch faults pass. Expanded builder checks retain 17 baseline diagnostics. Actual owner drafts were not changed; manual-save proof is fixture-based. M3b history/coverage is next, then explicit locale publication; held pilot/release/CF-22 status unchanged.
