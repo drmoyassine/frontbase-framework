@@ -24,9 +24,9 @@ const faults=[
  ['owned saved history',batch,'WHERE tenant_slug = ? AND key > ? AND key < ?','WHERE ? IS NOT NULL AND key > ? AND key < ?'],
  ['fresh recovered review',batch,'if (!await stillCurrent(host, db, tenant, b)) throw Error();','void 0;'],
  ['owned menu extraction',inputs,'loaded?.document ?? await new MenusStore(db, tenant).get()',"loaded?.document ?? await new MenusStore(db, 'alpha').get()"],
- ['selected-field projection',inputs,".select(selection.keyColumn + ',' + selection.field)",".select('*')"],
+ ['selected-field projection',inputs,".select(parts.map(part => part.column).join(',') + ',' + selection.field)",".select('*')"],
  ['unique record key',inputs,'if (error || !Array.isArray(data) || data.length !== 1) throw Error();','if (error || !Array.isArray(data) || data.length < 1) throw Error();'],
- ['returned record identity',inputs,'if (String(key) !== String(selection.keyValue)) throw Error();','void 0;'],
+ ['returned record identity',inputs,'if (String(value) !== String(part.value)) throw Error();','void 0;'],
  ['unique logical input',batch,'if (items.some(item => item.intent.unitId === unitId)) throw Error();','void 0;'],
  ['live connection pin',inputs,'destination: connection.destination','destination: null'],
  ['menu configuration pin',inputs,'translationInputHash({ revision: document.revision, menu })','translationInputHash({ revision: 0, menu: menu.id })'],
@@ -44,7 +44,7 @@ try{
  for(const [name,file,before,after] of faults){
   const raw=originals.get(file),normal=raw.replaceAll('\r\n','\n');
   // The host execution gate deliberately appears on both start and continue.
-  assert.equal(normal.split(before).length,['explicit execution gate','menu configuration pin','selected-field projection'].includes(name)?3:2,name+' anchor');
+  assert.equal(normal.split(before).length,['explicit execution gate','menu configuration pin'].includes(name)?3:2,name+' anchor');
   try{
    const changed=normal.replaceAll(before,after);writeFileSync(repoRoot+file,changed);
    const output=ts.transpileModule(changed,{fileName:file,reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,verbatimModuleSyntax:true}});

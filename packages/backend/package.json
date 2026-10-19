@@ -50,6 +50,7 @@
     "test:translation-page-preview": "node test/translation-page-preview.mjs",
     "test:translation-page-preview-mutation": "node test/translation-page-preview-mutation.mjs",
     "test:translation-homepage-records": "node test/translation-homepage-records.mjs",
+    "test:translation-homepage-versions": "node test/translation-homepage-versions.mjs",
     "test:translation-record-keys": "node test/translation-record-keys.mjs"
   },
   "peerDependencies": {

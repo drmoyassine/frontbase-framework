@@ -14,7 +14,7 @@ import type {PublishedLiveQuery} from './publication-list-source.js';
 
 const hash=z.string().regex(/^[a-f0-9]{64}$/),id=z.string().min(1).max(160),locale=z.string().regex(/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/);
 const recordIdentity=z.object({connectionId:id,collection:id,key:translationRecordKeySchema}).strict();
-const entry=z.object({id:hash,blockId:id,path:z.array(id).min(1).max(20),sourceFingerprint:hash,text:z.string().min(1).max(12000),revisionId:id,unitId:hash,record:recordIdentity.optional()}).strict();
+const entry=z.object({id:hash,blockId:id,path:z.array(id).min(1).max(20),versionId:id.optional(),sourceFingerprint:hash,text:z.string().min(1).max(12000),revisionId:id,unitId:hash,record:recordIdentity.optional()}).strict();
 const releaseSchema=z.object({version:z.literal(1),tenant:id,project:id,sourceLocale:locale,locale,siteHash:hash,sourceHash:hash,configHash:hash,
     path:z.literal('/'),pageId:id,catalog:z.array(entry).min(1).max(502),reviewer:id,reviewedAt:z.string().datetime()}).strict();
 const pointerSchema=z.object({hash,generation:z.number().int().positive()}).strict();
@@ -22,10 +22,11 @@ const versionKey=(value:string)=>'translation_homepage:version:v1:'+hash.parse(v
 const activeKey=(value:string)=>'translation_homepage:active:v1:'+locale.parse(value);
 async function raw(db:DbRunner,tenant:string,key:string){return (await db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',[tenant,key]))[0]?.value as string|undefined;}
 async function mapLimit<T,R>(items:T[],fn:(item:T)=>Promise<R>):Promise<R[]>{const out:R[]=[];for(let i=0;i<items.length;i+=8)out.push(...await Promise.all(items.slice(i,i+8).map(fn)));return out;}
-type IdentifiedField={blockId:string;path:string[];record?:{connectionId:string;collection:string;key:{column:string;value:string|number|boolean}[]}};
-/** Position-free identity: record-keyed fields hash and join by their record ref, never by rendered row order. */
+type IdentifiedField={blockId:string;path:string[];versionId?:string;record?:{connectionId:string;collection:string;key:{column:string;value:string|number|boolean}[]}};
+/** Position-free identity: record-keyed fields hash and join by their record ref, never by rendered row order;
+ *  Block-Version overrides join by (block, version, path) while inherited fields keep the Default identity. */
 function stableIdentity(field:IdentifiedField):unknown{
-    if(!field.record)return ['field',field.blockId,field.path];
+    if(!field.record)return ['field',field.blockId,field.versionId??'default',field.path];
     const key=[...field.record.key].sort((a,b)=>a.column<b.column?-1:a.column>b.column?1:0).map(part=>[part.column,part.value]);
     return ['record',field.record.connectionId,field.record.collection,...key,field.path.at(-1)??''];
 }
@@ -59,7 +60,7 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
         // rendering the same record field; block-bound fields keep component identity.
         const resource=field.record
             ?{kind:'record' as const,connectionId:field.record.connectionId,collection:field.record.collection,key:field.record.key,propertyPath:[fieldKey]}
-            :{kind:'component' as const,documentId:capture.pageId,blockId:field.blockId,versionId:'default' as const,propertyPath:field.path};
+            :{kind:'component' as const,documentId:capture.pageId,blockId:field.blockId,versionId:field.versionId??'default' as const,propertyPath:field.path};
         const unit:MessageUnit={version:1,scope:storage.scope,resource,sourceLocale:config.sourceLocale,format:'plain',text:field.text,segmenterVersion:1,placeholders:[]};
         const node=findNode(capture.layout,field.blockId);
         // Record contexts match the reviewed batch extractor so one translation serves every surface.
@@ -67,11 +68,11 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
             ?{version:1,role:'record-field',resourceLabel:('Record '+field.record.collection+' / '+fieldKey).slice(0,200)}
             :{version:1,role:node?.type??'page-meta',resourceLabel:('Page '+(page?.name??'Homepage')+' / '+field.path.at(-1)).slice(0,200)};
         const unitId=await translationUnitId(storage.scope,unit.resource),fingerprint=await messageSourceFingerprint(unit),contextFingerprint=await translationContextFingerprint(context);
-        return {...field,unit,context,unitId,fingerprint,contextFingerprint,id:await publicationHash([field.blockId,field.path])};
+        return {...field,unit,context,unitId,fingerprint,contextFingerprint,id:await publicationHash([field.blockId,field.versionId??'default',field.path])};
     });
     return {...storage,capture,config,configHash,token,fields,locale:target};
 }
-function findNode(layout:PageLayoutData,id:string){const walk=(nodes:PageLayoutData['content']):PageLayoutData['content'][number]|undefined=>{for(const node of nodes){if(node.id===id)return node;const found=walk(node.children??[]);if(found)return found;}return undefined;};return walk(layout.content);}
+function findNode(layout:PageLayoutData,id:string){const walk=(nodes:PageLayoutData['content']):PageLayoutData['content'][number]|undefined=>{for(const node of nodes){if(node.id===id)return node;const found=walk(node.children??[]);if(found)return found;for(const version of node.versions??[]){const inner=walk((version.overrides.children??[])as PageLayoutData['content']);if(inner)return inner;}}return undefined;};return walk(layout.content);}
 type Session=Awaited<ReturnType<typeof session>>;
 async function readField(s:Session,f:Session['fields'][number]){
     const snapshot=await s.persistence.read(s.scope,f.unitId,s.locale),head=snapshot.head;
@@ -99,7 +100,7 @@ export async function saveHomepageTranslations(host:TranslationBatchHost,db:DbRu
 }
 export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,expectedToken:string,reviewer:string,now:string,liveQuery?:PublishedLiveQuery){
     const s=await session(host,db,tenant,request,target,liveQuery);if(publicationPaths(s.capture.active.artifact).includes(`/${target}/`))throw Error('locale_route_collision');if(s.token!==expectedToken)throw Error('review_changed');
-    const catalog=await mapLimit(s.fields,async f=>{const {snapshot,value}=await readField(s,f);if(value.state!=='draft'||!snapshot.head)throw Error('coverage_incomplete');return {id:f.id,blockId:f.blockId,path:f.path,...(f.record?{record:{connectionId:f.record.connectionId,collection:f.record.collection,key:f.record.key}}:{}),sourceFingerprint:f.fingerprint,text:snapshot.head.text,revisionId:snapshot.head.revisionId,unitId:f.unitId};});
+    const catalog=await mapLimit(s.fields,async f=>{const {snapshot,value}=await readField(s,f);if(value.state!=='draft'||!snapshot.head)throw Error('coverage_incomplete');return {id:f.id,blockId:f.blockId,path:f.path,...(f.versionId?{versionId:f.versionId}:{}),...(f.record?{record:{connectionId:f.record.connectionId,collection:f.record.collection,key:f.record.key}}:{}),sourceFingerprint:f.fingerprint,text:snapshot.head.text,revisionId:snapshot.head.revisionId,unitId:f.unitId};});
     const release=releaseSchema.parse({version:1,tenant,project:s.scope.projectId,sourceLocale:s.config.sourceLocale,locale:target,siteHash:s.capture.active.pointer.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,path:'/',pageId:s.capture.pageId,catalog,reviewer,reviewedAt:now});
     const hash=await publicationHash(release);await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,versionKey(hash),JSON.stringify(release),now]);
     if(!await readHomepageRelease(db,tenant,hash))throw Error();
@@ -124,7 +125,7 @@ export function projectHomepageLocale(capture:Awaited<ReturnType<typeof captureH
     const textByIdentity=new Map<string,string>();
     for(const field of release.catalog){if(field.blockId==='$meta')continue;textByIdentity.set(JSON.stringify(stableIdentity(field)),field.text);}
     const values=new Map<string,string>();
-    for(const field of capture.fields){if(field.blockId==='$meta')continue;const text=textByIdentity.get(JSON.stringify(stableIdentity(field)));if(text!==undefined)values.set(JSON.stringify([field.blockId,field.path]),text);}
+    for(const field of capture.fields){if(field.blockId==='$meta')continue;const text=textByIdentity.get(JSON.stringify(stableIdentity(field)));if(text!==undefined)values.set(JSON.stringify([field.blockId,field.versionId??'default',field.path]),text);}
     const layout=applyHomepageDisplayFields(capture.layout,values),meta=(key:string)=>release.catalog.find(f=>f.blockId==='$meta'&&f.path[0]===key)?.text;
     return {...capture.result,page:{...capture.result.page,title:meta('title')??capture.result.page.title,description:meta('description')??capture.result.page.description,layout}};
 }

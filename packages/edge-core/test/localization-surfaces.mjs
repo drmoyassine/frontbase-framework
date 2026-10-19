@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { homepageDisplayFields, applyHomepageDisplayFields } from '@frontbase/edge-core/localization';
+import { applyBlockVersion, resolveBlockTree } from '@frontbase/edge-core/block-versions';
 
 const repeater = (rows, id = 'list') => ({ id, type: 'Repeater',
     props: { binding: { componentId: id, dataSourceId: 'frontbase:publication', tableName: 'institutions', source: { kind: 'publication', hash: 'a'.repeat(64) } },
@@ -33,7 +34,43 @@ assert.equal(field(homepageDisplayFields({ content: [partial] }), 'title').recor
 
 // Projection still applies values at their rendered positions.
 const layout = { content: [repeater(rows)] };
-const projected = applyHomepageDisplayFields(layout, new Map(homepageDisplayFields(layout).map(candidate => [JSON.stringify([candidate.blockId, candidate.path]), 'عربي ' + candidate.text])));
+const valuesFor = fields => new Map(fields.map(candidate => [JSON.stringify([candidate.blockId, candidate.versionId ?? 'default', candidate.path]), 'عربي ' + candidate.text]));
+const projected = applyHomepageDisplayFields(layout, valuesFor(homepageDisplayFields(layout)));
 assert.equal(projected.content[0].props.initialRows[2].title, 'عربي Gamma Institute');
 assert.throws(() => applyHomepageDisplayFields(layout, new Map()), /translation_coverage_incomplete/);
-console.log('localization display surfaces PASS: record identity extraction, reorder stability, shared-identity positions, positional fallback and coverage-refusing projection');
+
+// Block Versions: inherited fields share Default units; explicit overrides own theirs.
+const versioned = { id: 'seasonal', type: 'Heading', props: { text: 'Find your program', ariaLabel: 'Programs' },
+    versions: [
+        { id: 'winter', name: 'Winter', when: 'user.authenticated', overrides: { props: { text: 'Winter programs' } } },
+        { id: 'spring', name: 'Spring', when: 'visitor.season', overrides: { props: { ariaLabel: 'Spring programs' } } },
+        { id: 'echo', name: 'Echo', when: 'visitor.echo', overrides: { props: { text: 'Find your program' } } }] };
+const wrap = { id: 'wrap', type: 'Section', props: {}, children: [{ id: 'cta', type: 'Button', props: { text: 'Apply now' } }],
+    versions: [{ id: 'members', name: 'Members', when: 'user.authenticated', overrides: { children: [{ id: 'cta2', type: 'Button', props: { text: 'Members apply' } }] } }] };
+const versionedFields = homepageDisplayFields({ content: [versioned, wrap] });
+const byText = text => versionedFields.filter(candidate => candidate.text === text);
+assert.deepEqual(byText('Find your program').map(candidate => candidate.versionId), [undefined], 'the Default text stays the Default unit');
+assert.deepEqual(byText('Programs').map(candidate => candidate.versionId), [undefined]);
+assert.deepEqual(byText('Winter programs').map(candidate => candidate.versionId), ['winter']);
+assert.deepEqual(byText('Spring programs').map(candidate => candidate.versionId), ['spring'], 'an overridden sibling field owns its unit without dragging inherited ones');
+assert.equal(byText('Find your program').length, 1, 'an alternative overriding text with the Default text adds no unit');
+assert.deepEqual(versionedFields.find(candidate => candidate.blockId === 'cta2'), { blockId: 'cta2', path: ['props', 'text'], text: 'Members apply', label: 'Button', versionId: 'members' }, 'override children are version-owned structure');
+
+// Projection writes overrides without displacing inherited siblings.
+const versionedLayout = { content: [structuredClone(versioned), structuredClone(wrap)] };
+const projectedVersioned = applyHomepageDisplayFields(versionedLayout, valuesFor(homepageDisplayFields(versionedLayout)));
+const seasonal = projectedVersioned.content[0], wrapped = projectedVersioned.content[1];
+assert.equal(seasonal.props.text, 'عربي Find your program');
+assert.equal(seasonal.versions.find(candidate => candidate.id === 'winter').overrides.props.text, 'عربي Winter programs');
+assert.equal(seasonal.versions.find(candidate => candidate.id === 'spring').overrides.props.ariaLabel, 'عربي Spring programs');
+const winter = applyBlockVersion(seasonal, 'winter');
+assert.equal(winter.props.text, 'عربي Winter programs');
+assert.equal(winter.props.ariaLabel, 'عربي Programs', 'un-overridden siblings keep the translated Default value');
+assert.equal(applyBlockVersion(seasonal, 'spring').props.text, 'عربي Find your program');
+assert.equal(wrapped.versions.find(candidate => candidate.id === 'members').overrides.children[0].props.text, 'عربي Members apply', 'override-child fields write into the alternative structure');
+
+// Serving-time selection renders the released text of whichever version the request selects.
+const authenticated = () => true, anonymous = () => undefined;
+assert.equal(resolveBlockTree([seasonal], authenticated)[0].props.text, 'عربي Winter programs');
+assert.equal(resolveBlockTree([seasonal], anonymous)[0].props.text, 'عربي Find your program');
+console.log('localization display surfaces PASS: record identity extraction, reorder stability, shared-identity positions, positional fallback, coverage-refusing projection and Block Version inheritance identity');
