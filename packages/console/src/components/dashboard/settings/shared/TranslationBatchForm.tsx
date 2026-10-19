@@ -125,6 +125,7 @@ export function TranslationBatchForm() {
             setBlocked(false);
         }, 'Status is unavailable. Existing jobs and usage are retained; reload or restore the original connection.');
     }
+    const uncertainUsage = status?.items.some(item => item.accounting === 'uncertain') ?? false;
     const unknown = status?.lifecycle?.totals.retainedUnknownRequests ?? 0;
     return <Card><CardHeader><CardTitle>Translate selected text</CardTitle><CardDescription>Select up to four page, menu or live record fields, review, then explicitly approve generation. Results are drafts.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
@@ -177,7 +178,8 @@ export function TranslationBatchForm() {
             {status && <section aria-label="Translation progress" className="space-y-3 rounded-md border p-4">
                 <p role="status">Batch: {status.state} · {status.preparedItems}/{status.itemCount} items prepared</p>
                 {!status.storageAvailable && <p>Translation storage is unavailable. Restore the original connection to recover progress.</p>}
-                {['preparing', 'queued'].includes(status.state) && <Button type="button" disabled={busy || blocked || !cap?.executionAvailable || !status.storageAvailable || status.items.some(item => item.outdated)} onClick={() => void action('continue')}>{status.state === 'preparing' ? 'Prepare next item' : 'Continue generation'}</Button>}
+                {['preparing', 'queued'].includes(status.state) && <Button type="button" disabled={busy || blocked || !cap?.executionAvailable || !status.storageAvailable || uncertainUsage || status.items.some(item => item.outdated)} onClick={() => void action('continue')}>{status.state === 'preparing' ? 'Prepare next item' : 'Continue generation'}</Button>}
+                {uncertainUsage && <p role="alert">Generation is paused because a request has uncertain usage. Cancel and reconcile this batch before continuing. Saved drafts are retained.</p>}
                 <p className="text-xs text-muted-foreground">Each continuation prepares one item or runs at most one job. Leaving this screen does not schedule more work.</p>
                 {status.items.map(item => <div key={JSON.stringify(item.selection)} className="rounded border p-3 text-sm"><p>{item.state} · usage: {item.accounting ?? 'not dispatched'}</p>{item.outdated && <p>Source changed or is unavailable. Create a new review.</p>}{item.error && <p>This item could not complete. Review its usage before retrying in a new batch.</p>}{item.result !== null && <p lang={review?.targetLocale} dir="auto" className="whitespace-pre-wrap break-words">{item.result}</p>}</div>)}
                 {status.lifecycle && <p className="text-sm">Consumed requests: {status.lifecycle.totals.consumedRequests}; retained unknown: {unknown}; released: {status.lifecycle.totals.releasedRequests}.</p>}
