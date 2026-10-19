@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-20 configurable deployment stream — planned
+
+[Owner-approved plan](../plans/frontbase-deployment-profiles-20261020.md): Cloudflare-first/Vercel-second editable binding defaults and secure pre-deployment configuration; Deno deferred. P0 inventories current adapters/button failures from an isolated checkout; P1 proves shared contracts/bootstrap; P2/P3 repair and accept real CF/Vercel deployments; P4 unifies Bindings UI; P5 records fresh button/CLI/install/upgrade evidence. User overrides persist; native resource selection and external credential entry share capability validation. This is planned work, not host parity or fresh installation acceptance. Use disposable projects and separate ownership from the dispatched Study in USA translation stream. Existing release gates and paused CF-22 remain.
+
 ## 2026-10-20 post-Homepage work order — session correction delivered
 
 [Active plan](../plans/frontbase-ai-native-translation-implementation-20261016.md) reconciles the delivered Arabic Homepage/dropdown/locale navigation with unfinished translation capability. The [session correction](../plans/frontbase-admin-session-recovery-20261020.md) is deployed healthy with server-cookie validation, coordinated no-replay reauthentication and draft-retention gates. Dashboard loading and retained Arabic navigation are verified. Next: stable selected-page/live-record identities; resumable AI generation and partial-save recovery; history/review/general locale publication and source-change policy; exact localized queries; remaining surfaces and writable-adapter certification; multilingual sitemap/slug migration and operating/package evidence. Non-Homepage bodies remain source-language fallback. The old unsent job is cancelled and uncertain usage retained without blocking publication. No new provider call or public-release gate closure; CF-22 stays paused.
