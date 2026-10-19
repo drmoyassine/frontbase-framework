@@ -10,10 +10,20 @@ export const batchPageSelectionSchema = z.object({ pageId: id, blockId: id, fiel
 const identifier = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/).refine(v => !['__proto__','prototype','constructor'].includes(v));
 export const batchMenuSelectionSchema = z.object({ kind: z.literal('menu'), menuId: id, field: z.enum(['brand','copyright','description','label']), itemId: id.refine(v => !['__proto__','prototype','constructor'].includes(v)).optional() }).strict()
     .refine(v => v.field === 'label' ? !!v.itemId : v.itemId === undefined);
+const keyPart = z.object({ column: identifier, value: z.union([z.string().min(1).max(4000), z.number().int().safe(), z.boolean()]) }).strict();
+const keyForm = (v: { keyColumn?: string; keyValue?: unknown; keyColumns?: unknown[]; field: string }) =>
+    (v.keyColumn === undefined) === (v.keyValue === undefined)
+    && (v.keyColumn === undefined) === (v.keyColumns !== undefined)
+    && (!v.keyColumns || (new Set(v.keyColumns.map(part => (part as { column: string }).column)).size === v.keyColumns.length
+        && v.keyColumns.every(part => (part as { column: string }).column !== v.field)));
 export const batchRecordSelectionSchema = z.object({ kind: z.literal('record'), datasourceId: id, endpoint: z.enum(['supabase','postgrest']),
-    table: identifier, keyColumn: identifier, keyValue: z.union([z.string().min(1).max(500), z.number().int().safe(), z.boolean()]), field: identifier }).strict().refine(v => v.keyColumn !== v.field);
+    table: identifier, keyColumn: identifier.optional(), keyValue: z.union([z.string().min(1).max(500), z.number().int().safe(), z.boolean()]).optional(),
+    keyColumns: z.array(keyPart).min(1).max(16).optional(), field: identifier }).strict()
+    .refine(v => v.keyColumn !== v.field).refine(keyForm, 'Use exactly one complete key form');
 export const batchViewSelectionSchema = z.object({ kind: z.literal('view-record'), viewId: id, endpoint: z.enum(['supabase','postgrest']),
-    keyColumn: identifier, keyValue: z.union([z.string().min(1).max(500), z.number().int().safe(), z.boolean()]), field: identifier }).strict().refine(v => v.keyColumn !== v.field);
+    keyColumn: identifier.optional(), keyValue: z.union([z.string().min(1).max(500), z.number().int().safe(), z.boolean()]).optional(),
+    keyColumns: z.array(keyPart).min(1).max(16).optional(), field: identifier }).strict()
+    .refine(v => v.keyColumn !== v.field).refine(keyForm, 'Use exactly one complete key form');
 /** Legacy page shape/field ordering is retained so persisted sealed reviews remain readable. */
 export const batchSelectionSchema = z.union([batchPageSelectionSchema,batchMenuSelectionSchema,batchRecordSelectionSchema,batchViewSelectionSchema]);
 export const batchLimitsSchema = z.object({ maxRequests: z.number().int().min(1).max(4), maxConcurrent: z.literal(1), maxMessageBytes: z.number().int().min(512).max(65536) }).strict();

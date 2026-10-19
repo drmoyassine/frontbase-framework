@@ -3,8 +3,21 @@ import type { PageLayoutData, PageComponent } from '../ssr/types.js';
 export const homepageSearchLabels = { region:'Find study options', collection:'Explore', collectionAria:'Search collection', programs:'Programs', institutions:'Institutions', question:'What would you like to study?', placeholder:'Search by program or institution title', searchAria:'Search titles', submit:'Search' };
 export const homepageHeroLabels = { region:'Study options', eyebrow:'Explore your next chapter', controls:'Hero slideshow controls', previous:'Previous image', next:'Next image', pause:'Pause slideshow' };
 export const homepageNavLabels = { toggle:'Toggle navigation', appearance:'Appearance', light:'Light', dark:'Dark', system:'System' };
-export interface DisplayField { blockId:string; path:string[]; text:string; label:string }
+export interface DisplayRecord { connectionId:string; collection:string; key:{column:string; value:string|number|boolean}[] }
+export interface DisplayField { blockId:string; path:string[]; text:string; label:string; record?:DisplayRecord }
 const textTypes = new Set(['Text','Heading','Paragraph','Link','Button','Badge']);
+const plainId=(value:unknown):string|undefined=>typeof value==='string'&&value.trim()&&value.length<=160&&!/[\u0000-\u001f]/.test(value)?value:undefined;
+/** Stable record identity for a projected list row: the binding's source plus the row's `id` key. Rows without both stay positional. */
+function rowRecord(node:PageComponent,p:Record<string,unknown>,row:Record<string,unknown>):DisplayRecord|undefined{
+    const binding=(p.binding??(node as {binding?:unknown}).binding)as unknown;
+    if(!binding||typeof binding!=='object')return undefined;
+    const connectionId=plainId((binding as Record<string,unknown>).dataSourceId),collection=plainId((binding as Record<string,unknown>).tableName);
+    if(!connectionId||!collection)return undefined;
+    const value=row.id;
+    if(typeof value==='string'){if(!value.trim()||value.length>4000||/[\u0000-\u001f]/.test(value))return undefined;return {connectionId,collection,key:[{column:'id',value}]};}
+    if(typeof value==='number'&&Number.isFinite(value))return {connectionId,collection,key:[{column:'id',value}]};
+    return undefined;
+}
 /** Explicit display-only surface inventory. Never translates bindings, actions, SQL, URLs or identifiers. */
 export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
     const layout=structuredClone(input);
@@ -25,7 +38,7 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
 }
 export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
     const result:DisplayField[]=[];
-    const add=(blockId:string,path:string[],value:unknown,label:string)=>{if(typeof value==='string'&&value.length>12000)throw Error('locale_text_limit');if(typeof value==='string'&&value.trim()&&!/\{\{|@\{/.test(value)&&!/^(?:https?:|mailto:|tel:|\/)/.test(value))result.push({blockId,path,text:value,label});};
+    const add=(blockId:string,path:string[],value:unknown,label:string,record?:DisplayRecord)=>{if(typeof value==='string'&&value.length>12000)throw Error('locale_text_limit');if(typeof value==='string'&&value.trim()&&!/\{\{|@\{/.test(value)&&!/^(?:https?:|mailto:|tel:|\/)/.test(value))result.push(record?{blockId,path,text:value,label,record}:{blockId,path,text:value,label});};
     const nested=(blockId:string,value:any,path:string[],keys:Set<string>)=>{if(Array.isArray(value)){value.forEach((v,i)=>nested(blockId,v,[...path,String(i)],keys));return;}if(value&&typeof value==='object'){for(const [k,v]of Object.entries(value)){if(keys.has(k))add(blockId,[...path,k],v,k);else if(v&&typeof v==='object')nested(blockId,v,[...path,k],keys);}}};
     const walk=(nodes:PageComponent[])=>{for(const node of nodes){const p=node.props??{},base=['props'];
         if(textTypes.has(node.type)){const key=['content','text','value','label'].find(k=>typeof p[k]==='string'&&!!p[k]);if(key&&!/\{\{|@\{/.test(String(p[key])))add(node.id,[...base,key],p[key],node.type);}
@@ -41,7 +54,7 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
         if(node.type==='Repeater'&&Array.isArray(p.initialRows)){
             const columns=new Set(['title','summary','coverAlt']);
             const find=(children:PageComponent[])=>{for(const child of children){for(const [key,value]of Object.entries(child.props??{})){if(['content','text','label','alt','ariaLabel'].includes(key)&&typeof value==='string'){const match=/^\{\{\s*record\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$/.exec(value);if(match)columns.add(match[1]!);}}if(child.children)find(child.children);}};find(node.children??[]);
-            p.initialRows.forEach((row:any,i)=>{for(const key of columns)add(node.id,[...base,'initialRows',String(i),key],row[key],`Record ${String(row.id??i)} / ${key}`);});
+            p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of columns)add(node.id,[...base,'initialRows',String(i),key],row[key],`Record ${String(row.id??i)} / ${key}`,record);});
         }
         if(node.children)walk(node.children);
     }};walk(layout.content);

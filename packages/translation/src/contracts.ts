@@ -16,6 +16,8 @@ export const localizationScopeSchema = z.object({ tenantId: id, projectId: id })
 const propertyPath = z.array(name).min(1).max(24);
 const recordKey = z.array(z.object({ column: name, value: z.union([z.string().max(4000), z.number().finite(), z.boolean()]) }).strict())
     .min(1).max(16).refine(parts => new Set(parts.map(part => part.column)).size === parts.length, 'Duplicate key column');
+/** Shared key grammar for hosts that carry record identity outside a full resource ref. */
+export const translationRecordKeySchema = recordKey;
 export const resourceRefSchema = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('component'), documentId: id, blockId: id, versionId: id.default('default'), propertyPath }).strict(),
     z.object({ kind: z.literal('record'), connectionId: id, collection: id, key: recordKey, propertyPath }).strict(),

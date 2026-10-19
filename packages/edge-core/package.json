@@ -58,7 +58,7 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "test:menus": "node test/menus.mjs && node test/menus-native.mjs",
     "test:localization": "node test/localization.mjs && node test/localization-mutation.mjs",
-    "test": "node test/parity.mjs && node test/wysiwyg-parity.mjs && node test/engine.mjs && node test/scope.mjs && node test/fallback.mjs && node test/behaviors.mjs && node test/workflow.mjs && node test/directory-bindings.mjs && node test/public-form-draft.mjs && node test/template-landing.mjs && node test/localization.mjs",
+    "test": "node test/parity.mjs && node test/wysiwyg-parity.mjs && node test/engine.mjs && node test/scope.mjs && node test/fallback.mjs && node test/behaviors.mjs && node test/workflow.mjs && node test/directory-bindings.mjs && node test/public-form-draft.mjs && node test/template-landing.mjs && node test/localization.mjs && node test/localization-surfaces.mjs",
     "test:mutation": "node test/mutation.mjs && node test/directory-bindings-mutation.mjs && node test/public-form-draft-mutation.mjs && node test/template-landing-mutation.mjs && node test/localization-mutation.mjs"
   },
   "dependencies": {

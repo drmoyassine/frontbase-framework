@@ -48,7 +48,9 @@
     "test:translation-homepage": "node test/translation-homepage.mjs",
     "test:translation-homepage-mutation": "node test/translation-homepage-mutation.mjs",
     "test:translation-page-preview": "node test/translation-page-preview.mjs",
-    "test:translation-page-preview-mutation": "node test/translation-page-preview-mutation.mjs"
+    "test:translation-page-preview-mutation": "node test/translation-page-preview-mutation.mjs",
+    "test:translation-homepage-records": "node test/translation-homepage-records.mjs",
+    "test:translation-record-keys": "node test/translation-record-keys.mjs"
   },
   "peerDependencies": {
     "@frontbase/compiler": "workspace:*",

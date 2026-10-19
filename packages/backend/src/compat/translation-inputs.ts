@@ -76,36 +76,40 @@ export async function translationMenuFields(db: DbRunner, tenant: string, menuId
 export async function extractRecordInput(host: TranslationStorageHost, tenant: string, raw: unknown, pin: Pin,
     view?: { predicate: string | undefined; checkpoint: unknown }): Promise<TranslationInput> {
     const selection = batchRecordSelectionSchema.parse(raw);
+    const parts = selection.keyColumns ?? [{ column: selection.keyColumn!, value: selection.keyValue! }];
     const connection = await resolveOwnedTranslationConnection(host, tenant, { version: 1, datasourceId: selection.datasourceId, endpoint: selection.endpoint, namespace: 'translations' }, pin.storage.scope.projectId);
     const client = supabasePostgrestClient({ ...connection.options, schema: 'public' });
-    const { data, error } = await client.from(selection.table).select(selection.keyColumn + ',' + selection.field).eq(selection.keyColumn, selection.keyValue).limit(2);
+    const load = () => { let query = client.from(selection.table).select(parts.map(part => part.column).join(',') + ',' + selection.field); for (const part of parts) query = query.eq(part.column, part.value); return query.limit(2); };
+    const { data, error } = await load();
     if (error || !Array.isArray(data) || data.length !== 1) throw Error();
-    const row = z.record(z.unknown()).parse(data[0]), key = z.union([z.string().max(4000), z.number().int().safe(), z.boolean()]).parse(row[selection.keyColumn]);
-    if (String(key) !== String(selection.keyValue)) throw Error();
+    const row = z.record(z.unknown()).parse(data[0]);
+    const key = parts.map(part => { const value = z.union([z.string().max(4000), z.number().int().safe(), z.boolean()]).parse(row[part.column]); if (String(value) !== String(part.value)) throw Error(); return { column: part.column, value }; });
     const text = translationPlainText(row[selection.field]);
     if (view) {
-        let query = client.from(selection.table).select(selection.keyColumn + ',' + selection.field).eq(selection.keyColumn, selection.keyValue).limit(2);
-        if (view.predicate) query = query.or(view.predicate);
-        const member = await query;
+        const base = load();
+        const member = await (view.predicate ? base.or(view.predicate) : base);
         if (member.error || !Array.isArray(member.data)) throw Error();
         if (member.data.length !== 1) throw new TranslationInputChanged();
         const checked = z.record(z.unknown()).parse(member.data[0]);
-        if (checked[selection.keyColumn] !== key || checked[selection.field] !== text) throw new TranslationInputChanged();
+        if (!key.every(part => checked[part.column] === part.value) || checked[selection.field] !== text) throw new TranslationInputChanged();
     }
     return { unit: { version: 1, scope: pin.storage.scope, resource: { kind: 'record', connectionId: selection.datasourceId, collection: selection.table,
-        key: [{ column: selection.keyColumn, value: key }], propertyPath: [selection.field] }, sourceLocale: pin.generation.sourceLocale, format: 'plain', text, segmenterVersion: 1, placeholders: [] },
+        key, propertyPath: [selection.field] }, sourceLocale: pin.generation.sourceLocale, format: 'plain', text, segmenterVersion: 1, placeholders: [] },
         context: { version: 1, role: 'record-field', resourceLabel: ('Record ' + selection.table + ' / ' + selection.field).slice(0, 200) },
-        pageHash: await translationInputHash({ destination: connection.destination, selection: { ...selection, keyValue: key }, text, ...(view ? { view: view.checkpoint } : {}) }) };
+        pageHash: await translationInputHash({ destination: connection.destination,
+            selection: selection.keyColumns ? { ...selection, keyColumns: key } : { ...selection, keyValue: key[0]!.value },
+            text, ...(view ? { view: view.checkpoint } : {}) }) };
 }
 export async function extractViewRecordInput(host: TranslationViewHost, db: DbRunner, tenant: string, raw: unknown, pin: Pin): Promise<TranslationInput> {
     const selection = batchViewSelectionSchema.parse(raw), store = host.syncFor(tenant), view = await store.getView(selection.viewId);
     if (!view || view.source_schema!=null&&view.source_schema!=='public') throw new TranslationInputChanged();
     // Legacy SQL-restricted pilot views must first be converted in Data Inspector.
     if (view.target_table.startsWith('fb_live_') && (await db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?', [tenant, 'view_selection_storage:v1:' + view.id]))[0]?.value !== 'saved-filters') throw Error();
-    if (!view.visible_columns?.includes(selection.keyColumn) || !view.visible_columns.includes(selection.field)) throw Error();
+    const parts = selection.keyColumns ?? [{ column: selection.keyColumn!, value: selection.keyValue! }];
+    if (!view.visible_columns?.includes(selection.field) || !parts.every(part => view.visible_columns!.includes(part.column))) throw Error();
     const predicate = savedViewHttpPredicate(view.filters);
     const input = await extractRecordInput(host, tenant, { kind: 'record', datasourceId: view.datasource_id, endpoint: selection.endpoint,
-        table: view.target_table, keyColumn: selection.keyColumn, keyValue: selection.keyValue, field: selection.field }, pin, { predicate, checkpoint: view });
+        table: view.target_table, ...(selection.keyColumns ? { keyColumns: selection.keyColumns } : { keyColumn: selection.keyColumn, keyValue: selection.keyValue }), field: selection.field }, pin, { predicate, checkpoint: view });
     // Re-read the owned definition after HTTP I/O to catch edits during extraction.
     if (await translationInputHash(await store.getView(selection.viewId)) !== await translationInputHash(view)) throw Error();
     return input;
