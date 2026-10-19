@@ -1,5 +1,15 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-19 M3a saved Default page preview/editing — bounded staging verified
+
+Owner authorizes proceeding with the next visual slice. Own the new locale-preview contracts/backend/UI/tests and only necessary builder integration seams. Reuse saved page extraction, scoped HTTP revision persistence, existing renderer and language catalog. Support saved Default plain page text first; keep AI execution, batch `05b7a503`, publication, source content and unfamiliar staged changes untouched. Verify manual CAS/freshness, private preview, RTL and unchanged source behavior before claiming delivery.
+
+[Delivery receipt](../plans/frontbase-translation-visual-preview-20261019.md): shared eligibility/identity and owned HTTP revision persistence, private administrator-only preview/manual CAS endpoints, existing renderer, configured language picker and document-scoped RTL. Workspace check/build, four final preview UI cases plus 17 retained batch cases, new backend functional suite, five in-memory preview faults, 25 retained batch faults and retained storage/batch/response-conformance gates pass. Broader builder imports retain the same 17 baseline type errors, with no new diagnostics. Source `dc1c46c`/`2794b75` deployed healthy; native Homepage preview loads both Arabic drafts and marks missing fallback fields. Actual owner drafts/source were not edited; native save is not claimed from fixture evidence. Configuration/eight public response hashes remain unchanged. The held batch is untouched and no provider was called. M3b history/coverage precedes locale publication; full M3/M4, live-record localization and release gates remain open. Shared index and generated work preserved.
+
+## 2026-10-19 translation replanning — completed documentation-only scope
+
+Owner requests updating plans and identifying the next task. [Execution plan](../plans/frontbase-ai-native-translation-implementation-20261016.md) now separates deployed storage/provider evidence from unfinished visual preview/publication and orders M3a through M7. Architecture status, milestone, strategy and README claims are reconciled to the partial pilot outcome. Next is private native page-text locale preview/editing using existing saved drafts and revision/renderer patterns, with no provider dispatch or held-batch change. Documentation link/diff checks only; no new code, deployment, SQL or credential-gated test was run. Existing implementation/release gates and CF-22 status remain unchanged.
+
 ## 2026-10-19 translation storage verified; Arabic pilot partially completed and held
 
 Owner authorizes selecting Transo as the translation destination, protocol/readiness acceptance and a bounded single-page Arabic pilot with the saved OpenRouter free model. Reuse the existing HTTP storage/accounting/allowance/job and review paths. Inspect the deployed protocol before any upgrade; preserve public, credentials, source content, pending drafts and unrelated work. No paid-model fallback or unaccounted dispatch. Verify actual storage and provider outcomes; distinguish draft generation from visual locale publication readiness.

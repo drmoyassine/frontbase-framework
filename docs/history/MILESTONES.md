@@ -1,5 +1,13 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-19 M3a saved-page translation preview — bounded staging verified
+
+[Receipt](../plans/frontbase-translation-visual-preview-20261019.md): builder entry, source/target language picker, same-renderer saved Default plain page preview, Arabic RTL and translation-only manual CAS editing. Two existing Arabic drafts render in Homepage; missing/outdated fields use marked source fallback. Source `dc1c46c`/`2794b75` deployed healthy with unchanged service settings/eight public hashes. Workspace check/build, 4 final preview UI cases, 17 retained batch UI cases, backend manual/freshness/isolation tests, 5 preview faults and 25 retained batch faults pass. Expanded builder checks retain 17 baseline diagnostics. Actual owner drafts were not changed; manual-save proof is fixture-based. M3b history/coverage is next, then explicit locale publication; held pilot/release/CF-22 status unchanged.
+
+## 2026-10-19 translation plan refresh — documentation complete; M3a next
+
+[Active ordered plan](../plans/frontbase-ai-native-translation-implementation-20261016.md): native page-text locale preview/editing first, then explicit translation release/switcher, shared live List Component localization, exact localized querying and multisite migration/operations. Reuse existing identity/revision/HTTP, builder renderer and publication seams. M3a starts with the two saved Arabic Homepage fields and requires no AI dispatch. The pilot hold is unchanged; implementation has not started under this documentation-only refresh. No release-scope change.
+
 ## 2026-10-19 translation storage accepted; Arabic pilot on owner-requested hold
 
 [Receipt](../plans/frontbase-translation-first-pilot-20261019.md): Transo/native PostgREST/translations storage and existing additive accounting protocol verified. Exact opt-in host wiring and uncertain-usage continuation guard deployed (`d19c8cc`, `bfbd241`); public/configuration preservation checks pass. Actual pilot saved two settled Arabic drafts, retained one failed/uncertain attempt and left one field unsent. Owner chose preserving the hold, with no further model calls or reconciliation. Workspace check/build, 17 UI cases, host smoke/3 faults, 25 batch faults and 12 backend suites pass. Native visual preview/refinement/publication remains next and must not resume the held batch automatically. Release scope and paused CF-22 unchanged.
