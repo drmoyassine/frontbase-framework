@@ -19,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Loader2, AlertCircle, GripHorizontal, Pin, EyeOff, CheckCircle, Database, ChevronRight, Globe, RefreshCw, Pencil } from 'lucide-react';
 
 interface DataPreviewTableProps {
+    readOnly?: boolean;
     data: any;
     isLoading: boolean;
     isSessionLoading: boolean;
@@ -157,6 +158,7 @@ export const DataPreviewTable = ({
     globalSearch,
     allMatches,
     currentMatchIndex,
+    readOnly,
     setEditingRecord,
     setActiveTab,
     globalSearchStatus,
@@ -391,7 +393,7 @@ export const DataPreviewTable = ({
                             {/* Floating Action Button at the end of the row */}
                             <td className="sticky right-0 w-0 p-0 border-none overflow-visible z-20">
                                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
-                                    <button
+                                    {!readOnly && <button
                                         onClick={() => {
                                             setEditingRecord(record);
                                             setActiveTab('record');
@@ -400,7 +402,7 @@ export const DataPreviewTable = ({
                                         title="Edit Record"
                                     >
                                         <Pencil size={14} />
-                                    </button>
+                                    </button>}
                                 </div>
                             </td>
                         </tr>

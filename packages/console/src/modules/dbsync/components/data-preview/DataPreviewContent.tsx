@@ -164,6 +164,7 @@ export const DataPreviewContent = ({
                     <div className="flex flex-col h-full">
                         <div className="flex-1 overflow-auto">
                             <DataPreviewTable
+                                readOnly={readOnly}
                                 data={tableData}
                                 isLoading={isLoading || isFetchingData}
                                 isSessionLoading={isSessionLoading}

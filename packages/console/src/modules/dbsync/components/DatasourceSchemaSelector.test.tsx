@@ -7,6 +7,7 @@ vi.mock('../api',()=>({datasourcesApi:{get:mocks.get,getTables:mocks.tables,getT
 import {DatasourceSchemaSelector} from './DatasourceSchemaSelector';
 import {useDataPreviewData} from '../hooks/data-preview/useDataPreviewData';
 import {useLayoutStore} from '../store/useLayoutStore';
+import {DataPreviewTable} from './data-preview/DataPreviewTable';
 function wrapper(){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});return ({children}:{children:React.ReactNode})=><QueryClientProvider client={client}>{children}</QueryClientProvider>;}
 afterEach(()=>{cleanup();vi.resetAllMocks();useLayoutStore.getState().reset();});
 it('validates an exposed schema before applying and offers default/known schemas',async()=>{
@@ -21,6 +22,8 @@ it('denied schemas keep the current scope and show an actionable error',async()=
  render(<DatasourceSchemaSelector datasourceId="one" value="translations" onChange={change}/>,{wrapper:wrapper()});
  fireEvent.change(await screen.findByRole('combobox',{name:'Schema'}),{target:{value:'private'}});fireEvent.click(screen.getByRole('button',{name:'Apply schema'}));
  expect(await screen.findByRole('alert')).toHaveProperty('textContent',expect.stringContaining('exposed'));expect(change).not.toHaveBeenCalled();
+ expect(screen.getByText(/Active schema: translations/)).toBeTruthy();
+ fireEvent.change(screen.getByRole('combobox',{name:'Schema'}),{target:{value:'translations'}});expect(screen.queryByRole('alert')).toBeNull();
 });
 it('same-name table queries and returned rows stay separate across schemas',async()=>{
  mocks.tables.mockResolvedValue({data:['items']});mocks.schema.mockResolvedValue({data:{columns:[{name:'id'}]}});
@@ -41,4 +44,10 @@ it('a late validation response cannot apply a schema to a different datasource',
  fireEvent.change(await screen.findByRole('combobox',{name:'Schema'}),{target:{value:'alternate'}});fireEvent.click(screen.getByRole('button',{name:'Apply schema'}));
  rendered.rerender(<DatasourceSchemaSelector datasourceId="two" value="public" onChange={change}/>);resolve({data:['items']});
  await waitFor(()=>expect(screen.getByRole('combobox',{name:'Schema'})).toHaveProperty('value','public'));expect(change).not.toHaveBeenCalled();
+});
+it('read-only schema rows have no edit action while legacy editable rows retain it',()=>{
+ const edit=vi.fn(),tab=vi.fn(),noop=()=>{},records=[{name:'Stored record'}];
+ const props={data:{records},isLoading:false,isSessionLoading:false,error:null,tableColumns:['name'],setColumnOrder:noop,pinnedColumns:[],togglePin:noop,toggleVisibility:noop,availableFields:['name'],filteredRecords:records,globalSearch:'',allMatches:[],currentMatchIndex:0,setEditingRecord:edit,setActiveTab:tab,globalSearchStatus:'idle' as const,globalResults:[],setGlobalResults:noop,setFilters:noop,setAppliedFilters:noop,setSelectedTable:noop,searchOtherCollections:noop,searchAllDatasources:noop,showDataSearchResults:false,setShowDataSearchResults:noop};
+ const rendered=render(<DataPreviewTable {...props} readOnly/>);expect(screen.getByText('Stored record')).toBeTruthy();expect(screen.queryByRole('button',{name:'Edit Record'})).toBeNull();
+ rendered.rerender(<DataPreviewTable {...props} readOnly={false}/>);fireEvent.click(screen.getByRole('button',{name:'Edit Record'}));expect(edit).toHaveBeenCalledWith(records[0]);expect(tab).toHaveBeenCalledWith('record');
 });
