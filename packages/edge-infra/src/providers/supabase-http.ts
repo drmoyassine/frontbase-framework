@@ -18,7 +18,7 @@ export interface SupabaseOpts {
 }
 
 
-export function supabasePostgrestClient(opts: SupabaseOpts) {
+export function supabasePostgrestHeaders(opts: SupabaseOpts): Record<string, string> {
     const headers: Record<string, string> = {
         apikey: opts.serviceKey,
     };
@@ -31,8 +31,12 @@ export function supabasePostgrestClient(opts: SupabaseOpts) {
         headers['Content-Profile'] = opts.schema;
     }
 
+    return headers;
+}
+
+export function supabasePostgrestClient(opts: SupabaseOpts) {
     return new PostgrestClient(opts.restUrl ?? `${opts.url}/rest/v1`, {
-        headers,
+        headers: supabasePostgrestHeaders(opts),
         schema: opts.schema ?? 'public',
         fetch: opts.fetchImpl,
     });

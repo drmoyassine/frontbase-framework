@@ -9,6 +9,7 @@ export function serializeDatasource(ds: {
     kind: string;
     created_at: string;
     updated_at: string;
+    config?: Record<string, unknown>;
 }, views: unknown[] = []): Record<string, unknown> {
     return {
         id: ds.id,
@@ -26,7 +27,10 @@ export function serializeDatasource(ds: {
         last_test_success: null,
         created_at: ds.created_at,
         updated_at: ds.updated_at,
-        extra_config: null,
+        extra_config: ds.kind === 'supabase' && (ds.config?.schema !== undefined || ds.config?.endpoint_format !== undefined) ? {
+            schema: typeof ds.config?.schema === 'string' ? ds.config.schema : 'public',
+            endpoint_format: ds.config?.endpoint_format === 'postgrest' ? 'postgrest' : 'supabase',
+        } : null,
         views,
     };
 }

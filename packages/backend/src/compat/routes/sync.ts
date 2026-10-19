@@ -27,6 +27,8 @@ import { mergeAccountConfig } from '../providers/merge-account.js';
 import { serializeDatasource, serializeDatasourceView } from './sync-shapes.js';
 import { SUPABASE_SETUP_SQL } from '../supabase-setup-sql.js';
 import { guardedExternalFetch, type CompatFetch } from '../external-http.js';
+import { testPostgrestConnection } from '../postgrest-connection-test.js';
+import { resolveSupabase } from '../providers/supabase.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -424,6 +426,7 @@ export function registerSyncRoutes(
         tenant: string,
         config: Record<string, unknown>,
     ): Promise<{ applied: boolean; reason?: string }> => {
+        if (config.endpoint_format === 'postgrest') return { applied: false, reason: 'native_postgrest' };
         const accountId = String(config.provider_account_id ?? '');
         const account = accountId && accountConfigFor
             ? await accountConfigFor(tenant, accountId).catch(() => null)
@@ -459,7 +462,7 @@ export function registerSyncRoutes(
     const FLAT_CRED_KEYS = [
         'host', 'port', 'database', 'username', 'password', 'connection_uri', 'connectionString',
         'api_url', 'base_url', 'url', 'anon_key', 'api_key', 'service_role_key', 'serviceKey',
-        'project_ref', 'ref', 'jwt_secret', 'jwt', 'schema',
+        'project_ref', 'ref', 'jwt_secret', 'jwt', 'schema', 'endpoint_format',
         'app_password', 'api_mode', 'webAppUrl', 'webAppSecret', 'spreadsheetId', 'spreadsheetName',
         'accountId', 'account_id', 'databaseId', 'database_id', 'apiToken', 'api_token',
         'db_url', 'db_token', 'authToken', 'token', 'access_token', 'org', 'org_slug', 'databases',
@@ -514,6 +517,7 @@ export function registerSyncRoutes(
         // the connected account and are hydrated at read/test time (product parity — no
         // secret duplication, survives key rotation).
         const config = flatBodyToConfig(b);
+        if (kind === 'supabase') { try { resolveSupabase(config); } catch { return c.json({ detail: 'Invalid endpoint format or schema' }, 422); } }
         const created = await store.createDatasource({ name, kind, config }, id, now());
 
         // Supabase: best-effort auto-apply the setup migration (execute_query /
@@ -522,7 +526,7 @@ export function registerSyncRoutes(
         // through the Management API. A migration failure MUST NOT fail the
         // create: the datasource is already persisted, so swallow + log +
         // continue. The SQL is idempotent (CREATE OR REPLACE).
-        if (kind === 'supabase') {
+        if (kind === 'supabase' && config.endpoint_format !== 'postgrest') {
             try {
                 const bootstrap = await supabaseManagementBootstrap(tenant, config);
                 if (!bootstrap.applied) {
@@ -569,6 +573,8 @@ export function registerSyncRoutes(
         // at top level, no `config` wrapper). Normalize, then hydrate from the connected
         // account + lazily enrich.
         const config = await mergeAccount(c.get('tenant'), kind, flatBodyToConfig(b));
+
+        if (kind === 'supabase') return c.json(await testPostgrestConnection(config, externalFetch));
 
         // Product parity: provide helpful suggestion messages for common connection errors.
         const getSuggestion = (err: Error): string | null => {
@@ -689,10 +695,13 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const existing = await store.getDatasource(id);
         if (!existing) return c.json({ detail: 'Datasource not found' }, 404);
+        const kind = b.type ?? b.kind ?? existing.kind;
+        const config = kind === 'supabase' ? { ...existing.config, ...flatBodyToConfig(b as Record<string, unknown>) } : b.config;
+        if (kind === 'supabase') { try { resolveSupabase(config!); } catch { return c.json({ detail: 'Invalid endpoint format or schema' }, 422); } }
         const updated = await store.updateDatasource(id, {
             name: b.name,
             kind: b.type ?? b.kind,
-            config: b.config,
+            config,
         }, now());
         return c.json(serializeDatasource(updated!));
     });
@@ -703,6 +712,7 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const ds = await store.getDatasource(id);
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
+        if (ds.kind === 'supabase') return c.json(await testPostgrestConnection(await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch));
         try {
             const runner = datasourceRunner(ds.kind, await mergeAccount(c.get('tenant'), ds.kind, ds.config), externalFetch);
             await runner.query('SELECT 1');
@@ -721,7 +731,8 @@ export function registerSyncRoutes(
         if (!ds) return c.json({ detail: 'Datasource not found' }, 404);
         const kind = String(b.type ?? b.kind ?? ds.kind);
         // Flat DatasourceCreate payload: normalize, hydrate from connected account, enrich.
-        const config = await mergeAccount(c.get('tenant'), kind, flatBodyToConfig({ ...ds.config, ...b }));
+        const config = await mergeAccount(c.get('tenant'), kind, { ...ds.config, ...flatBodyToConfig(b) });
+        if (kind === 'supabase') return c.json(await testPostgrestConnection(config, externalFetch));
         try {
             const runner = datasourceRunner(kind, config, externalFetch);
             await runner.query('SELECT 1');

@@ -42,6 +42,8 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
         api_url: datasource?.api_url || '',
         anon_key: '',
         service_role_key: '',
+        endpoint_format: datasource?.extra_config?.endpoint_format || 'supabase',
+        schema: datasource?.extra_config?.schema || 'public',
         api_key: '',
         provider_account_id: (datasource as any)?.provider_account_id || '',
         // WordPress Plugin specific fields (mapped to api_url/password by backend)
@@ -123,6 +125,7 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                         <div className="col-span-2 sm:col-span-1">
                             <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">Database Type</label>
                             <select
+                                aria-label="Database Type"
                                 value={formData.type}
                                 onChange={(e) => {
                                     const newType = e.target.value as any;
@@ -138,18 +141,23 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                                 disabled={isEditing}
                             >
                                 {DATABASE_PROVIDERS.map(p => (
-                                    <option key={p.key} value={p.key}>{p.label}</option>
+                                    <option key={p.key} value={p.key}>{p.key === 'supabase' ? 'Supabase / PostgREST' : p.label}</option>
                                 ))}
                             </select>
                         </div>
                     </div>
 
                     <div className="space-y-4">
+                        {formData.type === 'supabase' && <div className="space-y-3">
+                            <label className="block text-sm">Endpoint format<select className="w-full rounded-md border bg-background px-3 py-2" value={formData.endpoint_format} onChange={e => setFormData({ ...formData, endpoint_format: e.target.value as 'supabase' | 'postgrest' })}><option value="supabase">Supabase — /rest/v1</option><option value="postgrest">Native PostgREST — supplied endpoint</option></select></label>
+                            <label className="block text-sm">Schema<input className="w-full rounded-md border bg-background px-3 py-2" value={formData.schema} maxLength={63} onChange={e => setFormData({ ...formData, schema: e.target.value })} placeholder="public" /></label>
+                            <p className="text-xs text-muted-foreground">Choose an already exposed schema. Test Connection checks HTTP access and schema metadata; it does not install SQL functions or verify every data operation.</p>
+                        </div>}
                         {formData.type === 'supabase' && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={manualHttp} onChange={e => { setManualHttp(e.target.checked); setFormData({ ...formData, provider_account_id: '', api_url: '', service_role_key: '' }); }} />{isEditing ? 'Edit HTTPS URL and server key' : 'Connect using an HTTPS URL and server key'}</label>}
                         {manualHttp && formData.type === 'supabase' && <div className="space-y-3">
                             <label className="block text-sm">API base URL<input type="url" className="w-full rounded-md border bg-background px-3 py-2" value={formData.api_url} onChange={e => setFormData({ ...formData, api_url: e.target.value })} placeholder="https://your-database.example.com" required={!isEditing} /></label>
                             <label className="block text-sm">Server API key<input type="password" autoComplete="new-password" className="w-full rounded-md border bg-background px-3 py-2" value={formData.service_role_key} onChange={e => setFormData({ ...formData, service_role_key: e.target.value })} required={!isEditing} /></label>
-                            <p className="text-xs text-muted-foreground">For Supabase or native PostgREST. Credentials are stored encrypted. For translation storage, save this connection and verify it in Settings → Translations. This connection can be used for translation storage without enabling table browsing. {isEditing && 'Leave blank values to preserve the saved connection.'}</p>
+                            <p className="text-xs text-muted-foreground">For Supabase or native PostgREST. Credentials are stored encrypted. Translation storage also has a separate protocol check in Settings → Translations. {isEditing && 'Leave blank values to preserve the saved connection.'}</p>
                         </div>}
                         {/* Connected Account Picker — WordPress + Google Sheets + all DB types */}
                         {!(manualHttp && formData.type === 'supabase') && (formData.type.startsWith('wordpress_') ||
@@ -255,7 +263,7 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                     <button
                         type="button"
                         onClick={() => testRawMutation.mutate(formData)}
-                        disabled={testRawMutation.isPending || mutation.isPending || (manualHttp && formData.type === 'supabase')}
+                        disabled={testRawMutation.isPending || mutation.isPending}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold border-2 border-primary-600 text-primary-600 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all disabled:opacity-50"
                     >
                         {testRawMutation.isPending ? (

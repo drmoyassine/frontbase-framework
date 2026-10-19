@@ -24,11 +24,15 @@ const SUPABASE_API = 'https://api.supabase.com/v1';
  * project URL from project_ref when api_url is absent.
  */
 export const resolveSupabase: DatasourceResolver = (config) => {
+    const endpoint = config.endpoint_format ?? 'supabase';
+    if (endpoint !== 'supabase' && endpoint !== 'postgrest') throw Error('invalid_postgrest_endpoint_format');
+    if (config.schema !== undefined && (typeof config.schema !== 'string' || !config.schema.trim() || new TextEncoder().encode(config.schema).length > 63 || /[\r\n\0,]/.test(config.schema))) throw Error('invalid_postgrest_schema');
     const serviceKey = String(config.serviceKey ?? config.service_role_key ?? config.anon_key ?? '');
     const rawUrl = String(config.url ?? config.api_url ?? '').replace(/\/+$/, '');
     const projectRef = String(config.project_ref ?? config.ref ?? '');
     const url = rawUrl || (projectRef ? `https://${projectRef}.supabase.co` : '');
     const resolved: Record<string, unknown> = { url, serviceKey };
+    if (endpoint === 'postgrest') resolved.restUrl = url;
     // Carry the public anon key through (connect-time enrichment stores both)
     // so policy-split consumers can send it for anonymous traffic — the
     // published-page RPC proxy uses it for unauthenticated callers while
@@ -66,6 +70,7 @@ function selectApiKey(keys: ApiKeyRow[], type: 'secret' | 'publishable', legacyN
  * and the original config is returned (best-effort, matching the product).
  */
 export const enrichSupabase: ProviderEnricher = async (config, externalFetch) => {
+    if (config.endpoint_format === 'postgrest') return config;
     const accessToken = String(config.access_token ?? '');
     const projectRef = String(config.project_ref ?? config.ref ?? '');
     if (!accessToken || !projectRef) return config; // nothing to enrich without both

@@ -217,7 +217,7 @@ function DatasourceCard({
                             </button>
                         </div>
                         <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${TYPE_COLORS[datasource.type]}`}>
-                            {TYPE_LABELS[datasource.type]}
+                            {datasource.type === 'supabase' && datasource.extra_config?.endpoint_format === 'postgrest' ? 'PostgREST' : TYPE_LABELS[datasource.type]}
                         </span>
                     </div>
                 </div>
@@ -233,6 +233,7 @@ function DatasourceCard({
             <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400 mb-4">
                 <p><span className="font-medium">Host:</span> {datasource.host}:{datasource.port}</p>
                 <p><span className="font-medium">Database:</span> {datasource.database}</p>
+                {datasource.type === 'supabase' && <p><span className="font-medium">Schema:</span> {datasource.extra_config?.schema || 'public'}</p>}
                 {datasource.last_tested_at && (
                     <p className="text-xs">
                         Tested {formatDistanceToNow(new Date(datasource.last_tested_at), { addSuffix: true })}

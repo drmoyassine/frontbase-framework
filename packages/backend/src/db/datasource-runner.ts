@@ -42,6 +42,7 @@ export function datasourceRunner(kind: string, config: Record<string, unknown>, 
                 serviceKey: String(resolved.serviceKey ?? ''),
                 jwt: resolved.jwt ? String(resolved.jwt) : undefined,
                 schema: resolved.schema ? String(resolved.schema) : undefined,
+                restUrl: resolved.restUrl ? String(resolved.restUrl) : undefined,
                 fetchImpl: transport,
             });
         case 'postgres':

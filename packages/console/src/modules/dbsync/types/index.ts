@@ -18,6 +18,7 @@ export interface Datasource {
     database: string
     username?: string
     api_url?: string
+    extra_config?: { endpoint_format?: 'supabase' | 'postgrest'; schema?: string } | null
     table_prefix: string
     is_active: boolean
     last_tested_at?: string
