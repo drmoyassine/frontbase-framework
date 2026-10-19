@@ -24,6 +24,7 @@ export interface SocialLink {
 }
 
 export interface FooterProps {
+    logoHref?: string;
     themeSurface?: boolean;
     contentMaxWidth?: number;
     logo?: string;
@@ -118,7 +119,7 @@ export function renderFooter(
                 <div class="flex flex-col gap-8 md:flex-row md:flex-wrap md:justify-between">
                     <!-- Brand -->
                     <div class="flex-shrink-0 max-w-sm">
-                        <a href="/" class="inline-flex items-center">${logoHtml}</a>
+                        <a href="${escapeHtml(props.logoHref??'/')}" class="inline-flex items-center">${logoHtml}</a>
                         ${descriptionHtml}
                         ${socialsHtml ? `<div class="flex gap-4 mt-6">${socialsHtml}</div>` : ''}
                     </div>

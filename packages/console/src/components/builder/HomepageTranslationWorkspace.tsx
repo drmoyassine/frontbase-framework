@@ -1,0 +1,43 @@
+import React,{useEffect,useState} from 'react';
+import {z} from 'zod';
+import {translationHomepageReviewSchema} from '@frontbase/edge-core/localization/batches';
+import {translationGenerationConfigurationSchema} from '@frontbase/edge-core/localization';
+import {Button} from '@/components/ui/button';
+import {TranslationPicker} from '../dashboard/settings/shared/TranslationPicker';
+import {translationLanguages} from '../dashboard/settings/shared/translationLanguages';
+type Review=z.infer<typeof translationHomepageReviewSchema>;
+type Prepared={hash:string;previewUrl:string;expected:{hash:string;generation:number}|null};
+const root='/api/project/translation-batches/homepage/';
+export function HomepageTranslationWorkspace({onClose}:{onClose():void}){
+    const [locales,setLocales]=useState<string[]>([]),[locale,setLocale]=useState(''),[review,setReview]=useState<Review|null>(null),[selected,setSelected]=useState(''),[text,setText]=useState(''),[bulk,setBulk]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[progress,setProgress]=useState(''),[approved,setApproved]=useState(false),[prepared,setPrepared]=useState<Prepared|null>(null),[published,setPublished]=useState(false);
+    useEffect(()=>{const controller=new AbortController();void fetch('/api/project/translation-generation/',{credentials:'include',signal:controller.signal}).then(async r=>{if(!r.ok)throw Error();const c=translationGenerationConfigurationSchema.parse((await r.json()).configuration);setLocales(c.targetLocales);setLocale(c.targetLocales[0]??'');}).catch(()=>{if(!controller.signal.aborted)setError('Configure source and target languages under Settings → Translations.');});return()=>controller.abort();},[]);
+    async function load(target=locale){setBusy(true);setError('');setPrepared(null);setApproved(false);try{const response=await fetch(root+'review/?locale='+encodeURIComponent(target),{credentials:'include'});if(!response.ok)throw Error();const value=translationHomepageReviewSchema.parse(await response.json());if(value.locale!==target)throw Error();setReview(value);setSelected(value.fields[0]!.id);setText(value.fields[0]!.translation??'');setBulk(JSON.stringify(Object.fromEntries(value.fields.filter(f=>f.translation!==null).map(f=>[f.id,f.translation])),null,2));}catch{setReview(null);setError('Could not load the published homepage review. Check storage and the active homepage version.');}finally{setBusy(false);}}
+    useEffect(()=>{if(locale)void load(locale);},[locale]);
+    async function post(path:string,body:unknown){const response=await fetch(root+path+'/',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!response.ok)throw Error();return response.json();}
+    async function save(values:Record<string,string>){if(!review)return;setBusy(true);setError('');setPrepared(null);setApproved(false);try{
+        if(Object.keys(values).some(id=>!review.fields.some(f=>f.id===id)))throw Error();
+        const entries=review.fields.filter(f=>typeof values[f.id]==='string'&&values[f.id]!.trim()&&values[f.id]!==f.translation).map(f=>({id:f.id,token:f.token,text:values[f.id]!}));
+        for(let i=0;i<entries.length;i+=16){setProgress(`Saving ${Math.min(i+16,entries.length)} of ${entries.length} translation drafts…`);await post('save',{locale,token:review.token,entries:entries.slice(i,i+16)});}
+        await load();setProgress('Translation drafts saved. Source content is unchanged.');
+    }catch{setError('Save could not be confirmed. Some fields may have saved; reload the review before retrying.');}finally{setBusy(false);}}
+    async function prepare(){if(!review||!approved)return;setBusy(true);setError('');try{const value=await post('prepare',{locale,token:review.token,approveTranslations:true});if(typeof value.hash!=='string'||!/^\/api\/project\/translation-batches\/homepage\/preview\/\?hash=[a-f0-9]{64}$/.test(value.previewUrl))throw Error();setPrepared(value);setPublished(false);}catch{setError('Complete and review every field, then reload if the source or translations changed.');}finally{setBusy(false);}}
+    async function publish(){if(!prepared||!approved)return;setBusy(true);setError('');try{await post('publish',{hash:prepared.hash,expected:prepared.expected,approveTranslations:true});setPublished(true);setProgress('Language published. The homepage header now offers its public language links.');}catch{setError('Publication changed or conflicted. Reload and prepare a fresh preview.');}finally{setBusy(false);}}
+    const field=review?.fields.find(f=>f.id===selected),complete=review?.fields.filter(f=>f.state==='draft').length??0;
+    return <section className="h-screen overflow-auto bg-background p-4 space-y-4" aria-label="Homepage language publication">
+        <header className="flex flex-wrap items-center gap-3"><Button onClick={onClose} disabled={busy}>Back to page translations</Button><h1 className="font-semibold">Homepage languages</h1><div className="w-64"><TranslationPicker id="homepage-locale" label="Homepage language" choices={translationLanguages(locales).filter(c=>locales.includes(c.value))} selected={locale?[locale]:[]} onChange={values=>{setReview(null);setLocale(values[0]??'');}} disabled={busy||!locales.length}/></div><Button onClick={()=>void load()} disabled={busy||!locale}>Reload review</Button></header>
+        <p>This review includes the published homepage, header, footer, search, metadata and visible live cards. Existing translations are reused. Saving drafts does not publish or call AI.</p>
+        {error&&<p role="alert">{error}</p>}{progress&&<p role="status">{progress}</p>}
+        {review&&<><p>{complete} / {review.fields.length} fields translated · {review.active?'A language version is published':'Not published'}</p>
+            <div className="grid gap-4 md:grid-cols-2"><label>Homepage field<select value={selected} disabled={busy} className="block w-full" onChange={e=>{setSelected(e.target.value);setText(review.fields.find(f=>f.id===e.target.value)?.translation??'');}}>{review.fields.map(f=><option key={f.id} value={f.id}>{f.source.slice(0,90)} · {f.state}</option>)}</select></label>
+                {field&&<div className="space-y-2"><p dir="auto">{field.source}</p><label>Homepage translation<textarea className="block w-full min-h-32 border rounded" lang={locale} dir="auto" maxLength={12000} value={text} disabled={busy} onChange={e=>{setText(e.target.value);setPrepared(null);setApproved(false);}}/></label><Button disabled={busy||!text.trim()||text===field.translation} onClick={()=>void save({[field.id]:text})}>Save field draft</Button></div>}</div>
+            <details><summary>Import or inspect translations</summary><p>Use field IDs as keys and translated plain text as values. Existing matching drafts are retained; unknown fields are refused.</p>
+                <label>Homepage source review JSON<textarea readOnly className="block w-full min-h-32 border" value={JSON.stringify(review.fields.map(f=>({id:f.id,source:f.source,translation:f.translation})),null,2)}/></label>
+                <label>Homepage translations JSON<textarea className="block w-full min-h-48 border" value={bulk} disabled={busy} onChange={e=>{setBulk(e.target.value);setPrepared(null);setApproved(false);}}/></label>
+                <Button disabled={busy} onClick={()=>{try{const value=z.record(z.string().max(12000)).parse(JSON.parse(bulk));void save(value);}catch{setError('Enter a JSON object mapping known field IDs to translated text.');}}}>Save supplied drafts</Button>
+            </details>
+            <label className="flex gap-2"><input type="checkbox" checked={approved} disabled={busy||!review.complete} onChange={e=>setApproved(e.target.checked)}/>I reviewed all homepage translations and approve preparing this language.</label>
+            <div className="flex gap-3"><Button disabled={busy||!review.complete||!approved} onClick={()=>void prepare()}>Preview language</Button><Button disabled={busy||!prepared||!approved||published} onClick={()=>void publish()}>Publish language</Button>{published&&<a href={`/${locale}/`} target="_blank" rel="noreferrer">Open published homepage</a>}</div>
+        </>}
+        {prepared&&<iframe title="Prepared homepage language preview" src={prepared.previewUrl} className="w-full min-h-[800px] border"/>}
+    </section>;
+}

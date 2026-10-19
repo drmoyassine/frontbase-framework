@@ -1,3 +1,4 @@
+import {renderLanguageSwitcher,type LanguageLink} from './languageSwitcher.js';
 import {renderThemeSwitcher} from './themeSwitcher.js';
 /**
  * Navbar Component
@@ -61,6 +62,9 @@ export interface NavbarProps {
     hideOnDesktop?: boolean;
     // Dark mode toggle
     showDarkModeToggle?: boolean;
+    showLanguageSwitcher?: boolean;
+    languageSwitcher?: LanguageLink[];
+    localeLabels?: Record<string,string>;
     // Global scale factor (0.8 - 1.5)
     scale?: number;
     // Externalized scale bases (defaults reproduce the prior baked literals).
@@ -215,7 +219,8 @@ function renderNewFormat(
     let buttonsHtml = '';
 
     // Dark Mode Toggle (if enabled)
-    const darkModeToggleHtml = props.showDarkModeToggle ? renderThemeSwitcher() : '';
+    const languageSwitcherHtml = props.showLanguageSwitcher===false?'':renderLanguageSwitcher(props.languageSwitcher,props.localeLabels?.language??'Language');
+    const darkModeToggleHtml = props.showDarkModeToggle ? renderThemeSwitcher(props.localeLabels) : '';
 
     if (secondaryButton?.enabled) {
         buttonsHtml += renderCtaLink(
@@ -264,15 +269,15 @@ function renderNewFormat(
                             ${menuItemsHtml}
                         </nav>
                         <div class="flex items-center" style="gap: ${buttonGap};">
-                            ${darkModeToggleHtml}
+                            ${languageSwitcherHtml}${darkModeToggleHtml}
                             ${buttonsHtml}
                         </div>
                     </div>
 
                     <!-- Mobile: Dark Mode Toggle + Menu Button -->
                     <div class="md:hidden flex items-center gap-2">
-                        ${darkModeToggleHtml}
-                        <button type="button" class="p-2 rounded-lg hover:bg-accent" aria-label="Toggle navigation" aria-expanded="false" aria-controls="${escapeHtml(id)}-mobile-menu" data-fb-mobile-menu-toggle>
+                        ${languageSwitcherHtml}${darkModeToggleHtml}
+                        <button type="button" class="p-2 rounded-lg hover:bg-accent" aria-label="${escapeHtml(props.localeLabels?.toggle??'Toggle navigation')}" aria-expanded="false" aria-controls="${escapeHtml(id)}-mobile-menu" data-fb-mobile-menu-toggle>
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                             </svg>

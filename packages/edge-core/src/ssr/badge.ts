@@ -1,3 +1,4 @@
+import { escapeHtml } from './components/lib/utils.js';
 /**
  * Community Edition "Powered by Frontbase" badge + sign-out pill.
  * Pure code move from PageRenderer.renderPage; no logic change.
@@ -11,7 +12,8 @@ export function renderBadge(
     edition: string,
     licenseKey: string | undefined,
     env: string | undefined,
-    user: unknown
+    user: unknown,
+    labels?: Record<string,string>
 ): string {
     // If it's community edition and no license key is provided, inject the badge.
     // SUPPRESSED in the builder canvas (system.env === 'builder', set by BOTH the
@@ -27,7 +29,7 @@ export function renderBadge(
             <div style="position:fixed;bottom:48px;right:16px;z-index:9999;font-family:system-ui,-apple-system,sans-serif;">
                 <button onclick="frontbase.signOut()" style="display:flex;align-items:center;gap:5px;background:white;padding:5px 10px;border-radius:6px;box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);border:1px solid #e5e7eb;color:#374151;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    <span>Sign Out</span>
+                    <span>${escapeHtml(labels?.signOut??'Sign Out')}</span>
                 </button>
             </div>
         ` : '';
@@ -39,7 +41,7 @@ export function renderBadge(
                         <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <span>Powered by Frontbase</span>
+                    <span>${escapeHtml(labels?.poweredBy??'Powered by Frontbase')}</span>
                 </a>
             </div>
         `;

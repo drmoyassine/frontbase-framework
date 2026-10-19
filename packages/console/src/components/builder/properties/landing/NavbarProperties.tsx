@@ -481,6 +481,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                 </div>
             </div>
 
+            <div className="space-y-2"><Label>Language switcher</Label><Switch checked={props.showLanguageSwitcher !== false} onCheckedChange={checked => updateComponentProp('showLanguageSwitcher', checked)} /><p className="text-xs text-muted-foreground">Shows links for languages published for this page.</p></div>
             {/* Dark Mode Toggle Section */}
             <div className="space-y-3 pt-4 border-t">
                 <Label className="text-sm font-medium">Appearance</Label>

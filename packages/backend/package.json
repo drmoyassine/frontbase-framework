@@ -45,6 +45,8 @@
     "test:translation-allowance-lifecycle-mutation": "node test/translation-allowance-lifecycle-mutation.mjs",
     "test:translation-batches": "node test/translation-batches.mjs",
     "test:translation-batches-mutation": "node test/translation-batches-mutation.mjs",
+    "test:translation-homepage": "node test/translation-homepage.mjs",
+    "test:translation-homepage-mutation": "node test/translation-homepage-mutation.mjs",
     "test:translation-page-preview": "node test/translation-page-preview.mjs",
     "test:translation-page-preview-mutation": "node test/translation-page-preview-mutation.mjs"
   },

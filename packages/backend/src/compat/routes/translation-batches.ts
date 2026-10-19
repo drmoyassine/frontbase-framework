@@ -1,3 +1,4 @@
+import { registerTranslationHomepageRoutes } from './translation-homepage.js';
 import { z } from 'zod';
 import { translationPagePreview, saveTranslationPageField } from '../translation-page-preview.js';
 import type { Hono } from 'hono';
@@ -35,6 +36,7 @@ export function registerTranslationBatchRoutes(app: Hono<{ Variables: ConsoleAut
             return c.json({ detail: 'Translation batches are unavailable' }, 403);
         await next();
     });
+    registerTranslationHomepageRoutes(app,db,host,now);
     app.get(`${root}page-preview/:pageId/`, async c => {
         try { return c.json(await translationPagePreview(host, db, c.get('tenant'), c.req.param('pageId'), c.req.query('locale') ?? '')); }
         catch { return c.json({ detail: 'Saved-page translation preview is unavailable. Check language/storage settings and reload the saved page.' }, 422); }

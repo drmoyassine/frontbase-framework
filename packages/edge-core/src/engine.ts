@@ -35,7 +35,7 @@ export interface EngineOptions {
     /** Console API sub-router, mounted at /api/console (Phase 2). */
     console?: Hono;
     /** Request/capture-bound document metadata. Empty favicon explicitly disables host lookup. */
-    document?: Pick<ShellOptions, 'faviconUrl' | 'language' | 'canonicalUrl' | 'robots' | 'openGraph'>;
+    document?: Pick<ShellOptions, 'faviconUrl' | 'language' | 'direction' | 'alternates' | 'canonicalUrl' | 'robots' | 'openGraph'>;
     /** Resolve a published page by URL path. When set, dynamic CMS pages override
      *  the baked manifest (the manifest becomes a last-resort fallback). Injected
      *  by the host so the engine stays DB-blind. Returns null when no such page.
@@ -274,6 +274,8 @@ export function createEngine(opts: EngineOptions): Hono {
             // decides (product: project settings faviconUrl || default icon).
             faviconUrl: (opts.document?.faviconUrl ?? await engineConfig().resolveFaviconUrl(c.req.raw)) || undefined,
             language: opts.document?.language,
+            direction: opts.document?.direction,
+            alternates: opts.document?.alternates,
             canonicalUrl: opts.document?.canonicalUrl,
             robots: opts.document?.robots,
             openGraph: opts.document?.openGraph,

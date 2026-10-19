@@ -474,7 +474,7 @@ function renderRepeater(id: string, props: Record<string, unknown>, propsJson: s
         '',
         'repeater',
         propsJson,
-        `data-react-component="Repeater" data-component-id="${id}"`
+        props.localeReadOnly ? '' : `data-react-component="Repeater" data-component-id="${id}"`
     );
 
     const skeletonCards = Array(Math.min(columns || 3, 4)).fill(0).map(() => `

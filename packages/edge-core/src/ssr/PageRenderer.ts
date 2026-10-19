@@ -229,7 +229,7 @@ export async function renderPage(
 
     // Community Edition Badge Injection
     const edition = engineConfig().edition;
-    const badgeHtml = renderBadge(edition, engineConfig().licenseKey, context.system?.env, context.user);
+    const badgeHtml = renderBadge(edition, engineConfig().licenseKey, context.system?.env, context.user, rootProps.localeMessages as Record<string,string>|undefined);
 
     const needsContext=/"(?:visibilityCondition|hiddenFilters|versions)"/.test(JSON.stringify(layoutData));
     const publicContext=publicConditionContext(layoutData,context as unknown as Record<string,unknown>);

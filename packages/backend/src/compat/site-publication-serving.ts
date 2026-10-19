@@ -1,3 +1,4 @@
+import { resolveHomepageLanguageRequest } from './translation-homepage-serving.js';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { createEngine, directProvider, audienceConditionUser } from '@frontbase/edge-core';
 import { SitePublicationStore } from './site-publication-store.js';
@@ -51,7 +52,11 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
     if(!['GET','HEAD'].includes(request.method))throw new Error('publication_method_invalid');
     const audience=options.resolveAudience?await options.resolveAudience(owner,request).catch(()=>({authenticated:false})):null;
     const listResponse=await publicationListResponse(db,owner,request,audience);if(listResponse)return listResponse;
-    const resolution=await resolveReviewedSitePublication(db,owner,request,audience,options.liveQuery);
+    let localeResult:Awaited<ReturnType<typeof resolveHomepageLanguageRequest>>=null;
+    try{if(!audience?.authenticated)localeResult=await resolveHomepageLanguageRequest(db,owner,request,options.liveQuery);}catch(error){
+        if(new URL(request.url).pathname!=='/')return new Response(request.method==='HEAD'?null:'Language temporarily unavailable',{status:error instanceof PublicationRequestError?400:503,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}});
+    }
+    const resolution:SitePublicationResolution=localeResult?{status:'resolved',hash:localeResult.siteHash,generation:localeResult.generation,result:localeResult.resolved}:await resolveReviewedSitePublication(db,owner,request,audience,options.liveQuery);
     if(resolution.status==='inactive')return null;
     const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     if(resolution.status==='redirect'){
@@ -59,6 +64,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         return new Response(null,{status:301,headers});
     }
     if(resolution.status==='sitemap') {
+        try{const home=await resolveHomepageLanguageRequest(db,owner,new Request(new URL('/',request.url)),options.liveQuery);if(home){for(const link of home.resolved.document.alternates??[]){if(link.language!==home.locale)resolution.xml=resolution.xml.replace('</urlset>',`<url><loc>${link.href.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</loc></url></urlset>`);}}}catch{/* Keep the existing source sitemap available when a locale cannot be verified. */}
         headers.set('Content-Type','application/xml; charset=utf-8');
         headers.set('X-Site-Version',resolution.hash);
         headers.set('X-Site-Generation',String(resolution.generation));
@@ -81,6 +87,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         const responseHeaders=new Headers(rendered.headers);
         for(const [key,value] of headers)responseHeaders.set(key,value);
         responseHeaders.set('X-Robots-Tag',document.robots ?? 'noindex, nofollow');
+        if(localeResult){responseHeaders.set('Content-Language',localeResult.locale);if(localeResult.releaseHash)responseHeaders.set('X-Translation-Version',localeResult.releaseHash);}
         responseHeaders.set('X-Site-Version',resolution.hash);
         responseHeaders.set('X-Site-Generation',String(resolution.generation));
         if(request.method==='HEAD')await rendered.body?.cancel();

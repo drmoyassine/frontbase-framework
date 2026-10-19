@@ -2,6 +2,7 @@
   "extends": "./tsconfig.app.json",
   "include": [
     "src/vite-env.d.ts",
+    "src/components/builder/HomepageTranslationWorkspace.tsx",
     "src/components/dashboard/settings/shared/TranslationBatchForm.tsx",
     "src/components/dashboard/settings/shared/TranslationGenerationForm.tsx"
   ]

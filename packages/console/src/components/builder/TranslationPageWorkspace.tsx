@@ -53,7 +53,7 @@ function TranslationCanvas({ page, locale, onSelectField }: { page: Page; locale
     </div>;
 }
 /** Separate editing surface unmounts source layout shortcuts/DnD; all saves are translation-only. */
-export function TranslationPageWorkspace({ page, onClose }: { page: Page; onClose(): void }) {
+export function TranslationPageWorkspace({ page, onClose, onHomepage }: { page: Page; onClose(): void; onHomepage?(): void }) {
     const [configuration, setConfiguration] = useState<z.infer<typeof translationGenerationConfigurationSchema> | null>(null);
     const [locale, setLocale] = useState('');
     const [preview, setPreview] = useState<Preview | null>(null);
@@ -106,6 +106,7 @@ export function TranslationPageWorkspace({ page, onClose }: { page: Page; onClos
         <header className="flex flex-wrap items-center gap-3 border-b p-3">
             <Button onClick={onClose} disabled={busy}>Back to design</Button>
             <strong>{page.name} · Translation draft</strong>
+            {onHomepage && <Button onClick={onHomepage} disabled={busy}>Publish homepage language</Button>}
             <TranslationPicker id="translation-preview-locale" label="Preview language" selected={locale ? [locale] : []} choices={translationLanguages(configuration ? [configuration.sourceLocale, ...configuration.targetLocales] : []).filter(item => configuration && [configuration.sourceLocale, ...configuration.targetLocales].includes(item.value))}
                 onChange={values => setLocale(values[0] ?? '')} disabled={!configuration || busy} />
             <Button onClick={() => setRefresh(value => value + 1)} disabled={busy}>Reload translations</Button>
