@@ -32,7 +32,7 @@ import { s3StorageProvider } from '@frontbase/edge-infra';
 import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
 import { createDiskAssets, isStagedConsole } from './assets-disk.js';
 import { resolveStateDb, StateDbConfigError } from './state-db.js';
-import { createCmsEngine } from './worker.js';
+import { createCmsEngine, readTranslationExecutionEnabled } from './worker.js';
 import { bootTimeoutMs, raceBootTimeout, BootTimeoutError } from './boot-guard.js';
 import type { Hono } from 'hono';
 
@@ -68,6 +68,7 @@ function engine(): Promise<Hono> {
             }
             return createCmsEngine({
                 runner: stateDb.runner,
+                translationExecutionEnabled: readTranslationExecutionEnabled(env.FRONTBASE_TRANSLATION_EXECUTION_ENABLED),
                 sessionSecret: env.SESSION_SECRET,
                 setupToken: env.SETUP_TOKEN || undefined,
                 setupExpiresAt: env.SETUP_EXPIRES_AT || undefined,

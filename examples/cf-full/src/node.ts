@@ -24,7 +24,7 @@ import { s3StorageProvider, bullmqDriver } from '@frontbase/edge-infra';
 import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
 import { createDiskAssets } from './assets-disk.js';
 import { resolveStateDb } from './state-db.js';
-import { createCmsEngine } from './worker.js';
+import { createCmsEngine, readTranslationExecutionEnabled } from './worker.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const CONSOLE_ROOT = join(here, '..', 'console-dist');
@@ -93,6 +93,7 @@ const envServices = parseEnvServices(env);
 // first administrator (idempotent — a re-run with existing users never reseeds).
 const engine = await createCmsEngine({
     runner: stateDb.runner,
+    translationExecutionEnabled: readTranslationExecutionEnabled(env.FRONTBASE_TRANSLATION_EXECUTION_ENABLED),
     sessionSecret: SESSION_SECRET,
     setupToken: env.SETUP_TOKEN || undefined,
     setupExpiresAt: env.SETUP_EXPIRES_AT || undefined,

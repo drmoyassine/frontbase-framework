@@ -74,6 +74,8 @@ export interface CmsEnv {
     FRONTBASE_CACHE_TOKEN?: string;
     PUBLIC_URL?: string;
     FRONTBASE_QUEUE_CALLBACK_SECRET?: string;
+    /** Exact operator opt-in for reviewed translation batches; absent means disabled. */
+    FRONTBASE_TRANSLATION_EXECUTION_ENABLED?: string;
     // A-25 Phase 4 cloud mode (set via `wrangler deploy --var`, NEVER in the
     // committed wrangler.toml — a self-host reusing that file must not boot
     // cloud). Absent ⇒ self-host, byte-identical behavior.
@@ -99,7 +101,11 @@ export interface CmsEnv {
     RESEND_API_KEY?: string;
 }
 
+/** Only an explicit operator value enables reviewed translation dispatch. */
+export const readTranslationExecutionEnabled=(value:unknown):boolean=>value==='1';
+
 export interface CmsEngineOptions {
+    translationExecutionEnabled?: boolean;
     runner: DbRunner;
     /** SESSION_SECRET from the environment. Optional since the one-click
      * deploys: when unset the engine generates a strong secret on first boot
@@ -373,6 +379,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         : rawResolvePrincipal;
     const compatApp = await createCompatApp({
         makeRunner: () => opts.runner,
+        translationExecutionEnabled: opts.translationExecutionEnabled===true,
         resolvePrincipal: scopedResolvePrincipal as (req: Request) => Promise<any>,
         sessionSecret,
         userStoreFor: (t: string) => new UserStore(opts.runner, t),
@@ -918,6 +925,7 @@ export default {
                 }
                 enginePromise = createCmsEngine({
                     runner: stateDb.runner,
+                    translationExecutionEnabled: readTranslationExecutionEnabled(env.FRONTBASE_TRANSLATION_EXECUTION_ENABLED),
                     sessionSecret: env.SESSION_SECRET,
                     setupToken: env.SETUP_TOKEN,
                     setupExpiresAt: env.SETUP_EXPIRES_AT,
