@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-19 per-request datasource schemas — staging verified
+
+[Receipt](../plans/frontbase-datasource-schema-selection-20261019.md): same-connection Inspector/binding schema selection, saved-view pins and schema-scoped caches/layouts/sessions reuse guarded HTTP metadata/reads. Workspace check/build,16 backend suites,26 UI cases and11 negative faults pass. Source3d4eaa4/313036c deployed healthy; actual Supabase/public discovery and Transo/translations tables/protocol row verified, unexposed public refused without switching, unsupported row actions hidden. Connection defaults, service settings and eight public response hashes retained. No external schema/grant/credential/record/publication changes. Existing null-schema views retain prior defaults until saved; broader write/translation/release boundaries remain open. Shared work preserved; CF-22 unchanged.
+
 ## 2026-10-19 native PostgREST Inspector reads — staging verified
 
 [Receipt](../plans/frontbase-native-postgrest-inspector-20261019.md): closes the connectivity-only gap with actual native table/schema/record discovery and shared HTTP filter/sort/pagination/search/saved-view reads. Workspace check/build,11 suites,4 restored faults and response conformance pass. Sourceeb622a0 deployed healthy; actual Transo lists six tables and protocol displays two columns/one record. No keys, settings, records, SQL or publication changes; service/public responses preserved. Native write/aggregate/join capabilities remain separate. Unrelated work and local generated bundle retained; release/CF-22 unchanged.

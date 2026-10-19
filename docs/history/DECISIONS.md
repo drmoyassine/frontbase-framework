@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-19 owner approves per-request schema selection
+
+Keep a connection default, but allow owned Inspector requests to select any API-exposed/permitted Supabase/PostgREST schema. Persist `source_schema` on saved views and `sourceSchema` on authored list bindings; isolate schema/table metadata, row caches, layouts and sessions. Reuse the existing guarded HTTP adapter and published-view authorization. Do not grant/expose schemas or silently fall back. Legacy null-schema views retain their prior default semantics until saved; unsupported writes refuse rather than target another schema. [Implementation and evidence](../plans/frontbase-datasource-schema-selection-20261019.md). No package/release scope or CF-22 change.
+
 ## 2026-10-19 owner approves shared Supabase/native PostgREST configuration
 
 Extend the existing Supabase datasource/HTTP client with explicit endpoint format and exposed schema selection; retain standard Supabase/public defaults. Native PostgREST uses its supplied REST root and existing guarded HTTP transport, with no separate package/driver or generic SQL RPC installation. Connectivity is a bounded read-only metadata/schema probe, distinct from SQL-based Inspector and application-specific protocol capabilities. Round-trip only non-secret settings; blank flat credential edits preserve encrypted saved values. [Implementation and evidence](../plans/frontbase-native-postgrest-datasource-20261019.md). This does not change package/release scope, translation execution authorization or paused CF-22.
