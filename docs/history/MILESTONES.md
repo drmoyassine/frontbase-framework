@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-19 shared Supabase/native PostgREST configuration — staging verified
+
+[Receipt](../plans/frontbase-native-postgrest-datasource-20261019.md): explicit endpoint/schema settings, safe edit persistence and guarded read-only metadata tests; workspace check/build,12 UI cases,4 restored faults,10 suites and response conformance pass. Source21a3166/generated97c5958 deployed; actual Transo/native/translations and existing Studygram DB/Supabase/public checks pass. Only Transo format/schema were saved; no keys, SQL, AI or publication changes. Shared state preserved. Whole-app functional coverage, SQL Inspector portability and translation protocol acceptance remain separate open work; release/CF-22 unchanged.
+
 ## 2026-10-19 datasource test feedback — staging verified
 
 [Receipt](../plans/frontbase-datasource-test-feedback-20261019.md): shared success/failure/request-error toasts and client timeout, eleven focused UI cases and workspace check/build pass. Source0679cfc deployed healthy with configuration and eight public response hashes preserved. Actual Studygram DB succeeds; Transo's failure is now visible, while standalone PostgREST test compatibility remains the next scoped task. No saved settings, SQL, credential or publication changes; release and CF-22 status unchanged.

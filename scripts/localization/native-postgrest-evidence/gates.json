@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-19",
+  "workspaceCheck": true,
+  "workspaceBuild": true,
+  "ui": {
+    "files": 2,
+    "passed": 12
+  },
+  "suites": [
+    {
+      "file": "postgrest-connection.mjs",
+      "args": [],
+      "exitCode": 0,
+      "seconds": 0.854
+    },
+    {
+      "file": "providers-supabase.mjs",
+      "args": [],
+      "exitCode": 0,
+      "seconds": 0.771
+    },
+    {
+      "file": "sdk-http.mjs",
+      "args": [],
+      "exitCode": 0,
+      "seconds": 0.826
+    },
+    {
+      "file": "compat-security.mjs",
+      "args": [],
+      "exitCode": 0,
+      "seconds": 0.76
+    },
+    {
+      "file": "compat-database-security.mjs",
+      "args": [],
+      "exitCode": 0,
+      "seconds": 0.758
+    },
+    {
+      "file": "compat-sync-functional.mjs",
+      "args": [],
+      "exitCode": 0,
+      "seconds": 0.828
+    },
+    {
+      "file": "compat-tenant-matrix.mjs",
+      "args": [],
+      "exitCode": 0,
+      "seconds": 6.928
+    },
+    {
+      "file": "compat-conformance.mjs",
+      "args": [
+        "--gate"
+      ],
+      "exitCode": 0,
+      "seconds": 7.22
+    },
+    {
+      "file": "translation-storage.mjs",
+      "args": [],
+      "exitCode": 0,
+      "seconds": 0.866
+    },
+    {
+      "file": "translation-view-inputs.mjs",
+      "args": [],
+      "exitCode": 0,
+      "seconds": 8.718
+    }
+  ],
+  "faults": {
+    "faults": [
+      {
+        "name": "endpoint",
+        "rejected": true
+      },
+      {
+        "name": "schema",
+        "rejected": true
+      },
+      {
+        "name": "stream-bound",
+        "rejected": true
+      },
+      {
+        "name": "blank-key-retention",
+        "rejected": true
+      }
+    ],
+    "artifactsRestored": true
+  },
+  "responseConformance": {
+    "conforming": 257,
+    "verifiedRefusals": 77,
+    "violations": 0,
+    "unreachable": 0
+  },
+  "wholeAppFunctionalCoverage": "FAILED: broader unverified/shape-only interfaces; retained private report; not a release-readiness claim",
+  "limitations": [
+    "Scoped console type gate, not whole legacy UI",
+    "SQL-based Inspector and application RPC capabilities are not established by HTTP connectivity",
+    "No optional full SDK fault-suite rerun, real AI or translation-protocol upgrade"
+  ]
+}

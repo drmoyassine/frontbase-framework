@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-19 owner approves shared Supabase/native PostgREST configuration
+
+Extend the existing Supabase datasource/HTTP client with explicit endpoint format and exposed schema selection; retain standard Supabase/public defaults. Native PostgREST uses its supplied REST root and existing guarded HTTP transport, with no separate package/driver or generic SQL RPC installation. Connectivity is a bounded read-only metadata/schema probe, distinct from SQL-based Inspector and application-specific protocol capabilities. Round-trip only non-secret settings; blank flat credential edits preserve encrypted saved values. [Implementation and evidence](../plans/frontbase-native-postgrest-datasource-20261019.md). This does not change package/release scope, translation execution authorization or paused CF-22.
+
 ## 2026-10-18 owner adds OpenRouter translation support
 
 OpenRouter is an additional owned provider connection for the existing translation host, not a second engine or queue. Reuse the canonical injected HTTP AI transport with a bounded protocol option, fixed guarded origin, encrypted account reference and existing review/allowance lifecycle. Free model IDs additionally request zero pricing; required parameters, no provider fallbacks and denied provider data collection fail closed if unavailable. Keep the model explicitly selected and execution disabled by default. [Implementation and evidence](../plans/frontbase-translation-openrouter-20261018.md). Real-provider acceptance, deployment and release gates remain separate; no new package or CF-22 change.
