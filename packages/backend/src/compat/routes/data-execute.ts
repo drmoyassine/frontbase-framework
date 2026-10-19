@@ -1,3 +1,5 @@
+import {datasourceSchema,scopedDatasourceConfig} from '../datasource-schema.js';
+import {isNativePostgrest,nativePostgrestInspector} from '../postgrest-inspector.js';
 // CF-22 Work D — client hydration data plane
 import {savedViewFilters} from '@frontbase/edge-core/saved-view-filters';
 import type { Hono } from 'hono';
@@ -28,6 +30,7 @@ const anonRpcDenied = new Set<string>();
 
 interface DataRequest {
     viewId?:string;
+    sourceSchema?:string;
     datasourceId?: string;
     fetchStrategy?: 'direct' | 'proxy';
     method?: 'GET' | 'POST';
@@ -172,7 +175,7 @@ export function registerDataExecuteRoute(
                         error: 'Unauthorized access to this datasource',
                     }, 403);
                 }
-                if(!consoleDataAdministrator(principal)&&!await publishedLiveReadAllowed(_runner,tenant,ds.id,dataRequest.viewId,dataRequest.body))return c.json({success:false,error:'Published view required'},403);
+                let trustedSchema:string|undefined;
                 let trustedViewFilters:unknown;
                 let trustedViewSort:{column:string;direction:'asc'|'desc'}|null|undefined;
                 if(dataRequest.viewId){
@@ -180,16 +183,36 @@ export function registerDataExecuteRoute(
                     const requestBody=dataRequest.body as Record<string,unknown>|undefined;
                     if(!view||view.datasource_id!==ds.id||!requestBody||requestBody.table_name!==view.target_table||'query' in requestBody)return c.json({success:false,error:'Saved view unavailable'},403);
                     try{
+                        trustedSchema=view.source_schema??undefined;
+                        if(dataRequest.sourceSchema!==undefined&&dataRequest.sourceSchema!==datasourceSchema(ds.kind,ds.config,trustedSchema))return c.json({success:false,error:'Saved view schema mismatch'},403);
                         trustedViewFilters=savedViewFilters(view.filters);
                         trustedViewSort=view.default_sort;
                     }catch{return c.json({success:false,error:'Invalid saved view filters'},422);}
                 }
 
+                if(!consoleDataAdministrator(principal)&&!await publishedLiveReadAllowed(_runner,tenant,ds.id,dataRequest.viewId,dataRequest.body,ds.kind==='supabase'?datasourceSchema(ds.kind,ds.config,trustedSchema):undefined))return c.json({success:false,error:'Published view required'},403);
                 const merged = await mergeAccountConfig(
                     accountConfigFor, externalFetch, tenant, ds.kind, ds.config,
                 ).catch(() => ds.config);
-                const config = resolveDatasourceConfig(ds.kind, merged);
+                if(!dataRequest.viewId&&(dataRequest.sourceSchema!==undefined||isNativePostgrest(ds))&&!consoleDataAdministrator(principal))return c.json({success:false,error:'Saved view required for selected schema'},403);
+                const requestedSchema=dataRequest.viewId?trustedSchema:dataRequest.sourceSchema;
+                const scoped=scopedDatasourceConfig(ds.kind,merged,requestedSchema);
+                const config = resolveDatasourceConfig(ds.kind, scoped);
 
+                // Selected schemas use the shared read-only HTTP protocol, never default-schema SQL.
+                if(isNativePostgrest(ds)||requestedSchema!==undefined){
+                    try{
+                        const valid=validateRpcQueryBody(dataRequest.body);if(!valid.ok||valid.payload.joins.length)throw Error('single_table_only');
+                        const body=valid.payload,inspector=await nativePostgrestInspector(scoped,externalFetch);
+                        const columns=body.columns==='*'?undefined:body.columns.split(',').map(value=>{
+                            const match=/^"([^".]+)"$/.exec(value.trim());if(!match)throw Error('invalid_columns');return match[1]!;
+                        });
+                        const result=await inspector.rows(body.table_name,{offset:(body.page-1)*body.page_size,limit:body.page_size,columns,
+                            filters:[...savedViewFilters(trustedViewFilters),...savedViewFilters(body.filters)],
+                            sort:body.sort_col??trustedViewSort?.column,order:body.sort_col?body.sort_dir??'asc':trustedViewSort?.direction??'asc',search:body.search_query,searchColumns:body.search_cols});
+                        return c.json({success:true,data:result.records,count:result.records.length,total:result.total});
+                    }catch{return c.json({success:false,error:'Selected-schema read unavailable. Check the table, filters and API permissions.'},422);}
+                }
                 let runner: DbRunner;
                 try {
                     runner = datasourceRunner(ds.kind, config, externalFetch);

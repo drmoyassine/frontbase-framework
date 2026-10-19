@@ -5,6 +5,7 @@ import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 vi.mock('posthog-js',()=>({default:{init:vi.fn(),capture:vi.fn(),identify:vi.fn(),reset:vi.fn()}}));
 vi.mock('@/components/data-binding/DataSourceSelector',()=>({DataSourceSelector:({value,onValueChange}:any)=><select aria-label="Data source" value={value} onChange={event=>onValueChange(event.target.value)}><option value="source-a">Source A</option><option value="source-b">Source B</option></select>}));
 vi.mock('@/components/data-binding/TableSelector',()=>({TableSelector:({value,onValueChange}:any)=><select aria-label="Table" value={value} onChange={event=>onValueChange(event.target.value)}><option value="">Choose table</option><option value="catalog">Catalog</option></select>}));
+vi.mock('@/modules/dbsync/components/DatasourceSchemaSelector',()=>({useDatasourceSchema:()=>({data:{supported:true,defaultSchema:'public'},isPending:false}),DatasourceSchemaSelector:()=>null}));
 vi.mock('@/hooks/data/useBindingColumns',()=>({useBindingColumns:()=>[{name:'title',type:'text'},{name:'id',type:'integer'}]}));
 vi.mock('@/components/builder/data-table/CompactColumnConfigurator',()=>({CompactColumnConfigurator:()=>null}));
 vi.mock('@/components/builder/data-binding/RepeaterFieldMappings',()=>({RepeaterFieldMappings:()=>null}));

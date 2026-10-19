@@ -15,6 +15,7 @@ export interface LiveListPresentation {
 export interface LiveListBinding {
     dataSourceId?: string;
     tableName?: string;
+    sourceSchema?: string;
     viewId?: string;
     columnOrder?: string[];
     searchColumns?: string[];
@@ -38,7 +39,7 @@ export function liveListPageSize(value?:number,fallback=20) {
 }
 
 export function liveListIdentity(binding: LiveListBinding) {
-    return [binding.dataSourceId, binding.tableName, binding.viewId, binding.dataRequest, binding.searchColumns, binding.frontendFilters, binding.filtering?.filters];
+    return [binding.dataSourceId, binding.sourceSchema, binding.tableName, binding.viewId, binding.dataRequest, binding.searchColumns, binding.frontendFilters, binding.filtering?.filters];
 }
 
 export function liveListSortAvailable(binding:LiveListBinding,search?:string) {
@@ -78,6 +79,7 @@ export async function fetchLiveList(binding: LiveListBinding, query: LiveListQue
     // Saved views always pass through their owner-scoped server resolver, including on canvas.
     if (mode === 'builder' && !binding.viewId) {
         const params = new URLSearchParams({limit:String(body.page_size),offset:String((body.page-1)*body.page_size),filters:JSON.stringify(body.filters)});
+        if (binding.sourceSchema) params.set('schema',binding.sourceSchema);
         if (body.sort_col) { params.set('sort', body.sort_col); params.set('order', body.sort_dir); }
         if (body.search_query) params.set('search', body.search_query);
         if (body.search_cols.length) params.set('search_cols', JSON.stringify(body.search_cols));
@@ -88,7 +90,7 @@ export async function fetchLiveList(binding: LiveListBinding, query: LiveListQue
         }
         if (related.size) params.set('select', ['*', ...[...related].map(([table,names])=>`${table}(${names.join(',')})`)].join(','));
         response = await fetch(`/api/sync/datasources/${encodeURIComponent(datasourceId)}/tables/${encodeURIComponent(binding.tableName)}/data/?${params}`, {signal, credentials:'include'});
-    } else if (binding.dataRequest?.fetchStrategy === 'direct' && !binding.viewId) {
+    } else if (binding.dataRequest?.fetchStrategy === 'direct' && !binding.viewId && !binding.sourceSchema) {
         const request = binding.dataRequest;
         const url = (request.url || '').replace('frontbase_get_rows', body.search_query ? 'frontbase_search_rows' : 'frontbase_get_rows');
         // These legacy RPCs have different signatures. The search RPC does not accept sort arguments.
@@ -98,7 +100,7 @@ export async function fetchLiveList(binding: LiveListBinding, query: LiveListQue
     } else {
         proxy = true;
         response = await fetch('/api/data/execute', {method:'POST', credentials:'include', signal, headers:{'Content-Type':'application/json'},body:JSON.stringify({dataRequest:{
-            fetchStrategy:'proxy', datasourceId, viewId:binding.viewId, method:'POST',
+            fetchStrategy:'proxy', datasourceId, sourceSchema:binding.sourceSchema, viewId:binding.viewId, method:'POST',
             queryConfig:{...binding.dataRequest?.queryConfig, tableName:binding.tableName}, body,
             resultPath:binding.dataRequest?.resultPath || 'rows', flattenRelations:binding.dataRequest?.flattenRelations ?? false,
         }})});

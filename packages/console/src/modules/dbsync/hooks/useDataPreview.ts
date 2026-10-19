@@ -8,6 +8,8 @@ import { useDataPreviewFilters } from './data-preview/useDataPreviewFilters';
 import { useDataPreviewData } from './data-preview/useDataPreviewData';
 
 export const useDataPreview = ({
+    sourceSchema,
+    readOnly,
     isOpen,
     datasourceId,
     table,
@@ -90,6 +92,7 @@ export const useDataPreview = ({
     const filterState = useDataPreviewFilters({
         initialFilters,
         datasourceId,
+        sourceSchema,
         datasourceName,
         showDataSearchResults,
         data: undefined, // Will be updated? No, hooks props are just initial or reactive? 
@@ -103,6 +106,7 @@ export const useDataPreview = ({
     } = useDataPreviewData({
         isOpen,
         datasourceId,
+        sourceSchema,
         selectedTable,
         appliedFilters: filterState.appliedFilters,
         showDataSearchResults,
@@ -289,9 +293,9 @@ export const useDataPreview = ({
     // Set Active Context
     useEffect(() => {
         if (isOpen && datasourceId && selectedTable) {
-            setActiveContext(String(datasourceId), selectedTable);
+            setActiveContext(String(datasourceId), selectedTable, sourceSchema);
         }
-    }, [isOpen, datasourceId, selectedTable, setActiveContext]);
+    }, [isOpen, sourceSchema, datasourceId, selectedTable, setActiveContext]);
 
 
     // Copy/Paste Logic for View Saving/Restoring (Simplified for brevity but preserving functionality)
@@ -300,7 +304,7 @@ export const useDataPreview = ({
         setIsSaving(true);
         try {
             const payload = {
-                name: viewName, target_table: selectedTable, filters: filterState.filters, field_mappings: fieldMappings,
+                source_schema: sourceSchema, name: viewName, target_table: selectedTable, filters: filterState.filters, field_mappings: fieldMappings,
                 linked_views: linkedViews, visible_columns: visibleColumns, pinned_columns: pinnedColumns,
                 column_order: columnOrder, webhooks: webhooks
             };
@@ -309,7 +313,7 @@ export const useDataPreview = ({
             filterState.setAppliedFilters([...filterState.filters]);
             if (response.data.id) setCurrentViewId(response.data.id);
             setSaveSuccess(true); onViewSaved?.(response.data); setTimeout(() => setSaveSuccess(false), 5000);
-            if (selectedTable) await datasourcesApi.clearSession(datasourceId, selectedTable);
+            if (selectedTable) await datasourcesApi.clearSession(datasourceId, selectedTable, sourceSchema);
         } catch (err) { console.error('Error saving view:', err); } finally { setIsSaving(false); }
     };
 
@@ -317,10 +321,10 @@ export const useDataPreview = ({
         if (!datasourceId || !selectedTable) return;
         try {
             setIsSessionLoading(true);
-            if (selectedTable) await datasourcesApi.clearSession(datasourceId, selectedTable);
-            clearTableCache(String(datasourceId), selectedTable);
-            queryClient.removeQueries({ queryKey: ['tableData', datasourceId, selectedTable] });
-            queryClient.removeQueries({ queryKey: ['tableSchema', datasourceId, selectedTable] });
+            if (selectedTable) await datasourcesApi.clearSession(datasourceId, selectedTable, sourceSchema);
+            clearTableCache(String(datasourceId), selectedTable, sourceSchema);
+            queryClient.removeQueries({ queryKey: ['tableData', datasourceId, sourceSchema, selectedTable] });
+            queryClient.removeQueries({ queryKey: ['tableSchema', datasourceId, sourceSchema, selectedTable] });
 
             filterState.setFilters(initialFilters || []);
             filterState.setAppliedFilters(initialFilters || []);
@@ -329,7 +333,7 @@ export const useDataPreview = ({
             setWebhooks(initialWebhooks || []);
             initializeLayout({ pinnedColumns: (initialPinnedColumns as string[]) || [], columnOrder: (initialColumnOrder as string[]) || [], visibleColumns: initialVisibleColumns || [] });
 
-            await Promise.all([refetchData(), queryClient.invalidateQueries({ queryKey: ['tableSchema', datasourceId, selectedTable] })]);
+            await Promise.all([refetchData(), queryClient.invalidateQueries({ queryKey: ['tableSchema', datasourceId, sourceSchema, selectedTable] })]);
             setViewName(initialViewName || '');
             // Logic for viewId/table/default view...
             if (viewId) { setCurrentViewId(viewId); setCurrentStep('records'); setIsSidebarCollapsed(true); }
@@ -353,7 +357,7 @@ export const useDataPreview = ({
     const lastProcessedConfig = useRef<string>("");
     useEffect(() => {
         if (!isOpen) { lastProcessedConfig.current = ""; return; }
-        const currentPropsKey = JSON.stringify({ datasourceId, table, viewId, initialFilters });
+        const currentPropsKey = JSON.stringify({ datasourceId, sourceSchema, table, viewId, initialFilters });
         if (currentPropsKey === lastProcessedConfig.current) return;
         // ... Load logic ...
         // (For the sake of the refactor, assuming we keep this logic or extracting it to `useSessionManagement` would be better.
@@ -364,7 +368,7 @@ export const useDataPreview = ({
             setIsSessionLoading(true);
             try {
                 if (table) {
-                    const { data: sessionData } = await datasourcesApi.getSession(datasourceId, table);
+                    const { data: sessionData } = await datasourcesApi.getSession(datasourceId, table, sourceSchema);
                     if (sessionData && Object.keys(sessionData).length > 0) {
                         const nextFilters = sessionData.filters || [];
                         if (JSON.stringify(filterState.appliedFilters) !== JSON.stringify(nextFilters)) {
@@ -391,7 +395,7 @@ export const useDataPreview = ({
             setIsSessionLoading(false); lastProcessedConfig.current = currentPropsKey;
         };
         loadInitialData();
-    }, [isOpen, table, datasourceId, viewId, initialFilters]); // Simplified deps
+    }, [isOpen, sourceSchema, table, datasourceId, viewId, initialFilters]); // Simplified deps
 
     // Sync to Redis
     useEffect(() => {
@@ -401,12 +405,12 @@ export const useDataPreview = ({
             try {
                 await datasourcesApi.saveSession(datasourceId, selectedTable, {
                     pinnedColumns, columnOrder, visibleColumns, filters: filterState.filters, fieldMappings, timestamp: new Date().toISOString()
-                });
+                }, sourceSchema);
             } catch (err) { console.error("Failed to sync session to Redis:", err); }
         };
         const timer = setTimeout(syncToRedis, 2000);
         return () => clearTimeout(timer);
-    }, [pinnedColumns, columnOrder, visibleColumns, filterState.filters, fieldMappings, isOpen, datasourceId, selectedTable, isSessionLoading]);
+    }, [pinnedColumns, columnOrder, visibleColumns, filterState.filters, fieldMappings, isOpen, datasourceId, sourceSchema, selectedTable, isSessionLoading]);
 
 
     // Click outside Columns Dropdown
@@ -442,7 +446,7 @@ export const useDataPreview = ({
             setActiveTab, setGlobalSearch: filterState.setGlobalSearch, setDataSearchQuery: filterState.setDataSearchQuery,
             setShowDataSearchResults, setIsRenamingView, setGlobalSearchStatus: filterState.setGlobalSearchStatus,
             setGlobalResults: filterState.setGlobalResults, setIsSessionLoading, setCopySuccess, setSelectedTable,
-            setTableSearch, setEditingRecord, setFieldMappings, setLinkedViews, setWebhooks, setCurrentStep,
+            setTableSearch, setEditingRecord: readOnly ? () => {} : setEditingRecord, setFieldMappings, setLinkedViews, setWebhooks, setCurrentStep,
             setIsSidebarCollapsed, setIsWebhookModalOpen, setEditingWebhookIndex, setWebhookForm,
             setCurrentMatchIndex, setAllMatches, setColumnOrder, setVisibleColumns, togglePin, toggleVisibility,
             handleNextMatch: filterState.handleNextMatch, handlePrevMatch: filterState.handlePrevMatch, copyToClipboard,

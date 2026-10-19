@@ -34,6 +34,7 @@ export interface DatasourceView {
     description?: string
     datasource_id: string
     target_table: string
+    source_schema?: string | null
     filters: any[]
     field_mappings?: Record<string, string>
     linked_views?: Record<string, any>

@@ -22,6 +22,7 @@ export interface DatasourceViewRecord {
     datasource_id: string;
     name: string;
     target_table: string;
+    source_schema?: string | null;
     default_sort?: {column:string;direction:'asc'|'desc'} | null;
     visible_columns: string[] | null;
     column_order: string[] | null;
@@ -162,7 +163,7 @@ export class SyncStore {
 
     async listViews(datasourceId: string): Promise<DatasourceViewRecord[]> {
         const rows = await this.runner.query(
-            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND datasource_id = ? ORDER BY created_at ASC',
+            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, source_schema, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND datasource_id = ? ORDER BY created_at ASC',
             [this.tenant, datasourceId],
         );
         return rows.map((r) => this.mapViewRow(r));
@@ -170,7 +171,7 @@ export class SyncStore {
 
     async getView(id: string): Promise<DatasourceViewRecord | null> {
         const rows = await this.runner.query(
-            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND id = ?',
+            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, source_schema, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND id = ?',
             [this.tenant, id],
         );
         const row = rows[0];
@@ -182,7 +183,8 @@ export class SyncStore {
             datasource_id: string;
             name: string;
             target_table: string;
-    default_sort?: {column:string;direction:'asc'|'desc'} | null;
+            source_schema?: string | null;
+            default_sort?: {column:string;direction:'asc'|'desc'} | null;
             visible_columns?: string[] | null;
             column_order?: string[] | null;
             pinned_columns?: string[] | null;
@@ -196,7 +198,7 @@ export class SyncStore {
         now: string,
     ): Promise<DatasourceViewRecord> {
         await this.runner.exec(
-            `INSERT INTO datasource_views (id, tenant_slug, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            `INSERT INTO datasource_views (id, tenant_slug, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, source_schema, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
                 id,
                 this.tenant,
@@ -212,6 +214,7 @@ export class SyncStore {
                 input.linked_views ? JSON.stringify(input.linked_views) : null,
                 input.description ?? null,
                 input.default_sort ? JSON.stringify(input.default_sort) : null,
+                input.source_schema ?? null,
                 now,
                 now,
             ],
@@ -221,6 +224,7 @@ export class SyncStore {
             datasource_id: input.datasource_id,
             name: input.name,
             target_table: input.target_table,
+            source_schema: input.source_schema ?? null,
             visible_columns: input.visible_columns ?? null,
             column_order: input.column_order ?? null,
             pinned_columns: input.pinned_columns ?? null,
@@ -250,6 +254,7 @@ export class SyncStore {
             datasource_id: patch.datasource_id ?? existing.datasource_id,
             name: patch.name ?? existing.name,
             target_table: patch.target_table ?? existing.target_table,
+            source_schema: patch.source_schema !== undefined ? patch.source_schema : existing.source_schema,
             visible_columns: patch.visible_columns !== undefined ? patch.visible_columns : existing.visible_columns,
             column_order: patch.column_order !== undefined ? patch.column_order : existing.column_order,
             pinned_columns: patch.pinned_columns !== undefined ? patch.pinned_columns : existing.pinned_columns,
@@ -263,7 +268,7 @@ export class SyncStore {
             updated_at: revision,
         };
 
-        const sql=`UPDATE datasource_views SET name = ?, target_table = ?, visible_columns = ?, column_order = ?, pinned_columns = ?, filters = ?, field_mappings = ?, webhooks = ?, linked_views = ?, description = ?, default_sort = ?, updated_at = ? WHERE tenant_slug = ? AND id = ?`;
+        const sql=`UPDATE datasource_views SET name = ?, target_table = ?, visible_columns = ?, column_order = ?, pinned_columns = ?, filters = ?, field_mappings = ?, webhooks = ?, linked_views = ?, description = ?, default_sort = ?, source_schema = ?, updated_at = ? WHERE tenant_slug = ? AND id = ?`;
         const params=[
                 merged.name,
                 merged.target_table,
@@ -276,6 +281,7 @@ export class SyncStore {
                 merged.linked_views ? JSON.stringify(merged.linked_views) : null,
                 merged.description ?? null,
                 merged.default_sort ? JSON.stringify(merged.default_sort) : null,
+                merged.source_schema ?? null,
                 revision,
                 this.tenant,
                 id,
@@ -315,6 +321,7 @@ export class SyncStore {
             datasource_id: String(row.datasource_id),
             name: String(row.name),
             target_table: String(row.target_table),
+            source_schema: row.source_schema == null ? null : String(row.source_schema),
             visible_columns: this.safeParseJson<string[]>(row.visible_columns),
             column_order: this.safeParseJson<string[]>(row.column_order),
             pinned_columns: this.safeParseJson<string[]>(row.pinned_columns),

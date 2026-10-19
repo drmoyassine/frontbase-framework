@@ -59,7 +59,7 @@ export const RepeaterProperties: React.FC<RepeaterPropertiesProps> = ({
         onBindingUpdate(JSON.parse(JSON.stringify({ ...authored, ...updates })));
     };
 
-    const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId);
+    const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId, effectiveBinding.sourceSchema);
     const queryColumns=effectiveBinding.source?.kind==='publication'?columns.filter(column=>['title','id','parentId'].includes(column.name)):columns;
     const controls = props.controls ?? {};
     const updateControls = (patch: Record<string, unknown>) => updateComponentProp('controls', { ...controls, ...patch });

@@ -32,6 +32,7 @@ export interface HiddenFilter {
 
 export interface ComponentDataBinding {
     presentation?:import('@frontbase/types').LiveListPresentation;
+    sourceSchema?:string;
     viewId?:string;
     viewName?:string;
     source?: { kind: 'publication'; hash: string };
@@ -169,11 +170,11 @@ export function useSimpleData({
 
     // Fetch schema via datasource-specific API when needed
     const { data: datasourceSchema } = useQuery({
-        queryKey: ['datasource-schema', binding?.dataSourceId, binding?.tableName],
+        queryKey: ['datasource-schema', binding?.dataSourceId, binding?.sourceSchema, binding?.tableName],
         queryFn: async () => {
             if (!binding?.dataSourceId || !binding?.tableName) return null;
             const response = await fetch(
-                `/api/sync/datasources/${binding.dataSourceId}/tables/${binding.tableName}/schema/`
+                `/api/sync/datasources/${binding.dataSourceId}/tables/${binding.tableName}/schema/${binding.sourceSchema!==undefined?`?schema=${encodeURIComponent(binding.sourceSchema)}`:""}`
             );
             if (!response.ok) return null;
             return response.json();
@@ -193,7 +194,7 @@ export function useSimpleData({
         error: datasourceError,
         refetch: refetchDatasource
     } = useQuery({
-        queryKey: ['datasource-data', binding?.dataSourceId, binding?.tableName, queryParams, binding?.columnOrder,resolvedHiddenFilters],
+        queryKey: ['datasource-data', binding?.dataSourceId, binding?.sourceSchema, binding?.tableName, queryParams, binding?.columnOrder,resolvedHiddenFilters],
         queryFn: async () => {
             if (!binding?.dataSourceId || !binding?.tableName) {
                 return { records: [], total: 0 };
@@ -278,7 +279,7 @@ export function useSimpleData({
             });
 
             const response = await fetch(
-                `/api/sync/datasources/${binding.dataSourceId}/tables/${binding.tableName}/data/?${params}`
+                `/api/sync/datasources/${binding.dataSourceId}/tables/${binding.tableName}/data/?${params}${binding.sourceSchema!==undefined?`&schema=${encodeURIComponent(binding.sourceSchema)}`:""}`
             );
             if (!response.ok) throw new Error('Failed to fetch data');
             const result = await response.json();

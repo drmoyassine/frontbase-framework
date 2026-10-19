@@ -67,7 +67,7 @@ export function useRepeaterRecordColumns(componentId?: string): string[] | undef
     const columnOrder: string[] | undefined = binding?.columnOrder;
 
     // Hooks must be called unconditionally; returns [] when tableName is absent.
-    const columns = useBindingColumns(tableName, dataSourceId);
+    const columns = useBindingColumns(tableName, dataSourceId, binding?.sourceSchema);
 
     if (!repeater || !tableName) return undefined;
     // Honor the user's column order when set, else fall back to schema order.

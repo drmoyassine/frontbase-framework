@@ -4,6 +4,7 @@ import { STALE } from '@/lib/queryCache';
 import { datasourcesApi } from '../../api';
 
 interface UseDataPreviewDataProps {
+    sourceSchema?:string;
     isOpen: boolean;
     datasourceId?: number | string;
     selectedTable?: string;
@@ -13,6 +14,7 @@ interface UseDataPreviewDataProps {
 }
 
 export const useDataPreviewData = ({
+    sourceSchema,
     isOpen,
     datasourceId,
     selectedTable,
@@ -24,16 +26,16 @@ export const useDataPreviewData = ({
 
     // Queries
     const { data: tables, isLoading: isLoadingTables, isFetching: isFetchingTables, error: tablesError, refetch: refetchTables } = useQuery({
-        queryKey: ['datasourceTables', datasourceId],
-        queryFn: () => datasourcesApi.getTables(datasourceId!).then(r => r.data),
+        queryKey: ['datasourceTables', datasourceId, sourceSchema],
+        queryFn: () => datasourcesApi.getTables(datasourceId!, sourceSchema).then(r => r.data),
         enabled: isOpen && !!datasourceId,
         staleTime: STALE.STANDARD, // 5 minutes
         retry: false, // Surface connection failures immediately; the inspector offers a retry.
     });
 
     const { data: schemaData } = useQuery({
-        queryKey: ['tableSchema', datasourceId, selectedTable],
-        queryFn: () => datasourcesApi.getTableSchema(datasourceId!, selectedTable!).then(r => r.data),
+        queryKey: ['tableSchema', datasourceId, sourceSchema, selectedTable],
+        queryFn: () => datasourcesApi.getTableSchema(datasourceId!, selectedTable!, sourceSchema).then(r => r.data),
         enabled: isOpen && !!datasourceId && !!selectedTable,
         staleTime: STALE.SCHEMA, // 1 hour for schema
     });
@@ -50,9 +52,9 @@ export const useDataPreviewData = ({
         isFetching: isFetchingData,
         refetch: refetchData
     } = useInfiniteQuery({
-        queryKey: ['tableData', datasourceId, selectedTable, appliedFilters],
+        queryKey: ['tableData', datasourceId, sourceSchema, selectedTable, appliedFilters],
         queryFn: async ({ pageParam = 0 }) => {
-            const response = await datasourcesApi.getTablesData(datasourceId!, selectedTable!, PAGE_SIZE, pageParam, appliedFilters);
+            const response = await datasourcesApi.getTablesData(datasourceId!, selectedTable!, PAGE_SIZE, pageParam, appliedFilters, sourceSchema);
             return response.data;
         },
         getNextPageParam: (lastPage) => {
@@ -80,16 +82,16 @@ export const useDataPreviewData = ({
 
 
     const { data: searchResults, isFetching: isSearchingByQuery } = useQuery({
-        queryKey: ['datasourceSearch', datasourceId, dataSearchQuery],
-        queryFn: () => datasourcesApi.searchDatasource(datasourceId!, dataSearchQuery).then(r => r.data),
+        queryKey: ['datasourceSearch', datasourceId, sourceSchema, dataSearchQuery],
+        queryFn: () => datasourcesApi.searchDatasource(datasourceId!, dataSearchQuery, undefined, undefined, sourceSchema).then(r => r.data),
         enabled: isOpen && !!datasourceId && showDataSearchResults && !!dataSearchQuery.trim(),
         staleTime: STALE.STANDARD, // Cache search results for 5 minutes
     });
 
     const refreshSchemaMutation = useMutation({
-        mutationFn: () => datasourcesApi.refreshTableSchema(datasourceId!, selectedTable!),
+        mutationFn: () => datasourcesApi.refreshTableSchema(datasourceId!, selectedTable!, sourceSchema),
         onSuccess: (data) => {
-            queryClient.setQueryData(['tableSchema', datasourceId, selectedTable], data.data);
+            queryClient.setQueryData(['tableSchema', datasourceId, sourceSchema, selectedTable], data.data);
         },
     });
 

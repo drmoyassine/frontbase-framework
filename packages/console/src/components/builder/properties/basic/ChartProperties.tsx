@@ -71,7 +71,7 @@ export const ChartProperties: React.FC<ChartPropertiesProps> = ({
             maxRows: 10
         }
     };
-    const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId);
+    const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId, effectiveBinding.sourceSchema);
 
 
     const chartType = props.chartType || 'bar';

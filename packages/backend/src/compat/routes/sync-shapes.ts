@@ -40,6 +40,7 @@ export function serializeDatasourceView(v: {
     datasource_id: string;
     name: string;
     target_table: string;
+    source_schema?: string | null;
     default_sort?: {column:string;direction:'asc'|'desc'} | null;
     visible_columns: string[] | null;
     column_order: string[] | null;
@@ -57,6 +58,7 @@ export function serializeDatasourceView(v: {
         datasource_id: v.datasource_id,
         name: v.name,
         target_table: v.target_table,
+        ...(v.source_schema != null ? {source_schema:v.source_schema} : {}),
         default_sort: v.default_sort ?? null,
         visible_columns: v.visible_columns ?? [],
         column_order: v.column_order ?? [],

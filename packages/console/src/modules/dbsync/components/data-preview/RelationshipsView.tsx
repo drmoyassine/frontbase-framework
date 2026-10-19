@@ -8,6 +8,7 @@ import { Loader2, GitBranch, ArrowRight, Table, AlertCircle, Database, Link2, Re
 
 interface RelationshipsViewProps {
     datasourceId: string | number;
+    sourceSchema?:string;
 }
 
 // Color palette for tables - vibrant and modern
@@ -48,8 +49,8 @@ export const RelationshipsView: React.FC<RelationshipsViewProps> = ({ datasource
     const [showAddModal, setShowAddModal] = useState(false);
 
     const { data, isLoading, error } = useQuery({
-        queryKey: ['relationships', datasourceId],
-        queryFn: () => datasourcesApi.getRelationships(datasourceId).then(r => r.data),
+        queryKey: ['relationships', datasourceId, sourceSchema],
+        queryFn: () => datasourcesApi.getRelationships(datasourceId, undefined, sourceSchema).then(r => r.data),
         staleTime: STALE.STANDARD, // Cache for 5 minutes
     });
 
@@ -66,10 +67,10 @@ export const RelationshipsView: React.FC<RelationshipsViewProps> = ({ datasource
 
     // Mutation to refresh schema
     const refreshMutation = useMutation({
-        mutationFn: () => datasourcesApi.getRelationships(datasourceId, true).then(r => r.data),
+        mutationFn: () => datasourcesApi.getRelationships(datasourceId, true, sourceSchema).then(r => r.data),
         onSuccess: () => {
             // Invalidate both relationships and schema queries
-            queryClient.invalidateQueries({ queryKey: ['relationships', datasourceId] });
+            queryClient.invalidateQueries({ queryKey: ['relationships', datasourceId, sourceSchema] });
             queryClient.invalidateQueries({ queryKey: ['schema', datasourceId] });
         },
     });

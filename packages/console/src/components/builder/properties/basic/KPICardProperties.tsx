@@ -50,7 +50,7 @@ export const KPICardProperties: React.FC<KPICardPropertiesProps> = ({
         onBindingUpdate({ ...effectiveBinding, ...updates });
     };
 
-    const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId);
+    const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId, effectiveBinding.sourceSchema);
 
     if (activeTab === 'general') {
         return (

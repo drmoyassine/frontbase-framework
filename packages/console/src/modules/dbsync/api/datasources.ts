@@ -44,17 +44,17 @@ export const datasourcesApi = {
     test: (id: string) => api.post<{ success: boolean; message: string; tables?: string[]; error?: string; suggestion?: string }>(`/datasources/${id}/test/`, undefined, { timeout: 30_000 }),
     testRaw: (data: any) => api.post<{ success: boolean; message: string; tables?: string[]; error?: string; suggestion?: string }>('/datasources/test-raw/', data, { timeout: 30_000 }),
     testUpdate: (id: string, data: any) => api.post<{ success: boolean; message: string; tables?: string[]; error?: string; suggestion?: string }>(`/datasources/${id}/test-update/`, data, { timeout: 30_000 }),
-    getTables: (id: string | number) => api.get<string[]>(`/datasources/${id}/tables/`),
-    getTableSchema: (id: string | number, table: string) => api.get<TableSchema>(`/datasources/${id}/tables/${table}/schema/`),
-    getTablesData: (id: string | number, table: string, limit: number = 50, offset: number = 0, filters?: any[]) =>
+    getTables: (id: string | number, schema?:string) => api.get<string[]>(`/datasources/${id}/tables/`, {params:{schema}}),
+    getTableSchema: (id: string | number, table: string, schema?:string) => api.get<TableSchema>(`/datasources/${id}/tables/${encodeURIComponent(table)}/schema/`, {params:{schema}}),
+    getTablesData: (id: string | number, table: string, limit: number = 50, offset: number = 0, filters?: any[], schema?:string) =>
         api.get<TableDataResponse>(`/datasources/${id}/tables/${table}/data/`, {
-            params: { limit, offset, filters: filters ? JSON.stringify(filters) : undefined }
+            params: { schema, limit, offset, filters: filters ? JSON.stringify(filters) : undefined }
         }),
 
-    refreshTableSchema: (id: string | number, table: string) =>
-        api.get<TableSchema>(`/datasources/${id}/tables/${table}/schema/`, { params: { refresh: true } }),
-    getRelationships: (id: string | number, refresh?: boolean) =>
-        api.get<RelationshipsResponse>(`/datasources/${id}/relationships/`, { params: refresh ? { refresh: true } : undefined }),
+    refreshTableSchema: (id: string | number, table: string, schema?:string) =>
+        api.get<TableSchema>(`/datasources/${id}/tables/${table}/schema/`, { params: { refresh: true, schema } }),
+    getRelationships: (id: string | number, refresh?: boolean, schema?:string) =>
+        api.get<RelationshipsResponse>(`/datasources/${id}/relationships/`, { params: { refresh, schema } }),
     // User-defined relationships (Google Sheets / REST)
     listUserRelationships: (id: string | number) =>
         api.get<{ relationships: IndexedRelationship[]; total: number }>(`/datasources/${id}/relationships/user-defined/`),
@@ -64,16 +64,16 @@ export const datasourcesApi = {
         api.put<{ index: number; relationship: RelationshipDefinition }>(`/datasources/${id}/relationships/${index}/`, data),
     deleteUserRelationship: (id: string | number, index: number) =>
         api.delete<{ success: boolean }>(`/datasources/${id}/relationships/${index}/`),
-    searchDatasource: (id: string | number, q: string, detailed?: boolean, limit?: number) =>
-        api.get<SearchMatch[]>(`/datasources/${id}/search`, { params: { q, detailed, limit } }),
+    searchDatasource: (id: string | number, q: string, detailed?: boolean, limit?: number, schema?:string) =>
+        api.get<SearchMatch[]>(`/datasources/${id}/search`, { params: { q, detailed, limit, schema } }),
     searchAll: (q: string, detailed?: boolean, limit?: number) =>
         api.get<SearchMatch[]>('/datasources/search-all/', { params: { q, detailed, limit } }),
-    saveSession: (id: string | number, table: string, data: any) =>
-        api.post(`/datasources/${id}/tables/${table}/session/`, data),
-    getSession: (id: string | number, table: string) =>
-        api.get<any>(`/datasources/${id}/tables/${table}/session/`),
-    clearSession: (id: string | number, table: string) =>
-        api.delete(`/datasources/${id}/tables/${table}/session/`),
+    saveSession: (id: string | number, table: string, data: any, schema?:string) =>
+        api.post(`/datasources/${id}/tables/${table}/session/`, data, {params:{schema}}),
+    getSession: (id: string | number, table: string, schema?:string) =>
+        api.get<any>(`/datasources/${id}/tables/${table}/session/`, {params:{schema}}),
+    clearSession: (id: string | number, table: string, schema?:string) =>
+        api.delete(`/datasources/${id}/tables/${table}/session/`, {params:{schema}}),
 
     // Google Sheets add-on connect flow
     issueSheetsConnect: (datasourceId?: string) =>

@@ -13,6 +13,7 @@ interface TableSelectorProps {
   onValueChange: (value: string) => void;
   /** Sync datasource ID — uses /api/sync/datasources/{id}/tables */
   dataSourceId?: string;
+  sourceSchema?:string;
   /** Provider account ID — uses /api/edge-providers/accounts/{id}/tables */
   providerAccountId?: string;
   label?: string;
@@ -26,6 +27,7 @@ export function TableSelector({
   value,
   onValueChange,
   dataSourceId,
+  sourceSchema,
   providerAccountId,
   label = "Table",
   placeholder = "Select a table",
@@ -40,12 +42,12 @@ export function TableSelector({
   const apiUrl = providerAccountId
     ? `/api/edge-providers/accounts/${providerAccountId}/tables`
     : dataSourceId
-      ? `/api/sync/datasources/${dataSourceId}/tables`
+      ? `/api/sync/datasources/${encodeURIComponent(dataSourceId)}/tables/${sourceSchema!==undefined?`?schema=${encodeURIComponent(sourceSchema)}`:""}`
       : null;
 
   // Fetch tables from the appropriate endpoint
   const { data: tables = [], isLoading, error, refetch } = useQuery<string[]>({
-    queryKey: ['datasource-tables', activeId, providerAccountId ? 'provider' : 'sync'],
+    queryKey: ['datasource-tables', activeId, sourceSchema, providerAccountId ? 'provider' : 'sync'],
     queryFn: async () => {
       if (!apiUrl) return [];
       const response = await fetch(apiUrl);

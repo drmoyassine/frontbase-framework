@@ -6,6 +6,7 @@ interface UseDataPreviewFiltersProps {
     initialFilters?: { field: string; operator: string; value: string }[];
     datasourceId?: number | string;
     datasourceName?: string;
+    sourceSchema?:string;
     showDataSearchResults: boolean;
     data: any;
     availableFields: string[];
@@ -15,6 +16,7 @@ export const useDataPreviewFilters = ({
     initialFilters,
     datasourceId,
     datasourceName,
+    sourceSchema,
     showDataSearchResults,
     data,
     availableFields
@@ -137,7 +139,7 @@ export const useDataPreviewFilters = ({
         if (!globalSearch.trim()) return;
         setGlobalSearchStatus('searching_datasource');
         try {
-            const response = await datasourcesApi.searchDatasource(datasourceId!, globalSearch);
+            const response = await datasourcesApi.searchDatasource(datasourceId!, globalSearch, undefined, undefined, sourceSchema);
             const counts = response.data.reduce((acc: any, m: any) => {
                 acc[m.table] = (acc[m.table] || 0) + 1;
                 return acc;
@@ -160,7 +162,7 @@ export const useDataPreviewFilters = ({
         if (!globalSearch.trim()) return;
         setGlobalSearchStatus('searching_all');
         try {
-            const response = await datasourcesApi.searchAll(globalSearch);
+            const response = sourceSchema!==undefined ? await datasourcesApi.searchDatasource(datasourceId!,globalSearch,undefined,undefined,sourceSchema) : await datasourcesApi.searchAll(globalSearch);
             const groups = response.data.reduce((acc: any, m: any) => {
                 const key = `${m.datasource_name}:${m.table}`;
                 if (!acc[key]) acc[key] = { datasource_name: m.datasource_name, table: m.table, count: 0 };

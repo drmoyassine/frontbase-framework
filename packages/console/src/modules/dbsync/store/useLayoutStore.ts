@@ -20,7 +20,7 @@ interface LayoutState {
     visibleColumns: string[];
 
     // Actions
-    setActiveContext: (datasourceId: string | number, table: string) => void;
+    setActiveContext: (datasourceId: string | number, table: string, schema?:string) => void;
     setPinnedColumns: (columns: string[]) => void;
     togglePin: (column: string) => void;
     setColumnOrder: (columns: string[]) => void;
@@ -36,7 +36,7 @@ interface LayoutState {
 
     // Reset current view
     reset: () => void;
-    clearTableCache: (datasourceId: string | number, table: string) => void;
+    clearTableCache: (datasourceId: string | number, table: string, schema?:string) => void;
 }
 
 const defaultLayout: TabLayout = {
@@ -46,7 +46,7 @@ const defaultLayout: TabLayout = {
 };
 
 // Helper to generate cache key
-const getCacheKey = (dsId: string | number, table: string) => `${dsId}:${table}`;
+const getCacheKey = (dsId: string | number, table: string, schema?:string) => schema===undefined?`${dsId}:${table}`:JSON.stringify([String(dsId),schema,table]);
 
 export const useLayoutStore = create<LayoutState>()(
     persist(
@@ -59,9 +59,9 @@ export const useLayoutStore = create<LayoutState>()(
             columnOrder: [],
             visibleColumns: [],
 
-            setActiveContext: (datasourceId, table) => {
+            setActiveContext: (datasourceId, table, schema) => {
                 const state = get();
-                const newKey = getCacheKey(datasourceId, table);
+                const newKey = getCacheKey(datasourceId, table, schema);
 
                 if (state.activeKey === newKey) return;
 
@@ -226,8 +226,8 @@ export const useLayoutStore = create<LayoutState>()(
                 visibleColumns: [],
             }),
 
-            clearTableCache: (datasourceId, table) => {
-                const key = getCacheKey(datasourceId, table);
+            clearTableCache: (datasourceId, table, schema) => {
+                const key = getCacheKey(datasourceId, table, schema);
                 set((state) => {
                     const newCache = { ...state.cache };
                     delete newCache[key];

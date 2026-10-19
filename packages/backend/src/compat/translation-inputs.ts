@@ -33,7 +33,7 @@ export async function translationViews(db: DbRunner, host: TranslationStorageHos
     z.string().min(1).max(160).parse(datasourceId); z.string().max(160).parse(after);
     const datasource = await host.syncFor(tenant).getDatasource(datasourceId);
     if (!datasource || datasource.kind !== 'supabase') throw Error();
-    const rows = await db.query('SELECT id, name, target_table FROM datasource_views WHERE tenant_slug = ? AND datasource_id = ? AND id > ? ORDER BY id LIMIT 26', [tenant, datasourceId, after]);
+    const rows = await db.query("SELECT id, name, target_table FROM datasource_views WHERE tenant_slug = ? AND datasource_id = ? AND (source_schema IS NULL OR source_schema = 'public') AND id > ? ORDER BY id LIMIT 26", [tenant, datasourceId, after]);
     return batchViewsSchema.parse({ views: rows.slice(0, 25).map(row => ({ id: row.id, name: String(row.name).slice(0, 500), table: row.target_table })), next: rows.length > 25 ? rows[24]!.id : null });
 }
 export async function extractMenuInput(db: DbRunner, tenant: string, raw: unknown, pin: Pin,
@@ -99,7 +99,7 @@ export async function extractRecordInput(host: TranslationStorageHost, tenant: s
 }
 export async function extractViewRecordInput(host: TranslationViewHost, db: DbRunner, tenant: string, raw: unknown, pin: Pin): Promise<TranslationInput> {
     const selection = batchViewSelectionSchema.parse(raw), store = host.syncFor(tenant), view = await store.getView(selection.viewId);
-    if (!view) throw new TranslationInputChanged();
+    if (!view || view.source_schema!=null&&view.source_schema!=='public') throw new TranslationInputChanged();
     // Legacy SQL-restricted pilot views must first be converted in Data Inspector.
     if (view.target_table.startsWith('fb_live_') && (await db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?', [tenant, 'view_selection_storage:v1:' + view.id]))[0]?.value !== 'saved-filters') throw Error();
     if (!view.visible_columns?.includes(selection.keyColumn) || !view.visible_columns.includes(selection.field)) throw Error();

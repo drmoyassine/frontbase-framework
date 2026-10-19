@@ -46,6 +46,7 @@ export type {HiddenFilterCondition, FilterVariableReader} from './hiddenFilters'
  */
 export interface ComponentDataBinding {
     presentation?:import('./liveList').LiveListPresentation;
+    sourceSchema?:string;
     viewId?:string;
     viewName?:string;
     source?: { kind: 'publication'; hash: string };

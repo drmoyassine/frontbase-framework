@@ -51,7 +51,7 @@ export const GridProperties: React.FC<GridPropertiesProps> = ({
         onBindingUpdate(updateAuthoredBinding(effectiveBinding,updates));
     };
 
-    const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId);
+    const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId, effectiveBinding.sourceSchema);
 
     if (activeTab === 'general') {
         return (

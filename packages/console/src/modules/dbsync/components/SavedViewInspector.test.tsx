@@ -4,6 +4,8 @@ import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {MemoryRouter} from 'react-router-dom';
 const mocks=vi.hoisted(()=>({get:vi.fn(),post:vi.fn(),patch:vi.fn(),schema:vi.fn()}));
+vi.mock('./DatasourceSchemaSelector',()=>({useDatasourceSchema:()=>({data:{supported:false}}),DatasourceSchemaSelector:()=>null}));
+vi.mock('@/components/data-binding/TableSelector',()=>({TableSelector:()=>null}));
 vi.mock('../api',()=>({api:{get:mocks.get,post:mocks.post,patch:mocks.patch},datasourcesApi:{getTableSchema:mocks.schema}}));
 import {SavedFilterEditor,SavedViewInspector} from './SavedViewInspector';
 import {SavedViews} from '../pages/SavedViews';

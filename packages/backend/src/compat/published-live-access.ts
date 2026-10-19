@@ -19,12 +19,12 @@ export async function protectPublishedLiveSource(db:DbRunner,owner:string,dataso
     if(rows[0]?.value!==policy)throw Error('live_source_policy_changed');
 }
 /** Opt-in policy prevents an exposed datasource ID from becoming a raw-table capability. */
-export async function publishedLiveReadAllowed(db:DbRunner,owner:string,datasourceId:string,viewId:unknown,body:any){
+export async function publishedLiveReadAllowed(db:DbRunner,owner:string,datasourceId:string,viewId:unknown,body:any,sourceSchema?:string){
     const rows=await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',[owner,key(datasourceId)]);
     if(!rows.length)return true; // Existing, unrelated source policies are not changed by this pilot migration.
     if(rows[0]?.value!==policy||typeof viewId!=='string'||!body||typeof body!=='object'||'query' in body||!Array.isArray(body.joins)||body.joins.length)return false;
     const active=await new SitePublicationStore(db,owner).activeVersion();
     if(active?.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,owner).get(active.pointer.hash))return false;
     return [...active.artifact.templates,...(active.artifact.staticPages??[])].some(page=>liveViewBindings(page.layout as unknown as PageLayoutData)
-        .some(binding=>binding.dataSourceId===datasourceId&&binding.viewId===viewId&&binding.tableName===body.table_name));
+        .some(binding=>binding.dataSourceId===datasourceId&&binding.viewId===viewId&&binding.tableName===body.table_name&&(binding.sourceSchema===undefined||binding.sourceSchema===sourceSchema)));
 }

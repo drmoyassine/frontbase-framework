@@ -5,6 +5,7 @@ import type {PageLayoutData} from '../ssr/types.js';
 // Authored binding only. Credentials, SQL and server seed rows never belong in a publication.
 export const liveViewBindingSchema=z.object({
     componentId:z.string().min(1).max(200),dataSourceId:z.string().min(1).max(128),
+    sourceSchema:z.string().min(1).max(63).refine(value=>!/[\r\n\0,]/.test(value)).optional(),
     tableName:z.string().min(1).max(128),viewId:z.string().min(1).max(128),viewName:z.string().max(200).optional(),
     pagination:z.object({enabled:z.boolean(),pageSize:z.number().int().min(1).max(100),page:z.number().int().min(0).max(20000)}).strict(),
     sorting:z.object({enabled:z.boolean(),column:z.string().max(128).optional(),direction:z.enum(['asc','desc']).optional()}).strict(),

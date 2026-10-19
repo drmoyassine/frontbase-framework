@@ -307,6 +307,7 @@ export const MIGRATIONS: Migration[] = [
         down: [],
     },
     {version:24,name:'datasource_view_default_sort',up:['ALTER TABLE datasource_views ADD COLUMN default_sort TEXT'],down:[]},
+    {version:25,name:'datasource_view_source_schema',up:['ALTER TABLE datasource_views ADD COLUMN source_schema TEXT'],down:[]},
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

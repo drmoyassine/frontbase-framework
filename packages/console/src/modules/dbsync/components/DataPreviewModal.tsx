@@ -1,3 +1,4 @@
+import {DatasourceSchemaSelector,useDatasourceSchema} from './DatasourceSchemaSelector';
 import {SavedViewInspectorLoader} from './SavedViewInspector';
 import React, { useEffect, useState } from 'react';
 import { useDataPreview } from '../hooks/useDataPreview';
@@ -66,6 +67,7 @@ const LegacyDataPreviewModal = (props: DataPreviewModalProps) => {
                     onClose={onClose}
                 />
 
+                {props.schemaSelector}
                 <div className="flex-1 overflow-hidden flex flex-col">
                     {currentStep === 'tables' ? (
                         <>
@@ -95,7 +97,7 @@ const LegacyDataPreviewModal = (props: DataPreviewModalProps) => {
 
                             {/* Tab Content */}
                             {activeTab === 'relationships' ? (
-                                <RelationshipsView datasourceId={props.datasourceId} />
+                                <RelationshipsView sourceSchema={props.sourceSchema} datasourceId={props.datasourceId} />
                             ) : (
                                 <TableSelectionView
                                     isLoadingTables={isLoadingTables}
@@ -171,6 +173,7 @@ const LegacyDataPreviewModal = (props: DataPreviewModalProps) => {
                                 )}
 
                                 <DataPreviewContent
+                                    readOnly={props.readOnly}
                                     activeTab={activeTab}
                                     setActiveTab={actions.setActiveTab}
                                     tableData={tableData}
@@ -236,5 +239,14 @@ const LegacyDataPreviewModal = (props: DataPreviewModalProps) => {
     );
 };
 
-const DataPreviewModal=(props:DataPreviewModalProps)=>!props.isOpen?null:props.viewId?<SavedViewInspectorLoader id={props.viewId} datasourceName={props.datasourceName} onClose={props.onClose}/>:<LegacyDataPreviewModal {...props}/>;
+function ScopedDataPreview(props:DataPreviewModalProps){
+    const metadata=useDatasourceSchema(props.datasourceId),[selected,setSelected]=useState<string>();
+    if(!metadata.data)return <div role="dialog" aria-label="Data Inspector" className="fixed inset-0 z-50 bg-background p-6"><p>{metadata.error?'Datasource unavailable.':'Loading datasource…'}</p><button onClick={props.onClose}>Close</button></div>;
+    const schema=metadata.data.supported?(selected??props.sourceSchema??metadata.data.defaultSchema):undefined;
+    const changed=selected!==undefined&&selected!==(props.sourceSchema??metadata.data.defaultSchema);
+    return <LegacyDataPreviewModal {...props} key={JSON.stringify([props.datasourceId,schema])} sourceSchema={schema} readOnly={metadata.data.supported&&(metadata.data.native||schema!=='public'||metadata.data.defaultSchema!=='public')}
+        {...changed?{table:'',initialFilters:[],initialViewName:'',initialVisibleColumns:[],initialColumnOrder:[],initialPinnedColumns:[],initialFieldMappings:{},initialLinkedViews:{},initialWebhooks:[]}: {}}
+        schemaSelector={schema!==undefined?<DatasourceSchemaSelector datasourceId={props.datasourceId} value={schema} onChange={setSelected}/>:undefined}/>;
+}
+const DataPreviewModal=(props:DataPreviewModalProps)=>!props.isOpen?null:props.viewId?<SavedViewInspectorLoader id={props.viewId} datasourceName={props.datasourceName} onClose={props.onClose}/>:<ScopedDataPreview {...props}/>;
 export default DataPreviewModal;

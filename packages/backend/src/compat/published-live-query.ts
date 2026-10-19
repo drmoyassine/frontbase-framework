@@ -10,7 +10,7 @@ export function publishedLiveQuery(execute:(request:Request)=>Response|Promise<R
         const headers=new Headers({'Content-Type':'application/json'});
         // Retain the requesting host/session; never synthesize an administrator or tenant claim.
         if(request.headers.has('cookie'))headers.set('cookie',request.headers.get('cookie')!);
-        const response=await execute(new Request(new URL('/api/data/execute',request.url),{method:'POST',headers,body:JSON.stringify({dataRequest:{fetchStrategy:'proxy',datasourceId:binding.dataSourceId,viewId:binding.viewId,body}})}));
+        const response=await execute(new Request(new URL('/api/data/execute',request.url),{method:'POST',headers,body:JSON.stringify({dataRequest:{fetchStrategy:'proxy',datasourceId:binding.dataSourceId,sourceSchema:binding.sourceSchema,viewId:binding.viewId,body}})}));
         if(!response.ok)throw Error('live_list_unavailable');
         const result=await response.json() as any;
         if(result.success!==true||!Array.isArray(result.data)||!Number.isSafeInteger(result.total)||result.total<0||result.data.length>query.pageSize)throw Error('invalid_live_list_response');

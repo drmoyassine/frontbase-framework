@@ -7,6 +7,7 @@ import { WebhookConfig } from './WebhookConfig';
 import { DataPreviewTable } from './DataPreviewTable';
 
 interface DataPreviewContentProps {
+    readOnly?:boolean;
     activeTab: 'table' | 'record' | 'linked' | 'api' | 'webhooks' | 'relationships';
     setActiveTab: (tab: 'table' | 'record' | 'linked' | 'api' | 'webhooks' | 'relationships') => void;
     tableData: any;
@@ -73,6 +74,7 @@ interface DataPreviewContentProps {
 }
 
 export const DataPreviewContent = ({
+    readOnly,
     activeTab,
     setActiveTab,
     tableData,
@@ -131,7 +133,7 @@ export const DataPreviewContent = ({
 
     const tabs = [
         { id: 'table', label: 'Table View', icon: <Database size={14} /> },
-        { id: 'record', label: 'Record View', icon: <Table2 size={14} /> },
+        ...readOnly?[]:[{ id: 'record' as const, label: 'Record View', icon: <Table2 size={14} /> }],
         { id: 'linked', label: 'Linked Views', icon: <LinkIcon size={14} /> },
         { id: 'api', label: 'API & Docs', icon: <Code2 size={14} /> },
         { id: 'webhooks', label: 'Webhooks', icon: <WebhookIcon size={14} /> }
@@ -201,7 +203,7 @@ export const DataPreviewContent = ({
                     </div>
                 )}
 
-                {activeTab === 'record' && (
+                {!readOnly && activeTab === 'record' && (
                     <RecordEditor
                         record={editingRecord || (tableData?.records?.[0]) || {}}
                         schema={schemaData}

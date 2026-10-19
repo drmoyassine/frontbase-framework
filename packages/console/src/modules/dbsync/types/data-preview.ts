@@ -6,6 +6,9 @@ export interface SearchResult {
 }
 
 export interface DataPreviewModalProps {
+    sourceSchema?: string;
+    schemaSelector?: import("react").ReactNode;
+    readOnly?: boolean;
     isOpen: boolean;
     onClose: () => void;
     datasourceId: string | number;
