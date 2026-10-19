@@ -234,7 +234,9 @@ export async function renderPage(
     const needsContext=/"(?:visibilityCondition|hiddenFilters|versions)"/.test(JSON.stringify(layoutData));
     const publicContext=publicConditionContext(layoutData,context as unknown as Record<string,unknown>);
     const bootstrap=needsContext?`<script>window.__CONDITION_CONTEXT__=${JSON.stringify(publicContext).replace(/</g,'\\u003c')};</script>`:'';
-    return `<div class="fb-page ${rootClass}" style="${rootStyle}">${needsContext?'<style>[data-condition-hidden]{display:none!important}</style>':''}${contentHtml}${badgeHtml}</div>${bootstrap}`;
+    const navigation=rootProps.localeNavigation as {locale?:string;origins?:string[]}|undefined;
+    const navigationAttrs=navigation?.locale?` data-fb-nav-locale="${escapeHtml(navigation.locale)}" data-fb-nav-origins="${escapeHtml(JSON.stringify(navigation.origins??[]))}"`:'';
+    return `<div${navigationAttrs} class="fb-page ${rootClass}" style="${rootStyle}">${needsContext?'<style>[data-condition-hidden]{display:none!important}</style>':''}${contentHtml}${badgeHtml}</div>${bootstrap}`;
 }
 
 export type { TemplateContext };

@@ -56,7 +56,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
     try{if(!audience?.authenticated)localeResult=await resolveHomepageLanguageRequest(db,owner,request,options.liveQuery);}catch(error){
         if(new URL(request.url).pathname!=='/')return new Response(request.method==='HEAD'?null:'Language temporarily unavailable',{status:error instanceof PublicationRequestError?400:503,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}});
     }
-    const resolution:SitePublicationResolution=localeResult?{status:'resolved',hash:localeResult.siteHash,generation:localeResult.generation,result:localeResult.resolved}:await resolveReviewedSitePublication(db,owner,request,audience,options.liveQuery);
+    const resolution:SitePublicationResolution=localeResult?(localeResult.kind==='redirect'?{status:'redirect',hash:localeResult.siteHash,generation:localeResult.generation,location:localeResult.redirect}:{status:'resolved',hash:localeResult.siteHash,generation:localeResult.generation,result:localeResult.resolved}):await resolveReviewedSitePublication(db,owner,request,audience,options.liveQuery);
     if(resolution.status==='inactive')return null;
     const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     if(resolution.status==='redirect'){
@@ -64,7 +64,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         return new Response(null,{status:301,headers});
     }
     if(resolution.status==='sitemap') {
-        try{const home=await resolveHomepageLanguageRequest(db,owner,new Request(new URL('/',request.url)),options.liveQuery);if(home){for(const link of home.resolved.document.alternates??[]){if(link.language!==home.locale)resolution.xml=resolution.xml.replace('</urlset>',`<url><loc>${link.href.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</loc></url></urlset>`);}}}catch{/* Keep the existing source sitemap available when a locale cannot be verified. */}
+        try{const home=await resolveHomepageLanguageRequest(db,owner,new Request(new URL('/',request.url)),options.liveQuery);if(home?.resolved){for(const link of home.resolved.document.alternates??[]){if(link.language!==home.locale)resolution.xml=resolution.xml.replace('</urlset>',`<url><loc>${link.href.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</loc></url></urlset>`);}}}catch{/* Keep the existing source sitemap available when a locale cannot be verified. */}
         headers.set('Content-Type','application/xml; charset=utf-8');
         headers.set('X-Site-Version',resolution.hash);
         headers.set('X-Site-Generation',String(resolution.generation));

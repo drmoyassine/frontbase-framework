@@ -7,7 +7,7 @@ const faults=[
  ['configured target locale',module,'!config.targetLocales.includes(target)','false'],
  ['field revision fence',module,'prior.value.token !== e.token','false'],
  ['activation CAS',module,'JSON.stringify(current) !== JSON.stringify(pointerSchema.nullable().parse(expected))','false'],
- ['unpublished locale refusal',serving,"if (path !== '/' && !selected)","if (false)"],
+ ['outdated locale refusal',serving,'if (selected && !available.includes(selected))','if (false)'],
  ['explicit review consent',route,'approveTranslations: z.literal(true)','approveTranslations: z.boolean()'],
 ];
 for(const[name,url,from,to]of faults){const original=readFileSync(url,'utf8');assert.ok(original.includes(from),'fault anchor '+name);

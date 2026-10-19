@@ -2,3 +2,5 @@
 export * from '@frontbase/translation';
 
 export * from './surfaces.js';
+
+export {localizePublicHref,localizeNavigationProps} from './navigation.js';
