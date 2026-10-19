@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-19 translation storage accepted; Arabic pilot on owner-requested hold
+
+[Receipt](../plans/frontbase-translation-first-pilot-20261019.md): Transo/native PostgREST/translations storage and existing additive accounting protocol verified. Exact opt-in host wiring and uncertain-usage continuation guard deployed (`d19c8cc`, `bfbd241`); public/configuration preservation checks pass. Actual pilot saved two settled Arabic drafts, retained one failed/uncertain attempt and left one field unsent. Owner chose preserving the hold, with no further model calls or reconciliation. Workspace check/build, 17 UI cases, host smoke/3 faults, 25 batch faults and 12 backend suites pass. Native visual preview/refinement/publication remains next and must not resume the held batch automatically. Release scope and paused CF-22 unchanged.
+
 ## 2026-10-19 per-request datasource schemas — staging verified
 
 [Receipt](../plans/frontbase-datasource-schema-selection-20261019.md): same-connection Inspector/binding schema selection, saved-view pins and schema-scoped caches/layouts/sessions reuse guarded HTTP metadata/reads. Workspace check/build,16 backend suites,26 UI cases and11 negative faults pass. Source3d4eaa4/313036c deployed healthy; actual Supabase/public discovery and Transo/translations tables/protocol row verified, unexposed public refused without switching, unsupported row actions hidden. Connection defaults, service settings and eight public response hashes retained. No external schema/grant/credential/record/publication changes. Existing null-schema views retain prior defaults until saved; broader write/translation/release boundaries remain open. Shared work preserved; CF-22 unchanged.

@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-19 operator opt-in for reviewed translation execution
+
+The owner authorizes the first bounded Arabic/free-OpenRouter pilot using Transo and the existing translations protocol. Expose the existing backend execution gate through the shared CMS host option and exact `FRONTBASE_TRANSLATION_EXECUTION_ENABLED=1` on each host entrypoint; absent/other values remain disabled. This enables administrator-approved, source-pinned, request-accounted draft batches only, with no automatic dispatch, new queue, paid fallback or native locale-publication claim. Install the existing additive accounting protocol administratively in translations; keep application access pure HTTPS and public unexposed. [Pilot evidence](../plans/frontbase-translation-first-pilot-20261019.md). Release scope and paused CF-22 are unchanged.
+
 ## 2026-10-19 owner approves per-request schema selection
 
 Keep a connection default, but allow owned Inspector requests to select any API-exposed/permitted Supabase/PostgREST schema. Persist `source_schema` on saved views and `sourceSchema` on authored list bindings; isolate schema/table metadata, row caches, layouts and sessions. Reuse the existing guarded HTTP adapter and published-view authorization. Do not grant/expose schemas or silently fall back. Legacy null-schema views retain their prior default semantics until saved; unsupported writes refuse rather than target another schema. [Implementation and evidence](../plans/frontbase-datasource-schema-selection-20261019.md). No package/release scope or CF-22 change.
