@@ -41,9 +41,9 @@ export const datasourcesApi = {
     create: (data: Partial<Datasource>) => api.post<Datasource>('/datasources/', data),
     update: (id: string, data: Partial<Datasource>) => api.put<Datasource>(`/datasources/${id}/`, data),
     delete: (id: string) => api.delete(`/datasources/${id}/`),
-    test: (id: string) => api.post<{ success: boolean; message: string; tables?: string[]; error?: string; suggestion?: string }>(`/datasources/${id}/test/`),
-    testRaw: (data: any) => api.post<{ success: boolean; message: string; tables?: string[]; error?: string; suggestion?: string }>('/datasources/test-raw/', data),
-    testUpdate: (id: string, data: any) => api.post<{ success: boolean; message: string; tables?: string[]; error?: string; suggestion?: string }>(`/datasources/${id}/test-update/`, data),
+    test: (id: string) => api.post<{ success: boolean; message: string; tables?: string[]; error?: string; suggestion?: string }>(`/datasources/${id}/test/`, undefined, { timeout: 30_000 }),
+    testRaw: (data: any) => api.post<{ success: boolean; message: string; tables?: string[]; error?: string; suggestion?: string }>('/datasources/test-raw/', data, { timeout: 30_000 }),
+    testUpdate: (id: string, data: any) => api.post<{ success: boolean; message: string; tables?: string[]; error?: string; suggestion?: string }>(`/datasources/${id}/test-update/`, data, { timeout: 30_000 }),
     getTables: (id: string | number) => api.get<string[]>(`/datasources/${id}/tables/`),
     getTableSchema: (id: string | number, table: string) => api.get<TableSchema>(`/datasources/${id}/tables/${table}/schema/`),
     getTablesData: (id: string | number, table: string, limit: number = 50, offset: number = 0, filters?: any[]) =>

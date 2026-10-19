@@ -8,6 +8,7 @@ import { supportsManualRelationships } from '../types/relationship'
 import { Plus, Database, Trash2, TestTube, CheckCircle, XCircle, Loader2, Edit2, Filter, Link2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { PROVIDER_CONFIGS } from '@/components/dashboard/settings/shared/edgeConstants'
+import { connectionTestFeedback } from '../lib/connectionTestFeedback'
 
 /** Providers with 'database' or 'cms' capability — drives the Database Type selector. */
 const DATABASE_PROVIDERS = Object.entries(PROVIDER_CONFIGS)
@@ -79,7 +80,9 @@ export function Datasources() {
 
     const testMutation = useMutation({
         mutationFn: (id: string) => datasourcesApi.test(id),
-        onSuccess: () => {
+        ...connectionTestFeedback,
+        onSuccess: (result) => {
+            connectionTestFeedback.onSuccess(result)
             queryClient.invalidateQueries({ queryKey: ['datasources'] })
         },
     })

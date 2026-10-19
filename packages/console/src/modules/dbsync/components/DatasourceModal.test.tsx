@@ -2,14 +2,23 @@ import React from 'react';
 import { describe,it,expect,vi,afterEach } from 'vitest';
 import { render,screen,fireEvent,cleanup,waitFor } from '@testing-library/react';
 import { QueryClient,QueryClientProvider } from '@tanstack/react-query';
-const mocked=vi.hoisted(()=>({create:vi.fn(),update:vi.fn(),track:vi.fn()}));
-vi.mock('../api',()=>({datasourcesApi:{create:mocked.create,update:mocked.update}}));
+const mocked=vi.hoisted(()=>({create:vi.fn(),update:vi.fn(),track:vi.fn(),testRaw:vi.fn(),testUpdate:vi.fn(),success:vi.fn(),error:vi.fn()}));
+vi.mock('../api',()=>({datasourcesApi:{create:mocked.create,update:mocked.update,testRaw:mocked.testRaw,testUpdate:mocked.testUpdate}}));
+vi.mock('sonner',()=>({toast:{success:mocked.success,error:mocked.error}}));
 vi.mock('@/lib/analytics',()=>({track:mocked.track}));
 vi.mock('@/components/dashboard/settings/shared/AccountResourcePicker',()=>({AccountResourcePicker:()=> <div>Account picker</div>}));
 import { DatasourceModal } from './DatasourceModal';
 afterEach(()=>{cleanup();vi.clearAllMocks();});
 const mount=()=>render(<QueryClientProvider client={new QueryClient({defaultOptions:{mutations:{retry:false}}})}><DatasourceModal onClose={()=>{}} /></QueryClientProvider>);
 describe('Manual HTTP datasource',()=>{
+    it('notifies when a form test passes',async()=>{
+        mocked.testRaw.mockResolvedValue({data:{success:true,message:'Connection active'}});mount();fireEvent.click(screen.getByRole('button',{name:'Test Connection'}));
+        await waitFor(()=>expect(mocked.success).toHaveBeenCalledWith('Connection test passed'));
+    });
+    it('notifies when a form test request fails',async()=>{
+        mocked.testRaw.mockRejectedValue(new Error('PRIVATE_KEY'));mount();fireEvent.click(screen.getByRole('button',{name:'Test Connection'}));
+        await waitFor(()=>expect(mocked.error).toHaveBeenCalled());expect(mocked.error.mock.calls[0][0]).toBe('Connection test could not complete');expect(JSON.stringify(mocked.error.mock.calls)).not.toContain('PRIVATE_KEY');
+    });
     it('creates a native HTTP connection using the existing encrypted datasource API',async()=>{
         mocked.create.mockResolvedValue({data:{id:'native'}});mount();fireEvent.change(screen.getByRole('combobox'),{target:{value:'supabase'}});fireEvent.click(screen.getByLabelText('Connect using an HTTPS URL and server key'));
         expect(screen.queryByText('Account picker')).toBeNull();expect(screen.getByRole('button',{name:'Test Connection'})).toBeDisabled();

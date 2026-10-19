@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { datasourcesApi } from '../api';
 import { Datasource } from '../types';
+import { connectionTestFeedback } from '../lib/connectionTestFeedback';
 import { track } from '@/lib/analytics';
 import { AccountResourcePicker, DiscoveredResource } from '@/components/dashboard/settings/shared/AccountResourcePicker';
 import { PROVIDER_CONFIGS } from '@/components/dashboard/settings/shared/edgeConstants';
@@ -78,6 +79,7 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
     });
 
     const testRawMutation = useMutation({
+        ...connectionTestFeedback,
         mutationFn: (data: typeof formData) =>
             isEditing
                 ? datasourcesApi.testUpdate(datasource.id, data)
