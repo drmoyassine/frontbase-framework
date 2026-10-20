@@ -5,7 +5,7 @@ export { templateSettingsSchema, landingRootSchema, defaultTemplateSettings, rea
 export { createEducationLanding } from './landing.js';
 import { siteBindingsSchema, validateSiteBinding } from './bindings.js';
 export { siteBindingsSchema } from './bindings.js';
-export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, projectDirectoryRecords, type DirectoryQueryBinding } from './bindings.js';
+export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, directoryListCollections, projectDirectoryRecords, type DirectoryQueryBinding } from './bindings.js';
 export { editorialBodySchema, parseEditorialBody, projectEditorialBody } from './editorial.js';
 export { directoryBrowsingSchema, directoryBrowsingStateSchema, projectDirectoryBrowsing, type DirectoryBrowsingState } from './browsing.js';
 

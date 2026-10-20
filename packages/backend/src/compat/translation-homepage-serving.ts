@@ -4,7 +4,7 @@ import {localizeNavigationProps,localizePublicHref} from '@frontbase/edge-core/l
 import {resolvePublicationVersionPage,PublicationRequestError} from './site-publication-runtime.js';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {PageLayoutData} from '@frontbase/edge-core';
-import {captureHomepage,publishedHomepageLocales,projectHomepageLocale} from './translation-homepage.js';
+import {captureHomepage,publishedHomepageLocales,projectHomepageLocale,templateListingPath} from './translation-homepage.js';
 import type {PublishedLiveQuery} from './publication-list-source.js';
 
 export function homepageLanguageLinks(sourceLocale:string,locales:string[],current:string,sourcePath='/'){return [{code:sourceLocale,label:sourceLocale==='en'?'English':sourceLocale,href:sourcePath,current:current===sourceLocale},...locales.map(code=>({code,label:code==='ar'?'العربية':new Intl.DisplayNames([code],{type:'language'}).of(code)??code,href:`/${code}${sourcePath}`,current:current===code}))];}
@@ -52,7 +52,10 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     const origins=[url.origin,new URL(capture.active.artifact.configuration.site.origin).origin];
     const redirect=(capture.active.artifact.schemaVersion===2?capture.active.artifact.redirects:undefined)?.find(alias=>alias.from===sourceUrl.pathname);
     if(redirect){if(url.search)throw new PublicationRequestError();if(capture.active.artifact.schemaVersion===2){await new SitePublicationManifestStore(db,tenant).verify(capture.active.artifact);await verifyManifestEditorial(db,tenant,capture.active.artifact);}return {kind:'redirect' as const,redirect:selected?localizePublicHref(redirect.to,current,origins):redirect.to,siteHash:capture.active.pointer.hash,generation:capture.active.pointer.generation,releaseHash:selected?.pointer.hash??null,locale:current};}
-    const resolved=pageRelease?projectHomepageLocale(await captureFor(pageRelease.release.path),pageRelease.release):isHomepage?(selected?projectHomepageLocale(capture,selected.release):capture.result):await resolvePublicationVersionPage(capture.active.artifact,capture.active.pointer.hash,tenant,db,new Request(sourceUrl),{authenticated:false},liveQuery);
+    // Template listing releases join the parameterized rendering (explore type/q/page); their
+    // prepare-time fence guarantees per-unit policy, so the identity join stays per unit.
+    const listingRelease=!!pageRelease&&capture.active.artifact.schemaVersion===2&&templateListingPath(capture.active.artifact,pageRelease.release.path);
+    const resolved=pageRelease?projectHomepageLocale(listingRelease&&sourceUrl.search?await captureHomepage(db,tenant,request,liveQuery,pageRelease.release.path,sourceUrl):await captureFor(pageRelease.release.path),pageRelease.release):isHomepage?(selected?projectHomepageLocale(capture,selected.release):capture.result):await resolvePublicationVersionPage(capture.active.artifact,capture.active.pointer.hash,tenant,db,new Request(sourceUrl),{authenticated:false},liveQuery);
     if(!resolved)return null;
     if(selected&&!pageRelease&&!isHomepage){
         // Only the already approved shared shell is translated here. Other page copy stays source content.

@@ -4,6 +4,8 @@ import { applyBlockVersion } from '../block-versions.js';
 export const homepageSearchLabels = { region:'Find study options', collection:'Explore', collectionAria:'Search collection', programs:'Programs', institutions:'Institutions', question:'What would you like to study?', placeholder:'Search by program or institution title', searchAria:'Search titles', submit:'Search' };
 export const homepageHeroLabels = { region:'Study options', eyebrow:'Explore your next chapter', controls:'Hero slideshow controls', previous:'Previous image', next:'Next image', pause:'Pause slideshow' };
 export const homepageNavLabels = { toggle:'Toggle navigation', appearance:'Appearance', light:'Light', dark:'Dark', system:'System' };
+/** Whole-string directory browsing chrome. Composed strings (page position, record ranges) stay source. */
+export const directoryBrowsingLabels = { collectionsAria:'Directory collections', institutions:'Institutions', programs:'Programs', searchAria:'Search directory', searchLabel:'Search by title', placeholderInstitution:'Find an institution', placeholderProgram:'Find a program', placeholderArticle:'Find an article', apply:'Apply', orderLabel:'Order', sortAsc:'Title A-Z', sortDesc:'Title Z-A', matchLabel:'Title match', matchContains:'Contains', matchStartsWith:'Starts with', matchExact:'Exact title', pagesAria:'Directory pages', previous:'Previous', next:'Next' };
 export interface DisplayRecord { connectionId:string; collection:string; key:{column:string; value:string|number|boolean}[] }
 /** `versionId` marks a field that belongs to one alternative Block Version; absent means the Default (inherited) unit.
  *  `fieldKey` names the source record column a projected list row renders — identity uses it while application keeps the display path. */
@@ -43,6 +45,7 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
     layout.root={...layout.root,localeMessages:{poweredBy:'Powered by Frontbase',signOut:'Sign Out'}};
     const walk=(nodes:PageComponent[])=>{for(const node of nodes){const p=node.props??(node.props={});
         if(p.templateSearchState){const state=p.templateSearchState as Record<string,unknown>;state.labels={...homepageSearchLabels,...state.labels as object};}
+        if(Array.isArray(p.directoryBrowsingState)&&p.directoryBrowsingState[0]){const state=p.directoryBrowsingState[0] as Record<string,unknown>;state.labels={...directoryBrowsingLabels,...state.labels as object};}
         if(Array.isArray(p.templateHeroState)){for(const state of p.templateHeroState as any[]){state.labels={...homepageHeroLabels,...state.labels};state.settings.heading=String(state.settings.heading).replaceAll('{destination}',String(state.destination));}}
         if(node.type==='Navbar'){p.localeLabels={...homepageNavLabels,...p.localeLabels as object};}
         if(node.type==='Footer'&&!p.copyright)p.copyright=`© ${new Date().getFullYear()} All rights reserved.`;
@@ -80,6 +83,7 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
         }
         if(node.type==='Footer'){for(const key of ['logoText','description','copyright'])emit([...base,key],p[key],key);nested(p.columns,[...base,'columns'],new Set(['title','text']));}
         if(p.templateSearchState)nested((p.templateSearchState as any).labels,[...base,'templateSearchState','labels'],new Set(Object.keys(homepageSearchLabels)));
+        if(Array.isArray(p.directoryBrowsingState))nested((p.directoryBrowsingState[0] as any)?.labels,[...base,'directoryBrowsingState','0','labels'],new Set(Object.keys(directoryBrowsingLabels)));
         if(Array.isArray(p.templateHeroState))p.templateHeroState.forEach((state:any,i)=>{for(const key of ['heading','introduction'])emit([...base,'templateHeroState',String(i),'settings',key],state.settings[key],key);nested(state.settings.slides,[...base,'templateHeroState',String(i),'settings','slides'],new Set(['alt']));nested(state.labels,[...base,'templateHeroState',String(i),'labels'],new Set(Object.keys(homepageHeroLabels)));});
         if(node.type==='Repeater'&&Array.isArray(p.initialRows)){
             const columns=new Set(['title','summary','coverAlt']);

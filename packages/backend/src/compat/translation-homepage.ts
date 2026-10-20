@@ -9,6 +9,9 @@ import {translationHomepageReviewSchema,translationHomepageSaveSchema} from '@fr
 import {SitePublicationStore,publicationHash} from './site-publication-store.js';
 import {SitePublicationReviewStore} from './site-publication-review-store.js';
 import {resolvePublicationVersionPage} from './site-publication-runtime.js';
+import {sitePublicationManifestSchema} from './site-publication-manifest.js';
+import {createChunkDirectoryQueries} from './site-publication-chunk-queries.js';
+import {directoryLayoutQueries,directoryListCollections} from '@frontbase/edge-core/directory/configuration';
 import {configuredTranslationStorage,configuredTranslationStorageIdentity} from './translation-storage.js';
 import {TranslationGenerationStore} from './translation-generation.js';
 import type {TranslationBatchHost} from './translation-batches.js';
@@ -85,16 +88,27 @@ async function captureMenuFields(db:DbRunner,tenant:string,template:{layout:unkn
         if(node.children)walk(node.children);}};
     walk(resolved.content);return out;
 }
-export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/'){
+/** Template listing pages (directory/explore, blog index) may carry per-page locale releases;
+ *  record-detail and unknown paths stay outside per-page translation. */
+export function templateListingPath(manifest:z.infer<typeof sitePublicationManifestSchema>,path:string):boolean{
+    return manifest.templates.some(template=>['directory','article-index'].includes(template.role)
+        &&path===(template.role==='directory'?manifest.configuration.routes.directory:manifest.configuration.routes.blog));
+}
+export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/',sourceUrl?:URL){
     const active=await new SitePublicationStore(db,tenant).activeVersion();
     if(!active||active.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,tenant).get(active.pointer.hash))throw Error('reviewed_homepage_required');
-    const template=active.artifact.staticPages?.find(page=>page.originalPath===path);if(!template)throw Error('homepage_required');
-    // Review the same anonymous public source selection, never an administrator-expanded audience.
-    const result=await resolvePublicationVersionPage(active.artifact,active.pointer.hash,tenant,db,new Request(new URL(path,request.url)),{authenticated:false},liveQuery);
+    const manifest=active.artifact;
+    const page=manifest.staticPages?.find(candidate=>candidate.originalPath===path);
+    // Template listing pages resolve with their request parameters (explore type/q/page); static pages never carry them.
+    const listing=page?undefined:manifest.templates.find(template=>['directory','article-index'].includes(template.role)
+        &&path===(template.role==='directory'?manifest.configuration.routes.directory:manifest.configuration.routes.blog));
+    const target=page??listing;
+    if(!target)throw Error('homepage_required');
+    const result=await resolvePublicationVersionPage(manifest,active.pointer.hash,tenant,db,new Request(new URL(!page&&sourceUrl?.search?path+sourceUrl.search:path,request.url)),{authenticated:false},liveQuery);
     if(!result)throw Error('homepage_unavailable');
     const layout=homepageDisplayLayout(result.page.layout as unknown as PageLayoutData);
     const baseFields=homepageDisplayFields(layout) as (DisplayField&{menu?:MenuRef})[];
-    const menuFields=await captureMenuFields(db,tenant,template,layout);
+    const menuFields=await captureMenuFields(db,tenant,target,layout);
     // A managed menu position is a shared surface, not page copy: the mapped positions replace the
     // page-bound duplicates so one approved unit serves every page rendering the menu.
     const claimed=new Set(menuFields.map(field=>JSON.stringify([field.blockId,field.path])));
@@ -103,7 +117,7 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
     if(result.page.description)fields.push({blockId:'$meta',path:['description'],text:result.page.description,label:'Page description'});
     // Hash the identity→text pairs in canonical identity order: rendered row order must not invalidate a release.
     const sourceHash=await publicationHash(fields.map(field=>[stableIdentity(field),field.text] as const).sort((a,b)=>JSON.stringify(a[0])<JSON.stringify(b[0])?-1:JSON.stringify(a[0])>JSON.stringify(b[0])?1:0));
-    return {active,result,layout,fields,sourceHash,pageId:template.pageId,path};
+    return {active,result,layout,fields,sourceHash,pageId:target.pageId,path,templateListing:!page};
 }
 async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery,path:string='/'){
     locale.parse(target);const config=(await new TranslationGenerationStore(db,tenant).get()).configuration;
@@ -114,7 +128,7 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
     const capture=await captureHomepage(db,tenant,request,liveQuery,path).catch(()=>{throw Error('homepage_source_unavailable');}),page=await host.pagesFor(tenant).get(capture.pageId);
     const configHash=await publicationHash({identity,sourceLocale:config.sourceLocale,targetLocales:config.targetLocales});
     const token=await publicationHash({site:capture.active.pointer.hash,source:capture.sourceHash,config:configHash,path});
-    const fields=await mapLimit(capture.fields,async field=>{
+    const fields=await mapLimit(capture.fields.concat(await supplementTemplateRecords(db,tenant,request,capture)),async field=>{
         // A stamped projected row names its source record column; identity and context follow the
         // column so one unit serves every surface rendering the same record field.
         const fieldKey=field.fieldKey??field.path.at(-1)??'';
@@ -139,6 +153,36 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
         return {...field,unit,context,unitId,fingerprint,contextFingerprint,id:field.menu?await publicationHash(['app-menus',field.menu.menuId,...field.menu.path]):await publicationHash([capture.path,field.blockId,field.versionId??'default',field.path])};
     });
     return {...storage,capture,config,configHash,token,fields,locale:target,path};
+}
+/** Template listings render every record eventually (type/q/page parameters). Supplement the page-bound
+ *  fields with the bounded full record-unit inventory so review/translation covers any parameterization;
+ *  identities already stamped on the page keep their single page-bound unit. Serve joins stay in memory.
+ *  Bounded hard at 500 total fields. */
+async function supplementTemplateRecords(db:DbRunner,tenant:string,request:Request,capture:Awaited<ReturnType<typeof captureHomepage>>){
+    const manifest=capture.active.artifact;
+    if(!capture.templateListing||manifest.schemaVersion!==2)return[];
+    const template=manifest.templates.find(candidate=>candidate.pageId===capture.pageId);
+    const listed=template?directoryLayoutQueries(template.layout as unknown as PageLayoutData).map(query=>query.binding.queryId).filter(queryId=>directoryListCollections[queryId]):[];
+    const columns:Record<string,string[]>=    {institutions:['title','summary','coverAlt'],programs:['title','summary','coverAlt'],cities:['title'],articles:['title','summary','coverAlt','byline']};
+    const budget=Math.max(0,Math.min(460,500-capture.fields.length));
+    const covered=new Set(capture.fields.filter(field=>field.record).map(field=>JSON.stringify(stableIdentity(field))));
+    const queries=createChunkDirectoryQueries(manifest,tenant,db),supplement:(typeof capture.fields)=[],pageSize=Math.min(48,manifest.configuration.browsing.pageSize);
+    const emit=(collection:string,row:Record<string,unknown>,column:string)=>{
+        const record={connectionId:'frontbase:publication',collection,key:[{column:'id',value:row.id as string|number}]};
+        if(covered.has(JSON.stringify(stableIdentity({blockId:'',path:['record'],record,fieldKey:column}))))return;
+        const text=row[column];
+        if(typeof text==='string'&&text.trim()&&text.length<=12000)supplement.push({blockId:`$record:${collection}`,path:['record',String(row.id),column],text,label:`Record ${collection} / ${column}`,record,fieldKey:column});
+    };
+    for(const queryId of listed){
+        const collection=directoryListCollections[queryId]!;
+        for(let offset=0;supplement.length<budget;offset+=pageSize){
+            // The chunk list query returns one extra row as a hasNext lookahead; never emit it.
+            const rows=(await queries[queryId]!.execute({offset,limit:pageSize},{tenant,request})).slice(0,pageSize);
+            for(const row of rows)for(const column of columns[collection]??[])emit(collection,row,column);
+            if(rows.length<pageSize)break;
+        }
+    }
+    return supplement.slice(0,budget);
 }
 function findNode(layout:PageLayoutData,id:string){const walk=(nodes:PageLayoutData['content']):PageLayoutData['content'][number]|undefined=>{for(const node of nodes){if(node.id===id)return node;const found=walk(node.children??[]);if(found)return found;for(const version of node.versions??[]){const inner=walk((version.overrides.children??[])as PageLayoutData['content']);if(inner)return inner;}}return undefined;};return walk(layout.content);}
 type Session=Awaited<ReturnType<typeof session>>;
@@ -168,6 +212,9 @@ export async function saveHomepageTranslations(host:TranslationBatchHost,db:DbRu
 }
 export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,expectedToken:string,reviewer:string,now:string,liveQuery?:PublishedLiveQuery,path:string='/',policy:{missing:'block'|'source-fallback';outdated:'block'|'source-fallback'}={missing:'block',outdated:'block'}){
     const s=await session(host,db,tenant,request,target,liveQuery,path);if(publicationPaths(s.capture.active.artifact).includes(`/${target}${s.path}`))throw Error('locale_route_collision');if(s.token!==expectedToken)throw Error('review_changed');
+    // Template listing pages render parameterized request variations, so only the per-unit join
+    // (missing/outdated fall back to fresh source) can serve them honestly.
+    if(s.capture.templateListing&&(policy.missing!=='source-fallback'||policy.outdated!=='source-fallback'))throw Error('template_release_per_unit_required');
     const read=await mapLimit(s.fields,async f=>({f,...await readField(s,f).catch(()=>{throw Error('coverage_read_failed');})}));
     for(const item of read){
         if(item.value.state==='draft')continue;
@@ -210,7 +257,14 @@ export async function publishedHomepageLocales(db:DbRunner,tenant:string){const 
 export async function publishedTranslationPages(db:DbRunner,tenant:string){
     const active=await new SitePublicationStore(db,tenant).activeVersion();
     if(!active||active.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,tenant).get(active.pointer.hash))throw Error('reviewed_homepage_required');
-    const pages=(active.artifact.staticPages??[]).slice(0,64).map(page=>({path:page.originalPath,title:page.title.slice(0,200)})).filter(page=>page.path==='/'||/^\/[A-Za-z0-9._~!$&'()*+,;=@%-]+(?:\/[A-Za-z0-9._~!$&'()*+,;=@%-]+)*\/$/.test(page.path));
+    const routes=active.artifact.configuration.routes;
+    // Template listing pages (directory/explore, blog index) are per-page translation targets too:
+    // their releases are per-unit only, joining every parameterized rendering in memory.
+    const listings=active.artifact.templates.filter(template=>['directory','article-index'].includes(template.role))
+        .map(template=>({path:template.role==='directory'?routes.directory:routes.blog,title:template.title.slice(0,200)}));
+    const seen=new Set<string>();
+    const pages=[...(active.artifact.staticPages??[]).slice(0,64).map(page=>({path:page.originalPath,title:page.title.slice(0,200)})),...listings]
+        .filter(page=>(page.path==='/'||/^\/[A-Za-z0-9._~!$&'()*+,;=@%-]+(?:\/[A-Za-z0-9._~!$&'()*+,;=@%-]+)*\/$/.test(page.path))&&!seen.has(page.path)&&seen.add(page.path));
     return {version:1 as const,pages};
 }
 /** Prepared (immutable) releases for one locale+path, newest first. Bounded metadata only — never
