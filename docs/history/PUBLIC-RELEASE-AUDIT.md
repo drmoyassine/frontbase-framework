@@ -1,8 +1,8 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-20 Cloudflare/Vercel end-to-end profiles — claimed
+## 2026-10-20 Cloudflare/Vercel end-to-end profiles — bounded Vercel delivery complete; broader acceptance open
 
-Owner explicitly resumes deployment implementation after R0 and requests end-to-end Cloudflare and Vercel profiles. Own this isolated branch: checkpoint verified shared Bindings work, complete safe proposal handoff and supported binding execution, then independently exercise setup/admin/data/publication/redeploy on disposable CF and Vercel targets. Reuse existing contracts/compiler/adapters; no paid resource activation, unrelated app environment adoption, state migration, translation/staging change or CF-22 resumption. Keep preview notification suppression. Record exact implemented defaults versus unavailable adapters, credential/Marketplace blockers and fresh acceptance truthfully.
+Owner explicitly resumes deployment implementation after R0 and requests end-to-end Cloudflare and Vercel profiles. Own this isolated branch: checkpoint verified shared Bindings work, complete safe proposal handoff and supported binding execution, then independently exercise setup/admin/data/publication/redeploy on disposable CF and Vercel targets. Reuse existing contracts/compiler/adapters; no paid resource activation, unrelated app environment adoption, state migration, translation/staging change or CF-22 resumption. Keep preview notification suppression. Record exact implemented defaults versus unavailable adapters, credential/Marketplace blockers and fresh acceptance truthfully. [Live Vercel receipt](../plans/frontbase-deployment-vercel-live-20261020.md): actual $0 Marketplace preview/production setup, auth, binding review and page publication now pass. Original production session, byte-identical page listing and both published pages survive an unchanged redeploy; exact buttons, clean install and generic binding changes remain open.
 
 
 ## 2026-10-20 shared deployment Bindings review and native storage UI — bounded verification complete

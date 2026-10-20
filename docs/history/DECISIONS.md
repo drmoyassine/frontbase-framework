@@ -1,5 +1,10 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-20 Vercel Marketplace profile execution boundary
+
+Within the owner-approved editable profiles and isolated free deployment scope, reuse the existing HTTP libSQL runner and deploy script. A connected Turso integration is a verified resource reference, not a second database driver or a downloaded credential bundle. Preserve explicit state selection and session secrets, enforce exact team/project/environment membership, and keep unsupported binding changes behind a pre-write refusal. Local nonsecret journals are operation records, not cross-machine locks, remote CAS, backups or proof that runtime reconfiguration succeeded. Native button and fresh journal installation acceptance remain separate from live lower-level executor acceptance. [Evidence](../plans/frontbase-deployment-vercel-live-20261020.md). No package or release-scope change; CF-22 stays paused.
+
+
 ## 2026-10-20 shared Bindings editor and review-only host metadata
 
 Under the accepted editable-profile requirement, share a browser-only DOM editor from the existing private console source between bootstrap and the running system-engine dialog, reusing narrow core contracts and the authenticated API client. Managed CF uploads may include a strictly projected nonsecret manifest, verified against actual native identities. Expose it only to the self-host deployment operator; cloud/other-tenant callers are refused. Running review classifies proposals and exports data without credential values, persistence, provider authority or an applied-success claim. Keep actual changes in separately reviewed executor/migration work; do not adopt the older stored-engine no-op reconfigure path. Extend native private storage affordances through explicit whitelisted capability metadata, preserving server refusals and permanent-asset limitations. No new package, hosted control plane, rollout claim or CF-22 activation. [Evidence](../plans/frontbase-deployment-shared-bindings-20261020.md).

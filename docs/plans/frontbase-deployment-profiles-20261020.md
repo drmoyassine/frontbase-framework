@@ -135,3 +135,7 @@ The [P0/P1 receipt](frontbase-deployment-profiles-p0-p1-20261020.md) records exa
 ## Shared Bindings review checkpoint — 2026-10-20
 
 [Shared editor/native storage delivery](frontbase-deployment-shared-bindings-20261020.md) verifies the same editor in local bootstrap and a running-system-engine proposal dialog, owner-only nonsecret discovery/review, and capability-aware native R2 UI. Actual managed CF preservation and local browser acceptance pass. P4 is partial: proposals do not apply provider changes, migrate state or complete the proposal-to-executor handoff. Next: controlled handoff/change semantics, exact CF button/clean-install proof and Vercel acceptance. Existing compatibility reconfigure residue, translation/staging and paused CF-22 remain untouched.
+
+## Vercel live profile checkpoint — 2026-10-20
+
+[Live delivery receipt](frontbase-deployment-vercel-live-20261020.md) supersedes the earlier Marketplace provisioning block. The approved $0 Turso resource backs actual disposable preview and production acceptance through the existing pure-HTTP state runner. Shared proposal import and connected-resource selection are wired; Vercel journal lifecycle is fixture-tested. Native buttons, fresh managed-journal installation, controlled optional-binding changes, external storage discovery and broader provider acceptance remain open. This is bounded host evidence, not completion of P3–P5 or a public-release claim.

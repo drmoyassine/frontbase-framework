@@ -208,16 +208,32 @@ If upload completed but its final verification failed, review the journal, then 
 
 A local account/Worker lock serializes operations across worktrees and environment labels for the same OS user. A stale lock is retained after process failure: establish that the operation has ended and reconcile its receipt/provider state before removing it. Locks do not coordinate other users/machines or out-of-band dashboard operations; immediate version checks are not a provider-side compare-and-swap guarantee. Journal updates are atomic local replacements, not distributed transactions or a power-loss/backup guarantee.
 
-[Lifecycle evidence and limitations](../plans/frontbase-deployment-managed-lifecycle-20261020.md). Shared post-deploy proposal review is described below. Controlled binding changes, migration, full button journeys and Vercel live acceptance remain separate work.
+[Lifecycle evidence and limitations](../plans/frontbase-deployment-managed-lifecycle-20261020.md). Shared post-deploy proposal review is described below. Controlled binding changes, migration, full button journeys and broader Vercel provider acceptance remain separate work.
 
 ## Review bindings in a running app
 
 For a managed Cloudflare installation, open **Edge → Edge Compute → the local/system engine → Bindings** (`/frontbase-admin/edge?tab=compute`). Deployment-owner access is required. The dialog uses the same editor as local setup and displays configuration recorded by the managed deployment.
 
-Choose providers/fields for a proposal, select **Review proposal**, then **Download plan**. Reviewing does not modify the running app. The plan contains configuration and credential references; new keys are entered only in the private local setup. State database changes are labeled as requiring a separate migration. Automatic proposal application/import and provider/state migration are not available yet; the existing managed redeploy command retains the recorded bindings.
+Choose providers/fields for a proposal, select **Review proposal**, then **Download plan**. Reviewing does not modify the running app. The plan contains configuration and credential references; new keys are entered only in the private local setup. State database changes are labeled as requiring a separate migration. Import an exported data-only plan into local review with `--manifest PATH`, using the same target and environment. Import does not apply changes by itself. The bounded managed redeploy commands retain recorded bindings; provider changes and state migration remain unavailable.
 
 Older/unmanaged deployments with no trustworthy metadata show an explicit unavailable message; they are not silently enrolled. Cloud mode and non-owner/other-tenant access are refused.
 
 In **Storage**, native R2 is marked **Deployment managed · private**. Its files can be managed normally, but its physical bucket/provider cannot be created, reconfigured or removed in this UI. Native sharing offers the supported fifteen-minute/one-hour choices. Use a supported public asset provider when permanent public URLs are required.
 
 [Shared editor and actual acceptance](../plans/frontbase-deployment-shared-bindings-20261020.md).
+
+## Reviewed Vercel profile execution
+
+Build the workspace, connect a supported state database to the intended Vercel project/environment, and sign in with Vercel CLI. For a new environment with no prior deployments:
+
+```sh
+pnpm run deploy:setup -- --target vercel --environment preview --deploy --project my-new-frontbase --scope team_YOUR_TEAM_ID --intent create
+```
+
+The shared review lists Turso resources connected to this exact project/environment. One eligible resource is preselected; multiple resources require an explicit selection. Marketplace terms and resource provisioning are handled by Vercel with separate user approval; this command does not silently create or upgrade a resource. Marketplace credentials stay at Vercel. Alternatively configure an implemented HTTP state adapter with its referenced keys in the private local review.
+
+The explicit production environment is also supported. Real applications should isolate preview and production data; the disposable acceptance project intentionally shared test data. Production deployment/credential injection requires authorization for that environment. For an installation created by this managed launcher, repeat the exact project/team/environment with `--intent redeploy`. Keep `.frontbase/vercel/<team>/<environment>/<project>/deployment.json`: it is a nonsecret operation journal, not a backup or provider-side lock. Older installations without this receipt are not automatically enrolled. The live project in the delivery receipt predates this journal wrapper, so a fresh managed-journal install remains an acceptance gate.
+
+State migration and optional-binding changes are refused before host writes. Running-app Bindings review remains proposal-only. The low-level deployment script supports explicit `--setup-link` recovery on redeploy without session-key rotation; the managed review command does not yet expose that recovery option. Native S3 storage execution remains unavailable until its bucket-scoped discovery is wired. HTTP cache/vector/queue mappings are fixture-tested; their general live-provider acceptance is separate.
+
+[Actual preview/production, original-session/data preservation, verification and remaining work](../plans/frontbase-deployment-vercel-live-20261020.md).
