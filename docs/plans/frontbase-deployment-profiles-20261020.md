@@ -1,6 +1,6 @@
 # Configurable deployment profiles — 2026-10-20
 
-Status: owner-approved direction and implementation plan; not implemented or host-verified by this document. Priority: Cloudflare Workers first, Vercel second. Deno remains documented/deferred; do not remove existing support or imply fresh acceptance.
+Status: P0/P1 implementation in progress. Shared data contracts and local host corrections are verified; a disposable Cloudflare D1 install passes setup, publication and redeployment. Pre-deployment Bindings UI, provisioning consumption and live Vercel acceptance remain open. See the [implementation receipt](frontbase-deployment-profiles-p0-p1-20261020.md). Priority: Cloudflare Workers first, Vercel second. Deno remains documented/deferred; do not remove existing support or imply fresh acceptance.
 
 ## Accepted experience
 
@@ -75,8 +75,8 @@ Email Service is the recommended CF outbound adapter after domain readiness, not
 
 | Phase | Work | Exit evidence |
 |---|---|---|
-| P0 — next | Isolated clean-checkout CF/Vercel audit; classify existing contracts/adapters/provisioners, buttons and host failures | Capability/evidence ledger; reproducible local and credential-gated failures; no inferred live pass |
-| P1 | Shared typed profile, binding, provisioning and secure bootstrap contracts; determine viable native-button sequence | Compatible-adapter filtering, required-field validation, stable overrides and no-database setup proof; no secret leaks or mandatory hosted control plane |
+| P0 — in progress | Isolated clean-checkout CF/Vercel audit; classify existing contracts/adapters/provisioners, buttons and host failures | Capability/evidence ledger; reproducible local and credential-gated failures; no inferred live pass |
+| P1 — partial | Shared typed profile, binding, provisioning and secure bootstrap contracts; determine viable native-button sequence | Compatible-adapter filtering, required-field validation, stable overrides and no-database setup proof; no secret leaks or mandatory hosted control plane |
 | P2 | Implement CF defaults and native adapters/provisioning; remove deployment IDs from reusable self-host template while retaining existing cloud config safely | Fresh-account/project setup→admin→publish, upload/cache/selected queue/vector/email checks, restart/redeploy persistence and account-eligibility outcomes |
 | P3 | Repair Vercel Node path, required state integration, assets/routes, setup expiry and lifecycle-safe background work; integrate supported selected adapters | Same functional journey on actual Vercel; preview/production isolation, cold starts, runtime limits and durable recovery |
 | P4 | Shared pre-deploy and post-deploy Bindings UI, tests and explicit resource-change lifecycle | Both paths resolve the same configuration; dropdowns show implemented compatible providers; native/resource and external credential fields behave correctly |
@@ -102,6 +102,10 @@ Checked 2026-10-20; revalidate account eligibility, limits, API/tool versions an
 - [Vercel Marketplace storage](https://vercel.com/docs/marketplace-storage), [button integrations](https://vercel.com/docs/deploy-button/integrations), [Queues Beta](https://vercel.com/docs/queues), [Workflows](https://vercel.com/docs/workflows).
 - [Current Deno capabilities](https://docs.deno.com/deploy/), [databases](https://docs.deno.com/deploy/reference/databases/), [CLI](https://docs.deno.com/runtime/reference/cli/deploy/), [Classic sunset](https://docs.deno.com/deploy/classic/kv_on_deploy/).
 
-## Planning verification
+## Original planning verification
 
 This change is documentation-only. Local link and whitespace checks are the appropriate fresh checks; workspace builds/tests, real host deployments, DNS changes, email sends, resource provisioning and spend are not run or claimed by this receipt. Next executable task is P0 in an isolated worktree, followed by P1 bootstrap/profile contracts.
+
+## Implementation checkpoint — 2026-10-20
+
+The [P0/P1 receipt](frontbase-deployment-profiles-p0-p1-20261020.md) records exact verified boundaries and next tasks. Cloudflare CLI login and disposable D1 setup/publication/redeploy are verified. Vercel local Node export/routing/lifecycle checks pass; the isolated free Turso database is not provisioned because Marketplace terms acceptance is still required. No existing Vercel project or Study in USA staging was changed. Profile contracts are data-only and do not yet drive either deploy script. Native KV recommendations remain blocked until runtime wiring exists; selecting a disabled optional binding permits a D1-only plan. P1/P2/P3 and button acceptance are not complete.

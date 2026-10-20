@@ -1,8 +1,8 @@
 # Frontbase Public Release Strategy
 
-## 2026-10-20 configurable deployment stream — planned
+## 2026-10-20 configurable deployment stream — P0/P1 in progress
 
-[Owner-approved plan](../plans/frontbase-deployment-profiles-20261020.md): Cloudflare-first/Vercel-second editable binding defaults and secure pre-deployment configuration; Deno deferred. P0 inventories current adapters/button failures from an isolated checkout; P1 proves shared contracts/bootstrap; P2/P3 repair and accept real CF/Vercel deployments; P4 unifies Bindings UI; P5 records fresh button/CLI/install/upgrade evidence. User overrides persist; native resource selection and external credential entry share capability validation. This is planned work, not host parity or fresh installation acceptance. Use disposable projects and separate ownership from the dispatched Study in USA translation stream. Existing release gates and paused CF-22 remain.
+[Owner-approved plan](../plans/frontbase-deployment-profiles-20261020.md): Cloudflare-first/Vercel-second editable binding defaults and secure pre-deployment configuration; Deno deferred. P0 inventories current adapters/button failures from an isolated checkout; P1 proves shared contracts/bootstrap; P2/P3 repair and accept real CF/Vercel deployments; P4 unifies Bindings UI; P5 records fresh button/CLI/install/upgrade evidence. User overrides persist; native resource selection and external credential entry share capability validation. The [P0/P1 checkpoint](../plans/frontbase-deployment-profiles-p0-p1-20261020.md) verifies data-only profile contracts, corrected Vercel local artifact/lifecycle gates and a disposable CF D1 setup→publication→redeploy journey. Shared bootstrap/Bindings UI, provisioning consumption and exact button acceptance remain open; Vercel live verification awaits Marketplace terms/free state provisioning. This is bounded evidence, not host parity or complete profile acceptance. Use disposable projects and separate ownership from the dispatched Study in USA translation stream. Existing release gates and paused CF-22 remain.
 
 ## 2026-10-20 post-Homepage work order — session correction delivered
 
