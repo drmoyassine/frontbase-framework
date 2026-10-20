@@ -29,6 +29,5 @@ packages/backend/test/.gate-out*.txt
 
 # Local deployment links and provider files
 .vercel/
-
-.vercel
-.env*
+.env.local
+.env.*.local
