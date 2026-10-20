@@ -59,7 +59,7 @@ Retained logs: `lifecycle-build.log`, `lifecycle-check.log`, `lifecycle-setup-te
 
 ## Next executable work
 
-1. Share the pre-/post-deploy Bindings editor and native storage management affordances; preserve explicit choices and define separately reviewed provider/state changes.
+1. [Shared editor/native storage affordances](frontbase-deployment-shared-bindings-20261020.md) now have bounded acceptance. Complete proposal-to-executor handoff and controlled binding-change semantics; provider/state migrations remain separate.
 2. Prove actual deployment-button and independent clean-install journeys on Cloudflare.
 3. Complete the isolated free Vercel state integration and corresponding reviewed install/redeploy acceptance once Marketplace setup is available. Deno remains deferred.
 4. Retain controlled binding migration, broader recovery and public-release gates as separate work. CF-22 stays paused.

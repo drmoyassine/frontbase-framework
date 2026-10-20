@@ -131,3 +131,7 @@ The [P0/P1 receipt](frontbase-deployment-profiles-p0-p1-20261020.md) records exa
 ## Managed lifecycle checkpoint — 2026-10-20
 
 [Managed lifecycle delivery](frontbase-deployment-managed-lifecycle-20261020.md) supersedes the earlier durable-identity/redeploy-pending description for new managed CF installations. Real known-resource redeploy and post-upload reconciliation preserve session, page, cache and object access. Unknown creates/unmarked partial Workers still require manual reconciliation. Next: shared Bindings/native management UI, exact buttons/clean installation and Vercel acceptance; Deno deferred, public release/CF-22 unchanged.
+
+## Shared Bindings review checkpoint — 2026-10-20
+
+[Shared editor/native storage delivery](frontbase-deployment-shared-bindings-20261020.md) verifies the same editor in local bootstrap and a running-system-engine proposal dialog, owner-only nonsecret discovery/review, and capability-aware native R2 UI. Actual managed CF preservation and local browser acceptance pass. P4 is partial: proposals do not apply provider changes, migrate state or complete the proposal-to-executor handoff. Next: controlled handoff/change semantics, exact CF button/clean-install proof and Vercel acceptance. Existing compatibility reconfigure residue, translation/staging and paused CF-22 remain untouched.

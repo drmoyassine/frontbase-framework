@@ -208,4 +208,16 @@ If upload completed but its final verification failed, review the journal, then 
 
 A local account/Worker lock serializes operations across worktrees and environment labels for the same OS user. A stale lock is retained after process failure: establish that the operation has ended and reconcile its receipt/provider state before removing it. Locks do not coordinate other users/machines or out-of-band dashboard operations; immediate version checks are not a provider-side compare-and-swap guarantee. Journal updates are atomic local replacements, not distributed transactions or a power-loss/backup guarantee.
 
-[Lifecycle evidence and limitations](../plans/frontbase-deployment-managed-lifecycle-20261020.md). Shared post-deploy Bindings, controlled binding changes, migration, full button journeys and Vercel live acceptance remain separate work.
+[Lifecycle evidence and limitations](../plans/frontbase-deployment-managed-lifecycle-20261020.md). Shared post-deploy proposal review is described below. Controlled binding changes, migration, full button journeys and Vercel live acceptance remain separate work.
+
+## Review bindings in a running app
+
+For a managed Cloudflare installation, open **Edge → Edge Compute → the local/system engine → Bindings** (`/frontbase-admin/edge?tab=compute`). Deployment-owner access is required. The dialog uses the same editor as local setup and displays configuration recorded by the managed deployment.
+
+Choose providers/fields for a proposal, select **Review proposal**, then **Download plan**. Reviewing does not modify the running app. The plan contains configuration and credential references; new keys are entered only in the private local setup. State database changes are labeled as requiring a separate migration. Automatic proposal application/import and provider/state migration are not available yet; the existing managed redeploy command retains the recorded bindings.
+
+Older/unmanaged deployments with no trustworthy metadata show an explicit unavailable message; they are not silently enrolled. Cloud mode and non-owner/other-tenant access are refused.
+
+In **Storage**, native R2 is marked **Deployment managed · private**. Its files can be managed normally, but its physical bucket/provider cannot be created, reconfigured or removed in this UI. Native sharing offers the supported fifteen-minute/one-hour choices. Use a supported public asset provider when permanent public URLs are required.
+
+[Shared editor and actual acceptance](../plans/frontbase-deployment-shared-bindings-20261020.md).
