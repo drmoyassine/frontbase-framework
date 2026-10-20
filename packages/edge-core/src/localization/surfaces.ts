@@ -51,7 +51,11 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
         if(node.type==='Footer'&&!p.copyright)p.copyright=`© ${new Date().getFullYear()} All rights reserved.`;
         if(node.type==='Repeater'&&Array.isArray(p.initialRows)){
             const controls=p.controls as Record<string,unknown>|undefined;
-            if(controls&&Object.values(controls).some(v=>v===true))throw Error('localized_interactive_list_not_supported');
+            const binding=(p.binding??(node as {binding?:unknown}).binding)as Record<string,unknown>|undefined;
+            const pinned=(binding?.source as Record<string,unknown>|undefined)?.kind==='publication';
+            // A pinned publication binding re-fetches through the localized list endpoint, so its
+            // interactive controls stay coherent on a localized page; any other store keeps the refusal.
+            if(controls&&Object.values(controls).some(v=>v===true)&&!pinned)throw Error('localized_interactive_list_not_supported');
             // Data is still resolved live on every server request. Avoid a source-language client re-fetch.
             p.localeReadOnly=true;
         }

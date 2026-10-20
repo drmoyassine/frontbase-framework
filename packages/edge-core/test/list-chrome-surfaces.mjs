@@ -25,6 +25,15 @@ assert.throws(() => homepageDisplayLayout({ root: {}, content: [{ id: 'list', ty
         initialRows: rows, controls: { loadMore: true } } }] }), /localized_interactive_list_not_supported/,
     'interactive list controls refuse localization rather than silently dropping the strings');
 
+// Task 8 slice B: a pinned publication binding re-fetches through the localized list endpoint,
+// so its interactive controls stay coherent — the refusal applies only to stores without an
+// evidenced localized query plan (live views keep the refusal above).
+const converted = homepageDisplayLayout({ root: {}, content: [{ id: 'list', type: 'Repeater',
+    props: { binding: { componentId: 'list', dataSourceId: 'frontbase:publication', tableName: 'institutions',
+        source: { kind: 'publication', hash: 'a'.repeat(64) } },
+        initialRows: rows, controls: { search: true, count: true } } }] });
+assert.equal(converted.content[0].props.localeReadOnly, true, 'pinned publication lists still render server-side for first paint');
+
 const binding = { dataSourceId: 'frontbase:publication', tableName: 'institutions', columnOrder: ['title', 'summary'] };
 const table = renderDataComponent('DataTable', 'tbl', { binding, title: 'Catalog' }, '');
 const tableDom = new JSDOM(table).window.document;

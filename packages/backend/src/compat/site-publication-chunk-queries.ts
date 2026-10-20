@@ -7,6 +7,25 @@ import { publicationPathSchema } from '@frontbase/edge-core/directory/publicatio
 
 /** Serve-time localized query titles keyed `${collection}:${id}`; membership stays the current index. */
 export type LocalizedTitles=Map<string,string>;
+/** The release-catalog slice localized queries read: record-bound released text units. */
+export type LocalizedCatalogEntry={record?:{collection:string;key:readonly{column:string;value:string|number|boolean}[]};fieldKey?:string;text:string;sourceText?:string};
+/** Everything a localized rendering needs from its release: validated query titles plus the raw
+ *  catalog (row-text joins validate freshness against the rows they rename, not the index). */
+export type LocalizedQueryPlan={titles:LocalizedTitles;catalog:readonly LocalizedCatalogEntry[]};
+
+/** Intersect release-catalog title candidates with an index's current titles: only entries naming
+ *  a current record whose source title still matches since prepare count as query titles. */
+export function freshLocalizedIndexTitles(entries:readonly LocalizedCatalogEntry[],indexTitles:Map<string,string>):LocalizedTitles{
+    const titles=new Map<string,string>();
+    for(const entry of entries){
+        if(!entry.record||entry.fieldKey!=='title'||!entry.text.trim())continue;
+        const key=entry.record.collection+':'+String(entry.record.key.find(part=>part.column==='id')?.value);
+        const indexTitle=indexTitles.get(key);
+        if(indexTitle===undefined||!(entry.sourceText===undefined||entry.sourceText===indexTitle))continue;
+        titles.set(key,entry.text);
+    }
+    return titles;
+}
 
 /** Effective query title for a manifest index row: a threaded fresh released title, else source. */
 export function localizedIndexTitleReader(localizedTitles?:LocalizedTitles){

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { allowanceFixture, now } from './translation-allowance-fixture.mjs';
-import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
+import { emptyDirectoryConfiguration, migrateExploreRepeater } from '@frontbase/edge-core/directory/configuration';
 import { translationUnitId } from '@frontbase/edge-core/localization';
 import { createCompatApp } from '../dist/compat/app.js';
 import { PagesStore } from '../dist/compat/pages-store.js';
@@ -50,8 +50,8 @@ async function call(path, body, status = 200) { const r = await app.request('htt
 const html = async path => { const r = await renderReviewedSitePublication(f.db, tenant, new Request('https://site.test' + path)); return { status: r?.status, headers: r?.headers, text: await r?.text() }; };
 const rowTitles = text => { const doc = new JSDOM(text).window.document;
     return [...doc.querySelectorAll('h1,h2,h3,h4')].map(element => element.textContent.trim()).filter(t => /Institution|Program|آخر/.test(t)); };
-async function prepareActivate(records_) {
-    const hash = await store.prepare({ configurationRevision: 1, configuration: config, templates, staticPages: [
+async function prepareActivate(records_, templates_ = templates) {
+    const hash = await store.prepare({ configurationRevision: 1, configuration: config, templates: templates_, staticPages: [
         { pageId: pageIdA, title: 'Home', description: 'Study abroad', originalPath: '/', layout: layoutA }] }, records_, now);
     await reviews.approve({ hash, checks: { content: true, media: true, layout: true, urls: true, ctas: true }, note: 'Fixture reviewed' }, 'reviewer', now);
     await reviews.activate(hash, (await new SitePublicationStore(f.db, tenant).activeVersion())?.pointer ?? null, now);
@@ -148,7 +148,35 @@ try {
     const stale = await html('/ar/explore/?q=' + encodeURIComponent('عربي Institution 01')); assert.equal(stale.status, 200);
     assert.deepEqual(rowTitles(stale.text), [], 'a stale released title no longer drives matches');
     assert.ok(stale.text.includes('>0 records</p>'), 'stale titles leave the localized total too');
+    // Task 8 slice B: the standard List Component conversion pins the migration-time publication;
+    // the per-unit release survives by record identity — no re-translation. Interactive controls
+    // stay coherent because the X-Frontbase-List fetch localizes through the page's own release,
+    // and the SSR first paint runs the same localized query plan as the hydrated fetch.
+    const pinnedHash = (await new SitePublicationStore(f.db, tenant).activeVersion()).pointer.hash;
+    const convertedTemplates = templates.map(template => template.role === 'directory'
+        ? { ...template, layout: migrateExploreRepeater(template.layout, pinnedHash, config) } : template);
+    await prepareActivate(renamed, convertedTemplates);
+    const converted = await html('/ar/explore/'); assert.equal(converted.status, 200);
+    const convertedDoc = new JSDOM(converted.text).window.document;
+    const switchLabels = [...convertedDoc.querySelectorAll('button')].map(button => button.textContent.trim());
+    assert.ok(switchLabels.includes('Institutions') && switchLabels.includes('Programs'), 'switch buttons are new units and keep source copy');
+    assert.ok(!converted.text.includes('data-react-component="Repeater"'), 'the converted list keeps its server-only first paint');
+    assert.deepEqual(rowTitles(converted.text), ['Institution 01 Renamed', ...['02', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13'].map(n => `عربي Institution ${n}`)], 'the converted initialRows follow the localized query plan');
+    const convertedPrograms = await html('/ar/explore/?type=program'); assert.equal(convertedPrograms.status, 200);
+    assert.ok(convertedPrograms.text.includes('عربي Program Alpha') && convertedPrograms.text.includes('عربي Program Gamma'), 'the version-scoped rendering joins the same release catalog');
+    const listFetch = async (path, query) => { const r = await renderReviewedSitePublication(f.db, tenant, new Request('https://site.test' + path, { headers: { 'X-Frontbase-List': encodeURIComponent(JSON.stringify(query)) } })); assert.equal(r?.status, 200, await r?.clone().text()); return await r.json(); };
+    const listQuery = { componentId: 'ilist', versionId: 'default', page: 0, pageSize: 12, sortColumn: 'title', direction: 'desc', filters: [] };
+    const fetched = await listFetch('/ar/explore/', listQuery);
+    assert.equal(fetched.total, 14, 'the fetch total is the localized full-dataset count');
+    assert.deepEqual([fetched.rows[0].title, fetched.rows[1].title], ['عربي آخر', 'عربي Institution 14'], 'fetch rows carry released text in localized order');
+    const fetchedMatch = await listFetch('/ar/explore/', { ...listQuery, filters: [{ column: 'title', op: 'contains', value: 'عربي Institution 1' }] });
+    assert.equal(fetchedMatch.total, 5, 'localized matches span both source pages in the fetch too');
+    assert.ok(fetchedMatch.rows.every(row => String(row.title).startsWith('عربي Institution 1')), 'the fetch filter matches released titles');
+    const sourceFetch = await listFetch('/explore/', listQuery);
+    assert.equal(sourceFetch.rows[0].title, 'Institution 14', 'the source-path fetch keeps source semantics');
+    const staleFetch = await listFetch('/ar/explore/', { ...listQuery, filters: [{ column: 'title', op: 'contains', value: 'Institution 01' }] });
+    assert.deepEqual(staleFetch.rows.map(row => row.title), ['Institution 01 Renamed'], 'a stale released title falls back to the row\'s own source text in fetches');
 
     auth = false; await call('review/?locale=ar&path=/explore/', undefined, 401); auth = true; role = 'viewer'; await call('review/?locale=ar&path=/explore/', undefined, 403); role = 'owner';
-    console.log('translation-homepage explore PASS: template listing pages, per-unit-only releases, browsing chrome surfaces, paged record supplement, parameterized joins, per-unit fallback, record-detail refusal');
+    console.log('translation-homepage explore PASS: template listing pages, per-unit-only releases, browsing chrome surfaces, paged record supplement, parameterized joins, per-unit fallback, record-detail refusal, standard-conversion fetch agreement');
 } finally { f.close(); }

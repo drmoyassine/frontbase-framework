@@ -5,10 +5,22 @@ import {resolvePublicationVersionPage,PublicationRequestError} from './site-publ
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {PageLayoutData} from '@frontbase/edge-core';
 import {captureHomepage,localizedTitleIndex,publishedHomepageLocales,projectHomepageLocale,templateListingPath} from './translation-homepage.js';
-import type {LocalizedTitles} from './site-publication-chunk-queries.js';
+import type {LocalizedQueryPlan} from './site-publication-chunk-queries.js';
 import type {PublishedLiveQuery} from './publication-list-source.js';
 
 export function homepageLanguageLinks(sourceLocale:string,locales:string[],current:string,sourcePath='/'){return [{code:sourceLocale,label:sourceLocale==='en'?'English':sourceLocale,href:sourcePath,current:current===sourceLocale},...locales.map(code=>({code,label:code==='ar'?'العربية':new Intl.DisplayNames([code],{type:'language'}).of(code)??code,href:`/${code}${sourcePath}`,current:current===code}))];}
+/** The release that translates `path`'s content under the URL's locale prefix, for the localized
+ *  list endpoint: locale prefixes count only when a published locale matches, and the catalog
+ *  comes only from the path-matched release so pages without their own release keep source
+ *  semantics. Null keeps the fetch pure source. */
+export async function localizedListRequest(db:DbRunner,tenant:string,path:string):Promise<{locale:string;path:string;catalog:readonly import('./site-publication-chunk-queries.js').LocalizedCatalogEntry[]}|null>{
+    const published=await publishedHomepageLocales(db,tenant);
+    const locale=published.find(item=>path===`/${item.release.locale}/`||path.startsWith(`/${item.release.locale}/`));
+    if(!locale)return null;
+    const stripped=path.slice(locale.release.locale.length+1)||'/';
+    const release=published.find(item=>item.release.locale===locale.release.locale&&item.release.path===stripped)?.release;
+    return release?{locale:locale.release.locale,path:stripped,catalog:release.catalog}:null;
+}
 export function addHomepageLanguageLinks(input:PageLayoutData,sourceLocale:string,locales:string[],current:string,sourcePath='/',origins:string[]=[]):PageLayoutData{
     const layout=structuredClone(input),links=homepageLanguageLinks(sourceLocale,locales,current,sourcePath);
     const walk=(nodes:PageLayoutData['content'])=>{for(const node of nodes){if(node.type==='Navbar'){node.props={...node.props,languageSwitcher:links,localeLabels:{...node.props?.localeLabels as object,language:current==='ar'?'اللغة':'Language'}};const logo=node.props.logo as Record<string,unknown>|undefined;if(logo?.link==='/')logo.link=current===sourceLocale?'/':`/${current}/`;}
@@ -27,8 +39,9 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     const capture=await captureHomepage(db,tenant,request,liveQuery);
     const captures=new Map<string,Awaited<ReturnType<typeof captureHomepage>>>();
     // Listing releases resolve through localized queries: their fresh released titles drive the
-    // registry (search/sort/totals) beside the per-unit text join. Cached beside the source capture.
-    const captureFor=async(p:string,localizedTitles?:LocalizedTitles)=>{
+    // registry (search/sort/totals) and standard-list reads beside the per-unit text join.
+    // Cached beside the source capture.
+    const captureFor=async(p:string,localizedTitles?:LocalizedQueryPlan)=>{
         if(localizedTitles){const key=p+'\u0000localized';
             if(!captures.has(key))captures.set(key,await captureHomepage(db,tenant,request,liveQuery,p,undefined,localizedTitles));
             return captures.get(key)!;}

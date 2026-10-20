@@ -9,6 +9,7 @@ import { SitePublicationStore } from './site-publication-store.js';
 import { SitePublicationReviewStore } from './site-publication-review-store.js';
 import { SitePublicationManifestStore } from './site-publication-manifest.js';
 import { verifyManifestEditorial } from './site-publication-approval-check.js';
+import { freshLocalizedIndexTitles, type LocalizedCatalogEntry } from './site-publication-chunk-queries.js';
 import {liveViewBindingSchema} from '@frontbase/edge-core/directory/configuration';
 
 export type PublishedLiveQuery=(owner:string,binding:Record<string,any>,query:Record<string,any>,request:Request)=>Promise<{rows:Record<string,unknown>[];total:number}>;
@@ -21,7 +22,24 @@ export const publicationListRequestSchema = z.object({ componentId:z.string().mi
 const collections = ['institutions','programs','articles'] as const;
 export const publicationListBindingSchema=z.object({dataSourceId:z.literal('frontbase:publication'),tableName:z.enum(collections),source:z.object({kind:z.literal('publication'),hash:z.string().regex(/^[a-f0-9]{64}$/)}).passthrough()}).passthrough();
 
-export async function readPublicationList(db:DbRunner,owner:string,bindingInput:unknown,input:unknown){
+/** Released text a record row renders, keyed `${collection}:${id}` → column. Freshness is
+ *  validated against the ROW's own value at apply time, so a pinned snapshot always agrees
+ *  with the text it returns. */
+function localizedRowText(catalog:readonly LocalizedCatalogEntry[]|undefined){
+    const textByRecord=new Map<string,Map<string,{text:string;sourceText?:string}>>();
+    if(catalog)for(const item of catalog){
+        if(!item.record||!item.text.trim())continue;
+        const fieldKey=item.fieldKey??'';
+        if(!['title','summary','coverAlt','byline'].includes(fieldKey))continue;
+        const key=item.record.collection+':'+String(item.record.key.find(part=>part.column==='id')?.value);
+        let fields=textByRecord.get(key);
+        if(!fields){fields=new Map();textByRecord.set(key,fields);}
+        if(!fields.has(fieldKey))fields.set(fieldKey,{text:item.text,sourceText:item.sourceText});
+    }
+    return textByRecord;
+}
+
+export async function readPublicationList(db:DbRunner,owner:string,bindingInput:unknown,input:unknown,catalog?:readonly LocalizedCatalogEntry[]){
     const binding=publicationListBindingSchema.parse(bindingInput),query=publicationListRequestSchema.parse(input);
     if(!await new SitePublicationReviewStore(db,owner).get(binding.source.hash))throw Error('snapshot_unavailable');
     const source=await new SitePublicationStore(db,owner).getVersion(binding.source.hash);
@@ -29,24 +47,37 @@ export async function readPublicationList(db:DbRunner,owner:string,bindingInput:
     const {page:pageNumber,pageSize,filters,direction,sortColumn}=query;
     // Per-element page size is validated against the snapshot adapter's hard
     // 48-row bound. The legacy global page size remains a legacy-path default.
+    // Localized semantics intersect the release with THIS snapshot's index: title equality/
+    // containment and title sorting run on fresh released titles; every other column and
+    // operator keeps source values, and membership stays the pinned index alone.
+    const plan=catalog?freshLocalizedIndexTitles(catalog,new Map<string,string>(source.index.map(row=>[`${row.collection}:${row.id}`,row.title] as const))):undefined;
+    const effectiveTitle=(row:typeof source.index[number])=>plan?.get(`${row.collection}:${row.id}`)??String(row.title);
     const entries=source.index.filter(row=>row.collection===binding.tableName).filter(row=>filters.every(filter=>{
+        if(plan&&filter.column==='title'&&(filter.op==='eq'||filter.op==='contains')){const left=effectiveTitle(row).toLowerCase(),right=String(filter.value??'').toLowerCase();
+            return filter.op==='eq'?left===right:left.includes(right);}
         const value=filter.column==='institutionId'?row.parentId:(row as any)[filter.column];
         const operator=filter.op==='is_null'?'eq':filter.op==='not_null'?'neq':filter.op;
         return evaluateCondition({left:{kind:'literal',value:value??null},operator,right:{kind:'literal',value:(filter.op==='is_null'||filter.op==='not_null'?null:filter.value) as any}},()=>undefined);
     }));
-    entries.sort((a,b)=>{const av=String(a[sortColumn]),bv=String(b[sortColumn]);return (av<bv?-1:av>bv?1:0)*(direction==='desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0);});
+    entries.sort((a,b)=>{const av=plan&&sortColumn==='title'?effectiveTitle(a):String(a[sortColumn]),bv=plan&&sortColumn==='title'?effectiveTitle(b):String(b[sortColumn]);return (av<bv?-1:av>bv?1:0)*(direction==='desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0);});
     const rows:Record<string,unknown>[]=[],store=new SitePublicationManifestStore(db,owner),loaded=new Map<string,Awaited<ReturnType<typeof store.loadChunk>>>();
-    for(const entry of entries.slice(pageNumber*pageSize,(pageNumber+1)*pageSize)){
+    const selectedEntries=entries.slice(pageNumber*pageSize,(pageNumber+1)*pageSize),textByRecord=localizedRowText(catalog);
+    for(const entry of selectedEntries){
         let chunk=loaded.get(entry.chunkHash);
         if(!chunk){const reference=source.chunks.find(chunk=>chunk.hash===entry.chunkHash);if(!reference)throw Error();chunk=await store.loadChunk(source,reference);loaded.set(entry.chunkHash,chunk);}
         const row=chunk.records[entry.position];if(!row)throw Error();rows.push(Object.fromEntries(Object.entries(row).filter(([key])=>key!=='body')));
     }
     if(binding.tableName==='articles')await verifyManifestEditorial(db,owner,source,rows);
+    if(textByRecord.size)for(let i=0;i<rows.length;i++){const entry=selectedEntries[i]!,row=rows[i]!,fields=textByRecord.get(entry.collection+':'+String(entry.id));
+        if(fields)for(const [fieldKey,localized] of fields){const current=row[fieldKey];
+            if(typeof current==='string'&&(localized.sourceText===undefined||localized.sourceText===current))row[fieldKey]=localized.text;}}
     return {rows,total:entries.length,captureHash:binding.source.hash};
 }
 
-/** Resolve only the selected source for initial HTML; alternatives stay query-free. */
-export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery):Promise<PageLayoutData>{
+/** Resolve only the selected source for initial HTML; alternatives stay query-free. The optional
+ *  catalog localizes pinned publication reads (query + returned text); live views keep coherent
+ *  source semantics — their stores have no evidenced localized query plan. */
+export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[]):Promise<PageLayoutData>{
     const url=new URL(request.url),read=contextReader({url:Object.fromEntries(url.searchParams),user});
     const walk=async(nodes:PageComponent[]):Promise<PageComponent[]>=>Promise.all(nodes.map(async node=>{
         const versionId=selectBlockVersion(node,read),effective=applyBlockVersion(node,versionId),binding=effective.props?.binding as any;
@@ -60,7 +91,7 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
                 ...(binding.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:resolveValue(filter.value,read)})),
                 ...(search&&controls.searchColumn?[{column:controls.searchColumn,op:'contains',value:search}]:[])];
             const query={componentId:node.id,versionId,page,pageSize:binding.pagination?.pageSize??12,sortColumn:binding.sorting?.column??'title',direction:binding.sorting?.direction??'asc',filters};
-            const records=live?await liveQuery!(owner,binding,query,request):await readPublicationList(db,owner,binding,query);
+            const records=live?await liveQuery!(owner,binding,query,request):await readPublicationList(db,owner,binding,query,catalog);
             const props={initialRows:records.rows,initialTotal:records.total,_initialVersionId:versionId,_initialQuery:{page,search,sortColumn:query.sortColumn,direction:query.direction}};
             if(versionId==='default')result={...node,props:{...node.props,...props}};
             else result={...node,versions:node.versions?.map(version=>version.id===versionId?{...version,overrides:{...version.overrides,props:{...version.overrides.props,...props}}}:version)};
@@ -77,8 +108,10 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
     return {...layout,content:await walk(layout.content)};
 }
 
-/** Same public page/host boundary, exact reviewed element binding; no arbitrary datasource access. */
-export async function publicationListResponse(db:DbRunner,owner:string,request:Request,audience:VerifiedMenuAudience|null):Promise<Response|null> {
+/** Same public page/host boundary, exact reviewed element binding; no arbitrary datasource access.
+ *  The optional localized request (resolved by the caller from the URL's locale prefix) strips the
+ *  prefix for the artifact walk and serves query+text through the page's own release catalog. */
+export async function publicationListResponse(db:DbRunner,owner:string,request:Request,audience:VerifiedMenuAudience|null,localized?:{locale:string;path:string;catalog:readonly LocalizedCatalogEntry[]}):Promise<Response|null> {
     const raw=request.headers.get('X-Frontbase-List');if(!raw)return null;
     const headers={'Cache-Control':'no-store','Content-Type':'application/json','X-Content-Type-Options':'nosniff'};
     const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
@@ -89,7 +122,7 @@ export async function publicationListResponse(db:DbRunner,owner:string,request:R
     try{
         const active=await new SitePublicationStore(db,owner).activeVersion();
         if(!active || active.artifact.schemaVersion!==2 || !await new SitePublicationReviewStore(db,owner).get(active.pointer.hash))return reply({error:'list_unavailable'},503);
-        const artifact=active.artifact,url=new URL(request.url),path=url.pathname;
+        const artifact=active.artifact,url=new URL(request.url),path=localized?localized.path:url.pathname;
         const entry=artifact.index.find(row=>row.originalPath===path);
         const role=path===artifact.configuration.routes.directory?'directory':path===artifact.configuration.routes.blog?'article-index':entry?({institutions:'institution',programs:'program',articles:'article',pages:'editorial',cities:''}[entry.collection]):undefined;
         const page=artifact.staticPages?.find(page=>page.originalPath===path)??artifact.templates.find(page=>page.role===role);
@@ -111,7 +144,7 @@ export async function publicationListResponse(db:DbRunner,owner:string,request:R
         }
         const node=applyBlockVersion(found,input.versionId),binding=node.props?.binding??node.binding;
         if(binding?.source?.kind!=='publication'||binding.dataSourceId!=='frontbase:publication'||!collections.includes(binding.tableName))return reply({error:'list_unavailable'},404);
-        const result=await readPublicationList(db,owner,binding,input);
+        const result=await readPublicationList(db,owner,binding,input,localized?.catalog);
         if((await new SitePublicationStore(db,owner).activeVersion())?.pointer.hash!==active.pointer.hash)return reply({error:'publication_changed'},409);
         return reply(result);
     }catch{return reply({error:'list_unavailable'},503);}

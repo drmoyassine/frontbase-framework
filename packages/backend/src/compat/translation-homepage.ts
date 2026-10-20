@@ -10,7 +10,7 @@ import {SitePublicationStore,publicationHash} from './site-publication-store.js'
 import {SitePublicationReviewStore} from './site-publication-review-store.js';
 import {resolvePublicationVersionPage} from './site-publication-runtime.js';
 import {sitePublicationManifestSchema} from './site-publication-manifest.js';
-import {createChunkDirectoryQueries,type LocalizedTitles} from './site-publication-chunk-queries.js';
+import {createChunkDirectoryQueries,freshLocalizedIndexTitles,type LocalizedQueryPlan} from './site-publication-chunk-queries.js';
 import {directoryLayoutQueries,directoryListCollections} from '@frontbase/edge-core/directory/configuration';
 import {configuredTranslationStorage,configuredTranslationStorageIdentity} from './translation-storage.js';
 import {TranslationGenerationStore} from './translation-generation.js';
@@ -95,24 +95,17 @@ export function templateListingPath(manifest:z.infer<typeof sitePublicationManif
         &&path===(template.role==='directory'?manifest.configuration.routes.directory:manifest.configuration.routes.blog));
 }
 /** Localized query plan for a per-unit listing release: fresh released titles keyed
- *  `${collection}:${id}`. Freshness intersects the CURRENT publication index — a record whose
- *  source title moved since prepare is excluded (the per-unit text join falls back to source for
- *  it too, so queries and rows always agree), and membership is the current index alone, so
- *  revoked records can never leak through counts, keys or a stale title. */
-export function localizedTitleIndex(release:z.infer<typeof releaseSchema>|null,manifest:z.infer<typeof sitePublicationManifestSchema>):LocalizedTitles|undefined{
+ *  `${collection}:${id}` plus the raw catalog for row-text joins. Freshness intersects the
+ *  CURRENT publication index — a record whose source title moved since prepare is excluded
+ *  (the per-unit text join falls back to source for it too, so queries and rows always
+ *  agree), and membership is the current index alone, so revoked records can never leak
+ *  through counts, keys or a stale title. */
+export function localizedTitleIndex(release:z.infer<typeof releaseSchema>|null,manifest:z.infer<typeof sitePublicationManifestSchema>):LocalizedQueryPlan|undefined{
     if(!release)return undefined;
-    const titles=new Map<string,string>();
     const indexTitles=new Map<string,string>(manifest.index.map(row=>[`${row.collection}:${row.id}`,row.title] as const));
-    for(const entry of release.catalog){
-        if(!entry.record||entry.fieldKey!=='title'||!entry.text.trim())continue;
-        const key=entry.record.collection+':'+String(entry.record.key.find(part=>part.column==='id')?.value);
-        const indexTitle=indexTitles.get(key);
-        if(indexTitle===undefined||!(entry.sourceText===undefined||entry.sourceText===indexTitle))continue;
-        titles.set(key,entry.text);
-    }
-    return titles;
+    return {titles:freshLocalizedIndexTitles(release.catalog,indexTitles),catalog:release.catalog};
 }
-export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/',sourceUrl?:URL,localizedTitles?:LocalizedTitles){
+export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/',sourceUrl?:URL,localizedTitles?:LocalizedQueryPlan){
     const active=await new SitePublicationStore(db,tenant).activeVersion();
     if(!active||active.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,tenant).get(active.pointer.hash))throw Error('reviewed_homepage_required');
     const manifest=active.artifact;

@@ -1,4 +1,4 @@
-import { resolveHomepageLanguageRequest } from './translation-homepage-serving.js';
+import { resolveHomepageLanguageRequest, localizedListRequest } from './translation-homepage-serving.js';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { createEngine, directProvider, audienceConditionUser } from '@frontbase/edge-core';
 import { SitePublicationStore } from './site-publication-store.js';
@@ -51,7 +51,10 @@ export async function resolveReviewedSitePublication(db:DbRunner,owner:string,re
 export async function renderReviewedSitePublication(db:DbRunner,owner:string,request:Request,options:{swBundle?:string;liveQuery?:PublishedLiveQuery;resolveAudience?:(owner:string,request:Request)=>Promise<import('@frontbase/edge-core/menus').VerifiedMenuAudience>}={}):Promise<Response|null> {
     if(!['GET','HEAD'].includes(request.method))throw new Error('publication_method_invalid');
     const audience=options.resolveAudience?await options.resolveAudience(owner,request).catch(()=>({authenticated:false})):null;
-    const listResponse=await publicationListResponse(db,owner,request,audience);if(listResponse)return listResponse;
+    // The list fetch honors the URL's locale: the page's own release localizes query and text,
+    // so a hydrated standard list agrees with the localized SSR around it.
+    const listRequest=await localizedListRequest(db,owner,new URL(request.url).pathname).catch(()=>null);
+    const listResponse=await publicationListResponse(db,owner,request,audience,listRequest??undefined);if(listResponse)return listResponse;
     let localeResult:Awaited<ReturnType<typeof resolveHomepageLanguageRequest>>=null;
     try{if(!audience?.authenticated)localeResult=await resolveHomepageLanguageRequest(db,owner,request,options.liveQuery);}catch(error){
         if(new URL(request.url).pathname!=='/')return new Response(request.method==='HEAD'?null:'Language temporarily unavailable',{status:error instanceof PublicationRequestError?400:503,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}});
