@@ -10,7 +10,7 @@ Status: partial implementation and bounded verification, not full deployment-pro
 - Vercel background dispatch uses official `@vercel/functions` lifecycle registration, with synchronous/asynchronous failure containment. Durable execution, recovery and host duration limits remain separate requirements.
 - Both external-host deploy scripts now upload the generated `SETUP_EXPIRES_AT` through one shared explicit environment allowlist. Deno receives only this bounded correctness repair; platform modernization remains deferred.
 
-These contracts are not yet consumed by deployment scripts or a shared pre-deployment UI. Adapter selection in the contract is not a promise of host-specific wiring, provisioning or end-to-end certification.
+The local pre-deployment review now consumes this contract through the [bootstrap slice](frontbase-deployment-bootstrap-20261020.md). Deployment scripts and the existing post-deploy dialogs do not yet consume its handoff. Adapter selection in the contract is not a promise of host-specific wiring, provisioning or end-to-end certification.
 
 The next local safety correction now requires explicit Vercel first-install/redeploy intent and exact team/project metadata verification before environment writes. Redeploy preserves absent local session secrets without reading host values; explicit rotation requires its own flag. Initialization values are refused on redeploy. Environment writes use `--force --sensitive` without prior deletion. Focused policy and fake-CLI tests verify no writes on target mismatch, stdin-only values and stopping after the first failed update; no live environment mutation is claimed. The dispatch-only workflow uses the new flags and pinned CLI64.7.0, but was not run. Compiler host dispatch can pass intent/team through documented environment configuration; native flag/UI integration remains open.
 
@@ -73,7 +73,7 @@ The free isolated database request returned `integration_terms_acceptance_requir
 
 ## Ordered executable backlog
 
-1. Complete P1: define and test secure no-database bootstrap transport; extract existing Bindings form/schema seams; make both CLI/native paths consume the validated plan. Keep credentials off URLs, source and normal configuration responses.
+1. Complete P1 execution integration: the local no-database bootstrap transport/review is now tested; next make CLI/native deployment paths consume its private one-shot handoff and integrate reusable form state into post-deployment Bindings. Do not describe local validation as deployment-button acceptance.
 2. Finish integration evidence for the locally tested Vercel target/environment and retained-secret policy: exercise exact CLI invocation against a disposable project, partial update failure, initialization refusal and retained-session redeploy. No live env/secret test is claimed yet.
 3. Once Marketplace terms are complete, provision one isolated free state resource, explicitly verify project/team before writes, map credentials privately, and run setup→admin→publish→redeploy plus static assets and cold-start checks on actual Vercel. Never repeat provisioning after a partially successful response without resource discovery.
 4. P2: remove deployment-specific IDs from reusable CF template safely; wire native KV/R2 first through existing contracts and resource provisioners, then selected queue/vector/email capabilities with explicit readiness and account-eligibility tests.

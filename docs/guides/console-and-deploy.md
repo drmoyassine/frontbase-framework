@@ -169,3 +169,7 @@ Non-dry-run Vercel deployment requires an exact project name, `--scope <team_ID>
 Redeploy does not generate, fetch or overwrite an absent local session secret, and refuses setup/admin initialization values. To deliberately rotate a supplied session secret, additionally pass `--rotate-session-secret` to the direct script; existing sessions will be invalidated. Environment updates use CLI `--force --sensitive` with stdin rather than deleting variables first. This is not a transactional multi-variable update; failures stop deployment and require review.
 
 [Current implementation receipt](../plans/frontbase-deployment-profiles-p0-p1-20261020.md) distinguishes the verified disposable CF API journey, local Vercel checks and outstanding live Vercel/Bindings/button acceptance.
+
+### Local pre-deployment Bindings review
+
+After `pnpm -r build`, run `pnpm run deploy:setup -- --target cloudflare` (or `vercel`). Open the private loopback link from your terminal. The local screen uses the shared profile contract without an initialized application database. It validates provider choices and keeps credentials in memory for the session; it does not yet provision or deploy. The link/listener expires in 15 minutes. [Verified boundary and next integration](../plans/frontbase-deployment-bootstrap-20261020.md).

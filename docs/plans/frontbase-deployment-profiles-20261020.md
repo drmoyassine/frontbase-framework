@@ -1,6 +1,6 @@
 # Configurable deployment profiles — 2026-10-20
 
-Status: P0/P1 implementation in progress. Shared data contracts and local host corrections are verified; a disposable Cloudflare D1 install passes setup, publication and redeployment. Pre-deployment Bindings UI, provisioning consumption and live Vercel acceptance remain open. See the [implementation receipt](frontbase-deployment-profiles-p0-p1-20261020.md). Priority: Cloudflare Workers first, Vercel second. Deno remains documented/deferred; do not remove existing support or imply fresh acceptance.
+Status: P0/P1 implementation in progress. Shared data contracts and local host corrections are verified; a disposable Cloudflare D1 install passes setup, publication and redeployment. A local pre-deployment Bindings review now runs without a database; provisioning consumption, shared post-deploy integration and live Vercel acceptance remain open. See the [implementation receipt](frontbase-deployment-profiles-p0-p1-20261020.md). Priority: Cloudflare Workers first, Vercel second. Deno remains documented/deferred; do not remove existing support or imply fresh acceptance.
 
 ## Accepted experience
 
@@ -109,3 +109,7 @@ This change is documentation-only. Local link and whitespace checks are the appr
 ## Implementation checkpoint — 2026-10-20
 
 The [P0/P1 receipt](frontbase-deployment-profiles-p0-p1-20261020.md) records exact verified boundaries and next tasks. Cloudflare CLI login and disposable D1 setup/publication/redeploy are verified. Vercel local Node export/routing/lifecycle checks pass; the isolated free Turso database is not provisioned because Marketplace terms acceptance is still required. No existing Vercel project or Study in USA staging was changed. Profile contracts are data-only and do not yet drive either deploy script. Native KV recommendations remain blocked until runtime wiring exists; selecting a disabled optional binding permits a D1-only plan. P1/P2/P3 and button acceptance are not complete.
+
+## P1 local setup review — implemented, bounded verification
+
+[Bootstrap receipt](frontbase-deployment-bootstrap-20261020.md): a loopback-only ephemeral setup launcher uses the existing shared profile/adapter contract, one-time claim and HttpOnly session, strict host/origin checks, bounded JSON and private in-memory one-shot credentials. Browser review validates a D1-only choice without a database or resource operation. This closes the local transport/review slice only: automatic provisioning, shared post-deploy form integration and native deploy-button bootstrap remain open.

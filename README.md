@@ -101,6 +101,10 @@ Deploy the full CMS from a fresh fork/clone without a local toolchain — each b
 
 Prefer the CLI, or want the gated flow (size budgets, staged-console checks, generated setup links)? Use the per-host scripts below — they deploy the same artifact with secrets over stdin instead of host dashboards.
 
+## Local deployment configuration review
+
+After building the workspace, `pnpm run deploy:setup -- --target cloudflare` (or `vercel`) opens a private, database-independent local configuration flow. It reuses the deployment profile contract and validates bindings; it does not yet provision or deploy. [Verified setup boundary and remaining integration](docs/plans/frontbase-deployment-bootstrap-20261020.md).
+
 ## Deploy to four hosts
 
 The same CMS deploys to four hosts. `frontbase deploy` provisions Cloudflare; `--target vercel` / `--target deno` dispatch to the per-host scripts below (from inside this repo) with the same flags — secrets over stdin, exit code propagated. The scripts build, gate, and drive the host CLI:
