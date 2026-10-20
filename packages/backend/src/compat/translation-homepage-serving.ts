@@ -4,7 +4,8 @@ import {localizeNavigationProps,localizePublicHref} from '@frontbase/edge-core/l
 import {resolvePublicationVersionPage,PublicationRequestError} from './site-publication-runtime.js';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {PageLayoutData} from '@frontbase/edge-core';
-import {captureHomepage,publishedHomepageLocales,projectHomepageLocale,templateListingPath} from './translation-homepage.js';
+import {captureHomepage,localizedTitleIndex,publishedHomepageLocales,projectHomepageLocale,templateListingPath} from './translation-homepage.js';
+import type {LocalizedTitles} from './site-publication-chunk-queries.js';
 import type {PublishedLiveQuery} from './publication-list-source.js';
 
 export function homepageLanguageLinks(sourceLocale:string,locales:string[],current:string,sourcePath='/'){return [{code:sourceLocale,label:sourceLocale==='en'?'English':sourceLocale,href:sourcePath,current:current===sourceLocale},...locales.map(code=>({code,label:code==='ar'?'العربية':new Intl.DisplayNames([code],{type:'language'}).of(code)??code,href:`/${code}${sourcePath}`,current:current===code}))];}
@@ -25,7 +26,15 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     const sourceUrl=new URL(request.url);if(localeMatches.length)sourceUrl.pathname=path.slice(localeMatches[0]!.release.locale.length+1)||'/';
     const capture=await captureHomepage(db,tenant,request,liveQuery);
     const captures=new Map<string,Awaited<ReturnType<typeof captureHomepage>>>();
-    const captureFor=async(p:string)=>{if(p==='/')return capture;if(!captures.has(p))captures.set(p,await captureHomepage(db,tenant,request,liveQuery,p));return captures.get(p)!;};
+    // Listing releases resolve through localized queries: their fresh released titles drive the
+    // registry (search/sort/totals) beside the per-unit text join. Cached beside the source capture.
+    const captureFor=async(p:string,localizedTitles?:LocalizedTitles)=>{
+        if(localizedTitles){const key=p+'\u0000localized';
+            if(!captures.has(key))captures.set(key,await captureHomepage(db,tenant,request,liveQuery,p,undefined,localizedTitles));
+            return captures.get(key)!;}
+        if(p==='/')return capture;
+        if(!captures.has(p))captures.set(p,await captureHomepage(db,tenant,request,liveQuery,p));
+        return captures.get(p)!;};
     // A per-unit release stays selectable while its page still resolves; freshness is decided per unit
     // at projection. If the page itself is gone the release is skipped so the source 404s naturally.
     const selectable=[];
@@ -35,11 +44,15 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     }
     const selected=selectable.find(item=>item.release.path!=='/'&&item.release.path===sourceUrl.pathname)??selectable.find(item=>item.release.path==='/')??null;
     if(selected&&sourceUrl.pathname==='/'&&url.searchParams.size)throw new PublicationRequestError();
+    // Template listing releases resolve every parameterization through localized queries: the
+    // selected release's fresh released titles drive the registry beside the per-unit text join.
+    const listingTitles=capture.active.artifact.schemaVersion===2&&selected&&selected.release.path!=='/'&&templateListingPath(capture.active.artifact,selected.release.path)
+        ?localizedTitleIndex(selected.release,capture.active.artifact):undefined;
     const available=[];
     for(const item of published){
         // Per-unit releases serve a fresh join against the live page, so a site re-publication
         // does not deactivate them; only the page itself disappearing does.
-        if(item.release.policy?.outdated==='source-fallback'){try{await captureFor(item.release.path);}catch{continue;}available.push(item);continue;}
+        if(item.release.policy?.outdated==='source-fallback'){try{await captureFor(item.release.path,item===selected?listingTitles:undefined);}catch{continue;}available.push(item);continue;}
         if(item.release.siteHash!==capture.active.pointer.hash)continue;
         const c=item.release.path==='/'?capture:await captureFor(item.release.path).catch(()=>null);
         if(c&&item.release.sourceHash===c.sourceHash)available.push(item);
@@ -55,7 +68,7 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     // Template listing releases join the parameterized rendering (explore type/q/page); their
     // prepare-time fence guarantees per-unit policy, so the identity join stays per unit.
     const listingRelease=!!pageRelease&&capture.active.artifact.schemaVersion===2&&templateListingPath(capture.active.artifact,pageRelease.release.path);
-    const resolved=pageRelease?projectHomepageLocale(listingRelease&&sourceUrl.search?await captureHomepage(db,tenant,request,liveQuery,pageRelease.release.path,sourceUrl):await captureFor(pageRelease.release.path),pageRelease.release):isHomepage?(selected?projectHomepageLocale(capture,selected.release):capture.result):await resolvePublicationVersionPage(capture.active.artifact,capture.active.pointer.hash,tenant,db,new Request(sourceUrl),{authenticated:false},liveQuery);
+    const resolved=pageRelease?projectHomepageLocale(listingRelease&&sourceUrl.search?await captureHomepage(db,tenant,request,liveQuery,pageRelease.release.path,sourceUrl,listingTitles):await captureFor(pageRelease.release.path,listingTitles),pageRelease.release):isHomepage?(selected?projectHomepageLocale(capture,selected.release):capture.result):await resolvePublicationVersionPage(capture.active.artifact,capture.active.pointer.hash,tenant,db,new Request(sourceUrl),{authenticated:false},liveQuery);
     if(!resolved)return null;
     if(selected&&!pageRelease&&!isHomepage){
         // Only the already approved shared shell is translated here. Other page copy stays source content.

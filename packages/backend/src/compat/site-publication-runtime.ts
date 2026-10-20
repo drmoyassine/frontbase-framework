@@ -13,8 +13,8 @@ import {resolveAppMenuLayout} from './menus-runtime.js';
 import {audienceConditionUser} from '@frontbase/edge-core';
 import type {PublishedLiveQuery} from './publication-list-source.js';
 
-export async function resolvePublicationVersionPage(input:PublicationVersion,hash:string,owner:string,db:DbRunner,request:Request,audience:VerifiedMenuAudience|null=null,liveQuery?:PublishedLiveQuery){
-    const result=await(input.schemaVersion===1?resolveSitePublicationPage(input,hash,owner,request):resolveChunkPublicationPage(input,hash,owner,db,request,audienceConditionUser(audience),liveQuery));
+export async function resolvePublicationVersionPage(input:PublicationVersion,hash:string,owner:string,db:DbRunner,request:Request,audience:VerifiedMenuAudience|null=null,liveQuery?:PublishedLiveQuery,localizedTitles?:Map<string,string>){
+    const result=await(input.schemaVersion===1?resolveSitePublicationPage(input,hash,owner,request):resolveChunkPublicationPage(input,hash,owner,db,request,audienceConditionUser(audience),liveQuery,localizedTitles));
     if(!result)return null;
     const layout=result.page.layout as unknown as PageLayoutData;
     const reference=(layout.root as Record<string,unknown>)?.appMenus;

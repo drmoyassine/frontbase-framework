@@ -10,7 +10,7 @@ import {SitePublicationStore,publicationHash} from './site-publication-store.js'
 import {SitePublicationReviewStore} from './site-publication-review-store.js';
 import {resolvePublicationVersionPage} from './site-publication-runtime.js';
 import {sitePublicationManifestSchema} from './site-publication-manifest.js';
-import {createChunkDirectoryQueries} from './site-publication-chunk-queries.js';
+import {createChunkDirectoryQueries,type LocalizedTitles} from './site-publication-chunk-queries.js';
 import {directoryLayoutQueries,directoryListCollections} from '@frontbase/edge-core/directory/configuration';
 import {configuredTranslationStorage,configuredTranslationStorageIdentity} from './translation-storage.js';
 import {TranslationGenerationStore} from './translation-generation.js';
@@ -94,7 +94,25 @@ export function templateListingPath(manifest:z.infer<typeof sitePublicationManif
     return manifest.templates.some(template=>['directory','article-index'].includes(template.role)
         &&path===(template.role==='directory'?manifest.configuration.routes.directory:manifest.configuration.routes.blog));
 }
-export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/',sourceUrl?:URL){
+/** Localized query plan for a per-unit listing release: fresh released titles keyed
+ *  `${collection}:${id}`. Freshness intersects the CURRENT publication index — a record whose
+ *  source title moved since prepare is excluded (the per-unit text join falls back to source for
+ *  it too, so queries and rows always agree), and membership is the current index alone, so
+ *  revoked records can never leak through counts, keys or a stale title. */
+export function localizedTitleIndex(release:z.infer<typeof releaseSchema>|null,manifest:z.infer<typeof sitePublicationManifestSchema>):LocalizedTitles|undefined{
+    if(!release)return undefined;
+    const titles=new Map<string,string>();
+    const indexTitles=new Map<string,string>(manifest.index.map(row=>[`${row.collection}:${row.id}`,row.title] as const));
+    for(const entry of release.catalog){
+        if(!entry.record||entry.fieldKey!=='title'||!entry.text.trim())continue;
+        const key=entry.record.collection+':'+String(entry.record.key.find(part=>part.column==='id')?.value);
+        const indexTitle=indexTitles.get(key);
+        if(indexTitle===undefined||!(entry.sourceText===undefined||entry.sourceText===indexTitle))continue;
+        titles.set(key,entry.text);
+    }
+    return titles;
+}
+export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/',sourceUrl?:URL,localizedTitles?:LocalizedTitles){
     const active=await new SitePublicationStore(db,tenant).activeVersion();
     if(!active||active.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,tenant).get(active.pointer.hash))throw Error('reviewed_homepage_required');
     const manifest=active.artifact;
@@ -104,7 +122,9 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
         &&path===(template.role==='directory'?manifest.configuration.routes.directory:manifest.configuration.routes.blog));
     const target=page??listing;
     if(!target)throw Error('homepage_required');
-    const result=await resolvePublicationVersionPage(manifest,active.pointer.hash,tenant,db,new Request(new URL(!page&&sourceUrl?.search?path+sourceUrl.search:path,request.url)),{authenticated:false},liveQuery);
+    // Localized query titles are a listing-page plan (parameterized template renderings); a static
+    // page capture always queries pure source so review hashes stay deterministic.
+    const result=await resolvePublicationVersionPage(manifest,active.pointer.hash,tenant,db,new Request(new URL(!page&&sourceUrl?.search?path+sourceUrl.search:path,request.url)),{authenticated:false},liveQuery,!page?localizedTitles:undefined);
     if(!result)throw Error('homepage_unavailable');
     const layout=homepageDisplayLayout(result.page.layout as unknown as PageLayoutData);
     const baseFields=homepageDisplayFields(layout) as (DisplayField&{menu?:MenuRef})[];

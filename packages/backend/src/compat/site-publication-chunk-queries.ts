@@ -5,11 +5,22 @@ import { SitePublicationManifestStore, sitePublicationManifestSchema, type SiteP
 import { verifyManifestEditorial } from './site-publication-approval-check.js';
 import { publicationPathSchema } from '@frontbase/edge-core/directory/publication';
 
-export function createChunkDirectoryQueries(input:SitePublicationManifest,owner:string,db:DbRunner):QueryRegistry{
+/** Serve-time localized query titles keyed `${collection}:${id}`; membership stays the current index. */
+export type LocalizedTitles=Map<string,string>;
+
+/** Effective query title for a manifest index row: a threaded fresh released title, else source. */
+export function localizedIndexTitleReader(localizedTitles?:LocalizedTitles){
+    return (row:SitePublicationManifest['index'][number])=>localizedTitles?.get(`${row.collection}:${row.id}`)??row.title;
+}
+
+export function createChunkDirectoryQueries(input:SitePublicationManifest,owner:string,db:DbRunner,localizedTitles?:LocalizedTitles):QueryRegistry{
     if(!owner)throw new Error('publication_owner_required');
     const manifest=sitePublicationManifestSchema.parse(input),store=new SitePublicationManifestStore(db,owner);
     const cache=new Map<string,Promise<Awaited<ReturnType<typeof store.loadChunk>>>>();
     const collections={institution:'institutions',program:'programs',city:'cities',article:'articles',page:'pages'} as const;
+    // Localized queries filter and sort the FULL index by the effective (released ?? source) title
+    // before paging; membership/authorization still comes from the current index rows alone.
+    const localizedTitle=localizedIndexTitleReader(localizedTitles);
     const registry:QueryRegistry={};
     for(const role of Object.keys(collections) as (keyof typeof collections)[])for(const mode of ['list','detail'] as const){
         if(role==='city' && mode==='detail' || role==='page' && mode==='list')continue;
@@ -22,9 +33,9 @@ export function createChunkDirectoryQueries(input:SitePublicationManifest,owner:
             if((p.limit??manifest.configuration.browsing.pageSize)>manifest.configuration.browsing.pageSize)throw new Error('publication_params_invalid');
             let entries=manifest.index.filter(row=>row.collection===collections[role]);
             if(p.path)entries=entries.filter(row=>row.originalPath===p.path);
-            if(p.q)entries=entries.filter(row=>p.match==='equals'?row.title.toLowerCase()===p.q!.toLowerCase():p.match==='startsWith'?row.title.toLowerCase().startsWith(p.q!.toLowerCase()):row.title.toLowerCase().includes(p.q!.toLowerCase()));
+            if(p.q)entries=entries.filter(row=>{const title=localizedTitle(row);return p.match==='equals'?title.toLowerCase()===p.q!.toLowerCase():p.match==='startsWith'?title.toLowerCase().startsWith(p.q!.toLowerCase()):title.toLowerCase().includes(p.q!.toLowerCase());});
             if(p.institutionId!==undefined)entries=entries.filter(row=>String(row.parentId)===String(p.institutionId));
-            entries.sort((a,b)=>(a.title<b.title?-1:a.title>b.title?1:0)*(p.sort==='title-desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0));
+            entries.sort((a,b)=>{const at=localizedTitle(a),bt=localizedTitle(b);return (at<bt?-1:at>bt?1:0)*(p.sort==='title-desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0);});
             const selected=entries.slice(p.offset??0,(p.offset??0)+(mode==='detail'?1:(p.limit??manifest.configuration.browsing.pageSize)+1));
             const rows:Record<string,unknown>[]=[];
             for(const entry of selected){

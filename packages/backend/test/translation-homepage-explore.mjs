@@ -31,7 +31,7 @@ const node = (id, queryId, children = []) => ({ id, type: queryId.endsWith('.lis
 const templates = [
     { pageId: '00000000-0000-4000-8000-0000000000b1', role: 'directory', title: 'Explore', description: '',
         layout: { root: { siteConfiguration: { version: 1, role: 'directory' } }, content: [
-            { id: 'browse', type: 'Container', props: { directoryBrowsing: { version: 1, tabs: true, search: true, sorting: true, filters: true, pagination: true } }, children: [] },
+            { id: 'browse', type: 'Container', props: { directoryBrowsing: { version: 1, tabs: true, search: true, sorting: true, filters: true, pagination: true, recordCount: true } }, children: [] },
             node('ilist', 'directory.institution.list', rowChildren('r')),
             node('plist', 'directory.program.list', rowChildren('p'))] } },
     { pageId: '00000000-0000-4000-8000-0000000000b2', role: 'institution', title: 'Institution', description: '',
@@ -49,7 +49,7 @@ const root = '/api/project/translation-batches/homepage/';
 async function call(path, body, status = 200) { const r = await app.request('https://site.test' + root + path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) }); assert.equal(r.status, status, await r.clone().text()); const value = await r.json(); assert.doesNotMatch(JSON.stringify(value), /PRIVATE_|serviceKey|data\.example/); return value; }
 const html = async path => { const r = await renderReviewedSitePublication(f.db, tenant, new Request('https://site.test' + path)); return { status: r?.status, headers: r?.headers, text: await r?.text() }; };
 const rowTitles = text => { const doc = new JSDOM(text).window.document;
-    return [...doc.querySelectorAll('h1,h2,h3,h4')].map(element => element.textContent.trim()).filter(t => /Institution|Program/.test(t)); };
+    return [...doc.querySelectorAll('h1,h2,h3,h4')].map(element => element.textContent.trim()).filter(t => /Institution|Program|آخر/.test(t)); };
 async function prepareActivate(records_) {
     const hash = await store.prepare({ configurationRevision: 1, configuration: config, templates, staticPages: [
         { pageId: pageIdA, title: 'Home', description: 'Study abroad', originalPath: '/', layout: layoutA }] }, records_, now);
@@ -57,8 +57,8 @@ async function prepareActivate(records_) {
     await reviews.activate(hash, (await new SitePublicationStore(f.db, tenant).activeVersion())?.pointer ?? null, now);
     return hash;
 }
-async function saveAll(review, path, policy) {
-    for (let i = 0; i < review.fields.length; i += 16) await call('save/', { locale: 'ar', path, token: review.token, entries: review.fields.slice(i, i + 16).map(field => ({ id: field.id, token: field.token, text: 'عربي ' + field.source })) });
+async function saveAll(review, path, policy, overrides = {}) {
+    for (let i = 0; i < review.fields.length; i += 16) await call('save/', { locale: 'ar', path, token: review.token, entries: review.fields.slice(i, i + 16).map(field => ({ id: field.id, token: field.token, text: overrides[field.source] ?? ('عربي ' + field.source) })) });
     const complete = await call('review/?locale=ar' + (path === '/' ? '' : '&path=' + path)); assert.equal(complete.complete, true);
     const prepared = await call('prepare/', { locale: 'ar', token: complete.token, approveTranslations: true, ...(path === '/' ? {} : { path }), ...(policy ? { policy } : {}) });
     await call('publish/', { hash: prepared.hash, expected: prepared.expected, approveTranslations: true });
@@ -85,7 +85,7 @@ try {
     // Static homepage keeps the strict default.
     const homeReview = await call('review/?locale=ar');
     const homePrepared = await saveAll(homeReview, '/');
-    await saveAll(review, '/explore/', { missing: 'source-fallback', outdated: 'source-fallback' });
+    await saveAll(review, '/explore/', { missing: 'source-fallback', outdated: 'source-fallback' }, { 'Institution 03': 'عربي آخر' });
     const home = await html('/ar/'); assert.equal(home.status, 200); assert.ok(home.text.includes('عربي Study in the USA'));
     const explore = await html('/ar/explore/'); assert.equal(explore.status, 200); assert.equal(explore.headers.get('Content-Language'), 'ar');
     const doc = new JSDOM(explore.text).window.document;
@@ -94,14 +94,34 @@ try {
     assert.ok(explore.text.includes('>عربي Apply</button>'), 'control chrome renders the translated label');
     assert.ok(explore.text.includes('placeholder="عربي Find an institution"'), 'search placeholder follows the release');
     assert.ok(explore.text.includes('عربي Title A-Z'), 'sorting options follow the release');
-    assert.deepEqual(rowTitles(explore.text), Array.from({ length: 12 }, (_, i) => `عربي Institution ${pad(i + 1)}`));
+    assert.deepEqual(rowTitles(explore.text), ['01', '02', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13'].map(n => `عربي Institution ${n}`), 'title sort follows localized titles (03 sorts last)');
     assert.ok(explore.text.includes('alt="عربي Campus 01"'));
     assert.ok(explore.text.includes('Page 1'), 'composed page position stays source');
+    assert.ok(explore.text.includes('of 14 records'), 'the browsing total is the localized full-dataset count');
     // Parameterized renderings join the shared units through the supplement, without serve-time store reads.
     const programs = await html('/ar/explore/?type=program'); assert.equal(programs.status, 200);
     assert.deepEqual(rowTitles(programs.text), ['عربي Program Alpha', 'عربي Program Beta', 'عربي Program Gamma'], 'supplement-only units join parameterized renderings');
     const second = await html('/ar/explore/?page=2'); assert.equal(second.status, 200);
-    assert.deepEqual(rowTitles(second.text), ['عربي Institution 13', 'عربي Institution 14'], 'records beyond page one join their supplement units');
+    assert.deepEqual(rowTitles(second.text), ['عربي Institution 14', 'عربي آخر'], 'localized ordering moves 03 beside the supplement-covered 14');
+    // Task 8 slice A: localized queries run over the full index by released titles — not one source page.
+    const sourceDesc = await html('/explore/?sort=title-desc'); assert.equal(sourceDesc.status, 200);
+    assert.ok(rowTitles(sourceDesc.text)[0] === 'Institution 14', 'the source listing keeps source ordering');
+    const sourceSecond = await html('/explore/?page=2');
+    assert.deepEqual(rowTitles(sourceSecond.text), ['Institution 13', 'Institution 14'], 'source pagination stays source-ordered');
+    const localizedDesc = await html('/ar/explore/?sort=title-desc'); assert.equal(localizedDesc.status, 200);
+    assert.deepEqual(rowTitles(localizedDesc.text), ['عربي آخر', ...['14', '13', '12', '11', '10', '09', '08', '07', '06', '05', '04'].map(n => `عربي Institution ${n}`)], 'the sort control orders by released titles');
+    const arabicMatch = await html('/ar/explore/?q=' + encodeURIComponent('عربي Institution 1')); assert.equal(arabicMatch.status, 200);
+    assert.deepEqual(rowTitles(arabicMatch.text), ['10', '11', '12', '13', '14'].map(n => `عربي Institution ${n}`), 'Arabic matches span both source pages in one full-dataset search');
+    assert.ok(arabicMatch.text.includes('of 5 records'), 'the exact total counts localized matches');
+    const equalsMatch = await html('/ar/explore/?q=' + encodeURIComponent('عربي Institution 02') + '&match=equals'); assert.equal(equalsMatch.status, 200);
+    assert.deepEqual(rowTitles(equalsMatch.text), ['عربي Institution 02'], 'equals matches the released title exactly');
+    assert.ok(equalsMatch.text.includes('of 1 records'), 'a single localized match reports its exact total');
+    const arabicAll = await html('/ar/explore/?q=' + encodeURIComponent('عربي') + '&page=2'); assert.equal(arabicAll.status, 200);
+    assert.deepEqual(rowTitles(arabicAll.text), ['عربي Institution 14', 'عربي آخر'], 'the final localized page agrees with the full-dataset order');
+    assert.ok(arabicAll.text.includes('of 14 records') && !arabicAll.text.includes('>عربي Next</a'), 'the final page has an exact total and no next link');
+    const empty = await html('/ar/explore/?q=zzznope'); assert.equal(empty.status, 200);
+    assert.deepEqual(rowTitles(empty.text), [], 'a miss renders no rows');
+    assert.ok(empty.text.includes('>0 records</p>'), 'an empty page reports zero, not a stale total');
     // The source homepage keeps refusing parameters on its localized path.
     assert.equal((await html('/ar/?type=program')).status, 400);
     // Record-detail paths stay source content under the localized prefix.
@@ -123,6 +143,11 @@ try {
     assert.ok(fallback.text.includes('Institution 01 Renamed'), 'renamed record falls back to fresh source');
     assert.ok(fallback.text.includes('عربي Institution 02'), 'fresh units keep serving');
     assert.equal((await html('/ar/explore/?page=2')).status, 200, 'parameterized fallback join still works');
+    // The stale released title also leaves the localized query plan: searching it finds nothing
+    // instead of matching the renamed record through stale text.
+    const stale = await html('/ar/explore/?q=' + encodeURIComponent('عربي Institution 01')); assert.equal(stale.status, 200);
+    assert.deepEqual(rowTitles(stale.text), [], 'a stale released title no longer drives matches');
+    assert.ok(stale.text.includes('>0 records</p>'), 'stale titles leave the localized total too');
 
     auth = false; await call('review/?locale=ar&path=/explore/', undefined, 401); auth = true; role = 'viewer'; await call('review/?locale=ar&path=/explore/', undefined, 403); role = 'owner';
     console.log('translation-homepage explore PASS: template listing pages, per-unit-only releases, browsing chrome surfaces, paged record supplement, parameterized joins, per-unit fallback, record-detail refusal');
