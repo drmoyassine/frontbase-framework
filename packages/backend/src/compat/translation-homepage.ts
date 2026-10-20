@@ -1,8 +1,10 @@
 import {publicationPaths} from './publication-version.js';
 import {z} from 'zod';
 import type {DbRunner} from '@frontbase/edge-infra';
-import {homepageDisplayLayout,homepageDisplayFields,applyHomepageDisplayFields,TranslationLifecycle,translationUnitId,messageSourceFingerprint,translationContextFingerprint,translationRecordKeySchema,type MessageUnit,type TranslationContext} from '@frontbase/edge-core/localization';
+import {homepageDisplayLayout,homepageDisplayFields,applyHomepageDisplayFields,TranslationLifecycle,translationUnitId,messageSourceFingerprint,translationContextFingerprint,translationRecordKeySchema,type MessageUnit,type TranslationContext,type DisplayField} from '@frontbase/edge-core/localization';
 import type {PageLayoutData} from '@frontbase/edge-core';
+import {menuReferenceSchema,visibleMenuItems,type MenuItem,type MenuDocument} from '@frontbase/edge-core/menus';
+import {MenusSnapshotStore} from './menus-snapshot.js';
 import {translationHomepageReviewSchema,translationHomepageSaveSchema} from '@frontbase/edge-core/localization/batches';
 import {SitePublicationStore,publicationHash} from './site-publication-store.js';
 import {SitePublicationReviewStore} from './site-publication-review-store.js';
@@ -14,7 +16,8 @@ import type {PublishedLiveQuery} from './publication-list-source.js';
 
 const hash=z.string().regex(/^[a-f0-9]{64}$/),id=z.string().min(1).max(160),locale=z.string().regex(/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/);
 const recordIdentity=z.object({connectionId:id,collection:id,key:translationRecordKeySchema}).strict();
-const entry=z.object({id:hash,blockId:id,path:z.array(id).min(1).max(20),versionId:id.optional(),sourceFingerprint:hash,text:z.string().min(1).max(12000),revisionId:id,unitId:hash,record:recordIdentity.optional(),sourceText:z.string().max(12000).optional()}).strict();
+const menuIdentity=z.object({menuId:id,path:z.array(id).min(1).max(20),kind:z.enum(['label','brand','copyright','description']),name:z.string().min(1).max(200)}).strict();
+const entry=z.object({id:hash,blockId:id,path:z.array(id).min(1).max(20),versionId:id.optional(),sourceFingerprint:hash,text:z.string().min(1).max(12000),revisionId:id,unitId:hash,record:recordIdentity.optional(),menu:menuIdentity.optional(),sourceText:z.string().max(12000).optional()}).strict();
 /** `path` generalizes releases to any published page ('/' = homepage). `policy` records the explicit
  *  per-unit missing/outdated decision taken at prepare: 'block' refuses non-draft units, 'source-fallback'
  *  omits them and renders fresh source for them (and for units whose fingerprint changed since). */
@@ -27,13 +30,60 @@ async function raw(db:DbRunner,tenant:string,key:string){return (await db.query(
 const activeKey=async(value:string,path:string)=>path==='/'?'translation_homepage:active:v1:'+locale.parse(value):'translation_surface:active:v1:'+await surfaceHash(path)+':'+locale.parse(value);
 const versionKeyFor=async(path:string,releaseHash:string)=>path==='/'?'translation_homepage:version:v1:'+hash.parse(releaseHash):'translation_surface:version:v1:'+hash.parse(releaseHash);
 async function mapLimit<T,R>(items:T[],fn:(item:T)=>Promise<R>):Promise<R[]>{const out:R[]=[];for(let i=0;i<items.length;i+=8)out.push(...await Promise.all(items.slice(i,i+8).map(fn)));return out;}
-type IdentifiedField={blockId:string;path:string[];versionId?:string;record?:{connectionId:string;collection:string;key:{column:string;value:string|number|boolean}[]}};
+type MenuRef={menuId:string;path:string[];kind:'label'|'brand'|'copyright'|'description';name:string};
+type IdentifiedField={blockId:string;path:string[];versionId?:string;record?:{connectionId:string;collection:string;key:{column:string;value:string|number|boolean}[]};menu?:MenuRef};
 /** Position-free identity: record-keyed fields hash and join by their record ref, never by rendered row order;
- *  Block-Version overrides join by (block, version, path) while inherited fields keep the Default identity. */
+ *  Block-Version overrides join by (block, version, path) while inherited fields keep the Default identity;
+ *  app-menu fields join by their shared menu document path so one unit serves every page rendering the menu. */
 function stableIdentity(field:IdentifiedField):unknown{
+    if(field.menu)return ['menu',field.menu.menuId,...field.menu.path];
     if(!field.record)return ['field',field.blockId,field.versionId??'default',field.path];
     const key=[...field.record.key].sort((a,b)=>a.column<b.column?-1:a.column>b.column?1:0).map(part=>[part.column,part.value]);
     return ['record',field.record.connectionId,field.record.collection,...key,field.path.at(-1)??''];
+}
+/** Menu snapshot text is publication truth; a rendered managed node maps back to its shared 'app-menus'
+ *  units only where the snapshot and the rendered props still agree exactly (id and text). */
+function menuNodeFields(node:PageLayoutData['content'][number],menu:MenuDocument['menus'][number],audience:{authenticated:boolean}):(DisplayField&{menu:MenuRef})[]{
+    const p=(node.props??{}) as Record<string,unknown>,base=['props'],out:(DisplayField&{menu:MenuRef})[]=[];
+    const emit=(path:string[],docPath:string[],kind:MenuRef['kind'],text:unknown)=>{if(typeof text!=='string'||!text.trim()||text.length>12000)return;
+        out.push({blockId:node.id,path,text,label:'Menu '+menu.name,menu:{menuId:menu.id,path:docPath,kind,name:menu.name}});};
+    const byId=new Map<string,MenuItem>();const index=(items:MenuItem[])=>{for(const item of items){byId.set(item.id,item);index(item.children);}};index(menu.items);
+    const source=(value:unknown)=>typeof value==='string'?byId.get(value):undefined;
+    if(node.type==='Navbar'){
+        if(menu.design.brand&&(p.logo as Record<string,unknown>|undefined)?.text===menu.design.brand)emit([...base,'logo','text'],['design','brand'],'brand',menu.design.brand);
+        const nav=(rendered:any[],items:MenuItem[],path:string[])=>{rendered.forEach((rendered_,i)=>{const origin=source(rendered_?.id);
+            if(origin&&origin.label===rendered_.label)emit([...path,String(i),'label'],['items',origin.id,'label'],'label',origin.label);
+            if(Array.isArray(rendered_?.subItems))nav(rendered_.subItems,origin?origin.children:[],[...path,String(i),'subItems']);});};
+        if(Array.isArray(p.menuItems))nav(p.menuItems,menu.items,[...base,'menuItems']);
+        for(const [key,tone] of [['primaryButton','primary'],['secondaryButton','secondary']] as const){const button=p[key] as Record<string,unknown>|undefined;
+            if(button?.enabled===true&&typeof button.text==='string'){const origin=visibleMenuItems(menu.items,audience).find(candidate=>candidate.tone===tone&&candidate.label===button.text);
+                if(origin)emit([...base,key,'text'],['items',origin.id,'label'],'label',origin.label);}}
+    }
+    if(node.type==='Footer'){
+        if(menu.design.brand&&p.logoText===menu.design.brand)emit([...base,'logoText'],['design','brand'],'brand',menu.design.brand);
+        if(menu.design.copyright&&p.copyright===menu.design.copyright)emit([...base,'copyright'],['design','copyright'],'copyright',menu.design.copyright);
+        const description=(menu.design.componentProps as Record<string,unknown>|undefined)?.description;
+        if(typeof description==='string'&&p.description===description)emit([...base,'description'],['design','componentProps','description'],'description',description);
+        if(Array.isArray(p.columns))(p.columns as any[]).forEach((column,i)=>{const origin=source(column?.id);
+            if(origin&&typeof column.title==='string'&&origin.label===column.title)emit([...base,'columns',String(i),'title'],['items',origin.id,'label'],'label',origin.label);
+            if(Array.isArray(column.links))(column.links as any[]).forEach((link,j)=>{const child=source(link?.id);
+                if(child&&typeof link.text==='string'&&child.label===link.text)emit([...base,'columns',String(i),'links',String(j),'text'],['items',child.id,'label'],'label',child.label);});});
+    }
+    return out;
+}
+async function captureMenuFields(db:DbRunner,tenant:string,template:{layout:unknown},resolved:PageLayoutData):Promise<(DisplayField&{menu:MenuRef})[]>{
+    const reference=(template.layout as PageLayoutData|undefined)?.root?.appMenus;
+    if(reference===undefined)return[];
+    const ref=menuReferenceSchema.parse(reference),document=await new MenusSnapshotStore(db,tenant).get(ref.hash);
+    if(!document)return[];
+    const audience={authenticated:false},out:(DisplayField&{menu:MenuRef})[]=[],found=new Set<string>();
+    const walk=(nodes:PageLayoutData['content'])=>{for(const node of nodes){
+        if(typeof node.id==='string'&&node.id.startsWith('managed-menu-')){
+            const menu=document.menus.find(candidate=>candidate.id===node.id.slice('managed-menu-'.length));
+            if(menu)for(const field of menuNodeFields(node,menu,audience)){const key=JSON.stringify(['app-menus',field.menu.menuId,...field.menu.path]);
+                if(!found.has(key)){found.add(key);out.push(field);}}}
+        if(node.children)walk(node.children);}};
+    walk(resolved.content);return out;
 }
 export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/'){
     const active=await new SitePublicationStore(db,tenant).activeVersion();
@@ -43,7 +93,12 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
     const result=await resolvePublicationVersionPage(active.artifact,active.pointer.hash,tenant,db,new Request(new URL(path,request.url)),{authenticated:false},liveQuery);
     if(!result)throw Error('homepage_unavailable');
     const layout=homepageDisplayLayout(result.page.layout as unknown as PageLayoutData);
-    const fields=homepageDisplayFields(layout);
+    const baseFields=homepageDisplayFields(layout) as (DisplayField&{menu?:MenuRef})[];
+    const menuFields=await captureMenuFields(db,tenant,template,layout);
+    // A managed menu position is a shared surface, not page copy: the mapped positions replace the
+    // page-bound duplicates so one approved unit serves every page rendering the menu.
+    const claimed=new Set(menuFields.map(field=>JSON.stringify([field.blockId,field.path])));
+    const fields=[...baseFields.filter(field=>!claimed.has(JSON.stringify([field.blockId,field.path]))),...menuFields];
     fields.push({blockId:'$meta',path:['title'],text:result.page.title,label:'Page title'});
     if(result.page.description)fields.push({blockId:'$meta',path:['description'],text:result.page.description,label:'Page description'});
     // Hash the identity→text pairs in canonical identity order: rendered row order must not invalidate a release.
@@ -62,18 +117,24 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
     const fields=await mapLimit(capture.fields,async field=>{
         const fieldKey=field.path.at(-1)??'';
         // Record-keyed list rows own stable record identity shared by every surface
-        // rendering the same record field; block-bound fields keep component identity.
-        const resource=field.record
+        // rendering the same record field; app menus share one 'app-menus' document identity;
+        // block-bound fields keep component identity.
+        const resource=field.menu
+            ?{kind:'component' as const,documentId:'app-menus',blockId:field.menu.menuId,versionId:'default' as const,propertyPath:field.menu.path}
+            :field.record
             ?{kind:'record' as const,connectionId:field.record.connectionId,collection:field.record.collection,key:field.record.key,propertyPath:[fieldKey]}
             :{kind:'component' as const,documentId:capture.pageId,blockId:field.blockId,versionId:field.versionId??'default' as const,propertyPath:field.path};
         const unit:MessageUnit={version:1,scope:storage.scope,resource,sourceLocale:config.sourceLocale,format:'plain',text:field.text,segmenterVersion:1,placeholders:[]};
         const node=findNode(capture.layout,field.blockId);
-        // Record contexts match the reviewed batch extractor so one translation serves every surface.
-        const context:TranslationContext=field.record
+        // Record contexts match the reviewed batch extractor so one translation serves every surface;
+        // menu contexts match extractMenuInput so batch and page-release units are the same unit.
+        const context:TranslationContext=field.menu
+            ?{version:1,role:'menu-'+field.menu.kind,resourceLabel:('Menu '+field.menu.name+' / '+field.menu.kind).slice(0,200)}
+            :field.record
             ?{version:1,role:'record-field',resourceLabel:('Record '+field.record.collection+' / '+fieldKey).slice(0,200)}
             :{version:1,role:node?.type??'page-meta',resourceLabel:('Page '+(page?.name??capture.path)+' / '+field.path.at(-1)).slice(0,200)};
         const unitId=await translationUnitId(storage.scope,unit.resource),fingerprint=await messageSourceFingerprint(unit),contextFingerprint=await translationContextFingerprint(context);
-        return {...field,unit,context,unitId,fingerprint,contextFingerprint,id:await publicationHash([capture.path,field.blockId,field.versionId??'default',field.path])};
+        return {...field,unit,context,unitId,fingerprint,contextFingerprint,id:field.menu?await publicationHash(['app-menus',field.menu.menuId,...field.menu.path]):await publicationHash([capture.path,field.blockId,field.versionId??'default',field.path])};
     });
     return {...storage,capture,config,configHash,token,fields,locale:target,path};
 }
@@ -112,7 +173,7 @@ export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunne
         if(item.value.state==='outdated'&&policy.outdated==='source-fallback')continue;
         throw Error('coverage_incomplete');
     }
-    const catalog=read.filter(item=>item.value.state==='draft'&&item.snapshot.head).map(item=>({id:item.f.id,blockId:item.f.blockId,path:item.f.path,...(item.f.versionId?{versionId:item.f.versionId}:{}),...(item.f.record?{record:{connectionId:item.f.record.connectionId,collection:item.f.record.collection,key:item.f.record.key}}:{}),sourceFingerprint:item.f.fingerprint,sourceText:item.f.text,text:item.snapshot.head!.text,revisionId:item.snapshot.head!.revisionId,unitId:item.f.unitId}));
+    const catalog=read.filter(item=>item.value.state==='draft'&&item.snapshot.head).map(item=>({id:item.f.id,blockId:item.f.blockId,path:item.f.path,...(item.f.versionId?{versionId:item.f.versionId}:{}),...(item.f.record?{record:{connectionId:item.f.record.connectionId,collection:item.f.record.collection,key:item.f.record.key}}:{}),...(item.f.menu?{menu:item.f.menu}:{}),sourceFingerprint:item.f.fingerprint,sourceText:item.f.text,text:item.snapshot.head!.text,revisionId:item.snapshot.head!.revisionId,unitId:item.f.unitId}));
     const release=releaseSchema.parse({version:1,tenant,project:s.scope.projectId,sourceLocale:s.config.sourceLocale,locale:target,siteHash:s.capture.active.pointer.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,path:s.path,policy,pageId:s.capture.pageId,catalog,reviewer,reviewedAt:now});
     const hash=await publicationHash(release);await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,await versionKeyFor(s.path,hash),JSON.stringify(release),now]);
     if(!await readHomepageRelease(db,tenant,hash))throw Error();
