@@ -47,7 +47,7 @@ import { validateStagedConsole } from './console-pin.mjs';
 import { verifyHostArtifact } from './verify-host-artifact.mjs';
 import { DEPLOY_SECRET_NAMES as SECRET_NAMES, deploymentEnvironment } from './deploy-environment.mjs';
 import {readManagedRuntimeManifest} from '../packages/edge-core/dist/deployment.js';
-import { prepareVercelEnvironment, assertVercelTarget, updateVercelEnvironment, vercelDeploymentUrl, assertVercelIntegration } from './vercel-deployment-policy.mjs';
+import { prepareVercelEnvironment, assertVercelTarget, updateVercelEnvironment, vercelDeploymentUrl, assertVercelIntegration, assertVercelPreviewHistory, assertVercelDeployment } from './vercel-deployment-policy.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
@@ -183,6 +183,7 @@ try {
     if (inspected.code !== 0) throw new Error('project_inspection_failed');
     verifiedTarget = { scope, project, link, remote: JSON.parse(inspected.stdout) };
     assertVercelTarget(verifiedTarget);
+    if(environment==='preview'){const all=vercel(['list',project,'--limit','1','--json']);if(all.code!==0)throw Error('host_history_unavailable');assertVercelPreviewHistory(JSON.parse(all.stdout));}
     if(flag('first-install')||process.env.VERCEL_DEPLOY_INTENT==='first-install') {
         const history=vercel(['list',project,'--environment',environment,'--limit','1','--json']);
         const prior=JSON.parse(history.stdout);if(history.code!==0||!Array.isArray(prior.deployments)||prior.deployments.length)throw Error('first_install_refuses_established_project');
@@ -230,6 +231,8 @@ if (!deployUrl) {
     console.error(dep.stdout.slice(-2000));
     process.exit(1);
 }
+
+try {const actual=vercel(['inspect',deployUrl,'--json']);if(actual.code!==0)throw Error();deployUrl=assertVercelDeployment(JSON.parse(actual.stdout),{project,environment,teamSlug:verifiedTarget.remote.owner?.slug});}catch{console.error('✗ actual deployment target/readiness verification failed; no success or setup link issued. Resources preserved.');process.exit(1);}
 
 console.log(`\n✓ deployed to ${deployUrl}`);
 if (!hasAdmin && secrets.SETUP_TOKEN && setupExpiresAt) {

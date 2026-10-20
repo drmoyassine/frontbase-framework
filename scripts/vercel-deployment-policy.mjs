@@ -44,6 +44,8 @@ export function updateVercelEnvironment(run, target, input, environment='product
 
 /** CLI agent-mode JSON and plain output must never append JSON punctuation to URLs. */
 export function vercelDeploymentUrl(stdout) {
+ let parsed;try{parsed=JSON.parse(String(stdout));}catch{}
+ if(parsed){const candidate=parsed.deployment?.url??parsed.url;const u=new URL(candidate);if(u.protocol!=='https:'||! /^[a-z0-9-]+\.vercel\.app$/i.test(u.hostname)||u.username||u.password||u.search||u.hash||u.pathname!=='/')throw Error('vercel_deployment_url_unknown');return u.origin;}
  const urls=String(stdout).split(/\r?\n/).map(line=>line.match(/https:\/\/[a-z0-9-]+\.vercel\.app(?=[\s"',}\]]|$)/i)?.[0]).filter(Boolean);
  if(!urls.length)throw Error('vercel_deployment_url_unknown');
  return new URL(urls.at(-1)).origin;
@@ -51,4 +53,12 @@ export function vercelDeploymentUrl(stdout) {
 
 export function assertVercelIntegration(resource,{resourceRef,projectId,environment}) {
  if(resource?.id!==resourceRef||resource.product!=='Turso'||!Array.isArray(resource.projects)||!resource.projects.some(p=>p.id===projectId&&Array.isArray(p.environments)&&p.environments.includes(environment)))throw Error('selected_integration_environment_mismatch');
+}
+
+/** CLI first-project preview can be auto-assigned to production: refuse before writes. */
+export function assertVercelPreviewHistory(history){if(!Array.isArray(history?.deployments)||history.deployments.length===0)throw Error('first_preview_requires_existing_host_deployment');}
+/** Provider truth, not a requested flag or an alias, controls successful completion. */
+export function assertVercelDeployment(deployment,{project,environment,teamSlug}){
+ if(!['preview','production'].includes(environment)||deployment?.target!==environment||deployment?.readyState!=='READY'||deployment?.name!==project||!teamSlug||deployment?.contextName!==teamSlug||!/^dpl_[a-zA-Z0-9]+$/.test(deployment?.id??''))throw Error('vercel_deployment_target_mismatch');
+ return vercelDeploymentUrl(JSON.stringify({url:'https://'+deployment.url}));
 }

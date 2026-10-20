@@ -8,6 +8,9 @@ const source=readFileSync(new URL('./vercel-deployment-policy.mjs',import.meta.u
 const suite=fileURLToPath(new URL('./test-vercel-deployment-policy.mjs',import.meta.url));
 const temp=mkdtempSync(join(tmpdir(),'frontbase-vercel-policy-'));
 const faults=[
+ ['first-project preview refusal','history.deployments.length===0','false'],
+ ['actual deployment target','deployment?.target!==environment','false'],
+ ['actual deployment team','deployment?.contextName!==teamSlug','false'],
  ['integration resource identity','resource?.id!==resourceRef','false'],
  ['integration environment membership','p.environments.includes(environment)','true'],
  ['implicit install intent','if (firstInstall === redeploy)', 'if (false)'],
@@ -27,4 +30,4 @@ try {
   console.log(`PASS detected: ${name}`);
  }
 } finally {rmSync(temp,{recursive:true,force:true});}
-console.log('Seven Vercel policy faults detected; production source unchanged');
+console.log('Ten Vercel policy faults detected; production source unchanged');
