@@ -1,6 +1,6 @@
 # Configurable deployment profiles — 2026-10-20
 
-Status: P0/P1 implementation in progress. Shared data contracts and local host corrections are verified; a disposable Cloudflare D1 install passes setup, publication and redeployment. A local pre-deployment Bindings review now runs without a database; provisioning consumption, shared post-deploy integration and live Vercel acceptance remain open. See the [implementation receipt](frontbase-deployment-profiles-p0-p1-20261020.md). Priority: Cloudflare Workers first, Vercel second. Deno remains documented/deferred; do not remove existing support or imply fresh acceptance.
+Status: P0/P1 implementation in progress. Shared data contracts and local host corrections are verified; a disposable Cloudflare D1 install passes setup, publication and redeployment. A local pre-deployment Bindings review now runs without a database; a bounded new Worker/new D1 execution now passes on Cloudflare. Generic adapter provisioning, reuse/redeploy, shared post-deploy integration and live Vercel acceptance remain open. See the [implementation receipt](frontbase-deployment-profiles-p0-p1-20261020.md). Priority: Cloudflare Workers first, Vercel second. Deno remains documented/deferred; do not remove existing support or imply fresh acceptance.
 
 ## Accepted experience
 
@@ -113,3 +113,7 @@ The [P0/P1 receipt](frontbase-deployment-profiles-p0-p1-20261020.md) records exa
 ## P1 local setup review — implemented, bounded verification
 
 [Bootstrap receipt](frontbase-deployment-bootstrap-20261020.md): a loopback-only ephemeral setup launcher uses the existing shared profile/adapter contract, one-time claim and HttpOnly session, strict host/origin checks, bounded JSON and private in-memory one-shot credentials. Browser review validates a D1-only choice without a database or resource operation. This closes the local transport/review slice only: automatic provisioning, shared post-deploy form integration and native deploy-button bootstrap remain open.
+
+## P1 reviewed execution — bounded CF first-install verified
+
+[Execution receipt](frontbase-deployment-handoff-20261020.md): explicit account/new Worker/new D1 context, artifact snapshot, current-review/one-attempt handoff and existing compiler reuse now pass actual disposable CF setup→admin→page publication. Native browser UI filtering/locking/reload is verified separately with a simulated callback. Optional native bindings, durable reuse/redeploy/resume, post-deploy form and actual host button integration remain open.

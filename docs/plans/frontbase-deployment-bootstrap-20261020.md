@@ -1,6 +1,6 @@
 # Local deployment bootstrap — 2026-10-20
 
-Status: local no-database configuration/review implemented; deployment execution and native-button integration remain open. Continues [P1](frontbase-deployment-profiles-20261020.md) on isolated branch `codex/deployment-profiles` after `3e98b5a`; implementation `e443907`, rebuilt CMS synchronization `d657c14`. No application-runtime, translation, shared staging or provider-resource changes.
+Status: local no-database configuration/review implemented; [new Worker/new D1 execution is now verified](frontbase-deployment-handoff-20261020.md). Generic adapter execution, reuse/redeploy and native-button integration remain open. Continues [P1](frontbase-deployment-profiles-20261020.md) on isolated branch `codex/deployment-profiles` after `3e98b5a`; implementation `e443907`, rebuilt CMS synchronization `d657c14`. No application-runtime, translation, shared staging or provider-resource changes.
 
 ## Run and reuse
 
@@ -25,7 +25,7 @@ Existing `ReconfigureEngineDialog` uses authenticated project/resource discovery
 - Accepted credentials stay in the local process. Bootstrap/read/review responses contain no credential values; the trusted callback receives public review data only. `consumePrepared()` is a private local-process, single-use handoff, not an HTTP route. No credentials are written to disk or browser storage by the implementation. JavaScript memory is not a cryptographic secure-erasure guarantee.
 - Validation failure clears the previous handoff. Revision fencing prevents an older pending review from restoring credentials after a newer invalidating edit. Expiry/close invalidates sessions and handoffs; the page clears password inputs on expiry/pagehide. Public validated choices can reload during the active session, but credentials are not reloaded into inputs and must be entered again to validate edits.
 
-The CLI has no provisioning/deploy endpoint. Successful validation is deliberately labelled as validation, and resources remain untouched. The trusted handoff still needs an executor with target/identity/migration/provisioning gates before this can become a complete install flow.
+The default CLI mode has no provisioning/deploy endpoint. Successful validation is labelled as validation. An explicit `--deploy --app-name ... --account-id ...` opt-in now enables the bounded [Cloudflare first-install executor](frontbase-deployment-handoff-20261020.md); other execution/migration paths remain incomplete.
 
 ## Verification
 
@@ -41,4 +41,4 @@ The full build refreshes the tracked CMS artifact with four additional strict di
 
 ## Next executable task
 
-Connect the private validated handoff to the existing deployment executors, starting with a D1-only disposable CF install and explicit create/reuse identity. Keep secrets on stdin/native host bindings; no manifest may silently change an existing state resource. Then wire native KV/R2 and the reusable post-deployment configuration surface. Vercel real state provisioning still requires completed Marketplace acceptance; Deno remains deferred.
+The private handoff is now connected to the existing compiler for a verified new Worker/new D1 install. Next implement reviewed reuse/redeploy identities and native optional bindings. Keep secrets on stdin/native host bindings; no manifest may silently change an existing state resource. Then wire native KV/R2 and the reusable post-deployment configuration surface. Vercel real state provisioning still requires completed Marketplace acceptance; Deno remains deferred.

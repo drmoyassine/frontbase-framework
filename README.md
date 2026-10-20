@@ -103,7 +103,7 @@ Prefer the CLI, or want the gated flow (size budgets, staged-console checks, gen
 
 ## Local deployment configuration review
 
-After building the workspace, `pnpm run deploy:setup -- --target cloudflare` (or `vercel`) opens a private, database-independent local configuration flow. It reuses the deployment profile contract and validates bindings; it does not yet provision or deploy. [Verified setup boundary and remaining integration](docs/plans/frontbase-deployment-bootstrap-20261020.md).
+After building the workspace, `pnpm run deploy:setup -- --target cloudflare` (or `vercel`) opens a private, database-independent local configuration flow. It reuses the deployment profile contract and validates bindings. An explicit [new Worker/new D1 Cloudflare execution mode](docs/plans/frontbase-deployment-handoff-20261020.md) is verified; generic adapter execution and native button acceptance remain in progress. [Verified setup boundary and remaining integration](docs/plans/frontbase-deployment-bootstrap-20261020.md).
 
 ## Deploy to four hosts
 

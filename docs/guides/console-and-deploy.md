@@ -172,4 +172,12 @@ Redeploy does not generate, fetch or overwrite an absent local session secret, a
 
 ### Local pre-deployment Bindings review
 
-After `pnpm -r build`, run `pnpm run deploy:setup -- --target cloudflare` (or `vercel`). Open the private loopback link from your terminal. The local screen uses the shared profile contract without an initialized application database. It validates provider choices and keeps credentials in memory for the session; it does not yet provision or deploy. The link/listener expires in 15 minutes. [Verified boundary and next integration](../plans/frontbase-deployment-bootstrap-20261020.md).
+After `pnpm -r build`, run `pnpm run deploy:setup -- --target cloudflare` (or `vercel`). Open the private loopback link from your terminal. The local screen uses the shared profile contract without an initialized application database. It validates provider choices and keeps credentials in memory for the session; it does not provision or deploy unless execution is explicitly enabled. The link/listener expires in 15 minutes. [Verified boundary and next integration](../plans/frontbase-deployment-bootstrap-20261020.md).
+
+To enable the verified new-Worker/new-D1 Cloudflare path, use:
+
+```sh
+pnpm run deploy:setup -- --target cloudflare --environment preview --deploy --app-name my-new-frontbase --account-id YOUR_CLOUDFLARE_ACCOUNT_ID
+```
+
+This first executor requires a fresh Worker and `<worker>-db` D1, with optional bindings disabled. It refuses existing resources and repeat attempts. The private first-admin link is printed in the terminal. [Exact verification and remaining scope](../plans/frontbase-deployment-handoff-20261020.md).
