@@ -15,8 +15,8 @@
  *              fallbacks, /setup, /frontbase-setup/spa.js, /sw.js,
  *              /builder/client.js, /console 301. The engine's shell fallback
  *              (inlined CONSOLE_INDEX) covers the shell route.
- *   dispatch : fire-and-forget with a .catch (the node.ts rule — an unhandled
- *              rejection must not take the isolate down).
+ *   dispatch : waitUntil owns asynchronous work for the request lifetime;
+ *              durable retries remain the existing engine/queue responsibility.
  *
  * RUNTIME — Node, not Edge, deliberately. The bundle is runtime-portable (no
  * node: builtins, the web libsql client is fetch-based) and this handler runs
@@ -37,7 +37,9 @@
  * baked into the bundle (repo rule).
  */
 import type { Hono } from 'hono';
-import { s3StorageProvider } from '@frontbase/edge-infra';
+import { waitUntil } from '@vercel/functions';
+import { vercelDispatcher } from './vercel-lifecycle.js';
+import { sigv4StorageProvider } from '@frontbase/edge-infra';
 import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
 import { resolveStateDb, StateDbConfigError } from './state-db.js';
 import { createCmsEngine, readTranslationExecutionEnabled } from './worker.js';
@@ -63,9 +65,9 @@ function engine(): Promise<Hono> {
                 setupToken: env.SETUP_TOKEN || undefined,
                 setupExpiresAt: env.SETUP_EXPIRES_AT || undefined,
                 admin: { email: env.ADMIN_EMAIL || undefined, password: env.ADMIN_PASSWORD || undefined, role: env.ADMIN_ROLE || undefined },
-                dispatcher: (work) => void work().catch((e) => console.error('[frontbase] background task failed:', (e as Error)?.stack ?? e)),
+                dispatcher: vercelDispatcher(waitUntil),
                 storageProvider: env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_KEY
-                    ? s3StorageProvider({
+                    ? sigv4StorageProvider({
                         accessKeyId: env.STORAGE_ACCESS_KEY_ID,
                         secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY,
                         endpoint: env.STORAGE_ENDPOINT,
@@ -95,7 +97,7 @@ function engine(): Promise<Hono> {
     return enginePromise;
 }
 
-export default async function handler(req: Request): Promise<Response> {
+export async function handler(req: Request): Promise<Response> {
     if (initError) return new Response(initError, { status: 500 });
     // Boot AND request-path engine work are bounded: an unreachable state DB
     // must answer as a legible 503, not hold the request until the platform's
@@ -117,3 +119,6 @@ export default async function handler(req: Request): Promise<Response> {
         return new Response('internal_error', { status: 500 });
     }
 }
+
+// Vercel Node distinguishes Web handlers from legacy IncomingMessage handlers.
+export default { fetch: handler };

@@ -41,6 +41,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateStagedConsole } from './console-pin.mjs';
 import { verifyHostArtifact } from './verify-host-artifact.mjs';
+import { DEPLOY_SECRET_NAMES as SECRET_NAMES, deploymentEnvironment } from './deploy-environment.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
@@ -56,11 +57,7 @@ const project = value('project') ?? process.env.DENO_PROJECT_NAME;
 const denoProjectId = value('deno-project-id') ?? process.env.DENO_PROJECT_ID;
 const deployToken = process.env.DENO_DEPLOY_TOKEN;
 
-const SECRET_NAMES = [
-    'SESSION_SECRET', 'APP_DB_URL', 'APP_DB_AUTH_TOKEN',
-    'APP_DB_D1_ACCOUNT_ID', 'APP_DB_D1_DATABASE_ID', 'CLOUDFLARE_API_TOKEN',
-    'ADMIN_EMAIL', 'ADMIN_PASSWORD', 'ADMIN_ROLE', 'SETUP_TOKEN',
-];
+
 
 // ---- 0. Build + gates (the gates read dist/ + deno-dist/; the deploy ships deno-dist/) ----
 console.log('→ building examples/cf-full (deno bundle + deno-dist staging + console-dist)...');
@@ -152,7 +149,7 @@ if (!project) {
 }
 
 // ---- 3. Push PROJECT env vars via the Deno API (best-effort, names-only fallback) ----
-const toPush = Object.keys(secrets).filter((n) => SECRET_NAMES.includes(n));
+const toPush = Object.keys(deploymentEnvironment(secrets));
 if (denoProjectId && deployToken) {
     console.log(`→ patching ${toPush.length} project env var(s) via the Deno API: ${toPush.join(', ')} (values never logged)`);
     for (const name of toPush) {

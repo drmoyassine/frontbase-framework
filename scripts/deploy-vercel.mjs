@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Vercel Edge deploy (A-24): `pnpm run deploy:vercel -- --project <name>`
+ * Vercel Node deploy (A-24): `pnpm run deploy:vercel -- --project <name>`
  * (from the repo root).
  *
  * Mirrors scripts/deploy.mjs for the Vercel host: build → staged-console gate →
@@ -46,6 +46,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateStagedConsole } from './console-pin.mjs';
 import { verifyHostArtifact } from './verify-host-artifact.mjs';
+import { DEPLOY_SECRET_NAMES as SECRET_NAMES, deploymentEnvironment } from './deploy-environment.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
@@ -60,14 +61,10 @@ const project = value('project') ?? process.env.VERCEL_PROJECT_NAME;
 
 // The ONLY secret names this script will ever push — known-name picking keeps
 // unrelated ambient env out of the project. Values are never logged.
-const SECRET_NAMES = [
-    'SESSION_SECRET', 'APP_DB_URL', 'APP_DB_AUTH_TOKEN',
-    'APP_DB_D1_ACCOUNT_ID', 'APP_DB_D1_DATABASE_ID', 'CLOUDFLARE_API_TOKEN',
-    'ADMIN_EMAIL', 'ADMIN_PASSWORD', 'ADMIN_ROLE', 'SETUP_TOKEN',
-];
+
 
 // ---- 0. Build + gates: judge the exact tree that is about to ship ----
-console.log('→ building examples/cf-full (vercel edge bundle + api/cms.mjs + console-dist)...');
+console.log('→ building examples/cf-full (vercel Node bundle + api/cms.mjs + console-dist)...');
 const build = spawnSync('node', ['build.mjs'], { cwd: exampleRoot, stdio: 'inherit' });
 if (build.status !== 0) {
     console.error('\n✗ build failed — fix the error above before deploying.');
@@ -129,7 +126,7 @@ const { describeStateDb, StateDbConfigError } = await import(pathToFileURL(join(
 try {
     const resolved = describeStateDb({ env: secrets, host: 'vercel' });
     if (resolved.kind === 'sqlite-memory' || resolved.kind === 'sqlite-file') {
-        console.error(`✗ state db "${resolved.kind}" is not deployable on the Vercel Edge host: isolates share no memory and expose no writable filesystem.`);
+        console.error(`✗ state db "${resolved.kind}" is not deployable on the Vercel Node host: isolates share no memory and expose no writable filesystem.`);
         console.error('  Use APP_DB_URL=libsql://… (Turso/sqld) or the D1-over-REST trio — see docs/guides/console-and-deploy.md.');
         process.exit(2);
     }
@@ -175,7 +172,7 @@ if (project) {
 
 // ---- 4. Push runtime env BEFORE the deploy (a deploy snapshots the env at
 //         creation time; later changes are invisible until the next deploy) ----
-const toPush = SECRET_NAMES.filter((n) => secrets[n] !== undefined);
+const toPush = Object.keys(deploymentEnvironment(secrets));
 console.log(`→ setting ${toPush.length} runtime env var(s): ${toPush.join(', ')} (values via stdin, never argv)`);
 for (const name of toPush) {
     vercel(['env', 'rm', name, 'production', '--yes']); // idempotent: absent is fine, failure resurfaces at add
@@ -187,7 +184,7 @@ for (const name of toPush) {
 }
 
 // ---- 5. Deploy ----
-console.log('\n→ deploying to Vercel (edge function + static matrix)...');
+console.log('\n→ deploying to Vercel (Node function + static matrix)...');
 const dep = vercel(['deploy', '--prod', '--yes']);
 if (dep.code !== 0) {
     console.error(`✗ vercel deploy failed:\n${dep.stderr || dep.stdout}`);
