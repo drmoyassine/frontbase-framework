@@ -14,13 +14,18 @@ import type {PublishedLiveQuery} from './publication-list-source.js';
 
 const hash=z.string().regex(/^[a-f0-9]{64}$/),id=z.string().min(1).max(160),locale=z.string().regex(/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/);
 const recordIdentity=z.object({connectionId:id,collection:id,key:translationRecordKeySchema}).strict();
-const entry=z.object({id:hash,blockId:id,path:z.array(id).min(1).max(20),versionId:id.optional(),sourceFingerprint:hash,text:z.string().min(1).max(12000),revisionId:id,unitId:hash,record:recordIdentity.optional()}).strict();
+const entry=z.object({id:hash,blockId:id,path:z.array(id).min(1).max(20),versionId:id.optional(),sourceFingerprint:hash,text:z.string().min(1).max(12000),revisionId:id,unitId:hash,record:recordIdentity.optional(),sourceText:z.string().max(12000).optional()}).strict();
+/** `path` generalizes releases to any published page ('/' = homepage). `policy` records the explicit
+ *  per-unit missing/outdated decision taken at prepare: 'block' refuses non-draft units, 'source-fallback'
+ *  omits them and renders fresh source for them (and for units whose fingerprint changed since). */
 const releaseSchema=z.object({version:z.literal(1),tenant:id,project:id,sourceLocale:locale,locale,siteHash:hash,sourceHash:hash,configHash:hash,
-    path:z.literal('/'),pageId:id,catalog:z.array(entry).min(1).max(502),reviewer:id,reviewedAt:z.string().datetime()}).strict();
+    path:id,policy:z.object({missing:z.enum(['block','source-fallback']),outdated:z.enum(['block','source-fallback'])}).strict().optional(),
+    pageId:id,catalog:z.array(entry).min(1).max(502),reviewer:id,reviewedAt:z.string().datetime()}).strict();
 const pointerSchema=z.object({hash,generation:z.number().int().positive()}).strict();
-const versionKey=(value:string)=>'translation_homepage:version:v1:'+hash.parse(value);
-const activeKey=(value:string)=>'translation_homepage:active:v1:'+locale.parse(value);
+const surfaceHash=async(path:string)=>publicationHash({kind:'page',path});
 async function raw(db:DbRunner,tenant:string,key:string){return (await db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',[tenant,key]))[0]?.value as string|undefined;}
+const activeKey=async(value:string,path:string)=>path==='/'?'translation_homepage:active:v1:'+locale.parse(value):'translation_surface:active:v1:'+await surfaceHash(path)+':'+locale.parse(value);
+const versionKeyFor=async(path:string,releaseHash:string)=>path==='/'?'translation_homepage:version:v1:'+hash.parse(releaseHash):'translation_surface:version:v1:'+hash.parse(releaseHash);
 async function mapLimit<T,R>(items:T[],fn:(item:T)=>Promise<R>):Promise<R[]>{const out:R[]=[];for(let i=0;i<items.length;i+=8)out.push(...await Promise.all(items.slice(i,i+8).map(fn)));return out;}
 type IdentifiedField={blockId:string;path:string[];versionId?:string;record?:{connectionId:string;collection:string;key:{column:string;value:string|number|boolean}[]}};
 /** Position-free identity: record-keyed fields hash and join by their record ref, never by rendered row order;
@@ -30,12 +35,12 @@ function stableIdentity(field:IdentifiedField):unknown{
     const key=[...field.record.key].sort((a,b)=>a.column<b.column?-1:a.column>b.column?1:0).map(part=>[part.column,part.value]);
     return ['record',field.record.connectionId,field.record.collection,...key,field.path.at(-1)??''];
 }
-export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery){
+export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/'){
     const active=await new SitePublicationStore(db,tenant).activeVersion();
     if(!active||active.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,tenant).get(active.pointer.hash))throw Error('reviewed_homepage_required');
-    const template=active.artifact.staticPages?.find(page=>page.originalPath==='/');if(!template)throw Error('homepage_required');
+    const template=active.artifact.staticPages?.find(page=>page.originalPath===path);if(!template)throw Error('homepage_required');
     // Review the same anonymous public source selection, never an administrator-expanded audience.
-    const result=await resolvePublicationVersionPage(active.artifact,active.pointer.hash,tenant,db,new Request(new URL('/',request.url)),{authenticated:false},liveQuery);
+    const result=await resolvePublicationVersionPage(active.artifact,active.pointer.hash,tenant,db,new Request(new URL(path,request.url)),{authenticated:false},liveQuery);
     if(!result)throw Error('homepage_unavailable');
     const layout=homepageDisplayLayout(result.page.layout as unknown as PageLayoutData);
     const fields=homepageDisplayFields(layout);
@@ -43,17 +48,17 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
     if(result.page.description)fields.push({blockId:'$meta',path:['description'],text:result.page.description,label:'Page description'});
     // Hash the identity→text pairs in canonical identity order: rendered row order must not invalidate a release.
     const sourceHash=await publicationHash(fields.map(field=>[stableIdentity(field),field.text] as const).sort((a,b)=>JSON.stringify(a[0])<JSON.stringify(b[0])?-1:JSON.stringify(a[0])>JSON.stringify(b[0])?1:0));
-    return {active,result,layout,fields,sourceHash,pageId:template.pageId};
+    return {active,result,layout,fields,sourceHash,pageId:template.pageId,path};
 }
-async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery){
+async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery,path:string='/'){
     locale.parse(target);const config=(await new TranslationGenerationStore(db,tenant).get()).configuration;
     if(!config||!config.targetLocales.includes(target))throw Error('configured_locale_required');
     const storage=await configuredTranslationStorage(host,db,tenant),identity=await configuredTranslationStorageIdentity(host,db,tenant);
     if(identity.configurationRevision!==storage.configurationRevision||JSON.stringify(identity.destination)!==JSON.stringify(storage.destination))throw Error();
     await storage.persistence.initialize().catch(()=>{throw Error('translation_storage_unavailable');});
-    const capture=await captureHomepage(db,tenant,request,liveQuery).catch(()=>{throw Error('homepage_source_unavailable');}),page=await host.pagesFor(tenant).get(capture.pageId);
+    const capture=await captureHomepage(db,tenant,request,liveQuery,path).catch(()=>{throw Error('homepage_source_unavailable');}),page=await host.pagesFor(tenant).get(capture.pageId);
     const configHash=await publicationHash({identity,sourceLocale:config.sourceLocale,targetLocales:config.targetLocales});
-    const token=await publicationHash({site:capture.active.pointer.hash,source:capture.sourceHash,config:configHash});
+    const token=await publicationHash({site:capture.active.pointer.hash,source:capture.sourceHash,config:configHash,path});
     const fields=await mapLimit(capture.fields,async field=>{
         const fieldKey=field.path.at(-1)??'';
         // Record-keyed list rows own stable record identity shared by every surface
@@ -66,11 +71,11 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
         // Record contexts match the reviewed batch extractor so one translation serves every surface.
         const context:TranslationContext=field.record
             ?{version:1,role:'record-field',resourceLabel:('Record '+field.record.collection+' / '+fieldKey).slice(0,200)}
-            :{version:1,role:node?.type??'page-meta',resourceLabel:('Page '+(page?.name??'Homepage')+' / '+field.path.at(-1)).slice(0,200)};
+            :{version:1,role:node?.type??'page-meta',resourceLabel:('Page '+(page?.name??capture.path)+' / '+field.path.at(-1)).slice(0,200)};
         const unitId=await translationUnitId(storage.scope,unit.resource),fingerprint=await messageSourceFingerprint(unit),contextFingerprint=await translationContextFingerprint(context);
-        return {...field,unit,context,unitId,fingerprint,contextFingerprint,id:await publicationHash([field.blockId,field.versionId??'default',field.path])};
+        return {...field,unit,context,unitId,fingerprint,contextFingerprint,id:await publicationHash([capture.path,field.blockId,field.versionId??'default',field.path])};
     });
-    return {...storage,capture,config,configHash,token,fields,locale:target};
+    return {...storage,capture,config,configHash,token,fields,locale:target,path};
 }
 function findNode(layout:PageLayoutData,id:string){const walk=(nodes:PageLayoutData['content']):PageLayoutData['content'][number]|undefined=>{for(const node of nodes){if(node.id===id)return node;const found=walk(node.children??[]);if(found)return found;for(const version of node.versions??[]){const inner=walk((version.overrides.children??[])as PageLayoutData['content']);if(inner)return inner;}}return undefined;};return walk(layout.content);}
 type Session=Awaited<ReturnType<typeof session>>;
@@ -79,12 +84,12 @@ async function readField(s:Session,f:Session['fields'][number]){
     const current=!!head&&snapshot.source?.fingerprint===f.fingerprint&&snapshot.source.contextFingerprint===f.contextFingerprint&&head.sourceVersion===snapshot.source.sourceVersion&&head.sourceFingerprint===f.fingerprint&&head.contextFingerprint===f.contextFingerprint;
     return {snapshot,value:{id:f.id,label:f.label,source:f.text,translation:current?head!.text:null,state:head?current?'draft' as const:'outdated' as const:'missing' as const,token:await publicationHash({token:s.token,id:f.id,snapshot})}};
 }
-export async function reviewHomepage(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery){
-    const s=await session(host,db,tenant,request,target,liveQuery),fields=await mapLimit(s.fields,async f=>(await readField(s,f).catch(()=>{throw Error('translation_read_unavailable');})).value);
-    return translationHomepageReviewSchema.parse({locale:target,sourceLocale:s.config.sourceLocale,token:s.token,siteHash:s.capture.active.pointer.hash,fields,complete:fields.every(f=>f.state==='draft'),active:await readHomepagePointer(db,tenant,target)});
+export async function reviewHomepage(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery,path:string='/'){
+    const s=await session(host,db,tenant,request,target,liveQuery,path),fields=await mapLimit(s.fields,async f=>(await readField(s,f).catch(()=>{throw Error('translation_read_unavailable');})).value);
+    return translationHomepageReviewSchema.parse({locale:target,sourceLocale:s.config.sourceLocale,token:s.token,siteHash:s.capture.active.pointer.hash,fields,complete:fields.every(f=>f.state==='draft'),active:await readHomepagePointer(db,tenant,target,s.path),path:s.path});
 }
 export async function saveHomepageTranslations(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,input:unknown,liveQuery?:PublishedLiveQuery){
-    const body=translationHomepageSaveSchema.parse(input);let s:Session;try{s=await session(host,db,tenant,request,body.locale,liveQuery);}catch{throw Error('homepage_review_unavailable');}
+    const body=translationHomepageSaveSchema.parse(input),path=body.path??'/';let s:Session;try{s=await session(host,db,tenant,request,body.locale,liveQuery,path);}catch{throw Error('homepage_review_unavailable');}
     if(body.token!==s.token)throw Error('source_changed');
     const pending=await mapLimit(body.entries,async e=>{const field=s.fields.find(f=>f.id===e.id);if(!field)throw Error('unknown_field');const prior=await readField(s,field);if(prior.value.token!==e.token)throw Error('revision_changed');return{e,field,...prior};});
     const engine=new TranslationLifecycle(s.persistence);
@@ -95,37 +100,64 @@ export async function saveHomepageTranslations(host:TranslationBatchHost,db:DbRu
         const source=await engine.syncSource(s.scope,item.field.unit,item.snapshot.source?.sourceVersion??null,item.field.context).catch(()=>{throw Error('source_sync_unavailable');});if(source.status==='conflict')throw Error('source_sync_conflict');
         const revision=await engine.writeManual(s.scope,{version:1,unitId:source.unitId,locale:body.locale,sourceVersion:source.sourceVersion,sourceFingerprint:source.sourceFingerprint,contextFingerprint:source.contextFingerprint,expectedHead:item.snapshot.head?.revisionId??null,revisionId:crypto.randomUUID(),text:item.e.text}).catch(()=>{throw Error('translation_write_unavailable');});if(revision.status==='rejected')throw Error('translation_write_refused');
     }
-    const latest=await captureHomepage(db,tenant,request,liveQuery);if(latest.sourceHash!==s.capture.sourceHash||latest.active.pointer.hash!==s.capture.active.pointer.hash)throw Error('source_changed');
+    const latest=await captureHomepage(db,tenant,request,liveQuery,path);if(latest.sourceHash!==s.capture.sourceHash||latest.active.pointer.hash!==s.capture.active.pointer.hash)throw Error('source_changed');
     return {saved:pending.length};
 }
-export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,expectedToken:string,reviewer:string,now:string,liveQuery?:PublishedLiveQuery){
-    const s=await session(host,db,tenant,request,target,liveQuery);if(publicationPaths(s.capture.active.artifact).includes(`/${target}/`))throw Error('locale_route_collision');if(s.token!==expectedToken)throw Error('review_changed');
-    const catalog=await mapLimit(s.fields,async f=>{const {snapshot,value}=await readField(s,f);if(value.state!=='draft'||!snapshot.head)throw Error('coverage_incomplete');return {id:f.id,blockId:f.blockId,path:f.path,...(f.versionId?{versionId:f.versionId}:{}),...(f.record?{record:{connectionId:f.record.connectionId,collection:f.record.collection,key:f.record.key}}:{}),sourceFingerprint:f.fingerprint,text:snapshot.head.text,revisionId:snapshot.head.revisionId,unitId:f.unitId};});
-    const release=releaseSchema.parse({version:1,tenant,project:s.scope.projectId,sourceLocale:s.config.sourceLocale,locale:target,siteHash:s.capture.active.pointer.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,path:'/',pageId:s.capture.pageId,catalog,reviewer,reviewedAt:now});
-    const hash=await publicationHash(release);await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,versionKey(hash),JSON.stringify(release),now]);
+export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,expectedToken:string,reviewer:string,now:string,liveQuery?:PublishedLiveQuery,path:string='/',policy:{missing:'block'|'source-fallback';outdated:'block'|'source-fallback'}={missing:'block',outdated:'block'}){
+    const s=await session(host,db,tenant,request,target,liveQuery,path);if(publicationPaths(s.capture.active.artifact).includes(`/${target}${s.path}`))throw Error('locale_route_collision');if(s.token!==expectedToken)throw Error('review_changed');
+    const read=await mapLimit(s.fields,async f=>({f,...await readField(s,f).catch(()=>{throw Error('coverage_read_failed');})}));
+    for(const item of read){
+        if(item.value.state==='draft')continue;
+        if(item.value.state==='missing'&&policy.missing==='source-fallback')continue;
+        if(item.value.state==='outdated'&&policy.outdated==='source-fallback')continue;
+        throw Error('coverage_incomplete');
+    }
+    const catalog=read.filter(item=>item.value.state==='draft'&&item.snapshot.head).map(item=>({id:item.f.id,blockId:item.f.blockId,path:item.f.path,...(item.f.versionId?{versionId:item.f.versionId}:{}),...(item.f.record?{record:{connectionId:item.f.record.connectionId,collection:item.f.record.collection,key:item.f.record.key}}:{}),sourceFingerprint:item.f.fingerprint,sourceText:item.f.text,text:item.snapshot.head!.text,revisionId:item.snapshot.head!.revisionId,unitId:item.f.unitId}));
+    const release=releaseSchema.parse({version:1,tenant,project:s.scope.projectId,sourceLocale:s.config.sourceLocale,locale:target,siteHash:s.capture.active.pointer.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,path:s.path,policy,pageId:s.capture.pageId,catalog,reviewer,reviewedAt:now});
+    const hash=await publicationHash(release);await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,await versionKeyFor(s.path,hash),JSON.stringify(release),now]);
     if(!await readHomepageRelease(db,tenant,hash))throw Error();
-    return {hash,previewUrl:'/api/project/translation-batches/homepage/preview/?hash='+hash,expected:await readHomepagePointer(db,tenant,target)};
+    return {hash,previewUrl:'/api/project/translation-batches/homepage/preview/?hash='+hash,expected:await readHomepagePointer(db,tenant,target,s.path)};
 }
-export async function readHomepagePointer(db:DbRunner,tenant:string,target:string){const value=await raw(db,tenant,activeKey(target));return value?pointerSchema.parse(JSON.parse(value)):null;}
-export async function readHomepageRelease(db:DbRunner,tenant:string,hash:string){const value=await raw(db,tenant,versionKey(hash));if(!value)return null;const release=releaseSchema.parse(JSON.parse(value));if(release.tenant!==tenant||await publicationHash(release)!==hash)throw Error('locale_release_invalid');return release;}
+export async function readHomepagePointer(db:DbRunner,tenant:string,target:string,path:string='/'){const value=await raw(db,tenant,await activeKey(target,path));return value?pointerSchema.parse(JSON.parse(value)):null;}
+export async function readHomepageRelease(db:DbRunner,tenant:string,hash:string){for(const key of ['translation_homepage:version:v1:'+hash,'translation_surface:version:v1:'+hash]){const value=await raw(db,tenant,key);if(!value)continue;const release=releaseSchema.parse(JSON.parse(value));if(release.tenant!==tenant||await publicationHash(release)!==hash)throw Error('locale_release_invalid');return release;}return null;}
 export async function activateHomepageLocale(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,releaseHash:string,expected:unknown,now:string,liveQuery?:PublishedLiveQuery){
-    const release=await readHomepageRelease(db,tenant,releaseHash);if(!release)throw Error();const s=await session(host,db,tenant,request,release.locale,liveQuery);
-    if(s.capture.active.pointer.hash!==release.siteHash||s.capture.sourceHash!==release.sourceHash||s.configHash!==release.configHash||s.scope.projectId!==release.project)throw Error('prepared_locale_changed');
+    const release=await readHomepageRelease(db,tenant,releaseHash);if(!release)throw Error();const s=await session(host,db,tenant,request,release.locale,liveQuery,release.path);
+    if(s.configHash!==release.configHash||s.scope.projectId!==release.project)throw Error('prepared_locale_changed');
+    // Per-unit releases serve a fresh per-unit join, so site/source drift between prepare and
+    // publish does not block (re-)activation; strict releases keep the whole-source gate.
+    if(release.policy?.outdated!=='source-fallback'&&(s.capture.active.pointer.hash!==release.siteHash||s.capture.sourceHash!==release.sourceHash))throw Error('prepared_locale_changed');
     await mapLimit(release.catalog,async field=>{const revision=await s.persistence.readRevision(s.scope,field.unitId,release.locale,field.revisionId);if(!revision||revision.text!==field.text||revision.sourceFingerprint!==field.sourceFingerprint)throw Error('revision_unavailable');});
-    const prior=await raw(db,tenant,activeKey(release.locale)),current=prior?pointerSchema.parse(JSON.parse(prior)):null;
+    const prior=await raw(db,tenant,await activeKey(release.locale,release.path)),current=prior?pointerSchema.parse(JSON.parse(prior)):null;
     if(JSON.stringify(current)!==JSON.stringify(pointerSchema.nullable().parse(expected)))throw Error('activation_conflict');
     const next={hash:releaseHash,generation:(current?.generation??0)+1},value=JSON.stringify(next);
-    const changed=prior?await db.exec('UPDATE settings SET value = ?,updated_at = ? WHERE tenant_slug = ? AND key = ? AND value = ?',[value,now,tenant,activeKey(release.locale),prior]):await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,activeKey(release.locale),value,now]);
+    const changed=prior?await db.exec('UPDATE settings SET value = ?,updated_at = ? WHERE tenant_slug = ? AND key = ? AND value = ?',[value,now,tenant,await activeKey(release.locale,release.path),prior]):await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,await activeKey(release.locale,release.path),value,now]);
     if(changed!==1)throw Error('activation_conflict');return next;
 }
-export async function publishedHomepageLocales(db:DbRunner,tenant:string){const rows=await db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key LIKE ?',[tenant,'translation_homepage:active:v1:%']);const values=[];for(const row of rows){const pointer=pointerSchema.parse(JSON.parse(String(row.value)));const release=await readHomepageRelease(db,tenant,pointer.hash);if(!release)throw Error();values.push({pointer,release});}if(values.length>16)throw Error();return values;}
+/** Locale deactivation is a guarded delete: the stored pointer value must still equal the caller's
+ *  expectation, so a concurrent publish/rollback makes the deletion a visible conflict instead of a loss. */
+export async function deactivateHomepageLocale(db:DbRunner,tenant:string,target:string,expected:unknown,now:string,path:string='/'){
+    const key=await activeKey(target,path),prior=await raw(db,tenant,key);
+    if(!prior)throw Error('not_active');
+    if(JSON.stringify(pointerSchema.parse(JSON.parse(prior)))!==JSON.stringify(pointerSchema.nullable().parse(expected)))throw Error('deactivation_conflict');
+    const changed=await db.exec('DELETE FROM settings WHERE tenant_slug = ? AND key = ? AND value = ?',[tenant,key,prior]);
+    if(changed!==1)throw Error('deactivation_conflict');return {deactivated:true as const,locale:locale.parse(target),path,generation:pointerSchema.parse(JSON.parse(prior)).generation,deactivatedAt:now};
+}
+export async function publishedHomepageLocales(db:DbRunner,tenant:string){const rows=await db.query('SELECT key,value FROM settings WHERE tenant_slug = ? AND (key LIKE ? OR key LIKE ?)',[tenant,'translation_homepage:active:v1:%','translation_surface:active:v1:%']);const values=[];for(const row of rows){const pointer=pointerSchema.parse(JSON.parse(String(row.value)));const release=await readHomepageRelease(db,tenant,pointer.hash);if(!release)throw Error();values.push({pointer,release});}if(values.length>16)throw Error();return values;}
 export function projectHomepageLocale(capture:Awaited<ReturnType<typeof captureHomepage>>,release:z.infer<typeof releaseSchema>):NonNullable<Awaited<ReturnType<typeof resolvePublicationVersionPage>>>{
-    if(capture.active.pointer.hash!==release.siteHash||capture.sourceHash!==release.sourceHash)throw Error('locale_source_outdated');
-    // Released text is joined by identity, then applied at wherever the record currently renders.
+    // Any source-fallback dimension renders partially (omitted units keep source); only the
+    // outdated dimension switches freshness to a per-unit join across source drift.
+    const perUnit=release.policy?.outdated==='source-fallback';
+    const partial=perUnit||release.policy?.missing==='source-fallback';
+    if(!perUnit&&(capture.active.pointer.hash!==release.siteHash||capture.sourceHash!==release.sourceHash))throw Error('locale_source_outdated');
+    // Per-unit freshness: released text joins onto the live capture only where the recorded source
+    // text still matches; changed/removed units fall back to fresh source instead of poisoning the release.
+    const sourceNow=new Map<string,string>();
+    for(const field of capture.fields)sourceNow.set(JSON.stringify(stableIdentity(field)),field.text);
+    const fresh=(field:IdentifiedField&{sourceFingerprint:string;sourceText?:string})=>!perUnit||field.sourceText===undefined||sourceNow.get(JSON.stringify(stableIdentity(field)))===field.sourceText;
     const textByIdentity=new Map<string,string>();
-    for(const field of release.catalog){if(field.blockId==='$meta')continue;textByIdentity.set(JSON.stringify(stableIdentity(field)),field.text);}
+    for(const field of release.catalog)if(fresh(field))textByIdentity.set(JSON.stringify(stableIdentity(field)),field.text);
     const values=new Map<string,string>();
     for(const field of capture.fields){if(field.blockId==='$meta')continue;const text=textByIdentity.get(JSON.stringify(stableIdentity(field)));if(text!==undefined)values.set(JSON.stringify([field.blockId,field.versionId??'default',field.path]),text);}
-    const layout=applyHomepageDisplayFields(capture.layout,values),meta=(key:string)=>release.catalog.find(f=>f.blockId==='$meta'&&f.path[0]===key)?.text;
+    const layout=applyHomepageDisplayFields(capture.layout,values,{partial}),meta=(key:string)=>textByIdentity.get(JSON.stringify(stableIdentity({blockId:'$meta',path:[key]})));
     return {...capture.result,page:{...capture.result.page,title:meta('title')??capture.result.page.title,description:meta('description')??capture.result.page.description,layout}};
 }

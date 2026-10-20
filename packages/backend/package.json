@@ -52,6 +52,7 @@
     "test:translation-page-preview-mutation": "node test/translation-page-preview-mutation.mjs",
     "test:translation-homepage-records": "node test/translation-homepage-records.mjs",
     "test:translation-homepage-versions": "node test/translation-homepage-versions.mjs",
+    "test:translation-page-publication": "node test/translation-page-publication.mjs",
     "test:translation-coverage": "node test/translation-coverage.mjs",
     "test:translation-record-keys": "node test/translation-record-keys.mjs",
     "test:translation-record-preview": "node test/translation-record-preview.mjs",

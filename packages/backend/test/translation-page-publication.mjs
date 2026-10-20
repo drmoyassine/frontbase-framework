@@ -1,0 +1,104 @@
+import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
+import {allowanceFixture,now} from './translation-allowance-fixture.mjs';
+import {emptyDirectoryConfiguration,defaultTemplateSettings} from '@frontbase/edge-core/directory/configuration';
+import {createCompatApp} from '../dist/compat/app.js';
+import {PagesStore} from '../dist/compat/pages-store.js';
+import {SitePublicationManifestStore} from '../dist/compat/site-publication-manifest.js';
+import {SitePublicationReviewStore} from '../dist/compat/site-publication-review-store.js';
+import {SitePublicationStore} from '../dist/compat/site-publication-store.js';
+import {renderReviewedSitePublication} from '../dist/compat/site-publication-serving.js';
+const f=await allowanceFixture(),tenant='alpha',pageId='00000000-0000-4000-8000-000000000020';
+const config=emptyDirectoryConfiguration();config.site={name:'Study site',destination:'USA',origin:'https://site.test',locale:'en'};config.datasourceId='content';
+for(const role of ['institution','program','city']){const m=config.collections[role];m.table=role;m.scope={field:'country',value:22};Object.assign(m.fields,{id:'id',title:'title'});if(role!=='city')m.fields.originalPath='path';}config.collections.institution.fields.cityId='city';config.collections.program.fields.institutionId='institution';
+const layout={root:{directoryLanding:{version:1,settings:defaultTemplateSettings()}},content:[{id:'nav',type:'Navbar',props:{logo:{text:'Study site',link:'/'},menuItems:[{id:'institutions',label:'Institutions',navType:'link',target:'/explore/'}],primaryButton:{enabled:false},secondaryButton:{enabled:false},showDarkModeToggle:true}},
+ {id:'hero',type:'Container',props:{templateHero:{version:1}}},
+ {id:'search',type:'Container',props:{templateSearch:{version:1}}},
+ {id:'heading',type:'Heading',props:{text:'Explore institutions'}},
+ {id:'foot',type:'Footer',props:{logoText:'Study site',copyright:'All rights reserved.',columns:[{title:'Explore',links:[{text:'Programs',href:'/explore/?type=program'}]}]}}]};
+const privacyLayout=text=>({root:{directoryLanding:{version:1,settings:defaultTemplateSettings()}},content:[{id:'nav',type:'Navbar',props:{logo:{text:'Study site',link:'/'},menuItems:[{id:'institutions',label:'Institutions',navType:'link',target:'/explore/'}],primaryButton:{enabled:false},secondaryButton:{enabled:false},showDarkModeToggle:true}},
+ {id:'heading',type:'Heading',props:{text}},
+ {id:'foot',type:'Footer',props:{logoText:'Study site',copyright:'All rights reserved.',columns:[{title:'Explore',links:[{text:'Programs',href:'/explore/?type=program'}]}]}}]});
+const pages=new PagesStore(f.db,tenant);await pages.create({name:'Homepage',slug:'home',is_homepage:true,layout_data:layout},pageId,now);
+const staticPages=(privacyText='Privacy policy')=>[{pageId,title:'Home',description:'Study abroad',originalPath:'/',layout},{pageId:'00000000-0000-4000-8000-000000000021',title:'Privacy',description:'Source policy',originalPath:'/privacy/',layout:privacyLayout(privacyText)}];
+const store=new SitePublicationManifestStore(f.db,tenant),header={configurationRevision:1,configuration:config,templates:[],staticPages:staticPages(),redirects:[]};
+const baseHash=await store.prepare(header,{cities:[],institutions:[],programs:[],articles:[]},now),reviews=new SitePublicationReviewStore(f.db,tenant);
+await reviews.approve({hash:baseHash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Fixture reviewed'},'reviewer',now);
+await reviews.activate(baseHash,null,now);
+let auth=true,role='owner',owner=tenant;
+const app=await createCompatApp({makeRunner:()=>f.db,sessionSecret:'allowance-private-fixture',now:()=>now,externalFetch:f.host.externalFetch,resolvePrincipal:async()=>({user:auth?{id:'editor',role}:null,tenant:owner})});
+const root='/api/project/translation-batches/homepage/';
+async function call(path,body,status=200){const r=await app.request('https://site.test'+root+path,{method:body?'POST':'GET',headers:{'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});assert.equal(r.status,status,await r.clone().text());const value=await r.json();assert.doesNotMatch(JSON.stringify(value),/PRIVATE_|serviceKey|data\.example/);return value;}
+const html=async path=>{const r=await renderReviewedSitePublication(f.db,tenant,new Request('https://site.test'+path));return {status:r?.status,headers:r?.headers,text:await r?.text()};};
+const saveAll=(review,path='/',filter=()=>true)=>Promise.all([...Array(Math.ceil(review.fields.filter(filter).length/16)).keys()].map(i=>call('save/',{locale:'ar',token:review.token,path,entries:review.fields.filter(filter).slice(i*16,(i+1)*16).map(field=>({id:field.id,token:field.token,text:'عربي '+field.source}))})));
+try{
+ // Per-page review addresses the privacy page, not the homepage.
+ const review=await call('review/?locale=ar&path=/privacy/');assert.equal(review.path,'/privacy/');assert.ok(review.fields.some(field=>field.source==='Privacy policy'));assert.ok(!review.fields.some(field=>field.source==='Explore institutions'));
+ assert.equal(review.fields.find(field=>field.label==='Page title').source,'Privacy');
+ await call('review/?locale=ar&path=privacy',undefined,422);
+ // Block policy stays the default: an incomplete page refuses to prepare.
+ await call('prepare/',{locale:'ar',token:review.token,approveTranslations:true,path:'/privacy/'},409);
+ // Partial drafts under an explicit missing:source-fallback policy prepare a partial release.
+ await saveAll(review,'/privacy/',field=>field.id===review.fields.find(item=>item.label==='Page title').id||field.source==='Privacy policy');
+ await call('save/',{locale:'ar',token:review.token,entries:[{id:review.fields[0].id,token:review.fields[0].token,text:'x'}]},409);
+ const prepared=await call('prepare/',{locale:'ar',token:review.token,approveTranslations:true,path:'/privacy/',policy:{missing:'source-fallback',outdated:'source-fallback'}});
+ assert.equal((await html('/ar/privacy/')).status,404,'prepare must not publish');
+ const preview=await app.request('https://site.test'+prepared.previewUrl);assert.equal(preview.status,200);const previewText=await preview.text();assert.match(previewText,/عربي Privacy/);assert.match(previewText,/Privacy policy/,'untranslated units preview as source');
+ auth=false;assert.equal((await app.request('https://site.test'+prepared.previewUrl)).status,401,'prepared previews stay administrator-only');auth=true;
+ // Drafts are never anonymous; publish is CAS-guarded.
+ await call('publish/',{hash:prepared.hash,expected:{hash:'a'.repeat(64),generation:0},approveTranslations:true},409);
+ const published=await call('publish/',{hash:prepared.hash,expected:prepared.expected,approveTranslations:true});assert.equal(published.generation,1);
+ const page=await html('/ar/privacy/');assert.equal(page.status,200);assert.equal(page.headers.get('Content-Language'),'ar');
+ const doc=new JSDOM(page.text).window.document;
+ assert.equal(doc.documentElement.lang,'ar');assert.equal(doc.documentElement.dir,'rtl');
+ assert.ok(page.text.includes('عربي Privacy policy'),'translated unit renders');assert.ok(page.text.includes('عربي Privacy'),'translated meta title renders');
+ assert.equal(doc.querySelector('link[rel="canonical"]').getAttribute('href'),'https://site.test/ar/privacy/','translated page owns its localized canonical');
+ assert.equal(doc.querySelector('link[hreflang="en"]').getAttribute('href'),'https://site.test/privacy/');assert.equal(doc.querySelector('link[hreflang="ar"]').getAttribute('href'),'https://site.test/ar/privacy/');
+ assert.ok(page.text.includes('All rights reserved.'),'untranslated footer stays source under the per-unit policy');
+ // A source change must not invalidate the whole release: changed units fall back to fresh source,
+ // unrelated approved text keeps serving.
+ const nextHash=await store.prepare({...header,staticPages:staticPages('Renamed privacy policy')},{cities:[],institutions:[],programs:[],articles:[]},now);
+ await reviews.approve({hash:nextHash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Changed fixture reviewed'},'reviewer',now);
+ await reviews.activate(nextHash,(await new SitePublicationStore(f.db,tenant).activeVersion()).pointer,now);
+ const drifted=await html('/ar/privacy/');assert.equal(drifted.status,200,'per-unit releases survive source drift');
+ assert.ok(drifted.text.includes('Renamed privacy policy'),'changed unit falls back to fresh source');assert.ok(!drifted.text.includes('عربي Privacy policy'),'no stale Arabic for a changed unit');
+ assert.ok(drifted.text.includes('عربي Privacy'),'unchanged approved text keeps serving');
+ // Fresh review, re-translate with v2 text, publish v2, then roll back to v1 by hash.
+ const review2=await call('review/?locale=ar&path=/privacy/');
+ // The stale v1 heading head is outdated after the drift; only the explicit outdated:source-fallback
+ // policy lets preparation carry it (it stays out of the catalog until re-saved).
+ await call('prepare/',{locale:'ar',token:review2.token,approveTranslations:true,path:'/privacy/',policy:{missing:'source-fallback',outdated:'source-fallback'}});
+ const titleField=review2.fields.find(item=>item.label==='Page title');
+ const headingField=review2.fields.find(item=>item.source==='Renamed privacy policy');
+ await call('save/',{locale:'ar',token:review2.token,path:'/privacy/',entries:[{id:headingField.id,token:headingField.token,text:'عربي Renamed privacy policy'},{id:titleField.id,token:titleField.token,text:'الخصوصية المحدثة'}]});
+ const prepared2=await call('prepare/',{locale:'ar',token:review2.token,approveTranslations:true,path:'/privacy/',policy:{missing:'source-fallback',outdated:'source-fallback'}});
+ assert.ok(prepared2.hash!==prepared.hash);
+ const published2=await call('publish/',{hash:prepared2.hash,expected:{hash:published.hash,generation:1},approveTranslations:true});assert.equal(published2.generation,2);
+ const v2=await html('/ar/privacy/');assert.ok(v2.text.includes('عربي Renamed privacy policy'));assert.ok(v2.text.includes('الخصوصية المحدثة'));
+ const rolledBack=await call('publish/',{hash:prepared.hash,expected:{hash:published2.hash,generation:2},approveTranslations:true});assert.equal(rolledBack.generation,3);
+ const v1=await html('/ar/privacy/');assert.ok(!v1.text.includes('عربي Renamed privacy policy'),'rollback removes v2 text');assert.ok(v1.text.includes('عربي Privacy'),'rollback restores v1 title');assert.ok(!v1.text.includes('الخصوصية المحدثة'));
+ // Publishing the same generation again conflicts; deactivation is a guarded delete.
+ await call('publish/',{hash:prepared.hash,expected:{hash:published2.hash,generation:2},approveTranslations:true},409);
+ await call('deactivate/',{locale:'ar',path:'/privacy/',expected:{hash:'a'.repeat(64),generation:9}},409);
+ const locales1=await call('locales/');assert.ok(locales1.locales.some(item=>item.locale==='ar'&&item.path==='/privacy/'&&item.perUnit===true&&item.generation===3));
+ const off=await call('deactivate/',{locale:'ar',path:'/privacy/',expected:{hash:rolledBack.hash,generation:3}});assert.equal(off.deactivated,true);
+ await call('deactivate/',{locale:'ar',path:'/privacy/',expected:{hash:rolledBack.hash,generation:3}},409);
+ assert.equal((await html('/ar/privacy/')).status,404,'deactivation removes the locale path until another release offers the locale');
+ assert.ok(!(await call('locales/')).locales.some(item=>item.path==='/privacy/'));
+ // The homepage surface publishes through the same engine and both releases coexist per path.
+ const homeReview=await call('review/?locale=ar');await saveAll(homeReview);
+ const homePrepared=await call('prepare/',{locale:'ar',token:homeReview.token,approveTranslations:true});assert.equal(homePrepared.expected,null,'homepage pointer namespace unchanged');
+ await call('publish/',{hash:homePrepared.hash,expected:homePrepared.expected,approveTranslations:true});
+ const home=await html('/ar/');assert.equal(home.status,200);assert.ok(home.text.includes('عربي Explore institutions'));
+ assert.ok((await call('locales/')).locales.length>=1);
+ // With only the homepage release active, a nested path keeps the approved shared shell and a source body.
+ const shell=await html('/ar/privacy/');assert.equal(shell.status,200);assert.ok(shell.text.includes('Renamed privacy policy'),'deactivated page serves source body');assert.ok(!shell.text.includes('عربي Privacy policy'));
+ assert.ok(shell.text.includes('hreflang="ar"'),'homepage release still offers the locale shell');
+ // Fences: auth, role, tenant, and cross-surface session isolation.
+ auth=false;await call('review/?locale=ar&path=/privacy/',undefined,401);await call('deactivate/',{locale:'ar',expected:null},401);auth=true;
+ role='viewer';await call('review/?locale=ar&path=/privacy/',undefined,403);role='owner';
+ owner='beta';await call('review/?locale=ar&path=/privacy/',undefined,422);owner=tenant;
+ await call('save/',{locale:'ar',token:homeReview.token,path:'/privacy/',entries:[{id:homeReview.fields[0].id,token:homeReview.fields[0].token,text:'x'}]},409);
+ await call('publish/',{hash:'b'.repeat(64),expected:null,approveTranslations:true},409);
+ console.log('translation-page-publication: per-page review/prepare policy/publish CAS/per-unit drift fallback/rollback/deactivation and fences PASS');
+}catch(error){throw error;}finally{try{f.close();}catch{}}

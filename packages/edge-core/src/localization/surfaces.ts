@@ -105,7 +105,9 @@ function mergeVersionValue(base:unknown,override:Record<string,unknown>,path:str
         target=target[key] as Record<string,unknown>;source=source?.[key];
     }
 }
-export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<string,string>):PageLayoutData{
+/** `partial` keeps source values wherever the map has no entry — the explicit per-unit
+ *  missing/outdated fallback used by per-unit locale releases (never silently partial elsewhere). */
+export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<string,string>,opts?:{partial?:boolean}):PageLayoutData{
     const layout=structuredClone(input),owned=new Map<string,{node:PageComponent;containerVersion?:string}>(),byBlock=new Map<string,{node:PageComponent;containerVersion?:string}>();
     const walk=(list:PageComponent[],containerVersion?:string)=>{for(const node of list){
         if(byBlock.has(node.id))throw Error('duplicate_component');
@@ -115,7 +117,7 @@ export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<strin
     }};walk(layout.content);
     for(const field of homepageDisplayFields(layout)){
         const text=values.get(JSON.stringify([field.blockId,field.versionId??'default',field.path]));
-        if(text===undefined)throw Error('translation_coverage_incomplete');
+        if(text===undefined){if(opts?.partial)continue;throw Error('translation_coverage_incomplete');}
         if(field.blockId==='$root'){let target:any=layout.root;for(const key of field.path.slice(0,-1))target=target[key];target[field.path.at(-1)!]=text;continue;}
         const exact=field.versionId!==undefined?owned.get(JSON.stringify([field.versionId,field.blockId])):undefined;
         const entry=exact??byBlock.get(field.blockId);

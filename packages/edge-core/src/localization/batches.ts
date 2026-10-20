@@ -90,10 +90,11 @@ export const translationRecordPreviewSchema = z.object({ locale: localeSchema, s
 export const translationRecordSaveSchema = z.object({ selection: translationRecordSelectionSchema, locale: localeSchema,
     token: hash, text: z.string().min(1).max(4000) }).strict();
 
-/** Complete rendered Homepage review; the server owns source/layout/query selection. */
+/** Complete rendered Homepage review; the server owns source/layout/query selection.
+ *  `path` generalizes the same engine to any published page ('/' = homepage). */
 export const translationHomepageReviewSchema = z.object({locale:localeSchema,sourceLocale:localeSchema,token:hash,siteHash:hash,
- fields:z.array(z.object({id:hash,label:z.string().max(200),source:z.string().max(12000),translation:z.string().max(12000).nullable(),state:z.enum(['missing','draft','outdated']),token:hash}).strict()).min(1).max(502),complete:z.boolean(),active:z.object({hash,generation:z.number().int().positive()}).strict().nullable()}).strict();
-export const translationHomepageSaveSchema=z.object({locale:localeSchema,token:hash,entries:z.array(z.object({id:hash,token:hash,text:z.string().min(1).max(12000)}).strict()).min(1).max(20)}).strict().refine(v=>new Set(v.entries.map(e=>e.id)).size===v.entries.length);
+ fields:z.array(z.object({id:hash,label:z.string().max(200),source:z.string().max(12000),translation:z.string().max(12000).nullable(),state:z.enum(['missing','draft','outdated']),token:hash}).strict()).min(1).max(502),complete:z.boolean(),active:z.object({hash,generation:z.number().int().positive()}).strict().nullable(),path:z.string().min(1).max(160).optional()}).strict();
+export const translationHomepageSaveSchema=z.object({locale:localeSchema,token:hash,entries:z.array(z.object({id:hash,token:hash,text:z.string().min(1).max(12000)}).strict()).min(1).max(20),path:z.string().min(1).max(160).optional()}).strict().refine(v=>new Set(v.entries.map(e=>e.id)).size===v.entries.length);
 
 /** Discovery coverage (read-only inventory contract). Translatable fields carry engine identity
  *  (unit refs/fingerprints); excluded fields never carry source text and always state a reason. */
