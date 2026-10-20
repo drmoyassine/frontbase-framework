@@ -56,10 +56,12 @@ assert.equal(nested.headers.get('Content-Language'),'en','fallback serves keep t
  const frComplete=await call('review/?locale=fr&path=/privacy/');assert.equal(frComplete.complete,true);
  const frPrepared=await call('prepare/',{locale:'fr',token:frComplete.token,approveTranslations:true,path:'/privacy/'});
  await call('publish/',{hash:frPrepared.hash,expected:frPrepared.expected,approveTranslations:true});
+ const sitemapAfterFr=await html('/sitemap.xml');assert.ok(sitemapAfterFr.text.includes('<loc>https://site.test/fr/privacy/</loc>'),'each fresh released path joins the sitemap');assert.ok(sitemapAfterFr.text.includes('<loc>https://site.test/ar/</loc>'));assert.ok(!sitemapAfterFr.text.includes('<loc>https://site.test/fr/</loc>'),'locales without a homepage release stay out of the sitemap homepage');assert.ok(!sitemapAfterFr.text.includes('/ar/privacy/'),'locales without the path stay out of its sitemap entry');
  const frenchPage=await html('/fr/privacy/');assert.equal(frenchPage.status,200);assert.equal(frenchPage.headers.get('Content-Language'),'fr');
  const frDoc=new JSDOM(frenchPage.text).window.document;assert.equal(frDoc.documentElement.lang,'fr');assert.equal(frDoc.documentElement.dir,'ltr');
  assert.equal(frDoc.querySelector('link[rel="canonical"]').getAttribute('href'),'https://site.test/fr/privacy/');
  assert.equal(frDoc.querySelector('link[hreflang="en"]').getAttribute('href'),'https://site.test/privacy/');
+ assert.equal(frDoc.querySelector('meta[property="og:title"]')?.getAttribute('content'),'français Privacy','released og metadata follows the localized page');assert.equal(frDoc.querySelector('meta[property="og:url"]')?.getAttribute('content'),'https://site.test/fr/privacy/');assert.equal(frDoc.querySelector('meta[property="og:site_name"]')?.getAttribute('content'),'Study site');assert.equal(frDoc.querySelector('meta[property="og:type"]')?.getAttribute('content'),'website','source document keys survive the og merge');
  assert.equal(frDoc.querySelector('link[hreflang="ar"]'),null,'locales without this path stay out of its cluster');
  const srcPrivacy=new JSDOM((await html('/privacy/')).text).window.document;
  assert.equal(srcPrivacy.querySelector('link[hreflang="fr"]').getAttribute('href'),'https://site.test/fr/privacy/','the source path advertises released locales reciprocally');
@@ -70,5 +72,6 @@ assert.equal(nested.headers.get('Content-Language'),'en','fallback serves keep t
  assert.equal((await html('/fr/?x=1')).status,400,'the localized homepage refuses query parameters like the source');
  const nextHash=await store.prepare({...header,redirects:[],staticPages:[{...header.staticPages[0],title:'Changed source'}]},{cities:[],institutions:[],programs:[],articles:[]},now);await reviews.approve({hash:nextHash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Changed fixture reviewed'},'reviewer',now);const {SitePublicationStore}=await import('../dist/compat/site-publication-store.js');await reviews.activate(nextHash,(await new SitePublicationStore(f.db,tenant).activeVersion()).pointer,now);
  assert.equal((await html('/ar/')).status,503,'source change must not expose untranslated locale fallback');assert.equal((await html('/')).status,200,'English remains available');assert.equal(new JSDOM((await html('/')).text).window.document.querySelector('[data-fb-locale]'),null);
+ const staleSitemap=await html('/sitemap.xml');assert.ok(!staleSitemap.text.includes('/ar/')&&!staleSitemap.text.includes('/fr/'),'stale locale releases leave the sitemap when the site re-publishes');
  console.log('translation-homepage: complete coverage, external drafts, reviewed preview/activation, source/CAS/tenant fences, SSR RTL/switcher/SEO and source resilience PASS');
 }finally{f.close();}

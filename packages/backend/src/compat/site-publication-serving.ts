@@ -1,4 +1,4 @@
-import { resolveHomepageLanguageRequest, localizedListRequest } from './translation-homepage-serving.js';
+import { resolveHomepageLanguageRequest, localizedListRequest, sitemapLocaleEntries } from './translation-homepage-serving.js';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { createEngine, directProvider, audienceConditionUser } from '@frontbase/edge-core';
 import { SitePublicationStore } from './site-publication-store.js';
@@ -16,7 +16,7 @@ export type SitePublicationResolution =
     | {status:'unavailable'}
     | {status:'invalid'}
     | {status:'redirect';hash:string;generation:number;location:string}
-    | {status:'sitemap';hash:string;generation:number;xml:string}
+    | {status:'sitemap';hash:string;generation:number;xml:string;origin:string}
     | {status:'resolved';hash:string;generation:number;result:NonNullable<Awaited<ReturnType<typeof resolveSitePublicationPage>>>};
 
 /** Trusted host owner only. Once active, missing/unavailable MUST NOT fall back to mutable pages. */
@@ -39,7 +39,7 @@ export async function resolveReviewedSitePublication(db:DbRunner,owner:string,re
         if(url.pathname==='/sitemap.xml') {
             if(url.search)throw new PublicationRequestError();
             if(active.artifact.schemaVersion===2){await new SitePublicationManifestStore(db,owner).verify(active.artifact);await verifyManifestEditorial(db,owner,active.artifact);}
-            return {status:'sitemap',hash:active.pointer.hash,generation:active.pointer.generation,xml:capturedSiteSitemap(active.artifact)};
+            return {status:'sitemap',hash:active.pointer.hash,generation:active.pointer.generation,xml:capturedSiteSitemap(active.artifact),origin:active.artifact.configuration.site.origin};
         }
         const result=await resolvePublicationVersionPage(active.artifact,active.pointer.hash,owner,db,request,audience,liveQuery);
         if(!result)return {status:'missing'};
@@ -67,7 +67,11 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         return new Response(null,{status:301,headers});
     }
     if(resolution.status==='sitemap') {
-        try{const home=await resolveHomepageLanguageRequest(db,owner,new Request(new URL('/',request.url)),options.liveQuery);if(home?.resolved){for(const link of home.resolved.document.alternates??[]){if(link.language!==home.locale)resolution.xml=resolution.xml.replace('</urlset>',`<url><loc>${link.href.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</loc></url></urlset>`);}}}catch{/* Keep the existing source sitemap available when a locale cannot be verified. */}
+        // Locale URLs join the sitemap per released path under the SAME freshness rule as page
+        // serving (sitemapLocaleEntries) — never a site-wide locale list.
+        try{for(const entry of await sitemapLocaleEntries(db,owner,request,{hash:resolution.hash},options.liveQuery)){
+            const loc=new URL(entry.path==='/'?`/${entry.locale}/`:`/${entry.locale}${entry.path}`,resolution.origin).href;
+            resolution.xml=resolution.xml.replace('</urlset>',`<url><loc>${loc.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</loc></url></urlset>`);}}catch{/* Keep the existing source sitemap available when a locale cannot be verified. */}
         headers.set('Content-Type','application/xml; charset=utf-8');
         headers.set('X-Site-Version',resolution.hash);
         headers.set('X-Site-Generation',String(resolution.generation));

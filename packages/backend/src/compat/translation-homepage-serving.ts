@@ -24,6 +24,24 @@ export async function localizedListRequest(db:DbRunner,tenant:string,path:string
     const release=published.find(item=>item.release.locale===locale.release.locale&&item.release.path===stripped)?.release;
     return {locale:locale.release.locale,path:stripped,...(release?{catalog:release.catalog}:{})};
 }
+/** Sitemap locale entries: one per fresh released (locale,path), evaluated by the SAME rule as
+ *  page serving (the availability walk in resolveHomepageLanguageRequest) — a release whose site
+ *  re-published (siteHash), whose page drifted (sourceHash), or whose page vanished serves no
+ *  localized URL, so it must acquire no false SEO. Bounded by the 16-release pointer cap; one
+ *  source capture per distinct path, memoized. */
+export async function sitemapLocaleEntries(db:DbRunner,tenant:string,request:Request,activePointer:{hash:string},liveQuery?:PublishedLiveQuery):Promise<{locale:string;path:string}[]>{
+    const published=await publishedHomepageLocales(db,tenant),captures=new Map<string,Awaited<ReturnType<typeof captureHomepage>>|null>();
+    const captureFor=async(p:string)=>{if(!captures.has(p))captures.set(p,await captureHomepage(db,tenant,request,liveQuery,p).catch(()=>null));return captures.get(p)!;};
+    const entries:{locale:string;path:string}[]=[];
+    for(const {release} of published){
+        if(entries.some(entry=>entry.locale===release.locale&&entry.path===release.path))continue;
+        if(release.policy?.outdated==='source-fallback'){if(await captureFor(release.path))entries.push({locale:release.locale,path:release.path});continue;}
+        if(release.siteHash!==activePointer.hash)continue;
+        const capture=await captureFor(release.path);
+        if(capture&&release.sourceHash===capture.sourceHash)entries.push({locale:release.locale,path:release.path});
+    }
+    return entries;
+}
 export function addHomepageLanguageLinks(input:PageLayoutData,sourceLocale:string,locales:string[],current:string,sourcePath='/',origins:string[]=[]):PageLayoutData{
     // The switcher refuses more than 16 links (whole-page 503): cap the locale entries so a
     // pointer-capped site can never trip it. Published locales are themselves bounded at 16.
@@ -114,6 +132,8 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     // keep the source locale's lang/dir so untranslated bodies never claim the page language.
     const contentLocale=pageRelease||isHomepage&&selected?current:sourceLocale;
     resolved.document={...resolved.document,language:contentLocale,direction:/^(ar|fa|he|ur)(-|$)/.test(contentLocale)?'rtl':'ltr',canonicalUrl:canonical.href,alternates,
-        openGraph:{title:resolved.page.title,description:resolved.page.description,url:canonical.href,type:'website',siteName:resolved.document.openGraph?.siteName??''}};
+        // SEO GAP-2: merge, never replace — the source document's image/imageAlt/type (and any
+        // future keys) survive the localized serve; only identity fields are overridden.
+        openGraph:{...resolved.document.openGraph,title:resolved.page.title,description:resolved.page.description,url:canonical.href,siteName:resolved.document.openGraph?.siteName??'',type:resolved.document.openGraph?.type??'website'}};
     return {kind:'page' as const,resolved,siteHash:capture.active.pointer.hash,generation:capture.active.pointer.generation,releaseHash:selected?.pointer.hash??null,locale:current,contentLocale};
 }

@@ -179,6 +179,14 @@ try {
     // Deactivating the release must not break hydration on the prefixed URL: the fallback list
     // fetch strips the locale prefix and walks the source registry with source semantics. A fresh
     // homepage release keeps the strict locale tree available so the shell still serves.
+    // Slice-C measurement (task 9): a released localized listing serve renders the source capture
+    // once for the availability walk beside the localized capture (both memoized per request), so
+    // its cost class is the source serve plus one extra capture — dominated by the same per-chunk
+    // validation the capacity section measures. Printed timings with a generous fence only.
+    const timed = async path => { const start = performance.now(); for (let i = 0; i < 3; i++) assert.equal((await html(path)).status, 200); return Math.round(performance.now() - start) / 3; };
+    const sourceServeMs = await timed('/explore/'), localizedServeMs = await timed('/ar/explore/');
+    assert.ok(localizedServeMs < 5000, 'the localized listing serve stays in the source cost class');
+    console.log(`localized listing serve ${localizedServeMs}ms vs source ${sourceServeMs}ms (mean of 3; the delta is the bounded per-request availability capture)`);
     const explorePointer = (await call('locales/')).locales.find(item => item.path === '/explore/');
     await call('deactivate/', { locale: 'ar', path: '/explore/', expected: { hash: explorePointer.hash, generation: explorePointer.generation } });
     await saveAll(await call('review/?locale=ar'), '/');
