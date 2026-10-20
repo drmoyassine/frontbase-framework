@@ -5,7 +5,7 @@ import { translationPagePreviewSchema, translationPageSaveSchema } from '@frontb
 import { TranslationLifecycle, localeSchema, translationUnitId, messageSourceFingerprint, translationContextFingerprint } from '@frontbase/edge-core/localization';
 import { configuredTranslationStorage, configuredTranslationStorageIdentity } from './translation-storage.js';
 import { TranslationGenerationStore } from './translation-generation.js';
-import { extractTranslationPageInput, TRANSLATION_PAGE_FIELDS, type TranslationBatchHost } from './translation-batches.js';
+import { extractTranslationPageInput, extractTranslationPageVersionInput, translationPageCandidates, type TranslationBatchHost } from './translation-batches.js';
 import { translationInputHash, translationPlainText } from './translation-inputs.js';
 import type { VersionedBlock } from '@frontbase/edge-core/block-versions';
 
@@ -28,7 +28,8 @@ async function pageSession(host: TranslationBatchHost, db: DbRunner, tenant: str
 }
 type Session = Awaited<ReturnType<typeof pageSession>>;
 async function field(host: TranslationBatchHost, tenant: string, session: Session, selection: z.infer<typeof translationPageSaveSchema>['selection']) {
-    const input = await extractTranslationPageInput(host, tenant, selection, session.pin, session);
+    const input = selection.versionId ? await extractTranslationPageVersionInput(host, tenant, selection, session.pin, session)
+        : await extractTranslationPageInput(host, tenant, selection, session.pin, session);
     const unitId = await translationUnitId(session.scope, input.unit.resource);
     const snapshot = await session.persistence.read(session.scope, unitId, session.locale);
     const fingerprint = await messageSourceFingerprint(input.unit), contextFingerprint = await translationContextFingerprint(input.context);
@@ -41,17 +42,13 @@ async function field(host: TranslationBatchHost, tenant: string, session: Sessio
         provenance: head?.provenance ?? null, revisionId: head?.revisionId ?? null, token } };
 }
 export async function translationPagePreview(host: TranslationBatchHost, db: DbRunner, tenant: string, pageId: string, locale: string) {
-    const session = await pageSession(host, db, tenant, pageId, locale), selections: z.infer<typeof translationPageSaveSchema>['selection'][] = [];
-    const visit = (nodes: VersionedBlock[]) => { for (const node of nodes) {
-        const name = TRANSLATION_PAGE_FIELDS[node.type]?.find(name => !!node.props?.[name]);
-        if (name) selections.push({ pageId, blockId: node.id, field: name as 'content'|'text'|'value' });
-        if (selections.length > 100) throw Error('translation_preview_limit');
-        if (node.children) visit(node.children);
-    } }; visit(session.nodes);
+    const session = await pageSession(host, db, tenant, pageId, locale);
+    const selections = translationPageCandidates(pageId, session.nodes);
     const fields = [];
     for (const selection of selections) {
         // Eligibility failures are separate from transport failures: a failed store read must fail the preview.
-        try { await extractTranslationPageInput(host, tenant, selection, session.pin, session); } catch { continue; }
+        try { if (selection.versionId) await extractTranslationPageVersionInput(host, tenant, selection, session.pin, session);
+            else await extractTranslationPageInput(host, tenant, selection, session.pin, session); } catch { continue; }
         fields.push((await field(host, tenant, session, selection)).value);
     }
     const latest = await pageSession(host, db, tenant, pageId, locale);

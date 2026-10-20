@@ -64,14 +64,17 @@ export const batchRetryReviewSchema = batchReviewSchema.extend({ sourceBatchId: 
         return v.excluded.every(item => !taken.has(JSON.stringify(item.selection)))
             && new Set(v.excluded.map(item => JSON.stringify(item.selection))).size === v.excluded.length; }, 'Each selection appears exactly once');
 
-/** Private saved-page authoring; no job or provider authority. */
-export const translationPageFieldSchema = z.object({ selection: batchPageSelectionSchema, source: z.string().max(4000),
+/** Private saved-page authoring; no job or provider authority. A selection may name a Block Version
+ *  alternative; absent versionId keeps Default identity and serializes exactly as before. The batch
+ *  engine's own selection union stays Default-only: it extracts base layouts exclusively. */
+export const translationPageSelectionSchema = batchPageSelectionSchema.extend({ versionId: id.optional() }).strict();
+export const translationPageFieldSchema = z.object({ selection: translationPageSelectionSchema, source: z.string().max(4000),
     translation: z.string().max(4000).nullable(), state: z.enum(['missing','draft','outdated']),
     provenance: z.enum(['ai','manual','import']).nullable(), revisionId: id.nullable(), token: hash }).strict();
 export const translationPagePreviewSchema = z.object({ pageId: id, pageHash: hash, locale: localeSchema, sourceLocale: localeSchema,
     targetLocales: z.array(localeSchema).max(16), layout: z.object({ content: z.array(z.unknown()).max(10000), root: z.record(z.unknown()) }).passthrough(), fields: z.array(translationPageFieldSchema).max(100),
     draftOnly: z.literal(true) }).strict();
-export const translationPageSaveSchema = z.object({ selection: batchPageSelectionSchema, locale: localeSchema,
+export const translationPageSaveSchema = z.object({ selection: translationPageSelectionSchema, locale: localeSchema,
     token: hash, text: z.string().min(1).max(4000) }).strict();
 
 /** Complete rendered Homepage review; the server owns source/layout/query selection. */

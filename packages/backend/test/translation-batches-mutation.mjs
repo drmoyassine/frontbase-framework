@@ -43,8 +43,9 @@ green();
 try{
  for(const [name,file,before,after] of faults){
   const raw=originals.get(file),normal=raw.replaceAll('\r\n','\n');
-  // The host execution gate deliberately appears on both start and continue.
-  assert.equal(normal.split(before).length,['explicit execution gate','menu configuration pin'].includes(name)?3:2,name+' anchor');
+  // The host execution gate deliberately appears on both start and continue; the owned-source lookup
+  // and bound-subtree refusal fences appear in BOTH page extractors (Default and Block Version).
+  assert.equal(normal.split(before).length,['explicit execution gate','menu configuration pin','owned source lookup','bound subtree refusal'].includes(name)?3:2,name+' anchor');
   try{
    const changed=normal.replaceAll(before,after);writeFileSync(repoRoot+file,changed);
    const output=ts.transpileModule(changed,{fileName:file,reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,verbatimModuleSyntax:true}});

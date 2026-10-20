@@ -1,7 +1,7 @@
 /** Bounded native page review/orchestration. Jobs and accounting remain authoritative in the existing engine. */
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
-import { validateBlockVersions, type VersionedBlock } from '@frontbase/edge-core/block-versions';
+import { validateBlockVersions, applyBlockVersion, type VersionedBlock } from '@frontbase/edge-core/block-versions';
 import { TranslationLifecycle, localeSchema, translationJobIntentSchema, translationUnitId, messageSourceFingerprint,
     translationContextFingerprint, type MessageUnit, type TranslationContext } from '@frontbase/edge-core/localization';
 import { currentTranslationHostPin, translationHostPinSchema, prepareTranslationAllowance, configuredTranslationAllowanceRunner,
@@ -11,7 +11,7 @@ import { translationMessages, type GenerationHost } from './translation-generati
 import type { PagesStore, CompatPageRow } from './pages-store.js';
 import { translationInputHash, translationPlainText, extractMenuInput, extractRecordInput, extractViewRecordInput, TranslationInputChanged, type TranslationViewHost } from './translation-inputs.js';
 import { batchSelectionSchema as selectionSchema, batchPageSelectionSchema, batchLimitsSchema as limitsSchema, batchPlanInputSchema,
-    batchReviewSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema, batchRetryReviewSchema } from '@frontbase/edge-core/localization/batches';
+    batchReviewSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema, batchRetryReviewSchema, translationPageSelectionSchema } from '@frontbase/edge-core/localization/batches';
 
 const id = z.string().min(1).max(160), hash = z.string().regex(/^[a-f0-9]{64}$/), uuid = z.string().uuid();
 export const translationBatchPlanSchema = batchPlanInputSchema;
@@ -102,6 +102,79 @@ export async function extractTranslationPageInput(host: Pick<TranslationBatchHos
     const text = translationPlainText(props[selection.field]);
     const unit: MessageUnit = { version: 1, scope: pin.storage.scope, resource: { kind: 'component', documentId: page.id, blockId: node.id,
         versionId: 'default', propertyPath: ['props', selection.field] }, sourceLocale: pin.generation.sourceLocale,
+        format: 'plain', text, segmenterVersion: 1, placeholders: [] };
+    const context: TranslationContext = { version: 1, role: node.type, resourceLabel: ('Page ' + page.name + ' / ' + selection.field).slice(0, 200) };
+    return { unit, context, pageHash: loaded?.pageHash ?? await digest({ layout: page.layout_data, name: page.name }) };
+}
+/** Enumerate private-authoring page selections: Default fields plus true Block Version overrides.
+ *  An alternative field textually equal to its Default counterpart shares the Default unit and is
+ *  never listed separately; bound text and bound alternatives stay excluded. */
+export function translationPageCandidates(pageId: string, nodes: VersionedBlock[]): z.infer<typeof translationPageSelectionSchema>[] {
+    validateBlockVersions(nodes);
+    const out: z.infer<typeof translationPageSelectionSchema>[] = [];
+    const boundOf = (node: VersionedBlock, inherited: boolean) => inherited || !!node.binding || !!node.props?.binding || !!node.props?.dataBinding || boundTypes.has(node.type);
+    const firstField = (node: VersionedBlock) => TRANSLATION_PAGE_FIELDS[node.type]?.find(name => !!node.props?.[name]);
+    const visit = (list: VersionedBlock[], inherited: boolean, owner?: string) => { for (const node of list) {
+        const bound = boundOf(node, inherited);
+        if (!bound) {
+            const name = firstField(node);
+            // Override children are version-owned: their selections carry the owning version.
+            if (name) out.push(translationPageSelectionSchema.parse(owner ? { pageId, blockId: node.id, field: name, versionId: owner }
+                : { pageId, blockId: node.id, field: name }));
+            for (const version of node.versions ?? []) {
+                const effective = applyBlockVersion(node, version.id);
+                const alt = boundOf(effective, inherited) ? undefined : firstField(effective);
+                if (alt && node.props?.[alt] !== effective.props?.[alt])
+                    out.push(translationPageSelectionSchema.parse({ pageId, blockId: node.id, field: alt, versionId: version.id }));
+            }
+        }
+        if (out.length > 100) throw Error('translation_preview_limit');
+        if (node.children) visit(node.children, bound, owner);
+        for (const version of node.versions ?? []) if (version.overrides.children) visit(applyBlockVersion(node, version.id).children!, bound, version.id);
+    } };
+    visit(nodes, false);
+    return out;
+}
+const versionIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/).refine(v => v !== 'default');
+/** Version-aware extraction for private visual authoring: resolves the effective shape of a Block
+ *  Version alternative — a node-level override or an override-owned child. Eligibility is identical
+ *  to the Default extractor; the unit resource carries the version so identity stays distinct, and a
+ *  field textually equal to its Default counterpart is refused there (it shares the Default unit). */
+export async function extractTranslationPageVersionInput(host: Pick<TranslationBatchHost, 'pagesFor'>, tenant: string,
+    selection: z.infer<typeof translationPageSelectionSchema>,
+    pin: { storage: { scope: MessageUnit['scope'] }; generation: { sourceLocale: string } },
+    loaded?: { page: CompatPageRow; nodes: VersionedBlock[]; pageHash: string }) {
+    if (!selection.versionId) throw Error();
+    versionIdSchema.parse(selection.versionId);
+    const page = loaded?.page ?? await host.pagesFor(tenant).get(selection.pageId);
+    if (!page || page.deleted_at || page.layout_data.length > 1_000_000) throw Error();
+    const nodes = loaded?.nodes ?? JSON.parse(page.layout_data).content as VersionedBlock[];
+    validateBlockVersions(nodes);
+    let found: VersionedBlock | undefined, blocked = false, ownerVersion: string | undefined;
+    const visit = (list: VersionedBlock[], inherited: boolean, insideOverride?: string) => { for (const node of list) {
+        if (found) return;
+        const bound = inherited || !!node.binding || !!node.props?.binding || !!node.props?.dataBinding || boundTypes.has(node.type);
+        if (node.id === selection.blockId) { found = node; blocked = bound; ownerVersion = insideOverride; }
+        if (node.children) visit(node.children, bound, insideOverride);
+        for (const version of node.versions ?? []) {
+            if (found || !version.overrides.children) continue;
+            visit(applyBlockVersion(node, version.id).children!, bound, version.id);
+        }
+    } };
+    visit(nodes, false);
+    if (!found || blocked) throw Error();
+    let node = found as VersionedBlock;
+    if (ownerVersion === undefined) {
+        if (!node.versions?.some(item => item.id === selection.versionId)) throw Error();
+        const baseText = node.props?.[selection.field];
+        node = applyBlockVersion(node, selection.versionId!);
+        if ((node.props ?? {})[selection.field] === baseText) throw Error();
+    } else if (ownerVersion !== selection.versionId) throw Error();
+    const props = node.props ?? {}, fields = TRANSLATION_PAGE_FIELDS[node.type];
+    if (!fields || fields.find(field => !!props[field]) !== selection.field || props.binding || props.dataBinding) throw Error();
+    const text = translationPlainText(props[selection.field]);
+    const unit: MessageUnit = { version: 1, scope: pin.storage.scope, resource: { kind: 'component', documentId: page.id,
+        blockId: found.id, versionId: selection.versionId, propertyPath: ['props', selection.field] }, sourceLocale: pin.generation.sourceLocale,
         format: 'plain', text, segmenterVersion: 1, placeholders: [] };
     const context: TranslationContext = { version: 1, role: node.type, resourceLabel: ('Page ' + page.name + ' / ' + selection.field).slice(0, 200) };
     return { unit, context, pageHash: loaded?.pageHash ?? await digest({ layout: page.layout_data, name: page.name }) };

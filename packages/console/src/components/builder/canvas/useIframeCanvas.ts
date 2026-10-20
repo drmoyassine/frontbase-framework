@@ -56,7 +56,8 @@ export interface UseIframeCanvasResult {
 
 const DEBOUNCE_MS = 120;
 
-export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly = false): UseIframeCanvasResult {
+export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly = false,
+    force?: Readonly<Record<string, string>>): UseIframeCanvasResult {
     const selectedId=useBuilderStore(state=>state.selectedComponentId);
     const editingVersions=useBuilderStore(state=>state.editingVersions);
     const previewConditions=useBuilderStore(state=>state.previewVersionConditions);
@@ -81,7 +82,7 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly 
             setError(null);
 
             const body = buildReRenderRequest(page);
-            if (defaultOnly || !previewConditions) body.layout = { ...body.layout, content: resolveBlockTree(body.layout.content, () => undefined, defaultOnly ? {} : editingVersions) as typeof body.layout.content };
+            if (defaultOnly || !previewConditions) body.layout = { ...body.layout, content: resolveBlockTree(body.layout.content, () => undefined, defaultOnly ? (force ?? {}) : editingVersions) as typeof body.layout.content };
             if (page.layoutData?.root.siteConfiguration !== undefined || page.layoutData?.root.directoryLanding!==undefined) {
                 try {
                     if(page.layoutData.root.siteConfiguration!==undefined)sitePageReferenceSchema.parse(page.layoutData.root.siteConfiguration);
@@ -174,6 +175,7 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly 
         // participates in shared menu reference validation.
     }, [
         defaultOnly,
+        force,
         page.layoutData,
         page.id,
         page.isHomepage,

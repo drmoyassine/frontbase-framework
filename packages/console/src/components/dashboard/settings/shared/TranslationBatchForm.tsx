@@ -19,8 +19,10 @@ async function get<S extends z.ZodTypeAny>(path: string, schema: S, body?: unkno
     if (!response.ok) throw Error();
     return schema.parse(await response.json());
 }
-/** Explicit review and bounded continuation; never auto-starts, polls into execution, or caches source text. */
-export function TranslationBatchForm() {
+/** Explicit review and bounded continuation; never auto-starts, polls into execution, or caches source text.
+ *  Optional hand-off from a translation workspace: `initialPageId` opens that page's eligible text and
+ *  `initialSelections` preselects matching items once. Both are advisory — the reviewed approval flow is unchanged. */
+export function TranslationBatchForm({ initialPageId, initialSelections }: { initialPageId?: string; initialSelections?: unknown[] } = {}) {
     const [cap, setCap] = useState<z.infer<typeof batchCapabilitiesSchema>>();
     const [pages, setPages] = useState<z.infer<typeof batchPagesSchema>>(), [history, setHistory] = useState<z.infer<typeof batchHistorySchema>>();
     const [fields, setFields] = useState<z.infer<typeof batchFieldsSchema>>(), [selected, setSelected] = useState<Item[]>([]);
@@ -34,6 +36,7 @@ export function TranslationBatchForm() {
     const [approved, setApproved] = useState(false), [acknowledged, setAcknowledged] = useState(false);
     const [busy, setBusy] = useState(false), [blocked, setBlocked] = useState(true), [message, setMessage] = useState('');
     const lock = useRef(false), epoch = useRef(0);
+    const wanted = useRef(new Set((initialSelections ?? []).map(item => JSON.stringify(item)))), bootPage = useRef(initialPageId ?? '');
     async function work(action: () => Promise<void>, failure: string) {
         if (lock.current) return;
         lock.current = true; setBusy(true); setMessage(''); const current = epoch.current;
@@ -55,6 +58,15 @@ export function TranslationBatchForm() {
             setTarget(ai.configuration?.targetLocales[0] ?? ''); setPage(''); setFields(undefined); setSelected([]);
             setSourceKind('page'); setMenu(''); setMenus(undefined); setMenuFields(undefined); setDatasources(undefined); setRecordField(undefined); setDatasource(''); setViews(undefined); setView('');
             setReview(undefined); setStatus(undefined); setRetryPlan(undefined); setApproved(false); setAcknowledged(false); setBlocked(false);
+            // Workspace hand-off inside the same locked action: open the carried page and preselect once.
+            if (bootPage.current) { const id = bootPage.current; bootPage.current = '';
+                try { const next = await get('sources/' + encodeURIComponent(id) + '/', batchFieldsSchema);
+                    if (current !== epoch.current) return;
+                    setPage(id); setFields(next);
+                    const matches = wanted.current.size ? next.items.filter(item => wanted.current.has(identity(item))) : [];
+                    if (matches.length) { setSelected(matches.slice(0, 4)); wanted.current.clear(); }
+                } catch { /* The hand-off is advisory: the administrator can still pick the page manually. */ }
+            }
         }, 'Could not load batch controls. Check saved AI/storage settings and reload.');
     }
     useEffect(() => { void load(); return () => { epoch.current++; lock.current = false; }; }, []);
@@ -78,7 +90,11 @@ export function TranslationBatchForm() {
         setPage(value); setFields(undefined);
         if (!value) return;
         await work(async () => { const current = epoch.current, next = await get('sources/' + encodeURIComponent(value) + '/', batchFieldsSchema);
-            if (current === epoch.current) { setFields(next); setBlocked(false); }
+            if (current === epoch.current) { setFields(next); setBlocked(false);
+                const matches = wanted.current.size ? next.items.filter(item => wanted.current.has(identity(item))) : [];
+                if (matches.length) { setSelected(previous => [...previous,
+                    ...matches.filter(item => !previous.some(p => identity(p) === identity(item)))].slice(0, 4)); wanted.current.clear(); }
+            }
         }, 'Could not load eligible text. Check saved settings, then reload.');
     }
     async function open(id: string) {
