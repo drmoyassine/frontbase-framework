@@ -26,3 +26,9 @@ packages/backend/test/.gate-out*.txt
 
 # Local deployment identities and journals
 .frontbase/
+
+# Local deployment links and provider files
+.vercel/
+
+.vercel
+.env*

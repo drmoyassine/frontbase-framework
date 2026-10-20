@@ -20,12 +20,14 @@ try {
     console.log('PASS accept: Node handler and committed Vercel array routing');
     refused('legacy Node req/res export', () => { for(const p of paths.slice(0,2))writeFileSync(join(root,p),bundle.replace('export default { fetch() {} }','export default function handler() {}')); });
     refused('Edge runtime export', () => { for (const p of paths.slice(0,2)) writeFileSync(join(root,p), bundle + ';export const config = {runtime:"edge"};'); });
+    refused('platform slash removal loops with backend canonical API routes',()=>writeFileSync(join(root,'vercel.json'),JSON.stringify({...config,trailingSlash:false})));
     refused('obsolete phased rewrites', () => writeFileSync(join(root,'vercel.json'), JSON.stringify({...config,rewrites:{fallback:config.rewrites}})));
     refused('branding route shadow', () => { const r=structuredClone(config);r.rewrites[1].source='/static/assets/:file*';writeFileSync(join(root,'vercel.json'),JSON.stringify(r)); });
     refused('catch-all before assets', () => { const r=structuredClone(config);r.rewrites.reverse();writeFileSync(join(root,'vercel.json'),JSON.stringify(r)); });
     refused('missing hydration asset', () => rmSync(join(root,paths[3])));
     refused('stale uploaded API bytes', () => writeFileSync(join(root,paths[1]),'stale'));
     refused('native libSQL dependency', () => { for(const p of paths.slice(0,2))writeFileSync(join(root,p),bundle+';/* @libsql/win32-x64-msvc */'); });
+    refused('extra stale API function',()=>writeFileSync(join(root,'api','stale.mjs'),bundle));rmSync(join(root,'api','stale.mjs'));
     const env=deploymentEnvironment({SETUP_TOKEN:'fixture-capability',SETUP_EXPIRES_AT:'2026-10-20T00:30:00Z',SESSION_SECRET:'fixture-secret',UNRELATED_SECRET:'must-not-upload',APP_DB_URL:'',ADMIN_EMAIL:undefined});
     assert.deepEqual(Object.keys(env).sort(), ['SESSION_SECRET','SETUP_EXPIRES_AT','SETUP_TOKEN']);
     assert.equal(env.SETUP_EXPIRES_AT,'2026-10-20T00:30:00Z');

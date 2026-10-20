@@ -19,7 +19,8 @@ export function reuseManifest(receipt) {
 }
 export function managedExecutionIssues(manifest,context,intent,receipt) {
  if(intent==='create')return cloudflareExecutionIssues(manifest,context);
- return receipt && isDeepStrictEqual(manifest,reuseManifest(receipt))?[]:[{code:'managed_binding_change_requires_migration'}];
+ const comparable=input=>{const value=structuredClone(input);for(const b of Object.values(value.bindings))if(b.mode==='disabled'){b.config={};b.secretRefs={};delete b.resourceRef;}return value;};
+ return receipt && isDeepStrictEqual(comparable(manifest),comparable(reuseManifest(receipt)))?[]:[{code:'managed_binding_change_requires_migration'}];
 }
 function compareResources(expected,actual,{allowMissingCreated=false}={}) {
  const copy=structuredClone(actual);

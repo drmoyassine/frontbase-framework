@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import {executeManagedVercel,readVercelReceipt} from './deployment-setup/vercel-receipt.mjs';
+import {discoverVercelResources,assertVercelProfileContext,vercelExecutionCapabilities,vercelExecutionIssues} from './deployment-setup/vercel.mjs';
+import {readDeploymentProposal} from './deployment-setup/proposal.mjs';
 import { receiptPath, readReceipt } from './deployment-setup/receipt.mjs';
 import { executeManagedCloudflare, managedExecutionIssues, reuseManifest } from './deployment-setup/cloudflare-lifecycle.mjs';
 import { pathToFileURL } from 'node:url';
@@ -6,15 +9,25 @@ import { defaultDeploymentManifest } from '../packages/edge-core/dist/deployment
 import { assertCloudflareExecutionContext, cloudflareExecutionCapabilities, fingerprintCloudflareArtifacts } from './deployment-setup/cloudflare.mjs';
 import { startDeploymentSetup } from './deployment-setup/server.mjs';
 export async function deploymentSetupCommand(args) {
-    if(args.includes('--help')){console.log('Usage: pnpm run deploy:setup -- --target cloudflare|vercel [--environment preview|production] [--deploy --app-name NAME --account-id ACCOUNT_ID --intent create|redeploy|resume]');return;}
+    if(args.includes('--help')){console.log('Usage: pnpm run deploy:setup -- --target cloudflare|vercel [--environment preview|production] [--manifest PATH] [--deploy --intent create|redeploy] [Cloudflare: --app-name NAME --account-id ACCOUNT_ID] [Vercel: --project NAME --scope TEAM_ID]');return;}
     const flags=args.filter(value=>value!=='--deploy');
     if(args.filter(value=>value==='--deploy').length>1)throw new Error('invalid_setup_options');
-    for(let index=0;index<flags.length;index+=2)if(!['--target','--environment','--app-name','--account-id','--intent'].includes(flags[index]) || !flags[index+1] || flags[index+1].startsWith('--'))throw new Error('invalid_setup_options');
-    for(const name of ['--target','--environment','--app-name','--account-id','--intent'])if(flags.filter(value=>value===name).length>1)throw new Error('invalid_setup_options');
+    for(let index=0;index<flags.length;index+=2)if(!['--target','--environment','--app-name','--account-id','--intent','--manifest','--project','--scope'].includes(flags[index]) || !flags[index+1] || flags[index+1].startsWith('--'))throw new Error('invalid_setup_options');
+    for(const name of ['--target','--environment','--app-name','--account-id','--intent','--manifest','--project','--scope'])if(flags.filter(value=>value===name).length>1)throw new Error('invalid_setup_options');
     const option=name=>{const index=flags.indexOf(name);return index<0?undefined:flags[index+1];};
     const target=option('--target')??'cloudflare';const environment=option('--environment')??'preview';
-    let execution={};
+    const proposal=option('--manifest')?readDeploymentProposal(option('--manifest'),{target,environment}):undefined;
+    let execution=proposal?{initialManifest:proposal}:{};
     if(args.includes('--deploy')) {
+        if(target==='vercel') {
+        const context={project:option('--project'),scope:option('--scope'),environment,intent:option('--intent')??'create'};assertVercelProfileContext(context);
+        const prior=readVercelReceipt(process.cwd(),context);
+        if(context.intent==='create'&&prior)throw Error('vercel_receipt_already_exists');
+        if(context.intent==='redeploy'&&!prior)throw Error('vercel_receipt_required');
+        const resources=discoverVercelResources(context),initialManifest=proposal??prior?.manifest??defaultDeploymentManifest(target,environment);
+        if(!proposal&&!prior&&resources.length===1)initialManifest.bindings['state-db']={adapterId:'turso-marketplace',mode:'reuse',resourceRef:resources[0].id,config:{},secretRefs:{}};
+        execution={initialManifest,resourceOptions:{'turso-marketplace':resources},executionCapabilities:vercelExecutionCapabilities,executionInfo:'Team '+context.scope+' / Project '+context.project+' / '+(context.intent==='create'?'first installation':'preserve recorded bindings and secrets'),executionIssues:m=>vercelExecutionIssues(m,context),onDeploy:p=>executeManagedVercel(p,context,{onSetupLink:link=>console.log('Private first-administrator setup link: '+link.url)})};
+        } else {
         if(target!=='cloudflare')throw new Error('execution_target_not_supported');
         const context={appName:option('--app-name'),accountId:option('--account-id'),environment,artifactHash:fingerprintCloudflareArtifacts()};
         assertCloudflareExecutionContext(context);
@@ -23,17 +36,18 @@ export async function deploymentSetupCommand(args) {
         console.log('Local deployment journal: '+receiptPath(process.cwd(),context));
         if(intent==='create' && prior)throw new Error('managed_receipt_already_exists');
         if(intent!=='create' && !prior)throw new Error('managed_receipt_required');
-        const initialManifest=intent==='create'?defaultDeploymentManifest(target,environment):reuseManifest(prior);
-        initialManifest.bindings['state-db'].config.resourceName=`${context.appName}-db`;
-        initialManifest.bindings.cache.config.resourceName=`${context.appName}-cache`;
-        initialManifest.bindings.storage.config.resourceName=`${context.appName}-storage`;
+        const initialManifest=proposal??(intent==='create'?defaultDeploymentManifest(target,environment):reuseManifest(prior));
+        if(!proposal)initialManifest.bindings['state-db'].config.resourceName=`${context.appName}-db`;
+        if(!proposal)initialManifest.bindings.cache.config.resourceName=`${context.appName}-cache`;
+        if(!proposal)initialManifest.bindings.storage.config.resourceName=`${context.appName}-storage`;
         const executionCapabilities=intent==='create'?cloudflareExecutionCapabilities:{adapters:{'cloudflare-d1':['reuse'],'cloudflare-kv':['reuse'],'cloudflare-r2':['reuse']}};
         execution={initialManifest,executionCapabilities,executionInfo:`Account ${context.accountId} / Worker ${context.appName} / ${intent==='create'?'new managed installation':intent==='redeploy'?'reuse recorded bindings; preserve secrets':'verify the previous completed upload; no provider mutation'}`,executionIssues:manifest=>managedExecutionIssues(manifest,context,intent,prior),onDeploy:prepared=>executeManagedCloudflare(prepared,context,{
             intent,root:process.cwd(),
             onSetupLink:link=>{console.log('Private first-administrator setup link:');console.log(link.url);},
             onReceipt:receipt=>console.log(`Durable deployment receipt: ${receipt.path}`),
         })};
-    } else if(option('--app-name') || option('--account-id') || option('--intent'))throw new Error('deployment_flag_required');
+        }
+    } else if(option('--project') || option('--scope') || option('--app-name') || option('--account-id') || option('--intent'))throw new Error('deployment_flag_required');
     const app=await startDeploymentSetup({target,environment,...execution,onReview:({operations})=>console.log(`Validated ${operations.length} binding(s). No provisioning or deployment performed.`)});
     console.log('Open the private local setup link (expires in 15 minutes):');
     console.log(app.url);

@@ -109,8 +109,9 @@ export function describeStateDb(input: {
     host: StateDbHost;
 }): StateDbChoice {
     const { env, d1Binding, hyperdriveBinding, host } = input;
-    const url = env.APP_DB_URL?.trim() || undefined;
-    const token = env.APP_DB_AUTH_TOKEN?.trim() || undefined;
+    const marketplaceSelected=host==='vercel'&&!env.APP_DB_URL&&!env.APP_DB_AUTH_TOKEN&&!env.APP_DB_D1_ACCOUNT_ID&&!env.APP_DB_D1_DATABASE_ID&&!env.CLOUDFLARE_API_TOKEN;
+    const url = env.APP_DB_URL?.trim() || (marketplaceSelected?env.TURSO_DATABASE_URL?.trim():undefined) || undefined;
+    const token = env.APP_DB_AUTH_TOKEN?.trim() || (marketplaceSelected?env.TURSO_AUTH_TOKEN?.trim():undefined) || undefined;
     const accountId = env.APP_DB_D1_ACCOUNT_ID?.trim() || undefined;
     const databaseId = env.APP_DB_D1_DATABASE_ID?.trim() || undefined;
     const apiToken = env.CLOUDFLARE_API_TOKEN?.trim() || undefined;

@@ -19,7 +19,7 @@ function sessionCookie(req,name) {
 }
 
 /** Local trusted-process bridge only. No DB, remote transport, provisioner or persistent secret store. */
-export async function startDeploymentSetup({ target='cloudflare', environment='preview', ttlMs=15*60_000, now=Date.now, onReview=()=>{}, initialManifest, executionInfo, executionCapabilities, executionIssues=()=>[], onDeploy }={}) {
+export async function startDeploymentSetup({ target='cloudflare', environment='preview', ttlMs=15*60_000, now=Date.now, onReview=()=>{}, initialManifest, resourceOptions, executionInfo, executionCapabilities, executionIssues=()=>[], onDeploy }={}) {
     if (!['cloudflare','vercel'].includes(target) || !['preview','production'].includes(environment)) throw new Error('invalid_deployment_target');
     if (!Number.isFinite(ttlMs) || ttlMs<1 || ttlMs>30*60_000) throw new Error('invalid_setup_lifetime');
     const bindingAssets=buildBindingsAssets();
@@ -65,7 +65,7 @@ export async function startDeploymentSetup({ target='cloudflare', environment='p
                 return reply(200,{ok:true},{'set-cookie':`${cookieName}=${session}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.max(1,Math.floor((expires-now())/1000))}`});
             }
             if(!session || !equal(sessionCookie(req,cookieName),session))return reply(401,{error:'setup_session_required'});
-            if(req.method==='GET' && req.url==='/api/bootstrap')return reply(200,{manifest:prepared?.manifest??executedManifest??defaults,adapters:deploymentAdapters,deploymentEnabled:typeof onDeploy==='function',executionInfo:typeof onDeploy==='function'?executionInfo:undefined,executionCapabilities:typeof onDeploy==='function'?executionCapabilities:undefined,executionStatus,executionUrl,expiresAt:new Date(expires).toISOString()});
+            if(req.method==='GET' && req.url==='/api/bootstrap')return reply(200,{manifest:prepared?.manifest??executedManifest??defaults,adapters:deploymentAdapters,resourceOptions,deploymentEnabled:typeof onDeploy==='function',executionInfo:typeof onDeploy==='function'?executionInfo:undefined,executionCapabilities:typeof onDeploy==='function'?executionCapabilities:undefined,executionStatus,executionUrl,expiresAt:new Date(expires).toISOString()});
             if(req.method==='POST' && req.url==='/api/prepare') {
                 if(attempted)return reply(409,{error:'deployment_already_attempted'});
                 reviewId=undefined;prepared=undefined;const requestRevision=++revision;

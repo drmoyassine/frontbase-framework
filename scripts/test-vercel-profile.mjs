@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {executeVercelProfile,vercelExecutionIssues,discoverVercelResources} from './deployment-setup/vercel.mjs';
+import {defaultDeploymentManifest} from '../packages/edge-core/dist/deployment.js';
+const context={scope:'team_test',project:'profile-test',environment:'preview'},manifest=defaultDeploymentManifest('vercel');manifest.bindings['state-db']={adapterId:'turso-marketplace',mode:'reuse',resourceRef:'store_test',config:{},secretRefs:{}};
+let calls=[],setup;
+const out=await executeVercelProfile({manifest,credentials:{}},context,{onSetupLink:v=>setup=v,run:async(args,input)=>{calls.push({args,input});return {code:0,stdout:'✓ deployed to https://profile-test-test.vercel.app\nhttps://profile-test-test.vercel.app/setup#/setup?claim=synthetic-private'};}});
+assert.equal(out.url,'https://profile-test-test.vercel.app');assert.ok(!JSON.stringify(out).includes('synthetic-private'));assert.ok(setup.url.includes('synthetic-private'));assert.ok(calls[0].args.includes('preview'));assert.ok(!calls[0].args.includes('synthetic-private'));
+assert.deepEqual(vercelExecutionIssues(manifest,context),[]);assert.equal(vercelExecutionIssues({...manifest,target:'cloudflare'},context)[0].code,'execution_target_mismatch');
+await assert.rejects(executeVercelProfile({manifest,credentials:{}},{...context,scope:'other'}, {run:()=>{throw Error('must not call');}}));
+await assert.rejects(executeVercelProfile({manifest,credentials:{}},context,{run:async()=>({code:1,stdout:'synthetic-private'})}),e=>!e.message.includes('synthetic-private'));
+await assert.rejects(executeVercelProfile({manifest,credentials:{}},context,{run:async()=>({code:0,stdout:'✓ deployed to https://attacker.example'})}));
+console.log('PASS Vercel profile bridge: exact context, environment, existing deploy handoff and private callback-only capability');
+
+const discovered=discoverVercelResources(context,{run:args=>({code:0,stdout:JSON.stringify(args[1]==='list'?{resources:[{id:'store_test',name:'preview-db',product:'Turso',projects:['profile-test']}]}:{resource:{id:'store_test',projects:[{name:'profile-test',environments:['preview']}]}})})});assert.deepEqual(discovered,[{id:'store_test',name:'preview-db'}]);assert.deepEqual(discoverVercelResources({...context,environment:'production'},{run:args=>({code:0,stdout:JSON.stringify(args[1]==='list'?{resources:[{id:'store_test',name:'preview-db',product:'Turso',projects:['profile-test']}]}:{resource:{id:'store_test',projects:[{name:'profile-test',environments:['preview']}]}})})}),[]);console.log('PASS resource discovery returns only connected names/IDs in the selected environment');
+
+const storage=structuredClone(manifest);storage.bindings.storage={adapterId:'s3-http',mode:'connect',config:{endpoint:'https://storage.example',bucket:'files'},secretRefs:{accessKeyId:'storage/id',secretAccessKey:'storage/key'}};assert.equal(vercelExecutionIssues(storage,context)[0].code,'execution_adapter_not_supported');console.log('PASS storage execution remains unavailable until bucket-scoped discovery is implemented');

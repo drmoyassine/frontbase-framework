@@ -59,3 +59,10 @@ test('field values remain text, including markup-shaped input',()=>{
  const root=mount('cloudflare',{manifest});expect(root.querySelector('img')).toBeNull();
  expect([...root.querySelectorAll('input')].some(i=>i.value.startsWith('<img'))).toBe(true);
 });
+
+test('connected integration resources use a scoped selector without any credential field',()=>{
+ const manifest=defaultDeploymentManifest('vercel');manifest.bindings['state-db']={adapterId:'turso-marketplace',mode:'reuse',config:{},secretRefs:{}};
+ const root=mount('vercel',{manifest,resourceOptions:{'turso-marketplace':[{id:'store_test',name:'Preview database'}]}});
+ expect(root.textContent).toContain('Preview database');expect(root.querySelector('input[type=password]')).toBeNull();
+ select(root,'binding-resource-state-db','store_test');expect(form!.snapshot().manifest.bindings['state-db'].resourceRef).toBe('store_test');expect(form!.snapshot().credentials).toEqual({});
+});

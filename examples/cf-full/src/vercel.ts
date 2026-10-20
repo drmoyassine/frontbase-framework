@@ -61,6 +61,7 @@ function engine(): Promise<Hono> {
             return createCmsEngine({
                 runner: stateDb.runner,
                 translationExecutionEnabled: readTranslationExecutionEnabled(env.FRONTBASE_TRANSLATION_EXECUTION_ENABLED),
+                deploymentManifest: env.FRONTBASE_DEPLOYMENT_MANIFEST,
                 sessionSecret: env.SESSION_SECRET,
                 setupToken: env.SETUP_TOKEN || undefined,
                 setupExpiresAt: env.SETUP_EXPIRES_AT || undefined,

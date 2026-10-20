@@ -47,6 +47,7 @@ const both: readonly DeploymentTarget[] = ['cloudflare', 'vercel'];
 /** Inventory-backed adapters. Native wiring not yet accepted remains a recommendation only. */
 export const deploymentAdapters: readonly DeploymentAdapter[] = [
     {id:'cloudflare-d1',role:'state-db',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
+    {id:'turso-marketplace',role:'state-db',targets:['vercel'],selectable:true,modes:['reuse'],configKeys:[],secretKeys:[]},
     {id:'libsql-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'d1-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','databaseId'],secretKeys:['token'],requiredConfig:['accountId','databaseId'],requiredSecrets:['token']},
     {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
@@ -147,7 +148,15 @@ export function readManagedRuntimeManifest(input: unknown): DeploymentManifest |
     try {
         const value=typeof input==='string'?(input.length<=32768?JSON.parse(input):null):input;
         const parsed=validateDeploymentManifest(value);
-        if(!parsed.ready || parsed.manifest.target!=='cloudflare')return null;
+        if(!parsed.ready)return null;
+        if(parsed.manifest.target==='vercel') {
+            for(const binding of Object.values(parsed.manifest.bindings)) {
+                if(binding.mode==='disabled') {if(Object.keys(binding.config).length||Object.keys(binding.secretRefs).length||binding.resourceRef)return null;continue;}
+                if(binding.adapterId==='turso-marketplace') {if(binding.mode!=='reuse'||!/^store_[a-zA-Z0-9]+$/.test(binding.resourceRef??'')||Object.keys(binding.config).length||Object.keys(binding.secretRefs).length)return null;continue;}
+                if(binding.mode!=='connect'||binding.resourceRef)return null;
+            }
+            return parsed.manifest;
+        }
         for(const role of configurableRoles) {
             const binding=parsed.manifest.bindings[role];
             if(Object.keys(binding.secretRefs).length || Object.keys(binding.config).some(k=>k!=='resourceName'))return null;

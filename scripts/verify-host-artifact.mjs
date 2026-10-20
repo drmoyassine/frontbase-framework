@@ -15,7 +15,7 @@
  * CLI use:      node scripts/verify-host-artifact.mjs --host vercel
  *               node scripts/verify-host-artifact.mjs --host deno --dry-run
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -47,6 +47,7 @@ export function verifyHostArtifact(host, opts = {}) {
         check('dist/vercel.mjs exists and is non-trivial', bundle.length > 100_000);
 
         const apiPath = join(root, 'api', 'cms.mjs');
+        check('api directory contains only the unified CMS function', existsSync(join(root,'api')) && JSON.stringify(readdirSync(join(root,'api')).sort())===JSON.stringify(['cms.mjs']));
         check('api/cms.mjs is byte-identical to dist/vercel.mjs (the deployed function)',
             existsSync(apiPath) && bundle.length > 0 && readFileSync(apiPath).equals(readFileSync(bundlePath)));
 
@@ -71,12 +72,12 @@ export function verifyHostArtifact(host, opts = {}) {
         check('vercel.json parses', cfg !== null);
         if (cfg) {
             check('vercel.json: outputDirectory is console-dist', cfg.outputDirectory === 'console-dist');
-            check('vercel.json: cleanUrls and trailingSlash disabled', cfg.cleanUrls === false && cfg.trailingSlash === false);
+            check('vercel.json: cleanUrls disabled and trailingSlash left to engine', cfg.cleanUrls === false && !Object.hasOwn(cfg,'trailingSlash'));
             const rewrites = Array.isArray(cfg.rewrites) ? cfg.rewrites : [];
             check('rewrites: array with explicit root and final function fallback',
                 Array.isArray(cfg.rewrites) && rewrites.length === 4
                 && rewrites[0]?.source === '/' && rewrites[0]?.destination === '/api/cms'
-                && rewrites[3]?.source === '/:path*' && rewrites[3]?.destination === '/api/cms');
+                && rewrites[3]?.source === '/(.*)' && rewrites[3]?.destination === '/api/cms');
             check('rewrites: hydration and icon preserve static CDN ownership',
                 rewrites[1]?.source === '/static/react/:file*' && rewrites[1]?.destination === '/react/:file*'
                 && rewrites[2]?.source === '/static/icon.png' && rewrites[2]?.destination === '/icon.png');

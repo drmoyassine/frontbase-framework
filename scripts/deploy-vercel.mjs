@@ -4,9 +4,9 @@
  * (from the repo root).
  *
  * Mirrors scripts/deploy.mjs for the Vercel host: build → staged-console gate →
- * per-host artifact gate → env setup → `vercel deploy --prod`. The artifact is
+ * per-host artifact gate → env setup → explicit preview/production deploy. The artifact is
  * examples/cf-full itself (vercel.json + api/cms.mjs + the console-dist CDN
- * tree), deployed from that directory so Vercel discovers the config.
+ * tree). Upload the workspace root; the project rootDirectory selects this example.
  *
  * SECRETS — env or stdin JSON, NEVER argv (a process list is world-readable on
  * most systems). Known names are read from the environment, optionally
@@ -26,7 +26,7 @@
  * do not share a durable local filesystem; the deployable kinds are
  * libsql-remote (Turso/sqld) and d1-rest.
  *
- * Runtime env on Vercel is set with `vercel env add <name> production`
+ * Runtime env on Vercel is set for the explicitly selected environment
  * (value via stdin, atomic overwrite without prior removal). Changes only take effect for
  * deployments created AFTER them — the env push therefore happens BEFORE
  * `vercel deploy --prod`.
@@ -46,7 +46,8 @@ import { dirname, join } from 'node:path';
 import { validateStagedConsole } from './console-pin.mjs';
 import { verifyHostArtifact } from './verify-host-artifact.mjs';
 import { DEPLOY_SECRET_NAMES as SECRET_NAMES, deploymentEnvironment } from './deploy-environment.mjs';
-import { prepareVercelEnvironment, assertVercelTarget, updateVercelEnvironment } from './vercel-deployment-policy.mjs';
+import {readManagedRuntimeManifest} from '../packages/edge-core/dist/deployment.js';
+import { prepareVercelEnvironment, assertVercelTarget, updateVercelEnvironment, vercelDeploymentUrl, assertVercelIntegration } from './vercel-deployment-policy.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
@@ -59,6 +60,8 @@ const value = (name) => { const i = args.indexOf(`--${name}`); return i >= 0 ? a
 const dryRun = flag('dry-run');
 const project = value('project') ?? process.env.VERCEL_PROJECT_NAME;
 const scope = value('scope') ?? process.env.VERCEL_TEAM_ID;
+const environment=value('environment')??'production';
+if(!['preview','production'].includes(environment))throw Error('invalid_vercel_environment');
 
 // The ONLY secret names this script will ever push — known-name picking keeps
 // unrelated ambient env out of the project. Values are never logged.
@@ -119,9 +122,13 @@ if (flag('secrets-json')) {
     }
 }
 
+if(secrets.FRONTBASE_DEPLOYMENT_MANIFEST) {
+    const safe=readManagedRuntimeManifest(secrets.FRONTBASE_DEPLOYMENT_MANIFEST);
+    if(!safe||safe.target!=='vercel'||safe.environment!==environment){console.error('✗ invalid Vercel profile metadata.');process.exit(2);}
+}
 // Redeploy preserves the existing host secret; rotation and initialization are explicit.
 try {
-    secrets = prepareVercelEnvironment(secrets, { firstInstall: flag('first-install') || process.env.VERCEL_DEPLOY_INTENT === 'first-install', redeploy: flag('redeploy') || process.env.VERCEL_DEPLOY_INTENT === 'redeploy', rotateSession: flag('rotate-session-secret') });
+    secrets = prepareVercelEnvironment(secrets, { firstInstall: flag('first-install') || process.env.VERCEL_DEPLOY_INTENT === 'first-install', redeploy: flag('redeploy') || process.env.VERCEL_DEPLOY_INTENT === 'redeploy', rotateSession: flag('rotate-session-secret'), setupLink: flag('setup-link') });
 } catch (error) {
     console.error(`✗ deployment intent: ${error.message}`);
     process.exit(2);
@@ -134,6 +141,10 @@ if (!/^team_[a-zA-Z0-9]+$/.test(scope ?? '') || !project || !/^[a-z0-9][a-z0-9-]
 // ---- 2. Validate the state DB through the DEPLOYED resolver contract ----
 const { describeStateDb, StateDbConfigError } = await import(pathToFileURL(join(exampleRoot, 'dist', 'state-db.mjs')).href);
 try {
+    const metadata=secrets.FRONTBASE_DEPLOYMENT_MANIFEST?JSON.parse(secrets.FRONTBASE_DEPLOYMENT_MANIFEST):null;
+    const linkedTurso=metadata?.target==='vercel'&&metadata.bindings?.['state-db']?.adapterId==='turso-marketplace'&&metadata.bindings['state-db'].mode==='reuse'&&/^store_[a-zA-Z0-9]+$/.test(metadata.bindings['state-db'].resourceRef??'');
+    if(linkedTurso)console.log('→ state db: explicitly selected connected Turso integration; credentials remain at Vercel');
+    else {
     const resolved = describeStateDb({ env: secrets, host: 'vercel' });
     if (resolved.kind === 'sqlite-memory' || resolved.kind === 'sqlite-file') {
         console.error(`✗ state db "${resolved.kind}" is not deployable on the Vercel Node host: isolates share no memory and expose no writable filesystem.`);
@@ -141,6 +152,7 @@ try {
         process.exit(2);
     }
     console.log(`→ state db: ${resolved.label} (${resolved.displayUrl})`);
+    }
 } catch (error) {
     console.error(`✗ ${error instanceof StateDbConfigError ? error.message : 'state-db validation failed'}`);
     process.exit(2);
@@ -149,9 +161,9 @@ try {
 const hasAdmin = secrets.ADMIN_EMAIL !== undefined;
 const setupExpiresAt = secrets.SETUP_EXPIRES_AT;
 
-// ---- 3. Auth + project link (cwd = examples/cf-full: vercel.json + api/ + console-dist) ----
+// ---- 3. Auth + exact project link at the workspace root ----
 const vercel = (args_, opts = {}) => {
-    const r = spawnSync('vercel', [...args_, '--scope', scope, '--non-interactive'], { cwd: exampleRoot, encoding: 'utf8', input: opts.stdin, shell: process.platform === 'win32' });
+    const r = spawnSync('vercel', [...args_, '--scope', scope, '--non-interactive'], { cwd: repoRoot, encoding: 'utf8', input: opts.stdin, shell: process.platform === 'win32' });
     return { code: r.status ?? 1, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 };
 const whoami = vercel(['whoami']);
@@ -166,11 +178,27 @@ if (linked.code !== 0) {
 }
 let verifiedTarget;
 try {
-    const link = JSON.parse(readFileSync(join(exampleRoot, '.vercel', 'project.json'), 'utf8'));
+    const link = JSON.parse(readFileSync(join(repoRoot, '.vercel', 'project.json'), 'utf8'));
     const inspected = vercel(['project', 'inspect', project, '--json']);
     if (inspected.code !== 0) throw new Error('project_inspection_failed');
     verifiedTarget = { scope, project, link, remote: JSON.parse(inspected.stdout) };
     assertVercelTarget(verifiedTarget);
+    if(flag('first-install')||process.env.VERCEL_DEPLOY_INTENT==='first-install') {
+        const history=vercel(['list',project,'--environment',environment,'--limit','1','--json']);
+        const prior=JSON.parse(history.stdout);if(history.code!==0||!Array.isArray(prior.deployments)||prior.deployments.length)throw Error('first_install_refuses_established_project');
+    }
+    const metadata=secrets.FRONTBASE_DEPLOYMENT_MANIFEST?JSON.parse(secrets.FRONTBASE_DEPLOYMENT_MANIFEST):null;
+    if(metadata?.bindings?.['state-db']?.adapterId==='turso-marketplace') {
+        const resource=metadata.bindings['state-db'].resourceRef;
+        const connected=vercel(['integration','list','--all','--json']);
+        const data=JSON.parse(connected.stdout);
+        const selected=data.resources?.find(r=>r.id===resource);
+        if(connected.code!==0||!selected||!selected.projects?.includes(project))throw Error('selected_integration_not_connected');
+        const detail=vercel(['integration','resource','inspect',selected.name,'--json']);
+        const live=JSON.parse(detail.stdout).resource;
+        if(detail.code!==0)throw Error('selected_integration_unavailable');
+        assertVercelIntegration(live,{resourceRef:resource,projectId:verifiedTarget.link.projectId,environment});
+    }
 } catch {
     console.error('✗ exact Vercel project/team verification failed; no environment values were written.');
     process.exit(1);
@@ -181,7 +209,7 @@ try {
 const toPush = Object.keys(deploymentEnvironment(secrets));
 console.log(`→ setting ${toPush.length} runtime env var(s): ${toPush.join(', ')} (values via stdin, never argv)`);
 try {
-    updateVercelEnvironment(vercel, verifiedTarget, secrets);
+    updateVercelEnvironment(vercel, verifiedTarget, secrets, environment);
 } catch {
     console.error('✗ Vercel environment update failed; deployment stopped. No variables were deleted.');
     process.exit(1);
@@ -189,12 +217,14 @@ try {
 
 // ---- 5. Deploy ----
 console.log('\n→ deploying to Vercel (Node function + static matrix)...');
-const dep = vercel(['deploy', '--prod', '--yes']);
+const configured=vercel(['project','update',project,'--root-directory','examples/cf-full','--yes']);
+if(configured.code!==0){console.error('✗ exact project workspace configuration failed.');process.exit(1);}
+const dep = vercel(['deploy', '--environment', environment, '--yes']);
 if (dep.code !== 0) {
     console.error(`✗ vercel deploy failed:\n${dep.stderr || dep.stdout}`);
     process.exit(1);
 }
-const deployUrl = dep.stdout.trim().split(/\r?\n/).map((l) => l.match(/https:\/\/[^\s]+/)?.[0]).filter((u) => u && /\.vercel\.app/i.test(u)).pop();
+let deployUrl;try{deployUrl=vercelDeploymentUrl(dep.stdout);}catch{/* explicit failure below */}
 if (!deployUrl) {
     console.error('✗ deploy succeeded but no *.vercel.app URL was found in the output:');
     console.error(dep.stdout.slice(-2000));

@@ -2,13 +2,12 @@
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "outputDirectory": "console-dist",
     "buildCommand": "node build.mjs",
-    "trailingSlash": false,
     "cleanUrls": false,
     "rewrites": [
         { "source": "/", "destination": "/api/cms" },
         { "source": "/static/react/:file*", "destination": "/react/:file*" },
         { "source": "/static/icon.png", "destination": "/icon.png" },
-        { "source": "/:path*", "destination": "/api/cms" }
+        { "source": "/(.*)", "destination": "/api/cms" }
     ],
     "headers": [
         {
