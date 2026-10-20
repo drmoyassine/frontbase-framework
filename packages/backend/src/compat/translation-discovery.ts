@@ -43,7 +43,7 @@ const excludedColumns: Record<Collection, [string, string][]> = {
     pages: [['id', 'record-id'], ['originalPath', 'identifier-url'], ['cover', 'media-url'], ['logo', 'media-url'], ['publishedAt', 'date-value'], ['language', 'locale-tag'], ['revision', 'revision-counter'], ['body', 'editorial-blocks']],
 };
 const structuralColumns = new Set(['id', 'originalPath', 'cityId', 'institutionId', 'language', 'revision']);
-const listCollection: Record<string, 'institutions' | 'programs' | 'articles'> = { 'directory.institution.list': 'institutions', 'directory.program.list': 'programs', 'directory.article.list': 'articles' };
+const listCollection: Record<string, 'institutions' | 'programs' | 'cities' | 'articles'> = { 'directory.institution.list': 'institutions', 'directory.program.list': 'programs', 'directory.city.list': 'cities', 'directory.article.list': 'articles' };
 
 type CoverageField = z.infer<typeof translationCoverageFieldSchema>;
 

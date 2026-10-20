@@ -42,7 +42,8 @@ const layout = z.record(z.unknown()).refine(value => {
         const inspect = (nodes: Record<string, unknown>[]) => {
             for (const node of nodes) {
                 const props = node.props as Record<string, unknown> | undefined;
-                if (props?.dataRequest || props?.queryConfig || props?.initialRows || props?.initialTotal!==undefined || props?._initialQuery) throw new Error('mutable_binding');
+                if (props?.dataRequest || props?.queryConfig || props?.initialRows || props?.initialTotal!==undefined || props?._initialQuery
+                    || props?.translationRecord!==undefined || props?.translationSources!==undefined) throw new Error('mutable_binding');
                 if(node.binding || props?.binding){
                     if(!['Repeater','DataTable','Grid'].includes(String(node.type)))throw Error('mutable_binding');
                     const binding=props?.binding??node.binding;

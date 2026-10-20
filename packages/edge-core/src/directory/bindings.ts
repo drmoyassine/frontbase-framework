@@ -29,6 +29,13 @@ export const directoryRecordBindingSchema = z.object({
     hideWhenEmpty: z.boolean().optional(),
     format: z.literal('date').optional(),
 }).strict();
+/** Manifest collection each legacy list query renders — the shared record-unit identity namespace
+ *  that translation discovery and page capture must agree on. */
+export const directoryListCollections: Record<string, 'institutions' | 'programs' | 'cities' | 'articles'> = {
+    'directory.institution.list': 'institutions', 'directory.program.list': 'programs',
+    'directory.city.list': 'cities', 'directory.article.list': 'articles' };
+/** Record text columns a list row may own as a translatable unit — dates and plain bodies never do. */
+const stampableRecordColumns = new Set(['title', 'summary', 'coverAlt', 'byline']);
 
 export const siteBindingsSchema = z.object({
     text: z.enum(['site.name', 'site.destination']).optional(),
@@ -113,13 +120,16 @@ function formatEditorialDate(value: unknown, locale?: string): string {
     return new Intl.DateTimeFormat(selected, { timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn', year: 'numeric', month: 'long', day: 'numeric' }).format(date);
 }
 
-/** Transient plain-component projection through the SAME renderer; never save its rows. */
+/** Transient plain-component projection through the SAME renderer; never save its rows.
+ *  Materialized record-bound rows are stamped with `translationRecord`/`translationSources` so the
+ *  localization surface extraction keys their text to the shared record unit instead of rendered
+ *  position — transient projection state only, refused in authored layouts and never persisted. */
 export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, records: Map<string, Record<string, unknown>[]>, options: { locale?: string } = {}): T {
     directoryLayoutQueries(layout);
     const ownControls = (nodes: PageComponent[]): boolean => nodes.some(node=>node.props?.directoryControls!==undefined || ownControls(node.children||[]));
     const controlsOwned=ownControls(layout.content);
     let projected = 0;
-    const walk = (node: PageComponent, row?: Record<string, unknown>, index = 0): PageComponent => {
+    const walk = (node: PageComponent, row?: Record<string, unknown>, index = 0, collection?: string): PageComponent => {
         if (++projected > 4000) throw new Error('directory_projection_size');
         const props = { ...node.props }; const query = props.directoryQuery;
         if(controlsOwned && props.directoryBrowsing!==undefined)return {...node,props:{},styles:{display:'none'},children:[]};
@@ -129,9 +139,10 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
             const { directoryQuery: _query, directoryControls: controls, ...rest } = props;
             const list = parsed.queryId.endsWith('.list'); const columns = Math.min(4, Math.max(1, Number(props.columns) || 3));
             if (list) rest.className = `${typeof rest.className === 'string' ? rest.className : ''} ${props.layout === 'list' ? 'flex flex-col' : `grid grid-cols-1 ${columns > 1 ? 'md:grid-cols-2' : ''} ${columns > 2 ? `lg:grid-cols-${Math.floor(columns)}` : ''}`} gap-6`;
+            const rowCollection = directoryListCollections[parsed.queryId];
             const projected: PageComponent = { ...node, type: 'Container', props: rest,
                 ...(list ? { styles: { gap: '24px', ...node.styles } } : {}),
-                children: rows.length ? rows.flatMap((record, i) => (node.children || []).map(child => walk(child, record, i)))
+                children: rows.length ? rows.flatMap((record, i) => (node.children || []).map(child => walk(child, record, i, rowCollection)))
                     : [{ id: `${node.id}-empty`, type: 'Text', props: { text: 'No records matched this preview.' } }] };
             if(list && controls !== undefined){
                 const options=directoryBrowsingSchema.parse(controls),position=options.paginationPosition||'top';
@@ -160,8 +171,15 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
             if (b.src) { delete rest.url; rest.src = imageUrl(row[b.src]); }
             if (b.src && b.hideWhenEmpty && !rest.src) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
             if (b.alt) rest.alt = literal(row[b.alt]) || (b.altFallback === 'title' ? literal(row.title) : '');
+            const recordColumns: Record<string, string> = {};
+            if (b.text === 'title' || b.text === 'summary' || b.text === 'byline') recordColumns.text = b.text;
+            if (b.alt) recordColumns.alt = b.alt;
+            if (collection && (typeof row.id === 'string' || typeof row.id === 'number') && Object.keys(recordColumns).length) {
+                rest.translationRecord = { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id as string | number }] };
+                rest.translationSources = recordColumns;
+            }
         }
-        return { ...node, id, props: rest, ...(node.children ? { children: node.children.map(child => walk(child, row, index)) } : {}) };
+        return { ...node, id, props: rest, ...(node.children ? { children: node.children.map(child => walk(child, row, index, collection)) } : {}) };
     };
     return { ...layout, content: layout.content.map(node => walk(node)) };
 }

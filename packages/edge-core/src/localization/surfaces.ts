@@ -5,8 +5,9 @@ export const homepageSearchLabels = { region:'Find study options', collection:'E
 export const homepageHeroLabels = { region:'Study options', eyebrow:'Explore your next chapter', controls:'Hero slideshow controls', previous:'Previous image', next:'Next image', pause:'Pause slideshow' };
 export const homepageNavLabels = { toggle:'Toggle navigation', appearance:'Appearance', light:'Light', dark:'Dark', system:'System' };
 export interface DisplayRecord { connectionId:string; collection:string; key:{column:string; value:string|number|boolean}[] }
-/** `versionId` marks a field that belongs to one alternative Block Version; absent means the Default (inherited) unit. */
-export interface DisplayField { blockId:string; path:string[]; text:string; label:string; record?:DisplayRecord; versionId?:string }
+/** `versionId` marks a field that belongs to one alternative Block Version; absent means the Default (inherited) unit.
+ *  `fieldKey` names the source record column a projected list row renders — identity uses it while application keeps the display path. */
+export interface DisplayField { blockId:string; path:string[]; text:string; label:string; record?:DisplayRecord; versionId?:string; fieldKey?:string }
 const textTypes = new Set(['Text','Heading','Paragraph','Link','Button','Badge']);
 const plainId=(value:unknown):string|undefined=>typeof value==='string'&&value.trim()&&value.length<=160&&!/[\u0000-\u001f]/.test(value)?value:undefined;
 /** Stable record identity for a projected list row: the binding's source plus the row's `id` key. Rows without both stay positional. */
@@ -19,6 +20,22 @@ function rowRecord(node:PageComponent,p:Record<string,unknown>,row:Record<string
     if(typeof value==='string'){if(!value.trim()||value.length>4000||/[\u0000-\u001f]/.test(value))return undefined;return {connectionId,collection,key:[{column:'id',value}]};}
     if(typeof value==='number'&&Number.isFinite(value))return {connectionId,collection,key:[{column:'id',value}]};
     return undefined;
+}
+const stampableColumns=new Set(['title','summary','coverAlt','byline']),stampableKeys=new Set(['content','text','value','label','alt','ariaLabel','placeholder']);
+/** Record identity `projectDirectoryRecords` stamps onto materialized directoryQuery rows. Authored
+ *  layouts refuse these props; extraction re-validates and falls back to positional on any mismatch. */
+function stampedRecord(p:Record<string,unknown>):{record:DisplayRecord;columns:Map<string,string>}|undefined{
+    const record=p.translationRecord as DisplayRecord|undefined,sources=p.translationSources as Record<string,unknown>|undefined;
+    if(!record||!sources||typeof record!=='object'||typeof sources!=='object'||Array.isArray(record)||Array.isArray(sources))return undefined;
+    const connectionId=plainId(record.connectionId),collection=plainId(record.collection);
+    const part=Array.isArray(record.key)&&record.key.length===1?record.key[0] as Record<string,unknown>|undefined:undefined;
+    const value=part?.column==='id'?part.value:undefined;
+    const valid=typeof value==='string'&&!!value.trim()&&value.length<=4000&&!/[\u0000-\u001f]/.test(value)||typeof value==='number'&&Number.isFinite(value);
+    if(!connectionId||!collection||!valid)return undefined;
+    const columns=new Map<string,string>();
+    for(const [key,column] of Object.entries(sources)){const name=String(column);if(stampableColumns.has(name)&&stampableKeys.has(key))columns.set(key,name);}
+    if(!columns.size)return undefined;
+    return {record:{connectionId,collection,key:[{column:'id',value}]},columns};
 }
 /** Explicit display-only surface inventory. Never translates bindings, actions, SQL, URLs or identifiers. */
 export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
@@ -44,17 +61,18 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
     const result:DisplayField[]=[];
     // Per-node display surfaces, shared by the Default tree and every alternative's effective shape.
     const extractNode=(node:PageComponent,versionId:string|undefined):DisplayField[]=>{
-        const collected:DisplayField[]=[],p=node.props??{},base=['props'];
-        const emit=(path:string[],value:unknown,label:string,record?:DisplayRecord)=>{
+        const collected:DisplayField[]=[],p=node.props??{},base=['props'],stamped=stampedRecord(p);
+        const emit=(path:string[],value:unknown,label:string,record?:DisplayRecord,fieldKey?:string)=>{
             if(typeof value==='string'&&value.length>12000)throw Error('locale_text_limit');
             if(typeof value!=='string'||!value.trim()||/\{\{|@\{/.test(value)||/^(?:https?:|mailto:|tel:|\/)/.test(value))return;
             const field:DisplayField={blockId:node.id,path,text:value,label};
             if(versionId)field.versionId=versionId;
             if(record)field.record=record;
+            if(fieldKey)field.fieldKey=fieldKey;
             collected.push(field);};
         const nested=(value:any,path:string[],keys:Set<string>)=>{if(Array.isArray(value)){value.forEach((v,i)=>nested(v,[...path,String(i)],keys));return;}if(value&&typeof value==='object'){for(const [k,v]of Object.entries(value)){if(keys.has(k))emit([...path,k],v,k);else if(v&&typeof v==='object')nested(v,[...path,k],keys);}}};
-        if(textTypes.has(node.type)){const key=['content','text','value','label'].find(k=>typeof p[k]==='string'&&!!p[k]);if(key&&!/\{\{|@\{/.test(String(p[key])))emit([...base,key],p[key],node.type);}
-        for(const key of ['alt','ariaLabel','placeholder'])emit([...base,key],p[key],key);
+        if(textTypes.has(node.type)){const key=['content','text','value','label'].find(k=>typeof p[k]==='string'&&!!p[k]);if(key&&!/\{\{|@\{/.test(String(p[key]))){const origin=stamped&&stamped.columns.has(key)?stamped:undefined;if(origin){const column=origin.columns.get(key)!;emit([...base,key],p[key],`Record ${origin.record.collection} / ${column}`,origin.record,column);}else emit([...base,key],p[key],node.type);}}
+        for(const key of ['alt','ariaLabel','placeholder']){const origin=stamped&&stamped.columns.has(key)?stamped:undefined;if(origin){const column=origin.columns.get(key)!;emit([...base,key],p[key],`Record ${origin.record.collection} / ${column}`,origin.record,column);}else emit([...base,key],p[key],key);}
         if(node.type==='Navbar'){
             nested(p.logo,[...base,'logo'],new Set(['text']));nested(p.menuItems,[...base,'menuItems'],new Set(['label']));
             for(const key of ['primaryButton','secondaryButton'])if((p[key] as any)?.enabled!==false)nested(p[key],[...base,key],new Set(['text']));

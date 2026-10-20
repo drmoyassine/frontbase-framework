@@ -17,7 +17,7 @@ import type {PublishedLiveQuery} from './publication-list-source.js';
 const hash=z.string().regex(/^[a-f0-9]{64}$/),id=z.string().min(1).max(160),locale=z.string().regex(/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/);
 const recordIdentity=z.object({connectionId:id,collection:id,key:translationRecordKeySchema}).strict();
 const menuIdentity=z.object({menuId:id,path:z.array(id).min(1).max(20),kind:z.enum(['label','brand','copyright','description']),name:z.string().min(1).max(200)}).strict();
-const entry=z.object({id:hash,blockId:id,path:z.array(id).min(1).max(20),versionId:id.optional(),sourceFingerprint:hash,text:z.string().min(1).max(12000),revisionId:id,unitId:hash,record:recordIdentity.optional(),menu:menuIdentity.optional(),sourceText:z.string().max(12000).optional()}).strict();
+const entry=z.object({id:hash,blockId:id,path:z.array(id).min(1).max(20),versionId:id.optional(),fieldKey:id.optional(),sourceFingerprint:hash,text:z.string().min(1).max(12000),revisionId:id,unitId:hash,record:recordIdentity.optional(),menu:menuIdentity.optional(),sourceText:z.string().max(12000).optional()}).strict();
 /** `path` generalizes releases to any published page ('/' = homepage). `policy` records the explicit
  *  per-unit missing/outdated decision taken at prepare: 'block' refuses non-draft units, 'source-fallback'
  *  omits them and renders fresh source for them (and for units whose fingerprint changed since). */
@@ -31,7 +31,7 @@ const activeKey=async(value:string,path:string)=>path==='/'?'translation_homepag
 const versionKeyFor=async(path:string,releaseHash:string)=>path==='/'?'translation_homepage:version:v1:'+hash.parse(releaseHash):'translation_surface:version:v1:'+hash.parse(releaseHash);
 async function mapLimit<T,R>(items:T[],fn:(item:T)=>Promise<R>):Promise<R[]>{const out:R[]=[];for(let i=0;i<items.length;i+=8)out.push(...await Promise.all(items.slice(i,i+8).map(fn)));return out;}
 type MenuRef={menuId:string;path:string[];kind:'label'|'brand'|'copyright'|'description';name:string};
-type IdentifiedField={blockId:string;path:string[];versionId?:string;record?:{connectionId:string;collection:string;key:{column:string;value:string|number|boolean}[]};menu?:MenuRef};
+type IdentifiedField={blockId:string;path:string[];versionId?:string;fieldKey?:string;record?:{connectionId:string;collection:string;key:{column:string;value:string|number|boolean}[]};menu?:MenuRef};
 /** Position-free identity: record-keyed fields hash and join by their record ref, never by rendered row order;
  *  Block-Version overrides join by (block, version, path) while inherited fields keep the Default identity;
  *  app-menu fields join by their shared menu document path so one unit serves every page rendering the menu. */
@@ -39,7 +39,7 @@ function stableIdentity(field:IdentifiedField):unknown{
     if(field.menu)return ['menu',field.menu.menuId,...field.menu.path];
     if(!field.record)return ['field',field.blockId,field.versionId??'default',field.path];
     const key=[...field.record.key].sort((a,b)=>a.column<b.column?-1:a.column>b.column?1:0).map(part=>[part.column,part.value]);
-    return ['record',field.record.connectionId,field.record.collection,...key,field.path.at(-1)??''];
+    return ['record',field.record.connectionId,field.record.collection,...key,field.fieldKey??field.path.at(-1)??''];
 }
 /** Menu snapshot text is publication truth; a rendered managed node maps back to its shared 'app-menus'
  *  units only where the snapshot and the rendered props still agree exactly (id and text). */
@@ -115,7 +115,9 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
     const configHash=await publicationHash({identity,sourceLocale:config.sourceLocale,targetLocales:config.targetLocales});
     const token=await publicationHash({site:capture.active.pointer.hash,source:capture.sourceHash,config:configHash,path});
     const fields=await mapLimit(capture.fields,async field=>{
-        const fieldKey=field.path.at(-1)??'';
+        // A stamped projected row names its source record column; identity and context follow the
+        // column so one unit serves every surface rendering the same record field.
+        const fieldKey=field.fieldKey??field.path.at(-1)??'';
         // Record-keyed list rows own stable record identity shared by every surface
         // rendering the same record field; app menus share one 'app-menus' document identity;
         // block-bound fields keep component identity.
@@ -173,7 +175,7 @@ export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunne
         if(item.value.state==='outdated'&&policy.outdated==='source-fallback')continue;
         throw Error('coverage_incomplete');
     }
-    const catalog=read.filter(item=>item.value.state==='draft'&&item.snapshot.head).map(item=>({id:item.f.id,blockId:item.f.blockId,path:item.f.path,...(item.f.versionId?{versionId:item.f.versionId}:{}),...(item.f.record?{record:{connectionId:item.f.record.connectionId,collection:item.f.record.collection,key:item.f.record.key}}:{}),...(item.f.menu?{menu:item.f.menu}:{}),sourceFingerprint:item.f.fingerprint,sourceText:item.f.text,text:item.snapshot.head!.text,revisionId:item.snapshot.head!.revisionId,unitId:item.f.unitId}));
+    const catalog=read.filter(item=>item.value.state==='draft'&&item.snapshot.head).map(item=>({id:item.f.id,blockId:item.f.blockId,path:item.f.path,...(item.f.versionId?{versionId:item.f.versionId}:{}),...(item.f.fieldKey?{fieldKey:item.f.fieldKey}:{}),...(item.f.record?{record:{connectionId:item.f.record.connectionId,collection:item.f.record.collection,key:item.f.record.key}}:{}),...(item.f.menu?{menu:item.f.menu}:{}),sourceFingerprint:item.f.fingerprint,sourceText:item.f.text,text:item.snapshot.head!.text,revisionId:item.snapshot.head!.revisionId,unitId:item.f.unitId}));
     const release=releaseSchema.parse({version:1,tenant,project:s.scope.projectId,sourceLocale:s.config.sourceLocale,locale:target,siteHash:s.capture.active.pointer.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,path:s.path,policy,pageId:s.capture.pageId,catalog,reviewer,reviewedAt:now});
     const hash=await publicationHash(release);await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,await versionKeyFor(s.path,hash),JSON.stringify(release),now]);
     if(!await readHomepageRelease(db,tenant,hash))throw Error();

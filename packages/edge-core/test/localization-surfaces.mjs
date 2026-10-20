@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { homepageDisplayFields, applyHomepageDisplayFields } from '@frontbase/edge-core/localization';
+import { projectDirectoryRecords } from '@frontbase/edge-core/directory/configuration';
 import { applyBlockVersion, resolveBlockTree } from '@frontbase/edge-core/block-versions';
 
 const repeater = (rows, id = 'list') => ({ id, type: 'Repeater',
@@ -31,6 +32,28 @@ assert.equal(field(homepageDisplayFields({ content: [repeater([{ title: 'Missing
 assert.equal(field(homepageDisplayFields({ content: [{ ...repeater([{ id: 'i1', title: 'Alpha University' }]), props: { initialRows: [{ id: 'i1', title: 'Alpha University' }] } }] }), 'title').record, undefined, 'no binding, no record identity');
 const partial = { id: 'list', type: 'Repeater', props: { binding: { dataSourceId: 'frontbase:publication', source: { kind: 'publication', hash: 'a'.repeat(64) } }, initialRows: [{ id: 'i1', title: 'Alpha University' }] }, children: [] };
 assert.equal(field(homepageDisplayFields({ content: [partial] }), 'title').record, undefined, 'a binding without a collection is not record identity');
+
+// Projected directoryQuery rows arrive stamped with their record identity; identity follows the
+// source column (`fieldKey`), while any malformed or non-stampable stamp falls back to positional.
+const stamp = (overrides = {}, sources = { text: 'title' }) => ({ translationRecord: { connectionId: 'frontbase:publication', collection: 'institutions', key: [{ column: 'id', value: 'i1' }] }, translationSources: sources, ...overrides });
+const stampedFields = homepageDisplayFields({ content: [
+    { id: 's1', type: 'Heading', props: { text: 'Alpha University', ...stamp() } },
+    { id: 's2', type: 'Image', props: { src: 'https://cdn.example.org/a.png', alt: 'Campus at dusk', ...stamp({}, { alt: 'coverAlt' }) } },
+    { id: 's3', type: 'Link', props: { text: 'Alpha University', ariaLabel: 'Alpha University', href: '/go/alpha', ...stamp({}, { text: 'summary', ariaLabel: 'title' }) } }] });
+assert.deepEqual(stampedFields.find(f => f.blockId === 's1'),
+    { blockId: 's1', path: ['props', 'text'], text: 'Alpha University', label: 'Record institutions / title', record: stampedFields.find(f => f.blockId === 's1').record, fieldKey: 'title' });
+assert.deepEqual(stampedFields.find(f => f.blockId === 's1').record, { connectionId: 'frontbase:publication', collection: 'institutions', key: [{ column: 'id', value: 'i1' }] });
+assert.deepEqual([stampedFields.find(f => f.blockId === 's2').fieldKey, stampedFields.find(f => f.blockId === 's2').label], ['coverAlt', 'Record institutions / coverAlt']);
+const aria = stampedFields.find(f => f.blockId === 's3' && f.path.at(-1) === 'ariaLabel');
+assert.deepEqual([aria.fieldKey, aria.label, aria.text], ['title', 'Record institutions / title', 'Alpha University'], 'one stamped unit per display key; ariaLabel joins by its column');
+const stampedText = stampedFields.find(f => f.blockId === 's3' && f.path.at(-1) === 'text');
+assert.deepEqual([stampedText.fieldKey, stampedText.label], ['summary', 'Record institutions / summary']);
+const unstamped = layout => homepageDisplayFields(layout).find(f => f.blockId === 's1');
+assert.equal(unstamped({ content: [{ id: 's1', type: 'Heading', props: { text: 'Alpha University', ...stamp({ translationRecord: { connectionId: '', collection: 'institutions', key: [{ column: 'id', value: 'i1' }] } }) } }] }).label, 'Heading', 'an empty connection id refuses the stamp');
+assert.equal(unstamped({ content: [{ id: 's1', type: 'Heading', props: { text: 'Alpha University', ...stamp({}, { text: 'publishedAt' }) } }] }).label, 'Heading', 'date columns are never record units');
+assert.equal(unstamped({ content: [{ id: 's1', type: 'Heading', props: { text: 'Alpha University', ...stamp({ translationRecord: { connectionId: 'frontbase:publication', collection: 'institutions', key: [{ column: 'name', value: 'i1' }] } }) } }] }).label, 'Heading', 'only id-keyed stamps are record identity');
+assert.equal(unstamped({ content: [{ id: 's1', type: 'Heading', props: { text: 'Alpha University', translationSources: { text: 'title' } } }] }).label, 'Heading', 'sources without a record stay positional');
+assert.equal(unstamped({ content: [{ id: 's1', type: 'Heading', props: { text: 'Alpha University', translationRecord: { connectionId: 'frontbase:publication', collection: 'institutions', key: [{ column: 'id', value: 'i1' }] }, translationSources: { text: 'publishedAt' } } }] }).label, 'Heading', 'no stampable column, no stamp');
 
 // Projection still applies values at their rendered positions.
 const layout = { content: [repeater(rows)] };
@@ -73,4 +96,17 @@ assert.equal(wrapped.versions.find(candidate => candidate.id === 'members').over
 const authenticated = () => true, anonymous = () => undefined;
 assert.equal(resolveBlockTree([seasonal], authenticated)[0].props.text, 'عربي Winter programs');
 assert.equal(resolveBlockTree([seasonal], anonymous)[0].props.text, 'عربي Find your program');
+// Projection stamps legacy directoryQuery rows: text columns become record units, formatted dates never do.
+const articleFields = homepageDisplayFields(projectDirectoryRecords(
+    { content: [{ id: 'alist', type: 'Repeater', props: { directoryQuery: { version: 1, queryId: 'directory.article.list', params: {} } },
+        children: [{ id: 'at', type: 'Heading', props: { recordBindings: { text: 'title' } } },
+            { id: 'ab', type: 'Paragraph', props: { recordBindings: { text: 'byline' } } },
+            { id: 'ad', type: 'Paragraph', props: { recordBindings: { text: 'publishedAt', format: 'date' } } }] }] },
+    new Map([['alist', [{ id: 'a1', title: 'Travel guide', byline: 'By Rana', publishedAt: '2026-01-05' }]]])));
+const byline = articleFields.find(f => f.blockId === 'ab');
+assert.deepEqual([byline.fieldKey, byline.label], ['byline', 'Record articles / byline'], 'byline is a stampable record column');
+assert.deepEqual(byline.record, { connectionId: 'frontbase:publication', collection: 'articles', key: [{ column: 'id', value: 'a1' }] });
+const date = articleFields.find(f => f.blockId === 'ad');
+assert.deepEqual([date.fieldKey, date.record, date.label], [undefined, undefined, 'Paragraph'], 'formatted dates never become record units');
+
 console.log('localization display surfaces PASS: record identity extraction, reorder stability, shared-identity positions, positional fallback, coverage-refusing projection and Block Version inheritance identity');
