@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Vercel Node deploy (A-24): `pnpm run deploy:vercel -- --project <name>`
+ * Vercel Node deploy (A-24): `pnpm run deploy:vercel -- --project <name> --scope <team_ID> --first-install`
  * (from the repo root).
  *
  * Mirrors scripts/deploy.mjs for the Vercel host: build → staged-console gate →
@@ -12,7 +12,7 @@
  * most systems). Known names are read from the environment, optionally
  * overridden by a stdin JSON object (`--secrets-json`):
  *
- *   SESSION_SECRET                  HS256 session key (generated if absent)
+ *   SESSION_SECRET                  HS256 session key (generated on first install only)
  *   state db — exactly one complete set (the resolver fails loud otherwise):
  *     APP_DB_URL [+ APP_DB_AUTH_TOKEN]            libsql://… or https://… (Turso/sqld)
  *     APP_DB_D1_ACCOUNT_ID + APP_DB_D1_DATABASE_ID + CLOUDFLARE_API_TOKEN
@@ -22,12 +22,12 @@
  *
  * State-db validation reuses examples/cf-full's describeStateDb (the SAME
  * contract the deployed edge entry resolves at boot), so a deploy script never
- * ships a half-configured state DB. :memory:/file: are refused — Edge isolates
- * have no shared memory and no writable filesystem; the deployable kinds are
+ * ships a half-configured state DB. :memory:/file: are refused — serverless instances
+ * do not share a durable local filesystem; the deployable kinds are
  * libsql-remote (Turso/sqld) and d1-rest.
  *
  * Runtime env on Vercel is set with `vercel env add <name> production`
- * (value via stdin, rm-first idempotent). Changes only take effect for
+ * (value via stdin, atomic overwrite without prior removal). Changes only take effect for
  * deployments created AFTER them — the env push therefore happens BEFORE
  * `vercel deploy --prod`.
  *
@@ -36,17 +36,17 @@
  *
  * Usage:
  *   pnpm run deploy:vercel -- --project my-app --dry-run   # build + gates only
- *   pnpm run deploy:vercel -- --project my-app             # full deploy
- *   echo '{"SESSION_SECRET":"…"}' | pnpm run deploy:vercel -- --project my-app --secrets-json
+ *   pnpm run deploy:vercel -- --project my-app --scope team_ID --first-install # fresh deploy
+ *   echo '{"SESSION_SECRET":"…"}' | pnpm run deploy:vercel -- --project my-app --scope team_ID --first-install --secrets-json
  */
 import { spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateStagedConsole } from './console-pin.mjs';
 import { verifyHostArtifact } from './verify-host-artifact.mjs';
 import { DEPLOY_SECRET_NAMES as SECRET_NAMES, deploymentEnvironment } from './deploy-environment.mjs';
+import { prepareVercelEnvironment, assertVercelTarget, updateVercelEnvironment } from './vercel-deployment-policy.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
@@ -58,6 +58,7 @@ const flag = (name) => args.includes(`--${name}`);
 const value = (name) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : undefined; };
 const dryRun = flag('dry-run');
 const project = value('project') ?? process.env.VERCEL_PROJECT_NAME;
+const scope = value('scope') ?? process.env.VERCEL_TEAM_ID;
 
 // The ONLY secret names this script will ever push — known-name picking keeps
 // unrelated ambient env out of the project. Values are never logged.
@@ -90,7 +91,7 @@ if (dryRun) {
 }
 
 // ---- 1. Collect secrets (env → stdin JSON overrides). Never argv. ----
-const secrets = {};
+let secrets = {};
 for (const name of SECRET_NAMES) {
     const v = process.env[name];
     if (v !== undefined && v !== '') secrets[name] = v;
@@ -118,8 +119,17 @@ if (flag('secrets-json')) {
     }
 }
 
-// SESSION_SECRET is never optional (the engine refuses to boot without one).
-secrets.SESSION_SECRET ??= randomBytes(32).toString('base64');
+// Redeploy preserves the existing host secret; rotation and initialization are explicit.
+try {
+    secrets = prepareVercelEnvironment(secrets, { firstInstall: flag('first-install') || process.env.VERCEL_DEPLOY_INTENT === 'first-install', redeploy: flag('redeploy') || process.env.VERCEL_DEPLOY_INTENT === 'redeploy', rotateSession: flag('rotate-session-secret') });
+} catch (error) {
+    console.error(`✗ deployment intent: ${error.message}`);
+    process.exit(2);
+}
+if (!/^team_[a-zA-Z0-9]+$/.test(scope ?? '') || !project || !/^[a-z0-9][a-z0-9-]*$/.test(project)) {
+    console.error('✗ pass --scope <team_ID> and --project <exact-project-name> before deployment.');
+    process.exit(2);
+}
 
 // ---- 2. Validate the state DB through the DEPLOYED resolver contract ----
 const { describeStateDb, StateDbConfigError } = await import(pathToFileURL(join(exampleRoot, 'dist', 'state-db.mjs')).href);
@@ -136,22 +146,12 @@ try {
     process.exit(2);
 }
 
-// Admin seeding XOR setup link (same rule as `frontbase deploy`).
-const hasAdmin = secrets.ADMIN_EMAIL !== undefined || secrets.ADMIN_PASSWORD !== undefined;
-if ((secrets.ADMIN_EMAIL !== undefined) !== (secrets.ADMIN_PASSWORD !== undefined)) {
-    console.error('✗ ADMIN_EMAIL and ADMIN_PASSWORD must be provided together.');
-    process.exit(2);
-}
-let setupExpiresAt;
-if (!hasAdmin) {
-    secrets.SETUP_TOKEN ??= randomBytes(32).toString('base64url');
-    setupExpiresAt = new Date(Date.now() + 30 * 60_000).toISOString();
-    secrets.SETUP_EXPIRES_AT = setupExpiresAt;
-}
+const hasAdmin = secrets.ADMIN_EMAIL !== undefined;
+const setupExpiresAt = secrets.SETUP_EXPIRES_AT;
 
 // ---- 3. Auth + project link (cwd = examples/cf-full: vercel.json + api/ + console-dist) ----
 const vercel = (args_, opts = {}) => {
-    const r = spawnSync('vercel', args_, { cwd: exampleRoot, encoding: 'utf8', input: opts.stdin, shell: process.platform === 'win32' });
+    const r = spawnSync('vercel', [...args_, '--scope', scope, '--non-interactive'], { cwd: exampleRoot, encoding: 'utf8', input: opts.stdin, shell: process.platform === 'win32' });
     return { code: r.status ?? 1, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
 };
 const whoami = vercel(['whoami']);
@@ -159,28 +159,32 @@ if (whoami.code !== 0) {
     console.error('✗ not authenticated with the Vercel CLI. Run `vercel login`, or set VERCEL_TOKEN in the environment.');
     process.exit(1);
 }
-if (project) {
-    const link = vercel(['link', '--yes', '--project', project]);
-    if (link.code !== 0) {
-        console.error(`✗ vercel link failed for project "${project}":\n${link.stderr}`);
-        process.exit(1);
-    }
-} else if (!existsSync(join(exampleRoot, '.vercel', 'project.json'))) {
-    console.error('✗ no Vercel project linked. Pass --project <name> (or set VERCEL_PROJECT_NAME), or run `vercel link` in examples/cf-full.');
-    process.exit(2);
+const linked = vercel(['link', '--yes', '--project', project]);
+if (linked.code !== 0) {
+    console.error('✗ Vercel project link failed; no environment values were written.');
+    process.exit(1);
+}
+let verifiedTarget;
+try {
+    const link = JSON.parse(readFileSync(join(exampleRoot, '.vercel', 'project.json'), 'utf8'));
+    const inspected = vercel(['project', 'inspect', project, '--json']);
+    if (inspected.code !== 0) throw new Error('project_inspection_failed');
+    verifiedTarget = { scope, project, link, remote: JSON.parse(inspected.stdout) };
+    assertVercelTarget(verifiedTarget);
+} catch {
+    console.error('✗ exact Vercel project/team verification failed; no environment values were written.');
+    process.exit(1);
 }
 
 // ---- 4. Push runtime env BEFORE the deploy (a deploy snapshots the env at
 //         creation time; later changes are invisible until the next deploy) ----
 const toPush = Object.keys(deploymentEnvironment(secrets));
 console.log(`→ setting ${toPush.length} runtime env var(s): ${toPush.join(', ')} (values via stdin, never argv)`);
-for (const name of toPush) {
-    vercel(['env', 'rm', name, 'production', '--yes']); // idempotent: absent is fine, failure resurfaces at add
-    const add = vercel(['env', 'add', name, 'production'], { stdin: secrets[name] });
-    if (add.code !== 0) {
-        console.error(`✗ vercel env add ${name} failed:\n${add.stderr}`);
-        process.exit(1);
-    }
+try {
+    updateVercelEnvironment(vercel, verifiedTarget, secrets);
+} catch {
+    console.error('✗ Vercel environment update failed; deployment stopped. No variables were deleted.');
+    process.exit(1);
 }
 
 // ---- 5. Deploy ----

@@ -108,7 +108,10 @@ The same CMS deploys to four hosts. `frontbase deploy` provisions Cloudflare; `-
 ```bash
 # Vercel Node — static matrix in vercel.json, function owns state routes
 vercel login   # or set VERCEL_TOKEN
-pnpm run deploy:vercel -- --project <my_app_name>
+pnpm run deploy:vercel -- --project <my-app-name> --scope <team_ID> --first-install
+
+# Later Vercel deployment: use --redeploy instead of --first-install.
+# Keep SESSION_SECRET unset locally to preserve the existing host value.
 
 # Deno Deploy — self-contained deno-dist/ tree via deployctl
 export DENO_DEPLOY_TOKEN=...

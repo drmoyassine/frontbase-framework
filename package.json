@@ -13,7 +13,7 @@
     "build": "pnpm -r build",
     "test": "pnpm -r --filter=!@frontbase/console test",
     "check": "pnpm -r check",
-    "test:deployment-gates": "node scripts/test-deployment-gates.mjs && node scripts/test-vercel-lifecycle.mjs && node scripts/test-deployment-plan.mjs",
+    "test:deployment-gates": "node scripts/test-deployment-gates.mjs && node scripts/test-vercel-lifecycle.mjs && node scripts/test-deployment-plan.mjs && node scripts/test-vercel-deployment-policy.mjs && node scripts/test-vercel-policy-mutation.mjs",
     "test:mutation": "pnpm -r test:mutation",
     "deploy:cf-full": "node scripts/deploy.mjs",
     "deploy:community-edge": "node scripts/deploy-community.mjs",

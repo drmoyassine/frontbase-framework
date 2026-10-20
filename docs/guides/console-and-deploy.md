@@ -39,7 +39,7 @@ property panels are generated from a compiler `ComponentManifest`.
 Composes engine + console + proxy + builder SW into one CF Worker. The CLI
 provisions **Cloudflare** — D1, wrangler secrets, the setup link.
 `--target vercel` / `--target deno` dispatch to the per-host scripts
-(`pnpm run deploy:vercel` / `pnpm run deploy:deno`) with the same flag surface
+(`pnpm run deploy:vercel` / `pnpm run deploy:deno`) with shared secret transport and host-specific options
 — secrets over stdin, exit code propagated — from inside this repo; outside it
 they refuse honestly. The hosts' provisioning itself stays script-owned
 (see [Deploying to other hosts](#deploying-to-other-hosts-vercel-deno-deploy)).
@@ -128,11 +128,12 @@ non-CF deploy runs the same gauntlet before any host call: the cf-full build,
 the staged-console validator, and the per-host artifact gate
 ([`scripts/verify-host-artifact.mjs`](../../scripts/verify-host-artifact.mjs)
 — bundle invariants (web libsql client pinned, no `node:` imports on Edge,
-edge-runtime directive, `Deno.serve`), the config contract, and the staged
+Vercel Node `default.fetch` export, `Deno.serve`), the config contract, and the staged
 statics — judged on the post-build tree, so stale bytes can't be blessed).
 
 ```bash
-pnpm run deploy:vercel -- --project <my_app_name>            # vercel.json + api/cms.mjs + console-dist CDN tree
+pnpm run deploy:vercel -- --project <my-app-name> --scope <team_ID> --first-install
+pnpm run deploy:vercel -- --project <my-app-name> --scope <team_ID> --redeploy
 pnpm run deploy:vercel -- --project <my_app_name> --dry-run  # build + gates only — no host calls
 pnpm run deploy:deno   -- --project <my_app_name>            # deno-dist/ (deno.mjs + deno.json + console-dist) via deployctl
 pnpm run deploy:deno   -- --project <my_app_name> --dry-run
@@ -146,8 +147,8 @@ it through the same resolver the deployed edge entry uses at boot:
 |---|---|
 | `APP_DB_URL` [+ `APP_DB_AUTH_TOKEN`] | Turso / self-hosted sqld (`libsql://` or `https://`) |
 | `APP_DB_D1_ACCOUNT_ID` + `APP_DB_D1_DATABASE_ID` + `CLOUDFLARE_API_TOKEN` | Cloudflare D1 over REST — D1 from any host |
-| `SESSION_SECRET` | always required (generated when absent) |
-| `ADMIN_EMAIL` + `ADMIN_PASSWORD` | optional admin seeding (else a one-time setup link is printed) |
+| `SESSION_SECRET` | Vercel: generated only with `--first-install`; omitted on `--redeploy` to preserve the host value. Explicit replacement requires `--rotate-session-secret`. Deno retains its existing generation behavior. |
+| `ADMIN_EMAIL` + `ADMIN_PASSWORD` | optional admin seeding for first install (else a one-time setup link is printed); omit on Vercel redeploy |
 
 `:memory:`/`file:` are refused on the edge hosts (isolates share no memory and
 expose no writable filesystem); Docker keeps the `file:` default. A
@@ -160,3 +161,11 @@ are unit-proven in
 Live verification for both hosts runs in the dispatch-only workflows
 (`vercel-fresh-deploy.yml`, `deno-fresh-deploy.yml`) — scratch-named projects,
 browser acceptance against the deployed URL, `always()` teardown.
+
+### Vercel deployment intent and target safety
+
+Non-dry-run Vercel deployment requires an exact project name, `--scope <team_ID>` (or `VERCEL_TEAM_ID`) and exactly one of `--first-install` / `--redeploy`. The script verifies linked and live public project metadata before environment writes. Set `VERCEL_DEPLOY_INTENT=first-install` or `redeploy` when invoking through the compiler's host dispatcher; its direct flag forwarding has not yet been expanded for these host-specific switches.
+
+Redeploy does not generate, fetch or overwrite an absent local session secret, and refuses setup/admin initialization values. To deliberately rotate a supplied session secret, additionally pass `--rotate-session-secret` to the direct script; existing sessions will be invalidated. Environment updates use CLI `--force --sensitive` with stdin rather than deleting variables first. This is not a transactional multi-variable update; failures stop deployment and require review.
+
+[Current implementation receipt](../plans/frontbase-deployment-profiles-p0-p1-20261020.md) distinguishes the verified disposable CF API journey, local Vercel checks and outstanding live Vercel/Bindings/button acceptance.
