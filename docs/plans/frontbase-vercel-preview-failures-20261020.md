@@ -31,4 +31,8 @@ Vercel documents that ignored builds become CANCELED, still count toward deploym
 
 Private nonsecret logs: `vercel-preview-fix-build.log`, `vercel-preview-fix-check.log`, `vercel-preview-fix-gates.log` in the task evidence directory. No clean remote Vercel success, live database integration, public release gate closure or production redeployment is claimed. This correction remains on the isolated deployment-profiles branch until merged into another development branch; the project skip rule already applies to those branches.
 
-Next: observe a subsequent development push as skipped rather than failed, then resume native KV/R2 and durable resource identity work. Preserve the separate translation stream and paused CF-22.
+## Live containment acceptance
+
+Pushed source fix `1ba6857` to `codex/deployment-profiles`. Its Git-triggered preview `cf-full-o2nca8wkm` is CANCELED after three seconds. The provider log identifies that exact branch/commit, runs the saved ignore command, and states that exit code 0 canceled the deployment. The application build did not run. This verifies the live skip rule rather than only a local shell fixture.
+
+Next: resume native KV/R2 and durable resource identity work. Preserve the separate translation stream and paused CF-22.
