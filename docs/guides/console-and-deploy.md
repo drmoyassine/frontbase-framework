@@ -185,4 +185,9 @@ This first executor requires a fresh Worker and `<worker>-db` D1, with optional 
 
 ## Native KV in reviewed Cloudflare setup
 
-The explicit `deploy:setup -- --target cloudflare --deploy --app-name NAME --account-id ACCOUNT_ID` flow defaults to a new named D1 and optional new KV cache. KV can be disabled in the local Bindings review. It uses the `FRONTBASE_KV` binding, the existing tenant-scoped service resolver, and logical TTLs for short cache entries. Explicit cache environment configuration and adopted defaults retain precedence. This launcher refuses existing resources and unsupported bindings; native R2 and reuse/redeploy are still pending. [Exact live acceptance and limits](../plans/frontbase-deployment-native-kv-20261020.md).
+The explicit `deploy:setup -- --target cloudflare --deploy --app-name NAME --account-id ACCOUNT_ID` flow defaults to a new named D1 and optional new KV cache. KV can be disabled in the local Bindings review. It uses the `FRONTBASE_KV` binding, the existing tenant-scoped service resolver, and logical TTLs for short cache entries. Explicit cache environment configuration and adopted defaults retain precedence. This launcher refuses existing resources and unsupported bindings; optional private native R2 is now verified separately; reuse/redeploy is still pending. [Exact live acceptance and limits](../plans/frontbase-deployment-native-kv-20261020.md).
+
+
+## Optional private native R2
+
+In the reviewed Cloudflare setup above, enable the Storage binding and choose native R2/create to provision the derived new private bucket. No S3 credentials are needed. The File Storage API discovers a bound provider and a tenant-isolated private files bucket, reusing normal multipart uploads and object management. Signed GET/PUT links use the app origin, default to fifteen minutes and are capped at one hour. Native transfers default to 10 MiB; physical bucket management, permanent public asset URLs and large-object multipart protocols are not part of this path. [Exact actual acceptance and support boundary](../plans/frontbase-deployment-native-r2-20261020.md).

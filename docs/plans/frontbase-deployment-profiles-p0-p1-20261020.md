@@ -86,3 +86,8 @@ No new work in the dispatched translation stream or deployment to Study in USA s
 ## Later native KV checkpoint — 2026-10-20
 
 [Native KV delivery](frontbase-deployment-native-kv-20261020.md) supersedes earlier D1-only/cache-unavailable statements for the bounded new Worker/D1/KV path. The actual disposable install, native cache card and real app cache write pass; existing registry/HTTP overrides and tenant isolation remain. R2, durable reuse/redeploy/resume and complete button/form acceptance remain next; earlier historical receipts do not imply those gates passed.
+
+
+## Later private native R2 checkpoint — 2026-10-20
+
+[Native R2 delivery](frontbase-deployment-native-r2-20261020.md) supersedes earlier R2-unavailable descriptions for the optional new private binding path. Real multipart/signed GET/PUT, list/delete and denial gates pass through the same engine/storage contract. It is private tenant-scoped storage with expiring grants and bounded transfers, not permanent public assets or physical management parity. Next: durable resource identity and reviewed reuse/redeploy/resume, then shared form/button integration and Vercel acceptance.

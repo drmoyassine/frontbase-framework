@@ -44,3 +44,8 @@ Nonsecret logs in the task evidence directory: native-kv-build.log, native-kv-ch
 1. Native R2 adapter and authenticated/signed upload/download serving, using the existing StorageProvider and auth/token patterns. Do not expose a public bucket or claim support from a provisioning-only resource card.
 2. Durable resource identity, reviewed reuse/redeploy/resume and controlled state migration.
 3. Shared pre-/post-deploy Bindings form and actual CF/Vercel button acceptance. Vercel free state provisioning remains gated on Marketplace setup; Deno stays deferred. CF-22 remains paused.
+
+
+## Later private native R2 checkpoint — 2026-10-20
+
+[Native R2 delivery](frontbase-deployment-native-r2-20261020.md) supersedes earlier R2-unavailable descriptions for the optional new private binding path. Real multipart/signed GET/PUT, list/delete and denial gates pass through the same engine/storage contract. It is private tenant-scoped storage with expiring grants and bounded transfers, not permanent public assets or physical management parity. Next: durable resource identity and reviewed reuse/redeploy/resume, then shared form/button integration and Vercel acceptance.
