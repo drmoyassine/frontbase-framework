@@ -1,5 +1,10 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-20 managed Cloudflare identity implementation boundary
+
+Under the accepted state/secret-preserving editable deployment requirement, retain strict nonsecret local receipts, per-user machine-local account/Worker locks and pre-mutation uncertainty checkpoints. Reuse compiler/native adapters; identify resources by D1/KV IDs and R2 creation identity, mark owned Workers and operation-tagged versions, verify before/after uploads and preserve remote variables/secrets. Recovery confirms completed known uploads only; unknown create outcomes and unmarked/older resources are never automatically adopted. Fixed-origin bounded metadata reads use the supported Wrangler credential bridge in memory, not credential-file extraction or a hosted control plane. No remote CAS, automatic migration/secret rotation or cross-machine lock claim. [Evidence](../plans/frontbase-deployment-managed-lifecycle-20261020.md). This records implementation within the owner-approved lifecycle scope, not a new package, rollout promise or CF-22 activation.
+
+
 ## 2026-10-20 native R2 implementation boundary
 
 Under the accepted native Cloudflare binding/profile requirement, [native private R2](../plans/frontbase-deployment-native-r2-20261020.md) reuses StorageProvider and the existing resolver through a host-only per-tenant factory. One private physical bucket contains isolated logical files namespaces; physical management stays at deploy time. App-origin/method/tenant/object/expiry-bound HMAC grants provide bounded HTTP GET/PUT without inventing S3 credentials or enabling a public bucket. The signing domain is separate from session JWTs; existing session-key rotation invalidates access grants. Existing connected providers retain their explicit resolution. Grants are expiring bearer URLs, not permanent public assets; private native transfer/management limitations and remaining UI/reuse/button gates must remain visible. No new package, hosted control plane, release claim or CF-22 activation.

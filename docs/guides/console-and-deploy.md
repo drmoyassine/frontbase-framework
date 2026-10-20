@@ -180,14 +180,32 @@ To enable the verified new-Worker/new-D1 Cloudflare path, use:
 pnpm run deploy:setup -- --target cloudflare --environment preview --deploy --app-name my-new-frontbase --account-id YOUR_CLOUDFLARE_ACCOUNT_ID
 ```
 
-This first executor requires a fresh Worker and `<worker>-db` D1, with optional bindings disabled. It refuses existing resources and repeat attempts. The private first-admin link is printed in the terminal. [Exact verification and remaining scope](../plans/frontbase-deployment-handoff-20261020.md).
+Creation requires a fresh Worker and `<worker>-db` D1; optional native KV and private R2 can be selected below. Existing resources are refused rather than adopted. The private first-admin link is printed in the terminal. [Exact verification and remaining scope](../plans/frontbase-deployment-handoff-20261020.md).
 
 
 ## Native KV in reviewed Cloudflare setup
 
-The explicit `deploy:setup -- --target cloudflare --deploy --app-name NAME --account-id ACCOUNT_ID` flow defaults to a new named D1 and optional new KV cache. KV can be disabled in the local Bindings review. It uses the `FRONTBASE_KV` binding, the existing tenant-scoped service resolver, and logical TTLs for short cache entries. Explicit cache environment configuration and adopted defaults retain precedence. This launcher refuses existing resources and unsupported bindings; optional private native R2 is now verified separately; reuse/redeploy is still pending. [Exact live acceptance and limits](../plans/frontbase-deployment-native-kv-20261020.md).
+The explicit `deploy:setup -- --target cloudflare --deploy --app-name NAME --account-id ACCOUNT_ID` flow defaults to a new named D1 and optional new KV cache. KV can be disabled in the local Bindings review. It uses the `FRONTBASE_KV` binding, the existing tenant-scoped service resolver, and logical TTLs for short cache entries. Explicit cache environment configuration and adopted defaults retain precedence. This launcher refuses existing resources and unsupported bindings; optional private native R2 is verified separately; managed reuse/redeploy uses the durable receipt described below. [Exact live acceptance and limits](../plans/frontbase-deployment-native-kv-20261020.md).
 
 
 ## Optional private native R2
 
 In the reviewed Cloudflare setup above, enable the Storage binding and choose native R2/create to provision the derived new private bucket. No S3 credentials are needed. The File Storage API discovers a bound provider and a tenant-isolated private files bucket, reusing normal multipart uploads and object management. Signed GET/PUT links use the app origin, default to fifteen minutes and are capped at one hour. Native transfers default to 10 MiB; physical bucket management, permanent public asset URLs and large-object multipart protocols are not part of this path. [Exact actual acceptance and support boundary](../plans/frontbase-deployment-native-r2-20261020.md).
+
+## Managed Cloudflare redeployment and recovery
+
+New reviewed deployments now retain a versioned nonsecret journal under `.frontbase/deployments/<account>/<environment>/<worker>/deployment.json`. Keep this local identity record: it pins D1/KV IDs, the R2 name/creation timestamp, installation UUID and deployed version. It contains no provider credentials, session secret, administrator password or setup claim. The directory is Git-ignored.
+
+From the same checkout and explicit account/name/environment, use:
+
+```sh
+pnpm run deploy:setup -- --target cloudflare --environment preview --deploy --app-name my-new-frontbase --account-id YOUR_CLOUDFLARE_ACCOUNT_ID --intent redeploy
+```
+
+The local Bindings review shows recorded resources in reuse mode. This bounded redeploy retains the same bindings; changing providers or state storage still requires a controlled migration/reconfiguration feature. The executor verifies live ownership, exact resource IDs and current version, uses the existing compiler, preserves remote variables/secrets and forbids resource creation or secret uploads. Old deployments without a managed receipt and ownership marker are not automatically enrolled.
+
+If upload completed but its final verification failed, review the journal, then use the same command with `--intent resume`. Recovery confirms the exact recorded operation/version and resource identities without another upload. It requires a known application URL and completed known resource identities. Unknown create results, an unmarked partial Worker or a lost upload response require manual reconciliation; `resume` does not retry or adopt resources by name.
+
+A local account/Worker lock serializes operations across worktrees and environment labels for the same OS user. A stale lock is retained after process failure: establish that the operation has ended and reconcile its receipt/provider state before removing it. Locks do not coordinate other users/machines or out-of-band dashboard operations; immediate version checks are not a provider-side compare-and-swap guarantee. Journal updates are atomic local replacements, not distributed transactions or a power-loss/backup guarantee.
+
+[Lifecycle evidence and limitations](../plans/frontbase-deployment-managed-lifecycle-20261020.md). Shared post-deploy Bindings, controlled binding changes, migration, full button journeys and Vercel live acceptance remain separate work.

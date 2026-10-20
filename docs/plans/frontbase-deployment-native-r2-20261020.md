@@ -46,6 +46,6 @@ Task evidence logs: native-r2-build.log, native-r2-check.log, native-r2-deployme
 
 ## Next executable work
 
-1. Durable resource identity and reviewed reuse/redeploy/resume; preserve D1 state, cached namespace and private objects, with explicit ownership/partial-failure checks and controlled migration.
+1. [Managed identity/redeploy and bounded completed-upload recovery](frontbase-deployment-managed-lifecycle-20261020.md) are now verified on a new disposable target, preserving session/data/cache/object access. Unknown creates, older/unmarked resource enrollment and controlled binding migration remain open.
 2. Shared pre-/post-deploy Bindings form, native storage management affordances and exact deployment-button acceptance. Preserve explicit user overrides; do not equate a profile recommendation with an enforced provider.
 3. Vercel free state integration and matching fresh-install/redeploy acceptance once Marketplace setup is complete. Deno remains deferred; public release and paused CF-22 gates remain unchanged.

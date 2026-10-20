@@ -83,6 +83,8 @@ pnpm run deploy:cf-full -- --dry-run
 
 Full reference: [docs/guides/console-and-deploy.md](docs/guides/console-and-deploy.md).
 
+[Reviewed Cloudflare deployment lifecycle](docs/plans/frontbase-deployment-managed-lifecycle-20261020.md) supports new managed D1/optional KV/private R2 installations, exact-binding redeployment and bounded completed-upload recovery through the local setup launcher. Shared post-deploy configuration, arbitrary binding migration, native button acceptance and live Vercel acceptance remain separate gates. [Commands and limits](docs/guides/console-and-deploy.md#managed-cloudflare-redeployment-and-recovery).
+
 ## One-click deploy
 
 Deploy the full CMS from a fresh fork/clone without a local toolchain — each button clones this repo into your Git host and walks you through the host's project-creation flow (the build compiles the console + engine from source; nothing is pre-built in the repo):

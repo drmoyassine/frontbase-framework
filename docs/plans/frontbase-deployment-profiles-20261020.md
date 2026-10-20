@@ -127,3 +127,7 @@ The [P0/P1 receipt](frontbase-deployment-profiles-p0-p1-20261020.md) records exa
 ## Later private native R2 checkpoint — 2026-10-20
 
 [Native R2 delivery](frontbase-deployment-native-r2-20261020.md) supersedes earlier R2-unavailable descriptions for the optional new private binding path. Real multipart/signed GET/PUT, list/delete and denial gates pass through the same engine/storage contract. It is private tenant-scoped storage with expiring grants and bounded transfers, not permanent public assets or physical management parity. Next: durable resource identity and reviewed reuse/redeploy/resume, then shared form/button integration and Vercel acceptance.
+
+## Managed lifecycle checkpoint — 2026-10-20
+
+[Managed lifecycle delivery](frontbase-deployment-managed-lifecycle-20261020.md) supersedes the earlier durable-identity/redeploy-pending description for new managed CF installations. Real known-resource redeploy and post-upload reconciliation preserve session, page, cache and object access. Unknown creates/unmarked partial Workers still require manual reconciliation. Next: shared Bindings/native management UI, exact buttons/clean installation and Vercel acceptance; Deno deferred, public release/CF-22 unchanged.
