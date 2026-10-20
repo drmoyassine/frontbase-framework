@@ -207,10 +207,42 @@ if(!process.argv.includes('--without-capacity')){
 // Full pilot-sized synthetic catalog: late pages exceed the old 10,000 offset boundary.
 const capacityRecords={cities:[{id:1,title:'City'}],institutions:[{...base,id:10,title:'Campus',originalPath:'/campus/',cityId:1}],articles:[],programs:Array.from({length:10049},(_,i)=>({...base,id:i+1,title:`Program ${String(i+1).padStart(5,'0')}`,originalPath:`/capacity/program-${i+1}/`,institutionId:10}))};
 const capacityHash=await manifestStore.prepare({configurationRevision:1,configuration:config,templates:legacy.templates},capacityRecords,now),capacity=await manifestStore.get(capacityHash);
+const sourceStart=process.hrtime.bigint();
 const lateQueries=createChunkDirectoryQueries(capacity,'alpha',db),late=await lateQueries['directory.program.list'].execute({offset:10032,limit:12},{tenant:'alpha'});assert.equal(late[0].title,'Program 10033');assert.equal(late.length,13);
+const sourcePageMs=Number(process.hrtime.bigint()-sourceStart)/1e6;
 assert.equal((await call('review',{hash:capacityHash,checks:reviewChecks,note:'Synthetic 10,049-program capacity and URL proof'})).status,200);
 const capacityActivation=await call('activate',{hash:capacityHash,expected:(await store.activeVersion()).pointer});assert.equal(capacityActivation.status,200);
 const latePage=await publicPage('/explore/?type=program&page=837');assert.equal(latePage.status,200);assert.ok((await latePage.text()).includes('Program 10033'));
+// Task 8 slice C: bounded localized capacity over the same pilot-sized catalog — the localized
+// registry and the standard fetch filter/sort the FULL index by released titles before paging,
+// so late pages and full-dataset search stay exact in Arabic.
+const capacityTitles=new Map(capacity.index.filter(row=>row.collection==='programs').map(row=>[`programs:${row.id}`,`برنامج ${String(row.id).padStart(5,'0')}`]));
+const localizedStart=process.hrtime.bigint();
+const localizedQueries=createChunkDirectoryQueries(capacity,'alpha',db,capacityTitles);
+const localizedConstructMs=Number(process.hrtime.bigint()-localizedStart)/1e6;
+const localizedSliceStart=process.hrtime.bigint();
+const localizedLate=await localizedQueries['directory.program.list'].execute({offset:10032,limit:12,sort:'title-desc'},{tenant:'alpha'});
+const localizedSliceMs=Number(process.hrtime.bigint()-localizedSliceStart)/1e6;
+assert.equal(localizedLate.length,13);assert.equal(localizedLate[0].title,'Program 00017','the localized registry orders the late page by Arabic titles (rows stay source; the serve join applies released text)');
+const localizedSearchStart=process.hrtime.bigint();
+const localizedMatch=await localizedQueries['directory.program.list'].execute({q:'برنامج 1004',match:'contains',sort:'title-asc',limit:12},{tenant:'alpha'});
+assert.equal(localizedMatch.length,10,'localized search matches span the whole 10,049-record index');
+assert.equal(localizedMatch[0].title,'Program 10040');
+const localizedSearchMs=Number(process.hrtime.bigint()-localizedSearchStart)/1e6;
+assert.ok(localizedSliceMs<5000&&localizedSearchMs<5000,'localized full-index registry queries stay bounded');
+const capacityCatalog=capacity.index.filter(row=>row.collection==='programs').map(row=>({record:{collection:'programs',key:[{column:'id',value:row.id}]},fieldKey:'title',text:`برنامج ${String(row.id).padStart(5,'0')}`,sourceText:row.title}));
+const capacityBinding={componentId:'institutions',dataSourceId:'frontbase:publication',tableName:'programs',source:{kind:'publication',hash:capacityHash},pagination:{enabled:true,page:0,pageSize:12},sorting:{enabled:true,column:'title',direction:'desc'},filtering:{searchEnabled:false,filters:{}},columnOrder:['title','id'],columnOverrides:{},hiddenFilters:[]};
+const fetchStart=process.hrtime.bigint();
+const capacityFetch=await readPublicationList(db,'alpha',capacityBinding,{componentId:'institutions',versionId:'default',page:0,pageSize:12,sortColumn:'title',direction:'desc',filters:[]},capacityCatalog);
+const fetchFirstMs=Number(process.hrtime.bigint()-fetchStart)/1e6;
+assert.equal(capacityFetch.total,10049,'the fetch total is the full localized dataset');
+assert.equal(capacityFetch.rows[0].title,'برنامج 10049','fetch rows carry released titles in localized order');
+const fetchLateStart=process.hrtime.bigint();
+const capacityLateFetch=await readPublicationList(db,'alpha',capacityBinding,{componentId:'institutions',versionId:'default',page:836,pageSize:12,sortColumn:'title',direction:'desc',filters:[]},capacityCatalog);
+const fetchLateMs=Number(process.hrtime.bigint()-fetchLateStart)/1e6;
+assert.equal(capacityLateFetch.rows.length,12);assert.equal(capacityLateFetch.rows[0].title,'برنامج 00017','the fetch late page agrees with the registry order');
+assert.ok(fetchFirstMs<5000&&fetchLateMs<5000,'localized fetch reads stay bounded');
+console.log(`capacity timings (10,049 titles): source late page ${sourcePageMs.toFixed(0)}ms | localized registry: construct ${localizedConstructMs.toFixed(0)}ms + Arabic late slice ${localizedSliceMs.toFixed(0)}ms + full-index search ${localizedSearchMs.toFixed(0)}ms | localized fetch: first page ${fetchFirstMs.toFixed(0)}ms + late page ${fetchLateMs.toFixed(0)}ms — per-request work stays bounded to page-size chunk reads beside one artifact validation`);
 const largeInventory=await captureRouteInventory(db,'alpha');assert.equal(largeInventory.paths.length,10051);
 const namespaceResponse=await app.request('/api/project/page-route-audit/'),namespace=await namespaceResponse.json();assert.equal(namespaceResponse.status,200);assert.equal(namespace.publicRecordsChecked,true);assert.ok(namespace.resourcesChecked>=10051);
 console.log('capacity: 10,049 captured programs, late offset 10,032, active namespace inventory and bounded page rendering PASS');
