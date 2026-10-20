@@ -26,7 +26,8 @@ const reviewed=[];
 const app=await startDeploymentSetup({target:'vercel',onReview:value=>reviewed.push(value)});
 try {
     assert.equal(app.consumePrepared(),undefined);
-    const root=await call(app,'/',{headers:{'sec-fetch-site':'cross-site'}});assert.equal(root.status,200);assert.equal(root.headers['cache-control'],'no-store');assert.equal(root.headers['referrer-policy'],'no-referrer');assert.ok(root.headers['content-security-policy'].includes("frame-ancestors 'none'"));assert.ok(!root.text.includes(new URL(app.url).hash.slice(1)));
+    const root=await call(app,'/',{headers:{'sec-fetch-site':'cross-site'}});assert.equal(root.status,200);assert.ok(root.text.includes('type="module"'));assert.equal(root.headers['cache-control'],'no-store');assert.equal(root.headers['referrer-policy'],'no-referrer');assert.ok(root.headers['content-security-policy'].includes("frame-ancestors 'none'"));assert.ok(!root.text.includes(new URL(app.url).hash.slice(1)));
+    const editor=await call(app,'/bindings-form.js');assert.equal(editor.status,200);assert.ok(editor.headers['content-type'].includes('javascript'));assert.ok(editor.text.includes('mountBindingsForm'));assert.ok(!editor.text.includes('node:child_process'));
     assert.equal((await call(app,'/api/bootstrap')).status,401);
     assert.equal((await call(app,'/api/bootstrap',{headers:{host:'attacker.example'}})).status,403);
     const validToken=new URLSearchParams(new URL(app.url).hash.slice(1)).get('claim');

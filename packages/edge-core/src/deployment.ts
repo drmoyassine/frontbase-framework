@@ -126,3 +126,48 @@ export function stateBindingChanged(before: DeploymentManifest, after: Deploymen
     const canonical=(b:BindingSelection)=>JSON.stringify({adapterId:b.adapterId,mode:b.mode,resourceRef:b.resourceRef??null,config:Object.fromEntries(Object.entries(b.config).sort(([a],[c])=>a.localeCompare(c)))});
     return before.target!==after.target || canonical(before.bindings['state-db'])!==canonical(after.bindings['state-db']);
 }
+
+/** Project only verified managed native bindings into runtime metadata; never include credentials. */
+export function managedRuntimeManifest(manifest: DeploymentManifest, resources: Record<string,{id?:string;name:string}>): DeploymentManifest {
+    const result=structuredClone(manifest);
+    for(const role of configurableRoles) {
+        const binding=result.bindings[role];
+        if(binding.mode==='disabled'){binding.config={};binding.secretRefs={};delete binding.resourceRef;continue;}
+        const key=role==='state-db'?'database':role;
+        const resource=resources[key];
+        if(!resource)throw new Error('missing_managed_resource_identity');
+        binding.mode='reuse';binding.resourceRef=resource.id??resource.name;binding.secretRefs={};
+    }
+    const safe=readManagedRuntimeManifest(result);
+    if(!safe)throw new Error('invalid_managed_runtime_manifest');
+    return safe;
+}
+/** Reject unsupported/credential-shaped host metadata rather than returning arbitrary environment values. */
+export function readManagedRuntimeManifest(input: unknown): DeploymentManifest | null {
+    try {
+        const value=typeof input==='string'?(input.length<=32768?JSON.parse(input):null):input;
+        const parsed=validateDeploymentManifest(value);
+        if(!parsed.ready || parsed.manifest.target!=='cloudflare')return null;
+        for(const role of configurableRoles) {
+            const binding=parsed.manifest.bindings[role];
+            if(Object.keys(binding.secretRefs).length || Object.keys(binding.config).some(k=>k!=='resourceName'))return null;
+            if(binding.mode==='disabled'){if(Object.keys(binding.config).length || binding.resourceRef)return null;continue;}
+            const nativeAdapters:Partial<Record<ConfigurableRole,string>>={'state-db':'cloudflare-d1',cache:'cloudflare-kv',storage:'cloudflare-r2'};
+            const expected=nativeAdapters[role];
+            if(!expected || binding.adapterId!==expected || binding.mode!=='reuse' || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(binding.config.resourceName??''))return null;
+            if(role==='state-db'&&!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(binding.resourceRef??''))return null;
+            if(role==='cache'&&!/^[a-f0-9]{32}$/.test(binding.resourceRef??''))return null;
+            if(role==='storage'&&binding.resourceRef!==binding.config.resourceName)return null;
+        }
+        return parsed.manifest;
+    } catch {return null;}
+}
+export function reviewDeploymentManifest(current: DeploymentManifest, proposed: unknown) {
+    const next=validateDeploymentManifest(proposed);
+    if(!next.ready)return {ready:false as const,issues:next.issues};
+    if(next.manifest.target!==current.target || next.manifest.environment!==current.environment)return {ready:false as const,issues:[{code:'deployment_scope_changed'}]};
+    const canonical=(binding:BindingSelection)=>JSON.stringify({...binding,config:Object.fromEntries(Object.entries(binding.config).sort()),secretRefs:Object.fromEntries(Object.entries(binding.secretRefs).sort())});
+    const changedRoles=configurableRoles.filter(role=>canonical(current.bindings[role])!==canonical(next.manifest.bindings[role]));
+    const migrationRequired=stateBindingChanged(current,next.manifest);
+    return {ready:true as const,applied:false as const,executable:false as const,changedRoles,migrationRequired,status:!changedRoles.length?'unchanged':migrationRequired?'migration_required':'deployment_required',operations:next.operations};
+}

@@ -27,7 +27,7 @@ const faults=[
 try {
  for(const [name,type,mutate] of faults){
   const url=type==='server'?serverUrl:executorUrl;const source=readFileSync(url,'utf8');let changed=mutate(source);if(!name.startsWith('baseline'))assert.notEqual(changed,source,name);
-  for(const path of ['../../packages/edge-core/dist/deployment.js','../../packages/compiler/dist/cli/deploy.js','../../packages/compiler/dist/cli/app-identity.js','../../packages/compiler/dist/cli/provision-d1.js','../console-pin.mjs'])changed=changed.replace(JSON.stringify(path).replaceAll('"',"'"),JSON.stringify(new URL(path,url).href));
+  for(const path of ['../../packages/edge-core/dist/deployment.js','../../packages/compiler/dist/cli/deploy.js','../../packages/compiler/dist/cli/app-identity.js','../../packages/compiler/dist/cli/provision-d1.js','../console-pin.mjs','./bindings-assets.mjs'])changed=changed.replace(JSON.stringify(path).replaceAll('"',"'"),JSON.stringify(new URL(path,url).href));
   changed=changed.replace('new URL(asset[0],import.meta.url)',`new URL(asset[0],${JSON.stringify(serverUrl.href)})`);
   const candidate=join(temp,'fault.mjs');writeFileSync(candidate,changed);
   const suite=fileURLToPath(new URL(type==='server'?'./test-deployment-setup-execution.mjs':'./test-cloudflare-setup-executor.mjs',import.meta.url));

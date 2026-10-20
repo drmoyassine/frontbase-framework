@@ -1,6 +1,9 @@
 // FileBrowser Types
 
 export interface Bucket {
+    /** Physical bucket/settings are controlled by the deployment. File operations remain available. */
+    deployment_managed?: boolean;
+    max_signed_url_expiry?: number;
     id: string;
     name: string;
     public: boolean;

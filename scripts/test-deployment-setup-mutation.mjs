@@ -23,6 +23,7 @@ try {
   assert.ok(source.includes(before),name);
   const candidate=join(temp,'fault.mjs');
   const changed=source.replace(before,after)
+    .replace("'./bindings-assets.mjs'",JSON.stringify(new URL('./bindings-assets.mjs',sourceUrl).href))
     .replace("'../../packages/edge-core/dist/deployment.js'",JSON.stringify(new URL('../packages/edge-core/dist/deployment.js',import.meta.url).href))
     .replace('new URL(asset[0],import.meta.url)',`new URL(asset[0],${JSON.stringify(sourceUrl.href)})`);
   writeFileSync(candidate,changed);

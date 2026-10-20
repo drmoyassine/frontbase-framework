@@ -50,6 +50,7 @@ export interface CmsEnv {
     DB: D1Database;
     FRONTBASE_KV?: KVNamespaceBinding;
     FRONTBASE_R2?: R2BucketBinding;
+    FRONTBASE_DEPLOYMENT_MANIFEST?: string;
     /** Frontbase Cloud application-state PostgreSQL through Cloudflare Hyperdrive. */
     HYPERDRIVE?: { connectionString: string };
     ASSETS: { fetch(request: Request): Promise<Response> };
@@ -124,6 +125,7 @@ export interface CmsEngineOptions {
     assets?: { fetch(request: Request): Promise<Response> };
     storageProvider?: StorageProvider;
     r2Binding?: R2BucketBinding;
+    deploymentManifest?: unknown;
     /** Identity of the host this engine runs on (edge-engines system card).
      *  Defaults to the Cloudflare worker; the Node entry passes its own. */
     systemEdge?: { provider: string; name?: string; db?: string | null; cache?: string | null; queue?: string | null };
@@ -418,6 +420,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // still take precedence at resolve time; this is the deploy-time floor.
         envServices: opts.envServices,
         nativeCache: opts.nativeCache,
+        deploymentManifest: opts.deploymentManifest,
         // Email intake secret (DEC-105): the kernel's /channels/email/inbound
         // webhook presents it as x-internal-secret. Unset → the endpoint 401s.
         emailInboundSecret: opts.envServices?.emailInboundSecret,
@@ -973,6 +976,7 @@ export default {
                     nativeCache: env.FRONTBASE_KV ? kvCache(env.FRONTBASE_KV) : undefined,
                     dispatcher: (work) => { if (currentCtx) currentCtx.waitUntil(work()); else void work(); },
                     r2Binding: env.FRONTBASE_R2,
+                    deploymentManifest: env.FRONTBASE_DEPLOYMENT_MANIFEST,
                     storageProvider: env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_KEY
                         ? s3StorageProvider({
                             accessKeyId: env.STORAGE_ACCESS_KEY_ID,

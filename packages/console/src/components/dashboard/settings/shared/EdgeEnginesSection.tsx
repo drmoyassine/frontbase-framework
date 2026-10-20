@@ -1,3 +1,5 @@
+import api from '@/services/api-service';
+import { DeploymentBindingsDialog } from './DeploymentBindingsDialog';
 import React, { useState, useMemo } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -311,6 +313,7 @@ export function EdgeEnginesSection() {
                                             }
                                             actions={
                                                 <div className="flex items-center space-x-2">
+                                                    {engine.is_system && <DeploymentBindingsDialog client={api}/>}
                                                     {engine.move_status === 'moved_out' ? (
                                                         <MoveResolutionControls engine={engine} />
                                                     ) : (

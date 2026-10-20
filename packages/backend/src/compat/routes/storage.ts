@@ -178,6 +178,7 @@ export function registerStorageRoutes(
             is_active,
             created_at,
             updated_at: updated_at ?? created_at ?? '',
+            ...(id===NATIVE_R2_PROVIDER_ID && storageProviderFor?{deployment_managed:true}:{}),
         };
     };
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
@@ -186,7 +187,7 @@ export function registerStorageRoutes(
         if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
         return ciphertext;
     };
-    const nativeProviderFor=(id:string)=>id===NATIVE_R2_PROVIDER_ID && storageProviderFor ? {id:NATIVE_R2_PROVIDER_ID,name:'Cloudflare R2 (bound)',provider:'r2',provider_account_id:null,account_name:'Platform binding',is_active:true,created_at:now()} : undefined;
+    const nativeProviderFor=(id:string)=>id===NATIVE_R2_PROVIDER_ID && storageProviderFor ? {id:NATIVE_R2_PROVIDER_ID,name:'Cloudflare R2 (bound)',provider:'r2',provider_account_id:null,account_name:'Platform binding',deployment_managed:true,is_active:true,created_at:now()} : undefined;
     const hasStorageProvider = async (tenant: string, providerId: string) => {
         if(nativeProviderFor(providerId))return true;
         const providers = await kvFor(tenant).getJson<Array<{ id?: string }>>('storage_providers', []);
@@ -260,7 +261,7 @@ export function registerStorageRoutes(
             // labeled with the provider type — not CMS rows.
             try {
                 const label = providerType.charAt(0).toUpperCase() + providerType.slice(1);
-                const buckets = (await managed.client.listBuckets()).map((b) => ({ ...b, provider: label }));
+                const buckets = (await managed.client.listBuckets()).map((b) => ({ ...b, provider: label,...(nativeProviderFor(providerId)?{deployment_managed:true,max_signed_url_expiry:3600}:{}) }));
                 return c.json({ success: true, buckets });
             } catch (e) {
                 return c.json({ detail: `Failed to list buckets: ${(e as Error).message}` }, 500);

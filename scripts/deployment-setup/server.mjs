@@ -1,3 +1,4 @@
+import { buildBindingsAssets } from './bindings-assets.mjs';
 import { createServer } from 'node:http';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -21,6 +22,7 @@ function sessionCookie(req,name) {
 export async function startDeploymentSetup({ target='cloudflare', environment='preview', ttlMs=15*60_000, now=Date.now, onReview=()=>{}, initialManifest, executionInfo, executionCapabilities, executionIssues=()=>[], onDeploy }={}) {
     if (!['cloudflare','vercel'].includes(target) || !['preview','production'].includes(environment)) throw new Error('invalid_deployment_target');
     if (!Number.isFinite(ttlMs) || ttlMs<1 || ttlMs>30*60_000) throw new Error('invalid_setup_lifetime');
+    const bindingAssets=buildBindingsAssets();
     const defaults=initialManifest??defaultDeploymentManifest(target,environment);
     if(defaults.target!==target || defaults.environment!==environment)throw new Error('setup_target_mismatch');
     let claim=randomBytes(32).toString('base64url');
@@ -47,8 +49,9 @@ export async function startDeploymentSetup({ target='cloudflare', environment='p
         try {
             if(req.headers.host!==host || !req.url?.startsWith('/') || req.url.startsWith('//'))return reply(403,{error:'invalid_host'});
             if(now()>=expires){clear();return reply(410,{error:'setup_expired'});}
+            if(req.method==='GET' && req.url==='/bindings-form.js')return reply(200,bindingAssets.js,{'content-type':'text/javascript; charset=utf-8'});
             const asset=assets.get(req.url);
-            if(req.method==='GET' && asset)return reply(200,readFileSync(new URL(asset[0],import.meta.url),'utf8'),{'content-type':asset[1]});
+            if(req.method==='GET' && asset)return reply(200,(readFileSync(new URL(asset[0],import.meta.url),'utf8')+(req.url==='/style.css'?'\n'+bindingAssets.css:'')),{'content-type':asset[1]});
             const site=req.headers['sec-fetch-site'];
             if((req.headers.origin && req.headers.origin!==origin) || (site && !['same-origin','none'].includes(site)))return reply(403,{error:'invalid_origin'});
             if(req.method!=='GET' && req.method!=='POST')return reply(405,{error:'method_not_allowed'});

@@ -4,7 +4,7 @@ import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deployCommand } from '../../packages/compiler/dist/cli/deploy.js';
-import { validateDeploymentManifest } from '../../packages/edge-core/dist/deployment.js';
+import { validateDeploymentManifest, managedRuntimeManifest } from '../../packages/edge-core/dist/deployment.js';
 import { executeCloudflareFirstInstall, cloudflareExecutionIssues, stageCloudflareArtifacts, nativeWrangler, assertCloudflareExecutionContext } from './cloudflare.mjs';
 import { readCloudflareIdentity, installationBinding } from './cloudflare-identity.mjs';
 import { acquireDeploymentLock, receiptPath, readReceipt, writeReceipt } from './receipt.mjs';
@@ -90,7 +90,7 @@ export async function executeManagedCloudflare(prepared,context,{intent='create'
    if(!isDeepStrictEqual(current,previousIdentity))throw new Error('deployment_remote_state_changed');
    save({pending:'worker',phase:'worker_write_started'});
    uploaded=true;
-   return runWrangler([...args,'--keep-vars','--var',installationBinding+':'+receipt.installationId,'--tag',receipt.operationId],options);
+   return runWrangler([...args,'--keep-vars','--var',installationBinding+':'+receipt.installationId,'--tag',receipt.operationId,'--var','FRONTBASE_DEPLOYMENT_MANIFEST:'+JSON.stringify(managedRuntimeManifest(receipt.manifest,receipt.resources))],options);
   };
   const result=await deploy('.',{cwd:stage,target:'cloudflare',appName:context.appName,d1DatabaseId:resources.database.id,runWrangler:run});
   if(!result.ok || !uploaded || result.details?.workerUrl!==receipt.url)throw new Error('managed_redeploy_failed');

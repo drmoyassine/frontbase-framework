@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import { sqliteRunner } from '@frontbase/edge-infra';
+import { defaultDeploymentManifest, managedRuntimeManifest, readManagedRuntimeManifest } from '@frontbase/edge-core/deployment';
+const {createCompatApp}=await import(process.env.FRONTBASE_BINDINGS_APP_TEST_MODULE??'../dist/compat/app.js');
+import { migrateUp } from '../dist/db/migrations.js';
+const base=defaultDeploymentManifest('cloudflare');
+for(const [role,suffix] of [['state-db','db'],['cache','cache']])base.bindings[role].config.resourceName='review-fixture-'+suffix;
+const current=managedRuntimeManifest(base,{database:{name:'review-fixture-db',id:'11111111-2222-3333-4444-555555555555'},cache:{name:'review-fixture-cache',id:'a'.repeat(32)}});
+const privateValue='synthetic-not-returned-credential';
+const runner=sqliteRunner(':memory:');await migrateUp(runner);let writes=0;
+const watched={...runner,run:async(...args)=>{writes++;return runner.run(...args);}};
+const build=(extra={})=>createCompatApp({makeRunner:()=>watched,sessionSecret:'review-test-secret',deploymentManifest:JSON.stringify(current),resolvePrincipal:async req=>{
+ const role=req.headers.get('x-role');return role?{user:{id:'review-user',role},tenant:req.headers.get('x-tenant')??'_root'}:{user:null,tenant:''};
+},...extra});
+const app=await build();writes=0;
+async function request(path,{role='master_admin',tenant='_root',method='GET',body,expected=200,application=app}={}){
+ const r=await application.fetch(new Request('https://app.example'+path,{method,headers:{...(role?{'x-role':role,'x-tenant':tenant}:{}),...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined}));
+ const text=await r.text();assert.equal(r.status,expected,path+': '+text);assert.ok(!text.includes(privateValue));return {body:JSON.parse(text),headers:r.headers};
+}
+await request('/api/deployment/bindings',{role:null,expected:401});
+for(const [role,tenant] of [['admin','_root'],['owner','other'],['master_admin','other']])await request('/api/deployment/bindings',{role,tenant,expected:403});
+const discovery=await request('/api/deployment/bindings');assert.deepEqual(discovery.body.manifest,current);assert.equal(discovery.body.applySupported,false);assert.equal(discovery.headers.get('cache-control'),'no-store');
+await request('/api/deployment/bindings',{role:'owner',tenant:'_default'});
+const same=await request('/api/deployment/bindings/review',{method:'POST',body:{manifest:current}});assert.equal(same.body.status,'unchanged');assert.equal(same.body.applied,false);assert.equal(same.body.executable,false);
+const proposed=structuredClone(current);proposed.bindings.cache={adapterId:'upstash-http',mode:'connect',config:{url:'https://cache.example'},secretRefs:{token:'cache/token'}};
+const change=await request('/api/deployment/bindings/review',{method:'POST',body:{manifest:proposed}});assert.equal(change.body.status,'deployment_required');assert.deepEqual(change.body.changedRoles,['cache']);
+const migration=structuredClone(current);migration.bindings['state-db'].resourceRef='22222222-2222-3333-4444-555555555555';
+assert.equal((await request('/api/deployment/bindings/review',{method:'POST',body:{manifest:migration}})).body.migrationRequired,true);
+const wrong=structuredClone(current);wrong.environment='production';await request('/api/deployment/bindings/review',{method:'POST',body:{manifest:wrong},expected:422});
+const bad=structuredClone(current);bad.bindings.cache.config.apiKey=privateValue;await request('/api/deployment/bindings/review',{method:'POST',body:{manifest:bad},expected:422});
+await request('/api/deployment/bindings/review',{method:'POST',body:{manifest:current,credentials:{token:privateValue}},expected:400});
+await request('/api/deployment/bindings/review',{role:'owner',tenant:'other',method:'POST',body:{manifest:current},expected:403});
+await request('/api/deployment/bindings/review',{method:'POST',body:{padding:'x'.repeat(40000)},expected:413});
+assert.equal(writes,0,'review must not persist or apply changes');
+const invalidHost=await build({deploymentManifest:JSON.stringify({credential:privateValue})});assert.equal((await request('/api/deployment/bindings',{application:invalidHost})).body.available,false);
+const cloud=await build({cloudMode:true});await request('/api/deployment/bindings',{application:cloud,expected:403});
+const forbidden=structuredClone(current);forbidden.bindings.storage.config={api_key:privateValue};
+assert.equal(readManagedRuntimeManifest(forbidden),null);
+assert.equal(readManagedRuntimeManifest('x'.repeat(40000)),null);
+assert.equal((await request('/api/deployment/bindings')).body.manifest.bindings.cache.resourceRef,current.bindings.cache.resourceRef);
+console.log('PASS deployment review: operator/tenant/cloud boundaries, strict nonsecret projection, changed-state warnings, no writes, no echo, bounded body, no applied claim');

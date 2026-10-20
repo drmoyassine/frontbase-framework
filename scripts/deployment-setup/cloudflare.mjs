@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { validateStagedConsole } from '../console-pin.mjs';
-import { validateDeploymentManifest } from '../../packages/edge-core/dist/deployment.js';
+import { validateDeploymentManifest, managedRuntimeManifest } from '../../packages/edge-core/dist/deployment.js';
 import { deployCommand } from '../../packages/compiler/dist/cli/deploy.js';
 import { parseDatabaseId } from '../../packages/compiler/dist/cli/provision-d1.js';
 import { workerExists } from '../../packages/compiler/dist/cli/app-identity.js';
@@ -87,7 +87,7 @@ export async function executeCloudflareFirstInstall(prepared,context,{exampleRoo
         if((kind==='secret put' || args[0]==='deploy') && args[args.indexOf('--name')+1]!==context.appName)throw new Error('cloudflare_target_mismatch');
         if(kind==='d1 create'){pending='database';journal('database_create_started');}
         if(kind==='secret put' || args[0]==='deploy'){pending='worker';journal('worker_write_started');}
-        const actualArgs=args[0]==='deploy' && installationId?[...args,'--var',`FRONTBASE_INSTALLATION_ID:${installationId}`,'--tag',operationId]:args;
+        const actualArgs=args[0]==='deploy' && installationId?[...args,'--var',`FRONTBASE_INSTALLATION_ID:${installationId}`,'--tag',operationId,'--var','FRONTBASE_DEPLOYMENT_MANIFEST:'+JSON.stringify(managedRuntimeManifest(plan.manifest,resources))]:args;
         const result=await runWrangler(actualArgs,opts);
         if(kind==='d1 create' && result.code===0 && installationId){
             const id=parseDatabaseId(result.stdout);

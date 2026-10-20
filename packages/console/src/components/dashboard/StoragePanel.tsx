@@ -44,6 +44,7 @@ import { fetchBuckets, FetchBucketsResult } from './FileBrowser/api';
 // ── API ───────────────────────────────────────────────────────────────
 
 interface StorageProviderRecord {
+  deployment_managed?: boolean;
   id: string;
   name: string;
   provider: string;
@@ -496,7 +497,7 @@ export const StoragePanel: React.FC = () => {
 
   // Connected providers for the bucket create dialog
   const connectedProviders = React.useMemo(() => {
-    return storageProviders.map(sp => ({
+    return storageProviders.filter(sp=>!sp.deployment_managed).map(sp => ({
       id: sp.id,
       name: sp.name,
       provider: sp.provider,
@@ -583,15 +584,16 @@ export const StoragePanel: React.FC = () => {
                       </Badge>
                     </div>
                     <div className="flex items-center gap-0.5">
-                      <TestConnectionButton providerId={sp.id} />
+                      {sp.deployment_managed ? <Badge variant="outline">Deployment managed · private</Badge> : <><TestConnectionButton providerId={sp.id} />
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        aria-label={`Remove ${sp.name}`}
                         onClick={() => handleDelete(sp.id, sp.name)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      </Button></>}
                     </div>
                   </div>
                 </CardHeader>

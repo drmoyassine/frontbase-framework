@@ -1,3 +1,4 @@
+import { registerDeploymentBindingsRoutes } from './routes/deployment-bindings.js';
 import { registerMenusRoutes } from './routes/menus.js';
 import {registerAppUserRoutes} from './routes/app-users.js';
 /**
@@ -137,6 +138,8 @@ export interface CreateCompatAppDeps {
     envServices?: EnvServices;
     /** Trusted platform cache, never accepted from API configuration. */
     nativeCache?: CacheProvider;
+    /** Strict nonsecret managed deployment metadata; operator review only. */
+    deploymentManifest?: unknown;
     /** Google Workspace Marketplace install URL for the Sheets connect add-on, surfaced
      *  by /api/sync/datasources/sheets/connect/issue/. Empty default => the SPA renders
      *  its bundled fallback (matches the product's FRONTBASE_SHEETS_ADDON_URL semantics). */
@@ -463,6 +466,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // RAG routes are framework-only (outside the 334-op community surface) and
     // console-authed like the storage routes they sit beside.
     registerRagRoutes(app, ragDeps);
+    registerDeploymentBindingsRoutes(app,{manifest:deps.deploymentManifest,cloudMode:deps.cloudMode});
     registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation);
     registerAuthFormsRoutes(app, runner, now);
     registerWorkflowsRoutes(app, phase2For);
