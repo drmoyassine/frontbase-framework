@@ -1,0 +1,6 @@
+export function r2Fixture(){const data=new Map(),calls=[];return {data,calls,
+ async put(key,bytes,options){calls.push(['put',key]);data.set(key,{bytes:new Uint8Array(bytes),contentType:options?.httpMetadata?.contentType});},
+ async get(key){calls.push(['get',key]);const v=data.get(key);return v?{key,size:v.bytes.length,httpMetadata:{contentType:v.contentType},uploaded:new Date(0),async arrayBuffer(){return v.bytes.slice().buffer;}}:null;},
+ async delete(keys){calls.push(['delete',keys]);for(const key of Array.isArray(keys)?keys:[keys])data.delete(key);},
+ async list({prefix,delimiter,limit=1000,cursor}){calls.push(['list',prefix]);const objects=[],folders=new Set();for(const [key,v]of [...data].sort(([a],[b])=>a.localeCompare(b))){if(!key.startsWith(prefix))continue;const rest=key.slice(prefix.length);if(delimiter&&rest.includes(delimiter)){folders.add(prefix+rest.split(delimiter)[0]+delimiter);continue;}objects.push({key,size:v.bytes.length,uploaded:new Date(0),httpMetadata:{contentType:v.contentType}});}const start=Number(cursor??0);return {objects:objects.slice(start,start+limit),delimitedPrefixes:[...folders],truncated:objects.length>start+limit,cursor:objects.length>start+limit?String(start+limit):undefined};}
+};}

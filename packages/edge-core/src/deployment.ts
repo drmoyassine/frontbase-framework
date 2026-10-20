@@ -51,7 +51,7 @@ export const deploymentAdapters: readonly DeploymentAdapter[] = [
     {id:'d1-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','databaseId'],secretKeys:['token'],requiredConfig:['accountId','databaseId'],requiredSecrets:['token']},
     {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'upstash-http',role:'cache',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
-    {id:'cloudflare-r2',role:'storage',targets:['cloudflare'],selectable:false,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
+    {id:'cloudflare-r2',role:'storage',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'s3-http',role:'storage',targets:both,selectable:true,modes:['connect'],configKeys:['endpoint','region','bucket'],secretKeys:['accessKeyId','secretAccessKey'],requiredConfig:['endpoint','bucket'],requiredSecrets:['accessKeyId','secretAccessKey']},
     {id:'cloudflare-vectorize-http',role:'vector',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','indexName'],secretKeys:['token'],requiredConfig:['accountId','indexName'],requiredSecrets:['token']},
     {id:'libsql-vector-http',role:'vector',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},

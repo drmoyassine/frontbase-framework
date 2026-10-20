@@ -15,7 +15,7 @@ import {registerAppUserRoutes} from './routes/app-users.js';
  * with createConsole.
  */
 import { Hono } from 'hono';
-import type { DbRunner, ServiceFetch, StorageProvider, CacheProvider } from '@frontbase/edge-infra';
+import type { DbRunner, ServiceFetch, StorageProvider, StorageProviderFactory, CacheProvider } from '@frontbase/edge-infra';
 import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from '../mw/auth.js';
 import { fastApiErrorEnvelope, opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
@@ -117,6 +117,7 @@ export interface CreateCompatAppDeps {
     externalFetch?: CompatFetch;
     /** Object storage executor for compat upload/move/delete/signed-url routes. */
     storageProvider?: StorageProvider;
+    storageProviderFor?: StorageProviderFactory;
     /** Descriptor for the system edge — the worker this deployment runs on. The
      *  host (worker entry) owns it because it knows the platform (Cloudflare now;
      *  Deno/Vercel/Netlify entries later) and the real binding (D1). Defaults to a
@@ -211,7 +212,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // storage-client factory the storage routes resolve with. Null embedding
     // (FRONTBASE_EMBEDDING absent) leaves the routes answering "not
     // configured"; a null vector at resolve time does the same per-tenant.
-    const storageResolver = createStorageClientResolver({ phase2For, kvFor, storageProvider: deps.storageProvider, externalFetch });
+    const storageResolver = createStorageClientResolver({ phase2For, kvFor, storageProvider: deps.storageProvider, storageProviderFor: deps.storageProviderFor, externalFetch });
     const ragFetch: ServiceFetch = (input, init) =>
         guardedExternalFetch(externalFetch, input, init);
     const ragDeps: RagRouteDeps = {
@@ -458,7 +459,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     );
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
-    registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now, externalFetch);
+    registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now, externalFetch, deps.storageProviderFor);
     // RAG routes are framework-only (outside the 334-op community surface) and
     // console-authed like the storage routes they sit beside.
     registerRagRoutes(app, ragDeps);

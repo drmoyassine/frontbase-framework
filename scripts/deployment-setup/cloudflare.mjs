@@ -10,15 +10,17 @@ import { deployCommand } from '../../packages/compiler/dist/cli/deploy.js';
 import { workerExists } from '../../packages/compiler/dist/cli/app-identity.js';
 const repoRoot=join(dirname(fileURLToPath(import.meta.url)),'../..');
 const defaultExample=join(repoRoot,'examples/cf-full');
-export const cloudflareExecutionCapabilities={adapters:{'cloudflare-d1':['create'],'cloudflare-kv':['create']}};
+export const cloudflareExecutionCapabilities={adapters:{'cloudflare-d1':['create'],'cloudflare-kv':['create'],'cloudflare-r2':['create']}};
 export function cloudflareExecutionIssues(manifest,context) {
     const issues=[];
     if(manifest.target!=='cloudflare' || manifest.environment!==context.environment)issues.push({code:'execution_target_mismatch'});
-    for(const [role,binding] of Object.entries(manifest.bindings))if(role!=='state-db' && !(role==='cache' && binding.adapterId==='cloudflare-kv' && binding.mode==='create') && binding.mode!=='disabled')issues.push({role,code:'execution_adapter_not_supported'});
+    for(const [role,binding] of Object.entries(manifest.bindings))if(role!=='state-db' && !(role==='cache' && binding.adapterId==='cloudflare-kv' && binding.mode==='create') && !(role==='storage' && binding.adapterId==='cloudflare-r2' && binding.mode==='create') && binding.mode!=='disabled')issues.push({role,code:'execution_adapter_not_supported'});
     const state=manifest.bindings['state-db'];
     if(state.adapterId!=='cloudflare-d1' || state.mode!=='create')issues.push({role:'state-db',code:'execution_requires_new_d1'});
     if(state.config.resourceName!==`${context.appName}-db`)issues.push({role:'state-db',code:'execution_database_name_mismatch'});
     if(manifest.bindings.cache.mode!=='disabled' && manifest.bindings.cache.config.resourceName!==`${context.appName}-cache`)issues.push({role:'cache',code:'execution_cache_name_mismatch'});
+    if(manifest.bindings.storage.mode!=='disabled' && manifest.bindings.storage.config.resourceName!==`${context.appName}-storage`)issues.push({role:'storage',code:'execution_storage_name_mismatch'});
+    if(manifest.bindings.storage.mode!=='disabled' && (manifest.bindings.storage.config.resourceName?.length??0)>63)issues.push({role:'storage',code:'execution_storage_name_too_long'});
     return issues;
 }
 export function assertCloudflareExecutionContext(context) {
@@ -86,7 +88,20 @@ export async function executeCloudflareFirstInstall(prepared,context,{exampleRoo
             if(!Array.isArray(entries) || entries.some(entry=>!entry || typeof entry.title!=='string' || !/^[a-f0-9]{32}$/.test(entry.id)))throw new Error('cache_existence_unknown');
             if(entries.some(entry=>entry.title===cache.config.resourceName))throw new Error('cache_already_exists');
         }
+        const storage=plan.manifest.bindings.storage;
+        if(storage.mode!=='disabled') {
+            const info=await runWrangler(['r2','bucket','info',storage.config.resourceName,'--json'],{cwd:stage});
+            if(info.code===0)throw new Error('storage_already_exists');
+            if(!/The specified bucket does not exist\. \[code: 10006\]/.test(info.stderr+' '+info.stdout))throw new Error('storage_existence_unknown');
+        }
         journal('running');
+        if(storage.mode!=='disabled') {
+            const created=await runWrangler(['r2','bucket','create',storage.config.resourceName,'--binding','FRONTBASE_R2','--update-config=false'],{cwd:stage});
+            if(created.code!==0)throw new Error('storage_create_failed');
+            resources.storage={name:storage.config.resourceName,binding:'FRONTBASE_R2'};
+            writeFileSync(join(stage,'wrangler.toml'),readFileSync(join(stage,'wrangler.toml'),'utf8')+`\n[[r2_buckets]]\nbinding = "FRONTBASE_R2"\nbucket_name = "${storage.config.resourceName}"\n`,{mode:0o600});
+            journal('storage_created');
+        }
         if(cache.mode!=='disabled') {
             const created=await runWrangler(['kv','namespace','create',cache.config.resourceName,'--binding','FRONTBASE_KV','--update-config=false'],{cwd:stage});
             if(created.code!==0)throw new Error('cache_create_failed');

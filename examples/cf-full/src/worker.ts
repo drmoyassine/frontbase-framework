@@ -29,7 +29,7 @@ import type { PageEntry } from '@frontbase/edge-core';
 import { createConsole, createCompatApp, createSupabaseCloudAuth, assertStripeKeyMode, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, type CloudIdentityProvider, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
-import { s3StorageProvider, kvCache, type KVNamespaceBinding, type CacheProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
+import { s3StorageProvider, kvCache, createNativeR2Storage, NATIVE_R2_ACCESS_PATH, type R2BucketBinding, type KVNamespaceBinding, type CacheProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
 import { resolveStateDb, StateDbConfigError, type ResolvedStateDb } from './state-db.js';
 import { resolveSessionSecret } from './session-secret.js';
 import { tenantMiddleware, hostTenantOf, hostKindOf } from './tenancy.js';
@@ -49,6 +49,7 @@ configureEngine({ edition: 'community', nodeEnv: 'production' });
 export interface CmsEnv {
     DB: D1Database;
     FRONTBASE_KV?: KVNamespaceBinding;
+    FRONTBASE_R2?: R2BucketBinding;
     /** Frontbase Cloud application-state PostgreSQL through Cloudflare Hyperdrive. */
     HYPERDRIVE?: { connectionString: string };
     ASSETS: { fetch(request: Request): Promise<Response> };
@@ -122,6 +123,7 @@ export interface CmsEngineOptions {
     /** Wrangler Static Assets binding. Omitted by the in-process smoke. */
     assets?: { fetch(request: Request): Promise<Response> };
     storageProvider?: StorageProvider;
+    r2Binding?: R2BucketBinding;
     /** Identity of the host this engine runs on (edge-engines system card).
      *  Defaults to the Cloudflare worker; the Node entry passes its own. */
     systemEdge?: { provider: string; name?: string; db?: string | null; cache?: string | null; queue?: string | null };
@@ -209,6 +211,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             tenantSlug,
         });
     }
+    const nativeStorage=opts.r2Binding && !opts.storageProvider ? createNativeR2Storage(opts.r2Binding,sessionSecret) : undefined;
     const needsSetup = async () =>
         (await new UserStore(opts.runner, '_default').countUsers()) === 0
         && (await new UserStore(opts.runner, '_root').countUsers()) === 0;
@@ -388,6 +391,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         userStoreFor: (t: string) => new UserStore(opts.runner, t),
         now,
         storageProvider: opts.storageProvider,
+        storageProviderFor: nativeStorage?.providerFor,
         // CLOUD: anonymous public-data calls resolve to the request's host
         // tenant (a published Form/InfoList reads ITS tenant's datasources).
         // Self-host: omitted ⇒ the `_root` fallback, byte-identical.
@@ -627,6 +631,9 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             tenantState: (slug) => tenantHostState(opts.runner, slug),
         }));
     }
+
+    // Capability authentication is self-contained; no ambient session can bypass it.
+    if(nativeStorage)app.all(NATIVE_R2_ACCESS_PATH,c=>nativeStorage.fetchAccess(c.req.raw));
 
     const assetResponse = async (request: Request, cacheControl: string): Promise<Response | null> => {
         if (!opts.assets) return null;
@@ -965,6 +972,7 @@ export default {
                     envServices,
                     nativeCache: env.FRONTBASE_KV ? kvCache(env.FRONTBASE_KV) : undefined,
                     dispatcher: (work) => { if (currentCtx) currentCtx.waitUntil(work()); else void work(); },
+                    r2Binding: env.FRONTBASE_R2,
                     storageProvider: env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_KEY
                         ? s3StorageProvider({
                             accessKeyId: env.STORAGE_ACCESS_KEY_ID,

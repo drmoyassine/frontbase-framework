@@ -19,7 +19,8 @@ export async function deploymentSetupCommand(args) {
         const initialManifest=defaultDeploymentManifest(target,environment);
         initialManifest.bindings['state-db'].config.resourceName=`${context.appName}-db`;
         initialManifest.bindings.cache.config.resourceName=`${context.appName}-cache`;
-        execution={initialManifest,executionCapabilities:cloudflareExecutionCapabilities,executionInfo:`Account ${context.accountId} / new Worker ${context.appName} / D1 ${context.appName}-db (new D1 and optional new KV cache)`,executionIssues:manifest=>cloudflareExecutionIssues(manifest,context),onDeploy:prepared=>executeCloudflareFirstInstall(prepared,context,{
+        initialManifest.bindings.storage.config.resourceName=`${context.appName}-storage`;
+        execution={initialManifest,executionCapabilities:cloudflareExecutionCapabilities,executionInfo:`Account ${context.accountId} / new Worker ${context.appName} / D1 ${context.appName}-db (new D1, optional new KV cache and private R2 storage)`,executionIssues:manifest=>cloudflareExecutionIssues(manifest,context),onDeploy:prepared=>executeCloudflareFirstInstall(prepared,context,{
             onSetupLink:link=>{console.log('Private first-administrator setup link:');console.log(link.url);},
             onReceipt:receipt=>console.log(`Local deployment receipt: ${receipt.directory}`),
         })};

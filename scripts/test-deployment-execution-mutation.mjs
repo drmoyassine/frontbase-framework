@@ -17,7 +17,9 @@ const faults=[
  ['build fingerprint','executor',s=>s.replaceAll('!==context.artifactHash','===null')],
  ['create collision adoption','executor',s=>s.replace("if(args[0]==='d1' && args[1]==='create' && result.code!==0)",'if(false)')],
  ['KV existing namespace refusal','executor',s=>s.replace("if(entries.some(entry=>entry.title===cache.config.resourceName))","if(false)")],
- ['KV failed-create refusal','executor',s=>s.replace("if(created.code!==0)","if(false)")],
+ ['KV failed-create refusal','executor',s=>s.replace("if(created.code!==0)throw new Error('cache_create_failed');","if(false)throw new Error('cache_create_failed');")],
+ ['R2 known-absent preflight','executor',s=>s.replace("if(info.code===0)throw new Error('storage_already_exists');","if(false)throw new Error('storage_already_exists');").replace('if(!/The specified bucket','if(false && !/The specified bucket')],
+ ['R2 failed-create refusal','executor',s=>s.replace("if(created.code!==0)throw new Error('storage_create_failed');","if(false)throw new Error('storage_create_failed');")],
  ['fixed mutation target','executor',s=>s.replace("if((kind==='secret put' || args[0]==='deploy') && args[args.indexOf('--name')+1]!==context.appName)",'if(false)')],
  ['context validation','executor',s=>s.replace('    assertCloudflareExecutionContext(context);','    // removed')],
  ['supported execution binding','executor',s=>s.replace('cloudflareExecutionIssues(plan.manifest,context).length','false')],
@@ -34,4 +36,4 @@ try {
   if(name.startsWith('baseline')){assert.equal(result.status,0,`transformed baseline failed: ${name}: ${result.stderr}`);console.log(`PASS ${name}`);}else{assert.ok(result.status!==0 && result.status!==null,`fault escaped or timed out: ${name}`);console.log(`PASS detected: ${name}`);}
  }
 } finally {rmSync(temp,{recursive:true,force:true});}
-console.log('Twelve execution faults detected; production source unchanged');
+console.log('Fourteen execution faults detected; production source unchanged');

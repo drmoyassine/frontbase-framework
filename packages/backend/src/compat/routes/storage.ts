@@ -10,9 +10,9 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { KeyValueStore } from '../store.js';
 import type { SecretCipher } from '../../db/secret-cipher.js';
-import { sigv4StorageProvider, supabaseStorageProvider } from '@frontbase/edge-infra';
+import { sigv4StorageProvider, supabaseStorageProvider, NATIVE_R2_PROVIDER_ID } from '@frontbase/edge-infra';
 import { checkedExternalUrl, guardedExternalFetch, type CompatFetch } from '../external-http.js';
-import type { StorageProvider } from '@frontbase/edge-infra';
+import type { StorageProvider, StorageProviderFactory } from '@frontbase/edge-infra';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -40,9 +40,10 @@ export function createStorageClientResolver(opts: {
     phase2For: (t: string) => Phase2Store;
     kvFor: (t: string) => KeyValueStore;
     storageProvider: StorageProvider | undefined;
+    storageProviderFor?: StorageProviderFactory;
     externalFetch?: CompatFetch;
 }) {
-    const { phase2For, kvFor, storageProvider } = opts;
+    const { phase2For, kvFor, storageProvider, storageProviderFor } = opts;
     const transport: CompatFetch = (input, init) => guardedExternalFetch(opts.externalFetch ?? globalThis.fetch, input instanceof Request ? input.url : input, init);
     const sha256Hex = async (value: string): Promise<string> => {
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
@@ -136,13 +137,16 @@ export function createStorageClientResolver(opts: {
     };
     /** Resolve from provider_id when present; otherwise fall back to the env-wired
      *  provider so env/Docker deployments (STORAGE_* vars) keep working. */
-    const resolveForOp = async (tenant: string, providerId: string | undefined): Promise<ResolvedStorage> => {
+    const resolveForOp = async (tenant: string, providerId: string | undefined, request?:Request): Promise<ResolvedStorage> => {
+        if(providerId===NATIVE_R2_PROVIDER_ID && storageProviderFor)return {client:storageProviderFor(tenant,request)};
         if (providerId) return resolveStorageClient(tenant, providerId);
-        return storageProvider ? { client: storageProvider } : { status: 503, message: 'Storage provider is not configured' };
+        const client=storageProvider??storageProviderFor?.(tenant,request);
+        return client ? {client} : { status: 503, message: 'Storage provider is not configured' };
     };
     /** Resolve a MANAGEMENT client, or undefined when the surface is
      *  store-simulated. Credential errors still surface for real-adapter types. */
-    const resolveManaged = async (tenant: string, providerId: string): Promise<{ client: StorageProvider } | { client: undefined } | { status: 400 | 404 | 500 | 503; message: string }> => {
+    const resolveManaged = async (tenant: string, providerId: string, request?:Request): Promise<{ client: StorageProvider } | { client: undefined } | { status: 400 | 404 | 500 | 503; message: string }> => {
+        if(providerId===NATIVE_R2_PROVIDER_ID && storageProviderFor)return {client:storageProviderFor(tenant,request)};
         const providers = await kvFor(tenant).getJson<Array<Record<string, unknown>>>('storage_providers', []);
         const record = providers.find((provider) => provider.id === providerId);
         if (!record) return { status: 404, message: `Storage provider ${providerId} not found` };
@@ -160,6 +164,7 @@ export function registerStorageRoutes(
     storageProvider: StorageProvider | undefined,
     now: () => string,
     externalFetch?: CompatFetch,
+    storageProviderFor?: StorageProviderFactory,
 ): void {
     const redactConfig = (record: Record<string, unknown>) => {
         const { config: _config, config_ciphertext: _ciphertext, id, name, provider, provider_account_id, account_name, is_active, created_at, updated_at, ...rest } = record;
@@ -181,14 +186,16 @@ export function registerStorageRoutes(
         if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
         return ciphertext;
     };
+    const nativeProviderFor=(id:string)=>id===NATIVE_R2_PROVIDER_ID && storageProviderFor ? {id:NATIVE_R2_PROVIDER_ID,name:'Cloudflare R2 (bound)',provider:'r2',provider_account_id:null,account_name:'Platform binding',is_active:true,created_at:now()} : undefined;
     const hasStorageProvider = async (tenant: string, providerId: string) => {
+        if(nativeProviderFor(providerId))return true;
         const providers = await kvFor(tenant).getJson<Array<{ id?: string }>>('storage_providers', []);
         return providers.some((provider) => provider.id === providerId);
     };
 
     // Same factory the RAG pipeline resolves byte access through — one copy of
     // the credential logic (see createStorageClientResolver above).
-    const { resolveForOp, resolveManaged } = createStorageClientResolver({ phase2For, kvFor, storageProvider, externalFetch });
+    const { resolveForOp, resolveManaged } = createStorageClientResolver({ phase2For, kvFor, storageProvider, storageProviderFor, externalFetch });
     /** Product-shaped resolver failure (`{detail}`, matching _resolve_adapter's HTTPException). */
     const resolutionError = (c: Context<{ Variables: ConsoleAuthVars }>, resolved: { status: 400 | 404 | 500 | 503; message: string }) =>
         c.json({ detail: resolved.message }, resolved.status);
@@ -237,7 +244,7 @@ export function registerStorageRoutes(
         }
         const kv = kvFor(c.get('tenant'));
         const providers = await kv.getJson<Array<{ id?: string; provider?: string }>>('storage_providers', []);
-        const provider = providers.find((p) => p.id === providerId);
+        const provider = providers.find((p) => p.id === providerId) ?? nativeProviderFor(providerId);
         if (!provider) {
             return c.json({ detail: 'Storage provider not found' }, 404);
         }
@@ -246,7 +253,7 @@ export function registerStorageRoutes(
         if (!SUPPORTED_STORAGE_PROVIDERS.has(providerType)) {
             return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
         }
-        const managed = await resolveManaged(c.get('tenant'), providerId);
+        const managed = await resolveManaged(c.get('tenant'), providerId, c.req.raw);
         if ('status' in managed) return resolutionError(c, managed);
         if (managed.client?.listBuckets) {
             // Product parity: buckets live on the provider (adapter.list_buckets),
@@ -275,7 +282,7 @@ export function registerStorageRoutes(
         }
         const kv = kvFor(c.get('tenant'));
         const providers = await kv.getJson<Array<{ id?: string; provider?: string }>>('storage_providers', []);
-        const provider = providers.find((p) => p.id === providerId);
+        const provider = providers.find((p) => p.id === providerId) ?? nativeProviderFor(providerId);
         if (!provider) {
             return c.json({ detail: 'Storage provider not found' }, 404);
         }
@@ -289,7 +296,7 @@ export function registerStorageRoutes(
             provider?: string; config?: unknown;
         };
         if (!b.name) return c.json({ detail: 'Bucket name is required' }, 400);
-        const managed = await resolveManaged(c.get('tenant'), providerId);
+        const managed = await resolveManaged(c.get('tenant'), providerId, c.req.raw);
         if ('status' in managed) return resolutionError(c, managed);
         if (managed.client?.createBucket) {
             // Product parity (console createBucket payload): the bucket is created
@@ -336,7 +343,7 @@ export function registerStorageRoutes(
             }
             const kv = kvFor(c.get('tenant'));
             const providers = await kv.getJson<Array<{ id?: string; provider?: string }>>('storage_providers', []);
-            const provider = providers.find((p) => p.id === providerId);
+            const provider = providers.find((p) => p.id === providerId) ?? nativeProviderFor(providerId);
             if (!provider) {
                 return c.json({ detail: 'Storage provider not found' }, 404);
             }
@@ -345,7 +352,7 @@ export function registerStorageRoutes(
             if (!SUPPORTED_STORAGE_PROVIDERS.has(providerType)) {
                 return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
             }
-            const managed = await resolveManaged(c.get('tenant'), providerId);
+            const managed = await resolveManaged(c.get('tenant'), providerId, c.req.raw);
             if ('status' in managed) return resolutionError(c, managed);
             if (managed.client?.getBucket) {
                 try {
@@ -382,7 +389,7 @@ export function registerStorageRoutes(
             }
             const kv = kvFor(c.get('tenant'));
             const providers = await kv.getJson<Array<{ id?: string; provider?: string }>>('storage_providers', []);
-            const provider = providers.find((p) => p.id === providerId);
+            const provider = providers.find((p) => p.id === providerId) ?? nativeProviderFor(providerId);
             if (!provider) {
                 return c.json({ detail: 'Storage provider not found' }, 404);
             }
@@ -396,7 +403,7 @@ export function registerStorageRoutes(
                 public?: boolean; file_size_limit?: number; allowed_mime_types?: string[];
             };
             const id = c.req.param('bucket_id');
-            const managed = await resolveManaged(c.get('tenant'), providerId);
+            const managed = await resolveManaged(c.get('tenant'), providerId, c.req.raw);
             if ('status' in managed) return resolutionError(c, managed);
             if (managed.client?.updateBucket) {
                 // Console updateBucket payload: {public, file_size_limit, allowed_mime_types}.
@@ -454,7 +461,7 @@ export function registerStorageRoutes(
             }
             const kv = kvFor(c.get('tenant'));
             const providers = await kv.getJson<Array<{ id?: string; provider?: string }>>('storage_providers', []);
-            const provider = providers.find((p) => p.id === providerId);
+            const provider = providers.find((p) => p.id === providerId) ?? nativeProviderFor(providerId);
             if (!provider) {
                 return c.json({ detail: 'Storage provider not found' }, 404);
             }
@@ -464,7 +471,7 @@ export function registerStorageRoutes(
                 return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
             }
             const id = c.req.param('bucket_id');
-            const managed = await resolveManaged(c.get('tenant'), providerId);
+            const managed = await resolveManaged(c.get('tenant'), providerId, c.req.raw);
             if ('status' in managed) return resolutionError(c, managed);
             if (managed.client?.deleteBucket) {
                 try {
@@ -503,7 +510,7 @@ export function registerStorageRoutes(
         }
         const kv = kvFor(c.get('tenant'));
         const providers = await kv.getJson<Array<{ id?: string; provider?: string }>>('storage_providers', []);
-        const provider = providers.find((p) => p.id === providerId);
+        const provider = providers.find((p) => p.id === providerId) ?? nativeProviderFor(providerId);
         if (!provider) {
             return c.json({ detail: 'Storage provider not found' }, 404);
         }
@@ -512,7 +519,7 @@ export function registerStorageRoutes(
         if (!SUPPORTED_STORAGE_PROVIDERS.has(providerType)) {
             return c.json({ detail: `No storage adapter for provider type '${providerType}'` }, 400);
         }
-        const managed = await resolveManaged(c.get('tenant'), providerId);
+        const managed = await resolveManaged(c.get('tenant'), providerId, c.req.raw);
         if ('status' in managed) return resolutionError(c, managed);
         if (managed.client?.emptyBucket) {
             try {
@@ -547,7 +554,7 @@ export function registerStorageRoutes(
         if (!await hasStorageProvider(c.get('tenant'), providerId)) {
             return c.json({ detail: 'Storage provider not found' }, 404);
         }
-        const managed = await resolveManaged(c.get('tenant'), providerId);
+        const managed = await resolveManaged(c.get('tenant'), providerId, c.req.raw);
         if ('status' in managed) return resolutionError(c, managed);
         if (managed.client?.listFiles) {
             // Product /list post-processing: fetch a large batch from the
@@ -632,7 +639,7 @@ export function registerStorageRoutes(
         // shadow, never a gate. Folder paths arrive with a trailing slash
         // (the list response's folder ids) — providers treat them as prefixes.
         if (Array.isArray(b.paths) && b.paths.length > 0) {
-            const resolved = await resolveForOp(c.get('tenant'), b.provider_id);
+            const resolved = await resolveForOp(c.get('tenant'), b.provider_id, c.req.raw);
             if ('status' in resolved) return resolutionError(c, resolved);
             const bucket = b.bucket ?? '';
             const paths = b.paths.map(String);
@@ -662,7 +669,7 @@ export function registerStorageRoutes(
         if (id) {
             const file = await store.getFile(id);
             if (file) {
-                const resolved = await resolveForOp(c.get('tenant'), b.provider_id);
+                const resolved = await resolveForOp(c.get('tenant'), b.provider_id, c.req.raw);
                 if ('status' in resolved) return resolutionError(c, resolved);
                 try {
                     await resolved.client.delete(
@@ -686,7 +693,7 @@ export function registerStorageRoutes(
             provider_id?: string; bucket?: string; folderPath?: string; name?: string; path?: string; bucket_id?: string;
         };
         if (!b.provider_id) return c.json({ detail: 'provider_id is required' }, 400);
-        const managed = await resolveManaged(c.get('tenant'), b.provider_id);
+        const managed = await resolveManaged(c.get('tenant'), b.provider_id, c.req.raw);
         if ('status' in managed) return resolutionError(c, managed);
         // Console shape (FileBrowser api.ts): {folderPath, bucket, provider_id}.
         if (b.bucket && b.folderPath && managed.client?.createFolder) {
@@ -735,7 +742,7 @@ export function registerStorageRoutes(
         if (cached !== null) {
             return c.json({ success: true, bucket: bucketId, path, size: cached, cached: true });
         }
-        const managed = await resolveManaged(c.get('tenant'), providerId);
+        const managed = await resolveManaged(c.get('tenant'), providerId, c.req.raw);
         if ('status' in managed) return resolutionError(c, managed);
         if (managed.client?.listFiles) {
             // L3: recursive provider walk (base.py compute_folder_size) — batch
@@ -812,7 +819,7 @@ export function registerStorageRoutes(
         const filePath = b.path ?? `uploads/${fileName}`;
         const bucketId = b.bucket_id ?? '';
         if (!bucketId) return c.json({ detail: 'Bucket is required' }, 400);
-        const resolved = await resolveForOp(c.get('tenant'), b.provider_id || undefined);
+        const resolved = await resolveForOp(c.get('tenant'), b.provider_id || undefined, c.req.raw);
         if ('status' in resolved) return resolutionError(c, resolved);
         try {
             await resolved.client.put({ bucket: bucketId, key: filePath, bytes, contentType: mimeType });
@@ -860,7 +867,7 @@ export function registerStorageRoutes(
         if (!fromPath || !toPath || !sourceBucket) {
             return c.json({ detail: 'sourceKey, destinationKey and bucket are required' }, 400);
         }
-        const resolved = await resolveForOp(c.get('tenant'), b.provider_id);
+        const resolved = await resolveForOp(c.get('tenant'), b.provider_id, c.req.raw);
         if ('status' in resolved) return resolutionError(c, resolved);
         try {
             if (sourceBucket === destBucket && resolved.client.move) {
@@ -916,9 +923,9 @@ export function registerStorageRoutes(
         // has no such worker, so every move runs synchronously through the same
         // download → upload → delete path (product move_cross default; the
         // source is deleted only after the destination write succeeded).
-        const source = await resolveForOp(c.get('tenant'), b.source_provider_id);
+        const source = await resolveForOp(c.get('tenant'), b.source_provider_id, c.req.raw);
         if ('status' in source) return resolutionError(c, source);
-        const dest = await resolveForOp(c.get('tenant'), b.dest_provider_id);
+        const dest = await resolveForOp(c.get('tenant'), b.dest_provider_id, c.req.raw);
         if ('status' in dest) return resolutionError(c, dest);
         let moved: number;
         try {
@@ -974,9 +981,18 @@ export function registerStorageRoutes(
         });
     });
 
+    // Framework-native signed PUT grant. Minted only behind the existing default-deny gate.
+    app.post('/api/storage/upload-url', async c=>{
+        const body=await c.req.json().catch(()=>null) as {provider_id?:string;bucket?:string;path?:string;contentType?:string}|null;
+        if(!body || typeof body.bucket!=='string' || typeof body.path!=='string' || body.contentType!==undefined && typeof body.contentType!=='string')return c.json({detail:'Invalid upload request'},400);
+        const resolved=await resolveForOp(c.get('tenant'),body.provider_id,c.req.raw);if('status' in resolved)return resolutionError(c,resolved);
+        try{const contentType=body.contentType??'application/octet-stream';const url=await resolved.client.signedUploadUrl(body.bucket,body.path,contentType);return c.json({success:true,url,method:'PUT',headers:{'content-type':contentType}});}
+        catch{return c.json({detail:'Upload URL could not be created'},400);}
+    });
+
     // GET /api/storage/public-url
     app.get('/api/storage/public-url', async (c) => {
-        const resolved = await resolveForOp(c.get('tenant'), c.req.query('provider_id') || undefined);
+        const resolved = await resolveForOp(c.get('tenant'), c.req.query('provider_id') || undefined, c.req.raw);
         if ('status' in resolved) return resolutionError(c, resolved);
         const bucket = c.req.query('bucket') ?? '';
         const path = c.req.query('path') ?? '';
@@ -990,7 +1006,7 @@ export function registerStorageRoutes(
 
     // GET /api/storage/signed-url
     app.get('/api/storage/signed-url', async (c) => {
-        const resolved = await resolveForOp(c.get('tenant'), c.req.query('provider_id') || undefined);
+        const resolved = await resolveForOp(c.get('tenant'), c.req.query('provider_id') || undefined, c.req.raw);
         if ('status' in resolved) return resolutionError(c, resolved);
         const bucket = c.req.query('bucket') ?? '';
         const path = c.req.query('path') ?? '';
@@ -1004,7 +1020,8 @@ export function registerStorageRoutes(
     app.get('/api/storage/providers/', async (c) => {
         const kv = kvFor(c.get('tenant'));
         const providers = await kv.getJson<Array<Record<string, unknown>>>('storage_providers', []);
-        return c.json(providers.map(redactConfig));
+        const native=nativeProviderFor(NATIVE_R2_PROVIDER_ID);
+        return c.json([...providers.filter(p=>!native || p.id!==native.id),...(native?[native]:[])].map(redactConfig));
     });
 
     // POST /api/storage/providers/
@@ -1036,6 +1053,7 @@ export function registerStorageRoutes(
     // DELETE /api/storage/providers/{provider_id}
     app.delete('/api/storage/providers/:provider_id', async (c) => {
         const id = c.req.param('provider_id');
+        if(nativeProviderFor(id))return c.json({detail:'Native storage is managed at deploy time'},409);
         const kv = kvFor(c.get('tenant'));
         const providers = await kv.getJson<Array<{ id?: string }>>('storage_providers', []);
         if (!providers.some((provider) => provider.id === id)) {

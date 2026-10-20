@@ -50,6 +50,9 @@ export interface StorageProvider {
     publicUrl?(bucket: string, key: string): string;
 }
 
+/** Host-only per-tenant native binding factory; never accepted from client JSON. */
+export type StorageProviderFactory = (tenant:string, request?:Request) => StorageProvider;
+
 export interface BucketEntry {
     id: string;
     name: string;
