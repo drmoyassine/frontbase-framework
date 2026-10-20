@@ -90,7 +90,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         const responseHeaders=new Headers(rendered.headers);
         for(const [key,value] of headers)responseHeaders.set(key,value);
         responseHeaders.set('X-Robots-Tag',document.robots ?? 'noindex, nofollow');
-        if(localeResult){responseHeaders.set('Content-Language',localeResult.locale);if(localeResult.releaseHash)responseHeaders.set('X-Translation-Version',localeResult.releaseHash);}
+        if(localeResult){responseHeaders.set('Content-Language',localeResult.kind==='page'?localeResult.contentLocale:localeResult.locale);if(localeResult.releaseHash)responseHeaders.set('X-Translation-Version',localeResult.releaseHash);}
         responseHeaders.set('X-Site-Version',resolution.hash);
         responseHeaders.set('X-Site-Generation',String(resolution.generation));
         if(request.method==='HEAD')await rendered.body?.cancel();

@@ -12,7 +12,7 @@ export function localizePublicHref(href:string,locale:string,origins:string[]):s
 }
 /** Project only navigation values. Never rewrite content, image sources, bindings or secrets. */
 export function localizeNavigationProps<T>(input:T,locale:string,origins:string[]):T {
-    const keys=new Set(['href','link','target','action','path','originalPath','detailPath','ctaHref']);
+    const keys=new Set(['href','link','target','action','path','originalPath','detailPath','ctaHref','ctaLink','secondaryCtaLink','pageUrl']);
     const walk=(value:unknown,key=''):unknown=>{
         if(key==='languageSwitcher')return value;
         if(typeof value==='string')return keys.has(key)&&!value.includes('{{')?localizePublicHref(value,locale,origins):value;

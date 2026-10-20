@@ -28,6 +28,17 @@ it('does not discard a dirty form if the visitor refuses a version switch', () =
     expect(confirm).toHaveBeenCalled(); expect(document.querySelector('input')?.value).toBe('Keep me'); stop();
 });
 
+it('reloads instead of swapping on localized pages, whose lists render server-only', () => {
+    document.body.innerHTML = `<div data-block-versions="list" data-block-active="default"><div data-block-content><p>Institutions</p></div><template data-block-version="programs" data-block-when='url.type == "program"'><div data-react-component="Repeater">Programs</div></template><template data-block-version="default"><p>Institutions</p></template></div><div data-fb-nav-locale="ar"></div>`;
+    const reload = vi.fn(); (window.location as any).reload = reload;
+    const context = { url: { type: 'institution' } };
+    const stop = startBlockVersions(contextReader(context));
+    context.url.type = 'program'; window.dispatchEvent(new Event('fb:variables-changed'));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('[data-block-content]')?.textContent).toBe('Institutions');
+    stop();
+});
+
 it('finds, edits, inserts and clones alternative children without mutating Default or sharing IDs', () => {
     const nodes: any[] = [{ id: 'list', type: 'Repeater', props: {}, children: [{ id: 'default-card', type: 'Card', props: {} }], versions: [{ id: 'programs', name: 'Programs', overrides: { children: [{ id: 'program-card', type: 'Card', props: {} }] } }] }];
     const updated = updateComponentInTree(nodes, 'program-card', node => ({ ...node, props: { title: 'Programs' } }));

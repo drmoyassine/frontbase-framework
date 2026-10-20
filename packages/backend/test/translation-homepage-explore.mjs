@@ -176,6 +176,16 @@ try {
     assert.equal(sourceFetch.rows[0].title, 'Institution 14', 'the source-path fetch keeps source semantics');
     const staleFetch = await listFetch('/ar/explore/', { ...listQuery, filters: [{ column: 'title', op: 'contains', value: 'Institution 01' }] });
     assert.deepEqual(staleFetch.rows.map(row => row.title), ['Institution 01 Renamed'], 'a stale released title falls back to the row\'s own source text in fetches');
+    // Deactivating the release must not break hydration on the prefixed URL: the fallback list
+    // fetch strips the locale prefix and walks the source registry with source semantics. A fresh
+    // homepage release keeps the strict locale tree available so the shell still serves.
+    const explorePointer = (await call('locales/')).locales.find(item => item.path === '/explore/');
+    await call('deactivate/', { locale: 'ar', path: '/explore/', expected: { hash: explorePointer.hash, generation: explorePointer.generation } });
+    await saveAll(await call('review/?locale=ar'), '/');
+    assert.equal((await html('/ar/explore/')).status, 200, 'the shell keeps serving source content after deactivation');
+    const fallbackFetch = await listFetch('/ar/explore/', listQuery);
+    assert.equal(fallbackFetch.total, 14, 'a fallback localized fetch keeps the source inventory');
+    assert.equal(fallbackFetch.rows[0].title, 'Institution 14', 'without the release the fetch keeps source semantics');
 
     auth = false; await call('review/?locale=ar&path=/explore/', undefined, 401); auth = true; role = 'viewer'; await call('review/?locale=ar&path=/explore/', undefined, 403); role = 'owner';
     console.log('translation-homepage explore PASS: template listing pages, per-unit-only releases, browsing chrome surfaces, paged record supplement, parameterized joins, per-unit fallback, record-detail refusal, standard-conversion fetch agreement');

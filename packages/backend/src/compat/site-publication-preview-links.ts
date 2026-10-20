@@ -1,4 +1,5 @@
 import type {PageComponent} from '@frontbase/edge-core';
+import {directoryBrowsingStateSchema} from '@frontbase/edge-core/directory/configuration';
 /** Keep native shared navigation and page links inside the same private capture. */
 export function rewritePublicationPreviewLinks(nodes:PageComponent[],paths:Set<string>,hash:string,origin:string):PageComponent[]{
     const link=(value:unknown):unknown=>{
@@ -18,6 +19,8 @@ export function rewritePublicationPreviewLinks(nodes:PageComponent[],paths:Set<s
         for(const key of ['primaryButton','secondaryButton'])if(record(props[key])&&props[key].navType!=='scroll')props[key]={...props[key],target:link(props[key].target)};
         if(Array.isArray(props.columns))props.columns=props.columns.map(column=>record(column)&&Array.isArray(column.links)?{...column,links:column.links.map(item=>record(item)?{...item,href:link(item.href)}:item)}:column);
         if(record(props.templateSearchState))props.templateSearchState={...props.templateSearchState,previewHash:hash};
+        // Browsing forms/pager links pin private preview navigation to this same capture.
+        if(props.directoryBrowsingState!==undefined)props.directoryBrowsingState=directoryBrowsingStateSchema.parse(props.directoryBrowsingState).map(state=>({...state,previewHash:hash}));
         return {...node,props,...(node.children?{children:rewritePublicationPreviewLinks(node.children,paths,hash,origin)}:{})};
     });
 }

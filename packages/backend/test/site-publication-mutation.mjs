@@ -2,8 +2,8 @@ import {withSourceMutation,buildPackage,runGate,expectRed,summarize,repoRoot} fr
 const dir=repoRoot+'packages/backend/';
 if(!buildPackage('@frontbase/compiler')||!buildPackage('@frontbase/backend')||runGate(dir,'test/site-publication.mjs')!==0)process.exit(2);
 for(const [label,path,find,replacement,pkg] of [
- ['browsing next-page evidence','packages/backend/src/compat/site-publication-runtime.ts','rows.length > artifact.configuration.browsing.pageSize','false','@frontbase/backend'],
- ['private browsing capture binding','packages/backend/src/compat/routes/site-publication.ts','previewHash:parsed.data.hash','previewHash:undefined','@frontbase/backend'],
+ ['browsing next-page evidence','packages/backend/src/compat/site-publication-runtime.ts','hasNext ||= rows.length > pageSize;','hasNext ||= false;','@frontbase/backend'],
+ ['private browsing capture binding','packages/backend/src/compat/site-publication-preview-links.ts',"export function rewritePublicationPreviewLinks(nodes:PageComponent[],paths:Set<string>,hash:string,origin:string):PageComponent[]{","export function rewritePublicationPreviewLinks(nodes:PageComponent[],paths:Set<string>,hash:string,origin:string):PageComponent[]{hash='baked';",'@frontbase/backend'],
  ['publication integrity','packages/backend/src/compat/site-publication-store.ts','await publicationHash(artifact) !== hash','false','@frontbase/backend'],
  ['publication owner read','packages/backend/src/compat/site-publication-store.ts',"WHERE tenant_slug = ? AND key = ?', [this.tenant, keyName]","WHERE ? IS NOT NULL AND key = ?', [this.tenant, keyName]",'@frontbase/backend'],
  ['publication stale activation','packages/backend/src/compat/site-publication-store.ts','stableStringify(current) !== stableStringify(expected)','false','@frontbase/backend'],

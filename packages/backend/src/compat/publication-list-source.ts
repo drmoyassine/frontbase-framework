@@ -111,7 +111,7 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
 /** Same public page/host boundary, exact reviewed element binding; no arbitrary datasource access.
  *  The optional localized request (resolved by the caller from the URL's locale prefix) strips the
  *  prefix for the artifact walk and serves query+text through the page's own release catalog. */
-export async function publicationListResponse(db:DbRunner,owner:string,request:Request,audience:VerifiedMenuAudience|null,localized?:{locale:string;path:string;catalog:readonly LocalizedCatalogEntry[]}):Promise<Response|null> {
+export async function publicationListResponse(db:DbRunner,owner:string,request:Request,audience:VerifiedMenuAudience|null,localized?:{locale:string;path:string;catalog?:readonly LocalizedCatalogEntry[]}):Promise<Response|null> {
     const raw=request.headers.get('X-Frontbase-List');if(!raw)return null;
     const headers={'Cache-Control':'no-store','Content-Type':'application/json','X-Content-Type-Options':'nosniff'};
     const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});

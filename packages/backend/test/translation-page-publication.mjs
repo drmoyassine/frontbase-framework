@@ -62,11 +62,14 @@ try{
  await call('publish/',{hash:prepared.hash,expected:{hash:'a'.repeat(64),generation:0},approveTranslations:true},409);
  const published=await call('publish/',{hash:prepared.hash,expected:prepared.expected,approveTranslations:true});assert.equal(published.generation,1);
  const page=await html('/ar/privacy/');assert.equal(page.status,200);assert.equal(page.headers.get('Content-Language'),'ar');
+ assert.equal((await html('/ar/privacy/?x=1')).status,400,'localized static paths refuse query parameters like their source');
  const doc=new JSDOM(page.text).window.document;
  assert.equal(doc.documentElement.lang,'ar');assert.equal(doc.documentElement.dir,'rtl');
  assert.ok(page.text.includes('عربي Privacy policy'),'translated unit renders');assert.ok(page.text.includes('عربي Privacy'),'translated meta title renders');
  assert.equal(doc.querySelector('link[rel="canonical"]').getAttribute('href'),'https://site.test/ar/privacy/','translated page owns its localized canonical');
  assert.equal(doc.querySelector('link[hreflang="en"]').getAttribute('href'),'https://site.test/privacy/');assert.equal(doc.querySelector('link[hreflang="ar"]').getAttribute('href'),'https://site.test/ar/privacy/');
+ const srcDoc=new JSDOM((await html('/privacy/')).text).window.document;
+ assert.equal(srcDoc.querySelector('link[hreflang="ar"]').getAttribute('href'),'https://site.test/ar/privacy/','the source path advertises its released locale reciprocally');
  assert.ok(page.text.includes('All rights reserved.'),'untranslated footer stays source under the per-unit policy');
  // A source change must not invalidate the whole release: changed units fall back to fresh source,
  // unrelated approved text keeps serving.

@@ -75,7 +75,9 @@ export const sitePublicationArtifactSchema = z.object({
     if (new TextEncoder().encode(JSON.stringify(artifact)).byteLength > 1024 * 1024) error('publication_too_large');
     const roles = new Set<string>();
     for (const page of artifact.templates) {
-        if(liveViewBindings(page.layout as unknown as PageLayoutData).length)error('live_lists_require_chunk_manifest');
+        // superRefine also runs on dirty objects with the RAW layout value, so a malformed or
+        // misplaced binding must refuse the artifact here — never throw out of safeParse.
+        try{if(liveViewBindings(page.layout as unknown as PageLayoutData).length)error('live_lists_require_chunk_manifest');}catch{error('live_list_invalid');}
         const menus=(page.layout.root as Record<string,unknown>|undefined)?.appMenus;
         if(menus!==undefined){const reference=menuReferenceSchema.safeParse(menus);if(!reference.success||reference.data.pageId!==page.pageId)error('menu_reference_invalid');}
         if (roles.has(page.role)) error('duplicate_template_role');

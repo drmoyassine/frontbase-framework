@@ -7,7 +7,7 @@ for(const [label,path,find,replacement,pkg] of [
  ['SEO sitemap review bypass','packages/backend/src/compat/site-publication-serving.ts','if(!await new SitePublicationReviewStore(db,owner).get(active.pointer.hash))','if(false)','@frontbase/backend'],
  ['SEO sitemap owner leak','packages/backend/src/compat/site-publication-serving.ts','new SitePublicationStore(db,owner)',"new SitePublicationStore(db,'seo')",'@frontbase/backend'],
  ['SEO sitemap escaping','packages/backend/src/compat/site-publication-sitemap.ts','xml(new URL(path, artifact.configuration.site.origin).href)','new URL(path, artifact.configuration.site.origin).href','@frontbase/backend'],
- ['SEO sitemap version identity','packages/backend/src/compat/site-publication-serving.ts',"headers.set('X-Site-Version',resolution.hash);","headers.set('X-Site-Version','baked');",'@frontbase/backend'],
+ ['SEO sitemap version identity','packages/backend/src/compat/site-publication-serving.ts',"headers.set('X-Site-Version',resolution.hash);\n        headers.set('X-Site-Generation',String(resolution.generation));\n        return new Response(request.method==='HEAD'?null:resolution.xml","headers.set('X-Site-Version','baked');\n        headers.set('X-Site-Generation',String(resolution.generation));\n        return new Response(request.method==='HEAD'?null:resolution.xml",'@frontbase/backend'],
  ['SEO sitemap HEAD body','packages/backend/src/compat/site-publication-serving.ts',"request.method==='HEAD'?null:resolution.xml","resolution.xml",'@frontbase/backend'],
  ['SEO metadata escaping','packages/edge-core/src/shell.ts','escapeHtml(String(value))','String(value)','@frontbase/edge-core'],
 ]) {

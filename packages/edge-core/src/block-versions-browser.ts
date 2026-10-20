@@ -30,6 +30,10 @@ export function startBlockVersions(read: VariableReader, lifecycle: { beforeRemo
                     if(refused.get(host)===selected.dataset.blockVersion)continue;
                     if (Array.from(content.querySelectorAll('input,textarea,select')).some(field => dirty.has(field)) && !window.confirm('Switching this version will discard unsaved form entries. Continue?')) {refused.set(host,selected.dataset.blockVersion!);continue;}
                     refused.delete(host);
+                    // Localized pages render server-only (localeReadOnly lists carry no hydration
+                    // markers), so a client swap would land permanent skeletons. The url scope has
+                    // already been pushed; a full navigation re-serves the SSR-selected version.
+                    if (document.querySelector('[data-fb-nav-locale]')) { location.reload(); return; }
                     lifecycle.beforeRemove?.(content);
                     content.replaceChildren(selected.content.cloneNode(true));
                     host.dataset.blockActive = selected.dataset.blockVersion;

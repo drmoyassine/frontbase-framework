@@ -28,7 +28,12 @@ export function startPublicTheme(localize:typeof localizePublicHref=localizePubl
     doc.addEventListener('submit',event=>{if(event.target instanceof HTMLFormElement&&event.target.method.toLowerCase()==='get'){const action=event.target.getAttribute('action');if(action)event.target.setAttribute('action',route(action));}},true);
     doc.addEventListener('click',event=>{
         const locale=event.target instanceof Element?event.target.closest<HTMLElement>('[data-fb-locale]')?.dataset.fbLocale:null;
-        if(locale&&/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)){try{localStorage.setItem('frontbase:public-language',locale);}catch{}}
+        if(locale&&/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)){try{localStorage.setItem('frontbase:public-language',locale);}catch{}
+            // Server-built switcher hrefs cannot carry the fragment; re-attach the current one so
+            // switching keeps the scrolled position like ordinary localized links do.
+            const switcher=event.target instanceof Element?event.target.closest<HTMLAnchorElement>('a[data-fb-locale][href]'):null;
+            const target=switcher?.getAttribute('href');
+            if(switcher&&target&&!target.includes('#')&&window.location.hash)switcher.setAttribute('href',target+window.location.hash);}
         const anchor=event.target instanceof Element?event.target.closest<HTMLAnchorElement>('a[href]'):null;
         if(anchor&&!anchor.hasAttribute('data-fb-locale')&&!anchor.hasAttribute('download')){const href=anchor.getAttribute('href');if(href)anchor.setAttribute('href',route(href));}
         const button=event.target instanceof Element?event.target.closest<HTMLElement>('[data-fb-theme-choice]'):null;
