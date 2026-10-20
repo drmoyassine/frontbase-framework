@@ -53,7 +53,9 @@
     "test:translation-homepage-records": "node test/translation-homepage-records.mjs",
     "test:translation-homepage-versions": "node test/translation-homepage-versions.mjs",
     "test:translation-coverage": "node test/translation-coverage.mjs",
-    "test:translation-record-keys": "node test/translation-record-keys.mjs"
+    "test:translation-record-keys": "node test/translation-record-keys.mjs",
+    "test:translation-record-preview": "node test/translation-record-preview.mjs",
+    "test:translation-record-preview-mutation": "node test/translation-record-preview-mutation.mjs"
   },
   "peerDependencies": {
     "@frontbase/compiler": "workspace:*",

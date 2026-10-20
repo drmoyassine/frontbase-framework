@@ -8,6 +8,7 @@ import { planTranslationBatch, startTranslationBatch, continueTranslationBatch, 
     translationBatchPlanSchema, translationBatchPages, translationBatchFields, translationBatchHistory, translationBatchReview, type TranslationBatchHost } from '../translation-batches.js';
 import { batchReviewSchema, batchStatusSchema, batchRecordSelectionSchema, batchViewSelectionSchema, batchPreviewItemSchema, batchRetryReviewSchema } from '@frontbase/edge-core/localization/batches';
 import { translationMenus, translationMenuFields, translationDatasources, translationViews, extractRecordInput, extractViewRecordInput } from '../translation-inputs.js';
+import { translationRecordPreview, saveTranslationRecordField } from '../translation-record-preview.js';
 import { discoverTranslationCoverage } from '../translation-discovery.js';
 import { currentTranslationHostPin } from '../translation-allowance.js';
 
@@ -75,6 +76,14 @@ export function registerTranslationBatchRoutes(app: Hono<{ Variables: ConsoleAut
             const input = await extractRecordInput(host, tenant, selection, await currentTranslationHostPin(host, db, tenant));
             return c.json(batchPreviewItemSchema.parse({ selection, text: input.unit.text, context: input.context }));
         } catch { return c.json({ detail: 'Selected text field is unavailable. Check the owned HTTP connection, table, column and unique record key.' }, 422); }
+    });
+    app.post(`${root}record-preview/`, async c => {
+        try { return c.json(await translationRecordPreview(host, db, c.get('tenant'), await body(c.req.raw))); }
+        catch { return c.json({ detail: 'Record translation preview is unavailable. Check language/storage settings and the owned connection.' }, 422); }
+    });
+    app.post(`${root}record-preview/save/`, async c => {
+        try { return c.json(await saveTranslationRecordField(host, db, c.get('tenant'), await body(c.req.raw))); }
+        catch { return c.json({ detail: 'Translation could not be saved. Reload the records; the source, settings or revision may have changed.' }, 409); }
     });
     app.get(`${root}sources/`, async c => {
         try { return c.json(await translationBatchPages(db, c.get('tenant'), c.req.query('after'))); }

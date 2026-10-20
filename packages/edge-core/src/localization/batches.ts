@@ -77,6 +77,19 @@ export const translationPagePreviewSchema = z.object({ pageId: id, pageHash: has
 export const translationPageSaveSchema = z.object({ selection: translationPageSelectionSchema, locale: localeSchema,
     token: hash, text: z.string().min(1).max(4000) }).strict();
 
+/** Private per-record locale review for visual authoring (Data Inspector selected field): the
+ *  administrator addresses records by key; the server re-reads every record through the owned
+ *  connection, so keys never inject content. Eligibility stays with the batch extractors. */
+export const translationRecordSelectionSchema = z.union([batchRecordSelectionSchema, batchViewSelectionSchema]);
+export const translationRecordFieldSchema = translationPageFieldSchema.extend({ selection: translationRecordSelectionSchema });
+export const translationRecordPreviewRequestSchema = z.object({ locale: localeSchema,
+    selections: z.array(translationRecordSelectionSchema).min(1).max(25) }).strict();
+export const translationRecordPreviewSchema = z.object({ locale: localeSchema, sourceLocale: localeSchema,
+    targetLocales: z.array(localeSchema).max(16), fields: z.array(translationRecordFieldSchema).max(25),
+    draftOnly: z.literal(true) }).strict();
+export const translationRecordSaveSchema = z.object({ selection: translationRecordSelectionSchema, locale: localeSchema,
+    token: hash, text: z.string().min(1).max(4000) }).strict();
+
 /** Complete rendered Homepage review; the server owns source/layout/query selection. */
 export const translationHomepageReviewSchema = z.object({locale:localeSchema,sourceLocale:localeSchema,token:hash,siteHash:hash,
  fields:z.array(z.object({id:hash,label:z.string().max(200),source:z.string().max(12000),translation:z.string().max(12000).nullable(),state:z.enum(['missing','draft','outdated']),token:hash}).strict()).min(1).max(502),complete:z.boolean(),active:z.object({hash,generation:z.number().int().positive()}).strict().nullable()}).strict();

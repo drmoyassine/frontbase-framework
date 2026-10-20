@@ -5,6 +5,7 @@ import { translationPagePreviewSchema } from '@frontbase/edge-core/localization/
 import { translationLanguages } from '../dashboard/settings/shared/translationLanguages';
 import { TranslationPicker } from '../dashboard/settings/shared/TranslationPicker';
 import { TranslationBatchForm } from '../dashboard/settings/shared/TranslationBatchForm';
+import { translationStateLabels, translationProvenanceLabels } from '../dashboard/settings/shared/translationStateLabels';
 import { Button } from '@/components/ui/button';
 import type { Page, ComponentData } from '@/types/builder';
 import { useIframeCanvas } from './canvas/useIframeCanvas';
@@ -88,8 +89,8 @@ function TranslationCanvas({ page, locale, force, onSelectField }: { page: Page;
             }} />
     </div>;
 }
-const stateLabel = { missing: 'Missing translation', outdated: 'Outdated — source changed', draft: 'Draft saved' } as const;
-const provenanceLabel = { ai: 'AI generated', manual: 'Manual correction', import: 'Imported' } as const;
+const stateLabel = translationStateLabels;
+const provenanceLabel = translationProvenanceLabels;
 /** Separate editing surface unmounts source layout shortcuts/DnD; all saves are translation-only. */
 export function TranslationPageWorkspace({ page, onClose, onHomepage }: { page: Page; onClose(): void; onHomepage?(): void }) {
     const [configuration, setConfiguration] = useState<z.infer<typeof translationGenerationConfigurationSchema> | null>(null);
