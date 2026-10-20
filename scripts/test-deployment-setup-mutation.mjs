@@ -15,8 +15,8 @@ const faults=[
  ['one-time claim',"session=randomBytes(32).toString('base64url');claim=undefined;","session=randomBytes(32).toString('base64url');"],
  ['request size','if(size>maxBody)','if(false)'],
  ['expiry','if(now()>=expires){clear();return reply(410', 'if(false){clear();return reply(410'],
- ['response secrecy','return reply(200,{ready:true,operations:plan.operations});','return reply(200,{ready:true,operations:plan.operations,credentials:secrets});'],
- ['one-shot handoff','const value=prepared;prepared=undefined;return value;','const value=prepared;return value;'],
+ ['response secrecy','return reply(200,{ready:true,operations:plan.operations,reviewId});','return reply(200,{ready:true,operations:plan.operations,reviewId,credentials:secrets});'],
+ ['one-shot handoff','const value=prepared;prepared=undefined;reviewId=undefined;revision++;return value;','const value=prepared;return value;'],
 ];
 try {
  for(const [name,before,after] of faults) {

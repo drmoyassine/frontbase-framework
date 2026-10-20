@@ -19,7 +19,7 @@
     "deploy:community-edge": "node scripts/deploy-community.mjs",
     "deploy": "npx --yes wrangler deploy --config examples/cf-full/wrangler.toml",
     "deploy:setup": "node scripts/deployment-setup.mjs",
-    "test:deployment-setup": "node scripts/test-deployment-setup.mjs && node scripts/test-deployment-setup-mutation.mjs",
+    "test:deployment-setup": "node scripts/test-deployment-setup.mjs && node scripts/test-deployment-setup-mutation.mjs && node scripts/test-deployment-setup-execution.mjs && node scripts/test-cloudflare-setup-executor.mjs && node scripts/test-deployment-execution-mutation.mjs",
     "deploy:plan": "node scripts/deployment-plan.mjs",
     "deploy:vercel": "node scripts/deploy-vercel.mjs",
     "deploy:deno": "node scripts/deploy-deno.mjs",

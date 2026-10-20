@@ -18,19 +18,25 @@ function sessionCookie(req,name) {
 }
 
 /** Local trusted-process bridge only. No DB, remote transport, provisioner or persistent secret store. */
-export async function startDeploymentSetup({ target='cloudflare', environment='preview', ttlMs=15*60_000, now=Date.now, onReview=()=>{} }={}) {
+export async function startDeploymentSetup({ target='cloudflare', environment='preview', ttlMs=15*60_000, now=Date.now, onReview=()=>{}, initialManifest, executionInfo, executionCapabilities, executionIssues=()=>[], onDeploy }={}) {
     if (!['cloudflare','vercel'].includes(target) || !['preview','production'].includes(environment)) throw new Error('invalid_deployment_target');
     if (!Number.isFinite(ttlMs) || ttlMs<1 || ttlMs>30*60_000) throw new Error('invalid_setup_lifetime');
-    const defaults=defaultDeploymentManifest(target,environment);
+    const defaults=initialManifest??defaultDeploymentManifest(target,environment);
+    if(defaults.target!==target || defaults.environment!==environment)throw new Error('setup_target_mismatch');
     let claim=randomBytes(32).toString('base64url');
     let session;
     const cookieName=`fb_deploy_setup_${randomBytes(8).toString('hex')}`;
     let prepared;
+    let reviewId;
+    let attempted=false;
+    let executionStatus='idle';
+    let executionUrl;
+    let executedManifest;
     let revision=0;
     let origin;
     let host;
     const expires=now()+ttlMs;
-    const clear=()=>{revision++;prepared=undefined;claim=undefined;session=undefined;};
+    const clear=()=>{revision++;prepared=undefined;reviewId=undefined;executedManifest=undefined;claim=undefined;session=undefined;};
     const headers={
         'cache-control':'no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'no-referrer',
         'content-security-policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
@@ -56,15 +62,18 @@ export async function startDeploymentSetup({ target='cloudflare', environment='p
                 return reply(200,{ok:true},{'set-cookie':`${cookieName}=${session}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.max(1,Math.floor((expires-now())/1000))}`});
             }
             if(!session || !equal(sessionCookie(req,cookieName),session))return reply(401,{error:'setup_session_required'});
-            if(req.method==='GET' && req.url==='/api/bootstrap')return reply(200,{manifest:prepared?.manifest??defaults,adapters:deploymentAdapters,expiresAt:new Date(expires).toISOString()});
+            if(req.method==='GET' && req.url==='/api/bootstrap')return reply(200,{manifest:prepared?.manifest??executedManifest??defaults,adapters:deploymentAdapters,deploymentEnabled:typeof onDeploy==='function',executionInfo:typeof onDeploy==='function'?executionInfo:undefined,executionCapabilities:typeof onDeploy==='function'?executionCapabilities:undefined,executionStatus,executionUrl,expiresAt:new Date(expires).toISOString()});
             if(req.method==='POST' && req.url==='/api/prepare') {
-                prepared=undefined;const requestRevision=++revision;
+                if(attempted)return reply(409,{error:'deployment_already_attempted'});
+                reviewId=undefined;prepared=undefined;const requestRevision=++revision;
                 let input;try{input=await readJson(req);}catch{return reply(400,{error:'invalid_request'});}
                 if(now()>=expires){clear();return reply(410,{error:'setup_expired'});}
                 if(requestRevision!==revision || !session)return reply(409,{error:'setup_changed'});
                 const plan=validateDeploymentManifest(input?.manifest);
                 if(!plan.ready)return reply(422,{ready:false,issues:plan.issues});
                 if(plan.manifest.target!==target || plan.manifest.environment!==environment)return reply(422,{ready:false,issues:[{code:'setup_target_mismatch'}]});
+                const executionProblems=executionIssues(plan.manifest);
+                if(executionProblems.length)return reply(422,{ready:false,issues:executionProblems});
                 const refs=new Set(Object.values(plan.manifest.bindings).filter(b=>b.mode!=='disabled').flatMap(b=>Object.values(b.secretRefs)));
                 const credentials=input.credentials;
                 if(!credentials || typeof credentials!=='object' || Array.isArray(credentials) || Object.keys(credentials).some(k=>!refs.has(k)) || [...refs].some(k=>typeof credentials[k]!=='string' || !credentials[k] || credentials[k].length>8192))return reply(422,{ready:false,issues:[{code:'invalid_credentials'}]});
@@ -73,8 +82,23 @@ export async function startDeploymentSetup({ target='cloudflare', environment='p
                 await onReview({manifest:structuredClone(plan.manifest),operations:structuredClone(plan.operations)});
                 if(now()>=expires){clear();return reply(410,{error:'setup_expired'});}
                 if(requestRevision!==revision || !session)return reply(409,{error:'setup_changed'});
-                prepared={manifest:plan.manifest,credentials:secrets};
-                return reply(200,{ready:true,operations:plan.operations});
+                prepared={manifest:plan.manifest,credentials:secrets};reviewId=randomBytes(24).toString('base64url');
+                return reply(200,{ready:true,operations:plan.operations,reviewId});
+            }
+            if(req.method==='POST' && req.url==='/api/deploy' && typeof onDeploy==='function') {
+                if(attempted)return reply(409,{error:'deployment_already_attempted'});
+                const requestRevision=revision;
+                let input;try{input=await readJson(req);}catch{return reply(400,{error:'invalid_request'});}
+                if(now()>=expires){clear();return reply(410,{error:'setup_expired'});}
+                if(requestRevision!==revision || !prepared || !equal(input?.reviewId,reviewId))return reply(409,{error:'current_review_required'});
+                attempted=true;executionStatus='running';
+                const selected=prepared;executedManifest=structuredClone(selected.manifest);prepared=undefined;reviewId=undefined;revision++;
+                try {
+                    const result=await onDeploy(selected);
+                    const url=new URL(result?.url??'');
+                    if(!result?.ok || url.protocol!=='https:' || url.username || url.password || url.search || url.hash)throw new Error('invalid_deploy_result');
+                    executionStatus='succeeded';executionUrl=url.origin;return reply(200,{ok:true,url:url.origin});
+                } catch {executionStatus='failed';return reply(502,{error:'deployment_failed_resources_preserved'});}
             }
             return reply(404,{error:'not_found'});
         } catch {return reply(500,{error:'setup_request_failed'});}
@@ -85,7 +109,7 @@ export async function startDeploymentSetup({ target='cloudflare', environment='p
     const timer=setTimeout(()=>{clear();server.closeAllConnections();server.close();},ttlMs);timer.unref();
     return {
         origin, url:`${origin}/#claim=${claim}`,
-        consumePrepared(){if(now()>=expires){clear();return undefined;}const value=prepared;prepared=undefined;return value;},
+        consumePrepared(){if(now()>=expires){clear();return undefined;}const value=prepared;prepared=undefined;reviewId=undefined;revision++;return value;},
         async close(){clearTimeout(timer);clear();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));},
     };
 }
