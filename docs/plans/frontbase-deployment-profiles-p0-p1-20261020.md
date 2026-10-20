@@ -81,3 +81,8 @@ The free isolated database request returned `integration_terms_acceptance_requir
 6. P5: exact public button and clean-checkout acceptance, upgrades/restore/security/conformance evidence, documentation and measured support claims. Deno stays deferred.
 
 No new work in the dispatched translation stream or deployment to Study in USA staging is included.
+
+
+## Later native KV checkpoint — 2026-10-20
+
+[Native KV delivery](frontbase-deployment-native-kv-20261020.md) supersedes earlier D1-only/cache-unavailable statements for the bounded new Worker/D1/KV path. The actual disposable install, native cache card and real app cache write pass; existing registry/HTTP overrides and tenant isolation remain. R2, durable reuse/redeploy/resume and complete button/form acceptance remain next; earlier historical receipts do not imply those gates passed.

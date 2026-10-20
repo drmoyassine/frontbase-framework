@@ -117,3 +117,8 @@ The [P0/P1 receipt](frontbase-deployment-profiles-p0-p1-20261020.md) records exa
 ## P1 reviewed execution — bounded CF first-install verified
 
 [Execution receipt](frontbase-deployment-handoff-20261020.md): explicit account/new Worker/new D1 context, artifact snapshot, current-review/one-attempt handoff and existing compiler reuse now pass actual disposable CF setup→admin→page publication. Native browser UI filtering/locking/reload is verified separately with a simulated callback. Optional native bindings, durable reuse/redeploy/resume, post-deploy form and actual host button integration remain open.
+
+
+## Later native KV checkpoint — 2026-10-20
+
+[Native KV delivery](frontbase-deployment-native-kv-20261020.md) supersedes earlier D1-only/cache-unavailable statements for the bounded new Worker/D1/KV path. The actual disposable install, native cache card and real app cache write pass; existing registry/HTTP overrides and tenant isolation remain. R2, durable reuse/redeploy/resume and complete button/form acceptance remain next; earlier historical receipts do not imply those gates passed.

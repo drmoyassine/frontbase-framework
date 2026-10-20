@@ -181,3 +181,8 @@ pnpm run deploy:setup -- --target cloudflare --environment preview --deploy --ap
 ```
 
 This first executor requires a fresh Worker and `<worker>-db` D1, with optional bindings disabled. It refuses existing resources and repeat attempts. The private first-admin link is printed in the terminal. [Exact verification and remaining scope](../plans/frontbase-deployment-handoff-20261020.md).
+
+
+## Native KV in reviewed Cloudflare setup
+
+The explicit `deploy:setup -- --target cloudflare --deploy --app-name NAME --account-id ACCOUNT_ID` flow defaults to a new named D1 and optional new KV cache. KV can be disabled in the local Bindings review. It uses the `FRONTBASE_KV` binding, the existing tenant-scoped service resolver, and logical TTLs for short cache entries. Explicit cache environment configuration and adopted defaults retain precedence. This launcher refuses existing resources and unsupported bindings; native R2 and reuse/redeploy are still pending. [Exact live acceptance and limits](../plans/frontbase-deployment-native-kv-20261020.md).

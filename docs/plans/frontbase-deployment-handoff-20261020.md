@@ -67,3 +67,8 @@ No runtime package/backend/worker source changes were required; only local setup
 2. Add durable resource identities and reviewed reuse/redeploy/resume with state preservation and controlled migration. Do not reinterpret an existing-resource refusal as permission to replace it.
 3. Unify post-deploy configuration with the shared form model and prove the actual native deployment-button sequence.
 4. Complete real Vercel state integration and the same journey when its Marketplace setup is available. Deno remains deferred.
+
+
+## Later native KV checkpoint — 2026-10-20
+
+[Native KV delivery](frontbase-deployment-native-kv-20261020.md) supersedes earlier D1-only/cache-unavailable statements for the bounded new Worker/D1/KV path. The actual disposable install, native cache card and real app cache write pass; existing registry/HTTP overrides and tenant isolation remain. R2, durable reuse/redeploy/resume and complete button/form acceptance remain next; earlier historical receipts do not imply those gates passed.
