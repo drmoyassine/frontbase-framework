@@ -89,6 +89,48 @@ for(const failure of ['throwAI','withoutUsage']){
  const f=await setup(),p=await f.plan();await queued(f,p);await f.step(p);await f.edit([{...f.nodes[0],props:{content:'New private source'}}]);
  assert.equal((await f.status(p)).items[0].result,null,'old draft is not exposed for changed source');assert.equal(f.aiCalls(),1);await closed(f,p);f.close();
 }
+// Retry gives failed/unsent items NEW reviewed identities; completed drafts are never re-sent.
+{
+ const f=await setup(),both=[f.input.selections[0],{pageId:'page',blockId:'text',field:'content'}],p=await f.plan({...f.input,selections:both,limits:{...f.input.limits,maxRequests:2}});
+ for(const auth of [false,true]){f.setAuth(auth);f.setRole('viewer');assert.equal((await f.request(p.id+'/retry/','POST')).status,auth?403:401);}f.setAuth(true);f.setRole('owner');
+ assert.equal((await f.request(p.id+'/retry/','POST')).status,422,'an unexecuted review cannot be retried');f.setTenant('beta');
+ assert.equal((await f.request(p.id+'/retry/','POST')).status,422,'foreign tenant learns nothing');f.setTenant('alpha');
+ await queued(f,p);await f.step(p);assert.equal(f.aiCalls(),1);
+ f.setHook(()=>f.edit([{...f.nodes[0],props:{content:'Changed during AI'}},f.nodes[1]]));await f.step(p);f.setHook(async()=>{});
+ assert.equal(f.aiCalls(),2,'the fenced dispatch still reached the transport; only its write was rejected');assert.equal((await f.status(p)).items[1].accounting,'settled');
+ const retry=await f.json(p.id+'/retry/','POST',undefined,201);
+ assert.equal(retry.sourceBatchId,p.id);assert.deepEqual(retry.excluded,[{selection:both[0],reason:'completed'}]);
+ assert.notEqual(retry.id,p.id);assert.equal(retry.items.length,1);assert.deepEqual(retry.items[0].selection,both[1]);assert.equal(retry.items[0].text,'Study abroad');
+ assert.equal((await f.status(p)).state,'queued','the source batch is not modified by planning a retry');assert.equal(f.aiCalls(),2,'retry planning never dispatches');
+ assert.equal((await f.request(retry.id+'/start/','POST',{reviewHash:retry.reviewHash})).status,409,'a retry review still needs explicit content-transmission approval');
+ await closed(f,p);await f.start(retry);await f.step(retry);await f.step(retry);await f.step(retry);
+ const done=await f.status(retry);assert.equal(done.state,'done');assert.equal(done.items[0].state,'completed');assert.equal(done.items[0].result,'قدّم');assert.equal(f.aiCalls(),3);
+ await closed(f,retry);f.close();
+}
+// An uncertain-dispatched item is never carried into a retry; the held ledger still blocks its own batch.
+{
+ const f=await setup(),both=[f.input.selections[0],{pageId:'page',blockId:'text',field:'content'}],p=await f.plan({...f.input,selections:both,limits:{...f.input.limits,maxRequests:2}});
+ await queued(f,p);f.throwAI();await f.step(p);assert.equal(f.aiCalls(),1);
+ assert.equal((await f.status(p)).items[0].accounting,'uncertain');
+ await f.step(p);assert.equal(f.aiCalls(),1,'a held allowance cannot dispatch the sibling item');
+ const held=await f.status(p);assert.ok(['failed','queued'].includes(held.items[1].state));assert.notEqual(held.items[1].accounting,'uncertain');
+ assert.equal(held.items[1].result,null,'no text can exist without a proven dispatch');
+ const retry=await f.json(p.id+'/retry/','POST',undefined,201);
+ assert.deepEqual(retry.excluded,[{selection:both[0],reason:'uncertain-dispatch'}]);
+ assert.equal(retry.items.length,1);assert.deepEqual(retry.items[0].selection,both[1]);
+ await closed(f,p,{unknownDisposition:'count-as-consumed'});
+ await f.start(retry);await f.step(retry);await f.step(retry);
+ assert.equal(f.aiCalls(),2,'the retry dispatches only the eligible item under a fresh reviewed allowance');
+ assert.equal((await f.status(retry)).items[0].accounting,'uncertain','the fake provider fails again; a further retry would exclude it again');
+ await closed(f,retry,{unknownDisposition:'count-as-consumed'});f.close();
+}
+// Manual heads are respected: a manually translated item is excluded, never overwritten by a retry.
+{
+ const f=await setup(),p=await f.plan();await queued(f,p);
+ const preview=await f.json('page-preview/page/?locale=ar');const field=preview.fields.find(item=>item.selection.blockId==='heading');
+ await f.json('page-preview/field/','POST',{selection:field.selection,locale:'ar',token:field.token,text:'ترجمة يدوية'});
+ assert.equal((await f.request(p.id+'/retry/','POST')).status,422,'a manual head cannot be retried or overwritten');assert.equal(f.aiCalls(),0);await closed(f,p);f.close();
+}
 {
  const f=await setup(),p=await f.plan();
  const key='translation_batch:v1:'+p.id,row=(await f.db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',['alpha',key]))[0];

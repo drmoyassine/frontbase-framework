@@ -11,7 +11,7 @@ import { translationMessages, type GenerationHost } from './translation-generati
 import type { PagesStore, CompatPageRow } from './pages-store.js';
 import { translationInputHash, translationPlainText, extractMenuInput, extractRecordInput, extractViewRecordInput, TranslationInputChanged, type TranslationViewHost } from './translation-inputs.js';
 import { batchSelectionSchema as selectionSchema, batchPageSelectionSchema, batchLimitsSchema as limitsSchema, batchPlanInputSchema,
-    batchReviewSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema } from '@frontbase/edge-core/localization/batches';
+    batchReviewSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema, batchRetryReviewSchema } from '@frontbase/edge-core/localization/batches';
 
 const id = z.string().min(1).max(160), hash = z.string().regex(/^[a-f0-9]{64}$/), uuid = z.string().uuid();
 export const translationBatchPlanSchema = batchPlanInputSchema;
@@ -205,6 +205,35 @@ export async function continueTranslationBatch(host: TranslationBatchHost, db: D
         if (['queued', 'leased'].includes(job.status)) { await executor.runOnce(item.intent.jobId); return; }
     }
     await save(db, tenant, row, { ...b, phase: 'done' }, now);
+}
+/** Recovery with NEW reviewed identities: a fresh plan over the eligible subset of an executed batch.
+ *  Never carries uncertain-dispatched items (held in the original allowance), completed drafts, live
+ *  leases or stale/manual-head sources. The source batch is not modified; the returned review still
+ *  requires explicit content-transmission approval before any dispatch. */
+export async function retryTranslationBatch(host: TranslationBatchHost, db: DbRunner, tenant: string, batchId: string, now: string) {
+    const b = (await read(db, tenant, batchId)).value;
+    if (b.phase === 'planned' || b.approvedBy === null) throw Error();
+    const session = await sessionFor(host, tenant, b.review.pin);
+    const retried: Batch['review']['items'][number]['selection'][] = [], excluded: z.infer<typeof batchRetryReviewSchema>['excluded'] = [];
+    for (const item of b.review.items) {
+        const snapshot = await session.persistence.read(session.scope, item.intent.unitId, b.review.targetLocale);
+        if (snapshot.head?.provenance === 'manual') { excluded.push({ selection: item.selection, reason: 'manual-head' }); continue; }
+        try { await extract(host, db, tenant, item.selection, b.review.pin); } catch { excluded.push({ selection: item.selection, reason: 'outdated-or-changed' }); continue; }
+        const job = await session.persistence.readJob(session.scope, item.intent.jobId);
+        if (!job) { retried.push(item.selection); continue; } // Reviewed but never enqueued; the fresh review re-validates everything.
+        if (job.status === 'completed') { excluded.push({ selection: item.selection, reason: 'completed' }); continue; }
+        if (job.status === 'leased') { excluded.push({ selection: item.selection, reason: 'leased' }); continue; }
+        const attempt = job.leaseVersion ? await session.persistence.readAttempt({ scope: session.scope, jobId: job.intent.jobId, leaseVersion: job.leaseVersion }) : null;
+        // The attempt record carries the dispatch truth: only an unresolved (dispatched/uncertain) attempt is
+        // held. uncertainAttempts alone also marks cleanly-settled cancels, which ARE recoverable here.
+        if (attempt?.state === 'dispatched' || attempt?.state === 'uncertain') {
+            excluded.push({ selection: item.selection, reason: 'uncertain-dispatch' }); continue; }
+        retried.push(item.selection); // Failed cleanly, cancelled (dispatch settled or never sent), or still queued undispatched.
+    }
+    if (!retried.length) throw Error();
+    const plan = await planTranslationBatch(host, db, tenant,
+        { targetLocale: b.review.targetLocale, selections: retried, limits: b.review.limits }, now);
+    return batchRetryReviewSchema.parse({ ...plan, sourceBatchId: b.review.id, excluded });
 }
 export async function cancelTranslationBatch(host: TranslationBatchHost, db: DbRunner, tenant: string, batchId: string, reviewHash: string,
     unknownDisposition: 'hold' | 'count-as-consumed', now: string) {

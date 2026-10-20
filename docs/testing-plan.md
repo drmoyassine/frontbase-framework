@@ -112,7 +112,23 @@ pnpm --filter @frontbase/backend test    # durable-execution-live.mjs goes live
 
 Proves the redelivery dispatcher actually enqueues against Upstash.
 
-### 2.3 Cost/quota note
+### 2.3 Translation AI provider output (backend)
+
+```bash
+export FRONTBASE_TRANSLATION_AI_LIVE=1
+export FRONTBASE_TRANSLATION_AI_LIVE_KEY=<openrouter-api-key>
+export FRONTBASE_TRANSLATION_AI_LIVE_MODEL=<openrouter-free-model-id>   # must end in :free
+
+pnpm --filter @frontbase/backend test    # translation-generation-live.mjs goes live
+```
+
+Proves the production translation transport (`httpTextInvoker` over the fixed OpenRouter origin, production
+prompt envelope) completes a REAL free-provider round-trip: the returned text passes the production
+plain-revision validator and reported usage carries positive integer token counts. The gate refuses any
+model id without the `:free` suffix, and the transport itself pins `max_price 0` with fallbacks disabled —
+no paid routing exists in the translation workflow. Self-skips (exit 0) without credentials.
+
+### 2.4 Cost/quota note
 
 D1/KV/Vectorize creation and Supabase schema DDL are essentially free at test volumes, but QStash and sustained Postgres connections may accrue small costs on paid tiers. Use free-tier/sandbox accounts.
 

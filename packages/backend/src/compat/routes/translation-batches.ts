@@ -4,9 +4,9 @@ import { translationPagePreview, saveTranslationPageField } from '../translation
 import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
-import { planTranslationBatch, startTranslationBatch, continueTranslationBatch, cancelTranslationBatch, translationBatchStatus,
+import { planTranslationBatch, startTranslationBatch, continueTranslationBatch, cancelTranslationBatch, retryTranslationBatch, translationBatchStatus,
     translationBatchPlanSchema, translationBatchPages, translationBatchFields, translationBatchHistory, translationBatchReview, type TranslationBatchHost } from '../translation-batches.js';
-import { batchReviewSchema, batchStatusSchema, batchRecordSelectionSchema, batchViewSelectionSchema, batchPreviewItemSchema } from '@frontbase/edge-core/localization/batches';
+import { batchReviewSchema, batchStatusSchema, batchRecordSelectionSchema, batchViewSelectionSchema, batchPreviewItemSchema, batchRetryReviewSchema } from '@frontbase/edge-core/localization/batches';
 import { translationMenus, translationMenuFields, translationDatasources, translationViews, extractRecordInput, extractViewRecordInput } from '../translation-inputs.js';
 import { discoverTranslationCoverage } from '../translation-discovery.js';
 import { currentTranslationHostPin } from '../translation-allowance.js';
@@ -119,6 +119,10 @@ export function registerTranslationBatchRoutes(app: Hono<{ Variables: ConsoleAut
             await continueTranslationBatch(host, db, tenant, c.req.param('id'), input.reviewHash, now());
             return c.json(batchStatusSchema.parse(await translationBatchStatus(host, db, tenant, c.req.param('id'))));
         } catch { return c.json({ detail: 'Batch could not continue. Check source/settings changes or reconcile its allowance.' }, 409); }
+    });
+    app.post(`${root}:id/retry/`, async c => {
+        try { return c.json(batchRetryReviewSchema.parse(await retryTranslationBatch(host, db, c.get('tenant'), c.req.param('id'), now())), 201); }
+        catch { return c.json({ detail: 'Retry plan is unavailable. Nothing eligible remains, the batch is only an unexecuted review, or storage/settings changed.' }, 422); }
     });
     app.post(`${root}:id/cancel/`, async c => {
         try { const input = cancelSchema.parse(await body(c.req.raw)), tenant = c.get('tenant');

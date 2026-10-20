@@ -54,6 +54,16 @@ export const batchStatusSchema = z.object({ id: uuid, reviewHash: hash, state: b
         accounting: z.enum(['reserved', 'dispatched', 'settled', 'uncertain', 'released']).nullable(), outdated: z.boolean(), result: z.string().nullable() }).strict()).max(4),
     lifecycle: batchLifecycleSchema.nullable(), delivery: z.literal('administrator-continuation'), draftOnly: z.literal(true) }).strict();
 
+/** Retry with NEW reviewed identities (the accepted recovery for failed/unsent items): the response
+ *  is a fresh plan review over an eligible subset. Uncertain-dispatched items are never carried —
+ *  they stay held in the original allowance until the administrator explicitly reconciles it. */
+export const batchRetryExclusionSchema = z.object({ selection: batchSelectionSchema,
+    reason: z.enum(['completed', 'uncertain-dispatch', 'leased', 'outdated-or-changed', 'manual-head']) }).strict();
+export const batchRetryReviewSchema = batchReviewSchema.extend({ sourceBatchId: uuid, excluded: z.array(batchRetryExclusionSchema).max(3) }).strict()
+    .refine(v => { const taken = new Set(v.items.map(item => JSON.stringify(item.selection)));
+        return v.excluded.every(item => !taken.has(JSON.stringify(item.selection)))
+            && new Set(v.excluded.map(item => JSON.stringify(item.selection))).size === v.excluded.length; }, 'Each selection appears exactly once');
+
 /** Private saved-page authoring; no job or provider authority. */
 export const translationPageFieldSchema = z.object({ selection: batchPageSelectionSchema, source: z.string().max(4000),
     translation: z.string().max(4000).nullable(), state: z.enum(['missing','draft','outdated']),

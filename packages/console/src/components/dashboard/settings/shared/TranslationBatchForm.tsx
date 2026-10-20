@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { translationGenerationOptionsSchema } from '@frontbase/edge-core/localization';
-import { batchCapabilitiesSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema, batchReviewSchema, batchStatusSchema,
+import { batchCapabilitiesSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema, batchReviewSchema, batchStatusSchema, batchRetryReviewSchema,
     batchMenusSchema, batchMenuFieldsSchema, batchDatasourcesSchema, batchRecordSelectionSchema, batchViewSelectionSchema, batchViewsSchema, batchPreviewItemSchema } from '@frontbase/edge-core/localization/batches';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ export function TranslationBatchForm() {
     const [views, setViews] = useState<z.infer<typeof batchViewsSchema>>(), [viewId, setView] = useState('');
     const [keyColumn, setKeyColumn] = useState('id'), [keyValue, setKeyValue] = useState(''), [column, setColumn] = useState(''), [recordField, setRecordField] = useState<Item>();
     const [targets, setTargets] = useState<string[]>([]), [target, setTarget] = useState(''), [pageId, setPage] = useState('');
-    const [review, setReview] = useState<Review>(), [status, setStatus] = useState<Status>();
+    const [review, setReview] = useState<Review>(), [status, setStatus] = useState<Status>(), [retryPlan, setRetryPlan] = useState<z.infer<typeof batchRetryReviewSchema>>();
     const [approved, setApproved] = useState(false), [acknowledged, setAcknowledged] = useState(false);
     const [busy, setBusy] = useState(false), [blocked, setBlocked] = useState(true), [message, setMessage] = useState('');
     const lock = useRef(false), epoch = useRef(0);
@@ -54,7 +54,7 @@ export function TranslationBatchForm() {
             setCap(nextCap); setPages(nextPages); setHistory(nextHistory); setTargets(ai.configuration?.targetLocales ?? []);
             setTarget(ai.configuration?.targetLocales[0] ?? ''); setPage(''); setFields(undefined); setSelected([]);
             setSourceKind('page'); setMenu(''); setMenus(undefined); setMenuFields(undefined); setDatasources(undefined); setRecordField(undefined); setDatasource(''); setViews(undefined); setView('');
-            setReview(undefined); setStatus(undefined); setApproved(false); setAcknowledged(false); setBlocked(false);
+            setReview(undefined); setStatus(undefined); setRetryPlan(undefined); setApproved(false); setAcknowledged(false); setBlocked(false);
         }, 'Could not load batch controls. Check saved AI/storage settings and reload.');
     }
     useEffect(() => { void load(); return () => { epoch.current++; lock.current = false; }; }, []);
@@ -85,7 +85,7 @@ export function TranslationBatchForm() {
         await work(async () => {
             const current = epoch.current, next = await get(encodeURIComponent(id) + '/', batchStatusSchema);
             if (current !== epoch.current) return;
-            setStatus(next); setReview(undefined); setApproved(false); setAcknowledged(false); setBlocked(false);
+            setStatus(next); setReview(undefined); setRetryPlan(undefined); setApproved(false); setAcknowledged(false); setBlocked(false);
             if (next.state === 'planned') {
                 const saved = await get(encodeURIComponent(id) + '/review/', batchReviewSchema);
                 if (current === epoch.current) setReview(saved);
@@ -97,9 +97,19 @@ export function TranslationBatchForm() {
             const current = epoch.current, next = await get('plans/', batchReviewSchema, { targetLocale: target,
                 selections: selected.map(item => item.selection), limits: { maxRequests: selected.length, maxConcurrent: 1, maxMessageBytes: 65536 } });
             if (current !== epoch.current) return;
-            setReview(next); setStatus(undefined); setApproved(false); setBlocked(false);
+            setReview(next); setStatus(undefined); setRetryPlan(undefined); setApproved(false); setBlocked(false);
             setHistory(await get('reviews/', batchHistorySchema));
         }, 'Review could not be prepared. Reload to check source/settings changes.');
+    }
+    /** Retry failed/unsent items with new reviewed identities; the fresh review still needs explicit approval. */
+    async function retryEligible() {
+        if (!status) return;
+        await work(async () => {
+            const current = epoch.current, next = await get(encodeURIComponent(status.id) + '/retry/', batchRetryReviewSchema);
+            if (current !== epoch.current) return;
+            setRetryPlan(next); setReview(next); setStatus(undefined); setApproved(false); setBlocked(false);
+            setHistory(await get('reviews/', batchHistorySchema));
+        }, 'Retry plan is unavailable. Nothing eligible remains, or storage/settings changed. Refresh status and reconcile where needed.');
     }
     const batch = status ?? review;
     async function action(kind: 'start' | 'continue' | 'cancel', consume = false) {
@@ -127,6 +137,8 @@ export function TranslationBatchForm() {
     }
     const uncertainUsage = status?.items.some(item => item.accounting === 'uncertain') ?? false;
     const unknown = status?.lifecycle?.totals.retainedUnknownRequests ?? 0;
+    const retryHint = !!status && status.state !== 'planned' && status.items.some(item =>
+        ['failed', 'not-prepared', 'cancelled'].includes(item.state) && item.accounting !== 'uncertain' && item.accounting !== 'dispatched');
     return <Card><CardHeader><CardTitle>Translate selected text</CardTitle><CardDescription>Select up to four page, menu or live record fields, review, then explicitly approve generation. Results are drafts.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
             {cap && !cap.executionAvailable && <p role="note" className="text-sm text-muted-foreground">Generation is disabled on this host. You can prepare a review and recover or cancel saved batches.</p>}
@@ -170,6 +182,11 @@ export function TranslationBatchForm() {
             </fieldset>}
             {review && <section aria-label="Translation review" className="space-y-3 rounded-md border p-4">
                 <p className="break-words">{review.sourceLocale} → {review.targetLocale} · {review.items.length} fields · {review.model}</p>
+                {retryPlan && <p className="text-sm text-muted-foreground">Recovered from batch {retryPlan.sourceBatchId.slice(0, 8)} with new reviewed identities; nothing is dispatched until you approve below.</p>}
+                {retryPlan?.excluded.length ? <div className="space-y-1">
+                    {retryPlan.excluded.map(item => <p key={JSON.stringify(item.selection)} className="text-xs text-muted-foreground">Excluded ({item.reason}).</p>)}
+                    {retryPlan.excluded.some(item => item.reason === 'uncertain-dispatch') && <p className="text-xs text-muted-foreground">Uncertain usage remains held in the original batch until it is reconciled there.</p>}
+                </div> : null}
                 <p className="text-sm">AI connection: {review.providerAccountId}. Maximum {review.limits.maxRequests} requests, one at a time; {review.limits.maxMessageBytes} input bytes and {review.maxOutputTokens} output tokens per request. Monetary cost is unknown.</p>
                 {review.items.map(item => <div key={identity(item)}><p className="text-xs text-muted-foreground">{item.context.resourceLabel} · {item.context.role}</p><p className="whitespace-pre-wrap break-words">{item.text}</p></div>)}
                 {(!status || status.state === 'planned') && <><label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={approved} disabled={busy || blocked || !cap?.executionAvailable} onChange={e => setApproved(e.target.checked)} />I approve sending this selected text and context to this AI connection and using up to {review.limits.maxRequests} requests. Provider charges may apply.</label>
@@ -181,7 +198,9 @@ export function TranslationBatchForm() {
                 {['preparing', 'queued'].includes(status.state) && <Button type="button" disabled={busy || blocked || !cap?.executionAvailable || !status.storageAvailable || uncertainUsage || status.items.some(item => item.outdated)} onClick={() => void action('continue')}>{status.state === 'preparing' ? 'Prepare next item' : 'Continue generation'}</Button>}
                 {uncertainUsage && <p role="alert">Generation is paused because a request has uncertain usage. Cancel and reconcile this batch before continuing. Saved drafts are retained.</p>}
                 <p className="text-xs text-muted-foreground">Each continuation prepares one item or runs at most one job. Leaving this screen does not schedule more work.</p>
-                {status.items.map(item => <div key={JSON.stringify(item.selection)} className="rounded border p-3 text-sm"><p>{item.state} · usage: {item.accounting ?? 'not dispatched'}</p>{item.outdated && <p>Source changed or is unavailable. Create a new review.</p>}{item.error && <p>This item could not complete. Review its usage before retrying in a new batch.</p>}{item.result !== null && <p lang={review?.targetLocale} dir="auto" className="whitespace-pre-wrap break-words">{item.result}</p>}</div>)}
+                {status.items.some(item => item.state === 'failed') && !uncertainUsage && <p className="text-sm">Completed drafts are kept. Cancelling releases proven-unsent requests; clean failures can be retried in a new reviewed batch.</p>}
+                {retryHint && !uncertainUsage && <Button type="button" variant="outline" disabled={busy || blocked || !cap?.executionAvailable} onClick={() => void retryEligible()}>Retry eligible items in a new review</Button>}
+                {status.items.map(item => <div key={JSON.stringify(item.selection)} className="rounded border p-3 text-sm"><p>{item.state} · usage: {item.accounting ?? 'not dispatched'}</p>{item.outdated && <p>Source changed or is unavailable. Create a new review.</p>}{item.error && <p className="break-words">Could not complete ({item.error}). Uncertain usage stays held until reconciliation; clean failures can be retried in a new reviewed batch.</p>}{item.result !== null && <p lang={review?.targetLocale} dir="auto" className="whitespace-pre-wrap break-words">{item.result}</p>}</div>)}
                 {status.lifecycle && <p className="text-sm">Consumed requests: {status.lifecycle.totals.consumedRequests}; retained unknown: {unknown}; released: {status.lifecycle.totals.releasedRequests}.</p>}
                 {status.state === 'cancelling' && unknown > 0 && <><label className="flex gap-2 text-sm"><input type="checkbox" checked={acknowledged} disabled={busy} onChange={e => setAcknowledged(e.target.checked)} />Count unknown requests as consumed. This does not refund charges or prove that an in-flight call stopped.</label><Button type="button" variant="outline" disabled={busy || !acknowledged} onClick={() => void action('cancel', true)}>Count unknown requests as consumed</Button></>}
             </section>}
