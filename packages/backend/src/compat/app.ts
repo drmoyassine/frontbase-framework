@@ -15,7 +15,7 @@ import {registerAppUserRoutes} from './routes/app-users.js';
  * with createConsole.
  */
 import { Hono } from 'hono';
-import type { DbRunner, ServiceFetch, StorageProvider } from '@frontbase/edge-infra';
+import type { DbRunner, ServiceFetch, StorageProvider, CacheProvider } from '@frontbase/edge-infra';
 import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from '../mw/auth.js';
 import { fastApiErrorEnvelope, opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
@@ -134,6 +134,8 @@ export interface CreateCompatAppDeps {
      *  no process.env) and injected as data. Registry-adopted is_default rows
      *  take precedence over these; memory/no-op is the floor. */
     envServices?: EnvServices;
+    /** Trusted platform cache, never accepted from API configuration. */
+    nativeCache?: CacheProvider;
     /** Google Workspace Marketplace install URL for the Sheets connect add-on, surfaced
      *  by /api/sync/datasources/sheets/connect/issue/. Empty default => the SPA renders
      *  its bundled fallback (matches the product's FRONTBASE_SHEETS_ADDON_URL semantics). */
@@ -199,6 +201,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     const serviceResolver = createSystemServiceResolver({
         phase2For,
         env: deps.envServices ?? {},
+        nativeCache: deps.nativeCache,
         externalFetch,
         log: (msg) => console.warn(msg),
     });

@@ -44,6 +44,19 @@ try {
   assert.ok(!fake.calls.some(call=>call.args[0]==='secret'||call.args[0]==='deploy'||call.args[1]==='create'),'unsafe preflight mutated host');if(fault.existingWorker)assert.equal(fake.calls.length,1,'existing worker refused before database handling');
  }
  const failed=fixture({createFailed:true});await assert.rejects(executeCloudflareFirstInstall(prepared,context,{exampleRoot:root,runWrangler:failed.run,onReceipt:receipt}));assert.ok(!failed.calls.some(call=>call.args[0]==='secret'||call.args[0]==='deploy'));
+
+ const withCache=structuredClone(prepared);withCache.manifest.bindings.cache.mode='create';withCache.manifest.bindings.cache.config.resourceName='profile-fixture-cache';
+ const kvId='a'.repeat(32);
+ for(const fault of ['none','existing','unknown','create-failed','bad-identity']) {
+  const base=fixture();const calls=[];const run=async(args,opts)=>{calls.push(args);
+   if(args.slice(0,3).join(' ')==='kv namespace list')return fault==='unknown'?{code:1,stdout:'',stderr:'network failure'}:{code:0,stdout:JSON.stringify(fault==='existing'?[{title:'profile-fixture-cache',id:kvId}]:[]),stderr:''};
+   if(args.slice(0,3).join(' ')==='kv namespace create')return {code:fault==='create-failed'?1:0,stdout:fault==='bad-identity'?'created without id':`id = "${kvId}"`,stderr:''};
+   return base.run(args,opts);};
+  const operation=executeCloudflareFirstInstall(withCache,context,{exampleRoot:root,runWrangler:run,onReceipt:receipt});
+  if(fault==='none'){await operation;const stage=stages.at(-1);assert.ok(readFileSync(join(stage,'wrangler.toml'),'utf8').includes(kvId));assert.equal(JSON.parse(readFileSync(join(stage,'deployment-receipt.json'),'utf8')).resources.cache.id,kvId);const create=calls.find(args=>args.slice(0,3).join(' ')==='kv namespace create');assert.equal(create[3],'profile-fixture-cache');}
+  else {await assert.rejects(operation);assert.ok(!calls.some(args=>args[0]==='secret'||args[0]==='deploy'||args[1]==='create'),'KV refusal must precede D1/Worker mutation');}
+ }
+ const wrongName=structuredClone(withCache);wrongName.manifest.bindings.cache.config.resourceName='other-cache';const unused=fixture();await assert.rejects(executeCloudflareFirstInstall(wrongName,context,{exampleRoot:root,runWrangler:unused.run}));assert.equal(unused.calls.length,0);
  const bad=structuredClone(prepared);bad.manifest.bindings.storage={adapterId:'s3-http',mode:'connect',config:{endpoint:'https://s3.example',bucket:'fixture'},secretRefs:{accessKeyId:'a',secretAccessKey:'b'}};
  const fakeUnused=fixture();await assert.rejects(executeCloudflareFirstInstall(prepared,{...context,accountId:'invalid'},{exampleRoot:root,runWrangler:fakeUnused.run}),/invalid_cloudflare_execution_context/);assert.equal(fakeUnused.calls.length,0);await assert.rejects(executeCloudflareFirstInstall(bad,context,{exampleRoot:root,runWrangler:fakeUnused.run}));assert.equal(fakeUnused.calls.length,0);
  writeFileSync(join(root,'dist/worker.mjs'),'changed');await assert.rejects(executeCloudflareFirstInstall(prepared,context,{exampleRoot:root,runWrangler:fakeUnused.run}),/artifacts_changed/);assert.equal(fakeUnused.calls.length,0);writeFileSync(join(root,'dist/worker.mjs'),'export default {};');

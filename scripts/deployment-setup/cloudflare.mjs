@@ -10,14 +10,15 @@ import { deployCommand } from '../../packages/compiler/dist/cli/deploy.js';
 import { workerExists } from '../../packages/compiler/dist/cli/app-identity.js';
 const repoRoot=join(dirname(fileURLToPath(import.meta.url)),'../..');
 const defaultExample=join(repoRoot,'examples/cf-full');
-export const cloudflareExecutionCapabilities={adapters:{'cloudflare-d1':['create']}};
+export const cloudflareExecutionCapabilities={adapters:{'cloudflare-d1':['create'],'cloudflare-kv':['create']}};
 export function cloudflareExecutionIssues(manifest,context) {
     const issues=[];
     if(manifest.target!=='cloudflare' || manifest.environment!==context.environment)issues.push({code:'execution_target_mismatch'});
-    for(const [role,binding] of Object.entries(manifest.bindings))if(role!=='state-db' && binding.mode!=='disabled')issues.push({role,code:'execution_adapter_not_supported'});
+    for(const [role,binding] of Object.entries(manifest.bindings))if(role!=='state-db' && !(role==='cache' && binding.adapterId==='cloudflare-kv' && binding.mode==='create') && binding.mode!=='disabled')issues.push({role,code:'execution_adapter_not_supported'});
     const state=manifest.bindings['state-db'];
     if(state.adapterId!=='cloudflare-d1' || state.mode!=='create')issues.push({role:'state-db',code:'execution_requires_new_d1'});
     if(state.config.resourceName!==`${context.appName}-db`)issues.push({role:'state-db',code:'execution_database_name_mismatch'});
+    if(manifest.bindings.cache.mode!=='disabled' && manifest.bindings.cache.config.resourceName!==`${context.appName}-cache`)issues.push({role:'cache',code:'execution_cache_name_mismatch'});
     return issues;
 }
 export function assertCloudflareExecutionContext(context) {
@@ -56,7 +57,8 @@ export async function executeCloudflareFirstInstall(prepared,context,{exampleRoo
     cpSync(join(exampleRoot,'console-dist'),join(stage,'console-dist'),{recursive:true});
     if(fingerprintCloudflareArtifacts(stage)!==context.artifactHash)throw new Error('deployment_artifacts_changed');
     writeFileSync(join(stage,'wrangler.toml'),`name = "${context.appName}"\naccount_id = "${context.accountId}"\nmain = "dist/worker.mjs"\ncompatibility_date = "2026-09-07"\ncompatibility_flags = ["nodejs_compat"]\nno_bundle = true\nfind_additional_modules = true\nbase_dir = "./dist"\n[[rules]]\ntype = "ESModule"\nglobs = ["**/*.mjs"]\nfallthrough = true\n[assets]\ndirectory = "./console-dist"\nbinding = "ASSETS"\nrun_worker_first = true\n`,{mode:0o600});
-    const journal=phase=>writeFileSync(join(stage,'deployment-receipt.json'),JSON.stringify({phase,accountId:context.accountId,appName:context.appName,environment:context.environment,artifactHash:context.artifactHash}),{mode:0o600});
+    const resources={};
+    const journal=phase=>writeFileSync(join(stage,'deployment-receipt.json'),JSON.stringify({phase,accountId:context.accountId,appName:context.appName,environment:context.environment,artifactHash:context.artifactHash,resources}),{mode:0o600});
     journal('prepared');
     const run=async(args,opts)=>{
         const kind=args.slice(0,2).join(' ');
@@ -75,7 +77,25 @@ export async function executeCloudflareFirstInstall(prepared,context,{exampleRoo
         const info=await runWrangler(['d1','info',`${context.appName}-db`,'--json'],{cwd:stage});
         if(info.code===0)throw new Error('database_already_exists');
         if(!/couldn.t find a D1 DB with name|D1 database .*not found|could not find.*database/i.test(info.stderr+' '+info.stdout))throw new Error('database_existence_unknown');
+        // List failure/malformed output is not evidence that a namespace is absent.
+        const cache=plan.manifest.bindings.cache;
+        if(cache.mode!=='disabled') {
+            const listed=await runWrangler(['kv','namespace','list'],{cwd:stage});
+            if(listed.code!==0)throw new Error('cache_existence_unknown');
+            let entries;try{entries=JSON.parse(listed.stdout);}catch{throw new Error('cache_existence_unknown');}
+            if(!Array.isArray(entries) || entries.some(entry=>!entry || typeof entry.title!=='string' || !/^[a-f0-9]{32}$/.test(entry.id)))throw new Error('cache_existence_unknown');
+            if(entries.some(entry=>entry.title===cache.config.resourceName))throw new Error('cache_already_exists');
+        }
         journal('running');
+        if(cache.mode!=='disabled') {
+            const created=await runWrangler(['kv','namespace','create',cache.config.resourceName,'--binding','FRONTBASE_KV','--update-config=false'],{cwd:stage});
+            if(created.code!==0)throw new Error('cache_create_failed');
+            const id=created.stdout.match(/(?:"id"\s*:\s*"|\bid\s*=\s*")([a-f0-9]{32})"/)?.[1];
+            if(!id)throw new Error('cache_create_identity_unknown');
+            resources.cache={name:cache.config.resourceName,id,binding:'FRONTBASE_KV'};
+            writeFileSync(join(stage,'wrangler.toml'),readFileSync(join(stage,'wrangler.toml'),'utf8')+`\n[[kv_namespaces]]\nbinding = "FRONTBASE_KV"\nid = "${id}"\n`,{mode:0o600});
+            journal('cache_created');
+        }
         const result=await deploy('.', {cwd:stage,target:'cloudflare',appName:context.appName,runWrangler:run,onSetupLink});
         if(!result.ok)throw new Error('cloudflare_deployment_failed');
         const url=new URL(result.details?.workerUrl??'');

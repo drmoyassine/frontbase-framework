@@ -16,6 +16,8 @@ const faults=[
  ['execution response secrecy','server',s=>s.replace('return reply(200,{ok:true,url:url.origin});','return reply(200,{ok:true,url:url.origin,credentials:selected.credentials});')],
  ['build fingerprint','executor',s=>s.replaceAll('!==context.artifactHash','===null')],
  ['create collision adoption','executor',s=>s.replace("if(args[0]==='d1' && args[1]==='create' && result.code!==0)",'if(false)')],
+ ['KV existing namespace refusal','executor',s=>s.replace("if(entries.some(entry=>entry.title===cache.config.resourceName))","if(false)")],
+ ['KV failed-create refusal','executor',s=>s.replace("if(created.code!==0)","if(false)")],
  ['fixed mutation target','executor',s=>s.replace("if((kind==='secret put' || args[0]==='deploy') && args[args.indexOf('--name')+1]!==context.appName)",'if(false)')],
  ['context validation','executor',s=>s.replace('    assertCloudflareExecutionContext(context);','    // removed')],
  ['supported execution binding','executor',s=>s.replace('cloudflareExecutionIssues(plan.manifest,context).length','false')],
@@ -32,4 +34,4 @@ try {
   if(name.startsWith('baseline')){assert.equal(result.status,0,`transformed baseline failed: ${name}: ${result.stderr}`);console.log(`PASS ${name}`);}else{assert.ok(result.status!==0 && result.status!==null,`fault escaped or timed out: ${name}`);console.log(`PASS detected: ${name}`);}
  }
 } finally {rmSync(temp,{recursive:true,force:true});}
-console.log('Ten execution faults detected; production source unchanged');
+console.log('Twelve execution faults detected; production source unchanged');

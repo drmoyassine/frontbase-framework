@@ -29,7 +29,7 @@ import type { PageEntry } from '@frontbase/edge-core';
 import { createConsole, createCompatApp, createSupabaseCloudAuth, assertStripeKeyMode, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, type CloudIdentityProvider, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
-import { s3StorageProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
+import { s3StorageProvider, kvCache, type KVNamespaceBinding, type CacheProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
 import { resolveStateDb, StateDbConfigError, type ResolvedStateDb } from './state-db.js';
 import { resolveSessionSecret } from './session-secret.js';
 import { tenantMiddleware, hostTenantOf, hostKindOf } from './tenancy.js';
@@ -48,6 +48,7 @@ configureEngine({ edition: 'community', nodeEnv: 'production' });
 
 export interface CmsEnv {
     DB: D1Database;
+    FRONTBASE_KV?: KVNamespaceBinding;
     /** Frontbase Cloud application-state PostgreSQL through Cloudflare Hyperdrive. */
     HYPERDRIVE?: { connectionString: string };
     ASSETS: { fetch(request: Request): Promise<Response> };
@@ -139,6 +140,7 @@ export interface CmsEngineOptions {
      *  Drives the enrich-caches resolver and the env-derived system cards; a
      *  tenant's adopted is_default row still wins at resolve time. */
     envServices?: EnvServices;
+    nativeCache?: CacheProvider;
     /** Provider HTTP seam for the compat surface (guarded where tenant-controlled).
      *  Production hosts use the platform default (globalThis.fetch); the smoke
      *  injects a deterministic double — the documented escape hatch on
@@ -246,6 +248,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     const enrichResolver = createSystemServiceResolver({
         phase2For: enrichPhase2For,
         env: opts.envServices ?? {},
+        nativeCache: opts.nativeCache,
         externalFetch: (input, init) => globalThis.fetch(input, init),
         log: (msg) => console.warn(msg),
     });
@@ -410,6 +413,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         // Dual wiring: the parsed service env. Adopted is_default registry rows
         // still take precedence at resolve time; this is the deploy-time floor.
         envServices: opts.envServices,
+        nativeCache: opts.nativeCache,
         // Email intake secret (DEC-105): the kernel's /channels/email/inbound
         // webhook presents it as x-internal-secret. Unset → the endpoint 401s.
         emailInboundSecret: opts.envServices?.emailInboundSecret,
@@ -906,7 +910,11 @@ export default {
                     if (e instanceof StateDbConfigError) return new Response(e.message, { status: 500 });
                     throw e;
                 }
-                const envServices = parseEnvServices(env as unknown as Record<string, string | undefined>);
+                const configuredServices = parseEnvServices(env as unknown as Record<string, string | undefined>);
+                // Explicit operator cache configuration retains precedence over native defaults.
+                const envServices = env.FRONTBASE_KV && !env.FRONTBASE_CACHE && !env.FRONTBASE_CACHE_URL
+                    ? {...configuredServices, cache: {provider:'cloudflare_kv', url:'kv://FRONTBASE_KV'}}
+                    : configuredServices;
                 if (stateDb.kind !== 'd1-binding') {
                     console.log(`[cf-full] state db override: ${stateDb.kind} (${stateDb.displayUrl})`);
                 }
@@ -955,6 +963,7 @@ export default {
                     // Host-side env parse (Workers have no process.env). Memoized
                     // on the raw strings — only actual secret changes recompute.
                     envServices,
+                    nativeCache: env.FRONTBASE_KV ? kvCache(env.FRONTBASE_KV) : undefined,
                     dispatcher: (work) => { if (currentCtx) currentCtx.waitUntil(work()); else void work(); },
                     storageProvider: env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_KEY
                         ? s3StorageProvider({

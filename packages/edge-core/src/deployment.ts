@@ -49,7 +49,7 @@ export const deploymentAdapters: readonly DeploymentAdapter[] = [
     {id:'cloudflare-d1',role:'state-db',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'libsql-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'d1-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','databaseId'],secretKeys:['token'],requiredConfig:['accountId','databaseId'],requiredSecrets:['token']},
-    {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:false,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
+    {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'upstash-http',role:'cache',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'cloudflare-r2',role:'storage',targets:['cloudflare'],selectable:false,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'s3-http',role:'storage',targets:both,selectable:true,modes:['connect'],configKeys:['endpoint','region','bucket'],secretKeys:['accessKeyId','secretAccessKey'],requiredConfig:['endpoint','bucket'],requiredSecrets:['accessKeyId','secretAccessKey']},
@@ -68,7 +68,7 @@ function choice(adapterId: string, mode: BindingSelection['mode'], config: Recor
 export function defaultDeploymentManifest(target: DeploymentTarget, environment: DeploymentManifest['environment'] = 'preview'): DeploymentManifest {
     return {version:1,target,environment,profileVersion:1,bindings:{
         'state-db':target === 'cloudflare' ? choice('cloudflare-d1','create',{resourceName:`frontbase-state-${environment}`}) : choice('libsql-http','connect'),
-        cache:choice(target === 'cloudflare' ? 'cloudflare-kv' : 'upstash-http',target === 'cloudflare' ? 'create' : 'disabled'),
+        cache:choice(target === 'cloudflare' ? 'cloudflare-kv' : 'upstash-http',target === 'cloudflare' ? 'create' : 'disabled',target === 'cloudflare' ? {resourceName:`frontbase-cache-${environment}`} : {}),
         storage:choice(target === 'cloudflare' ? 'cloudflare-r2' : 's3-http','disabled'),
         vector:choice('cloudflare-vectorize-http','disabled'),
         queue:choice('qstash-http','disabled'),
