@@ -1,4 +1,8 @@
 # R0 Public Release Scope and Truth Audit
+## 2026-10-20 Vercel preview notification incident — contained, source correction verified
+
+Owner reports over fifty failed preview emails for `cf-full`. Claim only its public deployment/build metadata, reversible project-specific preview suppression for `codex/*`, and the full example's clean workspace dependency selection. Latest inspected preview `cf-full-a2c14ts01` builds translation branch `50ecbb4` and fails because `@frontbase/translation` is not built before `edge-core`; production branch is `main`, existing ignore command is null. Preserve production, environment values, other projects, Study in USA deployment and the parallel translation checkout. No push or new deployment until notification control is verified. The [incident receipt](../plans/frontbase-vercel-preview-failures-20261020.md) records the verified project-only codex preview skip rule, dependency-closure source repair, passing full build/check/deployment gates and actual translation-before-core build. Remote clean-build success remains unclaimed; the skip rule is live, source correction is isolated until merged. This is an interruption to KV/R2 work, not a release gate closure.
+
 
 ## 2026-10-20 deployment P1 executor handoff — bounded live verification complete
 
