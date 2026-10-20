@@ -1,5 +1,10 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-20 Vercel first-project target and recovery boundary
+
+Actual fresh-host evidence invalidates treating a requested preview flag as provider truth: CLI 64.7 can assign the first project deployment to production. Refuse an empty-history preview before environment writes, and require actual READY target/project/team verification before success/setup-link issuance. Production initialization requires explicit authorization; no production database connection is inferred. Expose existing setup-only renewal through managed redeploy while retaining the journal and session key. Use documented source archive upload with explicit local-credential/generated-output exclusions, tested against ignore semantics and independent faults. Unknown network/upload outcomes still require reconciliation, not replay or stale-lock auto-removal. Native browser-button acceptance remains unverified under the owner's CLI-only instruction. This narrows supported execution; it does not change the framework package boundary, release scope or paused CF-22. [Fresh CLI evidence](../plans/frontbase-deployment-vercel-fresh-20261020.md) now verifies empty-state first-admin setup and actual managed-command session/page preservation after recovery.
+
+
 ## 2026-10-20 Vercel Marketplace profile execution boundary
 
 Within the owner-approved editable profiles and isolated free deployment scope, reuse the existing HTTP libSQL runner and deploy script. A connected Turso integration is a verified resource reference, not a second database driver or a downloaded credential bundle. Preserve explicit state selection and session secrets, enforce exact team/project/environment membership, and keep unsupported binding changes behind a pre-write refusal. Local nonsecret journals are operation records, not cross-machine locks, remote CAS, backups or proof that runtime reconfiguration succeeded. Native button and fresh journal installation acceptance remain separate from live lower-level executor acceptance. [Evidence](../plans/frontbase-deployment-vercel-live-20261020.md). No package or release-scope change; CF-22 stays paused.

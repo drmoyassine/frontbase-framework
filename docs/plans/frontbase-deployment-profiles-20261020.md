@@ -139,3 +139,7 @@ The [P0/P1 receipt](frontbase-deployment-profiles-p0-p1-20261020.md) records exa
 ## Vercel live profile checkpoint — 2026-10-20
 
 [Live delivery receipt](frontbase-deployment-vercel-live-20261020.md) supersedes the earlier Marketplace provisioning block. The approved $0 Turso resource backs actual disposable preview and production acceptance through the existing pure-HTTP state runner. Shared proposal import and connected-resource selection are wired; Vercel journal lifecycle is fixture-tested. Native buttons, fresh managed-journal installation, controlled optional-binding changes, external storage discovery and broader provider acceptance remain open. This is bounded host evidence, not completion of P3–P5 or a public-release claim.
+
+## Fresh-state Vercel CLI checkpoint
+
+[Fresh receipt](frontbase-deployment-vercel-fresh-20261020.md): a committed-source export with explicit deployment-tooling corrections passes frozen install/build/check, new empty-state first-admin setup/publication, journal recovery and ordinary managed-command session/page preservation. Upload privacy faults and actual provider target checks pass. The installed CLI's implicit first-project production assignment narrows support: empty-history preview is refused before environment writes and production initialization requires explicit authorization. Native browser buttons remain unverified under the owner's CLI-only instruction. P3/P4 and broad provider/recovery/release coverage remain partial.
