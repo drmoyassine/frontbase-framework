@@ -21,13 +21,13 @@ const faults=[
  ['R2 known-absent preflight','executor',s=>s.replace("if(info.code===0)throw new Error('storage_already_exists');","if(false)throw new Error('storage_already_exists');").replace('if(!/The specified bucket','if(false && !/The specified bucket')],
  ['R2 failed-create refusal','executor',s=>s.replace("if(created.code!==0)throw new Error('storage_create_failed');","if(false)throw new Error('storage_create_failed');")],
  ['fixed mutation target','executor',s=>s.replace("if((kind==='secret put' || args[0]==='deploy') && args[args.indexOf('--name')+1]!==context.appName)",'if(false)')],
- ['context validation','executor',s=>s.replace('    assertCloudflareExecutionContext(context);','    // removed')],
+ ['context validation','executor',s=>s.replaceAll('    assertCloudflareExecutionContext(context);','    // removed')],
  ['supported execution binding','executor',s=>s.replace('cloudflareExecutionIssues(plan.manifest,context).length','false')],
 ];
 try {
  for(const [name,type,mutate] of faults){
   const url=type==='server'?serverUrl:executorUrl;const source=readFileSync(url,'utf8');let changed=mutate(source);if(!name.startsWith('baseline'))assert.notEqual(changed,source,name);
-  for(const path of ['../../packages/edge-core/dist/deployment.js','../../packages/compiler/dist/cli/deploy.js','../../packages/compiler/dist/cli/app-identity.js','../console-pin.mjs'])changed=changed.replace(JSON.stringify(path).replaceAll('"',"'"),JSON.stringify(new URL(path,url).href));
+  for(const path of ['../../packages/edge-core/dist/deployment.js','../../packages/compiler/dist/cli/deploy.js','../../packages/compiler/dist/cli/app-identity.js','../../packages/compiler/dist/cli/provision-d1.js','../console-pin.mjs'])changed=changed.replace(JSON.stringify(path).replaceAll('"',"'"),JSON.stringify(new URL(path,url).href));
   changed=changed.replace('new URL(asset[0],import.meta.url)',`new URL(asset[0],${JSON.stringify(serverUrl.href)})`);
   const candidate=join(temp,'fault.mjs');writeFileSync(candidate,changed);
   const suite=fileURLToPath(new URL(type==='server'?'./test-deployment-setup-execution.mjs':'./test-cloudflare-setup-executor.mjs',import.meta.url));
