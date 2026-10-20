@@ -219,7 +219,7 @@ try {
 console.log('\n→ deploying to Vercel (Node function + static matrix)...');
 const configured=vercel(['project','update',project,'--root-directory','examples/cf-full','--yes']);
 if(configured.code!==0){console.error('✗ exact project workspace configuration failed.');process.exit(1);}
-const dep = vercel(['deploy', '--environment', environment, '--yes']);
+const dep = vercel(['deploy', '--environment', environment, '--archive=tgz', '--yes']);
 if (dep.code !== 0) {
     console.error(`✗ vercel deploy failed:\n${dep.stderr || dep.stdout}`);
     process.exit(1);
