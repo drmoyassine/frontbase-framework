@@ -1,6 +1,6 @@
 /** Frontbase host/UI contracts. The standalone translation engine does not depend on these. */
 import { z } from 'zod';
-import { localeSchema, translationContextSchema } from '@frontbase/translation';
+import { localeSchema, translationContextSchema, translationRecordKeySchema } from '@frontbase/translation';
 const id = z.string().min(1).max(160), uuid = z.string().uuid(), hash = z.string().regex(/^[a-f0-9]{64}$/);
 /** Sanitized provider discovery; never contains credentials, prompts or raw provider payloads. */
 export const translationModelCatalogSchema = z.object({ accountId: id, models: z.array(z.object({
@@ -68,3 +68,34 @@ export const translationPageSaveSchema = z.object({ selection: batchPageSelectio
 export const translationHomepageReviewSchema = z.object({locale:localeSchema,sourceLocale:localeSchema,token:hash,siteHash:hash,
  fields:z.array(z.object({id:hash,label:z.string().max(200),source:z.string().max(12000),translation:z.string().max(12000).nullable(),state:z.enum(['missing','draft','outdated']),token:hash}).strict()).min(1).max(502),complete:z.boolean(),active:z.object({hash,generation:z.number().int().positive()}).strict().nullable()}).strict();
 export const translationHomepageSaveSchema=z.object({locale:localeSchema,token:hash,entries:z.array(z.object({id:hash,token:hash,text:z.string().min(1).max(12000)}).strict()).min(1).max(20)}).strict().refine(v=>new Set(v.entries.map(e=>e.id)).size===v.entries.length);
+
+/** Discovery coverage (read-only inventory contract). Translatable fields carry engine identity
+ *  (unit refs/fingerprints); excluded fields never carry source text and always state a reason. */
+export const translationCoverageFieldSchema = z.object({ ref: hash, fingerprint: hash.optional(),
+    label: z.string().min(1).max(200), decision: z.enum(['translatable', 'excluded']), reason: z.string().min(1).max(80).optional(),
+    propertyPath: z.array(id).min(1).max(20), versionId: id.optional(), text: z.string().max(12000),
+    record: z.object({ connectionId: id, collection: id, key: translationRecordKeySchema }).strict().optional() }).strict()
+    .refine(v => v.decision === 'translatable' ? !!v.fingerprint && !v.reason && v.text.trim().length > 0
+        : !v.fingerprint && !!v.reason && v.text === '');
+export const translationCoverageSurfaceSchema = z.object({ kind: z.enum(['static-page', 'template', 'menu']), ref: hash,
+    title: z.string().max(500), role: id.optional(), path: z.string().max(400).optional(), menuId: id.optional(),
+    fields: z.array(translationCoverageFieldSchema).max(500), fieldsTruncated: z.boolean().optional(),
+    renderedColumns: z.record(z.array(z.string().max(80)).max(20)).optional() }).strict()
+    .refine(v => (v.kind === 'menu') === (v.menuId !== undefined));
+export const translationCoverageRecordSchema = z.object({ collection: z.enum(['institutions', 'programs', 'cities', 'articles', 'pages']),
+    ref: hash, id: z.union([z.string().min(1).max(128), z.number().int().positive()]), title: z.string().max(500),
+    fields: z.array(translationCoverageFieldSchema).max(12) }).strict();
+export const translationCoverageReportSchema = z.object({ version: z.literal(1),
+    site: z.object({ hash, generation: z.number().int().positive(), name: z.string().min(1).max(200), origin: z.string().max(500),
+        locale: localeSchema, sourceLocale: localeSchema, targetLocales: z.array(localeSchema).max(16), storageDatasource: id }).strict(),
+    totals: z.object({ index: z.object({ institutions: z.number().int().nonnegative(), programs: z.number().int().nonnegative(),
+            cities: z.number().int().nonnegative(), articles: z.number().int().nonnegative(), pages: z.number().int().nonnegative() }).strict(),
+        chunks: z.number().int().nonnegative(), staticPages: z.number().int().nonnegative(), templates: z.number().int().nonnegative(),
+        menus: z.number().int().nonnegative(),
+        fields: z.object({ translatable: z.number().int().nonnegative(), excluded: z.number().int().nonnegative() }).strict() }).strict(),
+    lists: z.array(z.object({ surface: hash, componentId: id, versionId: id.optional(), collection: z.enum(['institutions', 'programs', 'articles']),
+        window: z.number().int().min(1).max(48), total: z.number().int().nonnegative() }).strict()).max(200),
+    terminology: z.object({ approvedStore: z.literal('none'), providerGlossary: z.string().min(1).max(200) }).strict(),
+    exclusions: z.array(z.object({ reason: z.string().min(1).max(80), count: z.number().int().nonnegative() }).strict()).max(40),
+    surfaces: z.object({ items: z.array(translationCoverageSurfaceSchema).max(50), next: z.string().max(40).nullable() }).strict(),
+    records: z.object({ items: z.array(translationCoverageRecordSchema).max(50), next: z.string().max(40).nullable() }).strict() }).strict();

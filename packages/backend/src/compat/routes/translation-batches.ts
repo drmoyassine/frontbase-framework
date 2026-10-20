@@ -8,6 +8,7 @@ import { planTranslationBatch, startTranslationBatch, continueTranslationBatch, 
     translationBatchPlanSchema, translationBatchPages, translationBatchFields, translationBatchHistory, translationBatchReview, type TranslationBatchHost } from '../translation-batches.js';
 import { batchReviewSchema, batchStatusSchema, batchRecordSelectionSchema, batchViewSelectionSchema, batchPreviewItemSchema } from '@frontbase/edge-core/localization/batches';
 import { translationMenus, translationMenuFields, translationDatasources, translationViews, extractRecordInput, extractViewRecordInput } from '../translation-inputs.js';
+import { discoverTranslationCoverage } from '../translation-discovery.js';
 import { currentTranslationHostPin } from '../translation-allowance.js';
 
 const actionSchema = z.object({ reviewHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
@@ -78,6 +79,11 @@ export function registerTranslationBatchRoutes(app: Hono<{ Variables: ConsoleAut
     app.get(`${root}sources/`, async c => {
         try { return c.json(await translationBatchPages(db, c.get('tenant'), c.req.query('after'))); }
         catch { return c.json({ detail: 'Page selection is unavailable' }, 422); }
+    });
+    app.get(`${root}coverage/`, async c => {
+        try { return c.json(await discoverTranslationCoverage(host, db, c.get('tenant'),
+            { surfacesAfter: c.req.query('surfacesAfter') || undefined, recordsAfter: c.req.query('recordsAfter') || undefined })); }
+        catch { return c.json({ detail: 'Coverage is unavailable. Check language/storage settings and the reviewed publication.' }, 422); }
     });
     app.get(`${root}sources/:pageId/`, async c => {
         try { return c.json(await translationBatchFields(host, db, c.get('tenant'), c.req.param('pageId'), c.req.query('after'))); }
