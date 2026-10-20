@@ -85,6 +85,11 @@ try{
  await call('deactivate/',{locale:'ar',path:'/privacy/',expected:{hash:rolledBack.hash,generation:3}},409);
  assert.equal((await html('/ar/privacy/')).status,404,'deactivation removes the locale path until another release offers the locale');
  assert.ok(!(await call('locales/')).locales.some(item=>item.path==='/privacy/'));
+ // Publication pages and prepared-version listings drive the console picker and rollback UI.
+ const pageList=await call('pages/');assert.ok(pageList.pages.some(page=>page.path==='/'));assert.ok(pageList.pages.some(page=>page.path==='/privacy/'));
+ const history=await call('versions/?locale=ar&path=/privacy/');assert.ok(history.items.length>=2,'prepared releases stay listed after deactivation');
+ assert.ok(history.items.some(item=>item.hash===rolledBack.hash&&item.perUnit===true));
+ assert.ok(!JSON.stringify(history).includes('عربي'),'the version listing carries metadata, never catalog text');
  // The homepage surface publishes through the same engine and both releases coexist per path.
  const homeReview=await call('review/?locale=ar');await saveAll(homeReview);
  const homePrepared=await call('prepare/',{locale:'ar',token:homeReview.token,approveTranslations:true});assert.equal(homePrepared.expected,null,'homepage pointer namespace unchanged');
@@ -95,7 +100,7 @@ try{
  const shell=await html('/ar/privacy/');assert.equal(shell.status,200);assert.ok(shell.text.includes('Renamed privacy policy'),'deactivated page serves source body');assert.ok(!shell.text.includes('عربي Privacy policy'));
  assert.ok(shell.text.includes('hreflang="ar"'),'homepage release still offers the locale shell');
  // Fences: auth, role, tenant, and cross-surface session isolation.
- auth=false;await call('review/?locale=ar&path=/privacy/',undefined,401);await call('deactivate/',{locale:'ar',expected:null},401);auth=true;
+ auth=false;await call('review/?locale=ar&path=/privacy/',undefined,401);await call('deactivate/',{locale:'ar',expected:null},401);await call('pages/',undefined,401);await call('versions/?locale=ar&path=/privacy/',undefined,401);auth=true;
  role='viewer';await call('review/?locale=ar&path=/privacy/',undefined,403);role='owner';
  owner='beta';await call('review/?locale=ar&path=/privacy/',undefined,422);owner=tenant;
  await call('save/',{locale:'ar',token:homeReview.token,path:'/privacy/',entries:[{id:homeReview.fields[0].id,token:homeReview.fields[0].token,text:'x'}]},409);

@@ -143,6 +143,29 @@ export async function deactivateHomepageLocale(db:DbRunner,tenant:string,target:
     if(changed!==1)throw Error('deactivation_conflict');return {deactivated:true as const,locale:locale.parse(target),path,generation:pointerSchema.parse(JSON.parse(prior)).generation,deactivatedAt:now};
 }
 export async function publishedHomepageLocales(db:DbRunner,tenant:string){const rows=await db.query('SELECT key,value FROM settings WHERE tenant_slug = ? AND (key LIKE ? OR key LIKE ?)',[tenant,'translation_homepage:active:v1:%','translation_surface:active:v1:%']);const values=[];for(const row of rows){const pointer=pointerSchema.parse(JSON.parse(String(row.value)));const release=await readHomepageRelease(db,tenant,pointer.hash);if(!release)throw Error();values.push({pointer,release});}if(values.length>16)throw Error();return values;}
+/** Published pages offered for translation: bounded metadata from the active reviewed publication. */
+export async function publishedTranslationPages(db:DbRunner,tenant:string){
+    const active=await new SitePublicationStore(db,tenant).activeVersion();
+    if(!active||active.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,tenant).get(active.pointer.hash))throw Error('reviewed_homepage_required');
+    const pages=(active.artifact.staticPages??[]).slice(0,64).map(page=>({path:page.originalPath,title:page.title.slice(0,200)})).filter(page=>page.path==='/'||/^\/[A-Za-z0-9._~!$&'()*+,;=@%-]+(?:\/[A-Za-z0-9._~!$&'()*+,;=@%-]+)*\/$/.test(page.path));
+    return {version:1 as const,pages};
+}
+/** Prepared (immutable) releases for one locale+path, newest first. Bounded metadata only — never
+ *  catalog text; integrity is verified by recomputing each release hash against its settings key. */
+export async function preparedHomepageReleases(db:DbRunner,tenant:string,target:string,path:string='/'){
+    const verified=locale.parse(target);
+    const rows=await db.query('SELECT key,value FROM settings WHERE tenant_slug = ? AND (key LIKE ? OR key LIKE ?) LIMIT 129',[tenant,'translation_homepage:version:v1:%','translation_surface:version:v1:%']);
+    const items:{hash:string;reviewedAt:string;units:number;perUnit:boolean}[]=[];
+    for(const row of rows){
+        let release:z.infer<typeof releaseSchema>;try{release=releaseSchema.parse(JSON.parse(String(row.value)));}catch{continue;}
+        if(release.tenant!==tenant||release.locale!==verified||release.path!==path)continue;
+        const releaseHash=await publicationHash(release);
+        if(row.key!=='translation_homepage:version:v1:'+releaseHash&&row.key!=='translation_surface:version:v1:'+releaseHash)continue;
+        items.push({hash:releaseHash,reviewedAt:release.reviewedAt,units:release.catalog.length,perUnit:release.policy?.outdated==='source-fallback'});
+        if(items.length>=32)break;
+    }
+    return {version:1 as const,locale:verified,path,items:items.sort((a,b)=>a.reviewedAt<b.reviewedAt?1:a.reviewedAt>b.reviewedAt?-1:0)};
+}
 export function projectHomepageLocale(capture:Awaited<ReturnType<typeof captureHomepage>>,release:z.infer<typeof releaseSchema>):NonNullable<Awaited<ReturnType<typeof resolvePublicationVersionPage>>>{
     // Any source-fallback dimension renders partially (omitted units keep source); only the
     // outdated dimension switches freshness to a per-unit join across source drift.
