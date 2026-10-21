@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
 export const nativeRepository = 'https://github.com/drmoyassine/frontbase-framework';
-export const nativeStore = Object.freeze({ type: 'integration', integrationSlug: 'tursocloud', productSlug: 'database', protocol: 'storage' });
+export const nativeStore = Object.freeze({ type: 'integration', integrationSlug: 'tursocloud', productSlug: 'database', protocol: 'storage', allowConnectExistingProduct: true });
 
 // Named test tags avoid the ambiguous slash-branch parsing observed in native clone UIs.
 // This is a conservative launcher constraint, not a restriction on Git or provider APIs.

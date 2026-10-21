@@ -12,6 +12,7 @@ assert.throws(() => nativeDeployButtons({ ref: 'codex/ambiguous' }));
 assert.throws(() => nativeDeployButtons({ ref: '' }));
 assert.throws(() => nativeDeployButtons({ name: '../other-project' }));
 for (const [label, path, replace] of [
+  ['missing existing-store choice', 'README.md', s => s.replaceAll('allowConnectExistingProduct%22%3Atrue', 'allowConnectExistingProduct%22%3Afalse')],
   ['missing Turso product', 'README.md', s => s.replaceAll('productSlug%22%3A%22database', 'productSlug%22%3A%22turso')],
   ['wrong source root', 'README.md', s => s.replaceAll('root-directory=examples%2Fcf-full', 'root-directory=packages%2Fbackend')],
   ['silent duplicate resources', 'package.json', s => s.replace('--experimental-auto-create=false', '--experimental-auto-create=true')],
