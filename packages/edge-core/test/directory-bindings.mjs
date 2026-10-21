@@ -151,8 +151,12 @@ assert.ok(browsingHtml.includes('type=program'));assert.ok(browsingHtml.includes
 assert.equal(browseLayout.content[0].props.directoryBrowsingState,undefined);
 const firstBrowsing=await renderPage(projectDirectoryBrowsing(browseLayout,[{...browsingState[0],q:'',page:1,hasNext:false}]),browsingContext);
 assert.ok(!firstBrowsing.includes('>Next</a>'));assert.ok(!firstBrowsing.includes('>Previous</a>'));
-const noSearch=await renderPage(projectDirectoryBrowsing(browseLayout,[{...browsingState[0],searchEnabled:false}]),browsingContext);assert.ok(!noSearch.includes('<form'));
-const articleBrowsing=await renderPage(projectDirectoryBrowsing(browseLayout,[{...browsingState[0],collection:null}]),browsingContext);assert.ok(!articleBrowsing.includes('Directory collections'));
+// Disabled search is governed by the saved placement (the builder control surface), which also
+// wins over a conflicting runtime flag — a placement with search on keeps its form.
+const noSearchLayout=structuredClone(browseLayout);noSearchLayout.content[0].props.directoryBrowsing={version:1,tabs:true,search:false,pagination:true};
+const noSearch=await renderPage(projectDirectoryBrowsing(noSearchLayout,[{...browsingState[0],searchEnabled:false}]),browsingContext);assert.ok(!noSearch.includes('<form'));
+const placementSearch=await renderPage(projectDirectoryBrowsing(browseLayout,[{...browsingState[0],searchEnabled:false}]),browsingContext);assert.ok(placementSearch.includes('<form'));
+const articleBrowsing=await renderPage(projectDirectoryBrowsing(browseLayout,[{...browsingState[0],collection:null}]),browsingContext);assert.ok(!articleBrowsing.includes('<nav aria-label="Directory collections"'),'article browsing renders no collection tabs (the section wrapper label stays)');
 for(const path of ['//evil.test','/../evil','/explore/?bad=1','/explore/%0a','https://evil.test'])assert.throws(()=>projectDirectoryBrowsing(browseLayout,[{...browsingState[0],path}]));
 const privateBrowsing=await renderPage(projectDirectoryBrowsing(browseLayout,[{...browsingState[0],previewHash:'a'.repeat(64)}]),browsingContext);
 assert.ok(privateBrowsing.includes('action="/api/project/site-configuration/publication/render/"'));assert.ok(privateBrowsing.includes('name="hash"'));assert.ok(privateBrowsing.includes('name="path"'));

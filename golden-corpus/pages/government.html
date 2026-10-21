@@ -41,7 +41,7 @@
                     <!-- Mobile: Dark Mode Toggle + Menu Button -->
                     <div class="md:hidden flex items-center gap-2">
                         
-                        <button type="button" class="p-2 rounded-lg hover:bg-accent" data-fb-mobile-menu-toggle>
+                        <button type="button" class="p-2 rounded-lg hover:bg-accent" aria-label="Toggle navigation" aria-expanded="false" aria-controls="gv-navbar-mobile-menu" data-fb-mobile-menu-toggle>
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                             </svg>
@@ -50,7 +50,7 @@
                 </div>
 
                 <!-- Mobile Menu (hidden by default) -->
-                <div class="md:hidden hidden pb-4" data-fb-mobile-menu>
+                <div id="gv-navbar-mobile-menu" class="md:hidden hidden pb-4" data-fb-mobile-menu>
                     <nav class="flex flex-col gap-1">
                         
             <a href="#the-problem" data-scroll-to="#the-problem"

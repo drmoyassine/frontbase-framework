@@ -30,108 +30,114 @@
     {
       "name": "agriculture",
       "source": "docs/case-studies/agriculture.frontbase.json",
-      "bytes": 26688,
-      "sha256": "a6a32ae9da0b55926b21d711425e08b2835282c933765b455495382e2973c00b",
+      "bytes": 26811,
+      "sha256": "0f2ca14f6e38a4559932e28900a8a195c667755e69a96fa89da6f4253cb4df7e",
       "records": "none"
     },
     {
       "name": "aviation",
       "source": "docs/case-studies/aviation.frontbase.json",
-      "bytes": 31491,
-      "sha256": "edf565d8de8b2df96fe56f5f74d34d77e084e6cbf98fbca2d6f74bfdbdb117aa",
+      "bytes": 31614,
+      "sha256": "2859bd781cd343925e55a0417b72d8645dfd5e0c027933692a72f47df3c22797",
       "records": "none"
     },
     {
       "name": "buildings",
       "source": "docs/case-studies/buildings.frontbase.json",
-      "bytes": 30863,
-      "sha256": "bfc8e3c0cd30550556c1e2584c447af9c44a2c0030d9843413a2799a06d4755f",
+      "bytes": 31008,
+      "sha256": "96540e44b8fb90c5927d5efca112a501089a27b9ba37d56ddf751b9fde124b77",
       "records": "none"
     },
     {
       "name": "defense",
       "source": "docs/case-studies/defense.frontbase.json",
-      "bytes": 39461,
-      "sha256": "45aad50e4aab71d3d7410570a91531ea9ba1dce1c4505ce7fbcdf511f7f3420b",
+      "bytes": 39590,
+      "sha256": "575263c1af0271eeca50c6583853aa4aff4a4aa90146f9ac355ab841a98edd0c",
       "records": "none"
     },
     {
       "name": "enterprise",
       "source": "docs/case-studies/enterprise.frontbase.json",
-      "bytes": 86040,
-      "sha256": "94bef1ac639f7a84bccd9e3869d6a7dbc204833d4e60d63d29a10273f1c1212f",
+      "bytes": 86187,
+      "sha256": "225f063ac248ab362fc955abbb2c03ac90f28c5ee8c76fac06d9c05da68bc3e0",
       "records": "none"
     },
     {
       "name": "environment",
       "source": "docs/case-studies/environment.frontbase.json",
-      "bytes": 27606,
-      "sha256": "60bd1ba23ef44513ad9b3dad220ae968966bb6c6331aabfc639db4acf4910b92",
+      "bytes": 27731,
+      "sha256": "d91ee6cbf6ed5e8f7ab906a13995a5c8ec061022c8275880327d8ba9ac621c2f",
       "records": "none"
     },
     {
       "name": "government",
       "source": "docs/case-studies/government.frontbase.json",
-      "bytes": 33515,
-      "sha256": "18a313c786745ccfbd4de227e9a77b58a21091dc92e86a0e0cccd048ffa850e0",
+      "bytes": 33660,
+      "sha256": "c121453496db404058bb9db4336d1ea4a8237b0ff6a54005e936dfd76c925103",
       "records": "none"
     },
     {
       "name": "homee",
       "source": "docs/case-studies/homee.frontbase.json",
-      "bytes": 64967,
-      "sha256": "e22a7e1a05429ec5c61c61bb194cd83eca5d3e6f58a7e561e0eb4cac2ae9077f",
+      "bytes": 65142,
+      "sha256": "0f3bea2059489d48eef62f58c22d90f71d9301e74fd0eddddf065e139e1c52b5",
       "records": "none"
     },
     {
       "name": "logistics",
       "source": "docs/case-studies/logistics.frontbase.json",
-      "bytes": 44782,
-      "sha256": "191e5d1378156bad7cfa305cfd36a530ac231f0fdbbd521eb58754661e98c8ea",
+      "bytes": 44949,
+      "sha256": "e413d50226bb3bc180da7af202cdcf64fd1f1e4a1e124ae0286793de94f25a65",
       "records": "none"
     },
     {
       "name": "manufacturing",
       "source": "docs/case-studies/manufacturing.frontbase.json",
-      "bytes": 38457,
-      "sha256": "07d383f42d3eea4dc0effafdc00e95daae61263b9936bbd246beef60b23da3cc",
+      "bytes": 38616,
+      "sha256": "52b9027a8cbeb2daa62a9281f48e3fc079426560499102cfe38b48dbb3936fdc",
       "records": "none"
     },
     {
       "name": "oil-gas",
       "source": "docs/case-studies/oil-gas.frontbase.json",
-      "bytes": 30076,
-      "sha256": "ac5b9240711546f5d0bcb3ed392f0e5a6ea9f779a3e6732d3450fb79fbefc698",
+      "bytes": 30213,
+      "sha256": "b99801b78622d6bb849299ea46390cfb3ce42f015fffaacfc264c929b8044eba",
       "records": "none"
     },
     {
       "name": "telecom",
       "source": "docs/case-studies/telecom.frontbase.json",
-      "bytes": 39289,
-      "sha256": "bb831e30355c5e9fb48628f9f71dea0cc8f1608e378d68952625642c873aac5a",
+      "bytes": 39442,
+      "sha256": "5c5041b9e30a451ea3cb88e6f0b2aa1cffa47d9d276853d9a01ffc6008cba6b5",
       "records": "none"
     },
     {
       "name": "spike-home",
       "source": "spike fixtures/manifest.ts /",
-      "bytes": 2940,
+      "bytes": 2954,
       "sha256": "48e958febb1e9679ee11179c5da37406e77ad7f0f8f87128b10fd1e2ad665c71",
       "records": "none"
     },
     {
       "name": "spike-products",
       "source": "spike fixtures/manifest.ts /products",
-      "bytes": 2149,
+      "bytes": 2161,
       "sha256": "8b641816a4df2bd00dea437f1962882982544f0b772b5e8bf3e7d82bad197784",
       "records": "products.list"
     },
     {
       "name": "authform-repeater",
       "source": "parity fixture — AuthForm + Repeater eSSR dispatch (previously classified 'unknown' → fb-unknown)",
-      "bytes": 6416,
-      "sha256": "1ca38596309b9904d91cfdbafb9c3b30670e28e2879ac6433dae2914af33ab76",
+      "bytes": 6540,
+      "sha256": "40d18298f25f665e71f5052a56b85c0a6e186bc817ca90616a355c7fcedd156e",
       "records": "none"
     }
   ],
-  "failures": []
+  "failures": [],
+  "regenerations": [
+    {
+      "at": "2026-10-21T08:28:10.134Z",
+      "via": "scripts/regen-golden.mjs"
+    }
+  ]
 }
