@@ -138,7 +138,31 @@ export const translationCoverageReportSchema = z.object({ version: z.literal(1),
         fields: z.object({ translatable: z.number().int().nonnegative(), excluded: z.number().int().nonnegative() }).strict() }).strict(),
     lists: z.array(z.object({ surface: hash, componentId: id, versionId: id.optional(), collection: z.enum(['institutions', 'programs', 'cities', 'articles']),
         window: z.number().int().min(1).max(48), total: z.number().int().nonnegative() }).strict()).max(200),
-    terminology: z.object({ approvedStore: z.literal('none'), providerGlossary: z.string().min(1).max(200) }).strict(),
+    terminology: z.object({ approvedStore: z.union([z.literal('none'), z.literal('project-glossary-v1')]), providerGlossary: z.string().min(1).max(200) }).strict(),
     exclusions: z.array(z.object({ reason: z.string().min(1).max(80), count: z.number().int().nonnegative() }).strict()).max(40),
     surfaces: z.object({ items: z.array(translationCoverageSurfaceSchema).max(50), next: z.string().max(40).nullable() }).strict(),
     records: z.object({ items: z.array(translationCoverageRecordSchema).max(50), next: z.string().max(40).nullable() }).strict() }).strict();
+
+/** Project terminology: one row per target locale; sources must be unique per locale (deterministic application). */
+export const translationGlossaryTermSchema = z.object({
+    locale: localeSchema, source: z.string().min(1).max(200), target: z.string().min(1).max(200) }).strict();
+const glossaryTerms = z.array(translationGlossaryTermSchema).max(256).superRefine((terms, ctx) => {
+    const seen = new Set<string>();
+    for (const term of terms) { const key = term.locale + '\u0000' + term.source;
+        if (seen.has(key)) ctx.addIssue({ code: 'custom', message: 'Duplicate glossary term' }); seen.add(key); }
+});
+/** Persisted per-project store. Project-private by default; the tenant catalog applies only when explicitly adopted. */
+export const translationGlossaryStoreSchema = z.object({ version: z.literal(1),
+    revision: z.number().int().nonnegative().safe(), terms: glossaryTerms,
+    shared: z.object({ enabled: z.boolean(), revision: z.number().int().nonnegative().safe().nullable() }).strict() }).strict();
+export const translationGlossarySaveSchema = z.object({
+    expectedRevision: z.number().int().nonnegative().safe(), terms: glossaryTerms }).strict();
+/** Tenant-wide catalog replacement; publication requires an elevated tenant role, adoption stays per project. */
+export const translationGlossaryPublishSchema = translationGlossarySaveSchema;
+/** null dismisses the shared catalog; a number adopts exactly the current catalog revision. */
+export const translationGlossaryAdoptSchema = z.object({
+    revision: z.number().int().nonnegative().safe().nullable() }).strict();
+export const translationGlossaryStateSchema = z.object({ version: z.literal(1),
+    revision: z.number().int().nonnegative().safe(), terms: glossaryTerms,
+    shared: translationGlossaryStoreSchema.shape.shared,
+    catalog: z.object({ revision: z.number().int().nonnegative().safe(), terms: glossaryTerms }).strict().nullable() }).strict();

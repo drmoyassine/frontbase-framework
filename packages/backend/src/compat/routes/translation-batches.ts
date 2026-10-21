@@ -12,6 +12,7 @@ import { translationMenus, translationMenuFields, translationDatasources, transl
 import { translationRecordPreview, saveTranslationRecordField } from '../translation-record-preview.js';
 import { discoverTranslationCoverage } from '../translation-discovery.js';
 import { currentTranslationHostPin } from '../translation-allowance.js';
+import { registerTranslationGlossaryRoutes } from './translation-glossary.js';
 
 const actionSchema = z.object({ reviewHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const startSchema = actionSchema.extend({ approveContentTransmission: z.literal(true) }).strict();
@@ -40,6 +41,7 @@ export function registerTranslationBatchRoutes(app: Hono<{ Variables: ConsoleAut
         await next();
     });
     registerTranslationHomepageRoutes(app,db,host,now);
+    registerTranslationGlossaryRoutes(app,db,host,now);
     app.get(`${root}page-preview/:pageId/`, async c => {
         try { return c.json(await translationPagePreview(host, db, c.get('tenant'), c.req.param('pageId'), c.req.query('locale') ?? '')); }
         catch { return c.json({ detail: 'Saved-page translation preview is unavailable. Check language/storage settings and reload the saved page.' }, 422); }

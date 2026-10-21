@@ -10,6 +10,7 @@ import { resolveTranslationAccountingStorage, type TranslationStorageHost } from
 import { translationMessages, type GenerationHost } from './translation-generation.js';
 import type { PagesStore, CompatPageRow } from './pages-store.js';
 import { translationInputHash, translationPlainText, extractMenuInput, extractRecordInput, extractViewRecordInput, TranslationInputChanged, type TranslationViewHost } from './translation-inputs.js';
+import { readTranslationGlossaryTerms, applyTranslationGlossary } from './translation-glossary.js';
 import { batchSelectionSchema as selectionSchema, batchPageSelectionSchema, batchLimitsSchema as limitsSchema, batchPlanInputSchema,
     batchReviewSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema, batchRetryReviewSchema, translationPageSelectionSchema,
     translationUnitHistorySchema, translationRestoreResultSchema } from '@frontbase/edge-core/localization/batches';
@@ -27,6 +28,13 @@ const key = (value: string) => 'translation_batch:v1:' + uuid.parse(value);
 const digest = translationInputHash;
 export const TRANSLATION_PAGE_FIELDS: Record<string, readonly string[]> = { Text: ['content', 'text', 'value'], Heading: ['content', 'text'], Paragraph: ['content', 'text'] };
 const boundTypes = new Set(['Repeater', 'DataTable', 'DataGrid', 'Grid']);
+/** Generation-path terminology: batch contexts carry the applied glossary while manual single-field
+ *  flows extract without it, so operator saves are never gated on terminology state. A glossary
+ *  change therefore invalidates outstanding batch intents through the contextFingerprint chain. */
+const withGlossary = (terms: Parameters<typeof applyTranslationGlossary>[0], locale: string, source: { unit: { text: string }; context: TranslationContext }): TranslationContext => {
+    const glossary = applyTranslationGlossary(terms, locale, source.unit.text);
+    return glossary ? { ...source.context, glossary } : source.context;
+};
 /** Bounded metadata only; canonical extractor below remains the only eligibility authority. */
 export async function translationBatchPages(db: DbRunner, tenant: string, after = '') {
     if (after) id.parse(after);
@@ -67,8 +75,9 @@ export async function translationBatchHistory(db: DbRunner, tenant: string, afte
 export async function translationBatchReview(host: TranslationBatchHost, db: DbRunner, tenant: string, batchId: string) {
     const b = (await read(db, tenant, batchId)).value;
     if (!await stillCurrent(host, db, tenant, b)) throw Error();
+    const glossary = await readTranslationGlossaryTerms(db, tenant, b.review.pin.storage.scope.projectId);
     const items = [];
-    for (const item of b.review.items) { const source = await extract(host, db, tenant, item.selection, b.review.pin); items.push({ selection: item.selection, text: source.unit.text, context: source.context }); }
+    for (const item of b.review.items) { const source = await extract(host, db, tenant, item.selection, b.review.pin); items.push({ selection: item.selection, text: source.unit.text, context: withGlossary(glossary, b.review.targetLocale, source) }); }
     return batchReviewSchema.parse({ id: b.review.id, reviewHash: b.reviewHash, sourceLocale: b.review.pin.generation.sourceLocale, targetLocale: b.review.targetLocale,
         providerAccountId: b.review.pin.generation.accountId, model: b.review.pin.generation.model, limits: b.review.limits, maxOutputTokens: b.review.pin.generation.maxOutputTokens,
         items, monetaryEstimate: null, delivery: 'administrator-continuation', draftOnly: true });
@@ -214,11 +223,13 @@ export async function planTranslationBatch(host: TranslationBatchHost, db: DbRun
     const unique = new Set(request.selections.map(s => JSON.stringify(s)));
     if (unique.size !== request.selections.length) throw Error();
     const batchId = crypto.randomUUID(), session = await sessionFor(host, tenant, pin), items: Batch['review']['items'] = [], preview = [];
+    const glossary = await readTranslationGlossaryTerms(db, tenant, pin.storage.scope.projectId);
     for (const selection of request.selections) {
         const source = await extract(host, db, tenant, selection, pin), unitId = await translationUnitId(pin.storage.scope, source.unit.resource);
+        const context = withGlossary(glossary, request.targetLocale, source);
         if (items.some(item => item.intent.unitId === unitId)) throw Error();
-        const fingerprint = await messageSourceFingerprint(source.unit), contextFingerprint = await translationContextFingerprint(source.context);
-        if (new TextEncoder().encode(JSON.stringify(translationMessages(source, request.targetLocale))).byteLength > request.limits.maxMessageBytes) throw Error();
+        const fingerprint = await messageSourceFingerprint(source.unit), contextFingerprint = await translationContextFingerprint(context);
+        if (new TextEncoder().encode(JSON.stringify(translationMessages({ unit: source.unit, context }, request.targetLocale))).byteLength > request.limits.maxMessageBytes) throw Error();
         const snapshot = await session.persistence.read(pin.storage.scope, unitId, request.targetLocale);
         if (snapshot.head?.provenance === 'manual') throw Error();
         const same = snapshot.source?.fingerprint === fingerprint && snapshot.source.contextFingerprint === contextFingerprint;
@@ -227,7 +238,7 @@ export async function planTranslationBatch(host: TranslationBatchHost, db: DbRun
                 sourceVersion: same ? snapshot.source!.sourceVersion : (snapshot.source?.sourceVersion ?? 0) + 1,
                 sourceFingerprint: fingerprint, contextFingerprint, expectedHead: snapshot.head?.revisionId ?? null,
                 locale: request.targetLocale, providerId: pin.generation.accountId, promptVersion: pin.generation.promptVersion, maxAttempts: 1 } });
-        preview.push({ selection, text: source.unit.text, context: source.context });
+        preview.push({ selection, text: source.unit.text, context });
     }
     const review = reviewSchema.parse({ version: 1, id: batchId, pin, targetLocale: request.targetLocale, limits: request.limits, items, createdAt: now });
     const value: Batch = { review, reviewHash: await digest(review), phase: 'planned', cursor: 0, approvedBy: null, policyHash: null };
@@ -260,10 +271,11 @@ export async function continueTranslationBatch(host: TranslationBatchHost, db: D
     if (b.phase === 'preparing') {
         const item = b.review.items[b.cursor];
         if (!item) throw Error();
+        const glossary = await readTranslationGlossaryTerms(db, tenant, b.review.pin.storage.scope.projectId);
         const source = await extract(host, db, tenant, item.selection, b.review.pin), snapshot = await session.persistence.read(session.scope, item.intent.unitId, b.review.targetLocale);
         if (snapshot.head?.revisionId !== (item.intent.expectedHead ?? undefined)) throw Error();
         if (snapshot.source?.sourceVersion !== item.intent.sourceVersion || snapshot.source.fingerprint !== item.intent.sourceFingerprint || snapshot.source.contextFingerprint !== item.intent.contextFingerprint) {
-            const registered = await new TranslationLifecycle(session.persistence).syncSource(session.scope, source.unit, item.previousSourceVersion, source.context);
+            const registered = await new TranslationLifecycle(session.persistence).syncSource(session.scope, source.unit, item.previousSourceVersion, withGlossary(glossary, b.review.targetLocale, source));
             if (registered.status === 'conflict' || registered.sourceVersion !== item.intent.sourceVersion || registered.sourceFingerprint !== item.intent.sourceFingerprint || registered.contextFingerprint !== item.intent.contextFingerprint) throw Error();
         }
         const result = await session.persistence.enqueueJob(session.scope, item.intent);

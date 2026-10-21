@@ -21,6 +21,7 @@ import type { PublicationChunk } from './site-publication-chunks.js';
 import { TranslationGenerationStore } from './translation-generation.js';
 import { configuredTranslationStorage } from './translation-storage.js';
 import { extractMenuInput, translationInputHash } from './translation-inputs.js';
+import { readTranslationGlossaryTerms } from './translation-glossary.js';
 import { publicationHash } from './publication-hash.js';
 import { MenusStore } from './menus-store.js';
 
@@ -246,6 +247,7 @@ export async function discoverTranslationCoverage(host: TranslationBatchHost, db
         ? { collection: query.recordsAfter.slice(1, query.recordsAfter.indexOf(':')) as Collection, offset: Number(query.recordsAfter.slice(query.recordsAfter.indexOf(':') + 1)) }
         : { collection: 'institutions' as Collection, offset: 0 };
 
+    const glossary = await readTranslationGlossaryTerms(db, tenant, storage.scope.projectId);
     return translationCoverageReportSchema.parse({
         version: 1,
         site: { hash: active.pointer.hash, generation: active.pointer.generation, name: String(manifest.configuration.site.name).slice(0, 200),
@@ -254,7 +256,8 @@ export async function discoverTranslationCoverage(host: TranslationBatchHost, db
         totals: { index: indexTotals, chunks: manifest.chunks.length, staticPages: (manifest.staticPages ?? []).length,
             templates: manifest.templates.length, menus: menusDocument.menus.length, fields: { translatable, excluded: menuSkipped } },
         lists: lists.slice(0, 200),
-        terminology: { approvedStore: 'none' as const, providerGlossary: 'Provider contract supports up to 64 glossary entries; no approved-terminology store populates it yet.' },
+        terminology: { approvedStore: (glossary.length ? 'project-glossary-v1' : 'none') as 'project-glossary-v1' | 'none',
+            providerGlossary: 'Provider contract carries up to 64 applied glossary entries per request; the project terminology store populates batch contexts.' },
         exclusions,
         surfaces: surfacesPage(surfaces),
         records: await recordsPage(records),
