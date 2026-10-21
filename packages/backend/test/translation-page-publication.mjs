@@ -142,6 +142,22 @@ try{
  const aboutPage=await html('/ar/about/');assert.ok(aboutPage.text.includes('عربي About our programs'));assert.ok(aboutPage.text.includes('عربي Programs'));
  assert.ok((await call('locales/')).locales.some(item=>item.locale==='ar'&&item.path==='/about/'));
  assert.ok((await call('versions/?locale=ar&path=/about/')).items.length>=1);
+ // The language picker rides the COMPOSED menu shell: managed regions compose into real Navbar
+ // nodes before the localized injection walk, so an app-menus page carries the switcher without
+ // authoring one. The shell-only serve (homepage release) already offers source + Arabic.
+ const shellDoc=new JSDOM(aboutShell.text).window.document;
+ assert.ok(shellDoc.querySelector('details.fb-language-switcher'),'the app-menus shell renders the language picker on its composed navbar');
+ assert.equal(shellDoc.querySelector('a[data-fb-locale="ar"]').getAttribute('href'),'/ar/about/','the shell picker offers the localized path');
+ const aboutDoc=new JSDOM(aboutPage.text).window.document;
+ const picker=aboutDoc.querySelector('details.fb-language-switcher');
+ assert.ok(picker,'the released app-menus page keeps the picker');
+ assert.equal(picker.querySelector('a[data-fb-locale="ar"]').getAttribute('aria-current'),'page','the active locale is marked current');
+ assert.equal(picker.querySelector('a[data-fb-locale="en"]').getAttribute('href'),'/about/','the picker links back to the source path reciprocally');
+ // Designed exclusion, pinned: audience-authenticated sessions never receive the language step
+ // (the locale walk is gated on !audience.authenticated), so a member's /ar/ request resolves as
+ // a source URL — 404 here — instead of the localized page or a mixed chrome injection.
+ const member=await renderReviewedSitePublication(f.db,tenant,new Request('https://site.test/ar/about/'),{resolveAudience:async()=>({authenticated:true,contactType:'student',permissionLevel:'reader'})});
+ assert.equal(member?.status,404,'authenticated menu members are never served localized pages');
  // Fences: auth, role, tenant, and cross-surface session isolation.
  auth=false;await call('review/?locale=ar&path=/privacy/',undefined,401);await call('deactivate/',{locale:'ar',expected:null},401);await call('pages/',undefined,401);await call('versions/?locale=ar&path=/privacy/',undefined,401);auth=true;
  role='viewer';await call('review/?locale=ar&path=/privacy/',undefined,403);role='owner';
@@ -155,5 +171,5 @@ try{
  await reviews.approve({hash:conflictHash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Conflict fixture reviewed'},'reviewer',now);
  await reviews.activate(conflictHash,(await new SitePublicationStore(f.db,tenant).activeVersion()).pointer,now);
  await call('review/?locale=ar&path=/about/',undefined,422);
- console.log('translation-page-publication: per-page review/prepare policy/publish CAS/per-unit drift fallback/rollback/deactivation/shared app-menu units and fences PASS');
+ console.log('translation-page-publication: per-page review/prepare policy/publish CAS/per-unit drift fallback/rollback/deactivation/shared app-menu units/app-menus language picker/audience-auth no-injection exclusion and fences PASS');
 }catch(error){throw error;}finally{try{f.close();}catch{}}
