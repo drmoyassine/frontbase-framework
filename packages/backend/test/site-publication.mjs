@@ -118,6 +118,22 @@ assert.equal(sitePreparationRequestSchema.safeParse({...selection,records:artifa
 const prepare=(request=selection,tenant='alpha',version=draft)=>prepareSitePublication(db,db,tenant,version,'sqlite',request,{id:'owner'},now);
 const captured=await prepare();assert.equal(captured.artifact.templates[1].title,'institution');assert.equal(captured.artifact.records.programs[0].institutionId,512);assert.equal(captured.artifact.records.articles[0].revision,3);
 assert.ok(!JSON.stringify(captured.artifact.records).includes('PRIVATE_'));
+// Locale route reservation: source admission refuses record paths under a LIVE locale prefix,
+// and only then — other live locales, and the same paths with no locale live, still prepare.
+const reservedRequest={...selection,institutionPaths:['/fr/muhlenberg-college/']};
+const pointer={hash:'a'.repeat(64),generation:1};
+await db.exec('UPDATE PRIVATE_institution SET wp_url=? WHERE id=?',['/fr/muhlenberg-college/',512]);
+await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?)',['alpha','translation_homepage:active:v1:de',JSON.stringify(pointer),now]);
+await prepare(reservedRequest);
+await db.exec('DELETE FROM settings WHERE tenant_slug = ? AND key = ?',['alpha','translation_homepage:active:v1:de']);
+await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?)',['alpha','translation_homepage:active:v1:fr',JSON.stringify(pointer),now]);
+await assert.rejects(()=>prepare(reservedRequest),/publication_locale_route_reserved/);
+await db.exec('DELETE FROM settings WHERE tenant_slug = ? AND key = ?',['alpha','translation_homepage:active:v1:fr']);
+await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?)',['alpha','translation_surface:active:v1:'+'b'.repeat(64)+':fr',JSON.stringify(pointer),now]);
+await assert.rejects(()=>prepare(reservedRequest),/publication_locale_route_reserved/,'surface keys reserve their locale too');
+await db.exec('DELETE FROM settings WHERE tenant_slug = ? AND key = ?',['alpha','translation_surface:active:v1:'+'b'.repeat(64)+':fr']);
+await db.exec('UPDATE PRIVATE_institution SET wp_url=? WHERE id=?',['/muhlenberg-college/',512]);
+await prepare(selection);
 // A browser serializes raw Unicode. Preparation must refuse, never rename or persist it.
 for (const [role,table,id,path,original] of [
  ['institution','PRIVATE_institution',512,'/caf\u00e9/','/muhlenberg-college/'],

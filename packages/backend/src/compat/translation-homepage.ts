@@ -224,7 +224,13 @@ export async function saveHomepageTranslations(host:TranslationBatchHost,db:DbRu
     return {saved:pending.length};
 }
 export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,expectedToken:string,reviewer:string,now:string,liveQuery?:PublishedLiveQuery,path:string='/',policy:{missing:'block'|'source-fallback';outdated:'block'|'source-fallback'}={missing:'block',outdated:'block'}){
-    const s=await session(host,db,tenant,request,target,liveQuery,path);if(publicationPaths(s.capture.active.artifact).includes(`/${target}${s.path}`))throw Error('locale_route_collision');if(s.token!==expectedToken)throw Error('review_changed');
+    const s=await session(host,db,tenant,request,target,liveQuery,path);
+    // The locale router owns every /{locale}/… URL once any release for that locale is active, so
+    // preparing a release whose prefix the source publication still claims (records, static pages,
+    // routes or redirect endpoints) would let activation silently shadow those source URLs.
+    const reserved=[...publicationPaths(s.capture.active.artifact),...(s.capture.active.artifact.schemaVersion===2?(s.capture.active.artifact.redirects??[]).flatMap(alias=>[alias.from,alias.to]):[])];
+    if(reserved.some(path=>{let route:string;try{route=decodeURIComponent(path).replace(/\/$/,'')||'/';}catch{return false;}return route===`/${target}`||route.startsWith(`/${target}/`);}))throw Error('locale_route_collision');
+    if(s.token!==expectedToken)throw Error('review_changed');
     // Template listing pages render parameterized request variations, so only the per-unit join
     // (missing/outdated fall back to fresh source) can serve them honestly.
     if(s.capture.templateListing&&(policy.missing!=='source-fallback'||policy.outdated!=='source-fallback'))throw Error('template_release_per_unit_required');

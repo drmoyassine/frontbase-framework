@@ -7,6 +7,7 @@ import { PagesStore } from './pages-store.js';
 import { EditorialApprovalStore } from './editorial-approval-store.js';
 import { SiteConfigurationStore } from './site-configuration-store.js';
 import { SitePublicationStore } from './site-publication-store.js';
+import { assertOutsidePublishedLocaleRoutes } from './locale-route-reservation.js';
 
 export const sitePreparationRequestSchema = z.object({ expectedConfigurationRevision:z.number().int().positive(),
     pageIds:z.array(z.string().uuid()).min(1).max(7), institutionPaths:z.array(publicationPathSchema).max(48), programPaths:z.array(publicationPathSchema).max(48),
@@ -60,6 +61,8 @@ export async function prepareSitePublication(control:DbRunner, canonical:DbRunne
     const paths=[artifact.configuration.routes.directory,...(articles.length?[artifact.configuration.routes.blog]:[]),
         ...institutions.map(row=>row.originalPath),...programs.map(row=>row.originalPath),...articles.map(row=>row.originalPath)] as string[];
     if(paths.some(path=>new URL(path,'https://publication.invalid').pathname!==path))throw new Error('publication_route_serialization');
+    // Locale route prefixes stay reserved for the translation router; see locale-route-reservation.
+    await assertOutsidePublishedLocaleRoutes(control,tenant,paths);
     if((await new SiteConfigurationStore(control,tenant).get())?.revision!==draft.revision)throw new Error('publication_configuration_conflict');
     // Captured catalog rows remain a private candidate; whole-site review/activation is separate.
     return {hash:await new SitePublicationStore(control,tenant).prepare(artifact,now),artifact};

@@ -7,6 +7,7 @@ import {menuReferenceSchema} from '@frontbase/edge-core/menus';
 import type { PageLayoutData } from '@frontbase/edge-core';
 import { publicationHash } from './publication-hash.js';
 import { packPublicationChunks, SitePublicationChunkStore, publicationChunkReferenceSchema, type PublicationChunk, type PublicationChunkReference } from './site-publication-chunks.js';
+import { assertOutsidePublishedLocaleRoutes } from './locale-route-reservation.js';
 
 const MAX_MANIFEST_BYTES = 8 * 1024 * 1024;
 const byteSize = (value: unknown) => new TextEncoder().encode(stableStringify(value)).byteLength;
@@ -96,6 +97,18 @@ export const sitePublicationManifestSchema = z.object({ schemaVersion: z.literal
     }
 });
 export type SitePublicationManifest = z.infer<typeof sitePublicationManifestSchema>;
+/** Every path this manifest claims — records, static pages, populated routes and both redirect
+ *  endpoints: the surface the live-locale route reservation must keep the translation router's
+ *  /{locale}/… namespace clear of (the superRefine path list plus redirect from/to). */
+export function manifestLocaleRouteExposures(manifest:SitePublicationManifest):string[]{
+    const populations = new Map<string, number>();
+    for (const row of manifest.index) populations.set(row.collection, (populations.get(row.collection) ?? 0) + 1);
+    const paths: string[] = [...(manifest.staticPages??[]).map(page=>page.originalPath)];
+    for (const row of manifest.index) if (row.originalPath) paths.push(row.originalPath);
+    if (populations.get('institutions') || populations.get('programs')) paths.push(manifest.configuration.routes.directory);
+    if (populations.get('articles')) paths.push(manifest.configuration.routes.blog);
+    return [...paths,...(manifest.redirects??[]).flatMap(alias=>[alias.from,alias.to])];
+}
 type Header = Pick<SitePublicationManifest, 'configurationRevision' | 'configuration' | 'templates'|'staticPages'|'approvals'|'redirects'>;
 type Records = Record<'institutions'|'programs'|'cities'|'articles', unknown[]> & {pages?:unknown[]};
 const recordsInput = z.object({ cities: z.array(z.unknown()).max(20000), institutions: z.array(z.unknown()).max(20000),
@@ -115,7 +128,9 @@ export class SitePublicationManifestStore {
     /** Layout-only derivative: preserve exact immutable content/index/approval/redirect references. */
     async prepareLayouts(baseHash:string,layouts:Pick<SitePublicationManifest,'templates'|'staticPages'>,now:string):Promise<string>{
         const base=await this.get(baseHash);if(!base)throw Error('publication_manifest_unavailable');await this.verify(base);
-        const manifest=sitePublicationManifestSchema.parse({...base,templates:layouts.templates,staticPages:layouts.staticPages}),hash=await publicationHash(manifest);
+        const manifest=sitePublicationManifestSchema.parse({...base,templates:layouts.templates,staticPages:layouts.staticPages});
+        await assertOutsidePublishedLocaleRoutes(this.db,this.tenant,manifestLocaleRouteExposures(manifest));
+        const hash=await publicationHash(manifest);
         const changed=await this.db.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug, key) DO NOTHING',[this.tenant,`site_publication:manifest:v2:${hash}`,stableStringify(manifest),now]);
         if(changed!==0&&changed!==1||!await this.get(hash))throw Error('publication_manifest_unavailable');return hash;
     }
@@ -127,6 +142,7 @@ export class SitePublicationManifestStore {
         // Global admission precedes any persistence, including chunks.
         const manifest = sitePublicationManifestSchema.parse({ ...header, schemaVersion: 2, runtimeVersion: 'directory-chunks-v1',
             chunks: references, index: packed.flatMap((chunk, i) => indexChunk(chunk, references[i]!)) });
+        await assertOutsidePublishedLocaleRoutes(this.db, this.tenant, manifestLocaleRouteExposures(manifest));
         for (const chunk of packed) await this.chunks.put(chunk, now);
         const hash = await publicationHash(manifest);
         const changed = await this.db.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug, key) DO NOTHING',

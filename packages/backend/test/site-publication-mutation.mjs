@@ -11,6 +11,7 @@ for(const [label,path,find,replacement,pkg] of [
  ['publication update activation race','packages/backend/src/compat/site-publication-store.ts','AND value = ?\', [JSON.stringify(next)','AND ? IS NOT NULL\', [JSON.stringify(next)','@frontbase/backend'],
  ['publication preparation settings','packages/backend/src/compat/site-publication-prepare.ts',"(await new SiteConfigurationStore(control,tenant).get())?.revision!==draft.revision","false",'@frontbase/backend'],
  ['publication browser path admission','packages/backend/src/compat/site-publication-prepare.ts',"paths.some(path=>new URL(path,'https://publication.invalid').pathname!==path)","false",'@frontbase/backend'],
+ ['locale route prefix reservation','packages/backend/src/compat/locale-route-reservation.ts',"if(locales.some(target=>route===`/${target}`||route.startsWith(`/${target}/`)))throw new Error('publication_locale_route_reserved');","if(false)throw new Error('publication_locale_route_reserved');",'@frontbase/backend'],
  ['publication approval fingerprint','packages/backend/src/compat/editorial-approval-store.ts','record.fingerprint !== expectedFingerprint','false','@frontbase/backend'],
  ['snapshot query owner','packages/compiler/src/queries/directory.ts',"if (ctx.tenant !== owner) throw new Error('principal_context_required');","if (false) throw new Error('principal_context_required');",'@frontbase/compiler'],
  ['public parent query binding','packages/backend/src/compat/site-publication-runtime.ts',"{ institutionId: row.id }","{ institutionId: 999 }",'@frontbase/backend'],
