@@ -134,6 +134,8 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     resolved.document={...resolved.document,language:contentLocale,direction:localeDirection(contentLocale),canonicalUrl:canonical.href,alternates,
         // SEO GAP-2: merge, never replace — the source document's image/imageAlt/type (and any
         // future keys) survive the localized serve; only identity fields are overridden.
-        openGraph:{...resolved.document.openGraph,title:resolved.page.title,description:resolved.page.description,url:canonical.href,siteName:resolved.document.openGraph?.siteName??'',type:resolved.document.openGraph?.type??'website'}};
+        openGraph:{...resolved.document.openGraph,title:resolved.page.title,description:resolved.page.description,url:canonical.href,siteName:resolved.document.openGraph?.siteName??'',type:resolved.document.openGraph?.type??'website',locale:contentLocale},
+        // og:locale follows the content locale; alternates mirror the per-path hreflang set minus current.
+        localesAlternate:alternates?.map(link=>link.language).filter(code=>code!==contentLocale)};
     return {kind:'page' as const,resolved,siteHash:capture.active.pointer.hash,generation:capture.active.pointer.generation,releaseHash:selected?.pointer.hash??null,locale:current,contentLocale};
 }

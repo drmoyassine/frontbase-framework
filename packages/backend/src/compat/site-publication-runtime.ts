@@ -97,6 +97,6 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
     return { page: manifest.pages[path]!, version: manifest.version, cacheKey: JSON.stringify([owner, hash, path, normalized]),
         document: { faviconUrl: '', language: documentLanguage, direction: localeDirection(documentLanguage),
             canonicalUrl, robots: url.searchParams.size ? 'noindex, follow' : 'index, follow',
-            openGraph: { title, description, url: canonicalUrl, type: role === 'article' ? 'article' : 'website', siteName: artifact.configuration.site.name,
+            openGraph: { title, description, url: canonicalUrl, type: role === 'article' ? 'article' : 'website', siteName: artifact.configuration.site.name, locale: documentLanguage,
                 ...(typeof row?.cover === 'string' ? { image: row.cover, imageAlt: typeof row.coverAlt === 'string' ? row.coverAlt : '' } : {}) } } };
 }

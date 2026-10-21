@@ -31,15 +31,19 @@ export interface ShellOptions {
     alternates?: { language: string; href: string }[];
     canonicalUrl?: string;
     robots?: string;
-    openGraph?: { title: string; description?: string; url: string; type: 'website' | 'article'; siteName: string; image?: string; imageAlt?: string };
+    openGraph?: { title: string; description?: string; url: string; type: 'website' | 'article'; siteName: string; image?: string; imageAlt?: string; locale?: string };
+    /** Other published locales for THIS path; emitted as og:locale:alternate beside the content locale.
+     *  Locale codes stay bare (language[_TERRITORY] is never invented from a bare code). */
+    localesAlternate?: string[];
 }
 
 export function renderDocument(page: PageEntry, bodyHtml: string, opts: ShellOptions): string {
     const metadata = [
         ...(opts.alternates??[]).map(link=>`<link rel="alternate" hreflang="${escapeHtml(link.language)}" href="${escapeHtml(link.href)}">`),
         ...(opts.robots ? [`<meta name="robots" content="${escapeHtml(opts.robots)}">`] : []),
-        ...Object.entries(opts.openGraph ? { title: opts.openGraph.title, description: opts.openGraph.description, url: opts.openGraph.url, type: opts.openGraph.type, site_name: opts.openGraph.siteName, image: opts.openGraph.image, 'image:alt': opts.openGraph.image ? opts.openGraph.imageAlt : undefined } : {})
+        ...Object.entries(opts.openGraph ? { title: opts.openGraph.title, description: opts.openGraph.description, url: opts.openGraph.url, type: opts.openGraph.type, site_name: opts.openGraph.siteName, image: opts.openGraph.image, 'image:alt': opts.openGraph.image ? opts.openGraph.imageAlt : undefined, locale: opts.openGraph.locale } : {})
             .filter(([, value]) => value !== undefined && value !== '').map(([key, value]) => `<meta property="og:${key}" content="${escapeHtml(String(value))}">`),
+        ...(opts.localesAlternate ?? []).filter(code => code && code !== opts.openGraph?.locale).map(code => `<meta property="og:locale:alternate" content="${escapeHtml(code)}">`),
     ].join('\n');
     const swRegistration = opts.registerServiceWorker
         ? `<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js');}</script>`

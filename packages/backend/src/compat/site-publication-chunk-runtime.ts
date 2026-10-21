@@ -69,5 +69,5 @@ const params:Record<string,unknown>=mode==='detail'?{path:parentPath??path}:role
     const canonicalUrl=new URL(path,artifact.configuration.site.origin).href;
     const documentLanguage=typeof row?.language==='string'?row.language:artifact.configuration.site.locale||'en';
     return {page:built.pages[path]!,version:built.version,cacheKey:JSON.stringify([owner,hash,path,normalized]),document:{faviconUrl:'',language:documentLanguage,direction:localeDirection(documentLanguage),canonicalUrl,robots:url.searchParams.size?'noindex, follow':'index, follow',
-        openGraph:{title,description,url:canonicalUrl,type:role==='article'?'article':'website',siteName:artifact.configuration.site.name,...(typeof row?.cover==='string'?{image:row.cover,imageAlt:typeof row.coverAlt==='string'?row.coverAlt:''}:{})}}};
+        openGraph:{title,description,url:canonicalUrl,type:role==='article'?'article':'website',siteName:artifact.configuration.site.name,locale:documentLanguage,...(typeof row?.cover==='string'?{image:row.cover,imageAlt:typeof row.coverAlt==='string'?row.coverAlt:''}:{})}}};
 }

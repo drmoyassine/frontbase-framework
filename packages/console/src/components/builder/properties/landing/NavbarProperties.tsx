@@ -118,17 +118,13 @@ interface NavbarPropertiesProps {
     props: Record<string, any>;
     updateComponentProp: (key: string, value: any) => void;
     project?: { faviconUrl?: string } | null;
-    /** Menu regions render their own captured components; the switcher is serve-injected into
-     *  page layouts only, so the toggle is hidden where it could never surface a picker. */
-    menusContext?: boolean;
 }
 
 export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
     componentId,
     props,
     updateComponentProp,
-    project,
-    menusContext
+    project
 }) => {
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -485,7 +481,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                 </div>
             </div>
 
-            {!menusContext && <div className="space-y-2"><Label>Language switcher</Label><Switch checked={props.showLanguageSwitcher !== false} onCheckedChange={checked => updateComponentProp('showLanguageSwitcher', checked)} /><p className="text-xs text-muted-foreground">Shows links for languages published for this page.</p></div>}
+            <div className="space-y-2"><Label>Language switcher</Label><Switch checked={props.showLanguageSwitcher !== false} onCheckedChange={checked => updateComponentProp('showLanguageSwitcher', checked)} /><p className="text-xs text-muted-foreground">Shows links for languages published for this page.</p></div>
             {/* Dark Mode Toggle Section */}
             <div className="space-y-3 pt-4 border-t">
                 <Label className="text-sm font-medium">Appearance</Label>
