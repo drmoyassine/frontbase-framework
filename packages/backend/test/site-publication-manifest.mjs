@@ -52,7 +52,9 @@ for(const aliases of [
 }
 assert.equal(await foreign.get(hash), null);
 await assert.rejects(() => foreign.verify(manifest), /publication_manifest_chunk_missing/);
-assert.equal(await store.prepare(header, { ...records, programs: [...records.programs].reverse() }, now), hash);
+const manifestAt = (await db.query('SELECT updated_at FROM settings WHERE key = ?', ['site_publication:manifest:v2:' + hash]))[0].updated_at;
+assert.equal(await store.prepare(header, { ...records, programs: [...records.programs].reverse() }, '2026-10-12T00:00:00Z'), hash);
+assert.equal((await db.query('SELECT updated_at FROM settings WHERE key = ?', ['site_publication:manifest:v2:' + hash]))[0].updated_at, manifestAt, 'a same-hash prepare retry must not rewrite the immutable manifest row');
 const loaded = [];
 for (const ref of manifest.chunks) loaded.push(...(await store.loadChunk(manifest, ref)).records);
 assert.equal(loaded.length, 124);

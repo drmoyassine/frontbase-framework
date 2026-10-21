@@ -3,7 +3,7 @@ const dir=repoRoot+'packages/backend/',gate='test/site-publication-chunk-integra
 if(!buildPackage('@frontbase/backend')||runGate(dir,gate,args)!==0)process.exit(2);
 for(const [label,file,find,replacement] of [
  ['chunk host-portable navigation','site-publication-chunk-runtime.ts','projected=projectRelativeSiteLinks(projected,artifact.configuration.site.origin);',''],
- ['preview external origin admission','routes/site-publication.ts',"(target.origin==='https://publication-preview.invalid' || target.origin===new URL(artifact.configuration.site.origin).origin)",'true'],
+ ['preview external origin admission','site-publication-preview-links.ts',"![origin,'https://publication-preview.invalid'].includes(target.origin)",'false'],
  ['redirect complete chunk integrity','site-publication-serving.ts','await new SitePublicationManifestStore(db,owner).verify(active.artifact);\n                await verifyManifestEditorial(db,owner,active.artifact);','await verifyManifestEditorial(db,owner,active.artifact);'],
  ['redirect approved content','site-publication-serving.ts','await verifyManifestEditorial(db,owner,active.artifact);\n                return {status:\'redirect\'','return {status:\'redirect\''],
  ['chunk query owner','site-publication-chunk-queries.ts',"if(ctx.tenant!==owner)throw new Error('principal_context_required');","if(false)throw new Error('principal_context_required');"],

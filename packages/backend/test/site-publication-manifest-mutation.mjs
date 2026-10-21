@@ -9,7 +9,7 @@ for (const [label, find, replacement] of [
     ['manifest index fidelity', 'stableStringify(indexChunk(chunk, reference)) !== stableStringify(expected)', 'false'],
     ['manifest content hash', 'await publicationHash(manifest) !== hash', 'false'],
     ['manifest owner isolation', 'WHERE tenant_slug = ? AND key = ?', 'WHERE ? IS NOT NULL AND key = ?'],
-    ['manifest immutable retry', 'ON CONFLICT(tenant_slug, key) DO NOTHING', 'ON CONFLICT(tenant_slug, key) DO UPDATE SET value = excluded.value'],
+    ['manifest immutable retry', "ON CONFLICT(tenant_slug, key) DO NOTHING',\n            [this.tenant,", "ON CONFLICT(tenant_slug, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',\n            [this.tenant,"],
 ]) {
     await withSourceMutation(label, file, find, replacement, async () => {
         if (!buildPackage('@frontbase/backend')) throw new Error('Mutation did not compile');

@@ -6,13 +6,13 @@ import {repoRoot} from '../../../scripts/mutation-lib.mjs';
 import ts from 'typescript';
 const inputs='packages/backend/src/compat/translation-inputs.ts',http='packages/backend/src/compat/saved-view-http.ts',batch='packages/backend/src/compat/translation-batches.ts';
 const faults=[
- ['owned view metadata',inputs,'WHERE tenant_slug = ? AND datasource_id = ? AND id > ?','WHERE ? IS NOT NULL AND datasource_id = ? AND id > ?'],
+ ['owned view metadata',inputs,"WHERE tenant_slug = ? AND datasource_id = ? AND (source_schema IS NULL OR source_schema = 'public') AND id > ?","WHERE ? IS NOT NULL AND datasource_id = ? AND (source_schema IS NULL OR source_schema = 'public') AND id > ?"],
  ['owned view definition',inputs,'store = host.syncFor(tenant)',"store = host.syncFor('alpha')"],
- ['membership predicate dispatch',inputs,'if (view.predicate) query = query.or(view.predicate);','void 0;'],
+ ['membership predicate dispatch',inputs,'base.or(view.predicate)','base'],
  ['membership refusal',inputs,'member.data.length !== 1','member.data.length > 1'],
- ['membership projection consistency',inputs,'if (checked[selection.keyColumn] !== key || checked[selection.field] !== text) throw new TranslationInputChanged();','void 0;'],
+ ['membership projection consistency',inputs,'if (!key.every(part => checked[part.column] === part.value) || checked[selection.field] !== text) throw new TranslationInputChanged();','void 0;'],
  ['view checkpoint',inputs,'...(view ? { view: view.checkpoint } : {})','...{}'],
- ['visible selected fields',inputs,"if (!view.visible_columns?.includes(selection.keyColumn) || !view.visible_columns.includes(selection.field)) throw Error();",'void 0;'],
+ ['visible selected fields',inputs,'if (!view.visible_columns?.includes(selection.field) || !parts.every(part => view.visible_columns!.includes(part.column))) throw Error();','void 0;'],
  ['legacy SQL refusal',inputs,"if (view.target_table.startsWith('fb_live_') &&",'if (false &&'],
  ['post-read definition guard',inputs,'if (await translationInputHash(await store.getView(selection.viewId)) !== await translationInputHash(view)) throw Error();','void 0;'],
  ['AND/OR preservation',http,"rule.logic + '(' + rule.conditions.map(compile).join(',') + ')'","'and(' + rule.conditions.map(compile).join(',') + ')'"],
