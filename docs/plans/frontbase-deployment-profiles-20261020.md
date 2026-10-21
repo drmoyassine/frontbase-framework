@@ -143,3 +143,25 @@ The [P0/P1 receipt](frontbase-deployment-profiles-p0-p1-20261020.md) records exa
 ## Fresh-state Vercel CLI checkpoint
 
 [Fresh receipt](frontbase-deployment-vercel-fresh-20261020.md): a committed-source export with explicit deployment-tooling corrections passes frozen install/build/check, new empty-state first-admin setup/publication, journal recovery and ordinary managed-command session/page preservation. Upload privacy faults and actual provider target checks pass. The installed CLI's implicit first-project production assignment narrows support: empty-history preview is refused before environment writes and production initialization requires explicit authorization. Native browser buttons remain unverified under the owner's CLI-only instruction. P3/P4 and broad provider/recovery/release coverage remain partial.
+
+## Selected-bucket S3 checkpoint — 2026-10-21
+
+[HTTP storage delivery](frontbase-deployment-s3-storage-20261021.md) closes the bucket-lowering and configured-provider discovery gap for optional Vercel S3 selection. It reuses authenticated storage routes and guarded SigV4 HTTP with private project/environment/tenant namespaces. Deterministic transfer/isolation and eleven source faults pass; credential-gated real S3 activation remains unrun. Physical bucket provisioning/management, permanent public assets, general CF provider changes, native Vercel Blob and full profile/button/recovery/release acceptance remain open.
+
+
+## Operation-bound Vercel recovery checkpoint — 2026-10-21
+
+[Read-only recovery delivery](frontbase-deployment-vercel-reconciliation-20261021.md) verifies exact operation/manifest/project/team/environment/READY matching on an actual completed-upload failure. Resume updates the local journal without remote writes or another upload, preserving original session/pages/publication. Thirteen independent faults and retained gates pass. Legacy unmarked attempts, ambiguity, unknown in-flight outcomes, wider drift/rollback, selected real-provider acceptance and native buttons remain separate gates.
+
+
+## Live optional resources, native buttons and rollback checkpoint — 2026-10-21
+
+[Provider/failure receipt](frontbase-deployment-provider-failure-20261021.md): real native KV/R2 and disposable Vercel production predecessor/restore checks pass without a new build or database restoration. Twenty-five orchestration failure cases and six independently detected stop faults supplement operation recovery. Signed-in native forms expose a main/branch source mismatch, provider ref constraints and exact Turso product requirements. Approved isolated native tests are pending owner credential entry and empty-shell retry; external provider credentials remain unavailable. Native complete-install acceptance and generic CF rollback/journal adoption stay open.
+
+
+## Native bootstrap checkpoint — 2026-10-21
+
+[Provider/failure receipt](frontbase-deployment-provider-failure-20261021.md): CF native build is now READY after exact selected-resource config repair, but real HTTP exposed an outer SESSION_SECRET guard blocking the existing self-host persisted fallback. The self-host-only correction passes actual-entry SQLite/D1-adapter session/default-deny tests, two independent faults, full build/check and deployment gates; the isolated private-copy native rebuild is pending live acceptance. Vercel native Turso provisioning succeeded and the owner started deployment. The old empty Git shell is reversibly renamed and retained. Default main buttons, fresh placeholder rewriting, complete native app acceptance and external optional providers remain open. No secret rotation, resource deletion, paid upgrade, release or CF-22 activation.
+
+
+Native live follow-up: corrected CF Git source79cecf5 is READY and active with exact selected D1/KV; homepage/console200, private API401 and seeded setup lock pass. Owner-signed-in Vercel browser create→drag/edit→save→publish succeeds; /native-vercel-acceptance-261021 returns200 with the expected heading. The explicitly approved recovery remains separate from the automatic Git candidate blocked on commit-email/GitHub-account matching. Default main buttons, fresh placeholder rewriting, new-project post-redeploy persistence and external optional providers remain open; CF owner-signed-in create/edit/save/publish now also passes: /native-cf-acceptance-261021 returns anonymous200 with the expected heading, private pages remain401, and a full builder reload retains session/content/Published status. No existing site, protection, key rotation or paid resource changes. [Current receipt](frontbase-deployment-provider-failure-20261021.md).
