@@ -65,7 +65,10 @@
     "test:translation-glossary": "node test/translation-glossary.mjs",
     "test:translation-glossary-mutation": "node test/translation-glossary-mutation.mjs",
     "test:translation-memory": "node test/translation-memory.mjs",
-    "test:translation-memory-mutation": "node test/translation-memory-mutation.mjs"
+    "test:translation-memory-mutation": "node test/translation-memory-mutation.mjs",
+    "test:backup-restore": "node test/backup-restore.mjs",
+    "test:backup-restore-mutation": "node test/backup-restore-mutation.mjs",
+    "ops:selfhost": "node scripts/selfhost-ops.mjs"
   },
   "peerDependencies": {
     "@frontbase/compiler": "workspace:*",
