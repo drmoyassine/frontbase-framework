@@ -1,5 +1,9 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-21 deployment follow-up tasks 1–6 — CLAIMED
+
+Owner authorizes all six deployment closeout tasks. Own source/config/button corrections, existing executor recovery/verification and linked evidence in the isolated deployment worktree. [Execution plan](../plans/frontbase-deployment-closeout-20261021.md) fixes acceptance boundaries and resource/cleanup approvals. Preserve tool files, shared checkout, translation stream, existing data/secrets and CF-22 pause. Claim precedes implementation; no new release, paid resource or destructive cleanup authority is inferred.
+
 ## 2026-10-21 deployment source checkpoint — committed for branch delivery
 
 Owner requests commit and push. In the isolated codex/deployment-profiles worktree, source/tests are committed as 36358fc and the separately verified generated Vercel CMS artifact as 07ab430. This checkpoint supersedes older working-state statements that these owned changes remain uncommitted; dated live results still retain their original source identities and acceptance limits. The shared checkout, .agents/ and skills-lock.json are excluded. Normal branch push is authorized; no merge/rebase/force push, npm publication, release tag, new deployment invocation, paid activation or CF-22 work is included.

@@ -9,11 +9,11 @@
     "pnpm": ">=8"
   },
   "scripts": {
-    "//": "`deploy` (no suffix) exists so Cloudflare's Deploy Button pre-fills a working command — the wrangler config lives under examples/cf-full, not at the workspace root. Run the gated flow via deploy:cf-full instead.",
+    "//": "`deploy` exists for Cloudflare native-button command detection and uses the portable root wrangler.toml. Run the reviewed managed flow via deploy:setup or deploy:cf-full.",
     "build": "pnpm -r build",
     "test": "pnpm -r --filter=!@frontbase/console test",
     "check": "pnpm -r check",
-    "test:deployment-gates": "node packages/edge-infra/test/storage-deployment.mjs && node packages/backend/test/deployment-storage.mjs && node scripts/test-deployment-storage-mutation.mjs && node packages/edge-infra/test/storage-r2.mjs && node packages/backend/test/native-r2.mjs && node scripts/test-native-r2-mutation.mjs && node packages/backend/test/native-kv.mjs && node scripts/test-native-kv-mutation.mjs && node scripts/test-deployment-gates.mjs && node examples/cf-full/test/native-worker-boot.mjs && node scripts/test-native-worker-boot-mutation.mjs && node scripts/test-vercel-upload.mjs && node scripts/test-vercel-lifecycle.mjs && node scripts/test-deployment-plan.mjs && node scripts/test-vercel-deployment-policy.mjs && node scripts/test-vercel-policy-mutation.mjs && node scripts/test-vercel-failure-matrix.mjs && node scripts/test-vercel-failure-mutation.mjs",
+    "test:deployment-gates": "node scripts/test-deployment-buttons.mjs && node packages/edge-infra/test/storage-deployment.mjs && node packages/backend/test/deployment-storage.mjs && node scripts/test-deployment-storage-mutation.mjs && node packages/edge-infra/test/storage-r2.mjs && node packages/backend/test/native-r2.mjs && node scripts/test-native-r2-mutation.mjs && node packages/backend/test/native-kv.mjs && node scripts/test-native-kv-mutation.mjs && node scripts/test-deployment-gates.mjs && node examples/cf-full/test/native-worker-boot.mjs && node scripts/test-native-worker-boot-mutation.mjs && node scripts/test-vercel-upload.mjs && node scripts/test-vercel-lifecycle.mjs && node scripts/test-deployment-plan.mjs && node scripts/test-vercel-deployment-policy.mjs && node scripts/test-vercel-policy-mutation.mjs && node scripts/test-vercel-failure-matrix.mjs && node scripts/test-vercel-failure-mutation.mjs",
     "test:mutation": "pnpm -r test:mutation",
     "deploy:cf-full": "node scripts/deploy.mjs",
     "deploy:community-edge": "node scripts/deploy-community.mjs",
@@ -28,7 +28,8 @@
     "console:build": "node scripts/build-console.mjs",
     "console:stage": "node scripts/build-console.mjs --skip-build",
     "console:check": "node scripts/validate-console-pin.mjs",
-    "test:deployment-bindings": "node packages/backend/test/deployment-bindings.mjs && node scripts/test-deployment-bindings-mutation.mjs && pnpm --filter @frontbase/console test:deployment-bindings"
+    "test:deployment-bindings": "node packages/backend/test/deployment-bindings.mjs && node scripts/test-deployment-bindings-mutation.mjs && pnpm --filter @frontbase/console test:deployment-bindings",
+    "test:deployment-buttons": "node scripts/test-deployment-buttons.mjs"
   },
   "devDependencies": {
     "c8": "^11.0.0",
