@@ -312,6 +312,10 @@ function renderLegacyFormat(
         weight: 'bold',
     });
 
+    // The language switcher is serve-injected regardless of navbar format; the legacy
+    // layout renders it beside the CTA (same picker component as the new format).
+    const languageSwitcherHtml = props.showLanguageSwitcher===false?'':renderLanguageSwitcher(props.languageSwitcher,props.localeLabels?.language??'Language');
+
     // Desktop links
     const desktopLinksHtml = (props.links || []).map(link => `
         < a href = "${escapeHtml(link.href)}" class="text-muted-foreground hover:text-foreground transition-colors" >
@@ -347,7 +351,7 @@ function renderLegacyFormat(
 
         < !--CTA + Mobile Menu-- >
             <div class="flex items-center gap-4" >
-                ${ctaHtml}
+                ${languageSwitcherHtml}${ctaHtml}
 
     <!--Mobile Menu Button-- >
         <button type="button" class="md:hidden p-2 rounded-lg hover:bg-accent" data - fb - mobile - menu - toggle >

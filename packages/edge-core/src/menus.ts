@@ -36,7 +36,7 @@ const item: z.ZodType<MenuItem>=z.lazy(()=>z.object({id:key,label:z.string().min
 const cssLength=z.string().regex(/^\d+(\.\d+)?(px|rem|em)$/);
 const nativeProps=z.object({
     logo:z.object({type:z.enum(['text','image']).optional(),text:z.string().max(200).optional(),imageUrl:z.union([z.literal(''),logoUrlSchema]).optional(),link:destination.optional(),useProjectLogo:z.boolean().optional(),showIcon:z.boolean().optional()}).strict().optional(),
-    scale:z.number().min(0.5).max(2).optional(),showDarkModeToggle:z.boolean().optional(),description:z.string().max(2000).optional(),mobileColumns:z.union([z.literal(1),z.literal(2),z.literal(3)]).optional(),hideOnMobile:z.boolean().optional(),hideOnDesktop:z.boolean().optional(),
+    scale:z.number().min(0.5).max(2).optional(),showDarkModeToggle:z.boolean().optional(),showLanguageSwitcher:z.boolean().optional(),description:z.string().max(2000).optional(),mobileColumns:z.union([z.literal(1),z.literal(2),z.literal(3)]).optional(),hideOnMobile:z.boolean().optional(),hideOnDesktop:z.boolean().optional(),
     logoHeightBase:cssLength.optional(),iconSizeBase:cssLength.optional(),logoFontSizeBase:cssLength.optional(),menuFontSizeBase:cssLength.optional(),navPaddingBase:cssLength.optional(),navGapBase:cssLength.optional(),menuGapBase:cssLength.optional(),buttonGapBase:cssLength.optional(),logoFontWeight:z.string().regex(/^[1-9]00$/).optional(),
 }).strict();
 export const menuDefinitionSchema=z.object({

@@ -20,6 +20,10 @@ assert.equal(homepageLanguageLinks('en',['ar'],'ar','/explore/?q=a\\b')[1].href,
 assert.equal(homepageLanguageLinks('en',Array.from({length:20},(_,index)=>`l${index}`),'en','/').length,21,'the raw mapper renders every locale (invalid tags degrade to the code)');
 const capped=addHomepageLanguageLinks({content:[{id:'nav',type:'Navbar',props:{}}]},'en',Array.from({length:20},(_,index)=>`l${index}`),'en','/');
 assert.equal(capped.content[0].props.languageSwitcher.length,16,'the switcher cap holds below the 16-link refusal');
+const labelled=addHomepageLanguageLinks({content:[{id:'nav',type:'Navbar',props:{localeLabels:{language:'Sprache'}}}]},'en',['ar'],'ar','/');
+assert.equal(labelled.content[0].props.localeLabels.language,'Sprache','operator switcher labels survive the injection');
+const defaulted=addHomepageLanguageLinks({content:[{id:'nav',type:'Navbar',props:{}}]},'en',['ar'],'ar','/');
+assert.equal(defaulted.content[0].props.localeLabels.language,'اللغة');
 const dom=new JSDOM(`<html><body><div data-fb-nav-locale="ar" data-fb-nav-origins='["https://stage.test","https://site.test"]'><a id="dynamic" href="/blog/?page=2#top">Guide</a><a id="english" href="/blog/?page=2" data-fb-locale="en">English</a><a id="switch" href="/en/blog/?page=2" data-fb-locale="en">English</a><form method="get" action="/explore/"></form></div></body></html>`,{url:'https://stage.test/ar/',runScripts:'outside-only'});
 const {window}=dom;window.eval(publicThemeScript());window.document.addEventListener('click',event=>event.preventDefault());
 window.document.querySelector('#dynamic').click();assert.equal(window.document.querySelector('#dynamic').getAttribute('href'),'/ar/blog/?page=2#top');

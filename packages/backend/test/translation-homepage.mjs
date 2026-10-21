@@ -73,5 +73,22 @@ assert.equal(nested.headers.get('Content-Language'),'en','fallback serves keep t
  const nextHash=await store.prepare({...header,redirects:[],staticPages:[{...header.staticPages[0],title:'Changed source'}]},{cities:[],institutions:[],programs:[],articles:[]},now);await reviews.approve({hash:nextHash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Changed fixture reviewed'},'reviewer',now);const {SitePublicationStore}=await import('../dist/compat/site-publication-store.js');await reviews.activate(nextHash,(await new SitePublicationStore(f.db,tenant).activeVersion()).pointer,now);
  assert.equal((await html('/ar/')).status,503,'source change must not expose untranslated locale fallback');assert.equal((await html('/')).status,200,'English remains available');assert.equal(new JSDOM((await html('/')).text).window.document.querySelector('[data-fb-locale]'),null);
  const staleSitemap=await html('/sitemap.xml');assert.ok(!staleSitemap.text.includes('/ar/')&&!staleSitemap.text.includes('/fr/'),'stale locale releases leave the sitemap when the site re-publishes');
+ // Route reservation: the translation router owns every /{locale}/… URL, so site admission refuses
+ // source paths or redirect endpoints under a LIVE locale prefix, and a locale whose prefix the
+ // active publication still claims refuses to prepare at all.
+ const reservedHeader={...header,staticPages:[...header.staticPages,
+   {pageId:'00000000-0000-4000-8000-000000000022',title:'AR legal',description:'',originalPath:'/ar/legal/',layout},
+   {pageId:'00000000-0000-4000-8000-000000000023',title:'DE legal',description:'',originalPath:'/de/legal/',layout}],
+   redirects:[...header.redirects,{from:'/dealias/',to:'/de/legal/'},{from:'/de/old/',to:'/privacy/'}]};
+ await assert.rejects(store.prepare(reservedHeader,{cities:[],institutions:[],programs:[],articles:[]},now),/publication_locale_route_reserved/,'a live locale reserves its prefix against new site admissions');
+ const deHash=await store.prepare({...reservedHeader,staticPages:reservedHeader.staticPages.filter(page=>page.originalPath!=='/ar/legal/')},{cities:[],institutions:[],programs:[],articles:[]},now);
+ await reviews.approve({hash:deHash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Reserved-route fixture reviewed'},'reviewer',now);
+ await reviews.activate(deHash,(await new SitePublicationStore(f.db,tenant).activeVersion()).pointer,now);
+ assert.equal((await html('/de/legal/')).status,200,'a source page under an unclaimed locale prefix still serves');
+ assert.ok(await f.generation.save({...f.configuration,targetLocales:['ar','fr','de']},2,now),'de joins the configured targets');
+ const deReview=await call('review/?locale=de');
+ for(let i=0;i<deReview.fields.length;i+=16)await call('save/',{locale:'de',token:deReview.token,entries:deReview.fields.slice(i,i+16).map(field=>({id:field.id,token:field.token,text:'gelb '+field.source}))});
+ const deComplete=await call('review/?locale=de');assert.equal(deComplete.complete,true);
+ await call('prepare/',{locale:'de',token:deComplete.token,approveTranslations:true},409);
  console.log('translation-homepage: complete coverage, external drafts, reviewed preview/activation, source/CAS/tenant fences, SSR RTL/switcher/SEO and source resilience PASS');
 }finally{f.close();}

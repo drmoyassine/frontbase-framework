@@ -8,7 +8,7 @@ import {captureHomepage,localizedTitleIndex,publishedHomepageLocales,projectHome
 import type {LocalizedQueryPlan} from './site-publication-chunk-queries.js';
 import type {PublishedLiveQuery} from './publication-list-source.js';
 
-export function homepageLanguageLinks(sourceLocale:string,locales:string[],current:string,sourcePath='/'){const source=encodeURI(sourcePath),label=(code:string)=>{if(code==='ar')return 'العربية';try{return new Intl.DisplayNames([code],{type:'language'}).of(code)??code;}catch{return code;}};
+export function homepageLanguageLinks(sourceLocale:string,locales:string[],current:string,sourcePath='/'){const source=encodeURI(sourcePath),label=(code:string)=>{if(code==='ar')return 'العربية';try{return new Intl.DisplayNames([code,'en'],{type:'language'}).of(code)??code;}catch{return code;}};
     return [{code:sourceLocale,label:sourceLocale==='en'?'English':label(sourceLocale),href:source,current:current===sourceLocale},...locales.map(code=>({code,label:label(code),href:`/${code}${source}`,current:current===code}))];}
 /** The release that translates `path`'s content under the URL's locale prefix, for the localized
  *  list endpoint: locale prefixes count only when a published locale matches, and the catalog
@@ -46,7 +46,7 @@ export function addHomepageLanguageLinks(input:PageLayoutData,sourceLocale:strin
     // The switcher refuses more than 16 links (whole-page 503): cap the locale entries so a
     // pointer-capped site can never trip it. Published locales are themselves bounded at 16.
     const layout=structuredClone(input),links=homepageLanguageLinks(sourceLocale,locales.slice(0,15),current,sourcePath);
-    const walk=(nodes:PageLayoutData['content'])=>{for(const node of nodes){if(node.type==='Navbar'){node.props={...node.props,languageSwitcher:links,localeLabels:{...node.props?.localeLabels as object,language:current==='ar'?'اللغة':'Language'}};const logo=node.props.logo as Record<string,unknown>|undefined;if(logo?.link==='/')logo.link=current===sourceLocale?'/':`/${current}/`;}
+    const walk=(nodes:PageLayoutData['content'])=>{for(const node of nodes){if(node.type==='Navbar'){const labels=node.props?.localeLabels as Record<string,unknown>|undefined;node.props={...node.props,languageSwitcher:links,localeLabels:{...labels,language:typeof labels?.language==='string'?labels.language:current==='ar'?'اللغة':'Language'}};const logo=node.props.logo as Record<string,unknown>|undefined;if(logo?.link==='/')logo.link=current===sourceLocale?'/':`/${current}/`;}
         if(node.type==='Footer')node.props={...node.props,logoHref:current===sourceLocale?'/':`/${current}/`};if(node.children)walk(node.children);}};walk(layout.content);
     if(current!==sourceLocale){const projected=localizeNavigationProps(layout,current,origins);projected.root={...projected.root,localeNavigation:{locale:current,origins}};return projected;}
     return layout;
