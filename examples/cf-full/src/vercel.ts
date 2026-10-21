@@ -46,7 +46,6 @@ import { createCmsEngine, readTranslationExecutionEnabled } from './worker.js';
 import { bootTimeoutMs, raceBootTimeout, BootTimeoutError } from './boot-guard.js';
 
 let enginePromise: Promise<Hono> | null = null;
-let initError: string | null = null;
 
 function engine(): Promise<Hono> {
     if (!enginePromise) {
@@ -84,7 +83,6 @@ function engine(): Promise<Hono> {
             });
         })().catch((e) => {
             enginePromise = null;
-            initError = e instanceof Error ? e.message : String(e);
             throw e;
         });
     }
@@ -92,7 +90,6 @@ function engine(): Promise<Hono> {
 }
 
 export async function handler(req: Request): Promise<Response> {
-    if (initError) return new Response(initError, { status: 500 });
     // Boot AND request-path engine work are bounded: an unreachable state DB
     // must answer as a legible 503, not hold the request until the platform's
     // own kill (every request awaits the same pending init — the hang would
