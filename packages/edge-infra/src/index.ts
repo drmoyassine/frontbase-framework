@@ -87,3 +87,5 @@ export type { SecretVersion, VaultOptions } from './vault/vault.js';
 
 // executors
 export { aiChatExecutor, mcpCallExecutor, emailExecutor, queueTriggerExecutor, fullExecutorRegistry } from './executors/ai.js';
+
+export {scopedDeploymentStorage,DEPLOYMENT_S3_PROVIDER_ID} from './storage/deployment.js';

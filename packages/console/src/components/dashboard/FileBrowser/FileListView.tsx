@@ -340,7 +340,7 @@ export function FileListView({
                                     }}>
                                         <Settings className="h-4 w-4 mr-2" /> Bucket Settings
                                     </DropdownMenuItem>}
-                                    <DropdownMenuItem onClick={() => {
+                                    <DropdownMenuItem disabled={currentBucketData?.can_empty===false} onClick={() => {
                                         const bucket = buckets?.find(b => b.name === currentBucket);
                                         if (bucket) setConfirmDialog({ isOpen: true, title: 'Empty Bucket', description: `Are you sure you want to empty "${bucket.name}"? This will delete all files.`, actionLabel: 'Empty', variant: 'destructive', actionType: 'empty', targetId: bucket.id });
                                     }}>

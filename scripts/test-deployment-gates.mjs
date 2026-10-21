@@ -5,6 +5,19 @@ import { join } from 'node:path';
 import { verifyHostArtifact } from './verify-host-artifact.mjs';
 import { deploymentEnvironment } from './deploy-environment.mjs';
 
+// Native template rewriting only populated existing resource fields in the live button flow.
+// Assert a complete handoff shape and prohibit borrowing an account's real resource IDs.
+const nativeTemplate=readFileSync(new URL('../wrangler.toml',import.meta.url),'utf8');
+const d1=nativeTemplate.match(/\[\[d1_databases\]\]([\s\S]*?)(?=\n\[|$)/)?.[1]??'';
+const kv=nativeTemplate.match(/\[\[kv_namespaces\]\]([\s\S]*?)(?=\n\[|$)/)?.[1]??'';
+assert.match(d1,/binding\s*=\s*"DB"/);assert.match(d1,/database_name\s*=\s*"[^"\r\n]+"/);
+assert.match(d1,/database_id\s*=\s*"00000000-0000-0000-0000-000000000000"/);
+assert.match(kv,/binding\s*=\s*"FRONTBASE_KV"/);assert.match(kv,/\bid\s*=\s*"00000000000000000000000000000000"/);
+assert.ok(!/^\s*account_id\s*=|HYPERDRIVE/m.test(nativeTemplate),'portable root cannot borrow a deployment account or cloud database');
+const nativeDeploy=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).scripts.deploy;
+assert.match(nativeDeploy,/--config wrangler\.toml/);assert.match(nativeDeploy,/--experimental-auto-create=false/,'native deployment must refuse unassigned resources instead of creating duplicates');
+console.log('PASS portable native template: complete replaceable D1/KV fields and inert resource IDs');
+
 const root = mkdtempSync(join(tmpdir(), 'frontbase-deploy-gates-'));
 const config = JSON.parse(readFileSync(new URL('../examples/cf-full/vercel.json', import.meta.url), 'utf8'));
 const bundle = '// URL_SCHEME_NOT_SUPPORTED qstash.upstash.io\n' + '// node-compatible fixture\n'.repeat(5000) + 'export default { fetch() {} }';

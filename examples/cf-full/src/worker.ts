@@ -29,7 +29,7 @@ import type { PageEntry } from '@frontbase/edge-core';
 import { createConsole, createCompatApp, createSupabaseCloudAuth, assertStripeKeyMode, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, type CloudIdentityProvider, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
-import { s3StorageProvider, kvCache, createNativeR2Storage, NATIVE_R2_ACCESS_PATH, type R2BucketBinding, type KVNamespaceBinding, type CacheProvider, type DbRunner, type StorageProvider } from '@frontbase/edge-infra';
+import { s3StorageProvider, kvCache, createNativeR2Storage, NATIVE_R2_ACCESS_PATH, type R2BucketBinding, type KVNamespaceBinding, type CacheProvider, type DbRunner, type StorageProvider, type StorageProviderFactory } from '@frontbase/edge-infra';
 import { resolveStateDb, StateDbConfigError, type ResolvedStateDb } from './state-db.js';
 import { resolveSessionSecret } from './session-secret.js';
 import { tenantMiddleware, hostTenantOf, hostKindOf } from './tenancy.js';
@@ -54,7 +54,7 @@ export interface CmsEnv {
     /** Frontbase Cloud application-state PostgreSQL through Cloudflare Hyperdrive. */
     HYPERDRIVE?: { connectionString: string };
     ASSETS: { fetch(request: Request): Promise<Response> };
-    SESSION_SECRET: string;
+    SESSION_SECRET?: string;
     SETUP_TOKEN?: string;
     SETUP_EXPIRES_AT?: string;
     ADMIN_EMAIL?: string;
@@ -124,6 +124,7 @@ export interface CmsEngineOptions {
     /** Wrangler Static Assets binding. Omitted by the in-process smoke. */
     assets?: { fetch(request: Request): Promise<Response> };
     storageProvider?: StorageProvider;
+    storageProviderFor?: StorageProviderFactory;
     r2Binding?: R2BucketBinding;
     deploymentManifest?: unknown;
     /** Identity of the host this engine runs on (edge-engines system card).
@@ -393,7 +394,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         userStoreFor: (t: string) => new UserStore(opts.runner, t),
         now,
         storageProvider: opts.storageProvider,
-        storageProviderFor: nativeStorage?.providerFor,
+        storageProviderFor: opts.storageProviderFor ?? nativeStorage?.providerFor,
         // CLOUD: anonymous public-data calls resolve to the request's host
         // tenant (a published Form/InfoList reads ITS tenant's datasources).
         // Self-host: omitted ⇒ the `_root` fallback, byte-identical.
@@ -873,7 +874,9 @@ let currentCtx: ExecutionContext | null = null;
 export default {
     async fetch(req: Request, env: CmsEnv, ctx: ExecutionContext): Promise<Response> {
         try {
-            if (!env.SESSION_SECRET) {
+            // Self-host uses the shared persisted resolver after migrations.
+            // Managed cloud retains its explicit operator-secret requirement.
+            if (env.FRONTBASE_DEPLOYMENT_MODE === 'cloud' && !env.SESSION_SECRET) {
                 return new Response('SESSION_SECRET is not configured — run: wrangler secret put SESSION_SECRET', { status: 500 });
             }
             currentCtx = ctx;

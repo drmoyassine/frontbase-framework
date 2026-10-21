@@ -46,6 +46,7 @@ import { dirname, join } from 'node:path';
 import { validateStagedConsole } from './console-pin.mjs';
 import { verifyHostArtifact } from './verify-host-artifact.mjs';
 import { DEPLOY_SECRET_NAMES as SECRET_NAMES, deploymentEnvironment } from './deploy-environment.mjs';
+import {vercelOperation,vercelOperationArgs,vercelOperationListArgs,assertVercelOperationMatch} from './deployment-setup/vercel-operation.mjs';
 import {readManagedRuntimeManifest} from '../packages/edge-core/dist/deployment.js';
 import { prepareVercelEnvironment, assertVercelTarget, updateVercelEnvironment, vercelDeploymentUrl, assertVercelIntegration, assertVercelPreviewHistory, assertVercelDeployment } from './vercel-deployment-policy.mjs';
 
@@ -126,6 +127,7 @@ if(secrets.FRONTBASE_DEPLOYMENT_MANIFEST) {
     const safe=readManagedRuntimeManifest(secrets.FRONTBASE_DEPLOYMENT_MANIFEST);
     if(!safe||safe.target!=='vercel'||safe.environment!==environment){console.error('✗ invalid Vercel profile metadata.');process.exit(2);}
 }
+const operation=vercelOperation({operationId:value('operation-id'),manifestDigest:value('manifest-digest')},secrets.FRONTBASE_DEPLOYMENT_MANIFEST?JSON.parse(secrets.FRONTBASE_DEPLOYMENT_MANIFEST):null);
 // Redeploy preserves the existing host secret; rotation and initialization are explicit.
 try {
     secrets = prepareVercelEnvironment(secrets, { firstInstall: flag('first-install') || process.env.VERCEL_DEPLOY_INTENT === 'first-install', redeploy: flag('redeploy') || process.env.VERCEL_DEPLOY_INTENT === 'redeploy', rotateSession: flag('rotate-session-secret'), setupLink: flag('setup-link') });
@@ -220,7 +222,7 @@ try {
 console.log('\n→ deploying to Vercel (Node function + static matrix)...');
 const configured=vercel(['project','update',project,'--root-directory','examples/cf-full','--yes']);
 if(configured.code!==0){console.error('✗ exact project workspace configuration failed.');process.exit(1);}
-const dep = vercel(['deploy', '--environment', environment, '--archive=tgz', '--yes']);
+const dep = vercel(['deploy', '--environment', environment, '--archive=tgz', '--yes',...vercelOperationArgs(operation)]);
 if (dep.code !== 0) {
     console.error(`✗ vercel deploy failed:\n${dep.stderr || dep.stdout}`);
     process.exit(1);
@@ -234,6 +236,7 @@ if (!deployUrl) {
 
 try {const actual=vercel(['inspect',deployUrl,'--json']);if(actual.code!==0)throw Error();deployUrl=assertVercelDeployment(JSON.parse(actual.stdout),{project,environment,teamSlug:verifiedTarget.remote.owner?.slug});}catch{console.error('✗ actual deployment target/readiness verification failed; no success or setup link issued. Resources preserved.');process.exit(1);}
 
+if(operation){try{const matched=vercel(vercelOperationListArgs({project,environment},operation));if(matched.code!==0)throw Error();assertVercelOperationMatch(JSON.parse(matched.stdout),{context:{project,environment},operation,url:deployUrl});}catch{console.error('✗ deployment operation verification failed; reconcile the recorded candidate without replay.');process.exit(1);}}
 console.log(`\n✓ deployed to ${deployUrl}`);
 if (!hasAdmin && secrets.SETUP_TOKEN && setupExpiresAt) {
     console.log('\n  No administrator exists yet. Open this secure one-time setup link:');

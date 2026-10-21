@@ -19,10 +19,10 @@ function mount(element:React.ReactNode){
  const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
  return render(<QueryClientProvider client={client}>{element}</QueryClientProvider>);
 }
-function bucketView(managed:boolean){
+function bucketView(managed:boolean,canEmpty=true){
  const noop=vi.fn();
  return <BucketListView {...{
-  buckets:[{id:'files',name:'files',public:false,created_at:'2026-10-20',deployment_managed:managed}],
+  buckets:[{id:'files',name:'files',public:false,created_at:'2026-10-20',deployment_managed:managed,can_empty:canEmpty}],
   bucketsLoading:false,bucketSearch:'',setBucketSearch:noop,selectedProviders:[],setSelectedProviders:noop,bucketSortConfig:{key:'name',direction:'asc'},setBucketSortConfig:noop,bucketPage:0,setBucketPage:noop,
   getFilteredAndSortedBuckets:(b:any)=>b??[],getPaginatedBuckets:(b:any)=>b,getTotalBucketPages:()=>1,isBucketDialogOpen:false,setIsBucketDialogOpen:noop,bucketDialogMode:'edit',bucketForm:{name:'files',public:false,fileSizeLimit:'',allowedMimeTypes:''},setBucketForm:noop,
   handleOpenCreateBucket:noop,handleOpenEditBucket:noop,confirmDialog:{isOpen:false,title:'',description:'',actionLabel:'',actionType:null,targetId:null},setConfirmDialog:noop,
@@ -61,4 +61,11 @@ test('native provider is labeled managed and cannot be removed or selected for b
  expect(screen.getByText('Deployment managed · private')).toBeTruthy();
  expect(screen.queryByRole('button',{name:'Remove Cloudflare R2 (bound)'})).toBeNull();
  expect(screen.getByText('Creatable providers: none')).toBeTruthy();
+});
+
+test('a bound provider can explicitly refuse emptying without removing native R2 support',async()=>{
+ mount(bucketView(true,false));
+ fireEvent.keyDown(screen.getByRole('button',{name:'Bucket actions for files'}),{key:'Enter'});
+ expect(await screen.findByRole('menuitem',{name:'Empty Bucket'})).toHaveAttribute('aria-disabled','true');
+ expect(screen.queryByRole('menuitem',{name:'Delete Bucket'})).toBeNull();
 });

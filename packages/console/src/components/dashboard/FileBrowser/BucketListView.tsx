@@ -282,7 +282,7 @@ export function BucketListView({
                                                 {!bucket.deployment_managed && <DropdownMenuItem onClick={(e) => handleOpenEditBucket(bucket, e)}>
                                                     <Settings className="h-4 w-4 mr-2" /> Settings
                                                 </DropdownMenuItem>}
-                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setConfirmDialog({ isOpen: true, title: 'Empty Bucket', description: `Are you sure you want to empty the bucket "${bucket.name}"? This cannot be undone.`, actionLabel: 'Empty', variant: 'destructive', actionType: 'empty', targetId: bucket.id }); }}>
+                                                <DropdownMenuItem disabled={bucket.can_empty===false} onClick={(e) => { e.stopPropagation(); setConfirmDialog({ isOpen: true, title: 'Empty Bucket', description: `Are you sure you want to empty the bucket "${bucket.name}"? This cannot be undone.`, actionLabel: 'Empty', variant: 'destructive', actionType: 'empty', targetId: bucket.id }); }}>
                                                     <Archive className="h-4 w-4 mr-2" /> Empty Bucket
                                                 </DropdownMenuItem>
                                                 {!bucket.deployment_managed && <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); setConfirmDialog({ isOpen: true, title: 'Delete Bucket', description: `Are you sure you want to delete the bucket "${bucket.name}"? This action cannot be undone.`, actionLabel: 'Delete', variant: 'destructive', actionType: 'deleteBucket', targetId: bucket.id }); }}>

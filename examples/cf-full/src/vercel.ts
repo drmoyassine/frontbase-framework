@@ -39,8 +39,8 @@
 import type { Hono } from 'hono';
 import { waitUntil } from '@vercel/functions';
 import { vercelDispatcher } from './vercel-lifecycle.js';
-import { sigv4StorageProvider } from '@frontbase/edge-infra';
-import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
+
+import { deploymentStorageOptions, parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
 import { resolveStateDb, StateDbConfigError } from './state-db.js';
 import { createCmsEngine, readTranslationExecutionEnabled } from './worker.js';
 import { bootTimeoutMs, raceBootTimeout, BootTimeoutError } from './boot-guard.js';
@@ -67,14 +67,7 @@ function engine(): Promise<Hono> {
                 setupExpiresAt: env.SETUP_EXPIRES_AT || undefined,
                 admin: { email: env.ADMIN_EMAIL || undefined, password: env.ADMIN_PASSWORD || undefined, role: env.ADMIN_ROLE || undefined },
                 dispatcher: vercelDispatcher(waitUntil),
-                storageProvider: env.STORAGE_ACCESS_KEY_ID && env.STORAGE_SECRET_ACCESS_KEY
-                    ? sigv4StorageProvider({
-                        accessKeyId: env.STORAGE_ACCESS_KEY_ID,
-                        secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY,
-                        endpoint: env.STORAGE_ENDPOINT,
-                        region: env.STORAGE_REGION,
-                    })
-                    : undefined,
+                ...deploymentStorageOptions(env),
                 // The edge-engines system card must describe THIS host (the
                 // engine default describes the Cloudflare worker).
                 systemEdge: { provider: 'vercel', name: 'Vercel Edge', db: stateDb.label },

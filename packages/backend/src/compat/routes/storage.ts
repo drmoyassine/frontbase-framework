@@ -44,6 +44,7 @@ export function createStorageClientResolver(opts: {
     externalFetch?: CompatFetch;
 }) {
     const { phase2For, kvFor, storageProvider, storageProviderFor } = opts;
+    const boundProviderId=storageProviderFor?.deploymentBinding?.id??NATIVE_R2_PROVIDER_ID;
     const transport: CompatFetch = (input, init) => guardedExternalFetch(opts.externalFetch ?? globalThis.fetch, input instanceof Request ? input.url : input, init);
     const sha256Hex = async (value: string): Promise<string> => {
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
@@ -138,7 +139,7 @@ export function createStorageClientResolver(opts: {
     /** Resolve from provider_id when present; otherwise fall back to the env-wired
      *  provider so env/Docker deployments (STORAGE_* vars) keep working. */
     const resolveForOp = async (tenant: string, providerId: string | undefined, request?:Request): Promise<ResolvedStorage> => {
-        if(providerId===NATIVE_R2_PROVIDER_ID && storageProviderFor)return {client:storageProviderFor(tenant,request)};
+        if(providerId===boundProviderId && storageProviderFor)return {client:storageProviderFor(tenant,request)};
         if (providerId) return resolveStorageClient(tenant, providerId);
         const client=storageProvider??storageProviderFor?.(tenant,request);
         return client ? {client} : { status: 503, message: 'Storage provider is not configured' };
@@ -146,7 +147,7 @@ export function createStorageClientResolver(opts: {
     /** Resolve a MANAGEMENT client, or undefined when the surface is
      *  store-simulated. Credential errors still surface for real-adapter types. */
     const resolveManaged = async (tenant: string, providerId: string, request?:Request): Promise<{ client: StorageProvider } | { client: undefined } | { status: 400 | 404 | 500 | 503; message: string }> => {
-        if(providerId===NATIVE_R2_PROVIDER_ID && storageProviderFor)return {client:storageProviderFor(tenant,request)};
+        if(providerId===boundProviderId && storageProviderFor)return {client:storageProviderFor(tenant,request)};
         const providers = await kvFor(tenant).getJson<Array<Record<string, unknown>>>('storage_providers', []);
         const record = providers.find((provider) => provider.id === providerId);
         if (!record) return { status: 404, message: `Storage provider ${providerId} not found` };
@@ -166,6 +167,7 @@ export function registerStorageRoutes(
     externalFetch?: CompatFetch,
     storageProviderFor?: StorageProviderFactory,
 ): void {
+    const boundProviderId=storageProviderFor?.deploymentBinding?.id??NATIVE_R2_PROVIDER_ID;
     const redactConfig = (record: Record<string, unknown>) => {
         const { config: _config, config_ciphertext: _ciphertext, id, name, provider, provider_account_id, account_name, is_active, created_at, updated_at, ...rest } = record;
         return {
@@ -178,7 +180,7 @@ export function registerStorageRoutes(
             is_active,
             created_at,
             updated_at: updated_at ?? created_at ?? '',
-            ...(id===NATIVE_R2_PROVIDER_ID && storageProviderFor?{deployment_managed:true}:{}),
+            ...(id===boundProviderId && storageProviderFor?{deployment_managed:true}:{}),
         };
     };
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
@@ -187,7 +189,7 @@ export function registerStorageRoutes(
         if (!secretCipher.isEncrypted(ciphertext)) throw new Error('secret_cipher_unavailable');
         return ciphertext;
     };
-    const nativeProviderFor=(id:string)=>id===NATIVE_R2_PROVIDER_ID && storageProviderFor ? {id:NATIVE_R2_PROVIDER_ID,name:'Cloudflare R2 (bound)',provider:'r2',provider_account_id:null,account_name:'Platform binding',deployment_managed:true,is_active:true,created_at:now()} : undefined;
+    const nativeProviderFor=(id:string)=>id===boundProviderId && storageProviderFor ? {id:boundProviderId,name:storageProviderFor.deploymentBinding?.name??'Cloudflare R2 (bound)',provider:storageProviderFor.deploymentBinding?.provider??'r2',provider_account_id:null,account_name:'Platform binding',deployment_managed:true,is_active:true,created_at:now()} : undefined;
     const hasStorageProvider = async (tenant: string, providerId: string) => {
         if(nativeProviderFor(providerId))return true;
         const providers = await kvFor(tenant).getJson<Array<{ id?: string }>>('storage_providers', []);
@@ -1021,7 +1023,7 @@ export function registerStorageRoutes(
     app.get('/api/storage/providers/', async (c) => {
         const kv = kvFor(c.get('tenant'));
         const providers = await kv.getJson<Array<Record<string, unknown>>>('storage_providers', []);
-        const native=nativeProviderFor(NATIVE_R2_PROVIDER_ID);
+        const native=nativeProviderFor(boundProviderId);
         return c.json([...providers.filter(p=>!native || p.id!==native.id),...(native?[native]:[])].map(redactConfig));
     });
 
