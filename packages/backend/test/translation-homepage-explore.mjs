@@ -16,10 +16,10 @@ for (const role of ['institution', 'program', 'city']) { const m = config.collec
 config.collections.institution.fields.cityId = 'city'; config.collections.program.fields.institutionId = 'institution';
 const pad = n => String(n).padStart(2, '0');
 const records = () => ({ cities: [{ id: 9, title: 'Boston' }],
-    institutions: Array.from({ length: 14 }, (_, i) => ({ summary: `Summary ${pad(i + 1)}`, cover: `https://cdn.example.org/${i + 1}.png`, coverAlt: `Campus ${pad(i + 1)}`, logo: null, id: i + 1, title: `Institution ${pad(i + 1)}`, originalPath: `/inst-${i + 1}/`, cityId: 9, body: null })),
-    programs: [{ summary: 'Alpha program', cover: null, coverAlt: '', logo: null, id: 101, title: 'Program Alpha', originalPath: '/program-alpha/', institutionId: 1, body: null },
-        { summary: 'Beta program', cover: null, coverAlt: '', logo: null, id: 102, title: 'Program Beta', originalPath: '/program-beta/', institutionId: 1, body: null },
-        { summary: 'Gamma program', cover: null, coverAlt: '', logo: null, id: 103, title: 'Program Gamma', originalPath: '/program-gamma/', institutionId: 2, body: null }],
+    institutions: Array.from({ length: 14 }, (_, i) => ({ summary: `Summary ${pad(i + 1)}`, cover: `https://cdn.example.org/${i + 1}.png`, coverAlt: `Campus ${pad(i + 1)}`, logo: null, id: i + 1, title: `Institution ${pad(i + 1)}`, originalPath: `/inst-${i + 1}/`, cityId: 9, body: null, publishedAt: '2024-03-09' })),
+    programs: [{ summary: 'Alpha program', cover: null, coverAlt: '', logo: null, id: 101, title: 'Program Alpha', originalPath: '/program-alpha/', institutionId: 1, body: null, publishedAt: '2023-11-02' },
+        { summary: 'Beta program', cover: null, coverAlt: '', logo: null, id: 102, title: 'Program Beta', originalPath: '/program-beta/', institutionId: 1, body: null, publishedAt: '2023-11-02' },
+        { summary: 'Gamma program', cover: null, coverAlt: '', logo: null, id: 103, title: 'Program Gamma', originalPath: '/program-gamma/', institutionId: 2, body: null, publishedAt: '2023-11-02' }],
     articles: [] });
 const rowChildren = prefix => [
     { id: `${prefix}-t`, type: 'Heading', props: { recordBindings: { text: 'title' } } },
@@ -176,6 +176,9 @@ try {
     assert.equal(sourceFetch.rows[0].title, 'Institution 14', 'the source-path fetch keeps source semantics');
     const staleFetch = await listFetch('/ar/explore/', { ...listQuery, filters: [{ column: 'title', op: 'contains', value: 'Institution 01' }] });
     assert.deepEqual(staleFetch.rows.map(row => row.title), ['Institution 01 Renamed'], 'a stale released title falls back to the row\'s own source text in fetches');
+    const listLanguage = async (path, query) => { const r = await renderReviewedSitePublication(f.db, tenant, new Request('https://site.test' + path, { headers: { 'X-Frontbase-List': encodeURIComponent(JSON.stringify(query)) } })); return r?.headers.get('Content-Language'); };
+    assert.equal(await listLanguage('/ar/explore/', listQuery), 'ar', 'localized fetches declare the released language');
+    assert.equal(await listLanguage('/explore/', listQuery), null, 'source-path fetches stay undeclared');
     // Deactivating the release must not break hydration on the prefixed URL: the fallback list
     // fetch strips the locale prefix and walks the source registry with source semantics. A fresh
     // homepage release keeps the strict locale tree available so the shell still serves.
@@ -190,11 +193,39 @@ try {
     const explorePointer = (await call('locales/')).locales.find(item => item.path === '/explore/');
     await call('deactivate/', { locale: 'ar', path: '/explore/', expected: { hash: explorePointer.hash, generation: explorePointer.generation } });
     await saveAll(await call('review/?locale=ar'), '/');
+    const dirLang = text => { const doc = new JSDOM(text).window.document; return doc.documentElement.getAttribute('lang') + '/' + doc.documentElement.getAttribute('dir'); };
     assert.equal((await html('/ar/explore/')).status, 200, 'the shell keeps serving source content after deactivation');
+    assert.equal(dirLang((await html('/ar/explore/')).text), 'en/ltr', 'shared-shell fallback keeps the source language metadata');
     const fallbackFetch = await listFetch('/ar/explore/', listQuery);
     assert.equal(fallbackFetch.total, 14, 'a fallback localized fetch keeps the source inventory');
     assert.equal(fallbackFetch.rows[0].title, 'Institution 14', 'without the release the fetch keeps source semantics');
+    assert.equal(await listLanguage('/ar/explore/', listQuery), null, 'catalog-less fallback fetches never claim a language');
+
+    // Slice A (task 10): date output follows the page language. A fresh template revision binds
+    // publishedAt as a formatted date; the review carries no unit for it (locale output, never a
+    // surface — so serve-time locale projection leaves the release hash byte-stable), and the /ar/
+    // serve re-formats it in Arabic beside lang/dir stamps resolved from the content language.
+    // The date fixture rides on the query-scoped Repeater — record bindings are a directoryQuery
+    // concept and the converted standard list carries none — so this final revision runs after
+    // the fetch assertions and leaves no list fetch behind it.
+    const dateTemplates = templates.map(template => template.role === 'directory'
+        ? { ...template, layout: { ...template.layout, content: template.layout.content.map(node => node.id === 'ilist'
+            ? { ...node, children: [...node.children, { id: 'r-date', type: 'Paragraph', props: { recordBindings: { text: 'publishedAt', format: 'date' } } }] } : node) } }
+        : template);
+    await prepareActivate(records(), dateTemplates);
+    const dateReview = await call('review/?locale=ar&path=/explore/');
+    const enDate = new Intl.DateTimeFormat('en', { timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date('2024-03-09T00:00:00Z'));
+    assert.ok(!dateReview.fields.some(field => field.source === enDate), 'formatted dates never enter the review inventory');
+    // Template listings always require the explicit per-unit policy (block defaults refuse).
+    await saveAll(dateReview, '/explore/', { missing: 'source-fallback', outdated: 'source-fallback' });
+    const datedSource = await html('/explore/'); assert.equal(datedSource.status, 200);
+    assert.ok(datedSource.text.includes(enDate), 'source serves render the site-locale date');
+    const datedAr = await html('/ar/explore/'); assert.equal(datedAr.status, 200);
+    const arDate = new Intl.DateTimeFormat('ar', { timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date('2024-03-09T00:00:00Z'));
+    assert.ok(datedAr.text.includes(arDate) && !datedAr.text.includes(enDate), 'the localized serve re-formats dates in the page language');
+    assert.equal(dirLang(datedAr.text), 'ar/rtl', 'the localized document follows the content language');
+    assert.equal(dirLang(datedSource.text), 'en/ltr', 'source serves keep the site direction stamp');
 
     auth = false; await call('review/?locale=ar&path=/explore/', undefined, 401); auth = true; role = 'viewer'; await call('review/?locale=ar&path=/explore/', undefined, 403); role = 'owner';
-    console.log('translation-homepage explore PASS: template listing pages, per-unit-only releases, browsing chrome surfaces, paged record supplement, parameterized joins, per-unit fallback, record-detail refusal, standard-conversion fetch agreement');
+    console.log('translation-homepage explore PASS: template listing pages, per-unit-only releases, browsing chrome surfaces, paged record supplement, parameterized joins, per-unit fallback, record-detail refusal, standard-conversion fetch agreement, locale-following dates and direction');
 } finally { f.close(); }

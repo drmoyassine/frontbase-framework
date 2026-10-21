@@ -7,6 +7,7 @@ import {reviewHomepage,saveHomepageTranslations,prepareHomepageLocale,activateHo
 import {publishedLiveQuery} from '../published-live-query.js';
 import {addHomepageLanguageLinks} from '../translation-homepage-serving.js';
 import {createEngine,directProvider,type PageLayoutData} from '@frontbase/edge-core';
+import {localeDirection} from '@frontbase/edge-core/localization';
 
 async function body(request:Request){const reader=request.body?.getReader();if(!reader)throw Error();let size=0,text='';const decoder=new TextDecoder();while(true){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.byteLength;if(size>400000){await reader.cancel();throw Error();}text+=decoder.decode(chunk.value,{stream:true});}return JSON.parse(text+decoder.decode());}
 const pagePath=z.string().regex(/^\/(?:[A-Za-z0-9._~!$&'()*+,;=@%-]+\/)*$/).max(160);
@@ -26,7 +27,7 @@ export function registerTranslationHomepageRoutes(app:Hono<{Variables:ConsoleAut
     app.get(root+'preview/',async c=>{try{const tenant=c.get('tenant'),hash=z.string().regex(/^[a-f0-9]{64}$/).parse(c.req.query('hash')),release=await readHomepageRelease(db,tenant,hash);if(!release)throw Error();
         const capture=await captureHomepage(db,tenant,c.req.raw,live(c.req.url),release.path),result=projectHomepageLocale(capture,release),path=`/${release.locale}${release.path}`;
         result.page={...result.page,layout:addHomepageLanguageLinks(result.page.layout as unknown as PageLayoutData,release.sourceLocale,[release.locale],release.locale,release.path,[new URL(c.req.url).origin,new URL(capture.active.artifact.configuration.site.origin).origin])};
-        const manifest={version:hash,pages:{[path]:result.page},queries:{}};const engine=createEngine({manifest,data:directProvider(manifest),environment:'builder',document:{...result.document,language:release.locale,direction:/^(ar|fa|he|ur)(-|$)/.test(release.locale)?'rtl':'ltr',robots:'noindex, nofollow'}});
+        const manifest={version:hash,pages:{[path]:result.page},queries:{}};const engine=createEngine({manifest,data:directProvider(manifest),environment:'builder',document:{...result.document,language:release.locale,direction:localeDirection(release.locale),robots:'noindex, nofollow'}});
         const rendered=await engine.fetch(new Request(new URL(path,c.req.url)));return new Response(rendered.body,{status:rendered.status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}});
     }catch{return c.json({detail:'Prepared language preview is unavailable or outdated.'},409);}});
 }

@@ -11,10 +11,11 @@ import { resolveChunkPublicationPage } from './site-publication-chunk-runtime.js
 import {menuReferenceSchema,type VerifiedMenuAudience} from '@frontbase/edge-core/menus';
 import {resolveAppMenuLayout} from './menus-runtime.js';
 import {audienceConditionUser} from '@frontbase/edge-core';
+import {localeDirection} from '@frontbase/edge-core/localization';
 import type {PublishedLiveQuery} from './publication-list-source.js';
 
-export async function resolvePublicationVersionPage(input:PublicationVersion,hash:string,owner:string,db:DbRunner,request:Request,audience:VerifiedMenuAudience|null=null,liveQuery?:PublishedLiveQuery,localizedTitles?:import('./site-publication-chunk-queries.js').LocalizedQueryPlan){
-    const result=await(input.schemaVersion===1?resolveSitePublicationPage(input,hash,owner,request):resolveChunkPublicationPage(input,hash,owner,db,request,audienceConditionUser(audience),liveQuery,localizedTitles));
+export async function resolvePublicationVersionPage(input:PublicationVersion,hash:string,owner:string,db:DbRunner,request:Request,audience:VerifiedMenuAudience|null=null,liveQuery?:PublishedLiveQuery,localizedTitles?:import('./site-publication-chunk-queries.js').LocalizedQueryPlan,recordsLocale?:string){
+    const result=await(input.schemaVersion===1?resolveSitePublicationPage(input,hash,owner,request,recordsLocale):resolveChunkPublicationPage(input,hash,owner,db,request,audienceConditionUser(audience),liveQuery,localizedTitles,recordsLocale));
     if(!result)return null;
     const layout=result.page.layout as unknown as PageLayoutData;
     const reference=(layout.root as Record<string,unknown>)?.appMenus;
@@ -30,7 +31,7 @@ export class PublicationRequestError extends Error {
 }
 
 /** Resolve one captured version. No control/content DB or mutable draft access. */
-export async function resolveSitePublicationPage(input: SitePublicationArtifact, hash: string, owner: string, request: Request): Promise<{ page: PageEntry; version: string; cacheKey: string; document: NonNullable<EngineOptions['document']> } | null> {
+export async function resolveSitePublicationPage(input: SitePublicationArtifact, hash: string, owner: string, request: Request, recordsLocale?: string): Promise<{ page: PageEntry; version: string; cacheKey: string; document: NonNullable<EngineOptions['document']> } | null> {
     if (!owner || !/^[a-f0-9]{64}$/.test(hash)) throw new Error('publication_context_required');
     const artifact = sitePublicationArtifactSchema.parse(input), url = new URL(request.url), path = url.pathname;
     if (!publicationPathSchema.safeParse(path).success) return null;
@@ -80,7 +81,7 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
         normalized[query.id] = params;
     }
     const prune = (nodes: PageLayoutData['content']): PageLayoutData['content'] => nodes.filter(node => !inactive.has(node.id)).map(node => ({ ...node, ...(node.children ? { children: prune(node.children) } : {}) }));
-    let projected = projectDirectoryRecords(projectSharedDirectoryPreview({ ...layout, content: prune(layout.content) }, artifact.configuration), records, { locale: artifact.configuration.site.locale });
+    let projected = projectDirectoryRecords(projectSharedDirectoryPreview({ ...layout, content: prune(layout.content) }, artifact.configuration), records, { locale: recordsLocale ?? artifact.configuration.site.locale });
     if (role === 'directory' || role === 'article-index') projected = projectDirectoryBrowsing(projected, [{ path,
         collection: role === 'directory' ? type as 'institution' | 'program' : null,
         q: search, page: Number(page),sort:sort as 'title-asc'|'title-desc',match:match as 'contains'|'startsWith'|'equals',pageSize:pageSize,total:(role==='article-index'?artifact.records.articles:type==='program'?artifact.records.programs:artifact.records.institutions).filter(row=>!search || (match==='equals'?row.title.toLowerCase()===search.toLowerCase():match==='startsWith'?row.title.toLowerCase().startsWith(search.toLowerCase()):row.title.toLowerCase().includes(search.toLowerCase()))).length, searchEnabled: artifact.configuration.browsing.search,
@@ -91,8 +92,9 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
     const description = typeof row?.summary === 'string' ? row.summary : template.description;
     const manifest = buildSiteManifest({ pages: { [path]: { title, slug: path.replace(/^\//, ''), description, layout: projected as unknown as Record<string, unknown> } }, queries: {}, versionPrefix: hash });
     const canonicalUrl = new URL(path, artifact.configuration.site.origin).href;
+    const documentLanguage = typeof row?.language === 'string' ? row.language : artifact.configuration.site.locale || 'en';
     return { page: manifest.pages[path]!, version: manifest.version, cacheKey: JSON.stringify([owner, hash, path, normalized]),
-        document: { faviconUrl: '', language: typeof row?.language === 'string' ? row.language : artifact.configuration.site.locale || 'en',
+        document: { faviconUrl: '', language: documentLanguage, direction: localeDirection(documentLanguage),
             canonicalUrl, robots: url.searchParams.size ? 'noindex, follow' : 'index, follow',
             openGraph: { title, description, url: canonicalUrl, type: role === 'article' ? 'article' : 'website', siteName: artifact.configuration.site.name,
                 ...(typeof row?.cover === 'string' ? { image: row.cover, imageAlt: typeof row.coverAlt === 'string' ? row.coverAlt : '' } : {}) } } };

@@ -105,7 +105,7 @@ export function localizedTitleIndex(release:z.infer<typeof releaseSchema>|null,m
     const indexTitles=new Map<string,string>(manifest.index.map(row=>[`${row.collection}:${row.id}`,row.title] as const));
     return {titles:freshLocalizedIndexTitles(release.catalog,indexTitles),catalog:release.catalog};
 }
-export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/',sourceUrl?:URL,localizedTitles?:LocalizedQueryPlan){
+export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/',sourceUrl?:URL,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string){
     const active=await new SitePublicationStore(db,tenant).activeVersion();
     if(!active||active.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,tenant).get(active.pointer.hash))throw Error('reviewed_homepage_required');
     const manifest=active.artifact;
@@ -117,7 +117,7 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
     if(!target)throw Error('homepage_required');
     // Localized query titles are a listing-page plan (parameterized template renderings); a static
     // page capture always queries pure source so review hashes stay deterministic.
-    const result=await resolvePublicationVersionPage(manifest,active.pointer.hash,tenant,db,new Request(new URL(!page&&sourceUrl?.search?path+sourceUrl.search:path,request.url)),{authenticated:false},liveQuery,!page?localizedTitles:undefined);
+    const result=await resolvePublicationVersionPage(manifest,active.pointer.hash,tenant,db,new Request(new URL(!page&&sourceUrl?.search?path+sourceUrl.search:path,request.url)),{authenticated:false},liveQuery,!page?localizedTitles:undefined,page?undefined:recordsLocale);
     if(!result)throw Error('homepage_unavailable');
     const layout=homepageDisplayLayout(result.page.layout as unknown as PageLayoutData);
     const baseFields=homepageDisplayFields(layout) as (DisplayField&{menu?:MenuRef})[];

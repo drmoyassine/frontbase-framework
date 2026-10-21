@@ -162,6 +162,9 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
                 delete rest.content; delete rest.value;
                 rest.text = b.format === 'date' ? formatEditorialDate(row[b.text], options.locale) : literal(row[b.text]);
                 if (b.format === 'date' && !rest.text) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+                // Date output is re-formatted from the row in the page language at serve time; the
+                // marker keeps extraction from owning it as a translatable text unit.
+                if (b.format === 'date') rest.translationLiteral = b.text;
             }
             if (b.href) rest.href = path.safeParse(row.originalPath).success ? row.originalPath : '';
             if (b.ariaLabel) {

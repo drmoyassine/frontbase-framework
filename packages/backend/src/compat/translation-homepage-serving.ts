@@ -1,6 +1,6 @@
 import {SitePublicationManifestStore} from './site-publication-manifest.js';
 import {verifyManifestEditorial} from './site-publication-approval-check.js';
-import {localizeNavigationProps,localizePublicHref} from '@frontbase/edge-core/localization';
+import {localizeNavigationProps,localizePublicHref,localeDirection} from '@frontbase/edge-core/localization';
 import {resolvePublicationVersionPage,PublicationRequestError} from './site-publication-runtime.js';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {PageLayoutData} from '@frontbase/edge-core';
@@ -64,9 +64,9 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     // Listing releases resolve through localized queries: their fresh released titles drive the
     // registry (search/sort/totals) and standard-list reads beside the per-unit text join.
     // Cached beside the source capture.
-    const captureFor=async(p:string,localizedTitles?:LocalizedQueryPlan)=>{
+    const captureFor=async(p:string,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string)=>{
         if(localizedTitles){const key=p+'\u0000localized';
-            if(!captures.has(key))captures.set(key,await captureHomepage(db,tenant,request,liveQuery,p,undefined,localizedTitles));
+            if(!captures.has(key))captures.set(key,await captureHomepage(db,tenant,request,liveQuery,p,undefined,localizedTitles,recordsLocale));
             return captures.get(key)!;}
         if(p==='/')return capture;
         if(!captures.has(p))captures.set(p,await captureHomepage(db,tenant,request,liveQuery,p));
@@ -88,7 +88,7 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     for(const item of published){
         // Per-unit releases serve a fresh join against the live page, so a site re-publication
         // does not deactivate them; only the page itself disappearing does.
-        if(item.release.policy?.outdated==='source-fallback'){try{await captureFor(item.release.path,item===selected?listingTitles:undefined);}catch{continue;}available.push(item);continue;}
+        if(item.release.policy?.outdated==='source-fallback'){try{await captureFor(item.release.path,item===selected?listingTitles:undefined,item===selected?item.release.locale:undefined);}catch{continue;}available.push(item);continue;}
         if(item.release.siteHash!==capture.active.pointer.hash)continue;
         const c=item.release.path==='/'?capture:await captureFor(item.release.path).catch(()=>null);
         if(c&&item.release.sourceHash===c.sourceHash)available.push(item);
@@ -112,7 +112,7 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     // Static pages refuse query parameters at their source path; the localized path refuses
     // them identically instead of rendering an indexable duplicate the source never serves.
     if(pageRelease&&!listingRelease&&sourceUrl.search)throw new PublicationRequestError();
-    const resolved=pageRelease?projectHomepageLocale(listingRelease&&sourceUrl.search?await captureHomepage(db,tenant,request,liveQuery,pageRelease.release.path,sourceUrl,listingTitles):await captureFor(pageRelease.release.path,listingTitles),pageRelease.release):isHomepage?(selected?projectHomepageLocale(capture,selected.release):capture.result):await resolvePublicationVersionPage(capture.active.artifact,capture.active.pointer.hash,tenant,db,new Request(sourceUrl),{authenticated:false},liveQuery);
+    const resolved=pageRelease?projectHomepageLocale(listingRelease&&sourceUrl.search?await captureHomepage(db,tenant,request,liveQuery,pageRelease.release.path,sourceUrl,listingTitles,pageRelease.release.locale):await captureFor(pageRelease.release.path,listingTitles,pageRelease.release.locale),pageRelease.release):isHomepage?(selected?projectHomepageLocale(capture,selected.release):capture.result):await resolvePublicationVersionPage(capture.active.artifact,capture.active.pointer.hash,tenant,db,new Request(sourceUrl),{authenticated:false},liveQuery);
     if(!resolved)return null;
     if(selected&&!pageRelease&&!isHomepage){
         // Only the already approved shared shell is translated here. Other page copy stays source content.
@@ -131,7 +131,7 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     // Language metadata follows the content, not the URL prefix: shared-shell fallback serves
     // keep the source locale's lang/dir so untranslated bodies never claim the page language.
     const contentLocale=pageRelease||isHomepage&&selected?current:sourceLocale;
-    resolved.document={...resolved.document,language:contentLocale,direction:/^(ar|fa|he|ur)(-|$)/.test(contentLocale)?'rtl':'ltr',canonicalUrl:canonical.href,alternates,
+    resolved.document={...resolved.document,language:contentLocale,direction:localeDirection(contentLocale),canonicalUrl:canonical.href,alternates,
         // SEO GAP-2: merge, never replace — the source document's image/imageAlt/type (and any
         // future keys) survive the localized serve; only identity fields are overridden.
         openGraph:{...resolved.document.openGraph,title:resolved.page.title,description:resolved.page.description,url:canonical.href,siteName:resolved.document.openGraph?.siteName??'',type:resolved.document.openGraph?.type??'website'}};

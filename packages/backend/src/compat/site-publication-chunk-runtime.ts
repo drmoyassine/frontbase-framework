@@ -7,9 +7,13 @@ import { sitePublicationManifestSchema, type SitePublicationManifest } from './s
 import { createChunkDirectoryQueries,localizedIndexTitleReader,type LocalizedQueryPlan } from './site-publication-chunk-queries.js';
 import { PublicationRequestError } from './site-publication-runtime.js';
 import { projectPublicationListRows,type PublishedLiveQuery } from './publication-list-source.js';
+import { localeDirection } from '@frontbase/edge-core/localization';
 
-/** Existing renderer/query projection; immutable chunks only, never canonical/draft reads. */
-export async function resolveChunkPublicationPage(input:SitePublicationManifest,hash:string,owner:string,db:DbRunner,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,localizedTitles?:LocalizedQueryPlan):Promise<{page:PageEntry;version:string;cacheKey:string;document:NonNullable<EngineOptions['document']>}|null>{
+/** Existing renderer/query projection; immutable chunks only, never canonical/draft reads.
+ *  `recordsLocale` threads the SERVE locale into record projection (formatted dates follow the
+ *  page language); capture/prepare paths omit it and keep the site locale, so release hashes —
+ *  which hash the display-field inventory, never formatted dates — stay byte-stable. */
+export async function resolveChunkPublicationPage(input:SitePublicationManifest,hash:string,owner:string,db:DbRunner,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string):Promise<{page:PageEntry;version:string;cacheKey:string;document:NonNullable<EngineOptions['document']>}|null>{
     if(!owner || !/^[a-f0-9]{64}$/.test(hash))throw new Error('publication_context_required');
     const artifact=sitePublicationManifestSchema.parse(input),url=new URL(request.url),path=url.pathname;
     if(!publicationPathSchema.safeParse(path).success)return null;
@@ -54,7 +58,7 @@ const params:Record<string,unknown>=mode==='detail'?{path:parentPath??path}:role
         records.set(query.id,rows.slice(0,mode==='detail'?1:Number(params.limit)));normalized[query.id]=params;
     }
     const prune=(nodes:PageLayoutData['content']):PageLayoutData['content']=>nodes.filter(node=>!inactive.has(node.id)).map(node=>({...node,...(node.children?{children:prune(node.children)}:{})}));
-    let projected=projectDirectoryRecords(projectSharedDirectoryPreview({...layout,content:prune(layout.content)},artifact.configuration),records,{locale:artifact.configuration.site.locale});
+    let projected=projectDirectoryRecords(projectSharedDirectoryPreview({...layout,content:prune(layout.content)},artifact.configuration),records,{locale:recordsLocale??artifact.configuration.site.locale});
     if(role==='directory'||role==='article-index'){const titleOf=localizedIndexTitleReader(localizedTitles?.titles);
     projected=projectDirectoryBrowsing(projected,[{path,collection:role==='directory'?type as 'institution'|'program':null,q:search,page:Number(page),sort:sort as 'title-asc'|'title-desc',match:match as 'contains'|'startsWith'|'equals',pageSize:pageSize,total:artifact.index.filter(row=>row.collection===(role==='article-index'?'articles':type==='program'?'programs':'institutions')).filter(row=>!search || (match==='equals'?titleOf(row).toLowerCase()===search.toLowerCase():match==='startsWith'?titleOf(row).toLowerCase().startsWith(search.toLowerCase()):titleOf(row).toLowerCase().includes(search.toLowerCase()))).length,searchEnabled:artifact.configuration.browsing.search,hasNext:hasNext && offset+pageSize<=19999}]);}
     projected=projectTemplatePresentation(projected,artifact.configuration,artifact.staticPages?.find(page=>page.originalPath==='/')?readLandingSettings(artifact.staticPages.find(page=>page.originalPath==='/')!.layout as unknown as PageLayoutData):undefined);
@@ -63,6 +67,7 @@ const params:Record<string,unknown>=mode==='detail'?{path:parentPath??path}:role
     projected=await projectPublicationListRows(projected,db,owner,request,user,liveQuery,localizedTitles?.catalog);
     const built=buildSiteManifest({pages:{[path]:{title,slug:path.replace(/^\//,''),description,layout:projected as unknown as Record<string,unknown>}},queries:{},versionPrefix:hash});
     const canonicalUrl=new URL(path,artifact.configuration.site.origin).href;
-    return {page:built.pages[path]!,version:built.version,cacheKey:JSON.stringify([owner,hash,path,normalized]),document:{faviconUrl:'',language:typeof row?.language==='string'?row.language:artifact.configuration.site.locale||'en',canonicalUrl,robots:url.searchParams.size?'noindex, follow':'index, follow',
+    const documentLanguage=typeof row?.language==='string'?row.language:artifact.configuration.site.locale||'en';
+    return {page:built.pages[path]!,version:built.version,cacheKey:JSON.stringify([owner,hash,path,normalized]),document:{faviconUrl:'',language:documentLanguage,direction:localeDirection(documentLanguage),canonicalUrl,robots:url.searchParams.size?'noindex, follow':'index, follow',
         openGraph:{title,description,url:canonicalUrl,type:role==='article'?'article':'website',siteName:artifact.configuration.site.name,...(typeof row?.cover==='string'?{image:row.cover,imageAlt:typeof row.coverAlt==='string'?row.coverAlt:''}:{})}}};
 }

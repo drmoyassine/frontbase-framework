@@ -114,7 +114,10 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
 export async function publicationListResponse(db:DbRunner,owner:string,request:Request,audience:VerifiedMenuAudience|null,localized?:{locale:string;path:string;catalog?:readonly LocalizedCatalogEntry[]}):Promise<Response|null> {
     const raw=request.headers.get('X-Frontbase-List');if(!raw)return null;
     const headers={'Cache-Control':'no-store','Content-Type':'application/json','X-Content-Type-Options':'nosniff'};
-    const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
+    // Content-Language is declared only where the payload actually carries released localized
+    // text (a prefix without a path-matched release keeps pure source semantics — never claim
+    // a language the body does not carry); error replies stay undeclared.
+    const reply=(body:unknown,status=200,extra?:Record<string,string>)=>new Response(JSON.stringify(body),{status,headers:{...headers,...extra}});
     if(raw.length>8192)return reply({error:'invalid_list_request'},422);
     let parsed:ReturnType<typeof publicationListRequestSchema.safeParse>;try{parsed=publicationListRequestSchema.safeParse(JSON.parse(decodeURIComponent(raw)));}catch{return reply({error:'invalid_list_request'},422);}
     if(!parsed.success)return reply({error:'invalid_list_request'},422);
@@ -146,6 +149,6 @@ export async function publicationListResponse(db:DbRunner,owner:string,request:R
         if(binding?.source?.kind!=='publication'||binding.dataSourceId!=='frontbase:publication'||!collections.includes(binding.tableName))return reply({error:'list_unavailable'},404);
         const result=await readPublicationList(db,owner,binding,input,localized?.catalog);
         if((await new SitePublicationStore(db,owner).activeVersion())?.pointer.hash!==active.pointer.hash)return reply({error:'publication_changed'},409);
-        return reply(result);
+        return reply(result,200,localized?.catalog?{'Content-Language':localized.locale}:undefined);
     }catch{return reply({error:'list_unavailable'},503);}
 }

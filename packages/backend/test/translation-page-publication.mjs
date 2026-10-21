@@ -57,6 +57,7 @@ try{
  const prepared=await call('prepare/',{locale:'ar',token:review.token,approveTranslations:true,path:'/privacy/',policy:{missing:'source-fallback',outdated:'source-fallback'}});
  assert.equal((await html('/ar/privacy/')).status,404,'prepare must not publish');
  const preview=await app.request('https://site.test'+prepared.previewUrl);assert.equal(preview.status,200);const previewText=await preview.text();assert.match(previewText,/عربي Privacy/);assert.match(previewText,/Privacy policy/,'untranslated units preview as source');
+ assert.equal(new JSDOM(previewText).window.document.documentElement.dir,'rtl','previews stamp the release direction');
  auth=false;assert.equal((await app.request('https://site.test'+prepared.previewUrl)).status,401,'prepared previews stay administrator-only');auth=true;
  // Drafts are never anonymous; publish is CAS-guarded.
  await call('publish/',{hash:prepared.hash,expected:{hash:'a'.repeat(64),generation:0},approveTranslations:true},409);

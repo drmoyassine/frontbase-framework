@@ -22,9 +22,9 @@ const id = z.union([z.string().min(1).max(128), z.number().int().positive()]);
 const media = editorialCoverUrlSchema.nullable();
 const base = z.object({ id, title: text(500).refine(v => v.trim().length > 0), originalPath: publicationPathSchema,
     summary: text(10000), cover: media, coverAlt: text(500), logo: media });
-export const publicationInstitutionSchema = base.extend({ cityId: id, body: text(60000).nullable().default(null) }).strict();
-export const publicationProgramSchema = base.extend({ institutionId: id, body: text(60000).nullable().default(null) }).strict();
-export const publicationCitySchema = z.object({ id, title: text(500).refine(v => v.trim().length > 0) }).strict();
+export const publicationInstitutionSchema = base.extend({ cityId: id, body: text(60000).nullable().default(null), publishedAt: text(100).nullable().default(null) }).strict();
+export const publicationProgramSchema = base.extend({ institutionId: id, body: text(60000).nullable().default(null), publishedAt: text(100).nullable().default(null) }).strict();
+export const publicationCitySchema = z.object({ id, title: text(500).refine(v => v.trim().length > 0), publishedAt: text(100).nullable().default(null) }).strict();
 export const publicationArticleSchema = base.extend({ revision: z.number().int().positive(), body: editorialBodySchema,
     language: z.string().regex(/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/), byline: text(500).nullable(), publishedAt: text(100).nullable() }).strict();
 export const publicationPageSchema = publicationArticleSchema;
@@ -43,7 +43,7 @@ const layout = z.record(z.unknown()).refine(value => {
             for (const node of nodes) {
                 const props = node.props as Record<string, unknown> | undefined;
                 if (props?.dataRequest || props?.queryConfig || props?.initialRows || props?.initialTotal!==undefined || props?._initialQuery
-                    || props?.translationRecord!==undefined || props?.translationSources!==undefined) throw new Error('mutable_binding');
+                    || props?.translationRecord!==undefined || props?.translationSources!==undefined || props?.translationLiteral!==undefined) throw new Error('mutable_binding');
                 if(node.binding || props?.binding){
                     if(!['Repeater','DataTable','Grid'].includes(String(node.type)))throw Error('mutable_binding');
                     const binding=props?.binding??node.binding;

@@ -96,7 +96,8 @@ assert.equal(wrapped.versions.find(candidate => candidate.id === 'members').over
 const authenticated = () => true, anonymous = () => undefined;
 assert.equal(resolveBlockTree([seasonal], authenticated)[0].props.text, 'عربي Winter programs');
 assert.equal(resolveBlockTree([seasonal], anonymous)[0].props.text, 'عربي Find your program');
-// Projection stamps legacy directoryQuery rows: text columns become record units, formatted dates never do.
+// Projection stamps legacy directoryQuery rows: text columns become record units; formatted
+// dates stay locale output — re-formatted in the page language at serve time, never a unit.
 const articleFields = homepageDisplayFields(projectDirectoryRecords(
     { content: [{ id: 'alist', type: 'Repeater', props: { directoryQuery: { version: 1, queryId: 'directory.article.list', params: {} } },
         children: [{ id: 'at', type: 'Heading', props: { recordBindings: { text: 'title' } } },
@@ -106,7 +107,7 @@ const articleFields = homepageDisplayFields(projectDirectoryRecords(
 const byline = articleFields.find(f => f.blockId === 'ab');
 assert.deepEqual([byline.fieldKey, byline.label], ['byline', 'Record articles / byline'], 'byline is a stampable record column');
 assert.deepEqual(byline.record, { connectionId: 'frontbase:publication', collection: 'articles', key: [{ column: 'id', value: 'a1' }] });
-const date = articleFields.find(f => f.blockId === 'ad');
-assert.deepEqual([date.fieldKey, date.record, date.label], [undefined, undefined, 'Paragraph'], 'formatted dates never become record units');
+assert.equal(articleFields.find(f => f.blockId === 'ad'), undefined, 'formatted dates are locale output, never translation surfaces');
+assert.ok(articleFields.some(f => f.blockId === 'at' && f.text === 'Travel guide'), 'record text beside a date literal still surfaces');
 
 console.log('localization display surfaces PASS: record identity extraction, reorder stability, shared-identity positions, positional fallback, coverage-refusing projection and Block Version inheritance identity');

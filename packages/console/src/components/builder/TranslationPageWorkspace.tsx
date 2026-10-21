@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
-import { translationGenerationConfigurationSchema } from '@frontbase/edge-core/localization';
+import { translationGenerationConfigurationSchema, localeDirection } from '@frontbase/edge-core/localization';
 import { translationPagePreviewSchema } from '@frontbase/edge-core/localization/batches';
 import { translationLanguages } from '../dashboard/settings/shared/translationLanguages';
 import { TranslationPicker } from '../dashboard/settings/shared/TranslationPicker';
@@ -63,7 +63,7 @@ export function localePreviewHtml(html: string, locale: string): string {
     if (!html) return '';
     const doc = new DOMParser().parseFromString(html, 'text/html');
     doc.documentElement.lang = locale;
-    doc.documentElement.dir = /^(ar|fa|he|ur|ps|sd|ug|yi)(-|$)/i.test(locale) ? 'rtl' : 'ltr';
+    doc.documentElement.dir = localeDirection(locale);
     return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
 }
 export function attachTranslationPreviewSelection(doc: Document, onSelectField?: (id: string) => void) {
