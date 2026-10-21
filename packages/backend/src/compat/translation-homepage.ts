@@ -11,7 +11,7 @@ import {SitePublicationReviewStore} from './site-publication-review-store.js';
 import {resolvePublicationVersionPage} from './site-publication-runtime.js';
 import {sitePublicationManifestSchema} from './site-publication-manifest.js';
 import {createChunkDirectoryQueries,freshLocalizedIndexTitles,type LocalizedQueryPlan} from './site-publication-chunk-queries.js';
-import {directoryLayoutQueries,directoryListCollections} from '@frontbase/edge-core/directory/configuration';
+import {directoryLayoutQueries,directoryListCollections,liveViewBindings} from '@frontbase/edge-core/directory/configuration';
 import {configuredTranslationStorage,configuredTranslationStorageIdentity} from './translation-storage.js';
 import {TranslationGenerationStore} from './translation-generation.js';
 import {translationDisplayText} from './translation-inputs.js';
@@ -139,7 +139,10 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
     const storage=await configuredTranslationStorage(host,db,tenant),identity=await configuredTranslationStorageIdentity(host,db,tenant);
     if(identity.configurationRevision!==storage.configurationRevision||JSON.stringify(identity.destination)!==JSON.stringify(storage.destination))throw Error();
     await storage.persistence.initialize().catch(()=>{throw Error('translation_storage_unavailable');});
-    const capture=await captureHomepage(db,tenant,request,liveQuery,path).catch(()=>{throw Error('homepage_source_unavailable');}),page=await host.pagesFor(tenant).get(capture.pageId);
+    // Precise translation-surface refusals (e.g. an interactive live list) pass through under
+    // their own code; everything else stays an opaque source-unavailable so internals never
+    // leak through the review surface.
+    const capture=await captureHomepage(db,tenant,request,liveQuery,path).catch((error:unknown)=>{if(error instanceof Error&&error.message==='localized_interactive_list_not_supported')throw error;throw Error('homepage_source_unavailable');}),page=await host.pagesFor(tenant).get(capture.pageId);
     const configHash=await publicationHash({identity,sourceLocale:config.sourceLocale,targetLocales:config.targetLocales});
     const token=await publicationHash({site:capture.active.pointer.hash,source:capture.sourceHash,config:configHash,path});
     const fields=await mapLimit(capture.fields.concat(await supplementTemplateRecords(db,tenant,request,capture)),async field=>{
@@ -244,6 +247,10 @@ export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunne
     // Template listing pages render parameterized request variations, so only the per-unit join
     // (missing/outdated fall back to fresh source) can serve them honestly.
     if(s.capture.templateListing&&(policy.missing!=='source-fallback'||policy.outdated!=='source-fallback'))throw Error('template_release_per_unit_required');
+    // Live-bound pages re-read their rows on every serve, so a strict release's whole-source hash
+    // would go stale (and 503 the localized page) on the first source-record change. Only the
+    // per-unit fresh() join can serve them honestly — same rule as template listings.
+    if(!s.capture.templateListing&&liveViewBindings(s.capture.layout).length>0&&(policy.missing!=='source-fallback'||policy.outdated!=='source-fallback'))throw Error('live_release_per_unit_required');
     const read=await mapLimit(s.fields,async f=>({f,...await readField(s,f).catch(()=>{throw Error('coverage_read_failed');})}));
     for(const item of read){
         if(item.value.state==='draft')continue;
