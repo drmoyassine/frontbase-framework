@@ -28,6 +28,8 @@ export type CasResult = 'committed' | 'conflict' | 'revision-id-conflict' | 'job
 export interface TranslationPersistence {
     read(scope: LocalizationScope, unitId: string, locale?: string): Promise<TranslationSnapshot>;
     readRevision(scope: LocalizationScope, unitId: string, locale: string, revisionId: string): Promise<StoredRevision | null>;
+    /** Bounded newest-first history for one unit/locale in storage order (revisionId is not monotonic). */
+    listRevisions(scope: LocalizationScope, unitId: string, locale: string, limit: number): Promise<StoredRevision[]>;
     readSourceVersion(scope: LocalizationScope, unitId: string, version: number): Promise<SourceRecord | null>;
     compareAndSwap(scope: LocalizationScope, unitId: string, expectedVersion: number, change: PersistenceChange): Promise<CasResult>;
 }

@@ -5,7 +5,8 @@ import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { planTranslationBatch, startTranslationBatch, continueTranslationBatch, cancelTranslationBatch, retryTranslationBatch, translationBatchStatus,
-    translationBatchPlanSchema, translationBatchPages, translationBatchFields, translationBatchHistory, translationBatchReview, type TranslationBatchHost } from '../translation-batches.js';
+    translationBatchPlanSchema, translationBatchPages, translationBatchFields, translationBatchHistory, translationBatchReview, translationUnitHistory,
+    restoreTranslationRevision, type TranslationBatchHost } from '../translation-batches.js';
 import { batchReviewSchema, batchStatusSchema, batchRecordSelectionSchema, batchViewSelectionSchema, batchPreviewItemSchema, batchRetryReviewSchema } from '@frontbase/edge-core/localization/batches';
 import { translationMenus, translationMenuFields, translationDatasources, translationViews, extractRecordInput, extractViewRecordInput } from '../translation-inputs.js';
 import { translationRecordPreview, saveTranslationRecordField } from '../translation-record-preview.js';
@@ -84,6 +85,19 @@ export function registerTranslationBatchRoutes(app: Hono<{ Variables: ConsoleAut
     app.post(`${root}record-preview/save/`, async c => {
         try { return c.json(await saveTranslationRecordField(host, db, c.get('tenant'), await body(c.req.raw))); }
         catch { return c.json({ detail: 'Translation could not be saved. Reload the records; the source, settings or revision may have changed.' }, 409); }
+    });
+    app.post(`${root}history/`, async c => {
+        try { return c.json(await translationUnitHistory(host, db, c.get('tenant'), await body(c.req.raw))); }
+        catch { return c.json({ detail: 'Revision history is unavailable. Check the selection, locale and translation settings.' }, 422); }
+    });
+    app.post(`${root}history/restore/`, async c => {
+        try { return c.json(await restoreTranslationRevision(host, db, c.get('tenant'), await body(c.req.raw))); }
+        catch (error) {
+            const reason = (error as { reason?: string }).reason;
+            if (reason === 'not-found') return c.json({ detail: "That revision is not in this unit's immutable history." }, 404);
+            if (reason) return c.json({ detail: 'Restore was refused: the source, context or head moved on. Reload the history and retry.', reason }, 409);
+            return c.json({ detail: 'Restore is unavailable. Check the selection, locale and translation settings.' }, 422);
+        }
     });
     app.get(`${root}sources/`, async c => {
         try { return c.json(await translationBatchPages(db, c.get('tenant'), c.req.query('after'))); }

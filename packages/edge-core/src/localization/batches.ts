@@ -90,6 +90,22 @@ export const translationRecordPreviewSchema = z.object({ locale: localeSchema, s
 export const translationRecordSaveSchema = z.object({ selection: translationRecordSelectionSchema, locale: localeSchema,
     token: hash, text: z.string().min(1).max(4000) }).strict();
 
+/** Administrator revision history for one owned selection. The server always re-derives unitId
+ *  through the eligibility extractors; rows are bounded and newest-first in storage order, and
+ *  long texts are truncated for display only (restore re-reads the full revision server-side). */
+export const translationUnitHistoryRequestSchema = z.object({ selection: batchSelectionSchema, locale: localeSchema,
+    limit: z.number().int().min(1).max(100).default(20) }).strict();
+export const translationRevisionSummarySchema = z.object({ revisionId: id, provenance: z.enum(['ai', 'manual', 'import']),
+    text: z.string().max(12000), textTruncated: z.boolean(), sourceVersion: z.number().int().positive(), isHead: z.boolean() }).strict();
+export const translationUnitHistorySchema = z.object({ version: z.literal(1), unitId: hash, locale: localeSchema, sourceLocale: localeSchema,
+    source: z.object({ text: z.string().max(12000), textTruncated: z.boolean(), sourceVersion: z.number().int().positive(),
+        sourceFingerprint: hash, contextFingerprint: hash }).strict().nullable(),
+    head: translationRevisionSummarySchema.nullable(), manualProtected: z.boolean(),
+    revisions: z.array(translationRevisionSummarySchema).max(100) }).strict();
+export const translationRestoreRequestSchema = z.object({ selection: batchSelectionSchema, locale: localeSchema, revisionId: id }).strict();
+export const translationRestoreResultSchema = z.object({ version: z.literal(1), unitId: hash, locale: localeSchema,
+    restoredRevisionId: id, head: translationRevisionSummarySchema.nullable() }).strict();
+
 /** Complete rendered Homepage review; the server owns source/layout/query selection.
  *  `path` generalizes the same engine to any published page ('/' = homepage). */
 export const translationHomepageReviewSchema = z.object({locale:localeSchema,sourceLocale:localeSchema,token:hash,siteHash:hash,

@@ -5,7 +5,7 @@ import { parsePersistenceKey, parsePersistenceChange, translationSnapshotSchema,
 import { translationJobSchema, translationJobIntentSchema, jobErrorSchema,
     type TranslationJobPersistence, type TranslationJob, type TranslationJobIntent, type EnqueueResult, type JobError } from '../jobs.js';
 
-export type TranslationRpcOperation = 'capabilities' | 'read' | 'read-revision' | 'read-source' | 'cas' | 'enqueue' | 'read-job'
+export type TranslationRpcOperation = 'capabilities' | 'read' | 'read-revision' | 'list-revisions' | 'read-source' | 'cas' | 'enqueue' | 'read-job'
     | 'ready-jobs' | 'claim' | 'renew' | 'dispatch' | 'fail' | 'cancel';
 /** Host-injected authenticated HTTP client. No SQL, socket or credential lookup in the engine. */
 export interface TranslationRpcTransport {
@@ -46,6 +46,13 @@ export class PostgrestTranslationJobPersistence implements TranslationJobPersist
         const { scope, unitId, locale } = parsePersistenceKey(scopeInput, unitInput, localeInput), revisionId = id.parse(revisionInput);
         const value = storedRevisionSchema.nullable().parse(await this.request('read-revision', scope, { unitId, locale, revisionId }));
         if (value) { owner(value.scope, scope); if (value.unitId !== unitId || value.locale !== locale || value.revisionId !== revisionId) throw Error('translation_rpc_key_mismatch'); }
+        return value;
+    }
+    async listRevisions(scopeInput: LocalizationScope, unitInput: string, localeInput: string, limit: number): Promise<StoredRevision[]> {
+        const { scope, unitId, locale } = parsePersistenceKey(scopeInput, unitInput, localeInput);
+        const value = z.array(storedRevisionSchema).max(100)
+            .parse(await this.request('list-revisions', scope, { unitId, locale, limit: z.number().int().min(1).max(100).parse(limit) }));
+        for (const revision of value) { owner(revision.scope, scope); if (revision.unitId !== unitId || revision.locale !== locale) throw Error('translation_rpc_key_mismatch'); }
         return value;
     }
     async compareAndSwap(scope: LocalizationScope, unitId: string, version: number, change: PersistenceChange): Promise<CasResult> {

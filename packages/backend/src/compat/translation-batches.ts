@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { validateBlockVersions, applyBlockVersion, type VersionedBlock } from '@frontbase/edge-core/block-versions';
 import { TranslationLifecycle, localeSchema, translationJobIntentSchema, translationUnitId, messageSourceFingerprint,
-    translationContextFingerprint, type MessageUnit, type TranslationContext } from '@frontbase/edge-core/localization';
+    translationContextFingerprint, type MessageUnit, type TranslationContext, type StoredRevision } from '@frontbase/edge-core/localization';
 import { currentTranslationHostPin, translationHostPinSchema, prepareTranslationAllowance, configuredTranslationAllowanceRunner,
     closeTranslationAllowance, translationAllowanceLifecycle, translationAllowanceReference } from './translation-allowance.js';
 import { resolveTranslationAccountingStorage, type TranslationStorageHost } from './translation-storage.js';
@@ -11,7 +11,8 @@ import { translationMessages, type GenerationHost } from './translation-generati
 import type { PagesStore, CompatPageRow } from './pages-store.js';
 import { translationInputHash, translationPlainText, extractMenuInput, extractRecordInput, extractViewRecordInput, TranslationInputChanged, type TranslationViewHost } from './translation-inputs.js';
 import { batchSelectionSchema as selectionSchema, batchPageSelectionSchema, batchLimitsSchema as limitsSchema, batchPlanInputSchema,
-    batchReviewSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema, batchRetryReviewSchema, translationPageSelectionSchema } from '@frontbase/edge-core/localization/batches';
+    batchReviewSchema, batchPagesSchema, batchFieldsSchema, batchHistorySchema, batchRetryReviewSchema, translationPageSelectionSchema,
+    translationUnitHistorySchema, translationRestoreResultSchema } from '@frontbase/edge-core/localization/batches';
 
 const id = z.string().min(1).max(160), hash = z.string().regex(/^[a-f0-9]{64}$/), uuid = z.string().uuid();
 export const translationBatchPlanSchema = batchPlanInputSchema;
@@ -341,4 +342,54 @@ export async function translationBatchStatus(host: TranslationBatchHost, db: DbR
     const lifecycle = b.policyHash ? await translationAllowanceLifecycle(db, tenant, b.policyHash) : null;
     return { id: b.review.id, reviewHash: b.reviewHash, state: lifecycle?.phase === 'closed' ? 'closed' : b.phase, preparedItems: b.cursor,
         itemCount: b.review.items.length, approvedBy: b.approvedBy, storageAvailable, items, lifecycle, delivery: 'administrator-continuation' as const, draftOnly: true as const };
+}
+
+const historyRequestSchema = z.object({ selection: selectionSchema, locale: localeSchema, limit: z.number().int().min(1).max(100).default(20) }).strict();
+const restoreRequestSchema = z.object({ selection: selectionSchema, locale: localeSchema, revisionId: id }).strict();
+const historyDisplayChars = 12000;
+const revisionSummary = (revision: StoredRevision, headId: string | null) => ({ revisionId: revision.revisionId, provenance: revision.provenance,
+    text: revision.text.slice(0, historyDisplayChars), textTruncated: revision.text.length > historyDisplayChars,
+    sourceVersion: revision.sourceVersion, isHead: revision.revisionId === headId });
+
+/** Administrator revision history for one owned selection. unitId is always re-derived through the
+ *  eligibility extractors (a raw storage key is never accepted), rows are bounded newest-first in
+ *  storage order, and the listing is strictly read-only. */
+export async function translationUnitHistory(host: TranslationBatchHost, db: DbRunner, tenant: string, input: unknown) {
+    const request = historyRequestSchema.parse(input), pin = await currentTranslationHostPin(host, db, tenant);
+    if (!pin.generation.targetLocales.includes(request.locale)) throw Error();
+    const source = await extract(host, db, tenant, request.selection, pin), unitId = await translationUnitId(pin.storage.scope, source.unit.resource);
+    const session = await sessionFor(host, tenant, pin);
+    const snapshot = await session.persistence.read(session.scope, unitId, request.locale);
+    const head = snapshot.head ? revisionSummary(snapshot.head, snapshot.head.revisionId) : null;
+    if (!snapshot.source) return translationUnitHistorySchema.parse({ version: 1, unitId, locale: request.locale,
+        sourceLocale: pin.generation.sourceLocale, source: null, head: null, manualProtected: false, revisions: [] });
+    const revisions = await session.persistence.listRevisions(session.scope, unitId, request.locale, request.limit);
+    return translationUnitHistorySchema.parse({ version: 1, unitId, locale: request.locale, sourceLocale: pin.generation.sourceLocale,
+        source: { text: snapshot.source.unit.text.slice(0, historyDisplayChars), textTruncated: snapshot.source.unit.text.length > historyDisplayChars,
+            sourceVersion: snapshot.source.sourceVersion, sourceFingerprint: snapshot.source.fingerprint, contextFingerprint: snapshot.source.contextFingerprint },
+        head, manualProtected: snapshot.head?.provenance === 'manual',
+        revisions: revisions.map(revision => revisionSummary(revision, snapshot.head?.revisionId ?? null)) });
+}
+
+/** Restore composes a NEW auditable manual revision from an old one; history never rewinds and the
+ *  current head must match (CAS). The intent carries the CURRENT source identity, so a restore
+ *  succeeds whenever the old wording is still a valid translation of today's source and refuses
+ *  with a precise reason when the source, context or head moved on. */
+export async function restoreTranslationRevision(host: TranslationBatchHost, db: DbRunner, tenant: string, input: unknown) {
+    const request = restoreRequestSchema.parse(input), pin = await currentTranslationHostPin(host, db, tenant);
+    if (!pin.generation.targetLocales.includes(request.locale)) throw Error();
+    const source = await extract(host, db, tenant, request.selection, pin), unitId = await translationUnitId(pin.storage.scope, source.unit.resource);
+    const session = await sessionFor(host, tenant, pin);
+    const target = await session.persistence.readRevision(session.scope, unitId, request.locale, request.revisionId);
+    if (!target || target.unitId !== unitId || target.locale !== request.locale) throw Object.assign(Error('translation_restore_missing'), { reason: 'not-found' });
+    const snapshot = await session.persistence.read(session.scope, unitId, request.locale);
+    if (!snapshot.source) throw Object.assign(Error('translation_restore_missing'), { reason: 'not-found' });
+    const result = await new TranslationLifecycle(session.persistence).writeManual(session.scope, { version: 1, unitId,
+        revisionId: crypto.randomUUID(), locale: request.locale, sourceFingerprint: snapshot.source.fingerprint,
+        sourceVersion: snapshot.source.sourceVersion, contextFingerprint: snapshot.source.contextFingerprint,
+        expectedHead: snapshot.head?.revisionId ?? null, text: target.text });
+    if (result.status === 'rejected') throw Object.assign(Error('translation_restore_refused'), { reason: result.reason });
+    const after = await session.persistence.read(session.scope, unitId, request.locale);
+    return translationRestoreResultSchema.parse({ version: 1, unitId, locale: request.locale, restoredRevisionId: result.revisionId,
+        head: after.head ? revisionSummary(after.head, after.head.revisionId) : null });
 }

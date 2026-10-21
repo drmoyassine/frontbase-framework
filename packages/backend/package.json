@@ -58,7 +58,9 @@
     "test:translation-coverage": "node test/translation-coverage.mjs",
     "test:translation-record-keys": "node test/translation-record-keys.mjs",
     "test:translation-record-preview": "node test/translation-record-preview.mjs",
-    "test:translation-record-preview-mutation": "node test/translation-record-preview-mutation.mjs"
+    "test:translation-record-preview-mutation": "node test/translation-record-preview-mutation.mjs",
+    "test:translation-history": "node test/translation-history.mjs",
+    "test:translation-history-mutation": "node test/translation-history-mutation.mjs"
   },
   "peerDependencies": {
     "@frontbase/compiler": "workspace:*",

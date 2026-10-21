@@ -94,6 +94,20 @@ export class SqliteTranslationPersistence implements TranslationPersistence {
         return data ? storedRevisionSchema.parse(JSON.parse(String(data.payload_json))) : null;
     }
 
+    async listRevisions(scopeInput: LocalizationScope, unitInput: string, localeInput: string, limitInput: number): Promise<StoredRevision[]> {
+        const { scope, unitId, locale } = parsePersistenceKey(scopeInput, unitInput, localeInput);
+        if (!Number.isSafeInteger(limitInput) || limitInput < 1) throw Error('invalid_translation_history_limit');
+        const limit = Math.min(limitInput, 100), statement = this.connection
+            .prepare(`SELECT payload_json FROM ${this.prefix}revisions WHERE tenant_id = ? AND project_id = ? AND unit_id = ? AND locale = ? ORDER BY rowid DESC LIMIT 1 OFFSET ?`);
+        const revisions: StoredRevision[] = [];
+        for (let offset = 0; offset < limit; offset++) {
+            const data = row(statement.get(scope.tenantId, scope.projectId, unitId, locale!, offset));
+            if (!data) break;
+            revisions.push(storedRevisionSchema.parse(JSON.parse(String(data.payload_json))));
+        }
+        return revisions;
+    }
+
     async compareAndSwap(scopeInput: LocalizationScope, unitInput: string, versionInput: number, input: PersistenceChange): Promise<CasResult> {
         const { scope, unitId, expectedVersion, change } = parsePersistenceChange(scopeInput, unitInput, versionInput, input);
         const keys = [scope.tenantId, scope.projectId, unitId], db = this.connection, p = this.prefix;

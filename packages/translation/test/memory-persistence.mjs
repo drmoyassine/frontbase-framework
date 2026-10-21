@@ -11,6 +11,15 @@ export class MemoryPersistence {
         return unit ? copy({ version: unit.version, source: unit.source, head: unit.heads[locale] ?? null }) : { version: 0, source: null, head: null };
     }
     async readRevision(scope, unitId, locale, revisionId) { return copy(this.revisions.get(JSON.stringify([key(scope, unitId), locale, revisionId])) ?? null); }
+    async listRevisions(scope, unitId, locale, limit) {
+        if (!Number.isSafeInteger(limit) || limit < 1) throw Error('invalid_translation_history_limit');
+        const found = [];
+        for (const [id, value] of this.revisions) {
+            const parts = JSON.parse(id);
+            if (parts[0] === key(scope, unitId) && parts[1] === locale) found.push(copy(value));
+        }
+        return found.slice(-Math.min(limit, 100)).reverse();
+    }
     async compareAndSwap(scope, unitId, expectedVersion, change) {
         const id = key(scope, unitId), current = this.units.get(id);
         if ((current?.version ?? 0) !== expectedVersion) return 'conflict';

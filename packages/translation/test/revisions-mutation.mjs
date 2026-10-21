@@ -55,6 +55,15 @@ await mutate('SQLite owner read predicate', sqliteUrl, 'WHERE u.tenant_id = ? AN
         assert.equal((await store.read({ ...scope, tenantId: 'other' }, source.unitId)).source, null);
     } finally { db.close(); }
 });
+await mutate('SQLite history scope predicate', sqliteUrl, 'WHERE tenant_id = ? AND project_id = ? AND unit_id = ? AND locale = ? ORDER BY rowid DESC LIMIT 1 OFFSET ?', 'WHERE (? IS NOT NULL) AND (? IS NOT NULL) AND unit_id = ? AND locale = ? ORDER BY rowid DESC LIMIT 1 OFFSET ?', 'SqliteTranslationPersistence', async Persistence => {
+    const db = new DatabaseSync(':memory:');
+    try {
+        const store = new Persistence(db); store.initialize();
+        const engine = new TranslationLifecycle(store), source = await engine.syncSource(scope, unit, null);
+        await engine.writeGenerated(scope, intent(source, 'kept'));
+        assert.deepEqual(await store.listRevisions({ ...scope, tenantId: 'other' }, source.unitId, 'ar', 10), []);
+    } finally { db.close(); }
+});
 await mutate('SQLite failed-commit rollback', sqliteUrl, "db.exec('ROLLBACK');\n            throw Error('translation_store_write_failed');", "db.exec('COMMIT');\n            throw Error('translation_store_write_failed');", 'SqliteTranslationPersistence', async Persistence => {
     const db = new DatabaseSync(':memory:');
     try {
@@ -73,5 +82,5 @@ await mutate('SQLite failed-commit rollback', sqliteUrl, "db.exec('ROLLBACK');\n
         assert.equal(await store.readRevision(scope, source.unitId, 'ar', 'failed'), null);
     } finally { db.close(); }
 });
-assert.equal(caught, 6);
-console.log('revision-mutation: PASS (6/6 in-memory source faults; real SQLite gates; source/index unchanged)');
+assert.equal(caught, 7);
+console.log('revision-mutation: PASS (7/7 in-memory source faults; real SQLite gates; source/index unchanged)');

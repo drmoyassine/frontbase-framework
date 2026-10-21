@@ -36,6 +36,11 @@ async function conformance(store, label) {
     assert.equal((await store.readRevision(scope, source.unitId, 'ar', 'ai-1')).text, ai.text);
     assert.equal((await engine.writeManual(scope, request(source, 'manual-2', { expectedHead: 'manual-1' }))).status, 'committed');
     const foreign = { tenantId: 'other', projectId: 'site' }, otherProject = { ...scope, projectId: 'other' };
+    const history = await store.listRevisions(scope, source.unitId, 'ar', 2);
+    assert.deepEqual(history.map(item => item.revisionId), ['manual-2', 'manual-1'], label + ' bounded newest-first history in storage order');
+    assert.equal((await store.listRevisions(scope, source.unitId, 'ar', 100)).length, 3);
+    assert.deepEqual(await store.listRevisions(scope, source.unitId, 'fr', 10), [], 'unknown locale history is empty');
+    assert.deepEqual(await store.listRevisions(foreign, source.unitId, 'ar', 10), [], 'foreign scope history is empty');
     for (const owner of [foreign, otherProject]) {
         assert.equal((await store.read(owner, source.unitId, 'ar')).source, null);
         assert.equal(await store.readRevision(owner, source.unitId, 'ar', 'ai-1'), null);
@@ -130,6 +135,39 @@ try {
     assert.equal((await engine.writeGenerated(scope, request(source, 'rolled-back'))).status, 'committed');
     console.log('SQLite failed commit: no orphan revision/head/version; retry succeeds PASS');
 } finally { rollbackDb.close(); }
+
+// History exposure: bounded validated newest-first listing, and restore composed as a fresh auditable manual revision.
+{
+    const historyDb = new DatabaseSync(':memory:');
+    try {
+        const store = new SqliteTranslationPersistence(historyDb); store.initialize();
+        const engine = new TranslationLifecycle(store);
+        const source = await engine.syncSource(scope, unit, null);
+        await engine.writeGenerated(scope, request(source, 'h-1'));
+        await engine.writeManual(scope, request(source, 'h-2', { expectedHead: 'h-1', text: 'تحديث {{record.name}}' }));
+        await engine.writeManual(scope, request(source, 'h-3', { expectedHead: 'h-2', text: 'نهائي {{record.name}}' }));
+        assert.deepEqual((await store.listRevisions(scope, source.unitId, 'ar', 2)).map(item => item.revisionId), ['h-3', 'h-2']);
+        await assert.rejects(store.listRevisions(scope, source.unitId, 'ar', 0), /invalid_translation_history_limit/);
+        await assert.rejects(store.listRevisions(scope, source.unitId, 'ar', 2.5), /invalid_translation_history_limit/);
+        await assert.rejects(store.listRevisions(scope, source.unitId, 'ar', Number.MAX_SAFE_INTEGER + 1), /invalid_translation_history_limit/);
+        const head = (await store.read(scope, source.unitId, 'ar')).head;
+        const target = await store.readRevision(scope, source.unitId, 'ar', 'h-1');
+        const restored = await engine.writeManual(scope, { version: 1, unitId: source.unitId, revisionId: 'restore-1', locale: 'ar',
+            sourceFingerprint: target.sourceFingerprint, sourceVersion: target.sourceVersion, contextFingerprint: target.contextFingerprint,
+            expectedHead: head.revisionId, text: target.text });
+        assert.equal(restored.status, 'committed');
+        const restoredHead = (await store.read(scope, source.unitId, 'ar')).head;
+        assert.equal(restoredHead.revisionId, 'restore-1');
+        assert.equal(restoredHead.text, 'مرحباً {{record.name}}');
+        assert.equal(restoredHead.provenance, 'manual');
+        assert.equal((await store.listRevisions(scope, source.unitId, 'ar', 10)).map(item => item.revisionId).join(','), 'restore-1,h-3,h-2,h-1');
+        // A restore replayed against a moved head refuses instead of silently rewinding history.
+        assert.equal((await engine.writeManual(scope, { version: 1, unitId: source.unitId, revisionId: 'restore-2', locale: 'ar',
+            sourceFingerprint: target.sourceFingerprint, sourceVersion: target.sourceVersion, contextFingerprint: target.contextFingerprint,
+            expectedHead: 'h-2', text: target.text })).reason, 'head');
+        console.log('SQLite revision history: bounded validated newest-first listing, restore as fresh manual revision, stale-head restore refusal PASS');
+    } finally { historyDb.close(); }
+}
 
 for (const separate of [false, true]) {
     const content = new DatabaseSync(':memory:'), destination = separate ? new DatabaseSync(':memory:') : content;
