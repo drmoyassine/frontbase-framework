@@ -20,6 +20,16 @@ export class MemoryPersistence {
         }
         return found.slice(-Math.min(limit, 100)).reverse();
     }
+    async findApprovedHead(scope, locale, sourceFingerprint, excludeUnitId) {
+        let found = null;
+        for (const [id, value] of this.revisions) {
+            const parts = JSON.parse(id), [tenantId, projectId, unitId] = JSON.parse(parts[0]);
+            if (parts[1] !== locale || unitId === excludeUnitId || value.sourceFingerprint !== sourceFingerprint) continue;
+            if (tenantId !== scope.tenantId || projectId !== scope.projectId) continue;
+            found = { unitId, revision: copy(value) }; // insertion order: the last match is the newest write
+        }
+        return found;
+    }
     async compareAndSwap(scope, unitId, expectedVersion, change) {
         const id = key(scope, unitId), current = this.units.get(id);
         if ((current?.version ?? 0) !== expectedVersion) return 'conflict';

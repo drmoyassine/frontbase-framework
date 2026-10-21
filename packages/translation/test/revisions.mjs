@@ -41,6 +41,16 @@ async function conformance(store, label) {
     assert.equal((await store.listRevisions(scope, source.unitId, 'ar', 100)).length, 3);
     assert.deepEqual(await store.listRevisions(scope, source.unitId, 'fr', 10), [], 'unknown locale history is empty');
     assert.deepEqual(await store.listRevisions(foreign, source.unitId, 'ar', 10), [], 'foreign scope history is empty');
+    // Translation-memory lookup: the approved head of a different unit, exact by recorded fingerprint.
+    const memory = await store.findApprovedHead(scope, 'ar', source.sourceFingerprint, '0'.repeat(64));
+    assert.equal(memory.unitId, source.unitId, label + ' memory hit is another unit');
+    assert.equal(memory.revision.revisionId, 'manual-2', label + ' memory hit is the newest approved head');
+    assert.equal(memory.revision.sourceFingerprint, source.sourceFingerprint);
+    assert.equal(await store.findApprovedHead(scope, 'ar', source.sourceFingerprint, source.unitId), null, 'caller unit is excluded');
+    assert.deepEqual(await store.findApprovedHead(scope, 'fr', source.sourceFingerprint, '0'.repeat(64)), null, 'locale scoped');
+    assert.deepEqual(await store.findApprovedHead(scope, 'ar', 'a'.repeat(64), '0'.repeat(64)), null, 'fingerprint scoped');
+    assert.deepEqual(await store.findApprovedHead(foreign, 'ar', source.sourceFingerprint, '0'.repeat(64)), null, 'tenant scoped');
+    assert.deepEqual(await store.findApprovedHead(otherProject, 'ar', source.sourceFingerprint, '0'.repeat(64)), null, 'project scoped');
     for (const owner of [foreign, otherProject]) {
         assert.equal((await store.read(owner, source.unitId, 'ar')).source, null);
         assert.equal(await store.readRevision(owner, source.unitId, 'ar', 'ai-1'), null);
@@ -58,6 +68,8 @@ async function conformance(store, label) {
     const changed = await engine.syncSource(scope, { ...unit, text: 'Welcome {{record.name}}' }, 1);
     assert.equal(changed.sourceVersion, 2);
     assert.equal((await engine.writeManual(scope, request(source, 'old-source', { expectedHead: 'manual-2' }))).reason, 'source-version');
+    assert.equal((await store.findApprovedHead(scope, 'ar', source.sourceFingerprint, '0'.repeat(64))).revision.revisionId, 'manual-2', 'memory follows the head while the source moved away');
+    assert.deepEqual(await store.findApprovedHead(scope, 'ar', changed.sourceFingerprint, '0'.repeat(64)), null, 'the moved-to text has no approved head');
     const restored = await engine.syncSource(scope, unit, 2);
     assert.equal(restored.sourceVersion, 3); assert.equal(restored.sourceFingerprint, source.sourceFingerprint);
     assert.equal((await engine.writeManual(scope, request(source, 'aba-stale', { expectedHead: 'manual-2' }))).reason, 'source-version');

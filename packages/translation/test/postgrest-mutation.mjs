@@ -24,6 +24,11 @@ try {
             const store = new Store({ call: async () => { throw Error('private credentials'); } });
             await assert.rejects(store.readJob(scope, 'fixture'), e => e.message === 'translation_rpc_failed');
         }],
+        ['memory scope binding', 'owner(value.revision.scope, scope);', '', async Store => {
+            const revision = { ...f.revision(), provenance: 'manual', scope: { ...scope, tenantId: 'foreign' } };
+            const store = new Store({ call: async () => ({ unitId: f.source.unitId, revision }) });
+            await assert.rejects(store.findApprovedHead(scope, 'ar', f.source.sourceFingerprint, 'f'.repeat(64)), /scope_mismatch/);
+        }],
     ];
     const url = new URL('../dist/adapters/postgrest.js', import.meta.url), source = await readFile(url, 'utf8');
     for (const [name, before, after, gate] of gates) {
@@ -35,4 +40,4 @@ try {
         console.log('HTTP mutation ' + name + ': caught');
     }
 } finally { f.close(); }
-console.log('HTTP adapter mutations: PASS (4/4; in-memory module faults, no source/index mutation)');
+console.log('HTTP adapter mutations: PASS (5/5; in-memory module faults, no source/index mutation)');

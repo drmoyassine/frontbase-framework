@@ -5,7 +5,7 @@ import { parsePersistenceKey, parsePersistenceChange, translationSnapshotSchema,
 import { translationJobSchema, translationJobIntentSchema, jobErrorSchema,
     type TranslationJobPersistence, type TranslationJob, type TranslationJobIntent, type EnqueueResult, type JobError } from '../jobs.js';
 
-export type TranslationRpcOperation = 'capabilities' | 'read' | 'read-revision' | 'list-revisions' | 'read-source' | 'cas' | 'enqueue' | 'read-job'
+export type TranslationRpcOperation = 'capabilities' | 'read' | 'read-revision' | 'list-revisions' | 'find-approved-head' | 'read-source' | 'cas' | 'enqueue' | 'read-job'
     | 'ready-jobs' | 'claim' | 'renew' | 'dispatch' | 'fail' | 'cancel';
 /** Host-injected authenticated HTTP client. No SQL, socket or credential lookup in the engine. */
 export interface TranslationRpcTransport {
@@ -53,6 +53,13 @@ export class PostgrestTranslationJobPersistence implements TranslationJobPersist
         const value = z.array(storedRevisionSchema).max(100)
             .parse(await this.request('list-revisions', scope, { unitId, locale, limit: z.number().int().min(1).max(100).parse(limit) }));
         for (const revision of value) { owner(revision.scope, scope); if (revision.unitId !== unitId || revision.locale !== locale) throw Error('translation_rpc_key_mismatch'); }
+        return value;
+    }
+    async findApprovedHead(scopeInput: LocalizationScope, localeInput: string, fingerprintInput: string, excludeInput: string): Promise<{ unitId: string; revision: StoredRevision } | null> {
+        const { scope, unitId, locale } = parsePersistenceKey(scopeInput, excludeInput, localeInput);
+        const value = z.object({ unitId: id, revision: storedRevisionSchema }).strict().nullable()
+            .parse(await this.request('find-approved-head', scope, { locale, fingerprint: id.parse(fingerprintInput), excludeUnitId: unitId }));
+        if (value) { owner(value.revision.scope, scope); if (value.revision.unitId !== value.unitId || value.revision.locale !== locale || value.unitId === unitId) throw Error('translation_rpc_key_mismatch'); }
         return value;
     }
     async compareAndSwap(scope: LocalizationScope, unitId: string, version: number, change: PersistenceChange): Promise<CasResult> {

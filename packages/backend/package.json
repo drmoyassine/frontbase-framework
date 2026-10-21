@@ -62,7 +62,9 @@
     "test:translation-history": "node test/translation-history.mjs",
     "test:translation-history-mutation": "node test/translation-history-mutation.mjs",
     "test:translation-glossary": "node test/translation-glossary.mjs",
-    "test:translation-glossary-mutation": "node test/translation-glossary-mutation.mjs"
+    "test:translation-glossary-mutation": "node test/translation-glossary-mutation.mjs",
+    "test:translation-memory": "node test/translation-memory.mjs",
+    "test:translation-memory-mutation": "node test/translation-memory-mutation.mjs"
   },
   "peerDependencies": {
     "@frontbase/compiler": "workspace:*",

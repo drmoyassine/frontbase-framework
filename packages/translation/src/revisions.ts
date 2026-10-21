@@ -30,6 +30,10 @@ export interface TranslationPersistence {
     readRevision(scope: LocalizationScope, unitId: string, locale: string, revisionId: string): Promise<StoredRevision | null>;
     /** Bounded newest-first history for one unit/locale in storage order (revisionId is not monotonic). */
     listRevisions(scope: LocalizationScope, unitId: string, locale: string, limit: number): Promise<StoredRevision[]>;
+    /** Translation-memory lookup: newest approved head (storage order) in scope for the locale whose
+     *  recorded sourceFingerprint equals the query, from a different unit. Exact by construction —
+     *  the match is the head revision's own recorded fingerprint, never current unit state. */
+    findApprovedHead(scope: LocalizationScope, locale: string, sourceFingerprint: string, excludeUnitId: string): Promise<{ unitId: string; revision: StoredRevision } | null>;
     readSourceVersion(scope: LocalizationScope, unitId: string, version: number): Promise<SourceRecord | null>;
     compareAndSwap(scope: LocalizationScope, unitId: string, expectedVersion: number, change: PersistenceChange): Promise<CasResult>;
 }

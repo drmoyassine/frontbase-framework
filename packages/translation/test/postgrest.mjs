@@ -14,6 +14,7 @@ try {
             'read-source': () => f.store.readSourceVersion(owner, input.unitId, input.version),
             'read-revision': () => f.store.readRevision(owner, input.unitId, input.locale, input.revisionId),
             'list-revisions': () => f.store.listRevisions(owner, input.unitId, input.locale, input.limit),
+            'find-approved-head': () => f.store.findApprovedHead(owner, input.locale, input.fingerprint, input.excludeUnitId),
             cas: () => f.store.compareAndSwap(owner, input.unitId, input.expectedVersion, input.change),
             enqueue: () => f.store.enqueueJob(owner, input.intent),
             'read-job': () => f.store.readJob(owner, input.jobId),
@@ -37,6 +38,11 @@ try {
     await assert.rejects(store.listRevisions(scope, f.source.unitId, 'ar', 101));
     const hostileHistory = new PostgrestTranslationJobPersistence({ async call() { return [{ ...await store.readRevision(scope, f.source.unitId, 'ar', 'revision'), unitId: 'f'.repeat(64) }]; } });
     await assert.rejects(hostileHistory.listRevisions(scope, f.source.unitId, 'ar', 5), /key_mismatch/);
+    assert.equal((await store.findApprovedHead(scope, 'ar', f.source.sourceFingerprint, 'f'.repeat(64))).revision.revisionId, 'revision');
+    assert.equal(await store.findApprovedHead(scope, 'ar', f.source.sourceFingerprint, f.source.unitId), null);
+    await assert.rejects(store.findApprovedHead(scope, 'ar', 'not-a-fingerprint', f.source.unitId));
+    const hostileMemory = new PostgrestTranslationJobPersistence({ async call() { return { unitId: 'f'.repeat(64), revision: JSON.parse(JSON.stringify(await store.readRevision(scope, f.source.unitId, 'ar', 'revision'))) }; } });
+    await assert.rejects(hostileMemory.findApprovedHead(scope, 'ar', f.source.sourceFingerprint, f.source.unitId), /key_mismatch/);
     assert.equal((await store.read({ ...scope, tenantId: 'other' }, f.source.unitId)).source, null);
     const second = await engine.syncSource(scope, { ...unit, resource: { ...unit.resource, messageId: 'second' } }, null);
     const intent = f.intent('http', { unitId: second.unitId, sourceFingerprint: second.sourceFingerprint, contextFingerprint: second.contextFingerprint });

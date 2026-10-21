@@ -66,6 +66,7 @@ BEGIN
     WHEN 'capabilities' THEN ARRAY[]::text[] WHEN 'read' THEN ARRAY['unitId','locale']
     WHEN 'read-revision' THEN ARRAY['unitId','locale','revisionId'] WHEN 'read-source' THEN ARRAY['unitId','version']
     WHEN 'list-revisions' THEN ARRAY['unitId','locale','limit']
+    WHEN 'find-approved-head' THEN ARRAY['locale','fingerprint','excludeUnitId']
     WHEN 'cas' THEN ARRAY['unitId','expectedVersion','change'] WHEN 'enqueue' THEN ARRAY['intent']
     WHEN 'read-job' THEN ARRAY['jobId'] WHEN 'ready-jobs' THEN ARRAY['limit']
     WHEN 'claim' THEN ARRAY['jobId','leaseMs'] WHEN 'renew' THEN ARRAY['jobId','leaseVersion','leaseMs']
@@ -119,6 +120,17 @@ BEGIN
       SELECT revision,seq FROM translations.revisions WHERE tenant_id=v_t AND project_id=v_p AND unit_id=v_u AND locale=v_l
       ORDER BY seq DESC LIMIT (p_input->>'limit')::integer) s;
     RETURN v_result;
+  ELSIF p_operation='find-approved-head' THEN
+    IF (p_input->>'fingerprint') !~ '^[a-f0-9]{64}$' OR (p_input->>'excludeUnitId') !~ '^[a-f0-9]{64}$' THEN
+      RAISE EXCEPTION 'invalid_translation_request' USING ERRCODE='22023';
+    END IF;
+    SELECT jsonb_build_object('unitId',r.unit_id,'revision',r.revision) INTO v_result
+      FROM translations.revisions r
+      JOIN translations.heads h ON h.tenant_id=r.tenant_id AND h.project_id=r.project_id AND h.unit_id=r.unit_id AND h.locale=r.locale AND h.revision_id=r.revision_id
+      WHERE r.tenant_id=v_t AND r.project_id=v_p AND r.locale=v_l AND r.unit_id<>p_input->>'excludeUnitId'
+        AND r.revision#>>'{sourceFingerprint}'=p_input->>'fingerprint'
+      ORDER BY r.seq DESC LIMIT 1;
+    RETURN coalesce(v_result,'null'::jsonb);
   END IF;
   IF p_operation='cas' THEN
     v_change:=p_input->'change';

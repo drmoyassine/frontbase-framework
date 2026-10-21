@@ -108,6 +108,18 @@ export class SqliteTranslationPersistence implements TranslationPersistence {
         return revisions;
     }
 
+    async findApprovedHead(scopeInput: LocalizationScope, localeInput: string, fingerprintInput: string, excludeInput: string): Promise<{ unitId: string; revision: StoredRevision } | null> {
+        const { scope, unitId, locale } = parsePersistenceKey(scopeInput, excludeInput, localeInput);
+        const fingerprint = translationRevisionSchema.shape.unitId.parse(fingerprintInput);
+        // The revision payload records the fingerprint it was translated from, so the match never
+        // depends on the unit's current source. Heads join pins each candidate to its unit's live head.
+        const data = row(this.connection.prepare(`SELECT r.unit_id, r.payload_json FROM ${this.prefix}revisions r
+            JOIN ${this.prefix}heads h ON h.tenant_id = r.tenant_id AND h.project_id = r.project_id AND h.unit_id = r.unit_id AND h.locale = r.locale AND h.revision_id = r.revision_id
+            WHERE r.tenant_id = ? AND r.project_id = ? AND r.locale = ? AND r.unit_id <> ? AND json_extract(r.payload_json, '$.sourceFingerprint') = ?
+            ORDER BY r.rowid DESC LIMIT 1`).get(scope.tenantId, scope.projectId, locale!, unitId, fingerprint));
+        return data ? { unitId: String(data.unit_id), revision: storedRevisionSchema.parse(JSON.parse(String(data.payload_json))) } : null;
+    }
+
     async compareAndSwap(scopeInput: LocalizationScope, unitInput: string, versionInput: number, input: PersistenceChange): Promise<CasResult> {
         const { scope, unitId, expectedVersion, change } = parsePersistenceChange(scopeInput, unitInput, versionInput, input);
         const keys = [scope.tenantId, scope.projectId, unitId], db = this.connection, p = this.prefix;

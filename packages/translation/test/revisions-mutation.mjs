@@ -82,5 +82,46 @@ await mutate('SQLite failed-commit rollback', sqliteUrl, "db.exec('ROLLBACK');\n
         assert.equal(await store.readRevision(scope, source.unitId, 'ar', 'failed'), null);
     } finally { db.close(); }
 });
-assert.equal(caught, 7);
-console.log('revision-mutation: PASS (7/7 in-memory source faults; real SQLite gates; source/index unchanged)');
+await mutate('SQLite memory fingerprint source', sqliteUrl, "json_extract(r.payload_json, '$.sourceFingerprint')", "json_extract(r.payload_json, '$.contextFingerprint')", 'SqliteTranslationPersistence', async Persistence => {
+    const db = new DatabaseSync(':memory:');
+    try {
+        const store = new Persistence(db); store.initialize();
+        const engine = new TranslationLifecycle(store);
+        const a = await engine.syncSource(scope, { ...unit, resource: { ...unit.resource, messageId: 'tm-a' } }, null);
+        const b = await engine.syncSource(scope, { ...unit, resource: { ...unit.resource, messageId: 'tm-b' } }, null);
+        await engine.writeManual(scope, intent(a, 'tm-a-head'));
+        await engine.writeManual(scope, intent(b, 'tm-b-head'));
+        const hit = await store.findApprovedHead(scope, 'ar', a.sourceFingerprint, a.unitId);
+        if (!hit || hit.unitId !== b.unitId || hit.revision.revisionId !== 'tm-b-head') throw Error('translation_memory_miss');
+    } finally { db.close(); }
+});
+await mutate('SQLite memory newest head', sqliteUrl, 'ORDER BY r.rowid DESC LIMIT 1', 'ORDER BY r.rowid ASC LIMIT 1', 'SqliteTranslationPersistence', async Persistence => {
+    const db = new DatabaseSync(':memory:');
+    try {
+        const store = new Persistence(db); store.initialize();
+        const engine = new TranslationLifecycle(store);
+        const units = [];
+        for (const key of ['tm-a', 'tm-b', 'tm-c'])
+            units.push(await engine.syncSource(scope, { ...unit, resource: { ...unit.resource, messageId: key } }, null));
+        await engine.writeManual(scope, intent(units[0], 'tm-a-head'));
+        await engine.writeManual(scope, intent(units[1], 'tm-b-head'));
+        await engine.writeManual(scope, intent(units[2], 'tm-c-head'));
+        const hit = await store.findApprovedHead(scope, 'ar', units[0].sourceFingerprint, units[1].unitId);
+        if (!hit || hit.revision.revisionId !== 'tm-c-head') throw Error('translation_memory_order');
+    } finally { db.close(); }
+});
+await mutate('SQLite memory caller exclusion', sqliteUrl, 'AND r.unit_id <> ? AND json_extract', 'AND r.unit_id = ? AND json_extract', 'SqliteTranslationPersistence', async Persistence => {
+    const db = new DatabaseSync(':memory:');
+    try {
+        const store = new Persistence(db); store.initialize();
+        const engine = new TranslationLifecycle(store);
+        const a = await engine.syncSource(scope, { ...unit, resource: { ...unit.resource, messageId: 'tm-a' } }, null);
+        const b = await engine.syncSource(scope, { ...unit, resource: { ...unit.resource, messageId: 'tm-b' } }, null);
+        await engine.writeManual(scope, intent(a, 'tm-a-head'));
+        await engine.writeManual(scope, intent(b, 'tm-b-head'));
+        const hit = await store.findApprovedHead(scope, 'ar', a.sourceFingerprint, a.unitId);
+        if (!hit || hit.unitId === a.unitId) throw Error('translation_memory_self');
+    } finally { db.close(); }
+});
+assert.equal(caught, 10);
+console.log('revision-mutation: PASS (10/10 in-memory source faults; real SQLite gates; source/index unchanged)');

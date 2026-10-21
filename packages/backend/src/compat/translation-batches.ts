@@ -76,8 +76,11 @@ export async function translationBatchReview(host: TranslationBatchHost, db: DbR
     const b = (await read(db, tenant, batchId)).value;
     if (!await stillCurrent(host, db, tenant, b)) throw Error();
     const glossary = await readTranslationGlossaryTerms(db, tenant, b.review.pin.storage.scope.projectId);
+    const session = await sessionFor(host, tenant, b.review.pin);
     const items = [];
-    for (const item of b.review.items) { const source = await extract(host, db, tenant, item.selection, b.review.pin); items.push({ selection: item.selection, text: source.unit.text, context: withGlossary(glossary, b.review.targetLocale, source) }); }
+    for (const item of b.review.items) { const source = await extract(host, db, tenant, item.selection, b.review.pin);
+        const memory = await session.persistence.findApprovedHead(b.review.pin.storage.scope, b.review.targetLocale, await messageSourceFingerprint(source.unit), item.intent.unitId);
+        items.push({ selection: item.selection, text: source.unit.text, context: withGlossary(glossary, b.review.targetLocale, source), ...(memory ? { suggestion: { unitId: memory.unitId, revisionId: memory.revision.revisionId, provenance: memory.revision.provenance, text: memory.revision.text } } : {}) }); }
     return batchReviewSchema.parse({ id: b.review.id, reviewHash: b.reviewHash, sourceLocale: b.review.pin.generation.sourceLocale, targetLocale: b.review.targetLocale,
         providerAccountId: b.review.pin.generation.accountId, model: b.review.pin.generation.model, limits: b.review.limits, maxOutputTokens: b.review.pin.generation.maxOutputTokens,
         items, monetaryEstimate: null, delivery: 'administrator-continuation', draftOnly: true });
@@ -238,7 +241,8 @@ export async function planTranslationBatch(host: TranslationBatchHost, db: DbRun
                 sourceVersion: same ? snapshot.source!.sourceVersion : (snapshot.source?.sourceVersion ?? 0) + 1,
                 sourceFingerprint: fingerprint, contextFingerprint, expectedHead: snapshot.head?.revisionId ?? null,
                 locale: request.targetLocale, providerId: pin.generation.accountId, promptVersion: pin.generation.promptVersion, maxAttempts: 1 } });
-        preview.push({ selection, text: source.unit.text, context });
+        const memory = await session.persistence.findApprovedHead(pin.storage.scope, request.targetLocale, fingerprint, unitId);
+        preview.push({ selection, text: source.unit.text, context, ...(memory ? { suggestion: { unitId: memory.unitId, revisionId: memory.revision.revisionId, provenance: memory.revision.provenance, text: memory.revision.text } } : {}) });
     }
     const review = reviewSchema.parse({ version: 1, id: batchId, pin, targetLocale: request.targetLocale, limits: request.limits, items, createdAt: now });
     const value: Batch = { review, reviewHash: await digest(review), phase: 'planned', cursor: 0, approvedBy: null, policyHash: null };

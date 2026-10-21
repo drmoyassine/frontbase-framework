@@ -29,7 +29,8 @@ export const batchSelectionSchema = z.union([batchPageSelectionSchema,batchMenuS
 export const batchLimitsSchema = z.object({ maxRequests: z.number().int().min(1).max(4), maxConcurrent: z.literal(1), maxMessageBytes: z.number().int().min(512).max(65536) }).strict();
 export const batchPlanInputSchema = z.object({ targetLocale: localeSchema, selections: z.array(batchSelectionSchema).min(1).max(4), limits: batchLimitsSchema }).strict();
 export const batchPhaseSchema = z.enum(['planned', 'preparing', 'queued', 'done', 'cancelling', 'closed']);
-export const batchPreviewItemSchema = z.object({ selection: batchSelectionSchema, text: z.string().max(4000), context: translationContextSchema }).strict();
+export const batchPreviewItemSchema = z.object({ selection: batchSelectionSchema, text: z.string().max(4000), context: translationContextSchema,
+    suggestion: z.object({ unitId: hash, revisionId: id, provenance: z.enum(['ai', 'manual', 'import']), text: z.string().max(100_000) }).strict().optional() }).strict();
 export const batchReviewSchema = z.object({ id: uuid, reviewHash: hash, sourceLocale: localeSchema, targetLocale: localeSchema,
     providerAccountId: id, model: z.string().max(200), limits: batchLimitsSchema, maxOutputTokens: z.number().int().positive(),
     items: z.array(batchPreviewItemSchema).min(1).max(4), monetaryEstimate: z.null(), delivery: z.literal('administrator-continuation'), draftOnly: z.literal(true) }).strict();
