@@ -74,9 +74,57 @@ export async function readPublicationList(db:DbRunner,owner:string,bindingInput:
     return {rows,total:entries.length,captureHash:binding.source.hash};
 }
 
+/** Columns whose released text can rename a rendered row and drive localized queries; kept in
+ *  step with the capture-side record-field whitelist (localizedRowText above). */
+const LOCALIZED_ROW_COLUMNS=['title','summary','coverAlt','byline'];
+/** One bounded full-dataset scan for a localized live query (the rpc page-size ceiling). Beyond
+ *  it no honest full-dataset ordering exists, so the localized serve refuses instead of silently
+ *  sorting a window. */
+export const LIVE_LOCALIZED_SCAN=1000;
+/** Full-dataset localized semantics for one live view: released record text that is still fresh
+ *  against the current row (the same per-unit rule the display join applies) drives text
+ *  filters and sorting on those columns across the WHOLE result before paging; every other
+ *  operator keeps source values — exact semantics for non-text columns — and membership stays
+ *  live. The X-Frontbase-List endpoint never reaches live bindings, so this runs only on the
+ *  initial serve of a localized page. */
+async function readLocalizedLiveList(owner:string,binding:Record<string,any>,query:Record<string,any>,request:Request,liveQuery:PublishedLiveQuery,catalog:readonly LocalizedCatalogEntry[]):Promise<{rows:Record<string,unknown>[];total:number}>{
+    const released=new Map<string,Map<string,{text:string;sourceText?:string}>>();
+    for(const item of catalog){
+        if(!item.record||!item.text.trim())continue;
+        if(item.record.connectionId!==String(binding.dataSourceId)||item.record.collection!==binding.tableName)continue;
+        // Repeater-row units carry no explicit fieldKey; the pipeline names their column by path tail.
+        const fieldKey=item.fieldKey??item.path?.at(-1)??'';
+        if(!LOCALIZED_ROW_COLUMNS.includes(fieldKey))continue;
+        const key=String(item.record.key.find(part=>part.column==='id')?.value);
+        let fields=released.get(key);
+        if(!fields){fields=new Map();released.set(key,fields);}
+        if(!fields.has(fieldKey))fields.set(fieldKey,{text:item.text,sourceText:item.sourceText});
+    }
+    const localized=query.filters.some((filter:Record<string,any>)=>LOCALIZED_ROW_COLUMNS.includes(filter.column)&&(filter.op==='eq'||filter.op==='contains'))||LOCALIZED_ROW_COLUMNS.includes(query.sortColumn);
+    if(!released.size||!localized)return liveQuery(owner,binding,query,request);
+    const full=await liveQuery(owner,binding,{...query,page:0,pageSize:LIVE_LOCALIZED_SCAN},request);
+    if(full.total>LIVE_LOCALIZED_SCAN)throw Error('localized_live_query_beyond_cap');
+    const effective=(row:Record<string,unknown>,column:string)=>{const entry=released.get(String(row.id))?.get(column);
+        return entry&&(entry.sourceText===undefined||entry.sourceText===String(row[column]??''))?entry.text:String(row[column]??'');};
+    const textOf=(row:Record<string,unknown>,column:string)=>LOCALIZED_ROW_COLUMNS.includes(column)?effective(row,column):String(row[column]??'');
+    const filtered=full.rows.filter(row=>query.filters.every((filter:Record<string,any>)=>{
+        const op=String(filter.op??'eq');
+        if(['eq','contains','starts_with','ends_with'].includes(op)){
+            const left=textOf(row,filter.column).toLowerCase(),right=String(filter.value??'').toLowerCase();
+            return op==='eq'?left===right:op==='contains'?left.includes(right):op==='starts_with'?left.startsWith(right):left.endsWith(right);}
+        if(op==='is_null')return row[filter.column]===null||row[filter.column]===undefined;
+        if(op==='not_null')return !(row[filter.column]===null||row[filter.column]===undefined);
+        return evaluateCondition({left:{kind:'literal',value:(row[filter.column]??null) as any},operator:op as any,right:{kind:'literal',value:filter.value as any}},()=>undefined);}));
+    if(LOCALIZED_ROW_COLUMNS.includes(query.sortColumn))filtered.sort((a,b)=>{const av=textOf(a,query.sortColumn),bv=textOf(b,query.sortColumn);
+        return (av<bv?-1:av>bv?1:0)*(query.direction==='desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0);});
+    const page=Math.max(0,Number(query.page)||0);
+    return {rows:filtered.slice(page*query.pageSize,(page+1)*query.pageSize),total:filtered.length};
+}
+
 /** Resolve only the selected source for initial HTML; alternatives stay query-free. The optional
- *  catalog localizes pinned publication reads (query + returned text); live views keep coherent
- *  source semantics — their stores have no evidenced localized query plan. */
+ *  catalog localizes pinned publication reads (query + returned text) and gives live views
+ *  full-dataset localized sort/filter semantics (readLocalizedLiveList); without a catalog live
+ *  views keep coherent source semantics. */
 export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[]):Promise<PageLayoutData>{
     const url=new URL(request.url),read=contextReader({url:Object.fromEntries(url.searchParams),user});
     const walk=async(nodes:PageComponent[]):Promise<PageComponent[]>=>Promise.all(nodes.map(async node=>{
@@ -91,7 +139,7 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
                 ...(binding.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:resolveValue(filter.value,read)})),
                 ...(search&&controls.searchColumn?[{column:controls.searchColumn,op:'contains',value:search}]:[])];
             const query={componentId:node.id,versionId,page,pageSize:binding.pagination?.pageSize??12,sortColumn:binding.sorting?.column??'title',direction:binding.sorting?.direction??'asc',filters};
-            const records=live?await liveQuery!(owner,binding,query,request):await readPublicationList(db,owner,binding,query,catalog);
+            const records=live?(catalog?await readLocalizedLiveList(owner,binding,query,request,liveQuery!,catalog):await liveQuery!(owner,binding,query,request)):await readPublicationList(db,owner,binding,query,catalog);
             const props={initialRows:records.rows,initialTotal:records.total,_initialVersionId:versionId,_initialQuery:{page,search,sortColumn:query.sortColumn,direction:query.direction}};
             if(versionId==='default')result={...node,props:{...node.props,...props}};
             else result={...node,versions:node.versions?.map(version=>version.id===versionId?{...version,overrides:{...version.overrides,props:{...version.overrides.props,...props}}}:version)};

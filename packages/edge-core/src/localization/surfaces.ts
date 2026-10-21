@@ -58,13 +58,17 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
         if(Array.isArray(p.templateHeroState)){for(const state of p.templateHeroState as any[]){state.labels={...homepageHeroLabels,...state.labels};state.settings.heading=String(state.settings.heading).replaceAll('{destination}',String(state.destination));}}
         if(node.type==='Navbar'){p.localeLabels={...homepageNavLabels,...p.localeLabels as object};}
         if(node.type==='Footer'&&!p.copyright)p.copyright=`© ${new Date().getFullYear()} All rights reserved.`;
-        if(node.type==='Repeater'&&Array.isArray(p.initialRows)){
+        if(['Repeater','DataTable','Grid'].includes(node.type)&&Array.isArray(p.initialRows)){
             const controls=p.controls as Record<string,unknown>|undefined;
             const binding=(p.binding??(node as {binding?:unknown}).binding)as Record<string,unknown>|undefined;
             const pinned=(binding?.source as Record<string,unknown>|undefined)?.kind==='publication';
             // A pinned publication binding re-fetches through the localized list endpoint, so its
             // interactive controls stay coherent on a localized page; any other store keeps the refusal.
             if(controls&&Object.values(controls).some(v=>v===true)&&!pinned)throw Error('localized_interactive_list_not_supported');
+            // DataTable and Grid render skeletons and fetch rows in the visitor's browser with no
+            // locale channel, so a localized page would surface source text: refuse live-bound
+            // ones outright instead of publishing an incoherent page.
+            if(node.type!=='Repeater'&&!pinned)throw Error('localized_live_table_not_supported');
             // Data is still resolved live on every server request. Avoid a source-language client re-fetch.
             p.localeReadOnly=true;
         }

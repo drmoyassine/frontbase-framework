@@ -116,9 +116,11 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
         &&path===(template.role==='directory'?manifest.configuration.routes.directory:manifest.configuration.routes.blog));
     const target=page??listing;
     if(!target)throw Error('homepage_required');
-    // Localized query titles are a listing-page plan (parameterized template renderings); a static
-    // page capture always queries pure source so review hashes stay deterministic.
-    const result=await resolvePublicationVersionPage(manifest,active.pointer.hash,tenant,db,new Request(new URL(!page&&sourceUrl?.search?path+sourceUrl.search:path,request.url)),{authenticated:false},liveQuery,!page?localizedTitles:undefined,page?undefined:recordsLocale);
+    // The localized query plan (fresh released titles + catalog) drives listing pages and —
+    // since live-data slice 2 — static pages' live lists too (full-dataset localized
+    // sort/filter). Review/prepare captures never receive a plan, so release hashes stay
+    // deterministic.
+    const result=await resolvePublicationVersionPage(manifest,active.pointer.hash,tenant,db,new Request(new URL(!page&&sourceUrl?.search?path+sourceUrl.search:path,request.url)),{authenticated:false},liveQuery,localizedTitles,page?undefined:recordsLocale);
     if(!result)throw Error('homepage_unavailable');
     const layout=homepageDisplayLayout(result.page.layout as unknown as PageLayoutData);
     const baseFields=homepageDisplayFields(layout) as (DisplayField&{menu?:MenuRef})[];
@@ -142,7 +144,7 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
     // Precise translation-surface refusals (e.g. an interactive live list) pass through under
     // their own code; everything else stays an opaque source-unavailable so internals never
     // leak through the review surface.
-    const capture=await captureHomepage(db,tenant,request,liveQuery,path).catch((error:unknown)=>{if(error instanceof Error&&error.message==='localized_interactive_list_not_supported')throw error;throw Error('homepage_source_unavailable');}),page=await host.pagesFor(tenant).get(capture.pageId);
+    const capture=await captureHomepage(db,tenant,request,liveQuery,path).catch((error:unknown)=>{if(error instanceof Error&&['localized_interactive_list_not_supported','localized_live_table_not_supported'].includes(error.message))throw error;throw Error('homepage_source_unavailable');}),page=await host.pagesFor(tenant).get(capture.pageId);
     const configHash=await publicationHash({identity,sourceLocale:config.sourceLocale,targetLocales:config.targetLocales});
     const token=await publicationHash({site:capture.active.pointer.hash,source:capture.sourceHash,config:configHash,path});
     const fields=await mapLimit(capture.fields.concat(await supplementTemplateRecords(db,tenant,request,capture)),async field=>{

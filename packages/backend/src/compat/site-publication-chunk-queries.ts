@@ -8,7 +8,7 @@ import { publicationPathSchema } from '@frontbase/edge-core/directory/publicatio
 /** Serve-time localized query titles keyed `${collection}:${id}`; membership stays the current index. */
 export type LocalizedTitles=Map<string,string>;
 /** The release-catalog slice localized queries read: record-bound released text units. */
-export type LocalizedCatalogEntry={record?:{collection:string;key:readonly{column:string;value:string|number|boolean}[]};fieldKey?:string;text:string;sourceText?:string};
+export type LocalizedCatalogEntry={path?:readonly string[];record?:{connectionId?:string;collection:string;key:readonly{column:string;value:string|number|boolean}[]};fieldKey?:string;text:string;sourceText?:string};
 /** Everything a localized rendering needs from its release: validated query titles plus the raw
  *  catalog (row-text joins validate freshness against the rows they rename, not the index). */
 export type LocalizedQueryPlan={titles:LocalizedTitles;catalog:readonly LocalizedCatalogEntry[]};

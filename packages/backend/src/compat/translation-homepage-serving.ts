@@ -82,7 +82,10 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     if(sourceUrl.pathname==='/'&&url.searchParams.size)throw new PublicationRequestError();
     // Template listing releases resolve every parameterization through localized queries: the
     // selected release's fresh released titles drive the registry beside the per-unit text join.
-    const listingTitles=capture.active.artifact.schemaVersion===2&&selected&&selected.release.path!=='/'&&templateListingPath(capture.active.artifact,selected.release.path)
+    // Every selected page release gets a localized query plan: listings intersect fresh titles
+    // with the parameterized registry; static pages pass the catalog to their live lists
+    // (full-dataset localized sort/filter) and any pinned reads beside them.
+    const listingTitles=capture.active.artifact.schemaVersion===2&&selected&&selected.release.path!=='/'
         ?localizedTitleIndex(selected.release,capture.active.artifact):undefined;
     const available=[];
     for(const item of published){
@@ -112,7 +115,7 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     // Static pages refuse query parameters at their source path; the localized path refuses
     // them identically instead of rendering an indexable duplicate the source never serves.
     if(pageRelease&&!listingRelease&&sourceUrl.search)throw new PublicationRequestError();
-    const resolved=pageRelease?projectHomepageLocale(listingRelease&&sourceUrl.search?await captureHomepage(db,tenant,request,liveQuery,pageRelease.release.path,sourceUrl,listingTitles,pageRelease.release.locale):await captureFor(pageRelease.release.path,listingTitles,pageRelease.release.locale),pageRelease.release):isHomepage?(selected?projectHomepageLocale(capture,selected.release):capture.result):await resolvePublicationVersionPage(capture.active.artifact,capture.active.pointer.hash,tenant,db,new Request(sourceUrl),{authenticated:false},liveQuery);
+    const resolved=pageRelease?projectHomepageLocale(listingRelease&&sourceUrl.search?await captureHomepage(db,tenant,request,liveQuery,pageRelease.release.path,sourceUrl,listingTitles,pageRelease.release.locale):await captureFor(pageRelease.release.path,pageRelease.release.policy?.outdated==='source-fallback'?listingTitles:undefined,pageRelease.release.locale),pageRelease.release):isHomepage?(selected?projectHomepageLocale(capture,selected.release):capture.result):await resolvePublicationVersionPage(capture.active.artifact,capture.active.pointer.hash,tenant,db,new Request(sourceUrl),{authenticated:false},liveQuery);
     if(!resolved)return null;
     if(selected&&!pageRelease&&!isHomepage){
         // Only the already approved shared shell is translated here. Other page copy stays source content.
