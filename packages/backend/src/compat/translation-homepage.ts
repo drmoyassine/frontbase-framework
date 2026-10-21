@@ -14,6 +14,7 @@ import {createChunkDirectoryQueries,freshLocalizedIndexTitles,type LocalizedQuer
 import {directoryLayoutQueries,directoryListCollections} from '@frontbase/edge-core/directory/configuration';
 import {configuredTranslationStorage,configuredTranslationStorageIdentity} from './translation-storage.js';
 import {TranslationGenerationStore} from './translation-generation.js';
+import {translationDisplayText} from './translation-inputs.js';
 import type {TranslationBatchHost} from './translation-batches.js';
 import type {PublishedLiveQuery} from './publication-list-source.js';
 
@@ -184,7 +185,9 @@ async function supplementTemplateRecords(db:DbRunner,tenant:string,request:Reque
         const record={connectionId:'frontbase:publication',collection,key:[{column:'id',value:row.id as string|number}]};
         if(covered.has(JSON.stringify(stableIdentity({blockId:'',path:['record'],record,fieldKey:column}))))return;
         const text=row[column];
-        if(typeof text==='string'&&text.trim()&&text.length<=12000)supplement.push({blockId:`$record:${collection}`,path:['record',String(row.id),column],text,label:`Record ${collection} / ${column}`,record,fieldKey:column});
+        // The same plain-display shape the capture-side emit guard enforces: non-plain record text
+        // stays source-fallback everywhere instead of owning a unit no interactive surface can address.
+        if(typeof text==='string'&&text.trim()&&text.length<=12000&&!/[{}<>]|@\{/.test(text))supplement.push({blockId:`$record:${collection}`,path:['record',String(row.id),column],text,label:`Record ${collection} / ${column}`,record,fieldKey:column});
     };
     for(const queryId of listed){
         const collection=directoryListCollections[queryId]!;
@@ -211,18 +214,25 @@ export async function reviewHomepage(host:TranslationBatchHost,db:DbRunner,tenan
 export async function saveHomepageTranslations(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,input:unknown,liveQuery?:PublishedLiveQuery){
     const body=translationHomepageSaveSchema.parse(input),path=body.path??'/';let s:Session;try{s=await session(host,db,tenant,request,body.locale,liveQuery,path);}catch{throw Error('homepage_review_unavailable');}
     if(body.token!==s.token)throw Error('source_changed');
-    const pending=await mapLimit(body.entries,async e=>{const field=s.fields.find(f=>f.id===e.id);if(!field)throw Error('unknown_field');const prior=await readField(s,field);if(prior.value.token!==e.token)throw Error('revision_changed');return{e,field,...prior};});
+    const pending=await mapLimit(body.entries,async e=>{const field=s.fields.find(f=>f.id===e.id);if(!field)throw Error('unknown_field');const prior=await readField(s,field);if(prior.value.token!==e.token)throw Error('revision_changed');return{e,field,display:translationDisplayText(field.text,e.text),...prior};});
     const engine=new TranslationLifecycle(s.persistence);
     const written=new Set<string>();
     for(const item of pending){
         // One record unit can surface in several display positions; write its revision once.
         if(written.has(item.field.unitId))continue;written.add(item.field.unitId);
         const source=await engine.syncSource(s.scope,item.field.unit,item.snapshot.source?.sourceVersion??null,item.field.context).catch(()=>{throw Error('source_sync_unavailable');});if(source.status==='conflict')throw Error('source_sync_conflict');
-        const revision=await engine.writeManual(s.scope,{version:1,unitId:source.unitId,locale:body.locale,sourceVersion:source.sourceVersion,sourceFingerprint:source.sourceFingerprint,contextFingerprint:source.contextFingerprint,expectedHead:item.snapshot.head?.revisionId??null,revisionId:crypto.randomUUID(),text:item.e.text}).catch(()=>{throw Error('translation_write_unavailable');});if(revision.status==='rejected')throw Error('translation_write_refused');
+        const revision=await engine.writeManual(s.scope,{version:1,unitId:source.unitId,locale:body.locale,sourceVersion:source.sourceVersion,sourceFingerprint:source.sourceFingerprint,contextFingerprint:source.contextFingerprint,expectedHead:item.snapshot.head?.revisionId??null,revisionId:crypto.randomUUID(),text:item.display}).catch(()=>{throw Error('translation_write_unavailable');});if(revision.status==='rejected')throw Error('translation_write_refused');
     }
     const latest=await captureHomepage(db,tenant,request,liveQuery,path);if(latest.sourceHash!==s.capture.sourceHash||latest.active.pointer.hash!==s.capture.active.pointer.hash)throw Error('source_changed');
     return {saved:pending.length};
 }
+/** Identity-collision fence: one stable unit identity must carry exactly one source text inside a
+ *  release, so a surface bug can never translate the same unit from two different sources. */
+export function assertNoIdentityCollision(catalog:(IdentifiedField&{sourceText?:string})[]):void{
+    const seen=new Map<string,string>();
+    for(const field of catalog){const key=JSON.stringify(stableIdentity(field)),text=field.sourceText??'';
+        if(seen.has(key)&&seen.get(key)!==text)throw Error('translation_identity_collision');
+        seen.set(key,text);}}
 export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,expectedToken:string,reviewer:string,now:string,liveQuery?:PublishedLiveQuery,path:string='/',policy:{missing:'block'|'source-fallback';outdated:'block'|'source-fallback'}={missing:'block',outdated:'block'}){
     const s=await session(host,db,tenant,request,target,liveQuery,path);
     // The locale router owns every /{locale}/… URL once any release for that locale is active, so
@@ -242,6 +252,7 @@ export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunne
         throw Error('coverage_incomplete');
     }
     const catalog=read.filter(item=>item.value.state==='draft'&&item.snapshot.head).map(item=>({id:item.f.id,blockId:item.f.blockId,path:item.f.path,...(item.f.versionId?{versionId:item.f.versionId}:{}),...(item.f.fieldKey?{fieldKey:item.f.fieldKey}:{}),...(item.f.record?{record:{connectionId:item.f.record.connectionId,collection:item.f.record.collection,key:item.f.record.key}}:{}),...(item.f.menu?{menu:item.f.menu}:{}),sourceFingerprint:item.f.fingerprint,sourceText:item.f.text,text:item.snapshot.head!.text,revisionId:item.snapshot.head!.revisionId,unitId:item.f.unitId}));
+    assertNoIdentityCollision(catalog);
     const release=releaseSchema.parse({version:1,tenant,project:s.scope.projectId,sourceLocale:s.config.sourceLocale,locale:target,siteHash:s.capture.active.pointer.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,path:s.path,policy,pageId:s.capture.pageId,catalog,reviewer,reviewedAt:now});
     const hash=await publicationHash(release);await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,await versionKeyFor(s.path,hash),JSON.stringify(release),now]);
     if(!await readHomepageRelease(db,tenant,hash))throw Error();

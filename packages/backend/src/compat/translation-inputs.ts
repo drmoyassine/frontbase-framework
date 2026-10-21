@@ -16,6 +16,19 @@ export function translationPlainText(value: unknown): string {
     if (typeof value !== 'string' || !value.trim() || value.length > 4000 || /[{}<>]|@\{/.test(value)) throw Error();
     return value;
 }
+const composedToken = /\{[A-Za-z_][A-Za-z0-9_]*\}/g;
+/** Homepage display-text save guard, shaped to agree with the interactive extraction refusal while
+ *  admitting the released `{token}` composed-string grammar (localization/patterns): the translation
+ *  must be non-empty plain display text within the release inventory bound (12000) and preserve the
+ *  source's sorted `{token}` set exactly — count and order-free. Double-brace engine placeholders,
+ *  `{$…}` refs, leftover braces, angle brackets and `@{` never save. */
+export function translationDisplayText(source: string, text: unknown): string {
+    if (typeof text !== 'string' || !text.trim() || text.length > 12000 || /[<>]|@\{/.test(text)) throw Error('translation_text_invalid');
+    const tokens = (value: string) => (value.match(composedToken) ?? []).sort().join('\u0000');
+    if (tokens(text) !== tokens(source)) throw Error('translation_text_invalid');
+    if (/[{}]/.test(text.replace(composedToken, ''))) throw Error('translation_text_invalid');
+    return text;
+}
 export interface TranslationInput { unit: MessageUnit; context: TranslationContext; pageHash: string }
 /** Determinate source invalidation; transport failures must remain distinguishable. */
 export class TranslationInputChanged extends Error {}

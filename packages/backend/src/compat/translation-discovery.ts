@@ -45,6 +45,9 @@ const excludedColumns: Record<Collection, [string, string][]> = {
 };
 const structuralColumns = new Set(['id', 'originalPath', 'cityId', 'institutionId', 'language', 'revision']);
 const listCollection: Record<string, 'institutions' | 'programs' | 'cities' | 'articles'> = { 'directory.institution.list': 'institutions', 'directory.program.list': 'programs', 'directory.city.list': 'cities', 'directory.article.list': 'articles' };
+/** Plain display text only — the same shape the release emit guard and the interactive extraction
+ *  enforce, so discovery never inventories a unit those surfaces would refuse to address. */
+const plainDisplay = (value: unknown): value is string => typeof value === 'string' && !!value.trim() && !/[{}<>]|@\{/.test(value);
 
 type CoverageField = z.infer<typeof translationCoverageFieldSchema>;
 
@@ -74,16 +77,31 @@ export async function discoverTranslationCoverage(host: TranslationBatchHost, db
         if (!reference) throw Error('publication_manifest_chunk_missing');
         const chunk = await chunkStore.loadChunk(manifest, reference); chunkCache.set(hash, chunk); return chunk;
     };
+    /** Composed link-label columns per collection, discovered below from rendered list bindings: a
+     *  Link with `ariaLabel` bound under a legacy directory list composes `${text}: ${title}` — the
+     *  same record unit the capture stamps (directory/bindings), keyed `ariaLabel:<textCol>`.
+     *  Detail-query contexts never compose here: their links keep positional release identity. */
+    const composedByCollection = new Map<Collection, Set<string>>();
     const recordFields = async (collection: Collection, entry: { id: string | number; chunkHash: string; position: number }) => {
         const chunk = await loadChunk(entry.chunkHash), record = chunk.records[entry.position] as Record<string, unknown>;
         const fields: CoverageField[] = [];
         for (const column of textColumns[collection]) {
             const value = record[column];
-            if (typeof value !== 'string' || !value.trim()) continue;
+            if (!plainDisplay(value)) continue;
             const resource = { kind: 'record' as const, connectionId: 'frontbase:publication', collection,
                 key: [{ column: 'id', value: entry.id }], propertyPath: [column] };
             fields.push({ ref: await translationUnitId(scope, resource), fingerprint: await messageSourceFingerprint(unit(resource, value)),
                 label: `Record ${collection} / ${column}`.slice(0, 200), decision: 'translatable', propertyPath: [column], text: value,
+                record: { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: entry.id }] } });
+        }
+        for (const composed of composedByCollection.get(collection) ?? []) {
+            const column = composed.slice('ariaLabel:'.length), bound = record[column], title = record.title;
+            if (!plainDisplay(bound) || !plainDisplay(title)) continue;
+            const resource = { kind: 'record' as const, connectionId: 'frontbase:publication', collection,
+                key: [{ column: 'id', value: entry.id }], propertyPath: [composed] };
+            const text = `${bound}: ${title}`;
+            fields.push({ ref: await translationUnitId(scope, resource), fingerprint: await messageSourceFingerprint(unit(resource, text)),
+                label: `Record ${collection} / ${composed}`.slice(0, 200), decision: 'translatable', propertyPath: [composed], text,
                 record: { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: entry.id }] } });
         }
         for (const [column, reason] of excludedColumns[collection]) {
@@ -169,6 +187,12 @@ export async function discoverTranslationCoverage(host: TranslationBatchHost, db
             else if (binding && (binding as Record<string, any>).source?.kind === 'publication') current = `publication:${(binding as Record<string, any>).tableName}`;
             if (current) { const mapping = props.recordBindings as Record<string, unknown> | undefined;
                 if (mapping) for (const key of ['text', 'href', 'src', 'alt', 'ariaLabel', 'blocks'] as const) if (mapping[key]) addTo(current, String(mapping[key]));
+                const listed = listCollection[current];
+                if (listed && mapping?.ariaLabel && ['title', 'summary', 'byline'].includes(String(mapping.text))) {
+                    const composed = composedByCollection.get(listed) ?? new Set<string>();
+                    composed.add(`ariaLabel:${String(mapping.text)}`);
+                    composedByCollection.set(listed, composed);
+                }
                 for (const value of Object.values(props)) if (typeof value === 'string') { const match = /\{\{\s*record\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/.exec(value); if (match) addTo(current, match[1]!); } }
             if (node.children) collectRendered(node.children, current);
             for (const version of node.versions ?? []) if (version.overrides.children) collectRendered(version.overrides.children as PageComponent[], current);

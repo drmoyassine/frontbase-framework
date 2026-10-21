@@ -63,6 +63,24 @@ try {
  assert.deepEqual((await batchFields.json()).items.map(item=>item.selection),[
   {pageId:'programs',blockId:'hero',field:'content'},{pageId:'programs',blockId:'plain',field:'content'},
   {pageId:'programs',blockId:'wrap',field:'content'},{pageId:'programs',blockId:'panel',field:'content'}],'the batch flow stays Default-only');
+ // Allowlist parity with the release surfaces: the six text types expose the release key order and
+ // Link/Button/Badge/Image/Input/Textarea/Select plain display fields are batch-selectable. One
+ // translatable field per node still holds — later keys on the same node stay release-only.
+ await pages.create({name:'Widgets',slug:'widgets',layout_data:{content:[
+  {id:'doc-link',type:'Link',props:{text:'Apply now',label:'Apply label',ariaLabel:'Apply here',href:'/apply/'}},
+  {id:'go-btn',type:'Button',props:{label:'Press me'}},
+  {id:'pic',type:'Image',props:{src:'https://cdn.example.org/x.png',alt:'Campus photo'}},
+  {id:'find',type:'Input',props:{placeholder:'Search programs'}}],root:{}}},'widgets',now);
+ const wideFields=await app.request('/api/project/translation-batches/sources/widgets/');assert.equal(wideFields.status,200);
+ assert.deepEqual((await wideFields.json()).items.map(item=>item.selection),[
+  {pageId:'widgets',blockId:'doc-link',field:'text'},{pageId:'widgets',blockId:'go-btn',field:'label'},
+  {pageId:'widgets',blockId:'pic',field:'alt'},{pageId:'widgets',blockId:'find',field:'placeholder'}],'first-present plain display field per node');
+ const wp=await req('widgets/?locale=ar');assert.equal(wp.status,200,await wp.clone().text());const wv=await wp.json();
+ assert.deepEqual(wv.fields.map(field=>field.selection.field),['text','label','alt','placeholder']);
+ assert.ok(!wv.fields.some(field=>field.selection.field==='ariaLabel'),'per-node single field: remaining keys stay release-only');
+ const btnField=wv.fields[1];assert.equal(btnField.source,'Press me');
+ const savedBtn=await save(btnField,'اضغط هنا');assert.equal(savedBtn.status,200,await savedBtn.clone().text());
+ assert.equal((await savedBtn.json()).fields[1].translation,'اضغط هنا');
  const {TranslationLifecycle}=await import('@frontbase/edge-core/localization');
  const stored=await f.f.store.read(f.scope,await (await import('@frontbase/edge-core/localization')).translationUnitId(f.scope,{kind:'component',documentId:'home',blockId:'title',versionId:'default',propertyPath:['props','content']}), 'ar');
  const manual=stored.head;const protectedResult=await new TranslationLifecycle(f.f.store).writeGenerated(f.scope,{version:1,unitId:manual.unitId,locale:manual.locale,sourceVersion:manual.sourceVersion,sourceFingerprint:manual.sourceFingerprint,contextFingerprint:manual.contextFingerprint,revisionId:'new-generated',expectedHead:manual.revisionId,text:'replacement'});

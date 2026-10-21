@@ -39,7 +39,11 @@ function stampedRecord(p:Record<string,unknown>):{record:DisplayRecord;columns:M
     const valid=typeof value==='string'&&!!value.trim()&&value.length<=4000&&!/[\u0000-\u001f]/.test(value)||typeof value==='number'&&Number.isFinite(value);
     if(!connectionId||!collection||!valid)return undefined;
     const columns=new Map<string,string>();
-    for(const [key,column] of Object.entries(sources)){const name=String(column);if(stampableColumns.has(name)&&stampableKeys.has(key))columns.set(key,name);}
+    for(const [key,column] of Object.entries(sources)){const name=String(column);
+        // Composed link labels stamp the composite column `ariaLabel:<textCol>`; it is a record unit
+        // keyed to the composed string, admitted only over a real stampable text column.
+        if(key==='ariaLabel'&&name.startsWith('ariaLabel:')&&stampableColumns.has(name.slice('ariaLabel:'.length)))columns.set(key,name);
+        else if(stampableColumns.has(name)&&stampableKeys.has(key))columns.set(key,name);}
     if(!columns.size)return undefined;
     return {record:{connectionId,collection,key:[{column:'id',value}]},columns};
 }
@@ -77,6 +81,10 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
         const emit=(path:string[],value:unknown,label:string,record?:DisplayRecord,fieldKey?:string)=>{
             if(typeof value==='string'&&value.length>12000)throw Error('locale_text_limit');
             if(typeof value!=='string'||!value.trim()||/\{\{|@\{/.test(value)||/^(?:https?:|mailto:|tel:|\/)/.test(value))return;
+            // Record-keyed emissions agree with the interactive extraction shape: record columns are
+            // plain display text, so braces, angle brackets and engine refs stay source-fallback.
+            // Authored chrome keeps the looser engine-ref check below.
+            if(record&&/[{}<>]|@\{/.test(value))return;
             const field:DisplayField={blockId:node.id,path,text:value,label};
             if(versionId)field.versionId=versionId;
             if(record)field.record=record;

@@ -6,7 +6,7 @@ const id = z.string().min(1).max(160), uuid = z.string().uuid(), hash = z.string
 export const translationModelCatalogSchema = z.object({ accountId: id, models: z.array(z.object({
     id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/), name: z.string().min(1).max(200), free: z.boolean(),
 }).strict()).max(5000) }).strict();
-export const batchPageSelectionSchema = z.object({ pageId: id, blockId: id, field: z.enum(['content', 'text', 'value']) }).strict();
+export const batchPageSelectionSchema = z.object({ pageId: id, blockId: id, field: z.enum(['content', 'text', 'value', 'label', 'alt', 'ariaLabel', 'placeholder']) }).strict();
 const identifier = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/).refine(v => !['__proto__','prototype','constructor'].includes(v));
 export const batchMenuSelectionSchema = z.object({ kind: z.literal('menu'), menuId: id, field: z.enum(['brand','copyright','description','label']), itemId: id.refine(v => !['__proto__','prototype','constructor'].includes(v)).optional() }).strict()
     .refine(v => v.field === 'label' ? !!v.itemId : v.itemId === undefined);

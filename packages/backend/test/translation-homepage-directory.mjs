@@ -9,7 +9,7 @@ import { SitePublicationManifestStore } from '../dist/compat/site-publication-ma
 import { SitePublicationStore } from '../dist/compat/site-publication-store.js';
 import { SitePublicationReviewStore } from '../dist/compat/site-publication-review-store.js';
 import { renderReviewedSitePublication } from '../dist/compat/site-publication-serving.js';
-import { readHomepageRelease } from '../dist/compat/translation-homepage.js';
+import { readHomepageRelease, assertNoIdentityCollision } from '../dist/compat/translation-homepage.js';
 const f = await allowanceFixture(), tenant = 'alpha';
 const config = emptyDirectoryConfiguration(); config.site = { name: 'Study site', destination: 'USA', origin: 'https://site.test', locale: 'en' }; config.datasourceId = 'content';
 for (const role of ['institution', 'program', 'city']) { const m = config.collections[role]; m.table = role; m.scope = { field: 'country', value: 22 }; Object.assign(m.fields, { id: 'id', title: 'title' }); if (role !== 'city') m.fields.originalPath = 'path'; }
@@ -74,7 +74,7 @@ try {
     assert.equal(review.fields.filter(field => field.label === 'Record institutions / title').length, 3, 'stamped rows surface their title column');
     assert.equal(review.fields.filter(field => field.label === 'Record institutions / summary').length, 6, 'title+summary bindings both bind summary: Paragraph and Link');
     assert.equal(review.fields.filter(field => field.label === 'Record institutions / coverAlt').length, 3, 'image alt follows the coverAlt column');
-    assert.equal(review.fields.filter(field => field.label === 'ariaLabel').length, 3, 'composed link labels stay positional');
+    assert.equal(review.fields.filter(field => field.label === 'Record institutions / ariaLabel:summary').length, 3, 'composed link labels are record units keyed to the composite column');
     assert.ok(review.fields.some(field => field.source === 'Explore institutions'), 'page copy stays component-scoped');
     const prepared = await saveAndPublishLocale(review, '/');
     const arabic = await html('/ar/'); assert.equal(arabic.status, 200); assert.equal(arabic.headers.get('Content-Language'), 'ar');
@@ -87,16 +87,21 @@ try {
     const release = await readHomepageRelease(f.db, tenant, prepared.hash);
     const scope = { tenantId: tenant, projectId: release.project };
     const recordEntries = release.catalog.filter(entry => entry.record);
-    assert.equal(recordEntries.length, 12);
+    assert.equal(recordEntries.length, 15, '12 bound columns plus the 3 composed link labels');
     for (const entry of recordEntries) {
-        assert.ok(['title', 'summary', 'coverAlt'].includes(entry.fieldKey), 'catalog entries carry the stamped column');
+        assert.ok(['title', 'summary', 'coverAlt', 'ariaLabel:summary'].includes(entry.fieldKey), 'catalog entries carry the stamped column');
         assert.equal(entry.unitId, await translationUnitId(scope, { kind: 'record', connectionId: entry.record.connectionId, collection: entry.record.collection, key: entry.record.key, propertyPath: [entry.fieldKey] }));
     }
-    assert.ok(!release.catalog.some(entry => entry.fieldKey === 'ariaLabel'), 'composed labels are not record units');
+    assert.equal(release.catalog.filter(entry => entry.fieldKey === 'ariaLabel:summary').length, 3, 'composed labels share the record-unit identity namespace');
+    // Identity-collision fence: one stable unit identity can never carry two different sources.
+    const collisionEntry = (blockId, sourceText) => ({ blockId, path: ['props', 'text'],
+        record: { connectionId: 'frontbase:publication', collection: 'institutions', key: [{ column: 'id', value: 1 }] }, fieldKey: 'title', sourceText });
+    await assert.rejects(async () => assertNoIdentityCollision([collisionEntry('x', 'Alpha'), collisionEntry('y', 'Beta')]), /translation_identity_collision/);
+    await assert.doesNotReject(async () => assertNoIdentityCollision([collisionEntry('x', 'Alpha'), collisionEntry('y', 'Alpha')]));
 
     // Second page, reversed order: the same record units are already draft; only page copy is missing.
     const reviewB = await call('review/?locale=ar&path=/more/'); assert.equal(reviewB.complete, false);
-    assert.equal(reviewB.fields.filter(field => field.state === 'draft' && field.label.startsWith('Record institutions / ')).length, 12, 'every record unit carries over across pages, alt text included');
+    assert.equal(reviewB.fields.filter(field => field.state === 'draft' && field.label.startsWith('Record institutions / ')).length, 15, 'every record unit carries over across pages, composed labels included');
     const preparedB = await saveAndPublishLocale({ ...reviewB, fields: reviewB.fields.filter(field => field.state === 'missing') }, '/more/');
     const releaseB = await readHomepageRelease(f.db, tenant, preparedB.hash);
     const unitOf = (release, column, value) => release.catalog.find(entry => entry.fieldKey === column && entry.sourceText.includes(value))?.unitId;

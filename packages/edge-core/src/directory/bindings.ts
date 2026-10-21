@@ -178,6 +178,10 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
             if (b.alt) rest.alt = literal(row[b.alt]) || (b.altFallback === 'title' ? literal(row.title) : '');
             const recordColumns: Record<string, string> = {};
             if (b.text === 'title' || b.text === 'summary' || b.text === 'byline') recordColumns.text = b.text;
+            // A composed link label is a record unit keyed to the composite column (`ariaLabel:<textCol>`)
+            // so capture, discovery and translation memory agree on one identity — never row position.
+            // Date-bound or fallback text columns never compose: their output is not the stored source.
+            if (b.ariaLabel && recordColumns.text) recordColumns.ariaLabel = `ariaLabel:${b.text}`;
             if (b.alt) recordColumns.alt = b.alt;
             if (collection && (typeof row.id === 'string' || typeof row.id === 'number') && Object.keys(recordColumns).length) {
                 rest.translationRecord = { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id as string | number }] };

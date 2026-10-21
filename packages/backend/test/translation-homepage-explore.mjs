@@ -16,7 +16,7 @@ for (const role of ['institution', 'program', 'city']) { const m = config.collec
 config.collections.institution.fields.cityId = 'city'; config.collections.program.fields.institutionId = 'institution';
 const pad = n => String(n).padStart(2, '0');
 const records = () => ({ cities: [{ id: 9, title: 'Boston' }],
-    institutions: Array.from({ length: 14 }, (_, i) => ({ summary: `Summary ${pad(i + 1)}`, cover: `https://cdn.example.org/${i + 1}.png`, coverAlt: `Campus ${pad(i + 1)}`, logo: null, id: i + 1, title: `Institution ${pad(i + 1)}`, originalPath: `/inst-${i + 1}/`, cityId: 9, body: null, publishedAt: '2024-03-09' })),
+    institutions: Array.from({ length: 14 }, (_, i) => ({ summary: i === 12 ? 'Summary <b>13</b>' : `Summary ${pad(i + 1)}`, cover: `https://cdn.example.org/${i + 1}.png`, coverAlt: `Campus ${pad(i + 1)}`, logo: null, id: i + 1, title: `Institution ${pad(i + 1)}`, originalPath: `/inst-${i + 1}/`, cityId: 9, body: null, publishedAt: '2024-03-09' })),
     programs: [{ summary: 'Alpha program', cover: null, coverAlt: '', logo: null, id: 101, title: 'Program Alpha', originalPath: '/program-alpha/', institutionId: 1, body: null, publishedAt: '2023-11-02' },
         { summary: 'Beta program', cover: null, coverAlt: '', logo: null, id: 102, title: 'Program Beta', originalPath: '/program-beta/', institutionId: 1, body: null, publishedAt: '2023-11-02' },
         { summary: 'Gamma program', cover: null, coverAlt: '', logo: null, id: 103, title: 'Program Gamma', originalPath: '/program-gamma/', institutionId: 2, body: null, publishedAt: '2023-11-02' }],
@@ -83,6 +83,16 @@ try {
     assert.equal(review.fields.filter(field => field.label === 'Record institutions / title').length, 14, '12 stamped on page one plus 2 from the supplement');
     assert.equal(review.fields.filter(field => field.label === 'Record programs / title').length, 3, 'the supplement carries the inactive collection too');
     assert.equal(review.fields.filter(field => field.label === 'Record institutions / coverAlt').length, 14, 'alt units cover records beyond page one');
+    // Slice C: record text that is not plain display text never becomes a supplement unit — it stays
+    // source-fallback everywhere (the same shape refusal the capture-side emit guard applies).
+    assert.ok(!review.fields.some(field => field.label === 'Record institutions / summary' && /[{}<>]|@\{/.test(field.source)), 'non-plain record text stays source-fallback, never a unit');
+    // Slice C: the display-text save guard — markup and token-less pattern edits are refused with a
+    // precise code; the released {token} grammar itself saves (the pattern chrome below proves it).
+    const refuse = async entry => { const r = await app.request('https://site.test' + root + 'save/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ locale: 'ar', path: '/explore/', token: review.token, entries: [entry] }) }); assert.equal(r.status, 409, await r.clone().text()); return (await r.json()).code; };
+    const patternField = review.fields.find(field => field.label === 'pageStatus');
+    assert.equal(await refuse({ id: patternField.id, token: patternField.token, text: 'عربي بدون رمز' }), 'translation_text_invalid', 'a pattern translation without the source tokens is refused');
+    const plainField = review.fields.find(field => field.source === 'Find an institution');
+    assert.equal(await refuse({ id: plainField.id, token: plainField.token, text: '<b>عربي</b> Find an institution' }), 'translation_text_invalid', 'markup never saves');
     // Template listing releases refuse any strict dimension: parameterized renderings change the source set.
     await call('prepare/', { locale: 'ar', token: review.token, approveTranslations: true, path: '/explore/' }, 409);
     await call('prepare/', { locale: 'ar', token: review.token, approveTranslations: true, path: '/explore/', policy: { missing: 'source-fallback', outdated: 'block' } }, 409);

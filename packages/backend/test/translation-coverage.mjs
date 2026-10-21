@@ -26,10 +26,11 @@ const staticLayout = { root: {}, content: [
         { id: 'row-summary', type: 'Paragraph', props: { text: '{{ record.summary }}' } }] },
     { id: 'promo', type: 'Heading', props: { text: 'Seasonal offers' },
         versions: [{ id: 'featured', name: 'Featured', when: "url.query.promo == '1'", overrides: { props: { text: 'Featured offers' } } }]}] };
-const node = queryId => ({ id: queryId, type: queryId.endsWith('.list') ? 'Repeater' : 'Container',
-    props: { directoryQuery: { version: 1, queryId, params: queryId.endsWith('.detail') ? { path: '/institution-1/' } : {} } }, children: [] });
+const node = (queryId, children = []) => ({ id: queryId, type: queryId.endsWith('.list') ? 'Repeater' : 'Container',
+    props: { directoryQuery: { version: 1, queryId, params: queryId.endsWith('.detail') ? { path: '/institution-1/' } : {} } }, children });
 const templates = [{ pageId: '00000000-0000-4000-8000-0000000000b1', role: 'directory', title: 'Directory', description: 'Browse destinations',
-    layout: { root: { siteConfiguration: { version: 1, role: 'directory' } }, content: [node('directory.institution.list'), node('directory.program.list')] } },
+    layout: { root: { siteConfiguration: { version: 1, role: 'directory' } }, content: [node('directory.institution.list', [
+        { id: 'row-link', type: 'Link', props: { recordBindings: { text: 'summary', href: 'originalPath', ariaLabel: 'title' } } }]), node('directory.program.list')] } },
     { pageId: '00000000-0000-4000-8000-0000000000b2', role: 'institution', title: 'Institution', description: 'Institution profile',
     layout: { root: { siteConfiguration: { version: 1, role: 'institution' } }, content: [node('directory.institution.detail')] } }];
 const menus = new MenusStore(f.db, tenant), header = createMenuDefinition('header-main', 'header');
@@ -68,7 +69,7 @@ try {
     const exclusion = reason => report.exclusions.find(item => item.reason === reason);
     assert.equal(exclusion('record-id').count, 63); assert.equal(exclusion('identifier-url').count, 60);
     assert.equal(exclusion('structural-reference').count, 60); assert.equal(exclusion('exceeds-plain-text-limits').count, 60);
-    assert.equal(exclusion('record-projected-subtree').count, 2); assert.equal(exclusion('menu-empty-unsupported').count, 2, 'header menus expose copyright/description as footer-only');
+    assert.equal(exclusion('record-projected-subtree').count, 3, 'the static binding rows and the directory list link row template'); assert.equal(exclusion('menu-empty-unsupported').count, 2, 'header menus expose copyright/description as footer-only');
 
     // Static-page surface: authored fields plus engine labels; placeholders never become fields.
     const home = report.surfaces.items.find(item => item.kind === 'static-page');
@@ -112,6 +113,11 @@ try {
     const titleField = recordOne.fields.find(field => field.text === 'Institution 1');
     assert.equal(titleField.ref, expected, 'record refs are the shared engine unit identity');
     assert.deepEqual(titleField.record, { connectionId: 'frontbase:publication', collection: 'institutions', key: [{ column: 'id', value: 1 }] });
+    // Composed link labels are discovered as record units keyed to the composite column, recomposed
+    // from the stored columns — the same identity the release stamps (directory/bindings).
+    const composed = recordOne.fields.find(field => field.propertyPath[0] === 'ariaLabel:summary');
+    assert.equal(composed.text, 'Summary 1: Institution 1', 'discovery recomposes composed link labels from the record columns');
+    assert.equal(composed.ref, await translationUnitId(scope, { kind: 'record', connectionId: 'frontbase:publication', collection: 'institutions', key: [{ column: 'id', value: 1 }], propertyPath: ['ariaLabel:summary'] }), 'composed labels share the record-unit identity namespace');
     const reasons = Object.fromEntries(recordOne.fields.filter(field => field.decision === 'excluded').map(field => [field.propertyPath[0], field.reason]));
     assert.equal(reasons.originalPath, 'identifier-url'); assert.equal(reasons.body, 'exceeds-plain-text-limits'); assert.equal(reasons.id, 'record-id');
     assert.ok(!/PRIVATE_|serviceKey|data\.example/.test(JSON.stringify(report)), 'no credentials in coverage');

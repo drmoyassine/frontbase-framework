@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {spawnSync} from 'node:child_process';
-import {fileURLToPath} from 'node:url';
-const module=new URL('../dist/compat/translation-homepage.js',import.meta.url),serving=new URL('../dist/compat/translation-homepage-serving.js',import.meta.url),route=new URL('../dist/compat/routes/translation-homepage.js',import.meta.url),manifest=new URL('../dist/compat/site-publication-manifest.js',import.meta.url),chunkRuntime=new URL('../dist/compat/site-publication-chunk-runtime.js',import.meta.url),listSource=new URL('../dist/compat/publication-list-source.js',import.meta.url);
+import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+const module=new URL('../dist/compat/translation-homepage.js',import.meta.url),serving=new URL('../dist/compat/translation-homepage-serving.js',import.meta.url),route=new URL('../dist/compat/routes/translation-homepage.js',import.meta.url),manifest=new URL('../dist/compat/site-publication-manifest.js',import.meta.url),chunkRuntime=new URL('../dist/compat/site-publication-chunk-runtime.js',import.meta.url),listSource=new URL('../dist/compat/publication-list-source.js',import.meta.url),bindings=new URL('../../edge-core/dist/directory/bindings.js',import.meta.url);
 // The last tuple element picks the behavioral canary suite; page-level faults are pinned by the
 // generalized publication suite (rollback/deactivate/per-unit drift are not exercised by the homepage one).
+// Slice C adds the release guards: display-text save fence, identity-collision fence, composed-label
+// stamp and the record supplement plain-text guard.
 const faults=[
  ['configured target locale',module,'!config.targetLocales.includes(target)','false'],
  ['field revision fence',module,'prior.value.token !== e.token','false'],
@@ -21,9 +23,18 @@ const faults=[
  ['serve locale date projection',chunkRuntime,'{ locale: recordsLocale ?? artifact.configuration.site.locale }','{ locale: artifact.configuration.site.locale }','translation-homepage-explore.mjs'],
  ['localized fetch language declaration',listSource,"localized?.catalog ? { 'Content-Language': localized.locale } : undefined",'undefined','translation-homepage-explore.mjs'],
  ['content language direction stamp',serving,'direction: localeDirection(contentLocale)',"direction: 'ltr'",'translation-page-publication.mjs'],
+ ['display-text save guard',module,'display: translationDisplayText(field.text, e.text)','display: e.text','translation-homepage-explore.mjs'],
+ ['identity-collision fence',module,'const seen = new Map();','return;','translation-homepage-directory.mjs'],
+ ['composed ariaLabel stamp',bindings,'recordColumns.ariaLabel = `ariaLabel:${b.text}`;',';','translation-homepage-directory.mjs'],
+ ['supplement plain-text guard',module,' && !/[{}<>]|@\\{/.test(text)','','translation-homepage-explore.mjs'],
 ];
+const run=(suite,hook)=>spawnSync(process.execPath,['--import','data:text/javascript,'+encodeURIComponent(hook??''),fileURLToPath(new URL('./'+suite,import.meta.url))],{encoding:'utf8',timeout:300000});
+for(const suite of ['translation-homepage.mjs','translation-page-publication.mjs','translation-navigation.mjs','translation-homepage-explore.mjs','translation-homepage-directory.mjs']){
+    const clean=run(suite);
+    assert.equal(clean.status,0,suite+' clean baseline: '+clean.stdout.slice(-2000)+clean.stderr.slice(-2000));
+}
 for(const[name,url,from,to,suite='translation-homepage.mjs']of faults){const original=readFileSync(url,'utf8');assert.ok(original.includes(from),'fault anchor '+name);
  const hook=`import {registerHooks} from 'node:module';registerHooks({load(url,context,next){const result=next(url,context);return url===${JSON.stringify(url.href)}?{...result,source:String(result.source).replaceAll(${JSON.stringify(from)},${JSON.stringify(to)})}:result;}});`;
- const r=spawnSync(process.execPath,['--import','data:text/javascript,'+encodeURIComponent(hook),fileURLToPath(new URL('./'+suite,import.meta.url))],{encoding:'utf8',timeout:120000});assert.ok(r.status!==0&&/AssertionError/.test(r.stderr),'behavioral fault '+name+'\n'+r.stderr);assert.equal(readFileSync(url,'utf8'),original);console.log('caught:',name);
+ const r=run(suite,hook);assert.ok(r.status!==0&&/AssertionError/.test(r.stderr),'behavioral fault '+name+'\n'+r.stderr);assert.equal(readFileSync(url,'utf8'),original);console.log('caught:',name);
 }
-console.log('translation-homepage: fifteen in-memory faults caught; source/artifacts unchanged');
+console.log('translation-homepage: nineteen in-memory faults caught; source unchanged');

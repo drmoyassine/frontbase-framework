@@ -26,7 +26,14 @@ type Batch = z.infer<typeof recordSchema>;
 export type TranslationBatchHost = TranslationViewHost & GenerationHost & { pagesFor(tenant: string): Pick<PagesStore, 'get'> };
 const key = (value: string) => 'translation_batch:v1:' + uuid.parse(value);
 const digest = translationInputHash;
-export const TRANSLATION_PAGE_FIELDS: Record<string, readonly string[]> = { Text: ['content', 'text', 'value'], Heading: ['content', 'text'], Paragraph: ['content', 'text'] };
+/** First-present-field eligibility per node type, in the release surface's own key order
+ *  (localization/surfaces textTypes): one translatable field per node, so identity is unambiguous.
+ *  Plain display fields only — bound text, actions, SQL and URLs stay excluded downstream. */
+export const TRANSLATION_PAGE_FIELDS: Record<string, readonly string[]> = {
+    Text: ['content', 'text', 'value', 'label'], Heading: ['content', 'text', 'value', 'label'],
+    Paragraph: ['content', 'text', 'value', 'label'], Link: ['content', 'text', 'value', 'label', 'ariaLabel'],
+    Button: ['content', 'text', 'value', 'label'], Badge: ['content', 'text', 'value', 'label'],
+    Image: ['alt'], Input: ['placeholder'], Textarea: ['placeholder'], Select: ['placeholder'] };
 const boundTypes = new Set(['Repeater', 'DataTable', 'DataGrid', 'Grid']);
 /** Generation-path terminology: batch contexts carry the applied glossary while manual single-field
  *  flows extract without it, so operator saves are never gated on terminology state. A glossary
