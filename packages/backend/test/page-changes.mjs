@@ -24,7 +24,7 @@ async function fixture() {
 await test('fresh and v22-upgraded schemas converge without replacing pages', async () => {
     const db = sqliteRunner(':memory:'); await migrateUp(db, () => time, MIGRATIONS.filter(m => m.version < 23));
     const pages = new PagesStore(db, 'alpha'); const page = await pages.create({ name: 'Old', slug: 'old' }, crypto.randomUUID(), time);
-    assert.deepEqual(await migrateUp(db), [23]);
+    assert.deepEqual(await migrateUp(db), [23, 24, 25]);
     assert.equal((await pages.get(page.id)).name, 'Old');
     const fresh = sqliteRunner(':memory:'); await migrateUp(fresh);
     assert.equal(await schemaFingerprint(db), await schemaFingerprint(fresh));

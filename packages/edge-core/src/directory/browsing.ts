@@ -12,13 +12,16 @@ const localPath = z.string().min(1).max(400).refine(value => {
     catch { return false; }
 });
 /** Transient captured-request state. An array keeps visitor text out of Liquid resolution.
- *  `labels` is display-only chrome localization injected by the localization layer, never authored. */
+ *  `labels` is display-only chrome localization injected by the localization layer, never authored.
+ *  `locale` threads the SERVE language so plural-category selection matches the released pattern
+ *  language (capture paths keep the site locale — patterns are language-neutral, categories are not). */
 export const directoryBrowsingStateSchema = z.tuple([z.object({
     path: localPath, collection: z.enum(['institution', 'program']).nullable(),
     q: z.string().max(100), searchEnabled: z.boolean(), page: z.number().int().min(1).max(20000),
     hasNext: z.boolean(), total: z.number().int().min(0).optional(), pageSize: z.number().int().min(1).max(48).optional(),
     sort: z.enum(['title-asc','title-desc']).optional(), match: z.enum(['contains','startsWith','equals']).optional(),
     previewHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    locale: z.string().max(35).refine(value => /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(value)).optional(),
     labels: z.record(z.string().max(12000)).optional(),
 }).strict()]);
 export type DirectoryBrowsingState = z.infer<typeof directoryBrowsingStateSchema>;

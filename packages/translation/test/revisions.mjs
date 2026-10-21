@@ -196,3 +196,19 @@ for (const separate of [false, true]) {
     } finally { if (separate) destination.close(); content.close(); }
 }
 console.log('SQLite same/separate source and translation databases: identical lifecycle, original content unchanged PASS');
+
+// Task 10 slice B: single-brace `{token}` chrome patterns (localization patterns) carry the same
+// placeholder parity as double-brace bindings — through the full lifecycle, not just the validator.
+{
+    const patternUnit = { version: 1, scope, resource: { kind: 'system', componentKind: 'directory-browsing', messageId: 'recordsRange' },
+        sourceLocale: 'en', format: 'plain', text: '{from}-{to} of {total} records', segmenterVersion: 1, placeholders: [] };
+    const store = new MemoryPersistence(), engine = new TranslationLifecycle(store);
+    const pattern = await engine.syncSource(scope, patternUnit, null);
+    assert.equal((await engine.writeGenerated(scope, { version: 1, unitId: pattern.unitId, revisionId: 'pattern-1', locale: 'AR',
+        sourceFingerprint: pattern.sourceFingerprint, sourceVersion: pattern.sourceVersion,
+        expectedHead: null, text: 'عربي {from}-{to} of {total} records' })).status, 'committed', 'a pattern translation with every token commits');
+    assert.equal((await engine.writeGenerated(scope, { version: 1, unitId: pattern.unitId, revisionId: 'pattern-2', locale: 'AR',
+        sourceFingerprint: pattern.sourceFingerprint, sourceVersion: pattern.sourceVersion,
+        expectedHead: 'pattern-1', text: 'عربي {from} of {total} records' })).reason, 'invalid-tokens', 'a dropped pattern token refuses through the lifecycle');
+    console.log('single-brace chrome pattern parity through the lifecycle PASS');
+}

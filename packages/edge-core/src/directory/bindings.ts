@@ -57,7 +57,7 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
         for (const node of nodes) {
             if (++visited > 2000) throw new Error('directory_template_size');
             const props = node.props || {}; let isArticle = false;
-            if(props.templateHeroState!==undefined || props.templateSearchState!==undefined)throw new Error('transient_template_state');
+            if(props.templateHeroState!==undefined || props.templateSearchState!==undefined || props.templateMenuLabels!==undefined)throw new Error('transient_template_state');
             for(const marker of ['templateHero','templateSearch'])if(props[marker]!==undefined){
                 (marker==='templateHero'?z.object({version:z.literal(1),settings:templateSettingsSchema.shape.hero.optional()}):z.object({version:z.literal(1),defaultCollection:z.enum(['institution','program']).optional()})).strict().parse(props[marker]);
                 if(node.type!=='Container' || inQuery || props.directoryQuery!==undefined || (node.children?.length??0)>0 || layout.root?.directoryLanding===undefined)throw new Error('invalid_template_component');
@@ -140,10 +140,12 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
             const list = parsed.queryId.endsWith('.list'); const columns = Math.min(4, Math.max(1, Number(props.columns) || 3));
             if (list) rest.className = `${typeof rest.className === 'string' ? rest.className : ''} ${props.layout === 'list' ? 'flex flex-col' : `grid grid-cols-1 ${columns > 1 ? 'md:grid-cols-2' : ''} ${columns > 2 ? `lg:grid-cols-${Math.floor(columns)}` : ''}`} gap-6`;
             const rowCollection = directoryListCollections[parsed.queryId];
+            // With browsing controls the empty hint renders from the browsing labels (released
+            // patterns, page language); only a control-less list keeps a projected fallback text.
             const projected: PageComponent = { ...node, type: 'Container', props: rest,
                 ...(list ? { styles: { gap: '24px', ...node.styles } } : {}),
                 children: rows.length ? rows.flatMap((record, i) => (node.children || []).map(child => walk(child, record, i, rowCollection)))
-                    : [{ id: `${node.id}-empty`, type: 'Text', props: { text: 'No records matched this preview.' } }] };
+                    : controls === undefined ? [{ id: `${node.id}-empty`, type: 'Text', props: { text: 'No records matched this preview.' } }] : [] };
             if(list && controls !== undefined){
                 const options=directoryBrowsingSchema.parse(controls),position=options.paginationPosition||'top';
                 const top:PageComponent={id:`${node.id}-controls`,type:'Container',props:{directoryBrowsing:{...options,pagination:options.pagination && position!=='bottom'}}};

@@ -1,6 +1,7 @@
 import {publicConditionContext, contextReader} from '../conditions.js';
 import { applyBlockVersion, selectBlockVersion, validateBlockVersions, blockVersionPossible, cloneBlockTree } from '../block-versions.js';
 import { escapeHtml } from './components/lib/utils.js';
+import { templateMenuLabels } from '../localization/surfaces.js';
 /**
  * Page Renderer - SSR Component Tree Renderer
  *
@@ -146,7 +147,8 @@ async function renderComponent(
         : '';
 
     if(type==='Container' && resolvedProps.templateMenu!==undefined){
-        const html=`<details class="fb-template-menu" data-fb-template-menu open><summary aria-label="Browse navigation">Browse ☰</summary><nav aria-label="Main navigation" class="fb-template-menu-links">${childrenHtml}</nav></details><style>.fb-template-menu{position:relative}.fb-template-menu summary{cursor:pointer;padding:10px 12px;min-height:44px;border:1px solid currentColor;border-radius:8px;list-style:none}.fb-template-menu-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.fb-template-menu summary:focus-visible{outline:3px solid #fff;outline-offset:3px}@media(min-width:768px){.fb-template-menu summary{display:none}}@media(max-width:767px){.fb-template-menu-links{position:absolute;top:52px;right:0;width:240px;max-width:calc(100vw - 48px);padding:12px;z-index:20;background:var(--fb-template-primary,#122d50);border:1px solid #fff;border-radius:10px;box-shadow:0 8px 24px #0003;flex-direction:column;align-items:stretch}.fb-template-menu:not([open]) .fb-template-menu-links{display:none}}</style>`;
+        const menuLabels={...templateMenuLabels,...(resolvedProps.templateMenuLabels as Record<string,string>|undefined)};
+        const html=`<details class="fb-template-menu" data-fb-template-menu open><summary aria-label="${escapeHtml(menuLabels.browseAria)}">${escapeHtml(menuLabels.browse)}</summary><nav aria-label="${escapeHtml(menuLabels.navAria)}" class="fb-template-menu-links">${childrenHtml}</nav></details><style>.fb-template-menu{position:relative}.fb-template-menu summary{cursor:pointer;padding:10px 12px;min-height:44px;border:1px solid currentColor;border-radius:8px;list-style:none}.fb-template-menu-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.fb-template-menu summary:focus-visible{outline:3px solid #fff;outline-offset:3px}@media(min-width:768px){.fb-template-menu summary{display:none}}@media(max-width:767px){.fb-template-menu-links{position:absolute;top:52px;right:0;width:240px;max-width:calc(100vw - 48px);padding:12px;z-index:20;background:var(--fb-template-primary,#122d50);border:1px solid #fff;border-radius:10px;box-shadow:0 8px 24px #0003;flex-direction:column;align-items:stretch}.fb-template-menu:not([open]) .fb-template-menu-links{display:none}}</style>`;
         return renderLayoutComponent(type,id,resolvedProps,styles||{},html,component.visibility);
     }
 

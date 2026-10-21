@@ -24,7 +24,7 @@ assert.throws(() => parsePublicationChunk({ ...chunks[0], records: cities.slice(
 assert.throws(() => parsePublicationChunk({ ...chunks[0], collection: 'programs' }));
 assert.throws(() => new SitePublicationChunkStore(db, '  '));
 const institutions = Array.from({ length: 10 }, (_, i) => ({ id: i + 1, title: 'Campus', originalPath: `/campus-${i}/`,
-    summary: '', cover: null, coverAlt: '', logo: null, cityId: 1, body: '界'.repeat(60000) }));
+    summary: '', cover: null, coverAlt: '', logo: null, cityId: 1, publishedAt: null, body: '界'.repeat(60000) }));
 const unicode = packPublicationChunks('institutions', institutions);
 assert.ok(unicode.length > 1);
 for (const c of unicode) assert.ok(Buffer.byteLength(stableStringify(c)) <= PUBLICATION_CHUNK_BYTES);

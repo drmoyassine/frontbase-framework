@@ -58,7 +58,13 @@ async function prepareActivate(records_, templates_ = templates) {
     return hash;
 }
 async function saveAll(review, path, policy, overrides = {}) {
-    for (let i = 0; i < review.fields.length; i += 16) await call('save/', { locale: 'ar', path, token: review.token, entries: review.fields.slice(i, i + 16).map(field => ({ id: field.id, token: field.token, text: overrides[field.source] ?? ('عربي ' + field.source) })) });
+    // One record unit can surface in several display positions; a batch boundary between two of
+    // them makes the earlier batch's write stale the later batch's review tokens. The console
+    // re-reads the review between saves — model that instead of replaying one stale token page.
+    for (let i = 0; i < review.fields.length; i += 16) {
+        const fresh = await call('review/?locale=ar' + (path === '/' ? '' : '&path=' + path));
+        await call('save/', { locale: 'ar', path, token: fresh.token, entries: fresh.fields.slice(i, i + 16).map(field => ({ id: field.id, token: field.token, text: overrides[field.source] ?? ('عربي ' + field.source) })) });
+    }
     const complete = await call('review/?locale=ar' + (path === '/' ? '' : '&path=' + path)); assert.equal(complete.complete, true);
     const prepared = await call('prepare/', { locale: 'ar', token: complete.token, approveTranslations: true, ...(path === '/' ? {} : { path }), ...(policy ? { policy } : {}) });
     await call('publish/', { hash: prepared.hash, expected: prepared.expected, approveTranslations: true });
@@ -96,8 +102,8 @@ try {
     assert.ok(explore.text.includes('عربي Title A-Z'), 'sorting options follow the release');
     assert.deepEqual(rowTitles(explore.text), ['01', '02', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13'].map(n => `عربي Institution ${n}`), 'title sort follows localized titles (03 sorts last)');
     assert.ok(explore.text.includes('alt="عربي Campus 01"'));
-    assert.ok(explore.text.includes('Page 1'), 'composed page position stays source');
-    assert.ok(explore.text.includes('of 14 records'), 'the browsing total is the localized full-dataset count');
+    assert.ok(explore.text.includes('عربي Page 1'), 'composed page position renders the released pattern');
+    assert.ok(explore.text.includes('عربي 1-12 of 14 records'), 'the browsing total is the localized full-dataset count');
     // Parameterized renderings join the shared units through the supplement, without serve-time store reads.
     const programs = await html('/ar/explore/?type=program'); assert.equal(programs.status, 200);
     assert.deepEqual(rowTitles(programs.text), ['عربي Program Alpha', 'عربي Program Beta', 'عربي Program Gamma'], 'supplement-only units join parameterized renderings');
@@ -112,16 +118,17 @@ try {
     assert.deepEqual(rowTitles(localizedDesc.text), ['عربي آخر', ...['14', '13', '12', '11', '10', '09', '08', '07', '06', '05', '04'].map(n => `عربي Institution ${n}`)], 'the sort control orders by released titles');
     const arabicMatch = await html('/ar/explore/?q=' + encodeURIComponent('عربي Institution 1')); assert.equal(arabicMatch.status, 200);
     assert.deepEqual(rowTitles(arabicMatch.text), ['10', '11', '12', '13', '14'].map(n => `عربي Institution ${n}`), 'Arabic matches span both source pages in one full-dataset search');
-    assert.ok(arabicMatch.text.includes('of 5 records'), 'the exact total counts localized matches');
+    assert.ok(arabicMatch.text.includes('عربي 1-5 of 5 records'), 'the exact total counts localized matches');
     const equalsMatch = await html('/ar/explore/?q=' + encodeURIComponent('عربي Institution 02') + '&match=equals'); assert.equal(equalsMatch.status, 200);
     assert.deepEqual(rowTitles(equalsMatch.text), ['عربي Institution 02'], 'equals matches the released title exactly');
-    assert.ok(equalsMatch.text.includes('of 1 records'), 'a single localized match reports its exact total');
+    assert.ok(equalsMatch.text.includes('>عربي 1-1 of 1 record</p>'), 'a single localized match selects the singular registry variant');
     const arabicAll = await html('/ar/explore/?q=' + encodeURIComponent('عربي') + '&page=2'); assert.equal(arabicAll.status, 200);
     assert.deepEqual(rowTitles(arabicAll.text), ['عربي Institution 14', 'عربي آخر'], 'the final localized page agrees with the full-dataset order');
-    assert.ok(arabicAll.text.includes('of 14 records') && !arabicAll.text.includes('>عربي Next</a'), 'the final page has an exact total and no next link');
+    assert.ok(arabicAll.text.includes('عربي 13-14 of 14 records') && !arabicAll.text.includes('>عربي Next</a'), 'the final page has an exact total and no next link');
     const empty = await html('/ar/explore/?q=zzznope'); assert.equal(empty.status, 200);
     assert.deepEqual(rowTitles(empty.text), [], 'a miss renders no rows');
-    assert.ok(empty.text.includes('>0 records</p>'), 'an empty page reports zero, not a stale total');
+    assert.ok(empty.text.includes('>عربي 0 records</p>'), 'an empty page reports zero, not a stale total');
+    assert.ok(empty.text.includes('عربي No records matched this preview.'), 'the empty hint renders the released label in the page language');
     // The source homepage keeps refusing parameters on its localized path.
     assert.equal((await html('/ar/?type=program')).status, 400);
     // Record-detail paths stay source content under the localized prefix.
@@ -147,7 +154,7 @@ try {
     // instead of matching the renamed record through stale text.
     const stale = await html('/ar/explore/?q=' + encodeURIComponent('عربي Institution 01')); assert.equal(stale.status, 200);
     assert.deepEqual(rowTitles(stale.text), [], 'a stale released title no longer drives matches');
-    assert.ok(stale.text.includes('>0 records</p>'), 'stale titles leave the localized total too');
+    assert.ok(stale.text.includes('>عربي 0 records</p>'), 'stale titles leave the localized total too');
     // Task 8 slice B: the standard List Component conversion pins the migration-time publication;
     // the per-unit release survives by record identity — no re-translation. Interactive controls
     // stay coherent because the X-Frontbase-List fetch localizes through the page's own release,

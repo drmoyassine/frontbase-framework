@@ -58,7 +58,7 @@ const servedFirst=await resolveReviewedSitePublication(db,'guarded',publicReques
 const publicHtml=await renderReviewedSitePublication(db,'guarded',publicRequest);
 assert.equal(publicHtml.status,200);assert.equal(publicHtml.headers.get('cache-control'),'no-store');assert.equal(publicHtml.headers.get('x-site-version'),hash);assert.equal(publicHtml.headers.get('x-site-generation'),'1');
 const publicBody=await publicHtml.text();assert.ok(publicBody.includes('Muhlenberg College'));assert.ok(!publicBody.includes('PRIVATE_'));assert.ok(!publicBody.includes('serviceWorker.register'));
-assert.ok(publicBody.includes('<html lang="en">'));assert.ok(publicBody.includes('rel="canonical" href="https://study-in-usa.com/muhlenberg-college/"'));
+assert.ok(publicBody.includes('<html lang="en" dir="ltr">'));assert.ok(publicBody.includes('rel="canonical" href="https://study-in-usa.com/muhlenberg-college/"'));
 // Capture-bound metadata must not read the host's mutable favicon, even for a Navbar.
 configureEngine({resolveFaviconUrl:async()=>{throw new Error('MUTABLE_FAVICON_LOOKUP');}});
 assert.equal((await renderReviewedSitePublication(db,'guarded',publicRequest)).status,200);

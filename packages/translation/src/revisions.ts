@@ -54,23 +54,29 @@ function checkedSnapshot(input: unknown, scope: LocalizationScope, unitId: strin
     }
     return snapshot;
 }
+function tokenName(token: string): string {
+    const width = token.startsWith('{{') || token.startsWith('{$') ? 2 : 1;
+    return token.slice(width, -width).trim();
+}
 function tokens(text: string): string[] | null {
     const found: string[] = [];
-    const remaining = text.replace(/\{\{[^{}]*\}\}|\{\$[^{}]*\}/gu, token => {
-        const double = token.startsWith('{{');
-        const name = token.slice(2, double ? -2 : -1).trim();
+    // Single-brace `{name}` tokens are the chrome-pattern grammar (localization patterns);
+    // their parity is enforced exactly like double-brace bindings so a translation can never
+    // silently drop a placeholder.
+    const remaining = text.replace(/\{\{[^{}]*\}\}|\{\$[^{}]*\}|\{[A-Za-z_][A-Za-z0-9_]*\}/gu, token => {
+        const name = tokenName(token);
         if (!/^[A-Za-z_][A-Za-z0-9_.-]*$/.test(name)) found.push('!invalid');
-        else found.push((double ? '{{' : '{$') + name);
+        else found.push(token.slice(0, token.startsWith('{{') || token.startsWith('{$') ? 2 : 1) + name);
         return '';
     });
-    return /\{\{|\}\}|\{\$/.test(remaining) || found.includes('!invalid') ? null : found.sort();
+    return /\{\{|\}\}|\{\$|\{[A-Za-z_]/.test(remaining) || found.includes('!invalid') ? null : found.sort();
 }
 /** Initial validator intentionally does not claim ICU/MF2 support while runtime selection is open. */
 export function validatePlainRevision(unit: MessageUnit, text: string): 'invalid-tokens' | 'unsupported-format' | null {
     if (unit.format !== 'plain') return 'unsupported-format';
     const source = tokens(unit.text), target = tokens(text);
     if (!source || !target || JSON.stringify(source) !== JSON.stringify(target)) return 'invalid-tokens';
-    if (unit.placeholders.some(name => !source.some(token => token.slice(2) === name))) return 'invalid-tokens';
+    if (unit.placeholders.some(name => !source.some(token => token.slice(token.startsWith('{{') || token.startsWith('{$') ? 2 : 1) === name))) return 'invalid-tokens';
     return null;
 }
 

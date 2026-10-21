@@ -83,6 +83,7 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
     const prune = (nodes: PageLayoutData['content']): PageLayoutData['content'] => nodes.filter(node => !inactive.has(node.id)).map(node => ({ ...node, ...(node.children ? { children: prune(node.children) } : {}) }));
     let projected = projectDirectoryRecords(projectSharedDirectoryPreview({ ...layout, content: prune(layout.content) }, artifact.configuration), records, { locale: recordsLocale ?? artifact.configuration.site.locale });
     if (role === 'directory' || role === 'article-index') projected = projectDirectoryBrowsing(projected, [{ path,
+        locale: recordsLocale ?? artifact.configuration.site.locale,
         collection: role === 'directory' ? type as 'institution' | 'program' : null,
         q: search, page: Number(page),sort:sort as 'title-asc'|'title-desc',match:match as 'contains'|'startsWith'|'equals',pageSize:pageSize,total:(role==='article-index'?artifact.records.articles:type==='program'?artifact.records.programs:artifact.records.institutions).filter(row=>!search || (match==='equals'?row.title.toLowerCase()===search.toLowerCase():match==='startsWith'?row.title.toLowerCase().startsWith(search.toLowerCase()):row.title.toLowerCase().includes(search.toLowerCase()))).length, searchEnabled: artifact.configuration.browsing.search,
         hasNext: hasNext && offset + pageSize <= 10000,

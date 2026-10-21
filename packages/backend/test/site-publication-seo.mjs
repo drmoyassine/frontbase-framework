@@ -62,7 +62,7 @@ for(const query of ['?page=2','?q=College','?type=program','?q=']) {
  response=await renderReviewedSitePublication(db,'seo',request('/explore/'+query));assert.equal(response.status,200);assert.equal(response.headers.get('x-robots-tag'),'noindex, follow');
  html=await response.text();assert.ok(html.includes('name="robots" content="noindex, follow"'));assert.ok(html.includes('rel="canonical" href="https://study-in-usa.com/explore/"'));
 }
-response=await renderReviewedSitePublication(db,'seo',request(capture.records.articles[0].originalPath));html=await response.text();assert.ok(html.includes('<html lang="ar">'));assert.ok(html.includes('property="og:type" content="article"'));assert.ok(!html.includes('property="og:image"'));
+response=await renderReviewedSitePublication(db,'seo',request(capture.records.articles[0].originalPath));html=await response.text();assert.ok(html.includes('<html lang="ar" dir="rtl">'));assert.ok(html.includes('property="og:type" content="article"'));assert.ok(!html.includes('property="og:image"'));
 assert.ok(html.includes('href="/explore/?type=program#results"'));assert.ok(html.includes('href="https://external.test/help"'));
 for(const path of ['/sitemap.xml?x=1','/explore/?unknown=1','/explore/?page=2&page=3','/muhlenberg-college/?q=x'])assert.equal((await renderReviewedSitePublication(db,'seo',request(path))).status,400);
 assert.equal((await renderReviewedSitePublication(db,'seo',request('/not-captured/'))).status,404);
