@@ -1,5 +1,7 @@
 # CF-22 — Admin Console 100% Visual + Functional Parity
 
+> **HISTORICAL / SUPERSEDED — owner decision 2026-10-22.** CF-22 is retired as an active planning umbrella. The old product-equivalence/pin/drift closure criteria below are historical and do not govern the current release. Preserve useful regression tests and follow the [concrete current gaps](../plans/frontbase-current-product-gaps-20261022.md) and [overall release plan](../plans/frontbase-public-release-finalization-20261022.md). Retirement does not assert that100% old-product parity was achieved.
+
 > **🗄️ PIN-ERA MECHANISMS SUPERSEDED 2026-08-28 (A-22, then A-23).** The console
 > below is described as it was when written: built from the product repo,
 > vendored at a `CONSOLE_PIN`. Both pin-era mechanisms are retired — the console

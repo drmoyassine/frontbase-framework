@@ -1,5 +1,11 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-22 CF-22 retirement and concrete-gap triage — COMPLETE
+
+Owner agrees to retire CF-22 as an active planning umbrella and requests the real remaining gaps. Own source/evidence review and documentation-only retirement/triage in the isolated integration worktree. Preserve historical parity reports and useful test coverage. No claim of achieved old-product parity, no deletion/weakening of tests, no feature sprint or provider operation is inferred. Separate source-confirmed defects from dated measurements, unverified capabilities and release preparation.
+
+Result: [current gap register](../plans/frontbase-current-product-gaps-20261022.md) records unsealed engine-transfer configuration, the production Neon API/transport/count defect, visual workflow test/run/history/mail wiring and false-success legacy in-app engine provisioning. It separately records measurement mismatch, remaining transport/reset qualification and release delivery work. Findings are source-based; no staging export or real credential/provider mutation was performed. Owner-approved CF-22 retirement is recorded in DECISIONS/AGENTS and historical banners; tests and historical failures are preserved. Documentation links/fences/whitespace verified; no runtime build/test or live acceptance claimed.
+
 ## 2026-10-22 overall release-plan reconciliation — COMPLETE
 
 Owner requests updating the overall plan after bounded acceptance b56f539. Own documentation-only reconciliation of current release blockers, completed evidence, ordered exit criteria and explicitly deferred scope in this isolated integration worktree. Preserve the closed four-gap receipt, historical failures, accepted Developer Preview label, seven candidate libraries, CF-22 pause and independent production/package publication gates. No new implementation, provider action or release is inferred.

@@ -2,6 +2,10 @@
 
 **Edition:** Frontbase Framework Developer Preview. **Status:** release preparation; public distribution is not yet accepted. **Evidence checkpoint:** `b56f539` on `codex/integrated-finalization-20261022`. This is the current ordered execution plan under the existing [release strategy](../history/PUBLIC-RELEASE-STRATEGY.md), [readiness requirements](../history/RELEASE-READINESS.md) and accepted decisions. It supersedes older next-task ordering, without turning historical receipts into fresh runs or reopening completed work.
 
+## Concrete current findings
+
+The owner retired CF-22 as an active planning umbrella on2026-10-22. The [source-backed current gap register](frontbase-current-product-gaps-20261022.md) identifies priority repairs: genuinely sealed engine transfer or safe refusal, the Neon HTTP adapter, visual workflow/executor/mail wiring and truthful in-app remote engine deployment. It also separates behavior/transport qualification and public-install/distribution gaps. These are current Frontbase requirements, not an old-product parity target. No fresh runtime acceptance of these findings is claimed by this documentation review.
+
 ## Completed and retained
 
 The [bounded acceptance closeout](frontbase-acceptance-closeout-20261022.md) and [sanitized receipt](../reports/frontbase-acceptance-20261022.json) establish:
@@ -85,7 +89,7 @@ Prepare a reviewed CI publication workflow with scoped registry authentication/p
 
 - Completing translations of every Study in USA datasource record, migrating every WordPress site or performing the USA production cutover.
 - Deno parity, Vercel Edge parity, all optional provider combinations or every possible binding. Unsupported combinations must remain truthful and safe.
-- CF-22 visual parity, additional feature sprints, bookings/payments or a second app engine.
+- The retired CF-22 product-equivalence objective, additional feature sprints, bookings/payments or a second app engine.
 - A full paid Frontbase Cloud/SaaS launch, billing and downstream education schedules.
 
 These exclusions preserve the existing Developer Preview scope. They do not excuse security defects in enabled supported paths or missing functionality advertised by that edition.
@@ -94,4 +98,4 @@ These exclusions preserve the existing Developer Preview scope. They do not excu
 
 R0 scope and bounded acceptance are complete. R1 has adopted strict local package and host/recovery evidence; registry/public/default-source and clean-room parts remain. R2 is the first unresolved engineering gate. R3 documentation/distribution preparation and R4 publication remain open. No release date is asserted before the current R2 behavior/transport baseline is reproduced.
 
-**Next executable work:** claim a bounded R2 implementation slice; reproduce the full behavior gate without editing its ledger, implement operation-state isolation with meaningful positive/refusal/counterfactual fixtures, and independently qualify the production Neon/guarded-transport remedy. Then freeze the candidate and run the cumulative matrix above.
+**Next executable work:** claim the named gap repairs: first reproduce and safely repair/refuse unsealed engine transfer (G1), then qualify the production Neon/guarded-transport remedy (G2) while repairing behavior measurement (G5). Follow with the advertised workflow/in-app provisioning wiring or safe unsupported states (G3/G4). Then freeze the candidate and run the cumulative matrix above.

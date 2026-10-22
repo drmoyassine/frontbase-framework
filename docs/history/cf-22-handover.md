@@ -1,5 +1,7 @@
 # CF-22 — Handover
 
+> **HISTORICAL / SUPERSEDED — owner decision 2026-10-22.** CF-22 is retired as an active planning umbrella. The old product-equivalence/pin/drift closure criteria below are historical and do not govern the current release. Preserve useful regression tests and follow the [concrete current gaps](../plans/frontbase-current-product-gaps-20261022.md) and [overall release plan](../plans/frontbase-public-release-finalization-20261022.md). Retirement does not assert that100% old-product parity was achieved.
+
 **Read this first, then read the source of truth.** This file is a map, not a spec.
 
 - **Source of truth:** [`docs/cf-22-admin-visual-parity-gap.md`](./cf-22-admin-visual-parity-gap.md).

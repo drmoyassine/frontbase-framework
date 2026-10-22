@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## Current gap triage and CF-22 disposition — 2026-10-22
+
+CF-22 is retired as an active planning umbrella by owner agreement; older paused references below are history. Preserve useful regression coverage and follow the [named current gaps](../plans/frontbase-current-product-gaps-20261022.md). Source review adds engine-transfer sealing, truthful in-app provisioning and visual workflow/mail wiring to the existing Neon and measurement work. These findings need isolated reproduction/repair or explicit safe unsupported states; current CF/Vercel managed deployment and scoped recovery acceptance remain closed. The [overall release plan](../plans/frontbase-public-release-finalization-20261022.md) retains the Developer Preview gates.
+
 ## Current Developer Preview release plan — 2026-10-22
 
 The [overall plan](../plans/frontbase-public-release-finalization-20261022.md) supersedes historical next-task ordering. Closed: the four-gap acceptance stream, strict local seven-package consumers and repaired staging availability. Open in order: R2 behavior/security and production Neon repair; final candidate and cumulative clean matrix; public/default-source CF/Vercel and clean-room adopter certification; complete operations/support docs; versioned registry/publishing rehearsal; exact-version Developer Preview release. No GA date, Deno parity or CF-22 restart is implied.

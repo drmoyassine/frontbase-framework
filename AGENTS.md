@@ -18,7 +18,7 @@ Prepare Frontbase for public release as a self-hostable alternative app-builder 
 - honest portability: distinguish Cloudflare-first workflows from verified Node/Docker or other adapter paths;
 - an inspectable Apache-2.0 framework with reproducible examples and security evidence.
 
-Do not market Frontbase as generally available while known public-release gates remain open. CF-22 remains paused accepted residue unless the owner explicitly reactivates it; public-release scope must state what ships without implying complete parity with another product.
+Do not market Frontbase as generally available while known public-release gates remain open. CF-22 is historical/superseded as an active planning umbrella by the owner decision of 2026-10-22. Preserve useful regression tests and track concrete current gaps under the release plan; public-release scope must state what ships without implying complete parity with another product.
 
 ## Engineering rules
 

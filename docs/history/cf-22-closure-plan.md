@@ -1,5 +1,7 @@
 # CF-22 — Closure Plan
 
+> **HISTORICAL / SUPERSEDED — owner decision 2026-10-22.** CF-22 is retired as an active planning umbrella. The old product-equivalence/pin/drift closure criteria below are historical and do not govern the current release. Preserve useful regression tests and follow the [concrete current gaps](../plans/frontbase-current-product-gaps-20261022.md) and [overall release plan](../plans/frontbase-public-release-finalization-20261022.md). Retirement does not assert that100% old-product parity was achieved.
+
 > **🗄️ PIN-ERA MECHANISMS SUPERSEDED 2026-08-28 (A-22, then A-23).** This plan was
 > written when the contract was vendored from the product repo (`scripts/sync-contract.mjs`,
 > `PRODUCT_COMMIT`/`CONTRACT_SHA256` pins, the drift gate) and the hydration bundle was

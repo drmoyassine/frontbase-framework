@@ -1,5 +1,9 @@
 # Frontbase Public Release Strategy
 
+## Current gap triage and CF-22 disposition — 2026-10-22
+
+CF-22 is retired as an active planning umbrella by owner agreement; older paused references below are history. Preserve useful regression coverage and follow the [named current gaps](../plans/frontbase-current-product-gaps-20261022.md). Source review adds engine-transfer sealing, truthful in-app provisioning and visual workflow/mail wiring to the existing Neon and measurement work. These findings need isolated reproduction/repair or explicit safe unsupported states; current CF/Vercel managed deployment and scoped recovery acceptance remain closed. The [overall release plan](../plans/frontbase-public-release-finalization-20261022.md) retains the Developer Preview gates.
+
 ## Current release execution plan — 2026-10-22
 
 The [overall finalization plan](../plans/frontbase-public-release-finalization-20261022.md) is the current ordered backlog after acceptance `b56f539`. Adopted strict seven-package consumers, interactive list localization, actual host upgrades/recovery and the repaired staging observation are complete. Remaining order: R2 behavior/security integrity (including production Neon), immutable candidate/cumulative matrix, public/default-source clean-room installation, adopter/operations documentation, versioned distribution rehearsal, then authorized Developer Preview publication. Older dated entries below retain history and do not reopen completed work.
