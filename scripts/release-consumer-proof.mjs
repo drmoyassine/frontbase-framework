@@ -27,7 +27,8 @@ const names=['translation','edge-core','compiler','ui-components','edge-infra','
 const dependencies={},overrides={},entries=[];
 try {
     for(const name of names) {
-        run(['--dir',join(root,'packages',name),'pack','--pack-destination',archives],root);
+        if(name==='backend')run(['exec','node','scripts/pack-backend.mjs','--pack-destination',archives],root);
+        else run(['--dir',join(root,'packages',name),'pack','--pack-destination',archives],root);
         const manifest=JSON.parse(readFileSync(join(root,'packages',name,'package.json'),'utf8'));
         const archive=join(archives,`frontbase-${name}-${manifest.version}.tgz`);assert.ok(existsSync(archive));
         const spec='file:'+archive.replaceAll('\\','/');dependencies[manifest.name]=spec;overrides[manifest.name]=spec;
@@ -37,7 +38,7 @@ try {
         }
         evidence.archives.push({name:manifest.name,version:manifest.version,sha256:createHash('sha256').update(readFileSync(archive)).digest('hex')});
     }
-    writeFileSync(join(consumer,'package.json'),JSON.stringify({name:'frontbase-external-consumer-proof',private:true,type:'module',dependencies,pnpm:{overrides}},null,2));
+    writeFileSync(join(consumer,'package.json'),JSON.stringify({name:'frontbase-external-consumer-proof',private:true,type:'module',dependencies,devDependencies:{typescript:'6.0.3','@types/node':'24.10.0'},pnpm:{overrides}},null,2));
     run(['install',...(online?[]:['--offline']),'--ignore-scripts'],consumer);
     // pnpm symlinks inside this isolated consumer are expected; links into source are not.
     function inspect(dir,boundary=consumer) {
@@ -51,6 +52,24 @@ try {
     }
     inspect(join(consumer,'node_modules'));
     evidence.importEntries=entries;
+    const strictModel=entries.map((entry,i)=>`export type Entry${i}=typeof import(${JSON.stringify(entry)});`).join('\n')+`
+import {publishedPages} from '@frontbase/backend';
+type Row=typeof publishedPages.$inferSelect;
+const numeric:Row['version']=1;
+// @ts-expect-error Version must not become string/any.
+const wrong:Row['version']='invalid';
+type Insert=typeof publishedPages.$inferInsert;
+const row:Insert={slug:'/',tenantSlug:'synthetic',title:'Synthetic',layoutData:'{}',updatedAt:'2026-10-22'};
+// @ts-expect-error Tenant identity remains required.
+const missingTenant:Insert={slug:'/',title:'Synthetic',layoutData:'{}',updatedAt:'2026-10-22'};
+`;
+    writeFileSync(join(consumer,'strict-consumer.ts'),strictModel);
+    evidence.strictProfiles={};
+    for(const mode of ['NodeNext','Bundler']){
+        writeFileSync(join(consumer,`tsconfig.${mode}.json`),JSON.stringify({compilerOptions:{target:'ES2022',module:mode==='Bundler'?'ESNext':mode,moduleResolution:mode,strict:true,noEmit:true,skipLibCheck:false,lib:['ES2022','DOM','DOM.Iterable'],types:['node']},files:['strict-consumer.ts']},null,2));
+        run(['exec','tsc','-p',`tsconfig.${mode}.json`,'--pretty','false'],consumer);
+        evidence.strictProfiles[mode]={status:'PASS',skipLibCheck:false};
+    }
     writeFileSync(join(consumer,'imports.mjs'),`for(const name of ${JSON.stringify(entries)}) { const module=await import(name); if(!Object.keys(module).length)throw new Error('Empty export '+name); console.log('imported '+name); }`);
     run(['exec','node','imports.mjs'],consumer);
     const starter=join(output,'starter');

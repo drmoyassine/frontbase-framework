@@ -23,6 +23,11 @@
 
     "baseUrl": ".",
     "paths": {
+      // The console owns React18; do not inherit React19 types hoisted for the hydration runtime.
+      "react": ["./node_modules/@types/react/index.d.ts"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "react-dom": ["./node_modules/@types/react-dom/index.d.ts"],
+      "react-dom/*": ["./node_modules/@types/react-dom/*"],
       "@/*": ["./src/*"],
       "@frontbase/types": ["./packages/types/src/index.ts"],
       "@frontbase/datatable": ["./packages/datatable/src/index.ts"],

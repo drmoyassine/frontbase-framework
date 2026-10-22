@@ -41,6 +41,7 @@ WORKDIR /app
 # used: cf-full has no `files` field, so npm-packing it would strip dist/ and
 # the console payload via the .gitignore fallback.
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY patches ./patches
 COPY packages ./packages
 COPY examples/cf-full/package.json ./examples/cf-full/package.json
 RUN pnpm install --prod --frozen-lockfile

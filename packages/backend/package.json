@@ -70,7 +70,9 @@
     "test:translation-memory-mutation": "node test/translation-memory-mutation.mjs",
     "test:backup-restore": "node test/backup-restore.mjs",
     "test:backup-restore-mutation": "node test/backup-restore-mutation.mjs",
-    "ops:selfhost": "node scripts/selfhost-ops.mjs"
+    "ops:selfhost": "node scripts/selfhost-ops.mjs",
+    "pack:release": "node ../../scripts/pack-backend.mjs",
+    "prepack": "node ../../scripts/pack-backend.mjs --require-release-packer"
   },
   "peerDependencies": {
     "@frontbase/compiler": "workspace:*",
@@ -79,8 +81,9 @@
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
-    "drizzle-orm": "^0.36.0",
+    "drizzle-orm": "0.36.4",
     "hono": "^4.12.28",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "mysql2": "3.24.5"
   }
 }

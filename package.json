@@ -49,6 +49,9 @@
       "aria-hidden": "1.2.4",
       "react-remove-scroll": "2.7.1",
       "rollup": "4.59.0"
+    },
+    "patchedDependencies": {
+      "drizzle-orm@0.36.4": "patches/drizzle-orm@0.36.4.patch"
     }
   }
 }
