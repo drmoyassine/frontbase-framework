@@ -1,5 +1,5 @@
 /**
- * One-command CF-22 gate runner: contract/response, derived behavior, negative
+ * Framework regression runner (historical filename): contract/response, isolated behavior, negative
  * inputs, auth/key security, tenant isolation, and mutation proof.
  */
 import { spawnSync } from 'node:child_process';
@@ -10,9 +10,10 @@ const gates = [
     ['response + behavior', 'compat-conformance.mjs', [
         '--gate',
         '--behavior',
-        '--behavior-gate',
-        '--require-functional',
+        '--diagnostic-integrity',
     ]],
+    ['behavior outcome controls','behavior-outcomes-controls.mjs',[]],
+    ['isolated operation order','behavior-isolated-orders.mjs',[]],
     ['negative/fuzz', 'compat-negative.mjs', []],
     ['tenant isolation', 'compat-tenant-matrix.mjs', []],
     ['API-key security', 'compat-security.mjs', []],
@@ -33,4 +34,4 @@ for (const [label, script, args] of gates) {
     if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-console.log('\nCF-22 gates: PASS — response, behavior, fuzz, security, and isolation are green');
+console.log('\nFramework regression gates: PASS — no universal legacy parity claim');

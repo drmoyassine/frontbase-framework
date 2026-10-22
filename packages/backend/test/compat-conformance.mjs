@@ -26,11 +26,12 @@ import { hashPassword, memoryStorageProvider, sqliteRunner } from '@frontbase/ed
 import { migrateUp } from '../dist/db/migrations.js';
 import { UserStore } from '../dist/db/users.js';
 import * as Z from '../dist/compat/zod.gen.js';
-import { readFileSync, unlinkSync } from 'node:fs';
+import { readFileSync, unlinkSync,writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import {observedOutcome} from './behavior-outcomes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const temporaryDatabases = new Set();
@@ -46,6 +47,7 @@ process.on('exit', () => {
 });
 const spec = JSON.parse(readFileSync(join(here, '..', 'contracts', 'openapi.community.json'), 'utf8'));
 const frameworkSpec = JSON.parse(readFileSync(join(here, '..', 'contracts', 'framework.openapi.json'), 'utf8'));
+let rawFallbacks=0;globalThis.fetch=async()=>{rawFallbacks++;throw Error('probe_raw_fallback_forbidden');};
 const deref = (node) => node?.$ref ? deref(spec.components.schemas[node.$ref.split('/').pop()]) : node;
 
 /** Minimal body that satisfies a schema's required fields — enough to reach the handler. */
@@ -89,10 +91,12 @@ function synth(schema, depth = 0) {
     }
 }
 
-const baseRunner = sqliteRunner(':memory:');
-let traceEnabled = false;
-let sqlTrace = [];
-let providerTrace = [];
+const LOGIN = { email: 'conformance-owner@example.com', password: 'Conformance-only-password-1!' };
+const passwordHash=await hashPassword(LOGIN.password);
+async function createOperationContext(){
+const baseRunner=sqliteRunner(':memory:');
+if((await baseRunner.query("SELECT name FROM sqlite_master WHERE type='table'")).length)throw Error('operation database is not fresh');
+const trace={enabled:false,sql:[],provider:[],starveReads:false,targetRead:()=>false,replayViolation:false,markers:[]};
 /**
  * When true, every traced read returns [] without touching the database.
  *
@@ -107,31 +111,30 @@ let providerTrace = [];
  * operations with no write, provider, or session effect, so nothing is executed
  * twice that could mutate anything.
  */
-let starveReads = false;
 const runner = {
     async query(sql, params = []) {
-        if (starveReads) return [];
+        if (trace.starveReads&&trace.targetRead(sql,params)) return [];
         const rows = await baseRunner.query(sql, params);
-        if (traceEnabled && !sql.includes('user_session_versions')) {
-            sqlTrace.push({ kind: 'query', sql, rows: rows.length });
+        if (trace.enabled && !sql.includes('user_session_versions')) {
+            trace.sql.push({ kind: 'query', sql, rows: rows.length });
         }
         return rows;
     },
     async exec(sql, params = []) {
+        if(trace.starveReads){trace.replayViolation=true;throw Error('counterfactual_write_attempted');}
         const affected = await baseRunner.exec(sql, params);
-        if (traceEnabled && !sql.includes('user_session_versions')) {
-            sqlTrace.push({ kind: 'exec', sql, affected });
+        if (trace.enabled && !sql.includes('user_session_versions')) {
+            trace.sql.push({ kind: 'exec', sql, affected });
         }
         return affected;
     },
 };
 await migrateUp(runner);
-const LOGIN = { email: 'conformance-owner@example.com', password: 'Conformance-only-password-1!' };
 const passwordResetTokens = new Map();
 const storageProvider = memoryStorageProvider();
 await new UserStore(runner, '_default').createUser({
     email: LOGIN.email,
-    passwordHash: await hashPassword(LOGIN.password),
+    passwordHash,
     role: 'master_admin',
     now: '2026-01-01T00:00:00.000Z',
     id: 'conformance-owner',
@@ -151,10 +154,11 @@ const app = await createCompatApp({
         passwordResetTokens.set(email.toLowerCase(), token);
     },
     externalFetch: async (input, init = {}) => {
-        const url = String(input);
-        providerTrace.push({
+        if(trace.starveReads){trace.replayViolation=true;throw Error('counterfactual_provider_attempted');}
+        const request=new Request(input,init),url=request.url;
+        trace.provider.push({
             url,
-            method: String(init.method ?? 'GET').toUpperCase(),
+            method: request.method,
         });
         const payload = url.includes('/wp-json/frontbase/v1/discover')
             ? { post_types: [{ name: 'post' }], site: { name: 'Probe WordPress' } }
@@ -175,27 +179,28 @@ const app = await createCompatApp({
     storageProvider,
 });
 
+let fixtureSerial=0;
+return {app,runner,trace,storageProvider,passwordResetTokens,nextFixture:prefix=>{const value=`${prefix}-${++fixtureSerial}`;trace.markers.push(value);return value;},close:()=>baseRunner.close()};
+}
+
 // Each operation gets its own real resource chain. A shared "last id" pool made
 // the probe order-dependent: a DELETE could remove the object later GET/PUT
 // operations expected, and nested ids (page versions, action versions) could not
 // be represented at all. Fresh fixtures make every result independent.
 const SYNTHETIC = '11111111-1111-4111-8111-111111111111';
-let fixtureSerial = 0;
-const nextFixture = (prefix) => `${prefix}-${++fixtureSerial}`;
-
-async function requestJson(method, path, body) {
+async function requestJsonIn(ctx,method, path, body) {
     const init = { method };
     if (body !== undefined) {
         init.headers = { 'content-type': 'application/json' };
         init.body = JSON.stringify(body);
     }
-    const res = await app.fetch(new Request('http://probe.local' + path, init));
+    const res = await ctx.app.fetch(new Request('http://probe.local' + path, init));
     const responseBody = await res.clone().json().catch(() => null);
     return { res, body: responseBody };
 }
 
-async function createFixture(path, body) {
-    const created = await requestJson('POST', path, body);
+async function createFixtureIn(ctx,path, body) {
+    const created = await requestJsonIn(ctx,'POST', path, body);
     if (!created.res.ok) {
         throw new Error(`fixture ${path} returned ${created.res.status}`);
     }
@@ -210,9 +215,21 @@ const fixtureId = (body) =>
     ?? body?.version?.id
     ?? null;
 
-async function prepareFixture(path, method, op) {
+async function prepareFixture(ctx,path, method, op) {
+    const {runner,storageProvider,passwordResetTokens,nextFixture}=ctx;
+    const requestJson=(...args)=>requestJsonIn(ctx,...args),createFixture=(...args)=>createFixtureIn(ctx,...args);
     const params = {};
     let body;
+    const draftNode={id:'probe-trigger',name:'Fixture trigger',type:'trigger',position:{x:0,y:0},inputs:[]};
+    ctx.verify=null;
+    if(path==='/api/agent/settings'&&method==='get'){
+        const set=await requestJson('PUT',path,{general:{temperature:0.123,max_tokens:777}});if(!set.res.ok)throw Error('fixture agent settings failed');
+        ctx.verify=value=>value?.settings?.general?.temperature===0.123&&value?.settings?.general?.max_tokens===777;
+        ctx.trace.targetRead=(sql,params)=>/FROM settings\b/i.test(sql)&&params.includes('agent_settings');
+    }
+    if(path==='/api/auth-forms/primary/'){
+        ctx.trace.targetRead=sql=>/FROM auth_forms\b/i.test(sql);
+    }
 
     if (path === '/api/settings/redis/test/') {
         await requestJson('PUT', '/api/settings/redis/', {
@@ -226,8 +243,9 @@ async function prepareFixture(path, method, op) {
     }
 
     if (path.includes('{draft_id}')) {
-        const draft = await createFixture('/api/actions/drafts', { name: nextFixture('draft'), nodes: [], edges: [] });
+        const draft = await createFixture('/api/actions/drafts', { name: nextFixture('draft'), nodes: [draftNode], edges: [] });
         params.draft_id = fixtureId(draft);
+        if(path.includes('{node_id}'))params.node_id=draftNode.id;
         if (path.includes('{version_id}')) {
             const version = await createFixture(
                 `/api/actions/drafts/${params.draft_id}/versions/`,
@@ -235,12 +253,13 @@ async function prepareFixture(path, method, op) {
             );
             params.version_id = fixtureId(version);
         }
+        if(path.endsWith('/rollback/')){const version=await createFixture(`/api/actions/drafts/${params.draft_id}/versions/`,{label:nextFixture('rollback-version')});body={version_id:fixtureId(version)};}
     }
 
     if (path.includes('{execution_id}')) {
         const draft = await createFixture('/api/actions/drafts', {
             name: nextFixture('execution-draft'),
-            nodes: [],
+            nodes: [draftNode],
             edges: [],
         });
         const execution = await createFixture(
@@ -248,6 +267,9 @@ async function prepareFixture(path, method, op) {
             {},
         );
         params.execution_id = fixtureId(execution);
+    }
+    if(['/api/actions/execution-stats','/api/actions/executions','/api/actions/executions/export'].includes(path)){
+        const draft=await createFixture('/api/actions/drafts',{name:nextFixture('measured-execution'),nodes:[draftNode],edges:[]});await createFixture(`/api/actions/drafts/${fixtureId(draft)}/test`,{});
     }
 
     if (path === '/api/actions/drafts/bulk-delete') {
@@ -301,7 +323,8 @@ async function prepareFixture(path, method, op) {
         });
         params.form_id = fixtureId(form);
         if (path === '/api/auth-forms/primary/') {
-            await requestJson('PUT', `/api/auth-forms/${params.form_id}/set-primary/`);
+            const primary=await requestJson('PUT', `/api/auth-forms/${params.form_id}/set-primary/`);if(!primary.res.ok)throw Error('fixture primary selection failed');
+            ctx.verify=value=>value?.success===true&&value?.data?.id===params.form_id&&value?.data?.is_primary===true;
         }
     }
 
@@ -322,6 +345,11 @@ async function prepareFixture(path, method, op) {
         ['/api/edge-vectors', '/api/edge-vectors/', { name: nextFixture('vector'), provider: 'turso', vector_url: `https://probe.example/${nextFixture('vector-url')}` }],
     ];
     for (const [prefix, createPath, createBody] of edgeFixtures) {
+        if(method==='get'&&path===createPath&&['/api/edge-caches/','/api/edge-queues/','/api/edge-vectors/'].includes(path)){
+            const resource=await createFixture(createPath,createBody),id=fixtureId(resource),kind=path.includes('caches')?'cache':path.includes('queues')?'queue':'vector';
+            ctx.verify=value=>JSON.stringify(value).includes(id)&&JSON.stringify(value).includes(createBody.name);
+            ctx.trace.targetRead=(sql,params)=>/FROM edge_resources\b/i.test(sql)&&params.includes(kind);continue;
+        }
         if (!path.startsWith(prefix) || !path.includes('{')) continue;
         const resource = await createFixture(createPath, createBody);
         const id = fixtureId(resource);
@@ -363,8 +391,10 @@ async function prepareFixture(path, method, op) {
                 ['_default', 'storage_providers', JSON.stringify([{ id: 'probe', name: 'Probe' }]), '2026-01-01T00:00:00.000Z'],
             );
         }
-        if (path === '/api/storage/compute-size') {
+        if (path === '/api/storage/compute-size'||path==='/api/storage/list') {
             const bucketId = nextFixture('size-bucket');
+            params.storage_provider_id='probe';params.measured_bucket=bucketId;
+            await runner.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO UPDATE SET value=excluded.value',['_default','storage_providers',JSON.stringify([{id:'probe',name:'Probe local storage',provider:'local'}]),'2026-01-01T00:00:00Z']);
             await runner.exec(
                 'INSERT INTO storage_buckets (id, tenant_slug, name, provider, created_at) VALUES (?,?,?,?,?)',
                 [bucketId, '_default', 'Size fixture', 'local', '2026-01-01T00:00:00.000Z'],
@@ -373,6 +403,8 @@ async function prepareFixture(path, method, op) {
                 'INSERT INTO storage_files (id, tenant_slug, bucket_id, path, name, size, mime_type, created_at) VALUES (?,?,?,?,?,?,?,?)',
                 [crypto.randomUUID(), '_default', bucketId, '/sized.txt', 'sized.txt', 42, 'text/plain', '2026-01-01T00:00:00.000Z'],
             );
+            ctx.verify=path==='/api/storage/compute-size'?value=>value?.success===true&&value.size===42:value=>value?.success===true&&value.files?.some(file=>file.name==='sized.txt'&&Number(file.size)===42);
+            ctx.trace.targetRead=sql=>/FROM storage_files\b/i.test(sql);
         }
     }
 
@@ -502,6 +534,7 @@ async function prepareFixture(path, method, op) {
             const dsRunner = datasourceRunner('sqlite', { url: dbFile });
             await dsRunner.exec('CREATE TABLE published_pages (id TEXT PRIMARY KEY, slug TEXT, title TEXT)');
             await dsRunner.exec("INSERT INTO published_pages VALUES ('search-1', 'home', 'R2 searchable fixture')");
+            dsRunner.close();
             await createFixture('/api/sync/datasources/', { name: nextFixture('search-ds'), type: 'sqlite', config: { url: dbFile } });
         }
         if (path.includes('{datasource_id}')) {
@@ -527,6 +560,7 @@ async function prepareFixture(path, method, op) {
                 const dsRunner = datasourceRunner('sqlite', { url: dbFile });
                 await dsRunner.exec('CREATE TABLE IF NOT EXISTS published_pages (id TEXT PRIMARY KEY, slug TEXT, title TEXT)');
                 await dsRunner.exec("INSERT OR IGNORE INTO published_pages (id, slug, title) VALUES ('rec-1', 'home', 'Home Page')");
+                dsRunner.close();
                 fixture = {
                     name: nextFixture('sync-ds'),
                     type: 'sqlite',
@@ -586,6 +620,7 @@ async function prepareFixture(path, method, op) {
                 const dsRunner = datasourceRunner('sqlite', { url: dbFile });
                 await dsRunner.exec('CREATE TABLE IF NOT EXISTS published_pages (id TEXT PRIMARY KEY, slug TEXT, title TEXT)');
                 await dsRunner.exec("INSERT OR IGNORE INTO published_pages (id, slug, title) VALUES ('rec-1', 'home', 'Home Page')");
+                dsRunner.close();
 
                 const ds = await createFixture('/api/sync/datasources/', {
                     name: nextFixture('sync-ds'),
@@ -647,6 +682,7 @@ async function prepareFixture(path, method, op) {
             const dsRunner = datasourceRunner('sqlite', { url: dbFile });
             await dsRunner.exec('CREATE TABLE IF NOT EXISTS published_pages (id TEXT PRIMARY KEY, slug TEXT, title TEXT)');
             await dsRunner.exec("INSERT OR IGNORE INTO published_pages (id, slug, title) VALUES ('rec-1', 'home', 'Home Page')");
+            dsRunner.close();
             await createFixture('/api/sync/datasources/', {
                 name: nextFixture('database-ds'),
                 type: 'sqlite',
@@ -780,6 +816,7 @@ async function prepareFixture(path, method, op) {
         }
     }
     if (params.storage_provider_id) query.set('provider_id', params.storage_provider_id);
+    if(params.measured_bucket)query.set('bucket',params.measured_bucket);
     if (path === '/api/sync/datasources/search-all/') query.set('q', 'R2 searchable fixture');
     if (path === '/api/sync/datasources/sheets/connect/status/' && params.sheets_token) {
         query.set('token', params.sheets_token);
@@ -843,8 +880,6 @@ const buckets = {
  * fails to build a fixture is a real gap and fails the gate.
  */
 const UNMEASURABLE_IN_COMMUNITY = {
-    'actions_get_execution_result': 'needs a real execution; POST .../test refuses 503 (no edge engine)',
-    'actions_get_execution_detail': 'needs a real execution; POST .../test refuses 503 (no edge engine)',
     'storage_get_move_status': 'needs a cross-bucket move job; POST /api/storage/move-cross refuses 400 (no second provider)',
     'sheets_connect_callback_datasources_sheets_connect_callback__post':
         'needs an issued capability token; the issue endpoint refuses 503 (no Redis token store)',
@@ -881,7 +916,14 @@ for (const [path, item] of Object.entries(spec.paths)) {
         entries.push({ path, method, op });
     }
 }
+const order=process.argv.find(arg=>arg.startsWith('--order='))?.slice(8)??'forward';
+if(order==='reverse')entries.reverse();
+else if(order.startsWith('seed:')){let seed=Number(order.slice(5))>>>0;for(let i=entries.length-1;i>0;i--){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const j=seed%(i+1);[entries[i],entries[j]]=[entries[j],entries[i]];}}
+else if(order!=='forward')throw Error('Invalid operation order');
 for (const { path, method, op } of entries) {
+    const ctx=await createOperationContext(),{app,trace}=ctx;
+    const fallbackStart=rawFallbacks;
+    try{
     const resp = Object.entries(op.responses ?? {}).find(([c]) => c.startsWith('2'));
     const label = `${method.toUpperCase()} ${path}`;
 
@@ -891,7 +933,7 @@ for (const { path, method, op } of entries) {
     // undefined bindings and its catch silently swallowed the ReferenceError.
     let replay = null;
     try {
-        const fixture = await prepareFixture(path, method, op);
+        const fixture = await prepareFixture(ctx,path, method, op);
         const init = { method: method.toUpperCase() };
         if (op.requestBody) {
             const jsonSchema = op.requestBody.content?.['application/json']?.schema;
@@ -914,13 +956,13 @@ for (const { path, method, op } of entries) {
         const requestPath = fillPath(path, fixture.params);
         const query = fixture.query.toString();
         replay = { requestPath, query, init };
-        sqlTrace = [];
-        providerTrace = [];
-        traceEnabled = true;
+        trace.sql = [];
+        trace.provider = [];
+        trace.enabled = true;
         res = await app.fetch(new Request(`http://probe.local${requestPath}${query ? `?${query}` : ''}`, init));
-        traceEnabled = false;
+        trace.enabled = false;
     } catch (e) {
-        traceEnabled = false;
+        trace.enabled = false;
         const excuse = UNMEASURABLE_IN_COMMUNITY[op.operationId];
         // A recorded excuse only counts when the fixture is what failed. If the
         // operation itself broke, the entry must not launder it into a pass.
@@ -936,6 +978,7 @@ for (const { path, method, op } of entries) {
             });
         } else {
             buckets.UNREACHABLE.push(`${label} — threw: ${e.message}`);
+            behavior.push({operation:label,status:'inconclusive',evidence:'fixture or operation failed; no intended effect established'});
         }
         continue;
     }
@@ -953,12 +996,12 @@ for (const { path, method, op } of entries) {
     const explicitExternal = res.headers.has('x-frontbase-external-disabled')
         || /not configured|no [^"]*(provider|datasource|connection|runtime)|not available in the community edition|integration not configured/i
             .test(rawBody);
-    const meaningfulSql = sqlTrace.filter((entry) =>
+    const meaningfulSql = trace.sql.filter((entry) =>
         entry.kind === 'query' || (entry.kind === 'exec' && entry.affected > 0));
     const hasSessionEffect = res.headers.has('set-cookie');
     const reflectsPrincipal = label === 'GET /api/auth/me'
         && rawBody.includes('owner@example.com');
-    const hasProviderEffect = providerTrace.length > 0;
+    const hasProviderEffect = trace.provider.length > 0;
     const hasWriteEffect = meaningfulSql.some((entry) => entry.kind === 'exec');
 
     // A read-only operation counts as functional only if its reads actually shape the
@@ -966,30 +1009,32 @@ for (const { path, method, op } of entries) {
     // means the query was discarded and the handler is really returning a constant.
     // Volatile tokens are normalised out so a per-request uuid or timestamp does not
     // masquerade as state-dependence.
-    let readsDiscarded = false;
+    let readsDiscarded = false,counterfactual=null;
+    const positiveControl=ctx.verify?Boolean(await ctx.verify(jsonBody)):null;
     // Only conclusive when the real run's reads actually RETURNED rows. If every query
     // came back empty, starving them changes nothing and an identical response proves
     // nothing — a genuine list endpoint over an empty table would be wrongly demoted.
     const readReturnedRows = meaningfulSql.some((entry) => entry.kind === 'query' && entry.rows > 0);
-    const readOnlyCandidate = readReturnedRows
+    const readOnlyCandidate = method==='get'&&positiveControl===true&&readReturnedRows
         && !hasWriteEffect && !hasProviderEffect && !hasSessionEffect && !reflectsPrincipal;
     if (readOnlyCandidate && replay) {
         const volatile = (text) => text
             .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<uuid>')
             .replace(/\d{4}-\d{2}-\d{2}T[\d:.]+Z?/g, '<ts>');
         try {
-            starveReads = true;
+            trace.starveReads = true;
             const starved = await app.fetch(new Request(
                 `http://probe.local${replay.requestPath}${replay.query ? `?${replay.query}` : ''}`,
                 replay.init,
             ));
             const starvedBody = await starved.text();
+            const value=JSON.parse(starvedBody);counterfactual={status:starved.status,positiveControl:Boolean(await ctx.verify(value)),supportIntact:starved.ok};
             readsDiscarded = starved.status === res.status
                 && volatile(starvedBody) === volatile(rawBody);
         } catch {
-            readsDiscarded = false; // erroring without rows means the read mattered
+            readsDiscarded = false;counterfactual={status:null,positiveControl:null,supportIntact:false};
         } finally {
-            starveReads = false;
+            trace.starveReads = false;
         }
     }
 
@@ -1005,6 +1050,9 @@ for (const { path, method, op } of entries) {
     behavior.push({
         operation: label,
         status: behaviorStatus,
+        httpStatus:res.status,
+        diagnostic:{positiveControl,counterfactual,providerAttempts:trace.provider.length,providerCompleted:trace.provider.length,rawFallbackAttempts:rawFallbacks-fallbackStart,replayViolation:trace.replayViolation,
+            outcome:observedOutcome({positiveControl,httpOk:res.ok,httpStatus:res.status,unsupported:res.headers.has('x-frontbase-external-disabled'),negativeEnvelope:jsonBody?.success===false,sessionEffect:hasSessionEffect,principalProjection:reflectsPrincipal,counterfactual,hasStateObservation:meaningfulSql.length>0,providerAttempts:trace.provider.length})},
         // An unavailable integration remains unavailable even if the handler
         // persists a local audit/attempt row. Incidental SQL must never make
         // the evidence contradict the classification (CF-22 Work E1).
@@ -1013,7 +1061,7 @@ for (const { path, method, op } of entries) {
             : readsDiscarded
             ? `read result DISCARDED — response identical with reads starved (${meaningfulSql.length} SQL observation${meaningfulSql.length === 1 ? '' : 's'} had no effect)`
             : hasProviderEffect
-                ? `provider effect (${providerTrace.length} outbound request${providerTrace.length === 1 ? '' : 's'})`
+                ? `provider effect (${trace.provider.length} outbound request${trace.provider.length === 1 ? '' : 's'})`
                 : hasSessionEffect
                 ? 'session cookie effect'
                 : reflectsPrincipal
@@ -1026,6 +1074,8 @@ for (const { path, method, op } of entries) {
     if (!String(res.status).startsWith('2')) {
         if (frameworkSpec.paths?.[path]?.[method]?.['x-implemented'] === false) {
             buckets.STUB.push(`${label} → ${res.status}`);
+        } else if(res.headers.has('x-frontbase-external-disabled')){
+            buckets.EXTERNAL_DISABLED.push(`${label} → ${res.status}`);
         } else if (
             res.status === 400
             && typeof jsonBody?.detail === 'string'
@@ -1110,12 +1160,13 @@ for (const { path, method, op } of entries) {
             + `${issue?.path?.join('.') || '(root)'} ${issue?.message}`,
         );
     }
+    }finally{ctx.close();}
 }
 
 const total = entries.length;
 const measured = buckets.CONFORMS.length + buckets.VIOLATES.length;
 const behaviorCounts = Object.fromEntries(
-    ['functional', 'shape-only', 'external-disabled', 'stub']
+    ['functional', 'shape-only', 'external-disabled', 'stub','inconclusive']
         .map((status) => [status, behavior.filter((entry) => entry.status === status).length]),
 );
 const behaviorFingerprint = createHash('sha256')
@@ -1126,6 +1177,10 @@ const behaviorFingerprint = createHash('sha256')
             .join('\n'),
     )
     .digest('hex');
+const diagnosticCounts=Object.fromEntries([...new Set(behavior.map(entry=>entry.diagnostic?.outcome??'inconclusive'))].sort().map(outcome=>[outcome,behavior.filter(entry=>(entry.diagnostic?.outcome??'inconclusive')===outcome).length]));
+const reportPath=process.argv.find(arg=>arg.startsWith('--report='))?.slice(9);
+if(reportPath)writeFileSync(reportPath,JSON.stringify({version:2,order,total,contextIsolation:'fresh app/database/settings/providers/reset maps per operation',legacyCounts:behaviorCounts,diagnosticCounts,buckets,operations:behavior},null,2));
+if(process.argv.includes('--diagnostic-integrity')&&(behavior.length!==total||behavior.some(entry=>entry.diagnostic?.positiveControl===false||entry.diagnostic?.rawFallbackAttempts>0||entry.diagnostic?.replayViolation)))throw Error('behavior diagnostic integrity failed; inspect the per-operation report');
 console.log(`\ncompat conformance — ${total} operations\n`);
 console.log(`  CONFORMS    ${String(buckets.CONFORMS.length).padStart(3)}`);
 console.log(`  VIOLATES    ${String(buckets.VIOLATES.length).padStart(3)}   ← contract divergence the drift gate cannot see`);
@@ -1138,11 +1193,12 @@ console.log(`  differential evidence: ${differentialSource ?? 'ABSENT — every 
 console.log(`\n  measured: ${measured}/${total} (${((measured / total) * 100).toFixed(0)}%)`);
 
 if (process.argv.includes('--behavior')) {
-    console.log('\nbehavior classification (runtime-derived):');
+    console.log('\nlegacy observation counts (NOT intended-effect proof):');
     for (const [status, count] of Object.entries(behaviorCounts)) {
         console.log(`  ${status.padEnd(18)} ${String(count).padStart(3)}`);
     }
     console.log(`  fingerprint        ${behaviorFingerprint}`);
+    console.log('\nconservative version2 outcomes:');for(const[outcome,count]of Object.entries(diagnosticCounts))console.log(`  ${outcome.padEnd(28)} ${count}`);
     if (process.argv.includes('--verbose')) {
         for (const entry of behavior.filter((item) => item.status !== 'functional')) {
             console.log(`  · ${entry.status}: ${entry.operation} — ${entry.evidence}`);
@@ -1204,36 +1260,9 @@ if (process.argv.includes('--behavior-gate')) {
 }
 
 if (process.argv.includes('--dump-ledger')) {
-    const ledger = {};
-    for (const { operation, status, evidence } of behavior) {
-        ledger[operation] = { status, evidence };
-    }
-    // Set OPTIONS endpoints if missing
-    for (const path of Object.keys(frameworkSpec.paths ?? {})) {
-        for (const method of ['get', 'post', 'put', 'patch', 'delete', 'options']) {
-            if (frameworkSpec.paths[path]?.[method]) {
-                const op = method.toUpperCase() + ' ' + path;
-                if (!ledger[op]) {
-                    ledger[op] = { status: 'undefined', evidence: 'operation was not measured' };
-                }
-            }
-        }
-    }
-    const { writeFileSync } = await import('node:fs');
-    writeFileSync(join(here, '..', 'contracts', 'behavior.ledger.json'), JSON.stringify(ledger, null, 2));
-    console.log('Ledger dumped successfully.');
+    throw Error('Blind historical-ledger replacement is disabled. Use --report=<path> and review each operation before adopting a versioned measurement contract.');
 }
 
 if (process.argv.includes('--require-functional')) {
-    const nonFunctional = behavior.filter(({ status }) => status !== 'functional');
-    if (nonFunctional.length > 0 || behaviorCounts.functional !== total) {
-        console.error(
-            `closure behavior gate failed: ${behaviorCounts.functional}/${total} functional; `
-            + `${nonFunctional.length} operations remain non-functional`,
-        );
-        for (const entry of nonFunctional) {
-            console.error(`  - ${entry.status}: ${entry.operation} — ${entry.evidence}`);
-        }
-        process.exit(1);
-    }
+    throw Error('Universal legacy parity is retired. Use --diagnostic-integrity and behavior-isolated-orders.mjs; inconclusive diagnostics are not functional claims.');
 }
