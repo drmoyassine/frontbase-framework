@@ -1,3 +1,4 @@
+import {reportReadFailure} from '../read-failure.js';
 import {datasourceSchema,scopedDatasourceConfig} from '../datasource-schema.js';
 import {isNativePostgrest,nativePostgrestInspector} from '../postgrest-inspector.js';
 // CF-22 Work D — client hydration data plane
@@ -211,7 +212,7 @@ export function registerDataExecuteRoute(
                             filters:[...savedViewFilters(trustedViewFilters),...savedViewFilters(body.filters)],
                             sort:body.sort_col??trustedViewSort?.column,order:body.sort_col?body.sort_dir??'asc':trustedViewSort?.direction??'asc',search:body.search_query,searchColumns:body.search_cols});
                         return c.json({success:true,data:result.records,count:result.records.length,total:result.total});
-                    }catch{return c.json({success:false,error:'Selected-schema read unavailable. Check the table, filters and API permissions.'},422);}
+                    }catch(error){reportReadFailure('selected-schema',error);return c.json({success:false,error:'Selected-schema read unavailable. Check the table, filters and API permissions.'},422);}
                 }
                 let runner: DbRunner;
                 try {
@@ -276,6 +277,7 @@ export function registerDataExecuteRoute(
                             const result=await executeSingleTableRpc(runner,dialectOf(ds.kind),validated.payload,trustedViewFilters);
                             return c.json({success:true,data:result.rows,count:result.rows.length,total:result.total});
                         }catch(error){
+                            reportReadFailure('single-table',error);
                             const message=error instanceof Error?error.message:'';
                             const invalid=['single_table_only','invalid_columns','invalid_column'].includes(message)||message.startsWith('invalid_identifier:');
                             return c.json({success:false,error:'Single-table query failed'},invalid?422:502);
@@ -475,7 +477,8 @@ export function registerDataExecuteRoute(
                 count: data.length,
                 total,
             });
-        } catch {
+        } catch (error) {
+            reportReadFailure('data-execute',error);
             return c.json({
                 success: false,
                 error: 'Unknown error',

@@ -1,3 +1,4 @@
+import {reportReadFailure} from './read-failure.js';
 import { resolveHomepageLanguageRequest, localizedListRequest, sitemapLocaleEntries } from './translation-homepage-serving.js';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { createEngine, directProvider, audienceConditionUser } from '@frontbase/edge-core';
@@ -58,6 +59,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
     const listResponse=await publicationListResponse(db,owner,request,audience,listRequest??undefined,options.liveQuery);if(listResponse)return listResponse;
     let localeResult:Awaited<ReturnType<typeof resolveHomepageLanguageRequest>>=null;
     try{if(!audience?.authenticated)localeResult=await resolveHomepageLanguageRequest(db,owner,request,options.liveQuery);}catch(error){
+        if(!(error instanceof PublicationRequestError))reportReadFailure('localized-page',error);
         if(new URL(request.url).pathname!=='/')return new Response(request.method==='HEAD'?null:'Language temporarily unavailable',{status:error instanceof PublicationRequestError?400:503,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}});
     }
     const resolution:SitePublicationResolution=localeResult?(localeResult.kind==='redirect'?{status:'redirect',hash:localeResult.siteHash,generation:localeResult.generation,location:localeResult.redirect}:{status:'resolved',hash:localeResult.siteHash,generation:localeResult.generation,result:localeResult.resolved}):await resolveReviewedSitePublication(db,owner,request,audience,options.liveQuery);
