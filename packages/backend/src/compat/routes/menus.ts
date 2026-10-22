@@ -15,6 +15,7 @@ import {menuPublicationPlan,prepareMenuCapture} from '../menus-capture.js';
 import {SiteConfigurationStore} from '../site-configuration-store.js';
 import {MenusSnapshotStore} from '../menus-snapshot.js';
 import {resolveAppMenuLayout,readPublicSiteName} from '../menus-runtime.js';
+import {projectSourceFrontendCopy} from './frontend-edit.js';
 import {previewSavedMenus,publishPreviewedMenus,discardMenuDraft} from '../menus-workflow.js';
 const input=z.object({expectedRevision:z.number().int().min(0).max(2147483646),menus:menuDocumentSchema.innerType().shape.menus}).strict();
 const admin=(c:any)=>['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(c.get('principal')?.user?.role);
@@ -52,7 +53,8 @@ export function registerMenusRoutes(app:Hono<{Variables:ConsoleAuthVars}>,db:DbR
         c.header('Cache-Control','no-store');if(!admin(c)&&c.get('principal')?.user?.role!=='editor')return c.json({detail:'Shared menus preview unavailable'},403);if(new URL(c.req.url).searchParams.size)return c.json({detail:'Invalid menu preview'},422);
         try{const input=z.object({pageId:z.string().uuid(),path:z.string().startsWith('/').max(400),layout:z.object({root:z.record(z.unknown()),content:z.array(z.unknown()).max(3000)}).strict()}).strict().parse(await boundedBody(c.req.raw,2*1024*1024)),owner=c.get('tenant'),page=await new PagesStore(db,owner).get(input.pageId);
             if(!page||page.deleted_at)return c.json({detail:'Page unavailable'},404);
-            const layout=await resolveAppMenuLayout(db,owner,input.layout as import('@frontbase/edge-core').PageLayoutData,input.path,null,await readPublicSiteName(db,owner),page.id);return c.json({layout});
+            const layout=await resolveAppMenuLayout(db,owner,input.layout as import('@frontbase/edge-core').PageLayoutData,input.path,null,await readPublicSiteName(db,owner),page.id);
+            return c.json({layout:(await projectSourceFrontendCopy(db,owner,page.id,layout)).layout});
         }catch(error){return c.json({detail:'Shared menus preview unavailable'},error instanceof Error&&error.message==='body_too_large'?413:422);}
     });
     app.get('/api/project/menus/publication-plan/',async c=>{

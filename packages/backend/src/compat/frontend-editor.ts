@@ -1,0 +1,46 @@
+/** Public bootstrap contains no credentials, field inventory, owner or private source paths.
+ * It remains inert until the host's ordinary session resolver confirms editing privilege. */
+export const FRONTEND_EDITOR_SCRIPT=String.raw`(async()=>{
+if(window.top!==window.self||document.querySelector('[data-frontbase-editor]'))return;
+const capability=await fetch('/api/frontend-edit/capability/',{credentials:'same-origin',cache:'no-store'}).catch(()=>null);
+if(!capability||!capability.ok||!(await capability.json()).enabled)return;
+const pagePath=location.pathname+location.search;
+const response=await fetch('/api/frontend-edit/inventory/?path='+encodeURIComponent(pagePath),{credentials:'same-origin',cache:'no-store'}).catch(()=>null);
+if(!response||!response.ok)return;
+const inventory=await response.json(),arabic=document.documentElement.lang.startsWith('ar');
+const words=arabic?{edit:'تحرير النص',done:'تم',revert:'تراجع عن هذا التعديل',cancelEdit:'إلغاء التحرير',save:'حفظ التغييرات',cancel:'إلغاء التغييرات',saving:'جارٍ الحفظ…',failed:'تعذر تأكيد الحفظ. تم الاحتفاظ بتعديلاتك. أعد تحميل الصفحة في علامة تبويب أخرى للمراجعة.',unsaved:'تعديلات غير محفوظة',close:'إغلاق المحرر'}:{edit:'Edit text',done:'Done',revert:'Revert this change',cancelEdit:'Cancel editing',save:'Save Changes',cancel:'Cancel Changes',saving:'Saving…',failed:'Save could not be confirmed. Your edits are retained. Reload in another tab to review.',unsaved:'unsaved changes',close:'Close editor'};
+const style=document.createElement('style');style.textContent='[data-fb-copy]{position:relative;cursor:text;border-radius:2px}[data-fb-copy]:hover,[data-fb-copy]:focus{outline:2px solid #3b82f6;outline-offset:3px}[data-fb-copy]:hover:after,[data-fb-copy]:focus:after{content:"✎";position:absolute;inset-inline-end:-18px;top:-16px;background:#2563eb;color:white;font:14px sans-serif;padding:2px 4px;border-radius:4px;z-index:2147483000}[data-fb-copy][contenteditable]{outline:2px solid #2563eb;background:#3b82f61a;white-space:pre-wrap;min-width:1em}[data-fb-copy][data-dirty]{box-shadow:0 2px #f59e0b}[data-frontbase-editor]{position:fixed;z-index:2147483646;bottom:20px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 24px);padding:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#111827;color:#fff;border:1px solid #64748b;border-radius:12px;box-shadow:0 4px 30px #0005;font:14px/1.4 system-ui}[data-frontbase-editor] button{font:inherit;padding:8px 12px;border:1px solid #94a3b8;border-radius:6px;background:#fff;color:#111827;cursor:pointer}[data-frontbase-editor] button:disabled{opacity:.5;cursor:wait}[data-frontbase-editor] [data-save]{background:#2563eb;color:#fff}[data-frontbase-editor] [role=status]{flex-basis:100%;max-width:600px}[data-frontbase-editor][hidden]{display:none}';document.head.append(style);
+const bar=document.createElement('div');bar.dataset.frontbaseEditor='';bar.setAttribute('role','region');bar.setAttribute('aria-label',words.edit);bar.dir=arabic?'rtl':'ltr';document.body.append(bar);
+const status=document.createElement('span');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+function button(label,fn){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;bar.append(b);return b;}
+const pending=new Map(),bound=new Map(),editActions=new WeakMap();let active=null,busy=false,error='';
+const original=new Map(inventory.fields.map(f=>[f.id,f.text]));
+function all(id,text){for(const span of bound.get(id)||[])span.textContent=text;}
+function update(){const count=pending.size;done.hidden=!active;cancelEdit.hidden=!active;revert.hidden=!active||!pending.has(active.id);save.disabled=busy||(!count&&!active);cancel.disabled=busy||(!count&&!active);close.disabled=busy;status.textContent=error||(count?count+' '+words.unsaved:words.edit);for(const [id,spans]of bound)for(const span of spans)span.toggleAttribute('data-dirty',pending.has(id));}
+function stop(){if(active){active.span.removeAttribute('contenteditable');active.span.setAttribute('role','button');active=null;}}
+function cancelCurrent(){if(!active)return;const id=active.id;stop();all(id,pending.get(id)||original.get(id));update();}
+function stage(){if(!active)return true;const {id,span}=active,text=span.textContent;if(!text.trim()||text.length>12000){error='Text must contain 1–12000 characters.';update();return false;}stop();if(text===original.get(id))pending.delete(id);else pending.set(id,text);all(id,text);error='';update();return true;}
+const done=button(words.done,stage),cancelEdit=button(words.cancelEdit,cancelCurrent),revert=button(words.revert,()=>{if(!active)return;const id=active.id;stop();pending.delete(id);all(id,original.get(id));error='';update();});
+const save=button(words.save,async()=>{if(busy||!stage()||!pending.size)return;busy=true;error='';save.textContent=words.saving;update();try{const saved=await fetch('/api/frontend-edit/save/',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-Frontbase-Editor':'1'},body:JSON.stringify({path:pagePath,token:inventory.token,operationId:crypto.randomUUID(),entries:[...pending].map(([id,text])=>({id,text}))})});if(!saved.ok)throw Error();pending.clear();stop();location.reload();}catch{error=words.failed;busy=false;save.textContent=words.save;update();}});save.dataset.save='';
+const cancel=button(words.cancel,()=>{stop();for(const id of pending.keys())all(id,original.get(id));pending.clear();for(const[id]of bound)all(id,original.get(id));error='';update();});
+const close=button(words.close,()=>{if(active||pending.size){cancel.click();return;}for(const spans of bound.values())for(const span of spans)span.replaceWith(document.createTextNode(span.textContent));style.remove();bar.remove();});bar.append(status);
+function bind(){for(const field of inventory.fields){if(field.blockId.startsWith('$')||['alt','ariaLabel','placeholder'].includes(field.path.at(-1)))continue;const root=document.getElementById(field.blockId);if(!root)continue;
+if(field.versionId){const parent=root.closest('[data-block-versions]');if(parent&&parent.dataset.blockActive!==field.versionId)continue;}
+const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;const matches=[];while(node=walker.nextNode()){if(node.parentElement.closest('script,style,template,[data-fb-copy],[data-frontbase-editor],[contenteditable],textarea,select'))continue;if(node.textContent.trim()===field.text.trim())matches.push(node);}
+// Ambiguous display matches never authorize a write: the server inventory remains authoritative.
+if(matches.length!==1)continue;const span=document.createElement('span');span.dataset.fbCopy=field.id;span.tabIndex=0;span.setAttribute('role','button');span.setAttribute('aria-label',words.edit+': '+field.label);span.title=words.edit;span.textContent=matches[0].textContent;matches[0].replaceWith(span);const spans=bound.get(field.id)||[];spans.push(span);bound.set(field.id,spans);
+const edit=event=>{if(busy)return;event.preventDefault();event.stopImmediatePropagation();if(active?.span===span)return;if(!stage())return;active={id:field.id,span};span.setAttribute('contenteditable','plaintext-only');span.setAttribute('role','textbox');span.focus();update();};
+editActions.set(span,edit);span.addEventListener('click',edit);span.addEventListener('keydown',event=>{if(active?.span===span){if(event.key==='Escape'){event.preventDefault();cancelCurrent();}else if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();stage();}}else if(event.key==='Enter'||event.key===' '){edit(event);}});
+span.addEventListener('paste',event=>{if(active?.span!==span)return;event.preventDefault();const value=event.clipboardData.getData('text/plain');document.execCommand('insertText',false,value);});
+}}
+// Stop navigation and configured click workflows before their document/element handlers.
+window.addEventListener('click',event=>{const span=event.target.closest?.('[data-fb-copy]');if(span&&editActions.has(span)){if(busy){event.preventDefault();event.stopImmediatePropagation();return;}editActions.get(span)(event);}},true);
+bind();update();window.addEventListener('beforeunload',event=>{if(pending.size||active){event.preventDefault();event.returnValue='';}});
+})().catch(()=>{});`;
+
+/** Host opt-in, public page HTML only. APIs/admin, preview frames and non-HTML stay untouched. */
+export async function withFrontendEditor(response:Response,request:Request):Promise<Response>{
+    if(request.method!=='GET'||response.status!==200||!response.headers.get('content-type')?.includes('text/html')||/^\/(?:api|frontbase-admin|frontbase-setup|builder)(?:\/|$)/.test(new URL(request.url).pathname))return response;
+    const html=await response.text(),headers=new Headers(response.headers);headers.delete('content-length');headers.delete('etag');headers.set('Cache-Control','no-store');
+    return new Response(html.replace('</body>','<script src="/api/frontend-edit/script.js" defer></script></body>'),{status:response.status,headers});
+}

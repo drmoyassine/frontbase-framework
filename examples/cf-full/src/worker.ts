@@ -37,6 +37,7 @@ import { manifest } from './manifest.js';
 import { renderReviewedSitePublication,publishedLiveQuery } from '@frontbase/backend';
 import {configuredMenuAudienceResolver} from '@frontbase/backend';
 import {resolveAppMenuLayout,readPublicSiteName} from '@frontbase/backend';
+import {projectSourceFrontendCopy,withFrontendEditor} from '@frontbase/backend';
 import SW_BUNDLE from 'virtual:sw-bundle';
 import CLIENT_BUNDLE from 'virtual:builder-client-bundle';
 import CONSOLE_INDEX from './console-shell.js';
@@ -592,6 +593,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
                 const siteName=await readPublicSiteName(opts.runner,page.owner);
                 pageLayout=await resolveAppMenuLayout(opts.runner,page.owner,pageLayout as import('@frontbase/edge-core').PageLayoutData,path,audience,String(siteName),page.pageId);
             }
+            if(page.owner&&page.pageId)pageLayout=(await projectSourceFrontendCopy(opts.runner,page.owner,page.pageId,pageLayout as import('@frontbase/edge-core').PageLayoutData)).layout;
             return {
                 title: page.title,
                 slug: page.slug,
@@ -611,6 +613,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     });
 
     const app = new Hono();
+    app.use('*',async(c,next)=>{await next();c.res=await withFrontendEditor(c.res,c.req.raw);});
 
     // engineConfig() state is MODULE-GLOBAL, and edge-core render paths read it
     // at request time. A process hosting more than one engine — production is

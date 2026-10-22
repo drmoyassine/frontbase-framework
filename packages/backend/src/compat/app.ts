@@ -1,5 +1,8 @@
 import { registerDeploymentBindingsRoutes } from './routes/deployment-bindings.js';
 import { registerMenusRoutes } from './routes/menus.js';
+import {registerFrontendEditRoutes} from './routes/frontend-edit.js';
+import {frontendEditorAllowed} from './frontend-copy.js';
+import {FRONTEND_EDITOR_SCRIPT} from './frontend-editor.js';
 import {registerAppUserRoutes} from './routes/app-users.js';
 /**
  * CF-22 P1 / D2 — the product-compatible console surface.
@@ -350,6 +353,12 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         );
     }
 
+    // Public inert bootstrap and capability probe: no field inventory or privileged data.
+    app.get('/api/frontend-edit/script.js',c=>new Response(FRONTEND_EDITOR_SCRIPT,{headers:{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}}));
+    app.get('/api/frontend-edit/capability/',async c=>{
+        c.header('Cache-Control','no-store');c.header('Vary','Cookie');
+        try{const principal=await resolvePrincipal(c.req.raw);return c.json({enabled:!!principal.tenant&&frontendEditorAllowed(principal.user)});}catch{return c.json({enabled:false});}
+    });
     // Everything below requires an authenticated, tenant-scoped principal.
     // SCOPED to /api/* (but NOT /api/console/* which is the engine's existing
     // console surface). This prevents the compat guard from shadowing the
@@ -409,6 +418,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Validate protected requests only after authentication, preserving default-
     // deny semantics (anonymous callers receive 401, not schema-oracle 422s).
     app.use('*', contractRequestValidation());
+    registerFrontendEditRoutes(app,runner,now,{pagesFor,syncFor:syncStoreFor,accountsFor:phase2For,externalFetch,accountConfigFor});
 
     // AUTHENTICATED auth ops (me + security) — behind the guard (RULE 2).
     if (deps.sessionSecret && deps.userStoreFor) {

@@ -1,4 +1,5 @@
 import {reportReadFailure} from './read-failure.js';
+import {projectFrontendCopy} from './frontend-copy.js';
 import { resolveHomepageLanguageRequest, localizedListRequest, sitemapLocaleEntries } from './translation-homepage-serving.js';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { createEngine, directProvider, audienceConditionUser } from '@frontbase/edge-core';
@@ -89,7 +90,10 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
     }
     try {
         const {page,version,document}=resolution.result,path=new URL(request.url).pathname;
-        const manifest={version,pages:{[path]:page},queries:{}};
+        const contentLocale=localeResult?.kind==='page'?localeResult.locale:document.language??'en';
+        const pageId=resolution.result.sourcePageId;
+        const copy=await projectFrontendCopy(db,owner,pageId,page.layout as unknown as import('@frontbase/edge-core').PageLayoutData,contentLocale);
+        const manifest={version,pages:{[path]:{...page,layout:copy.layout}},queries:{}};
         // Layout projection (including admitted live-list initial records) is complete.
         // Host may supply its network-only SW to replace older intercepting installations.
         const engine=createEngine({manifest,data:directProvider(manifest),environment:'edge',document,swBundle:options.swBundle,resolveConditionUser:async()=>audienceConditionUser(audience)});
@@ -99,6 +103,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         responseHeaders.set('X-Robots-Tag',document.robots ?? 'noindex, nofollow');
         if(localeResult){responseHeaders.set('Content-Language',localeResult.kind==='page'?localeResult.contentLocale:localeResult.locale);if(localeResult.releaseHash)responseHeaders.set('X-Translation-Version',localeResult.releaseHash);}
         responseHeaders.set('X-Site-Version',resolution.hash);
+        if(copy.hash)responseHeaders.set('X-Copy-Version',copy.hash);
         responseHeaders.set('X-Site-Generation',String(resolution.generation));
         if(request.method==='HEAD')await rendered.body?.cancel();
         return new Response(request.method==='HEAD'?null:rendered.body,{status:rendered.status,headers:responseHeaders});

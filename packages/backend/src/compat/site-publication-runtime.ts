@@ -31,7 +31,7 @@ export class PublicationRequestError extends Error {
 }
 
 /** Resolve one captured version. No control/content DB or mutable draft access. */
-export async function resolveSitePublicationPage(input: SitePublicationArtifact, hash: string, owner: string, request: Request, recordsLocale?: string): Promise<{ page: PageEntry; version: string; cacheKey: string; document: NonNullable<EngineOptions['document']> } | null> {
+export async function resolveSitePublicationPage(input: SitePublicationArtifact, hash: string, owner: string, request: Request, recordsLocale?: string): Promise<{ sourcePageId:string; page: PageEntry; version: string; cacheKey: string; document: NonNullable<EngineOptions['document']> } | null> {
     if (!owner || !/^[a-f0-9]{64}$/.test(hash)) throw new Error('publication_context_required');
     const artifact = sitePublicationArtifactSchema.parse(input), url = new URL(request.url), path = url.pathname;
     if (!publicationPathSchema.safeParse(path).success) return null;
@@ -94,7 +94,7 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
     const manifest = buildSiteManifest({ pages: { [path]: { title, slug: path.replace(/^\//, ''), description, layout: projected as unknown as Record<string, unknown> } }, queries: {}, versionPrefix: hash });
     const canonicalUrl = new URL(path, artifact.configuration.site.origin).href;
     const documentLanguage = typeof row?.language === 'string' ? row.language : artifact.configuration.site.locale || 'en';
-    return { page: manifest.pages[path]!, version: manifest.version, cacheKey: JSON.stringify([owner, hash, path, normalized]),
+    return { sourcePageId:template.pageId, page: manifest.pages[path]!, version: manifest.version, cacheKey: JSON.stringify([owner, hash, path, normalized]),
         document: { faviconUrl: '', language: documentLanguage, direction: localeDirection(documentLanguage),
             canonicalUrl, robots: url.searchParams.size ? 'noindex, follow' : 'index, follow',
             openGraph: { title, description, url: canonicalUrl, type: role === 'article' ? 'article' : 'website', siteName: artifact.configuration.site.name, locale: documentLanguage,

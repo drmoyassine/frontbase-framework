@@ -293,6 +293,9 @@ export {
 } from './tenancy/serving.js';
 export type { PublishedPageRow, ResolvePublishedPageOptions, TenantHostState } from './tenancy/serving.js';
 export { renderReviewedSitePublication } from './compat/site-publication-serving.js';
+export {projectFrontendCopy} from './compat/frontend-copy.js';
+export {withFrontendEditor} from './compat/frontend-editor.js';
+export {frontendSourceLocale,projectSourceFrontendCopy} from './compat/routes/frontend-edit.js';
 export {publishedLiveQuery} from './compat/published-live-query.js';
 export {configuredMenuAudienceResolver} from './compat/menu-audience-host.js';
 export {resolveAppMenuLayout,readPublicSiteName} from './compat/menus-runtime.js';

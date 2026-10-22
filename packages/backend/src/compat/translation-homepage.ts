@@ -234,6 +234,35 @@ export async function saveHomepageTranslations(host:TranslationBatchHost,db:DbRu
     const latest=await captureHomepage(db,tenant,request,liveQuery,path);if(latest.sourceHash!==s.capture.sourceHash||latest.active.pointer.hash!==s.capture.active.pointer.hash)throw Error('source_changed');
     return {saved:pending.length};
 }
+/** Text-only frontend review: retain every untouched PUBLISHED revision, never promote unrelated
+ * draft heads. Draft writes may be partial on provider failure; the visible batch changes only
+ * through the existing immutable-release activation CAS after all edited revisions are verified. */
+export async function publishFrontendTranslationEdits(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,
+    target:string,path:string,expectedHash:string,edits:(DisplayField&{current:string;replacement:string})[],reviewer:string,now:string,liveQuery?:PublishedLiveQuery){
+    const s=await session(host,db,tenant,request,target,liveQuery,path),pointer=await readHomepagePointer(db,tenant,target,path);
+    if(!pointer||pointer.hash!==expectedHash)throw Error('locale_changed');
+    const published=await readHomepageRelease(db,tenant,pointer.hash);if(!published)throw Error('locale_unavailable');
+    const visible=homepageDisplayFields(projectHomepageLocale(s.capture,published).page.layout as unknown as PageLayoutData);
+    const pending=await mapLimit(edits,async edit=>{
+        const field=s.fields.find(field=>edit.record?JSON.stringify(stableIdentity(field))===JSON.stringify(stableIdentity(edit)):field.blockId===edit.blockId&&(field.versionId??'default')===(edit.versionId??'default')&&JSON.stringify(field.path)===JSON.stringify(edit.path));
+        const display=visible.find(field=>field.blockId===edit.blockId&&(field.versionId??'default')===(edit.versionId??'default')&&JSON.stringify(field.path)===JSON.stringify(edit.path));
+        const released=field?.record?published.catalog.find(candidate=>JSON.stringify(stableIdentity(candidate))===JSON.stringify(stableIdentity(field))):undefined;
+        const visibleText=field?.record?(released&&(released.sourceText===undefined||released.sourceText===field.text)?released.text:field.text):display?.text;
+        if(!field||visibleText!==edit.current)throw Error('locale_changed');
+        const prior=await readField(s,field);return {field,token:prior.value.token,text:translationDisplayText(field.text,edit.replacement)};
+    });
+    if(new Set(pending.map(item=>item.field.unitId)).size!==pending.length)throw Error('duplicate_unit');
+    for(let offset=0;offset<pending.length;offset+=16)await saveHomepageTranslations(host,db,tenant,request,{locale:target,path,token:s.token,entries:pending.slice(offset,offset+16).map(item=>({id:item.field.id,token:item.token,text:item.text}))},liveQuery);
+    const catalog=[...published.catalog];
+    for(const item of pending){const f=item.field,latest=await readField(s,f),head=latest.snapshot.head;if(!head||head.text!==item.text)throw Error('revision_changed');
+        const entry={id:f.id,blockId:f.blockId,path:f.path,...(f.versionId?{versionId:f.versionId}:{}),...(f.fieldKey?{fieldKey:f.fieldKey}:{}),...(f.record?{record:f.record}:{}),...(f.menu?{menu:f.menu}:{}),sourceFingerprint:f.fingerprint,sourceText:f.text,text:head.text,revisionId:head.revisionId,unitId:f.unitId};
+        const index=catalog.findIndex(field=>JSON.stringify(stableIdentity(field))===JSON.stringify(stableIdentity(f)));if(index<0)catalog.push(entry);else catalog[index]=entry;
+    }
+    assertNoIdentityCollision(catalog);
+    const release=releaseSchema.parse({...published,siteHash:s.capture.active.pointer.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,catalog,reviewer,reviewedAt:now});
+    const digest=await publicationHash(release);await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,await versionKeyFor(path,digest),JSON.stringify(release),now]);
+    await activateHomepageLocale(host,db,tenant,request,digest,pointer,now,liveQuery);return {hash:digest,saved:pending.length};
+}
 /** Identity-collision fence: one stable unit identity must carry exactly one source text inside a
  *  release, so a surface bug can never translate the same unit from two different sources. */
 export function assertNoIdentityCollision(catalog:(IdentifiedField&{sourceText?:string})[]):void{

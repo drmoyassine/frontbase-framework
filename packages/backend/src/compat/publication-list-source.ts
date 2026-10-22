@@ -11,6 +11,7 @@ import { SitePublicationManifestStore } from './site-publication-manifest.js';
 import { verifyManifestEditorial } from './site-publication-approval-check.js';
 import { freshLocalizedIndexTitles, type LocalizedCatalogEntry } from './site-publication-chunk-queries.js';
 import {liveViewBindingSchema} from '@frontbase/edge-core/directory/configuration';
+import {projectFrontendCopyRows} from './frontend-copy.js';
 
 export type PublishedLiveQuery=(owner:string,binding:Record<string,any>,query:Record<string,any>,request:Request)=>Promise<{rows:Record<string,unknown>[];total:number}>;
 
@@ -215,6 +216,7 @@ export async function publicationListResponse(db:DbRunner,owner:string,request:R
             result=localized?.catalog?await readLocalizedLiveList(owner,admitted,query,request,liveQuery,localized.catalog):await liveQuery(owner,admitted,query,request);
         }else return reply({error:'list_unavailable'},404);
         if((await new SitePublicationStore(db,owner).activeVersion())?.pointer.hash!==active.pointer.hash)return reply({error:'publication_changed'},409);
+        result={...result,rows:await projectFrontendCopyRows(db,owner,binding,result.rows,localized?.locale??artifact.configuration.site.locale)};
         return reply(result,200,localized?.catalog?{'Content-Language':localized.locale}:undefined);
     }catch{return reply({error:'list_unavailable'},503);}
 }

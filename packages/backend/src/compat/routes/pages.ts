@@ -11,6 +11,7 @@ import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import { PagesStore, serializePage, type CompatPageRow, type CompatVersionRow } from '../pages-store.js';
+import {projectSourceFrontendCopy} from './frontend-edit.js';
 import { isSystemEngine } from './edge-shapes.js';
 import { validateDirectoryLayout } from '../directory-configuration.js';
 import { hasSitePageReference } from '@frontbase/edge-core/directory/configuration';
@@ -155,10 +156,11 @@ export function registerPagesRoutes(
     };
     /** Enrich a serialized envelope's layoutData in place (non-fatal). */
     const enrichData = async (tenant: string, data: Record<string, unknown> | null): Promise<Record<string, unknown> | null> => {
-        if (!enrichLayout || !data || data.layoutData === undefined || data.layoutData === null) return data;
+        if (!data || data.layoutData === undefined || data.layoutData === null) return data;
         try {
-            data.layoutData = await enrichLayout(tenant, data.layoutData);
+            if(enrichLayout)data.layoutData = await enrichLayout(tenant, data.layoutData);
         } catch { /* non-fatal — canvas falls back to "No data available" */ }
+        if(runner&&typeof data.id==='string')data.layoutData=(await projectSourceFrontendCopy(runner,tenant,data.id,data.layoutData as import('@frontbase/edge-core').PageLayoutData)).layout;
         return data;
     };
 
