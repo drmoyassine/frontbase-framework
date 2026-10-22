@@ -128,3 +128,10 @@ corruption — the walk is what proves a backup, on every path.
   version fence, secret ciphertext accounting); sources and artifacts byte-restored. PASS.
 - CLI smoke (file: path): export → verify → integrity → refusals (no-confirm, non-empty target,
   tampered payload offline) → fresh restore with evidence file. PASS.
+- Staging A8 drill (2026-10-22): live-DB export (49.4 MB) → offline verify → fresh-target
+  restore → integrity walk **failed** on 6 publication chunks. Root-caused as a verifier defect
+  (chunk store measured integrity on the schema-transformed parse output; the nullable record
+  defaults added to cities/institutions/programs transformed pre-default chunks on every
+  re-parse) — content was intact, the live DB failed identically, and the walk did exactly its
+  job. Fixed in `fc7d484`: integrity is measured on the stored serialization; mutation gate
+  4/4 RED-proven including a fault that reintroduces the drift bug.
