@@ -36,7 +36,7 @@ it('targets publication pages and records the preparation policy',async()=>{
 });
 it('lists published languages and prepared versions with guarded deactivation and rollback',async()=>{
  const review={...base,fields:[{...field,translation:'استكشاف المؤسسات',state:'draft'}],complete:true};
- const locales={version:1,locales:[{locale:'ar',path:'/',hash:'f'.repeat(64),generation:2,reviewedAt:'2026-10-20T00:00:00.000Z',perUnit:false}]};
+ const locales={version:1,total:1,locales:[{locale:'ar',path:'/',hash:'f'.repeat(64),generation:2,reviewedAt:'2026-10-20T00:00:00.000Z',perUnit:false,available:true}]};
  const versions={version:1,locale:'ar',path:'/',items:[{hash:'f'.repeat(64),reviewedAt:'2026-10-20T00:00:00.000Z',units:5,perUnit:false},{hash:'e'.repeat(64),reviewedAt:'2026-10-19T00:00:00.000Z',units:4,perUnit:true}]};
  const fetcher=vi.fn(async(url:string,options?:RequestInit)=>{
   if(url.includes('translation-generation'))return Response.json({configuration:config});
@@ -56,14 +56,27 @@ it('lists published languages and prepared versions with guarded deactivation an
  await waitFor(()=>expect(fetcher.mock.calls.some(([url,o])=>url.endsWith('/deactivate/')&&o?.method==='POST')).toBe(true));
  const deactivate=fetcher.mock.calls.find(([url,o])=>url.endsWith('/deactivate/')&&o?.method==='POST')!;expect(JSON.parse(String(deactivate[1]?.body))).toEqual({locale:'ar',expected:{hash:'f'.repeat(64),generation:2}});
 });
-it('renders the pointer-cap alert with cap and count and keeps published rows actionable',async()=>{
+it('flags unreadable publications as unavailable without deactivation while healthy rows stay actionable',async()=>{
  const review={...base,fields:[{...field,translation:'استكشاف المؤسسات',state:'draft'}],complete:true};
- const locales={version:1,locales:[{locale:'ar',path:'/',hash:'f'.repeat(64),generation:2,reviewedAt:'2026-10-20T00:00:00.000Z',perUnit:false}],overCap:{code:'locale_pointer_cap_exceeded',cap:16,count:17}};
+ const locales={version:1,total:2,locales:[{locale:'ar',path:'/',hash:'f'.repeat(64),generation:2,reviewedAt:'2026-10-20T00:00:00.000Z',perUnit:false,available:true},{locale:'fr',path:null,hash:null,generation:null,reviewedAt:null,perUnit:false,available:false}]};
  const fetcher=vi.fn(async(url:string)=>{if(url.includes('translation-generation'))return Response.json({configuration:config});if(url.includes('/locales/'))return Response.json(locales);if(url.includes('/versions/'))return Response.json({version:1,items:[]});return Response.json(review);});vi.stubGlobal('fetch',fetcher);
  render(<HomepageTranslationWorkspace onClose={()=>{}}/>);
  await screen.findByText('ar · / · generation 2');
- const alert=await screen.findByRole('alert');expect(alert.textContent).toContain('17');expect(alert.textContent).toContain('cap is 16');
- expect(screen.getByRole('button',{name:'Deactivate'})).toBeEnabled();
+ expect(screen.getByText(/fr · — · release unavailable/)).toBeTruthy();
+ const deactivate=screen.getAllByRole('button',{name:'Deactivate'});expect(deactivate).toHaveLength(1);expect(deactivate[0]).toBeEnabled();
+ expect(screen.getByRole('link',{name:'Open'})).toBeTruthy();
+});
+it('paginates published languages and fetches the next offset',async()=>{
+ const review={...base,fields:[{...field,translation:'استكشاف المؤسسات',state:'draft'}],complete:true};
+ const locales={version:1,total:60,locales:Array.from({length:50},(_,i)=>({locale:'l'+i,path:'/',hash:'f'.repeat(64),generation:i+1,reviewedAt:'2026-10-20T00:00:00.000Z',perUnit:false,available:true}))};
+ const fetcher=vi.fn(async(url:string)=>{if(url.includes('translation-generation'))return Response.json({configuration:config});if(url.includes('/locales/'))return Response.json(locales);if(url.includes('/versions/'))return Response.json({version:1,items:[]});return Response.json(review);});vi.stubGlobal('fetch',fetcher);
+ render(<HomepageTranslationWorkspace onClose={()=>{}}/>);
+ await screen.findByText('Showing 1–50 of 60');
+ expect(screen.getByRole('button',{name:'Previous'})).toBeDisabled();
+ fireEvent.click(screen.getByRole('button',{name:'Next'}));
+ await screen.findByText('Showing 51–60 of 60');
+ expect(fetcher.mock.calls.some(([url])=>url.includes('/locales/?limit=50&offset=50'))).toBe(true);
+ expect(screen.getByRole('button',{name:'Next'})).toBeDisabled();
 });
 it('never blanks the published panel: a locales failure renders the unavailable alert instead of the empty state',async()=>{
  const review={...base,fields:[{...field,translation:'استكشاف المؤسسات',state:'draft'}],complete:true};
