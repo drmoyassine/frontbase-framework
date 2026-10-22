@@ -1,5 +1,13 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-22 integrated finalization execution — CLAIMED
+
+Owner explicitly delegates engineering review/sign-off and finalization execution to this session. Own F0–F8 integration/artifact qualification, test/fault/host/provider evidence and native Study in USA staging acceptance in isolated codex/integrated-finalization-20261022, starting at reconciled source f46b823. No edits to either implementer's worktree. Existing staging session is authenticated; latest observed deployment claims are released. Preserve data/secrets and existing source/artifact drift. No production cutover, npm publication, new paid resource, credential expansion or destructive cleanup is inferred. [Execution plan](../plans/frontbase-integrated-finalization-20261022.md); decisions are evidence-backed, with no repeated owner approval for routine engineering checks.
+
+Capacity repair claimed: measured localized10,049-row registry slice8101ms exceeds unchanged5000ms gate. Own request-local validated-manifest chunk reader reuse; preserve schema admission, per-reference membership, content/hash/index verification, owner scope and all corruption/mutation gates. No global mutable cache, threshold relaxation or live-data feature expansion. Also own native workspace stale-success notice correction discovered during page switching.
+
+Progress: isolated install/build/check PASS. Full functional/console evidence is being gathered; test-only legacy refresh, HTTPS fixture, browser-location and canonical-route repairs preserve production guards. Existing staging Homepage Arabic recovered via native review/prepare/publish88/88 (generation2); full coverage collected. Staging remains NO-GO because Explore rejects interactive live-list translation; only ONE real Arabic publication is active. The18-publication result is scale-test evidence. No combined staging deployment or release readiness claimed. [Candidate inventory](../reports/frontbase-finalization-20261022.json).
+
 ## 2026-10-22 clean Vercel cold-start migration repair — delivered to disposable test app
 
 Owner requests fixing the failed acceptance. The clean native branch clone deploys successfully, but concurrent cold starts report UNIQUE constraint failed: _migrations.version and poison a warm instance through initError. Own libSQL transaction-backed migration serialization and transient boot recovery, focused concurrent/rollback regressions and the generated artifact. Preserve existing state/session/data, PostgreSQL advisory locking, D1 behavior, default-deny and HTTP transport. Verify locally before updating only the approved disposable clean Vercel app; no shared staging or translation changes.
