@@ -28,6 +28,14 @@ await save('a',old);
 const raced=await mergeAccountConfig(read,async()=>{await save('a',{...old,service_role_key:'sb_secret_owner'});return discover()},'a','supabase',{provider_account_id:'account'});
 assert.equal(raced.service_role_key,'sb_secret_owner');
 assert.equal((await stores('a').getEdgeResourceConfig('account')).service_role_key,'sb_secret_owner');
+// An edit after the snapshot read but before UPDATE must also win the SQL CAS.
+await save('a',old);let raceDuringEncrypt=true;
+const racingCipher={...cipher,encrypt:async value=>{if(raceDuringEncrypt){raceDuringEncrypt=false;await save('a',{...old,service_role_key:'sb_secret_sql_owner'});}return cipher.encrypt(value);}};
+const racingRead=datasourceAccountConfigFor(t=>new Phase2Store(db,t,racingCipher),()=> 'later');
+const sqlRaced=await mergeAccountConfig(racingRead,discover,'a','supabase',{provider_account_id:'account'});
+assert.equal(sqlRaced.service_role_key,'sb_secret_sql_owner');
+assert.equal((await stores('a').getEdgeResourceConfig('account')).service_role_key,'sb_secret_sql_owner');
+await save('a',{...old,service_role_key:'sb_secret_owner'});
 // A different datasource project must discover its own key, never reuse/persist account project keys.
 let otherCalls=0;const other=await mergeAccountConfig(read,async(url)=>{otherCalls++;assert.match(String(url),/project-b/);return Response.json([{type:'secret',api_key:'sb_secret_other'}]);},'a','supabase',{provider_account_id:'account',project_ref:'project-b'});
 assert.equal(other.service_role_key,'sb_secret_other');assert.equal(other.api_url,'https://project-b.supabase.co');assert.ok(otherCalls>0);
