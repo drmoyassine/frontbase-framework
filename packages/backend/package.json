@@ -56,6 +56,8 @@
     "test:translation-homepage-explore": "node test/translation-homepage-explore.mjs",
     "test:translation-homepage-versions": "node test/translation-homepage-versions.mjs",
     "test:translation-page-publication": "node test/translation-page-publication.mjs",
+    "test:translation-pointer-cap": "node test/translation-pointer-cap.mjs",
+    "test:translation-pointer-cap-mutation": "node test/translation-pointer-cap-mutation.mjs",
     "test:translation-coverage": "node test/translation-coverage.mjs",
     "test:translation-record-keys": "node test/translation-record-keys.mjs",
     "test:translation-record-preview": "node test/translation-record-preview.mjs",

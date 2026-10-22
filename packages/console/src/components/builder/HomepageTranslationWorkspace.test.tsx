@@ -20,7 +20,7 @@ it('requires explicit review then preview before publishing the immutable langua
  const publish=fetcher.mock.calls.find(([url])=>url.endsWith('/publish/'))!;expect(JSON.parse(String(publish[1]?.body))).toEqual({hash:'e'.repeat(64),expected:null,approveTranslations:true});
 });
 it('refuses unknown bulk fields without issuing a mutation',async()=>{
- const fetcher=vi.fn(async(url:string)=>Response.json(url.includes('translation-generation')?{configuration:config}:base));vi.stubGlobal('fetch',fetcher);render(<HomepageTranslationWorkspace onClose={()=>{}}/>);await screen.findByLabelText('Homepage translations JSON');fireEvent.change(screen.getByLabelText('Homepage translations JSON'),{target:{value:'{"unknown":"text"}'}});fireEvent.click(screen.getByRole('button',{name:'Save supplied drafts'}));await screen.findByRole('alert');expect(fetcher.mock.calls.some(([,o])=>o?.method==='POST')).toBe(false);
+ const fetcher=vi.fn(async(url:string)=>Response.json(url.includes('translation-generation')?{configuration:config}:base));vi.stubGlobal('fetch',fetcher);render(<HomepageTranslationWorkspace onClose={()=>{}}/>);await screen.findByLabelText('Homepage translations JSON');fireEvent.change(screen.getByLabelText('Homepage translations JSON'),{target:{value:'{"unknown":"text"}'}});fireEvent.click(screen.getByRole('button',{name:'Save supplied drafts'}));await screen.findByText(/Save could not be confirmed/);expect(fetcher.mock.calls.some(([,o])=>o?.method==='POST')).toBe(false);
 });
 it('targets publication pages and records the preparation policy',async()=>{
  const review={...base,fields:[{...field,translation:'استكشاف المؤسسات',state:'draft'}],complete:true};
@@ -55,4 +55,20 @@ it('lists published languages and prepared versions with guarded deactivation an
  fireEvent.click(screen.getByRole('button',{name:'Deactivate'}));
  await waitFor(()=>expect(fetcher.mock.calls.some(([url,o])=>url.endsWith('/deactivate/')&&o?.method==='POST')).toBe(true));
  const deactivate=fetcher.mock.calls.find(([url,o])=>url.endsWith('/deactivate/')&&o?.method==='POST')!;expect(JSON.parse(String(deactivate[1]?.body))).toEqual({locale:'ar',expected:{hash:'f'.repeat(64),generation:2}});
+});
+it('renders the pointer-cap alert with cap and count and keeps published rows actionable',async()=>{
+ const review={...base,fields:[{...field,translation:'استكشاف المؤسسات',state:'draft'}],complete:true};
+ const locales={version:1,locales:[{locale:'ar',path:'/',hash:'f'.repeat(64),generation:2,reviewedAt:'2026-10-20T00:00:00.000Z',perUnit:false}],overCap:{code:'locale_pointer_cap_exceeded',cap:16,count:17}};
+ const fetcher=vi.fn(async(url:string)=>{if(url.includes('translation-generation'))return Response.json({configuration:config});if(url.includes('/locales/'))return Response.json(locales);if(url.includes('/versions/'))return Response.json({version:1,items:[]});return Response.json(review);});vi.stubGlobal('fetch',fetcher);
+ render(<HomepageTranslationWorkspace onClose={()=>{}}/>);
+ await screen.findByText('ar · / · generation 2');
+ const alert=await screen.findByRole('alert');expect(alert.textContent).toContain('17');expect(alert.textContent).toContain('cap is 16');
+ expect(screen.getByRole('button',{name:'Deactivate'})).toBeEnabled();
+});
+it('never blanks the published panel: a locales failure renders the unavailable alert instead of the empty state',async()=>{
+ const review={...base,fields:[{...field,translation:'استكشاف المؤسسات',state:'draft'}],complete:true};
+ const fetcher=vi.fn(async(url:string)=>{if(url.includes('translation-generation'))return Response.json({configuration:config});if(url.includes('/locales/'))return Response.json({detail:'Published languages are unavailable.'},{status:422});if(url.includes('/versions/'))return Response.json({version:1,items:[]});return Response.json(review);});vi.stubGlobal('fetch',fetcher);
+ render(<HomepageTranslationWorkspace onClose={()=>{}}/>);
+ await screen.findByText('Published languages are unavailable. Reload to retry.');
+ expect(screen.queryByText('Nothing published yet for this site.')).toBeNull();
 });

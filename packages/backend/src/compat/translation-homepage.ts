@@ -262,6 +262,11 @@ export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunne
     }
     const catalog=read.filter(item=>item.value.state==='draft'&&item.snapshot.head).map(item=>({id:item.f.id,blockId:item.f.blockId,path:item.f.path,...(item.f.versionId?{versionId:item.f.versionId}:{}),...(item.f.fieldKey?{fieldKey:item.f.fieldKey}:{}),...(item.f.record?{record:{connectionId:item.f.record.connectionId,collection:item.f.record.collection,key:item.f.record.key}}:{}),...(item.f.menu?{menu:item.f.menu}:{}),sourceFingerprint:item.f.fingerprint,sourceText:item.f.text,text:item.snapshot.head!.text,revisionId:item.snapshot.head!.revisionId,unitId:item.f.unitId}));
     assertNoIdentityCollision(catalog);
+    // Beyond-cap early detection at prepare: the SAME quantity the activation fence enforces
+    // (concurrent (locale,path) pointers, replace-in-place allowed), evaluated before the immutable
+    // release is written so operators learn at prepare time. Not atomic with activation — a
+    // concurrent deactivation or activation can still move the count between the two steps.
+    await assertLocalePointerCap(db,tenant,!!(await readHomepagePointer(db,tenant,target,s.path)));
     const release=releaseSchema.parse({version:1,tenant,project:s.scope.projectId,sourceLocale:s.config.sourceLocale,locale:target,siteHash:s.capture.active.pointer.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,path:s.path,policy,pageId:s.capture.pageId,catalog,reviewer,reviewedAt:now});
     const hash=await publicationHash(release);await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,await versionKeyFor(s.path,hash),JSON.stringify(release),now]);
     if(!await readHomepageRelease(db,tenant,hash))throw Error();
@@ -278,6 +283,9 @@ export async function activateHomepageLocale(host:TranslationBatchHost,db:DbRunn
     await mapLimit(release.catalog,async field=>{const revision=await s.persistence.readRevision(s.scope,field.unitId,release.locale,field.revisionId);if(!revision||revision.text!==field.text||revision.sourceFingerprint!==field.sourceFingerprint)throw Error('revision_unavailable');});
     const prior=await raw(db,tenant,await activeKey(release.locale,release.path)),current=prior?pointerSchema.parse(JSON.parse(prior)):null;
     if(JSON.stringify(current)!==JSON.stringify(pointerSchema.nullable().parse(expected)))throw Error('activation_conflict');
+    // Write-time fence: refuse the 17th concurrent (locale,path) pointer before any CAS write,
+    // mirroring the serve-time registry guard instead of failing at serve with a site-wide 503.
+    await assertLocalePointerCap(db,tenant,!!current);
     const next={hash:releaseHash,generation:(current?.generation??0)+1},value=JSON.stringify(next);
     const changed=prior?await db.exec('UPDATE settings SET value = ?,updated_at = ? WHERE tenant_slug = ? AND key = ? AND value = ?',[value,now,tenant,await activeKey(release.locale,release.path),prior]):await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,await activeKey(release.locale,release.path),value,now]);
     if(changed!==1)throw Error('activation_conflict');return next;
@@ -291,7 +299,25 @@ export async function deactivateHomepageLocale(db:DbRunner,tenant:string,target:
     const changed=await db.exec('DELETE FROM settings WHERE tenant_slug = ? AND key = ? AND value = ?',[tenant,key,prior]);
     if(changed!==1)throw Error('deactivation_conflict');return {deactivated:true as const,locale:locale.parse(target),path,generation:pointerSchema.parse(JSON.parse(prior)).generation,deactivatedAt:now};
 }
-export async function publishedHomepageLocales(db:DbRunner,tenant:string){const rows=await db.query('SELECT key,value FROM settings WHERE tenant_slug = ? AND (key LIKE ? OR key LIKE ?)',[tenant,'translation_homepage:active:v1:%','translation_surface:active:v1:%']);const values=[];for(const row of rows){const pointer=pointerSchema.parse(JSON.parse(String(row.value)));const release=await readHomepageRelease(db,tenant,pointer.hash);if(!release)throw Error();values.push({pointer,release});}if(values.length>16)throw Error();return values;}
+/** Serving constrains concurrent locale publications at 16: the language-switcher component refuses
+ *  more than 16 rendered links (edge-core `language_links_invalid`) and, behind it,
+ *  publishedHomepageLocales — the registry read under every anonymous localized serve — throws once
+ *  more than LOCALE_POINTER_CAP (locale,path) pointers are active, which is a site-wide 503 for
+ *  anonymous non-homepage pages. The write-time fence below (assertLocalePointerCap) refuses the
+ *  cap-exceeding pointer BEFORE any CAS write so over-cap states can only arise from legacy data or
+ *  out-of-band writes, never from an in-console activation or prepare. */
+export const LOCALE_POINTER_CAP=16;
+export async function listPublishedLocalePointers(db:DbRunner,tenant:string){const rows=await db.query('SELECT key,value FROM settings WHERE tenant_slug = ? AND (key LIKE ? OR key LIKE ?)',[tenant,'translation_homepage:active:v1:%','translation_surface:active:v1:%']);const values=[];for(const row of rows){const pointer=pointerSchema.parse(JSON.parse(String(row.value)));const release=await readHomepageRelease(db,tenant,pointer.hash);if(!release)throw Error();values.push({pointer,release});}return values;}
+export async function publishedHomepageLocales(db:DbRunner,tenant:string){const values=await listPublishedLocalePointers(db,tenant);if(values.length>LOCALE_POINTER_CAP)throw Error();return values;}
+/** Write-time fence for the 16-pointer serve guard: refuses a NEW (locale,path) pointer whose CAS
+ *  write would push the tenant past LOCALE_POINTER_CAP, carrying cap and the would-be count. An
+ *  already-active pointer is replaced in place (generation advance, count unchanged) and is always
+ *  allowed — including in a legacy over-cap state, which stays recoverable by deactivation. */
+export async function assertLocalePointerCap(db:DbRunner,tenant:string,alreadyActive:boolean):Promise<void>{
+    if(alreadyActive)return;
+    const pointers=await listPublishedLocalePointers(db,tenant);
+    if(pointers.length+1>LOCALE_POINTER_CAP)throw Object.assign(Error('locale_pointer_cap_exceeded'),{cap:LOCALE_POINTER_CAP,count:pointers.length+1});
+}
 /** Published pages offered for translation: bounded metadata from the active reviewed publication. */
 export async function publishedTranslationPages(db:DbRunner,tenant:string){
     const active=await new SitePublicationStore(db,tenant).activeVersion();
