@@ -91,7 +91,7 @@ export const WorkflowVersionHistoryDialog: React.FC<WorkflowVersionHistoryDialog
             Workflow Version History
           </DialogTitle>
           <DialogDescription>
-            A new version is automatically saved every time you save changes. You can also manually snapshot a labeled version.
+            Create labeled snapshots of a saved workflow here. Local publication and rollback also preserve version snapshots.
           </DialogDescription>
         </DialogHeader>
 
@@ -130,7 +130,7 @@ export const WorkflowVersionHistoryDialog: React.FC<WorkflowVersionHistoryDialog
             <div className="text-center p-8 border border-dashed rounded-lg">
               <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
               <p className="text-muted-foreground">No versions found.</p>
-              <p className="text-sm text-muted-foreground mt-1">Save your workflow changes to create your first version snapshot.</p>
+              <p className="text-sm text-muted-foreground mt-1">Create a labeled snapshot above to preserve your saved workflow.</p>
             </div>
           ) : (
             <div className="space-y-2">
