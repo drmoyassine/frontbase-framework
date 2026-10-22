@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "purpose": "engineering-repair-candidate",
+  "runtimeSource": "b7cb5d94a6e8502fc5b6a7ddd8a520a0fdcbb1c2",
+  "artifactCommit": "e9f3506d02cf96e692c28e94dc660fb678d51960",
+  "runtime": {
+    "node": "22.23.4",
+    "officialWindowsBinarySha256": "dccc52de28d8df2ee22d2062424f8c563070d95d8ad70c54c4bf01d590dec14f"
+  },
+  "workspace": {
+    "check": "PASS",
+    "build": "PASS",
+    "wholeTestSuite": "PASS"
+  },
+  "faults": {
+    "backendSecurity": {
+      "count": 24,
+      "status": "PASS",
+      "boundary": "before adjacent legacy-engine refusal extension"
+    },
+    "workflowAuthoring": {
+      "count": 6,
+      "status": "PASS"
+    },
+    "nodeDnsTransport": {
+      "count": 5,
+      "status": "PASS"
+    },
+    "httpDispatchResetAndEngineRefusal": {
+      "count": 9,
+      "status": "PASS",
+      "restoredArtifacts": true
+    },
+    "behaviorMeasurement": {
+      "count": 6,
+      "status": "PASS",
+      "evidence": "frontbase-behavior-faults-eMUn5w"
+    },
+    "nativeBootstrap": {
+      "count": 2,
+      "status": "PASS",
+      "originalArtifactRetained": true
+    }
+  },
+  "behavior": {
+    "total": 334,
+    "orders": [
+      "forward",
+      "reverse",
+      "seed:261022",
+      "seed:33417"
+    ],
+    "orderInvariant": true,
+    "freshContextPerOperation": true,
+    "legacyLedgerUnchanged": true,
+    "legacyLedgerSha256": "6f5cc3f7640a3408a2e0f4de6b20558e172a03042d7ee7340f3ae33db1f744bc",
+    "diagnosticCounts": {
+      "inconclusive": 229,
+      "negative-envelope": 8,
+      "principal-projection": 1,
+      "refusal-observed": 50,
+      "session-effect-observed": 2,
+      "static-response": 6,
+      "unsupported": 31,
+      "verified-read": 7
+    },
+    "contract": {
+      "conforms": 252,
+      "explicitUnsupported": 31,
+      "historicalObservedRefusals": 51,
+      "violations": 0,
+      "unreachable": 0,
+      "noSchema": 0
+    },
+    "notAFeatureCompletenessPercentage": true
+  },
+  "packages": {
+    "success": true,
+    "registryProof": false,
+    "archives": [
+      {
+        "name": "@frontbase/translation",
+        "version": "0.0.0",
+        "sha256": "487c030a9d38a0010d5b98ff01fe7d4edcb34243931eeb58f155fc33c51ffc47"
+      },
+      {
+        "name": "@frontbase/edge-core",
+        "version": "0.0.0",
+        "sha256": "ce3d76eed051967a16e2fc75d587bea2ef0e51410b5bc79fca05038ff8ad3ac1"
+      },
+      {
+        "name": "@frontbase/compiler",
+        "version": "0.0.0",
+        "sha256": "3fb8d48e07c89d2c40dd46e69bde74b6cf12d878840373d24b4b30a62c4187d7"
+      },
+      {
+        "name": "@frontbase/ui-components",
+        "version": "0.0.0",
+        "sha256": "6ed177a54da9e0dcaed16e08696645993728725106e57f110394bd826e2f8b26"
+      },
+      {
+        "name": "@frontbase/edge-infra",
+        "version": "0.0.0",
+        "sha256": "8a5f100b1d294842c5809d00d8c10b2bcdb2adaf9840afde0bc153549e8053d2"
+      },
+      {
+        "name": "@frontbase/backend",
+        "version": "0.0.0",
+        "sha256": "e5ae0804d95d12dceaa7cb033ede01dd739e1a7946a1f4b52011a0ad65f15270"
+      },
+      {
+        "name": "@frontbase/builder",
+        "version": "0.1.0",
+        "sha256": "2efba350b7160de53237587b4117abe9c8bf10502cbe33a8e561bd47c5563815"
+      }
+    ],
+    "strictProfiles": {
+      "NodeNext": {
+        "status": "PASS",
+        "skipLibCheck": false
+      },
+      "Bundler": {
+        "status": "PASS",
+        "skipLibCheck": false
+      }
+    },
+    "starter": "install/build/test/check and compiled routes PASS"
+  },
+  "freshNode": {
+    "status": "PASS",
+    "evidence": "frontbase-fresh-node-6hmr1B",
+    "journey": [
+      "fresh state",
+      "seed/login",
+      "create",
+      "publish",
+      "public/private",
+      "restart",
+      "original session retained"
+    ],
+    "notACleanRoomOrPublicDefaultSourceProof": true
+  },
+  "artifacts": [
+    {
+      "path": "examples/cf-full/dist/worker.mjs",
+      "sha256": "1ad17b0a661ea48b813222a7450828cd77f0fe6712d17d669af7f5e9652f6e39",
+      "bytes": 2793189,
+      "gzipBytes": 721385
+    },
+    {
+      "path": "examples/cf-full/dist/vercel.mjs",
+      "sha256": "2d391c270dd35b913a6e7144df470f65827ef79aa12c6be0a309381a6b77169b",
+      "bytes": 3599050,
+      "gzipBytes": 975849
+    },
+    {
+      "path": "examples/cf-full/api/cms.mjs",
+      "sha256": "2d391c270dd35b913a6e7144df470f65827ef79aa12c6be0a309381a6b77169b",
+      "bytes": 3599050,
+      "gzipBytes": 975849
+    },
+    {
+      "path": "examples/cf-full/dist/node.mjs",
+      "sha256": "90f50c1da85fc9ea499a2e1f31fb06dd00f78c10b0b7ac01474c4a86216944e0",
+      "bytes": 269078,
+      "gzipBytes": 73178
+    }
+  ],
+  "staging": {
+    "status": "PENDING",
+    "retainedLiveSource": "e1a7b74",
+    "before": {
+      "englishTextHash": "8f593bfcc9a93ed284073d3295c2e505ff010e02f826494332bf7aa88b63d3ce",
+      "arabicTextHash": "a5974bb1eb189eb4d78b8b924e760a3b31fef24cc520c98be15ecfbaa83383ca",
+      "linksPerLanguage": 37
+    }
+  },
+  "existingCfAndVercelUpgrades": "PENDING",
+  "deltas": {
+    "privateVulnerabilityReporting": "disabled; activation rejected by automatic approval review; explicit owner authorization needed",
+    "namespaceOwnership": "not established; no registry publication",
+    "realNeonAndOptionalProviders": "credential-specific acceptance not inferred",
+    "resetInboxReceipt": "requires configured provider and authorized owned test mailbox; no real message sent",
+    "nativeWindowsNode24": "conformance report followed by 0xC0000005; failed run retained and not credited",
+    "publicDefaultSourceAndDistribution": "separate release gates; no main merge, public package publication or production WP cutover"
+  },
+  "publicReleaseAccepted": false
+}

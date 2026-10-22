@@ -1,5 +1,9 @@
 # Frontbase Public Release Strategy
 
+## 2026-10-23 candidate repair qualification
+
+The first editor/repair checkpoint is deployed and verified on staging. The remaining local candidate reuses the existing workflow executor, owned adapters and publication paths. Conservative behavior diagnostics now pass334 operations in four invariant orders; this replaces no named security or intended-effect suite and makes no universal parity claim. Host-scoped DNS egress and optional self-host reset wiring pass the full Node22 workspace suite, seven strict archives and targeted security/fault gates at runtime b7cb5d9/artifact e9f3506. Deployment and native UI/preservation acceptance remain pending. Root security/contribution/changelog guidance is prepared, with a working private reporting channel still requiring verification. [Current gaps](../plans/frontbase-current-product-gaps-20261022.md) and [host HTTP repair](../plans/host-http-repair-20261023.md) retain explicit credential and public-distribution boundaries. The edition remains Framework Developer Preview preparation.
+
 ## 2026-10-22 frontend editor and first concrete repairs — source verification
 
 Owner authorizes privileged frontend text editing first, followed by the named gap repairs and staging verification. The editor reuses display identities and the existing locale/manual-publication adapters; source copy uses recoverable fingerprinted revisions. G1/G4 now refuse unsupported engine transfer/provisioning, G2 adopts a pinned client-scoped guarded Neon transport and accurate metadata, and bounded G6 storage repairs preserve native Requests. Focused functional/fault gates and workspace check/build pass. Cumulative/package/live acceptance is in progress; G3/G5 and public-release gates remain open. See the [current plan](../plans/frontbase-public-release-finalization-20261022.md). This does not change the Developer Preview edition or assert GA.

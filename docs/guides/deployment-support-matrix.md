@@ -1,6 +1,6 @@
 # Deployment support matrix — 2026-10-22
 
-This matrix describes the isolated deployment stream at foundation5d9ca6f, vector fix375c078 and HTTP cold-start source81308ed. It distinguishes editable suggestions, executor support and actual provider evidence. It is not a general host-parity or public-release claim. Deno and CF-22 remain deferred/paused.
+This matrix retains dated deployment evidence at foundation5d9ca6f, vector fix375c078 and HTTP cold-start source81308ed, followed by the superseding receipts below. It distinguishes editable suggestions, executor support and actual provider evidence. It is not a general host-parity or public-release claim. Deno remains outside the current acceptance scope; CF-22 is a retired historical umbrella.
 
 | Surface | Cloudflare | Vercel |
 |---|---|---|
@@ -43,3 +43,18 @@ The owner approved exact cleanup of obsolete Worker/D1 frontbase-deploy-test-202
 ## Four-gap current-source follow-up — 2026-10-22
 
 [Bounded receipt](../plans/frontbase-acceptance-closeout-20261022.md) supersedes the older remote-restore and final-source-install unknowns above: actual4f553c0 fresh runtime acceptance passes on CF native D1 and Vercel HTTP Turso, with source28d21da adding the separately qualified HTTP backup transaction repair. These are managed/compiler paths, not a claim that default-main Git buttons were rerun. CF temporary fresh proof reuses the approved reset D1 with cache disabled; original managed D1/KV resources remain. No arbitrary adoption/state migration or broader optional-provider parity is inferred. Historical availability503s and command-review timeouts stay visible. Final runtime12358b4/artifact8ac4b86 passes the repaired staging observation and existing CF/Vercel upgrades, including retained sessions/publication/default deny. Default-main buttons and broader optional providers remain outside this bounded closure.
+
+## Host transport candidate — 2026-10-23
+
+Build/Node host prerequisite: Node22.19+; Vercel selects Node22 Functions, not
+Vercel Edge. The [host repair](../plans/host-http-repair-20261023.md) adds a
+Node-only Undici transport with socket-time public DNS pinning and fixed-code
+errors. CF retains platform fetch and shared request guards; no Node module is
+added to its public/client entry. The same scoped workflow transport reaches
+direct execution, queue delivery, email triggers and recovery.
+
+Optional [self-host reset mail](password-reset-delivery.md) reuses Resend with an
+explicit operator origin and the correct `/frontbase-admin` console path.
+Synthetic transport/token-lifecycle evidence does not prove inbox receipt.
+These candidate changes require final-source deployed-host acceptance; this
+section does not replace older receipts with an unobserved live claim.

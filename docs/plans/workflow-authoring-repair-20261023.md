@@ -1,0 +1,15 @@
+# Visual workflow authoring repair
+
+This is G3 in the concrete release-gap sequence. Reuse `executeWorkflow`, `runAndRecordAt`, `Phase2Store` and the existing provider registry. No second graph engine or remote deployment service is introduced.
+
+Implemented in the integration candidate:
+
+- Draft and selected-node Test execute the graph and persist actual results, terminal status and node details. History, detail, statistics and CSV read these persisted executions instead of fixed empty responses. CSV cells guard formula prefixes.
+- The supported interactive subset is manual triggers, basic safe transforms, guarded HTTP requests/agent turns and HTTP responses. The visual toolbar states the boundary. Unsupported transforms/custom code, branches and other provider nodes refuse explicitly rather than silently succeeding.
+- HTTP uses an injected, per-run guarded transport with a shared abort deadline. No global Fetch swap is used by production. Interactive runs are synchronous; cancellation returns an explicit unsupported response. An interrupted test is terminally recorded as failed rather than replayed against an edited production graph or replayed as all ancestors of a selected node.
+- Versions are real immutable snapshots in the existing tenant settings store. Detail returns captured nodes/edges. Rollback first captures the current draft, restores through a version CAS and leaves activation paused. Local publication also uses a captured-version CAS. A stored remote-engine record cannot imply remote publication: remote targets refuse until supported.
+- The mail endpoint accepts an explicitly selected owned Resend Connected Account with a configured verified sender. It reuses the existing fixed-endpoint HTTP mail adapter, guarded transport and encrypted account store. Provider acceptance is distinguished from actual delivery. No account or ambiguous failure results in a truthful refusal; there is no automatic retry. The historical rejection of legitimate `_root` administrators is removed. Workflow mail nodes are not enabled by this direct endpoint.
+
+Local verification passes: real SQLite/app tests cover graph output, selected-node input, versions, rollback, local activation, interrupted recovery, missing/foreign/unsupported targets, injected mail success/failure and tenant/role denial. Six independent source faults are caught with exact restoration: privilege, real results, recovery, version CAS, mail transport and HTTP guard. The broader24-fault backend security suite also passes. Shared dispatch tests cover direct, queued, inbound-email and recovery paths; interactive queue replay and workflow-ID mismatch refuse. Full changed-candidate cumulative/archive/host qualification and live UI acceptance remain separately recorded. An actual Resend inbox receipt remains a credential-dependent delta; the synthetic gate sends no live message.
+
+The supported subset is a Developer Preview boundary, not a claim that every node in the palette or every native host workflow has been certified. Existing native durable execution tests remain separate and retained.

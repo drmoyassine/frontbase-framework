@@ -22,7 +22,8 @@ query — Supabase, Neon, HTTP-flavored libsql — connect exactly as on Workers
 
 ## Prerequisites
 
-- Docker (any recent Docker Desktop / Engine), **or** Node ≥ 20 for bare metal.
+- Docker (any recent Docker Desktop / Engine), **or** Node ≥ 22.19 for bare metal.
+  Use the pinned pnpm10.15.1. The Docker image uses the maintained Node22 line.
 - Nothing pre-built: the console + hydration artifacts are staged from this
   repo's own source (`packages/console` + `packages/hydrate` — never committed)
   **inside the image build**, so a clean checkout (git archive, CI, a VPS)
@@ -52,6 +53,12 @@ set `ADMIN_EMAIL` + `ADMIN_PASSWORD` in `.env` — the first administrator is
 seeded at boot (idempotent; changing the values later does nothing).
 
 All configuration is runtime environment (see `.env.example`):
+
+Optional reset email requires an existing Resend key, an accepted sender and
+`FRONTBASE_PUBLIC_ORIGIN` set to the canonical HTTPS origin. Compose forwards
+these variables; [reset delivery](password-reset-delivery.md) documents the
+correct self-host console link, opaque failure behavior and receipt check.
+Do not infer a successful mail delivery from a forgot-password200 response.
 
 | Variable | Required | Notes |
 |---|---|---|

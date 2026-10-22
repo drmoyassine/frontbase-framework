@@ -89,7 +89,43 @@
   },
   "externalConsumerSuccess": true,
   "registryProof": false,
-  "staging": "pending",
+  "staging": {
+    "status": "PASS bounded frontend edit/save/restore acceptance",
+    "source": "e1a7b741b043060aa45f3f9df1d320c6a3ad032e",
+    "archiveSha256": "ebad4402a2b7bcaddc083e1d6d5456fd58df69f4dcd1a16a649217878d1fb76f",
+    "imageSha256": "002c224f237fa1537578909eb2eadad1d38b51707c7faefc3c898403be3652cd",
+    "buildCompleted": "2026-10-22T20:31:47Z",
+    "nativeArabic": [
+      "two staged fields",
+      "individual revert",
+      "Escape",
+      "global cancel",
+      "explicit batch save",
+      "reload",
+      "restore originals"
+    ],
+    "nativeEnglish": [
+      "two staged fields",
+      "re-edit staged field",
+      "explicit batch save",
+      "reload",
+      "restore originals",
+      "close editor resumes links"
+    ],
+    "anonymous": {
+      "englishStatus": 200,
+      "arabicStatus": 200,
+      "englishTextHash": "8f593bfcc9a93ed284073d3295c2e505ff010e02f826494332bf7aa88b63d3ce",
+      "arabicTextHash": "a5974bb1eb189eb4d78b8b924e760a3b31fef24cc520c98be15ecfbaa83383ca",
+      "linksPerPage": 37,
+      "capabilityEnabled": false,
+      "inventoryStatus": 401,
+      "siteVersion": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4"
+    },
+    "AIRequests": 0,
+    "sourceRecordsChanged": 0,
+    "responsiveMenuRefinement": "subsequent local source test; not in this image"
+  },
   "remaining": [
     "G3 workflow lifecycle",
     "G5 isolated behavior measurement",

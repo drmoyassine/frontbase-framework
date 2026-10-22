@@ -10,7 +10,7 @@ Frontbase is an open-source, edge-native platform for building and deploying AI-
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-> **Status**: actively developed (pre-1.0). The admin console, the hydration runtime, the admin API, the four-host deploy matrix, and the managed-cloud free tier are all maintained in this repository — no code is fetched from outside at build or run time.
+> **Status**: actively developed (pre-1.0). The admin console, hydration runtime, admin API and host adapters live in this repository. Builds install declared registry dependencies; they do not fetch a separate proprietary console bundle. Host support and managed-cloud functionality remain bounded by their linked acceptance evidence.
 
 The accepted first public-edition scope is **Frontbase Framework Developer Preview**. Release preparation is in progress; package publication, clean self-host installation, security and operations gates remain open. Cloudflare is the leading deployment path; other hosts have evidence-specific support boundaries. [Current release evidence and ordered backlog](docs/history/PUBLIC-RELEASE-R0-2026-10-21.md) distinguish the library framework, application artifacts and unfinished template/migration work. Full console scaffolding and general host/provider parity are not release claims. [Bounded Vercel profile acceptance](docs/plans/frontbase-deployment-vercel-live-20261020.md) now includes actual isolated Turso-backed preview and production page publication on the Node runtime; [Fresh-state managed CLI setup/redeploy](docs/plans/frontbase-deployment-vercel-fresh-20261020.md) is also verified. [Native deployment evidence](docs/plans/frontbase-deployment-closeout-20261021.md) includes clean Cloudflare publication, native upgrades and Vercel native import followed by a verified cold-start repair. Default-main integration, a fresh Vercel clone from the final repair, first-project preview and broader provider coverage remain separate gates.
 
@@ -26,24 +26,41 @@ Most stacks split building from serving: a builder app here, an API server there
 
 - **Build and publish in one sitting** — design pages on a live drag-and-drop canvas, hit publish, and the site is served from the same worker (self-host, or managed cloud at `<slug>.frontbase.dev`).
 - **One artifact, no backend to stand up** — the console API, auth, pages, automations, and the rendering engine deploy together. Zero infrastructure beyond the worker and its state DB.
-- **One engine, everywhere** — edge (SEO/first load), browser service worker (offline-capable, near-zero-latency repeat navigation), and the builder canvas (exact WYSIWYG preview) all run the same renderer on the same component set. Byte-identical output is enforced by the [golden corpus](golden-corpus/README.md), not asserted.
+- **One shared engine** — server rendering and the builder canvas share the renderer and component contracts, with client hydration for interactions. Current service-worker navigation stays on the server; offline public navigation is not a release claim. Shared rendering is checked by the [golden corpus](golden-corpus/README.md).
 - **Security is the architecture, not a plugin** — every console route is default-deny authenticated, API keys are stored hashed with a one-time encrypted reveal, password capabilities are expiring and single-use, cloud tenants are host-scoped (a session from tenant A is anonymous on tenant B), and cloud auth endpoints are rate limited. The isolation and failure paths are pinned by a mutation harness that proves every gate goes red when broken.
 
 ## What's in the admin console
 
-Every nav area is implemented end-to-end, not a placeholder:
+The console exposes the following areas. Availability depends on the supported
+host, configured adapters and capability checks; navigation presence is not proof
+that every action is supported.
 
 | Area | What it does |
 |---|---|
 | **Pages** | WYSIWYG drag/drop canvas — live component rendering, not just a layer list — with draft/publish |
-| **Automations** | A real React Flow visual workflow editor. Executions are durable: they survive isolate eviction via a recovery sweep + idempotent completion, with an optional QStash redelivery path |
+| **Automations** | Visual authoring with local graph/selected-node tests, persisted history and versions. The implemented subset is manual triggers, HTTP requests, agent turns, safe JSON transforms and HTTP responses. Unsupported node families, remote publication and interactive-test cancellation are explicitly refused. Production recovery and optional queue redelivery reuse the same executor; interrupted interactive tests are never replayed as production graphs |
 | **Data Studio** | Connect SQLite / D1 / Turso / Supabase / Postgres datasources, browse tables, run read-only queries |
-| **Edge Resources** | Provision real Cloudflare D1 / KV / Queues / Vectorize, and Supabase Postgres schemas, directly from the console |
+| **Edge Resources** | Inspect and configure owned provider resources. Managed deployment tooling has separately qualified CF/Vercel paths; unsupported legacy in-app engine deployment and engine transfer are refused |
 | **File Storage** | R2/S3-compatible upload (base64 JSON or multipart) and presigned URLs |
 | **Plans** | Tiered limits (e.g. pages/users) enforced server-side, not just displayed |
 | **Users / Tenants** | Multi-tenant provisioning, role management, secret variables encrypted at rest |
 
+Owners and administrators can also [edit frontend plain text](docs/guides/frontend-text-editing.md)
+in the current language, stage several fields and save or cancel the page's
+changes together. Structure, styles and bindings remain in the visual builder.
+See [supported workflow authoring](docs/guides/workflow-authoring.md) for the
+implemented execution boundary and [reset delivery](docs/guides/password-reset-delivery.md)
+for optional self-host mail configuration.
+
 ## Quick start (self-host on Cloudflare)
+
+Build prerequisites: Node.js 22.19+ and pnpm 10.15.1. The Vercel application
+targets Node 22 Functions; it is not a Vercel Edge deployment. See the
+[deployment support matrix](docs/guides/deployment-support-matrix.md) for evidence
+and provider boundaries, [contributing](CONTRIBUTING.md) for verification commands,
+and [security policy](SECURITY.md) for reporting and secret custody.
+The [Developer Preview support policy](docs/guides/developer-preview-support.md)
+defines runtime, recovery and distribution boundaries.
 
 ```bash
 git clone <this-repo>
