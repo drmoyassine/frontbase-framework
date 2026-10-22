@@ -85,3 +85,25 @@ it('never blanks the published panel: a locales failure renders the unavailable 
  await screen.findByText('Published languages are unavailable. Reload to retry.');
  expect(screen.queryByText('Nothing published yet for this site.')).toBeNull();
 });
+
+it('clears the previous publication success when another page cannot load',async()=>{
+ const review={...base,fields:[{...field,translation:'استكشاف المؤسسات',state:'draft'}],complete:true};
+ const fetcher=vi.fn(async(url:string,options?:RequestInit)=>{
+  if(url.includes('translation-generation'))return Response.json({configuration:config});
+  if(url.includes('/pages/'))return Response.json({pages:[{path:'/',title:'Home'},{path:'/explore/',title:'Explore'}]});
+  if(url.includes('/review/')&&url.includes('path=%2Fexplore%2F'))return Response.json({code:'localized_interactive_list_not_supported'},{status:422});
+  if(url.endsWith('/prepare/'))return Response.json({hash:'e'.repeat(64),previewUrl:'/api/project/translation-batches/homepage/preview/?hash='+'e'.repeat(64),expected:null});
+  if(url.endsWith('/publish/'))return Response.json({hash:'e'.repeat(64),generation:1});
+  if(url.includes('/locales/')||url.includes('/versions/'))return Response.json({version:1,locales:[],items:[]});
+  return Response.json(review);
+ });vi.stubGlobal('fetch',fetcher);render(<HomepageTranslationWorkspace onClose={()=>{}}/>);
+ await screen.findByText('1 / 1 fields translated · Not published');
+ fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Preview language'}));
+ await screen.findByTitle('Prepared homepage language preview');fireEvent.click(screen.getByRole('button',{name:'Publish language'}));
+ await screen.findByText('Language published. Visitors now receive the reviewed translation for this page.');
+ fireEvent.change(screen.getByLabelText('Page'),{target:{value:'/explore/'}});
+ await screen.findByText('Interactive live-list translation is not available for this page yet. Its controls and source data are unchanged.');
+ expect(screen.queryByText('Language published. Visitors now receive the reviewed translation for this page.')).toBeNull();
+ expect(screen.queryByTitle('Prepared homepage language preview')).toBeNull();
+ expect(fetcher.mock.calls.filter(([url,o])=>url.endsWith('/publish/')&&o?.method==='POST')).toHaveLength(1);
+});
