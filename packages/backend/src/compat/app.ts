@@ -80,6 +80,7 @@ import { createSecretCipher, noopCipher } from '../db/secret-cipher.js';
 import type { UserStore } from '../db/users.js';
 import { TenantStore } from '../db/tenants.js';
 import { guardedExternalFetch, type CompatFetch } from './external-http.js';
+import { workflowHttpOptions } from '../workflow-http.js';
 import { createSystemServiceResolver, type EnvServices } from './system-services.js';
 import { embeddingFromEnv } from './rag/embedding.js';
 import { registerRagRoutes, runRagIndex, type RagRouteDeps } from './rag/routes.js';
@@ -306,6 +307,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     //    callback-secret verify inside the route (401 otherwise), and the job's
     //    tenant-scoped store lookup is the isolation boundary.
     registerSystemQueueRoutes(app, {
+        executionOptions: workflowHttpOptions(externalFetch),
         phase2For,
         resolver: serviceResolver,
         now,
@@ -316,6 +318,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     //    inbound secret (constant-time, fail-closed when unset); the body's
     //    tenant-scoped workflow lookup is the isolation boundary.
     registerEmailInboundRoutes(app, {
+        executionOptions: workflowHttpOptions(externalFetch),
         phase2For,
         now,
         inboundSecret: deps.emailInboundSecret,
@@ -480,9 +483,9 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerDeploymentBindingsRoutes(app,{manifest:deps.deploymentManifest,cloudMode:deps.cloudMode});
     registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation);
     registerAuthFormsRoutes(app, runner, now);
-    registerWorkflowsRoutes(app, phase2For);
+    registerWorkflowsRoutes(app, phase2For,externalFetch);
     // Wave 3
-    registerActionsRoutes(app, phase2For, now);
+    registerActionsRoutes(app, phase2For, now,externalFetch);
     // Wave 4 — edge domain (engines + providers + caches/queues/vectors + inspector + api-keys + gpu + deploy)
     // The engine card's cache/queue binding names resolve per tenant (adopted
     // is_default row name → env label → null) — the same resolver the runtime

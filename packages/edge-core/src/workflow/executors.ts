@@ -19,7 +19,7 @@ interface NodeLike {
 
 /** Read a node input by name, falling back to the resolved edge inputs. */
 function reader(node: NodeLike, inputs: Record<string, unknown>) {
-    const nodeInputs = node.inputs || [];
+    const nodeInputs = node.inputs ?? (node.data as {inputs?:NodeLike['inputs']}|undefined)?.inputs ?? [];
     return (name: string): unknown => {
         const inp = nodeInputs.find((i) => i.name === name);
         return inp?.value !== undefined ? inp.value : inputs[name];
@@ -62,23 +62,46 @@ const emailTriggerExecutor: NodeExecutor = {
     },
 };
 
-const httpRequestExecutor: NodeExecutor = {
+async function workflowResponseText(response:Response):Promise<string>{
+    const reader=response.body?.getReader();if(!reader)return '';
+    const decoder=new TextDecoder();let text='',bytes=0;
+    try{for(;;){const chunk=await reader.read();if(chunk.done)break;bytes+=chunk.value.byteLength;
+        if(bytes>1024*1024){await reader.cancel();throw Error('workflow_http_response_too_large');}
+        text+=decoder.decode(chunk.value,{stream:true});}
+        return text+decoder.decode();
+    }finally{reader.releaseLock();}
+}
+
+const httpRequestExecutor = (doFetch:typeof fetch): NodeExecutor => ({
     types: ['http_request'],
     async execute(node, inputs) {
         const get = reader(node as NodeLike, inputs);
-        const url = get('url') as string;
+        const url = new URL(String(get('url')));
         const method = (get('method') as string) || 'GET';
-        const headers = (get('headers') as Record<string, string>) || {};
-        const body = get('body');
-        const response = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json', ...headers },
-            body: body ? JSON.stringify(body) : undefined,
-        });
-        const data = await response.json().catch(() => response.text());
-        return { status: response.status, ok: response.ok, data };
+        const pairs=(value:unknown):[string,string][]=>Array.isArray(value)?value.map(pair=>[String(pair.key),String(pair.value)]):Object.entries((value??{}) as Record<string,unknown>).map(([key,value])=>[key,String(value)]);
+        const headers=new Headers(get('sendHeaders')===false?undefined:pairs(get('headers')));
+        if(get('sendQuery')===true)for(const[key,value]of pairs(get('queryParameters')))url.searchParams.append(key,value);
+        const auth=get('authentication')??'none';
+        if(auth==='basicAuth'){const bytes=new TextEncoder().encode(String(get('username')??'')+':'+String(get('password')??''));headers.set('Authorization','Basic '+btoa(Array.from(bytes,byte=>String.fromCharCode(byte)).join('')));}
+        else if(auth==='bearerToken')headers.set('Authorization','Bearer '+String(get('bearerToken')??''));
+        else if(auth==='headerAuth')headers.set(String(get('headerAuthName')??'Authorization'),String(get('headerAuthValue')??''));
+        else if(auth!=='none')throw Error('http_auth_unsupported');
+        let body:BodyInit|undefined;const raw=get('body');
+        if(get('sendBody')!==false&&method!=='GET'&&method!=='HEAD'){
+            const contentType=get('contentType')??'json';
+            if(contentType==='json'&&raw!==undefined){headers.set('Content-Type','application/json');body=typeof raw==='string'?raw:JSON.stringify(raw);}
+            else if(contentType==='form-data'){const form=new FormData();for(const[key,value]of pairs(get('bodyParameters')))form.append(key,value);body=form;}
+            else if(contentType==='x-www-form-urlencoded'){headers.set('Content-Type','application/x-www-form-urlencoded');body=new URLSearchParams(pairs(get('bodyParameters')));}
+            else if(contentType==='raw')body=String(raw??'');
+            else if(contentType!=='json')throw Error('http_body_unsupported');
+        }
+        const timeout=Number(get('timeout')??30000);if(!Number.isFinite(timeout)||timeout<=0)throw Error('http_timeout_invalid');
+        const response = await doFetch(url,{method,headers,body,signal:AbortSignal.timeout(Math.max(1,Math.min(30000,timeout)))});
+        const text=await workflowResponseText(response);
+        let data:unknown=text;try{data=JSON.parse(text);}catch{}
+        return { status: response.status, ok: response.ok, data,headers:Object.fromEntries(response.headers) };
     },
-};
+});
 
 /**
  * agent — one turn against an agent-runtime deployment (DEC-105 v0 contract).
@@ -87,7 +110,7 @@ const httpRequestExecutor: NodeExecutor = {
  * node output. SDK-free plain fetch, like http_request — so the node runs on
  * BOTH execution paths (edge-core default registry and edge-infra's full one).
  */
-const agentExecutor: NodeExecutor = {
+const agentExecutor = (doFetch:typeof fetch): NodeExecutor => ({
     types: ['agent'],
     async execute(node, inputs) {
         const get = reader(node as NodeLike, inputs);
@@ -100,7 +123,7 @@ const agentExecutor: NodeExecutor = {
             message: String(get('message') ?? ''),
         };
         if (threadId) body.thread_id = threadId;
-        const response = await fetch(`${baseUrl}/turn`, {
+        const response = await doFetch(`${baseUrl}/turn`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -108,7 +131,7 @@ const agentExecutor: NodeExecutor = {
             },
             body: JSON.stringify(body),
         });
-        const data = await response.json().catch(() => response.text());
+        const text=await workflowResponseText(response);let data:unknown=text;try{data=JSON.parse(text);}catch{}
         const payload = typeof data === 'object' && data !== null ? data as Record<string, unknown> : {};
         return {
             status: response.status,
@@ -122,12 +145,32 @@ const agentExecutor: NodeExecutor = {
             data,
         };
     },
-};
+});
 
 const transformExecutor: NodeExecutor = {
     types: ['transform', 'json_transform'],
     async execute(node, inputs) {
-        const expr = reader(node as NodeLike, inputs)('expression');
+        const get=reader(node as NodeLike,inputs),operation=get('operation');
+        if(operation){
+            const data=inputs.data??inputs.payload??inputs;
+            const name=(key:string)=>{if(!key||key.split('.').some(part=>['__proto__','constructor','prototype'].includes(part)))throw Error('transform_field_invalid');return key;};
+            const path=(value:unknown,key:string):unknown=>{let next:any=value;for(const part of name(key).split('.'))next=next&&typeof next==='object'&&Object.hasOwn(next,part)?next[part]:undefined;return next;};
+            const resolve=(value:unknown,row:unknown=data):unknown=>{if(typeof value!=='string')return value;const match=value.match(/^\s*\{\{\s*\$input\.(.+?)\s*\}\}\s*$/);return match?path({...inputs,data:row},match[1]!):value;};
+            const map=(fn:(row:Record<string,unknown>)=>unknown)=>Array.isArray(data)?data.map(row=>fn(row)):fn(data as Record<string,unknown>);
+            const record=(row:unknown):Record<string,unknown>=>{if(!row||typeof row!=='object'||Array.isArray(row))throw Error('transform_object_required');return row as Record<string,unknown>;};
+            let output:unknown;
+            if(operation==='setFields'){
+                const raw=get('fieldsToSet')??{},fields=Array.isArray(raw)?Object.fromEntries(raw.map(pair=>[name(String(pair.key)),pair.value])):record(raw);output=map(row=>{const next={...record(row)};for(const[key,value]of Object.entries(fields))next[name(key)]=resolve(value,row);return next;});
+            }else if(operation==='extractField')output=path(data,String(get('extractPath')??''));
+            else if(operation==='keepFields'||operation==='removeFields'){
+                const keys=String(get(operation==='keepFields'?'fieldsToKeep':'fieldsToRemove')??'').split(',').map(key=>name(key.trim()));
+                output=map(row=>Object.fromEntries(Object.entries(record(row)).filter(([key])=>operation==='keepFields'?keys.includes(key):!keys.includes(key))));
+            }else if(operation==='renameFields'){
+                const raw=get('fieldsToRename')??{},fields=Array.isArray(raw)?Object.fromEntries(raw.map(pair=>[name(String(pair.key)),pair.value])):record(raw);output=map(row=>{const next={...record(row)};for(const[key,value]of Object.entries(fields)){name(key);const target=name(String(value));if(Object.hasOwn(next,key)){next[target]=next[key];delete next[key];}}return next;});
+            }else throw Error('transform_operation_unsupported');
+            return {data:output,count:Array.isArray(output)?output.length:1};
+        }
+        const expr = get('expression');
         if (typeof expr === 'string') {
             try { return { result: safeEval(expr, inputs) }; }
             catch { return { result: inputs, error: 'Transform expression failed' }; }
@@ -200,12 +243,13 @@ const delayExecutor: NodeExecutor = {
  * email, and queue nodes are registered by edge-infra; unregistered types
  * throw `executor_not_registered` at runtime.
  */
-export function defaultExecutorRegistry(): ExecutorRegistry {
+export function defaultExecutorRegistry(options:{fetchImpl?:typeof fetch}={}): ExecutorRegistry {
+    const doFetch=options.fetchImpl??globalThis.fetch.bind(globalThis);
     return new ExecutorRegistry()
         .register(triggerExecutor)
         .register(emailTriggerExecutor)
-        .register(httpRequestExecutor)
-        .register(agentExecutor)
+        .register(httpRequestExecutor(doFetch))
+        .register(agentExecutor(doFetch))
         .register(transformExecutor)
         .register(conditionExecutor)
         .register(logExecutor)

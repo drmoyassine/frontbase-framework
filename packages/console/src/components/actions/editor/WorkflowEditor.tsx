@@ -356,6 +356,10 @@ export function WorkflowEditor({
                     onToggleHistory={() => setShowHistory(!showHistory)}
                 />
 
+                <p className="border-b px-4 py-2 text-xs text-muted-foreground" role="note">
+                    Preview execution supports manual triggers, basic transforms, HTTP requests, agent turns and HTTP responses on this instance. Other nodes, remote workflow deployment and running-work cancellation return an explicit unsupported result. Interrupted interactive tests are recorded as failed and are not replayed.
+                </p>
+
                 {/* Main Content */}
                 <div className="flex flex-1 overflow-hidden">
                     {/* Left: Node Palette */}

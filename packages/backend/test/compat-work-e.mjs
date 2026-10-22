@@ -59,20 +59,18 @@ async function harness(options = {}) {
     };
 }
 
-test('E1: test-node refuses exactly as the product does, and records no execution', async () => {
+test('E1: unsupported node tests refuse explicitly and record no fabricated execution', async () => {
     const { app, runner } = await harness();
     const draft = await (await request(app, 'POST', '/api/actions/drafts', {
         name: 'Node test audit',
-        nodes: [],
+        nodes: [{id:'node-1',type:'condition',name:'Unsupported branch',position:{x:0,y:0},inputs:[]}],
         edges: [],
     })).json();
     const draftId = draft.id ?? draft.data?.id;
     assert.ok(draftId);
 
-    // Probed against a live self-host product (2026-07-29). With a REAL draft and no
-    // edge engine reachable it answers 503 with this exact detail; with an absent
-    // draft it answers 404 first. E1's original 200-plus-error-row was truthful but
-    // was not the product's answer, and the console branches on the status.
+    // Current Frontbase executes supported nodes through its existing engine.
+    // Unsupported capabilities must still refuse without inventing a successful run.
     const absent = await request(
         app,
         'POST',
@@ -86,9 +84,9 @@ test('E1: test-node refuses exactly as the product does, and records no executio
         'POST',
         `/api/actions/drafts/${draftId}/test-node/node-1`,
     );
-    assert.equal(response.status, 503);
+    assert.equal(response.status, 501);
     assert.deepEqual(await response.json(), {
-        detail: 'Edge Engine connection lost during node execution',
+        detail: 'This workflow capability is unsupported in this preview',code:'workflow_capability_unsupported',
     });
 
     // E1's actual guarantee, and the reason this test exists: refusing must not leave
@@ -466,7 +464,7 @@ test('system edge: self-aware Cloudflare engine is the default publish target fo
 
     // Workflow publish to the system edge succeeds (single-target).
     const draft = await (await request(app, 'POST', '/api/actions/drafts', {
-        name: 'System-edge workflow', nodes: [], edges: [],
+        name: 'System-edge workflow', nodes: [{id:'manual',name:'Manual trigger',type:'trigger',position:{x:0,y:0}}], edges: [],
     })).json();
     const draftId = draft.id ?? draft.data?.id;
     const wfPub = await request(app, 'POST', `/api/actions/drafts/${draftId}/publish/local-edge/`);
@@ -552,7 +550,7 @@ test('page layout persists across save + reload (PUT /api/pages/{id}/ carries la
 test('workflow flips to published after publish (is_published tracks publish, not just active)', async () => {
     const { app } = await harness();
     const draft = await (await request(app, 'POST', '/api/actions/drafts', {
-        name: 'Publish-state workflow', nodes: [], edges: [],
+        name: 'Publish-state workflow', nodes: [{id:'manual',name:'Manual trigger',type:'trigger',position:{x:0,y:0}}], edges: [],
     })).json();
     const draftId = draft.id ?? draft.data?.id;
     // A fresh draft is NOT published.

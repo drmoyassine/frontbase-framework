@@ -27,8 +27,10 @@ import { timingSafeEqual } from '@frontbase/edge-infra';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import { runAndRecordAt } from '../../routes/phase2.js';
+import type { ExecuteOptions } from '@frontbase/edge-core/workflow';
 
 export interface EmailInboundRouteDeps {
+    executionOptions?: ExecuteOptions;
     phase2For: (tenant: string) => Phase2Store;
     now: () => string;
     /** Shared inbound secret (host-parsed env, e.g. FRONTBASE_EMAIL_INBOUND_SECRET).
@@ -172,7 +174,7 @@ export function registerEmailInboundRoutes(app: Hono<{ Variables: ConsoleAuthVar
                 await runAndRecordAt(
                     store, execId, String(wf.id), tenant,
                     { name: String(wf.name), nodes: String(wf.nodes), edges: String(wf.edges) },
-                    { email }, deps.now,
+                    { email }, deps.now, deps.executionOptions,
                 );
                 started++;
             }

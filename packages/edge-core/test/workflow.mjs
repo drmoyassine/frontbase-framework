@@ -78,7 +78,7 @@ const pos = { x: 0, y: 0 };
 // 4. http_request against a mock fetch
 {
     const realFetch = globalThis.fetch;
-    globalThis.fetch = async (url) => ({ status: 200, ok: true, json: async () => ({ url, rows: [1, 2, 3] }) });
+    globalThis.fetch = async (url) => Response.json({url:String(url),rows:[1,2,3]});
     const nodes = [
         { id: 'a', type: 'trigger', position: pos },
         { id: 'b', type: 'http_request', position: pos, inputs: [{ name: 'url', value: 'https://api.test/x' }, { name: 'method', value: 'GET' }] },
@@ -139,10 +139,7 @@ const pos = { x: 0, y: 0 };
     const calls = [];
     globalThis.fetch = async (url, init) => {
         calls.push({ url: String(url), init });
-        return {
-            status: 200, ok: true,
-            json: async () => ({ turn_id: 'turn-1', thread_id: 'thr-1', status: 'completed', reply: 'Hello!' }),
-        };
+        return Response.json({turn_id:'turn-1',thread_id:'thr-1',status:'completed',reply:'Hello!'});
     };
     const nodes = [
         { id: 'a', type: 'trigger', position: pos },
@@ -176,10 +173,7 @@ const pos = { x: 0, y: 0 };
     calls.length = 0;
     globalThis.fetch = async (url, init) => {
         calls.push({ url: String(url), init });
-        return {
-            status: 200, ok: true,
-            json: async () => ({ turn_id: 'turn-1', thread_id: 'thr-1', status: 'completed', reply: 'again', replay: true }),
-        };
+        return Response.json({turn_id:'turn-1',thread_id:'thr-1',status:'completed',reply:'again',replay:true});
     };
     const nodes2 = [
         {
@@ -231,6 +225,15 @@ const pos = { x: 0, y: 0 };
     const nodes = [{ id: 'a', type: 'agent', position: pos, inputs: [{ name: 'baseUrl', value: 'https://agent.test' }] }];
     const r = await executeWorkflow(uuid(), wf(nodes, []), {}, {});
     check('agent missing required fields → error status', r.status === 'error' && /validation failed/i.test(r.error || ''));
+}
+
+// Both remote node families share bounded incremental reads, including streamed agent replies.
+for(const type of ['http_request','agent']){
+    let cancelled=false,oversize=false,chunks=0;
+    const executors=defaultExecutorRegistry({fetchImpl:async()=>new Response(new ReadableStream({pull(controller){if(chunks++<3)controller.enqueue(new Uint8Array(600000));else controller.close();},cancel(){cancelled=true;}}))});
+    try{await executors.resolve(type).execute({id:'bounded',type,position:pos,inputs:[{name:'url',value:'https://fixture.test/'},{name:'method',value:'GET'},{name:'baseUrl',value:'https://fixture.test'}]}, {}, {});}
+    catch(error){oversize=error.message==='workflow_http_response_too_large';}
+    check(type+' cancels streamed replies above one MiB',oversize&&cancelled);
 }
 
 console.log(failures === 0 ? '\nworkflow: PASS ✅' : `\nworkflow: FAIL ❌ (${failures})`);

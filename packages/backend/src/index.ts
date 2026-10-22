@@ -30,6 +30,8 @@ import { tenantsRoutes } from './routes/tenants.js';
 import { setupRoutes } from './routes/setup.js';
 import { phase2Routes } from './routes/phase2.js';
 import { recoverStuckExecutions } from './routes/phase2.js';
+import { workflowHttpOptions } from './workflow-http.js';
+import type { CompatFetch } from './compat/external-http.js';
 import { usersRoutes } from './routes/users.js';
 import { dataStudioRoutes } from './routes/data-studio.js';
 import { plansRoutes } from './routes/plans.js';
@@ -38,6 +40,8 @@ import { createSecretCipher, noopCipher, type SecretCipher } from './db/secret-c
 import { requireRole, canActOnTenant } from './auth/roles.js';
 
 export interface CreateConsoleDeps {
+    /** Host HTTP transport; the shared workflow guard wraps every dispatch/recovery path. */
+    externalFetch?: CompatFetch;
     /** Build the DbRunner for the console DB (env-aware; e.g. from env.DB on CF).
      *  Called lazily per tenant. */
     makeRunner: () => Promise<DbRunner> | DbRunner;
@@ -96,6 +100,7 @@ export interface CreateConsoleDeps {
 }
 
 export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Variables: ConsoleAuthVars }>> {
+    const executionOptions = workflowHttpOptions(deps.externalFetch ?? ((input, init) => globalThis.fetch(input, init)));
     const now = deps.now ?? (() => new Date().toISOString());
     const purge = deps.purgeCache ?? (async () => {});
 
@@ -217,7 +222,7 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     } else {
         provisioner = noopProvisioner;
     }
-    app.route('/', phase2Routes(phase2StoreFor, now, storageProvider, provisioner, deps.dispatcher, deps.executionDispatcher));
+    app.route('/', phase2Routes(phase2StoreFor, now, storageProvider, provisioner, deps.dispatcher, deps.executionDispatcher, executionOptions));
     app.route('/', usersRoutes(userStoreFor, now, phase2StoreFor));
     // Phase 3b: Data Studio (datasources + introspection) + Plans
     app.route('/', dataStudioRoutes(phase2StoreFor, now));
@@ -230,7 +235,7 @@ export async function createConsole(deps: CreateConsoleDeps): Promise<Hono<{ Var
     if (deps.dispatcher) {
         const cutoffIso = new Date(Date.now() - 5 * 60_000).toISOString();
         deps.dispatcher(async () => {
-            try { await recoverStuckExecutions(phase2StoreFor, now, cutoffIso); }
+            try { await recoverStuckExecutions(phase2StoreFor, now, cutoffIso, executionOptions); }
             catch { /* best-effort: a failed sweep retries on the next boot */ }
         });
     }

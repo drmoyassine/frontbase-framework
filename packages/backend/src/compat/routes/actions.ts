@@ -15,6 +15,9 @@ import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import { isSystemEngine } from './edge-shapes.js';
+import {authoringGraph,snapshotWorkflow,workflowVersions,workflowVersion,runAuthoringWorkflow,authoringExecution,WorkflowCapabilityError} from '../workflow-authoring.js';
+import {requireRole} from '../../auth/roles.js';
+import type {CompatFetch} from '../external-http.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -73,7 +76,14 @@ function asDraft(row: Record<string, unknown>, contentHash: string | null = null
     return base;
 }
 
-export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2Store, now: () => string): void {
+export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2Store, now: () => string,externalFetch:CompatFetch=async()=>{throw Error('workflow_transport_unavailable');}): void {
+    app.use('/api/actions/*',requireRole('owner','admin','tenant_admin','master_admin','master_admin_root'));
+    const unsupported=()=>({detail:'This workflow capability is unsupported in this preview',code:'workflow_capability_unsupported'});
+    const execute=async(store:Phase2Store,tenant:string,row:Record<string,unknown>,body:unknown,nodeId?:string)=>{
+        const parameters=(body as {parameters?:unknown})?.parameters??{};
+        if(!parameters||typeof parameters!=='object'||Array.isArray(parameters)||JSON.stringify(parameters).length>64000)throw Error('workflow_input_invalid');
+        return runAuthoringWorkflow(store,tenant,row,parameters as Record<string,unknown>,now,nodeId,externalFetch);
+    };
     // ---- drafts CRUD ----
     // GET /api/actions/drafts
     app.get('/api/actions/drafts', async (c) => {
@@ -165,9 +175,8 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
         const store = phase2For(c.get('tenant'));
         const existing = await store.getWorkflow(c.req.param('draft_id'));
         if (!existing) return c.json({ success: false, message: 'Draft not found' }, 404);
-        return c.json({
-            detail: 'Edge service is not running. Start it with: cd services/edge && npm run dev',
-        }, 503);
+        try{authoringGraph(existing);await snapshotWorkflow(store,existing,now(),'Local publication',String((c.get('principal').user as {id?:string}).id??''));if(!await store.publishWorkflowIfVersion(String(existing.id),Number(existing.version),now()))return c.json({detail:'Draft changed during publication'},409);return c.json({success:true,message:'Published to the local engine',workflow_id:existing.id,version:Number(existing.version)});}
+        catch(error){return c.json(error instanceof WorkflowCapabilityError?unsupported():{detail:'Workflow graph is invalid'},error instanceof WorkflowCapabilityError?501:422);}
     });
     // POST /api/actions/drafts/{draft_id}/publish/{engine_id}/
     app.post('/api/actions/drafts/:draft_id/publish/:engine_id/', async (c) => {
@@ -182,9 +191,11 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
             if (!engine || engine.kind !== 'engine') {
                 return c.json({ detail: `Engine not found: ${engineId}` }, 404);
             }
+            return c.json(unsupported(),501);
         }
-        await store.markWorkflowPublished(c.req.param('draft_id'), now());
-        return c.json({ success: true, message: 'Published', workflow_id: c.req.param('draft_id'), version: Number(existing.version ?? 1) + 1 });
+        try{authoringGraph(existing);await snapshotWorkflow(store,existing,now(),'Local publication',String((c.get('principal').user as {id?:string}).id??''));}catch(error){return c.json(error instanceof WorkflowCapabilityError?unsupported():{detail:'Workflow graph is invalid'},error instanceof WorkflowCapabilityError?501:422);}
+        if(!await store.publishWorkflowIfVersion(c.req.param('draft_id'),Number(existing.version),now()))return c.json({detail:'Draft changed during publication'},409);
+        return c.json({ success: true, message: 'Published to the local engine', workflow_id: c.req.param('draft_id'), version: Number(existing.version ?? 1) });
     });
     // POST /api/actions/drafts/{draft_id}/publish-batch/
     app.post('/api/actions/drafts/:draft_id/publish-batch/', async (c) => {
@@ -193,6 +204,7 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
         if (!existing) return c.json({ success: false, message: 'Draft not found' }, 404);
         const body = await c.req.json().catch(() => ({ engine_ids: [] })) as { engine_ids?: string[] };
         const ids = Array.isArray(body.engine_ids) ? body.engine_ids : [];
+        if(ids.some(id=>!isSystemEngine(id)))return c.json(unsupported(),501);
         // The system edge is always valid (the worker is the engine); other ids must
         // resolve to stored engines.
         const resolved = await Promise.all(ids.map(async (id) => {
@@ -202,13 +214,14 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
         }));
         const valid = ids.filter((_, i) => resolved[i]);
         if (valid.length === 0) return c.json({ detail: 'No engines found' }, 404);
-        await store.markWorkflowPublished(c.req.param('draft_id'), now());
+        try{authoringGraph(existing);await snapshotWorkflow(store,existing,now(),'Local publication',String((c.get('principal').user as {id?:string}).id??''));}catch(error){return c.json(error instanceof WorkflowCapabilityError?unsupported():{detail:'Workflow graph is invalid'},error instanceof WorkflowCapabilityError?501:422);}
+        if(!await store.publishWorkflowIfVersion(c.req.param('draft_id'),Number(existing.version),now()))return c.json({detail:'Draft changed during publication'},409);
         return c.json({
             success: true,
             message: 'Published',
             results: valid.map((id) => ({ engine_id: id, success: true })),
             workflow_id: c.req.param('draft_id'),
-            version: Number(existing.version ?? 1) + 1,
+            version: Number(existing.version ?? 1),
         });
     });
     // POST /api/actions/drafts/{draft_id}/publish/{engine_id}/toggle
@@ -224,10 +237,13 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
 
         const existing = await store.getWorkflow(draftId);
         if (!existing) return c.json({ detail: 'Workflow draft not found' }, 404);
+        if(!isSystemEngine(engineId)){
         const engine = await store.getEdgeResource(engineId);
         if (!engine || engine.kind !== 'engine') {
             // Product parity: return 404 for deployment target not found (matches product resource not found behavior)
             return c.json({ detail: 'Deployment target not found' }, 404);
+        }
+        return c.json(unsupported(),501);
         }
         const next = !Boolean(existing.is_active);
         await store.toggleWorkflow(draftId, next, now());
@@ -237,73 +253,59 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
     app.post('/api/actions/drafts/:draft_id/rollback/', async (c) => {
         const workflow = await phase2For(c.get('tenant')).getWorkflow(c.req.param('draft_id'));
         if (!workflow) return c.json({ detail: 'Workflow draft not found' }, 404);
-        return c.json({ detail: 'Target version not found' }, 404);
+        const store=phase2For(c.get('tenant')),body=await c.req.json().catch(()=>({})) as {version_id?:string};
+        const version=await workflowVersion(store,String(workflow.id),body.version_id??'');if(!version)return c.json({detail:'Target version not found'},404);
+        const prior=await snapshotWorkflow(store,workflow,now(),'Before rollback',String((c.get('principal').user as {id?:string}).id??''));
+        if(!await store.restoreWorkflowIfVersion(String(workflow.id),Number(workflow.version),version,now()))return c.json({detail:'Draft changed during rollback'},409);
+        return c.json({success:true,message:'Restored draft; activation remains paused',data:{preRollbackVersionId:prior.id,restoredVersionNumber:version.versionNumber}});
     });
     // POST /api/actions/drafts/{draft_id}/test  (create an execution row)
     app.post('/api/actions/drafts/:draft_id/test', async (c) => {
         const store = phase2For(c.get('tenant'));
-        if (!await store.getWorkflow(c.req.param('draft_id'))) {
+        const workflow=await store.getWorkflow(c.req.param('draft_id'));
+        if (!workflow) {
             return c.json({ detail: 'Draft not found' }, 404);
         }
-        return c.json({
-            detail: 'Edge Engine is not running. Start it with: cd services/edge && npm run dev',
-        }, 503);
+        try{return c.json(await execute(store,c.get('tenant'),workflow,await c.req.json().catch(()=>({}))));}catch(error){return c.json(error instanceof WorkflowCapabilityError?unsupported():{detail:'Workflow graph or input is invalid'},error instanceof WorkflowCapabilityError?501:422);}
     });
     // POST /api/actions/drafts/{draft_id}/test-node/{node_id}  (no live node runtime in the worker)
     app.post('/api/actions/drafts/:draft_id/test-node/:node_id', async (c) => {
         const store = phase2For(c.get('tenant'));
-        if (!await store.getWorkflow(c.req.param('draft_id'))) {
+        const workflow=await store.getWorkflow(c.req.param('draft_id'));
+        if (!workflow) {
             return c.json({ detail: 'Draft not found' }, 404);
         }
-        return c.json({ detail: 'Edge Engine connection lost during node execution' }, 503);
+        try{return c.json(await execute(store,c.get('tenant'),workflow,await c.req.json().catch(()=>({})),c.req.param('node_id')));}catch(error){return c.json(error instanceof WorkflowCapabilityError?unsupported():{detail:'Workflow node or input is invalid'},error instanceof WorkflowCapabilityError?501:422);}
     });
 
     // ---- versions (community: workflow.version field; no separate version table) ----
     // GET /api/actions/drafts/{draft_id}/versions/
     app.get('/api/actions/drafts/:draft_id/versions/', async (c) => {
         const w = await phase2For(c.get('tenant')).getWorkflow(c.req.param('draft_id'));
-        if (!w) return c.json({ success: true, data: [], message: null, error: null });
-        return c.json({ success: true, data: [], message: null, error: null });
+        if (!w) return c.json({detail:'Workflow draft not found'},404);
+        return c.json({ success: true, data: await workflowVersions(phase2For(c.get('tenant')),String(w.id)), message: null, error: null });
     });
     // POST /api/actions/drafts/{draft_id}/versions/  (upsert increments version)
     app.post('/api/actions/drafts/:draft_id/versions/', async (c) => {
         const store = phase2For(c.get('tenant'));
         const w = await store.getWorkflow(c.req.param('draft_id'));
         if (!w) return c.json({ detail: 'Workflow draft not found' }, 404);
-        const body = await c.req.json() as { label?: string | null };
-        const { version } = await store.upsertWorkflow({ id: c.req.param('draft_id'), name: String(w.name), nodes: String(w.nodes), edges: String(w.edges), isActive: Boolean(w.is_active) }, now());
-        return c.json({
-            success: true,
-            data: {
-                id: c.req.param('draft_id'),
-                automationId: c.req.param('draft_id'),
-                versionNumber: version,
-                name: String(w.name),
-                description: null,
-                triggerType: String(w.trigger_type ?? 'manual'),
-                contentHash: null,
-                label: body.label ?? null,
-                createdAt: now(),
-                createdBy: null,
-            },
-            message: null,
-            error: null,
-        });
+        const body = await c.req.json().catch(()=>({})) as { label?: string | null };
+        if(body.label!=null&&(typeof body.label!=='string'||body.label.length>200))return c.json({detail:'Invalid version label'},422);
+        try{return c.json({success:true,data:await snapshotWorkflow(store,w,now(),body.label??null,String((c.get('principal').user as {id?:string}).id??'')),message:null,error:null});}
+        catch(error){return c.json(error instanceof WorkflowCapabilityError?unsupported():{detail:'Workflow graph is invalid'},error instanceof WorkflowCapabilityError?501:422);}
     });
     // GET /api/actions/drafts/{draft_id}/versions/{version_id}/
     app.get('/api/actions/drafts/:draft_id/versions/:version_id/', async (c) => {
         const draftId = c.req.param('draft_id');
         const workflow = await phase2For(c.get('tenant')).getWorkflow(draftId);
-        if (!workflow || c.req.param('version_id') !== draftId) {
+        const version=workflow?await workflowVersion(phase2For(c.get('tenant')),draftId,c.req.param('version_id')):null;
+        if (!version) {
             return c.json({ detail: 'Version not found' }, 404);
         }
         return c.json({
             success: true,
-            data: {
-                id: draftId,
-                version_number: Number(workflow.version ?? 1),
-                created_at: workflow.updated_at,
-            },
+            data: version,
             error: null,
         });
     });
@@ -313,38 +315,47 @@ export function registerActionsRoutes(app: App, phase2For: (t: string) => Phase2
     // GET /api/actions/execution-stats
     app.get('/api/actions/execution-stats', async (c) => {
         const rows = await phase2For(c.get('tenant')).listExecutions(undefined, 500);
-        const stats: Record<string, number> = {};
-        for (const r of rows) { const s = String(r.status ?? 'unknown'); stats[s] = (stats[s] ?? 0) + 1; }
-        return c.json({ stats: [], error: 'Actions Engine not available' });
+        const stats=new Map<string,{workflowId:string;totalRuns:number;successfulRuns:number;failedRuns:number}>();
+        for(const row of rows){const id=String(row.workflow_id),s=stats.get(id)??{workflowId:id,totalRuns:0,successfulRuns:0,failedRuns:0};s.totalRuns++;if(row.status==='completed')s.successfulRuns++;if(row.status==='error')s.failedRuns++;stats.set(id,s);}
+        return c.json({stats:[...stats.values()],windowLimit:500});
     });
     // GET /api/actions/execution/{execution_id}  (singular "execution")
     app.get('/api/actions/execution/:execution_id', async (c) => {
-        return c.json({ detail: 'Edge Engine is not running' }, 503);
+        const store=phase2For(c.get('tenant')),row=await store.getExecution(c.req.param('execution_id'));return row?c.json(await authoringExecution(store,row)):c.json({detail:'Execution not found'},404);
     });
     // GET /api/actions/executions
-    app.get('/api/actions/executions', async (c) => c.json({ executions: [], total: 0 }));
+    app.get('/api/actions/executions', async (c) => {
+        const store=phase2For(c.get('tenant')),limit=Math.max(1,Math.min(500,Number(c.req.query('limit'))||50));
+        const rows=(await store.listExecutions(undefined,500)).filter(row=>(!c.req.query('status')||row.status===c.req.query('status'))&&(!c.req.query('trigger_type')||row.trigger===c.req.query('trigger_type')));
+        if(c.req.query('engine_name')&&c.req.query('engine_name')!=='Local Edge')return c.json({executions:[],total:0,windowLimit:500});
+        return c.json({executions:await Promise.all(rows.slice(0,limit).map(row=>authoringExecution(store,row))),total:rows.length,windowLimit:500});
+    });
     // GET /api/actions/executions/detail/{execution_id}
     app.get('/api/actions/executions/detail/:execution_id', async (c) => {
-        return c.json({ detail: 'Edge engine at http://localhost:3002 is not reachable' }, 503);
+        const store=phase2For(c.get('tenant')),row=await store.getExecution(c.req.param('execution_id'));return row?c.json(await authoringExecution(store,row)):c.json({detail:'Execution not found'},404);
     });
     // GET /api/actions/executions/export  (CSV header-only — community has no export pipeline)
     app.get('/api/actions/executions/export', async (c) => {
-        return c.body(
-            'Execution ID,Workflow Name,Workflow ID,Trigger,Status,Edge Name,Started,Ended,Duration (s),Error\r\n',
-            200,
-            { 'Content-Type': 'text/csv' },
-        );
+        const store=phase2For(c.get('tenant')),rows=await store.listExecutions(undefined,500);
+        const cell=(value:unknown)=>'"'+String(value??'').replace(/^[=+@-]/,"'$&").replaceAll('"','""')+'"';
+        const lines=['Execution ID,Workflow Name,Workflow ID,Trigger,Status,Edge Name,Started,Ended,Error'];
+        for(const row of rows){const entry=await authoringExecution(store,row);lines.push([entry.id,entry.workflowName,entry.workflowId,entry.triggerType,entry.status,'Local Edge',entry.startedAt,entry.endedAt,entry.error].map(cell).join(','));}
+        return c.body(lines.join('\r\n')+'\r\n',200,{'Content-Type':'text/csv','Cache-Control':'no-store'});
     });
     // GET /api/actions/executions/{draft_id}  (param route LAST among executions/*)
-    app.get('/api/actions/executions/:draft_id', async (c) => c.json({ executions: [], total: 0 }));
+    app.get('/api/actions/executions/:draft_id', async (c) => {const store=phase2For(c.get('tenant')),rows=await store.listExecutions(c.req.param('draft_id'),Math.max(1,Math.min(500,Number(c.req.query('limit'))||50)));return c.json({executions:await Promise.all(rows.map(row=>authoringExecution(store,row))),total:rows.length});});
     // GET /api/actions/executions/{draft_id}/production/{engine_id}
     app.get('/api/actions/executions/:draft_id/production/:engine_id', async (c) => {
         const engineId = c.req.param('engine_id');
+        if(!isSystemEngine(engineId)){
         const engine = await phase2For(c.get('tenant')).getEdgeResource(engineId);
         if (!engine || engine.kind !== 'engine') {
             return c.json({ detail: `Engine not found: ${engineId}` }, 404);
         }
+        return c.json(unsupported(),501);
+        }
         const rows = await phase2For(c.get('tenant')).listExecutions(c.req.param('draft_id'));
-        return c.json({ executions: rows, total: rows.length, engine_id: engineId });
+        return c.json({ executions: await Promise.all(rows.map(row=>authoringExecution(phase2For(c.get('tenant')),row))), total: rows.length, engine_id: engineId });
     });
+    app.post('/api/actions/executions/:execution_id/cancel',async c=>{if(!await phase2For(c.get('tenant')).getExecution(c.req.param('execution_id')))return c.json({detail:'Execution not found'},404);return c.json({detail:'Running-work cancellation is unsupported; no cancellation was performed',code:'workflow_cancellation_unsupported'},501);});
 }

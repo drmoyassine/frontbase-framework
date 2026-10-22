@@ -117,6 +117,14 @@ export class Phase2Store {
         );
     }
 
+    /** Authoring review never activates/overwrites a draft edited after capture. */
+    async publishWorkflowIfVersion(id:string,version:number,now:string):Promise<boolean>{
+        return await this.runner.exec('UPDATE workflows SET is_published=1,is_active=1,updated_at=? WHERE id=? AND tenant_slug=? AND version=?',[now,id,this.tenant,version])===1;
+    }
+    async restoreWorkflowIfVersion(id:string,version:number,snapshot:{name:string;nodes:unknown;edges:unknown},now:string):Promise<boolean>{
+        return await this.runner.exec('UPDATE workflows SET name=?,nodes=?,edges=?,version=version+1,is_active=0,is_published=0,updated_at=? WHERE id=? AND tenant_slug=? AND version=?',[snapshot.name,JSON.stringify(snapshot.nodes),JSON.stringify(snapshot.edges),now,id,this.tenant,version])===1;
+    }
+
     async listExecutions(workflowId?: string, limit = 50): Promise<Record<string, unknown>[]> {
         if (workflowId) {
             return this.runner.query(
@@ -162,15 +170,16 @@ export class Phase2Store {
      * so it does NOT filter by `this.tenant`. The caller re-runs each via the engine.
      * Returns {id, tenantSlug, workflowId, input} so the caller can replay.
      */
-    async listStuckExecutions(cutoffIso: string, limit = 50): Promise<Array<{ id: string; tenantSlug: string; workflowId: string; input: Record<string, unknown> }>> {
+    async listStuckExecutions(cutoffIso: string, limit = 50): Promise<Array<{ id: string; tenantSlug: string; workflowId: string; trigger:string; input: Record<string, unknown> }>> {
         const rows = await this.runner.query(
-            `SELECT id, tenant_slug, workflow_id, input FROM workflow_executions WHERE status = 'running' AND started_at < ? LIMIT ?`,
+            `SELECT id, tenant_slug, workflow_id, trigger, input FROM workflow_executions WHERE status = 'running' AND started_at < ? LIMIT ?`,
             [cutoffIso, limit],
         );
         return rows.map((row) => ({
             id: String(row.id),
             tenantSlug: String(row.tenant_slug),
             workflowId: String(row.workflow_id),
+            trigger:String(row.trigger),
             input: (() => { try { return JSON.parse(String(row.input ?? '{}')); } catch { return {}; } })(),
         }));
     }

@@ -207,7 +207,10 @@ export async function executeWorkflow(
         }
     }
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Execution timed out after ${timeoutMs}ms`)), timeoutMs));
-    return Promise.race([coreExecute(), timeoutPromise]);
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timer=setTimeout(() => reject(new Error(`Execution timed out after ${timeoutMs}ms`)), timeoutMs);
+    });
+    try{return await Promise.race([coreExecute(), timeoutPromise]);}
+    finally{if(timer!==undefined)clearTimeout(timer);}
 }

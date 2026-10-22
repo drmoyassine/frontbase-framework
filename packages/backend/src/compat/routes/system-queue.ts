@@ -19,9 +19,11 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { Phase2Store } from '../../db/phase2-store.js';
 import type { SystemServiceResolver } from '../system-services.js';
 import { runAndRecordAt } from '../../routes/phase2.js';
+import type { ExecuteOptions } from '@frontbase/edge-core/workflow';
 import { RagConfigError } from '../rag/routes.js';
 
 export interface SystemQueueRouteDeps {
+    executionOptions?: ExecuteOptions;
     phase2For: (tenant: string) => Phase2Store;
     resolver: SystemServiceResolver;
     now: () => string;
@@ -89,7 +91,8 @@ export function registerSystemQueueRoutes(app: Hono<{ Variables: ConsoleAuthVars
                 return c.json({ detail: 'temporarily_unavailable' }, 503);
             }
             // Missing (already handled / foreign tenant) or terminal → done.
-            if (!row || row.status !== 'running') return c.json({ ok: true, skipped: true });
+            if (!row || row.status !== 'running' || String(row.workflow_id)!==workflowId
+                || row.trigger==='authoring_test' || row.trigger==='authoring_node') return c.json({ ok: true, skipped: true });
 
             const wf = await store.getWorkflow(workflowId).catch(() => null);
             if (!wf) {
@@ -104,7 +107,7 @@ export function registerSystemQueueRoutes(app: Hono<{ Variables: ConsoleAuthVars
             await runAndRecordAt(
                 store, executionId, workflowId, tenant,
                 { name: String(wf.name), nodes: String(wf.nodes), edges: String(wf.edges) },
-                input, deps.now,
+                input, deps.now, deps.executionOptions,
             );
             return c.json({ ok: true });
         }
