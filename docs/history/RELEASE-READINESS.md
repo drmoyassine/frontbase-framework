@@ -1,6 +1,6 @@
 # Frontbase Framework — Release Readiness Requirements
 
-**Status:** Reference checklist
+**Status:** Reference checklist; current execution/status reconciled after acceptance `b56f539`
 **Owner:** Frontbase framework
 **Scope:** A single, date-free statement of *what must be true* before Frontbase is cited by version, deployed in production, or adopted for teaching. This document consolidates the release gates already defined in [PUBLIC-RELEASE-STRATEGY.md](./PUBLIC-RELEASE-STRATEGY.md) and Decision [A-20](./DECISIONS.md#decision-a-20-public-release-positioning-and-gated-rollout). It introduces no new gates, no timelines, and no commitments.
 
@@ -9,6 +9,8 @@
 ## Purpose
 
 This document is intentionally **date-free**. It states readiness *requirements*, not schedules. Sequencing and estimates live in [MILESTONES.md](./MILESTONES.md); the rollout contract and the R0–R4 release train live in [PUBLIC-RELEASE-STRATEGY.md](./PUBLIC-RELEASE-STRATEGY.md). Where this document and the strategy disagree, the strategy and A-20 govern.
+
+Current sequencing and evidence: [overall release finalization](../plans/frontbase-public-release-finalization-20261022.md). Completed bounded proofs are retained; the remaining adopter/registry/cumulative gates are explicit below.
 
 Each requirement is **Open** until its tracker marks the underlying work complete and accepted. These are Frontbase's own gates; downstream consumers (including education products) may require a subset or all of them, but they do not set these criteria (A-20).
 
@@ -19,14 +21,14 @@ Each requirement is **Open** until its tracker marks the underlying work complet
 | # | Requirement | Current state | Tracked in |
 |---|---|---|---|
 | R1 | **Versioned release** — git tags, release notes, and a changelog exist so consumers pin by version rather than commit | Open — release/tag inventory and versioned operations still require acceptance | Release operations gate |
-| R2 | **Package consumability** — all accepted library candidates (the original six plus the translation extension) pack and install externally without `workspace:*` coupling or private artifacts; `init` runs against versioned packages | Partial — dated runtime/pure-starter and strict infrastructure/Cloudflare proofs exist; distributable backend type remedy and fresh seven-package lifecycle/registry/full-CMS acceptance remain open | R1 (release train); [consumer proof](PUBLIC-RELEASE-R1-CONSUMER-PROOF.md); [binding repair](PUBLIC-RELEASE-R1-BINDING-TYPES.md) |
-| R3 | **Self-host path** — a reproducible, adopter-controlled, clean-environment deploy for every publicly-claimed target (Cloudflare-first; Node/Docker and other adapters only to the level proven by repeatable release evidence) | Open — clean-room proof pending | R1; Self-host path gate |
-| R4 | **Security** — no release-blocking secret-storage, auth, tenant-isolation, SSRF, credential-leak, or recovery defect; encryption, functional reset and no-leak behavior require deployment evidence and mutation proof | Open — current tested encryption/reset implementations supersede the historic blanket plaintext/no-op claims; deployment custody, real reset delivery and clean security matrix acceptance remain required | R2; Security gate; current audit evidence |
-| R5 | **Verification** — typecheck, build, tests, mutation gates, smoke, and relevant conformance gates green from a clean checkout | Partial — local response conformance passes; behavior gate still fails with unchanged ledger; clean-checkout matrix pending | R2; Verification gate; [conformance diagnosis](PUBLIC-RELEASE-R2-CONFORMANCE-DIAGNOSIS.md) |
+| R2 | **Package consumability** — all accepted library candidates (the original six plus the translation extension) pack and install externally without `workspace:*` coupling or private artifacts; `init` runs against versioned packages | Partial — adopted distributable backend remedy and strict external seven-package/pure-starter lifecycle pass; versioned registry consumption and clean-room full-CMS certification remain open | R1 (release train); [consumer proof](PUBLIC-RELEASE-R1-CONSUMER-PROOF.md); [binding repair](PUBLIC-RELEASE-R1-BINDING-TYPES.md) |
+| R3 | **Self-host path** — a reproducible, adopter-controlled, clean-environment deploy for every publicly-claimed target (Cloudflare-first; Node/Docker and other adapters only to the level proven by repeatable release evidence) | Partial — actual CF/Vercel runtime/install/upgrade and Node/Docker staging proofs pass; public/default-source and clean-room certification remain open | R1; Self-host path gate |
+| R4 | **Security** — no release-blocking secret-storage, auth, tenant-isolation, SSRF, credential-leak, or recovery defect; encryption, functional reset and no-leak behavior require deployment evidence and mutation proof | Open — bounded encryption/auth/tenant/HTTP/recovery gates pass; behavior integrity, production Neon transport/API/count repair, real reset delivery and cumulative supported-path security acceptance remain | R2; Security gate; current audit evidence |
+| R5 | **Verification** — typecheck, build, tests, mutation gates, smoke, and relevant conformance gates green from a clean checkout | Partial — changed-surface and local conformance proofs pass; retained behavior baseline is failing/order-dependent, with current reproduction/repair and cumulative clean-checkout matrix pending | R2; Verification gate; [conformance diagnosis](PUBLIC-RELEASE-R2-CONFORMANCE-DIAGNOSIS.md) |
 | R6 | **Documentation** — a concise quick start through concepts, architecture, component authoring, data/auth, self-hosting, deployment, upgrade, troubleshooting, and contribution, reviewed by a clean-room adopter | Open — quick start exists; the full adopter journey is incomplete | R3; Documentation gate |
-| R7 | **Honest positioning** — README and release materials distinguish shipped, preview, deferred, and unsupported behavior | Partial — Developer Preview accepted; [current R0 refresh](PUBLIC-RELEASE-R0-2026-10-21.md) defines remaining claim reconciliation | R0; Honest positioning gate |
+| R7 | **Honest positioning** — README and release materials distinguish shipped, preview, deferred, and unsupported behavior | Partial — Developer Preview accepted; [current plan](../plans/frontbase-public-release-finalization-20261022.md) requires final support/limitation and release-claim reconciliation | R0; Honest positioning gate |
 | R8 | **Release operations** — versions, licenses, changelog, tags, publishing automation, rollback, and a security-reporting path | Open | Release operations gate |
-| R9 | **Real-deploy validation** — at least one end-to-end real deployment (provisioning → first-admin → console → publish → automation → data → storage) signed off by the owner, plus a clean-room adopter completing the documented path | Open | Self-host + Documentation gates; README status block |
+| R9 | **Real-deploy validation** — at least one end-to-end real deployment (provisioning → first-admin → console → publish → automation → data → storage) signed off by the owner, plus a clean-room adopter completing the documented path | Partial — bounded real hosts, sessions/publication and actual D1/Turso recovery accepted; complete automation/data/storage adopter journey and clean-room documentation certification remain | Self-host + Documentation gates; README status block |
 
 ---
 
@@ -40,4 +42,4 @@ Each requirement is **Open** until its tracker marks the underlying work complet
 
 ## Relationship to the principles
 
-Every requirement serves the three non-negotiable principles (A-12/A-13/A-14): single-edge deployment, universal eSSR, and the fixed six-package surface. No requirement relaxes a principle; readiness means reaching a principle's bar in full, not lowering it.
+Every requirement serves the three non-negotiable principles (A-12/A-13/A-14): single-edge deployment, universal eSSR, and the original six-package surface plus its accepted standalone translation extension. No requirement relaxes a principle; readiness means reaching a principle's bar in full, not lowering it.

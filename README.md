@@ -1,5 +1,7 @@
 # Frontbase
 
+[Current Developer Preview release plan](docs/plans/frontbase-public-release-finalization-20261022.md): remaining work is behavior/security qualification, final-candidate clean installation and public button certification, adopter documentation and versioned distribution.
+
 [2026-10-22 framework acceptance](docs/plans/frontbase-acceptance-closeout-20261022.md) adds strict local seven-package consumers, interactive list localization and real D1/Turso recovery. The bounded acceptance task is closed after the staging credential/query repair and clean availability observation. Broader public-release gates remain open; this is Developer Preview preparation.
 
 Frontbase is an open-source, edge-native platform for building and deploying AI-powered apps with no code — a visual builder whose published sites, admin console, and API all ship as **one deployable worker**.

@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## Current Developer Preview release plan — 2026-10-22
+
+The [overall plan](../plans/frontbase-public-release-finalization-20261022.md) supersedes historical next-task ordering. Closed: the four-gap acceptance stream, strict local seven-package consumers and repaired staging availability. Open in order: R2 behavior/security and production Neon repair; final candidate and cumulative clean matrix; public/default-source CF/Vercel and clean-room adopter certification; complete operations/support docs; versioned registry/publishing rehearsal; exact-version Developer Preview release. No GA date, Deno parity or CF-22 restart is implied.
+
 ## 2026-10-22 four-gap framework acceptance follow-up
 
 [Bounded acceptance evidence](../plans/frontbase-acceptance-closeout-20261022.md) records interactive List Component localization, adopted strict seven-tarball declarations, real current-source CF/Vercel installs and actual remote D1/Turso restores. Runtime12358b4/artifact8ac4b86 additionally fix the captured staging query/credential failures. The final clean observation and existing CF/Vercel upgrades close this bounded task; broader R2/public-release gates remain open. Exact failures, sources, package hashes and recovery boundaries are preserved in the receipt. Developer Preview preparation remains the recommendation; no GA, registry publication, main merge, production cutover, Deno parity or CF-22 resumption.

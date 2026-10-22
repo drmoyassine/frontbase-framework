@@ -1,5 +1,9 @@
 # Frontbase Public Release Strategy
 
+## Current release execution plan — 2026-10-22
+
+The [overall finalization plan](../plans/frontbase-public-release-finalization-20261022.md) is the current ordered backlog after acceptance `b56f539`. Adopted strict seven-package consumers, interactive list localization, actual host upgrades/recovery and the repaired staging observation are complete. Remaining order: R2 behavior/security integrity (including production Neon), immutable candidate/cumulative matrix, public/default-source clean-room installation, adopter/operations documentation, versioned distribution rehearsal, then authorized Developer Preview publication. Older dated entries below retain history and do not reopen completed work.
+
 ## 2026-10-22 four-gap framework acceptance follow-up
 
 [Bounded acceptance evidence](../plans/frontbase-acceptance-closeout-20261022.md) records interactive List Component localization, adopted strict seven-tarball declarations, real current-source CF/Vercel installs and actual remote D1/Turso restores. Runtime12358b4/artifact8ac4b86 additionally fix the captured staging query/credential failures. The final clean observation and existing CF/Vercel upgrades close this bounded task; broader R2/public-release gates remain open. Exact failures, sources, package hashes and recovery boundaries are preserved in the receipt. Developer Preview preparation remains the recommendation; no GA, registry publication, main merge, production cutover, Deno parity or CF-22 resumption.
@@ -58,7 +62,7 @@ Under the accepted editable-profile requirement, [cache/vector/queue change deli
 
 **Owner:** Frontbase framework
 
-**Last updated:** 2026-10-19
+**Last updated:** 2026-10-22
 
 ## Release intent
 
@@ -140,10 +144,8 @@ NoCodeHero may use a released Frontbase version to teach Certified No-code Engin
 
 ## Immediate next action
 
-The [2026-10-21 R0 refresh](PUBLIC-RELEASE-R0-2026-10-21.md) retains Developer Preview scope and prioritizes a reviewable immutable baseline, distributable backend types, behavior/transport integrity, then clean-checkout and clean-room operations evidence. The following transport follow-ups remain bounded inputs to that backlog, not release clearance.
+Follow the [current overall plan](../plans/frontbase-public-release-finalization-20261022.md). First reproduce the current 334-operation behavior baseline with the ledger unchanged, repair operation-state isolation and success/refusal/counterfactual measurement, and qualify the production Neon HTTP API/transport/affected-row remedy. Adopt reviewed ledger changes only after stable forward/reverse/seeded evidence. The accepted backend declaration remedy and local seven-package proof are complete and must be retained.
 
-The [Request-preserving guarded primitive](PUBLIC-RELEASE-R2-REQUEST-TRANSPORT-DELIVERY.md) now reaches the selected SDK paths in [bounded HTTP delivery](PUBLIC-RELEASE-R2-SDK-HTTP-DELIVERY.md): 15 functional cases, six independently restored mutations and integrated local gates pass. The two demonstrated Turso-vector/Supabase injection bypasses are closed within those tested paths. Next: review parallel behavior/type evidence and establish a safe Neon policy without per-request global SDK mutation. Native/operator, DNS/egress, remaining wrappers and actual provider/host acceptance retain explicit boundaries; this does not close R2 or M1.
-
-In parallel with explicitly owned work, isolate [behavior fixtures and classification](PUBLIC-RELEASE-R2-BEHAVIOR-REPAIR-PLAN.md) without refreshing the ledger to conceal order dependence, and establish an adopted distributable [backend type remedy](PUBLIC-RELEASE-R1-UPSTREAM-TYPE-REPAIR-PROPOSAL.md). R1 lifecycle/full-CMS clean-install and R2/R3 security/host operations evidence remain necessary before R4 publication. R0 and Developer Preview preparation scope are accepted; no GA or general host parity is claimed.
+Then freeze the integrated candidate and run the cumulative clean-checkout functional, console, security, mutation, conformance, package and host matrix. Certify actual public/default-source installation and clean-room documentation; finish versioning/registry/release automation before exact-version publication. The [readiness checklist](RELEASE-READINESS.md) tracks the remaining requirements. CF-22 remains paused; Deno and unsupported optional providers stay outside release support claims.
 
 The separate [pilot execution plan](../plans/wordpress-pilot-execution-plan.md) covers M0–M9 through migration, installation, full-catalog publication, production inquiries, reuse, operations and authorized USA cutover. The [namespace inventory](../plans/wordpress-pilot-namespace-writer-inventory.md) blocks claiming a safe installer from advisory checks alone. Pilot acceptance and framework publication are separate finish lines and authorizations. This planning refresh changes no accepted edition scope or release gates; CF-22 remains paused.
