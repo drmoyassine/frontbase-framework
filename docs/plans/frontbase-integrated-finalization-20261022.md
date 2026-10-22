@@ -1,5 +1,7 @@
 # Integrated finalization and sign-off plan
 
+Current follow-up: [2026-10-22 bounded four-gap acceptance](frontbase-acceptance-closeout-20261022.md) supersedes the older package/install/remote-restore unknowns below. Historical measurements remain dated evidence; public release and the failed availability observation are separate gates.
+
 Execution authorized — 22 October 2026. The owner delegates engineering evaluation and sign-off to this session. F0–F8 proceed within existing scoped resource/staging authority; production cutover and registry publication remain separate explicit decisions. Evidence, not the delegation itself, determines PASS or NO-GO.
 
 ## 1. Objective and scope
@@ -264,3 +266,7 @@ Deployment and bounded existing-site verification are COMPLETE for source 8bf624
 Ordered next work: (1) interactive live-list translations and actual Arabic coverage/route reconciliation, (2) strict distributable package declarations and exact-final-source repack, (3) behavior isolation and release/security evidence, (4) clean final-source CF/Vercel installs plus credential-scoped provider/remote recovery tests, (5) bounded operational observation and release packet review. CF-22 remains paused; Deno deferred. No production, registry publication, new resource, paid plan, environment/binding change, direct pointer edit or destructive cleanup occurred.
 
 Post-deployment bounded smoke result: four rounds/36 requests, 2026-10-22T10:34:26Z–10:38:26Z; all expected200 responses and private pages401, zero unexpected statuses. Historical pre-deployment503 is not reproduced or assigned a proven cause. This four-minute sample does not fulfill the proposed30-minute observation window.
+
+## Final bounded acceptance closure — 2026-10-22
+
+The [four-gap closeout](frontbase-acceptance-closeout-20261022.md) supersedes the intermediate gaps/dispositions above for interactive lists, strict package consumption, current-source managed host installs/upgrades and actual D1/Turso recovery. Runtime12358b4 fixes the actual staging credential/query failure; the final30-minute observation passes. Datasource-specific untranslated records are excluded by the owner. Broader release isolation/security ledger, default-main certification, registry publication and production cutover remain separate; no GA claim.

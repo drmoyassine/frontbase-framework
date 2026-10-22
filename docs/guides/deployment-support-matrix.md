@@ -14,7 +14,7 @@ This matrix describes the isolated deployment stream at foundation5d9ca6f, vecto
 | Actual install / publish | Managed CLI plus clean named-tag native Git installation and actual create/save/publish/reload | Managed CLI/native upgrade pass; clean branch import/build succeeds, with repaired application canvas/save/publish/reload verified; final-source fresh clone still open |
 | Native upgrades | Git rebuild preserves exact D1/KV, page bytes and persisted session identity; original signed-in builder survives | Automatic Git build from attributed commit passes; stable-origin original session and published builder page survive |
 | Code rollback | Explicit matching-version native drill and restoration pass; data/environment are not restored | Existing disposable managed production predecessor/restore drill passes |
-| Data restore | Private actual D1 exports restore into local SQLite with integrity/page checks | Remote Turso restore is not certified by this stream |
+| Data restore | Actual remote platform import/re-export: all rows exact, integrity and original session/page pass | Actual HTTP fresh-target restore: all rows/ciphertext exact and integrity pass; no production binding cutover or opaque key export |
 
 Profile defaults are suggestions, never mandatory provider commitments. The target adapter catalogue is broader than the currently accepted executor capability. In particular the Cloudflare managed executor currently accepts native D1/KV/R2 creation and verified reuse through its lifecycle, not arbitrary state-provider migration or generic native adoption. A dropdown choice alone is not an execution guarantee.
 
@@ -38,3 +38,8 @@ The owner approved exact cleanup of obsolete Worker/D1 frontbase-deploy-test-202
 ## Combined-source staging qualification — 2026-10-22
 
 [Integrated finalization](../plans/frontbase-integrated-finalization-20261022.md#integrated-candidate-staging-receipt--2026-10-22) pins8bf6248 and verifies full local gates plus an existing Node22/Linux Docker staging deployment, persisted session and English/Arabic Homepage. This is additional self-host evidence; it does not turn retained CF/Vercel repaired-host journeys into fresh final-source native-install proofs. External-provider and remote recovery exclusions above remain.
+
+
+## Four-gap current-source follow-up — 2026-10-22
+
+[Bounded receipt](../plans/frontbase-acceptance-closeout-20261022.md) supersedes the older remote-restore and final-source-install unknowns above: actual4f553c0 fresh runtime acceptance passes on CF native D1 and Vercel HTTP Turso, with source28d21da adding the separately qualified HTTP backup transaction repair. These are managed/compiler paths, not a claim that default-main Git buttons were rerun. CF temporary fresh proof reuses the approved reset D1 with cache disabled; original managed D1/KV resources remain. No arbitrary adoption/state migration or broader optional-provider parity is inferred. Historical availability503s and command-review timeouts stay visible. Final runtime12358b4/artifact8ac4b86 passes the repaired staging observation and existing CF/Vercel upgrades, including retained sessions/publication/default deny. Default-main buttons and broader optional providers remain outside this bounded closure.

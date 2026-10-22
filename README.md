@@ -1,5 +1,7 @@
 # Frontbase
 
+[2026-10-22 framework acceptance](docs/plans/frontbase-acceptance-closeout-20261022.md) adds strict local seven-package consumers, interactive list localization and real D1/Turso recovery. The bounded acceptance task is closed after the staging credential/query repair and clean availability observation. Broader public-release gates remain open; this is Developer Preview preparation.
+
 Frontbase is an open-source, edge-native platform for building and deploying AI-powered apps with no code — a visual builder whose published sites, admin console, and API all ship as **one deployable worker**.
 
 **Universal SSR** — one Hono engine shared by edge execution and the visual builder's canvas. Published pages render server-side; the current service worker leaves navigations to the server. The admin console is served as static assets alongside the API. See the [dated build evidence](docs/plans/wordpress-pilot-artifact-check-delivery.md) for current working-tree measurements rather than a fixed release-size claim.

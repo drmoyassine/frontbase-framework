@@ -1,5 +1,7 @@
 # R0 refresh — deployment evidence and public-release backlog
 
+Current follow-up: [2026-10-22 bounded four-gap acceptance](../plans/frontbase-acceptance-closeout-20261022.md) supersedes the older package/install/remote-restore unknowns below. Historical measurements remain dated evidence. The captured staging failure and final availability gate are resolved in that receipt; broader public release remains a separate gate.
+
 2026-10-21. Documentation/read-only review of `codex/deployment-profiles` at immutable source `7d2c73d9369ff1cd977c30a0dc01d159297488dd`. This is a branch-specific report, not acceptance of the shared checkout or another session's work. The branch initially has no tracked changes and retains untracked `.agents/` and `skills-lock.json`; the shared checkout has unrelated staged/unstaged work and was not modified. The audit claim precedes this report. No product code, dependency, provider resource, deployment or distribution changes are included.
 
 ## Recommended first edition
