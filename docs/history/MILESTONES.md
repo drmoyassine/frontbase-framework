@@ -806,3 +806,8 @@ npx @frontbase/compiler deploy                    # ship it
 - Delivery reports: [Phase 1](./delivery/phase1-delivery-report.md) · [Phase 2](./delivery/phase2-delivery-report.md)
 - **CF-18 admin-console parity (separate track):** [Phase 3 consolidated](./phase-3-consolidated-delivery.md) (3a/[3b](./phase-3b-delivery.md)/[3c](./phase-3c-delivery.md) detail; deviations ledger + BUG-1)
 - **CF-22 admin-console visual parity (in progress, not complete):** [single source of truth — status + recovery plan](./cf-22-admin-visual-parity-gap.md)
+
+
+## 2026-10-22 integrated staging candidate verified
+
+Source8bf6248 combines both streams plus bounded finalization repairs; deployed to existing USA staging with backup integrity, original session, English/Arabic Homepage and actual dropdown/navigation verified. Full build/check/workspace functional,91 console files/678 tests and47 critical faults pass; Linux image56e25595 and deployed-dist18-publication synthetic scale test pass. [Exact receipt and sign-off limits](../plans/frontbase-integrated-finalization-20261022.md#integrated-candidate-staging-receipt--2026-10-22). This closes the staging deployment operation, not whole multilingual or public-release acceptance. Interactive live lists/coverage, strict external declarations, behavior isolation, final-source fresh CF/Vercel installs and remote recovery remain ordered residuals. CF-22 paused; Deno deferred; no production or npm action.

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-22",
-  "source": "f46b823522e89280ca276bce3214ee2f841b2ee1",
+  "source": "8bf6248de71eb769a0b9d5a20798fb883189b9cc",
   "branch": "codex/integrated-finalization-20261022",
   "integration": "76929191fcb8fee7f5c75160e91ab85f4cb89bd4",
   "deploymentIncluded": true,
@@ -371,26 +371,26 @@
     }
   ],
   "libraryCandidateCount": 7,
-  "trackedCmsSHA256": "a0178c2a732ff3c5d26c4f888181f5a4b4fe48cb36c16f383443ca4205369e69",
+  "trackedCmsSHA256": "ae73f8eb1b3e9aa8eb5288cdf921aa028cba46718a5208686e18989ab6b0bc2d",
   "phase": {
-    "F0": "IN PROGRESS",
-    "F1": "BUILD/CHECK PASS; artifact reproducibility and final candidate pin pending",
-    "F2": "IN PROGRESS: full functional/console inventories and mandatory mutation/security gates",
-    "F3": "NO-GO: Homepage restored; interactive list translation and combined host acceptance remain open",
+    "F0": "PASS: isolated integrated candidate pinned",
+    "F1": "PASS: reproducible committed artifact; Linux build and staging deploy verified",
+    "F2": "PASS changed-surface gates; complete release mutation/behavior acceptance remains open",
+    "F3": "Homepage ACCEPT; whole multilingual NO-GO: interactive lists and route coverage",
     "F4": "NOT RUN on combined source",
     "F5": "retained evidence only",
     "F6": "retained evidence only",
     "F7": "NO-GO: runtime/scaffold pass; strict public dependency declarations fail",
-    "F8": "NO SIGN-OFF YET",
+    "F8": "BOUNDED engineering sign-off recorded; public release NO-GO",
     "F9": "NOT AUTHORIZED"
   },
   "staging": {
-    "reportedSource": "585ec7601d0a3a760941fcdb19b7df94b6e61b38",
-    "reportedImage": "sha256:0a6564cd798b7d1612809aeb6eb75806abcd144ada28fb10189ceaa022d2f3e5",
-    "combinedDeployment": false,
+    "reportedSource": "8bf6248de71eb769a0b9d5a20798fb883189b9cc",
+    "reportedImage": "sha256:56e25595bf8b6ea3e47c34d2d266f9481b7dd00452e7fa817f84d2f8c310b311",
+    "combinedDeployment": true,
     "authenticatedBrowserAvailable": true,
     "homepage": {
-      "status": "RECOVERED ON EXISTING STAGING",
+      "status": "PRESERVED AND VERIFIED ON COMBINED DEPLOYMENT",
       "before": "58/88 translated; obsolete generation1 preview refused",
       "after": "88/88 translated; original58 unchanged; missing30 native drafts supplied without AI calls",
       "release": "64d819235554ebee745d924f35776dd2bb94d6099229f050ed68f3c303a00493",
@@ -435,10 +435,47 @@
     "blockers": [
       "Explore native language review rejects interactive live lists; do not remove controls to pass",
       "Explore and Blog Arabic routes currently return English fallback",
-      "One Arabic Institutions503 observed before repeat200; cause remains unproven",
-      "Current staging remains pre-merge585ec76; combined candidate not deployed"
+      "One Arabic Institutions503 observed before repeat200; cause remains unproven"
     ],
-    "operatorClaim": "OPEN: backup, then only qualified committed upload; environment/bindings/session/locale preserved"
+    "operatorClaim": "RELEASED: deployment, backup integrity, public/session/homepage preservation verified",
+    "predecessorSource": "585ec7601d0a3a760941fcdb19b7df94b6e61b38",
+    "predecessorImage": "sha256:0a6564cd798b7d1612809aeb6eb75806abcd144ada28fb10189ceaa022d2f3e5",
+    "deployedAt": "2026-10-22T10:28:43Z",
+    "archiveSHA256": "8d89d8e5a549911c01fa158c4e32e17a5c0c22b1933c493c3f15ba799778f810",
+    "liveCmsSHA256": "0e73882ceaad03d636acacb04008b69f1b8d0e789a859eaea6447ccd10aea4d6",
+    "backup": {
+      "path": "/data/finalization-092ba8a-20261022.db",
+      "integrity": "ok",
+      "sha256": "c878edb852fe62b4293526928eaf501f51218bff271b614e990965a604f54b8a",
+      "scope": "app SQLite; external translation-store restore not certified"
+    },
+    "smoke": {
+      "status": "PASS",
+      "rounds": [
+        {
+          "at": "2026-10-22T10:34:26.096Z",
+          "requests": 9,
+          "unexpected": 0
+        },
+        {
+          "at": "2026-10-22T10:37:40.339Z",
+          "requests": 9,
+          "unexpected": 0
+        },
+        {
+          "at": "2026-10-22T10:38:05.504Z",
+          "requests": 9,
+          "unexpected": 0
+        },
+        {
+          "at": "2026-10-22T10:38:26.842Z",
+          "requests": 9,
+          "unexpected": 0
+        }
+      ],
+      "requests": 36,
+      "scope": "bounded route smoke; not a30-minute soak or SLA/load certification"
+    }
   },
   "rootScripts": {
     "//": "`deploy` exists for Cloudflare native-button command detection and uses the portable root wrangler.toml. Run the reviewed managed flow via deploy:setup or deploy:cf-full.",
@@ -477,7 +514,7 @@
       "command": "pnpm -r check"
     },
     "functional": {
-      "status": "124 declared backend suites executed; focused repairs PASS; final complete rerun pending",
+      "status": "PASS final workspace functional rerun; initial124 backend inventory plus focused repairs",
       "initialPasses": 122,
       "initialFailures": [
         "historical tenant rollback tested newest migrations instead of21/22",
@@ -492,12 +529,13 @@
         "firstFetch": 455,
         "lateFetch": 506
       },
-      "unchangedLimitMs": 5000
+      "unchangedLimitMs": 5000,
+      "command": "pnpm -r --workspace-concurrency=1 --filter=!@frontbase/console test"
     },
     "console": {
-      "status": "PASS before final artifact rebuild",
+      "status": "PASS final source",
       "files": 91,
-      "tests": 677,
+      "tests": 678,
       "additionalRegression": {
         "suite": "HomepageTranslationWorkspace",
         "tests": 9,
@@ -514,6 +552,29 @@
       "newerCandidateDiagnosticsPerProfile": 65,
       "registryPublication": false,
       "sourceNote": "archives precede the request-local performance repair; final repack pending"
+    },
+    "criticalMutations": {
+      "status": "PASS",
+      "suites": 5,
+      "faults": 47,
+      "counts": {
+        "manifest": 8,
+        "chunkIntegration": 12,
+        "homepage": 19,
+        "scale": 5,
+        "backupRestore": 3
+      },
+      "scope": "changed critical surface, not all repo mutation suites"
+    },
+    "reproducibility": {
+      "status": "PASS",
+      "localCmsBytes": 2631779,
+      "secondBuildIdentical": true
+    },
+    "deployedLinuxScale": {
+      "status": "PASS",
+      "syntheticPublications": 18,
+      "actualLiveLanguagePublications": 1
     }
   }
 }

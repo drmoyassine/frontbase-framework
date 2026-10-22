@@ -33,3 +33,8 @@ Code rollback switches a build and may its captured settings; it cannot restore 
 The deployment branch is an immutable review candidate; do not replace the dirty shared checkout or merge parallel translation work by chat recency. At inspection, origin/main is an ancestor 124 commits behind the candidate; codex/wordpress-pilot is an ancestor 33 commits behind. These are graph observations, not permission to sweep all historical commits into a public release. Review the complete range and reconcile shared uncommitted work before integration. Re-run clean source/artifact/security gates on the final combined tree.
 
 The owner approved exact cleanup of obsolete Worker/D1 frontbase-deploy-test-20261020-585944f, D1 fb1776d0-e720-4b4a-bc73-806882119bd6, after verified private backup; it is deleted and the backup retained. Current native acceptance resources and managed KV/R2 evidence remain. The renamed empty private Git shells frontbase-native-vercel-261021-empty (ID1428262306), frontbase-clean-vercel-261022-empty (ID1428941292), and accidental KV140e94b33e9a449aac3d6da8c804f3ad remain listed cleanup residue; never apply an old name-based deletion instruction to a different newly created repository.
+
+
+## Combined-source staging qualification — 2026-10-22
+
+[Integrated finalization](../plans/frontbase-integrated-finalization-20261022.md#integrated-candidate-staging-receipt--2026-10-22) pins8bf6248 and verifies full local gates plus an existing Node22/Linux Docker staging deployment, persisted session and English/Arabic Homepage. This is additional self-host evidence; it does not turn retained CF/Vercel repaired-host journeys into fresh final-source native-install proofs. External-provider and remote recovery exclusions above remain.
