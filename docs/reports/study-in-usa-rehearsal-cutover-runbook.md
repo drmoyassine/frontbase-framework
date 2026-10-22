@@ -208,7 +208,7 @@ site's pages). For every staging route R corresponding to a source URL:
   job_listing) with the A4 curl pattern; record the served-coverage fraction vs the 1,266-URL inventory.
   Sitemap presence on the source ≠ serve evidence anywhere; only staging serve checks count as serve evidence.
 
-### A8 — Staging-state backup/restore drill (rollback rehearsal, task-11 engine) `[READY — blocked by A3; state-DB URL confirmation is an execution-time step]`
+### A8 — Staging-state backup/restore drill (rollback rehearsal, task-11 engine) `[EXECUTED — PASS (2026-10-22); the walk caught a pre-existing live-data verifier defect, fixed in fc7d484]`
 
 Tool: `pnpm --filter @frontbase/backend ops:selfhost -- <command>` (contract: `docs/backup-restore.md`).
 1. Confirm the staging state-DB URL and runner family by inspecting the app (EasyPanel MCP; the state
@@ -235,7 +235,20 @@ SESSION_SECRET restore-blocking rules (verbatim from the contract — blocking):
   the post-restore integrity walk reconciles both.
 
 Boundary: a state-DB restore does NOT cover the tenant-owned external Supabase (translations schema,
-editorial bodies, `fb_live_*` views) — that project's own backup tooling owns them.
+editorial bodies, `fb_live_*` views) — that project's own tooling owns them.
+
+Executed evidence (2026-10-22, staging container, live `file:/data/usa-staging.db`; full chain in the
+execution ledger and `docs/backup-restore.md`): state-DB URL/runner confirmed (step 1); export
+49,368,866 B, sidecar SHA-256 verified (steps 2–3); fresh-target restore transactional, evidence file
+written (step 4); the post-restore integrity walk FAILED on 6 publication chunks — reproduced on the
+LIVE DB, proving a pre-existing verifier defect, not restore damage. Root cause: `store.get()` measured
+integrity on the schema-transformed parse output; the nullable defaults later added to the
+cities/institutions/programs record schemas changed every pre-default chunk's serialization on re-parse.
+Fixed in `fc7d484` (integrity measured on the stored serialization; mutation gate 4/4 RED-proven) and
+deployed to staging (image `sha256:5cbdfe2a…`, action `cmvj05ufl00rw07qq9fjsc1u6`): the integrity walk
+now passes on BOTH the live DB and the restored drill copy (29/29 chunks). Steps 5–6 (crown
+serve-comparison and repoint) were not needed — the restore copy was a drill artifact, never repointed;
+the live DB was never modified.
 
 ### A9 — Evidence recording `[EXECUTED as convention — see §7]`
 
@@ -351,13 +364,13 @@ No state DB was opened by R5 (`verify-backup` is offline by contract).
 | Step | Blocker (exact) |
 |---|---|
 | A1 fresh re-fetch | Not needed — task-12 capture re-verified byte-exact (§7 R1); re-fetch deliberately deferred per reuse-before-refetch; recipe ready |
-| A0 gate rerun (`test:translation-homepage-mutation`) | Standing gate debt; the rerun belongs to the deploying session in a low-memory-pressure window (the 2026-10-22 run was killed by the OS memory reaper, not a test failure). This task did not run it. |
-| A3 staging deployment | Gate #1 (above) + this authoring session was explicitly barred from deploying |
-| A4 post-deploy serve checks | Depends on A3 |
-| A5 `/ar/` re-prepare | Depends on A3/A4; requires an owner-approved administrator console session |
-| A6 coverage pull | Depends on A3; administrator session |
-| A7 URL-route reconciliation (live portion) | Depends on A3; the offline method and tolerance rules are finalized in the step text |
-| A8 staging backup/restore drill | Depends on A3; also needs execution-time confirmation of the staging state-DB URL/runner (EasyPanel inspect) |
+| A0 gate rerun (`test:translation-homepage-mutation`) | ~~Standing gate debt~~ **CLEARED 2026-10-22**: foreground rerun in a quiet window → 19/19 faults caught, exit 0 (ledger-recorded before the first staging deployment claim). |
+| A3 staging deployment | ~~Gate #1 + barred session~~ **EXECUTED 2026-10-22** under the directive-(d) bounded-claim protocol: action `cmviqkfp900pq07qqcvgoc8l6` → image `sha256:27afca15…` from `026f355`; then the A8-fix deploy, action `cmvj05ufl00rw07qq9fjsc1u6` → image `sha256:5cbdfe2a…` from `fc7d484`. |
+| A4 post-deploy serve checks | **EXECUTED after each deploy**: `/` 200, `/frontbase-admin/` 200, `/ar/` 503 = the designed strict-fence residual (A5 pending), NOT a failure. |
+| A5 `/ar/` re-prepare | **STILL GATED**: requires an owner-approved administrator console session (A5). |
+| A6 coverage pull | Depends on A5; administrator session |
+| A7 URL-route reconciliation (live portion) | Offline method/tolerance finalized in the step text; live portion needs the administrator session |
+| A8 staging backup/restore drill | ~~Depends on A3~~ **EXECUTED 2026-10-22 — PASS with finding** (see the executed evidence under the A8 step; verifier defect fixed in `fc7d484`, walk green on live + restored DBs). |
 | B0–B4 + production rollback | PENDING OWNER AUTHORIZATION (no authorization exists) |
 
 ## 9. Decisions the owner must make
