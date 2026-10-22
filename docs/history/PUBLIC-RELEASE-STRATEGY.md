@@ -1,5 +1,9 @@
 # Frontbase Public Release Strategy
 
+## 2026-10-22 frontend editor and first concrete repairs — source verification
+
+Owner authorizes privileged frontend text editing first, followed by the named gap repairs and staging verification. The editor reuses display identities and the existing locale/manual-publication adapters; source copy uses recoverable fingerprinted revisions. G1/G4 now refuse unsupported engine transfer/provisioning, G2 adopts a pinned client-scoped guarded Neon transport and accurate metadata, and bounded G6 storage repairs preserve native Requests. Focused functional/fault gates and workspace check/build pass. Cumulative/package/live acceptance is in progress; G3/G5 and public-release gates remain open. See the [current plan](../plans/frontbase-public-release-finalization-20261022.md). This does not change the Developer Preview edition or assert GA.
+
 ## Current gap triage and CF-22 disposition — 2026-10-22
 
 CF-22 is retired as an active planning umbrella by owner agreement; older paused references below are history. Preserve useful regression coverage and follow the [named current gaps](../plans/frontbase-current-product-gaps-20261022.md). Source review adds engine-transfer sealing, truthful in-app provisioning and visual workflow/mail wiring to the existing Neon and measurement work. These findings need isolated reproduction/repair or explicit safe unsupported states; current CF/Vercel managed deployment and scoped recovery acceptance remain closed. The [overall release plan](../plans/frontbase-public-release-finalization-20261022.md) retains the Developer Preview gates.

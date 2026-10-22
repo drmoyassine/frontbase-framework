@@ -2,7 +2,11 @@
 
 **Evidence checkpoint:** source `9a85aaa` (documentation after runtime `12358b4`). This is a source/evidence triage, not a fresh runtime or penetration-test result. It records concrete findings independently of retired CF-22 parity counts. The [overall release plan](frontbase-public-release-finalization-20261022.md) retains completed acceptance and governs sequencing.
 
-## Confirmed implementation gaps
+## Current repair progress
+
+The owner subsequently authorizes frontend text editing before these repairs. The [editor plan](frontend-text-editing-20261022.md) defines its scope and tests. G1/G4 now safely refuse unsupported engine transfer and remote provisioning; G2 uses the supported Neon query API, validated full-result affected counts and a hash-verified client-scoped guarded transport, with credential-safe errors. G6 preserves native Requests and injects the same guard into connected CF verification/SigV4 and Supabase storage. Focused tests and independent counterfactuals pass in the integration worktree. Actual staging deployment, cumulative qualification and external archive verification are pending at this checkpoint; live Neon/provider credentials are not implied. G3/G5/G7–G10 remain open.
+
+## Source triage findings (before the repairs above)
 
 | ID / priority | Finding and evidence | Required outcome |
 |---|---|---|

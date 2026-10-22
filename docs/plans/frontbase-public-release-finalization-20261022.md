@@ -4,6 +4,8 @@
 
 ## Concrete current findings
 
+**Owner-authorized implementation update:** frontend text editing precedes the gap repairs, using the [bounded feature plan](frontend-text-editing-20261022.md). The editor and safe G1/G4 refusal, production Neon G2 repair and bounded storage G6 repair are implemented with focused functional/fault evidence. Workspace check/build pass; cumulative regressions, external archives and staging UI acceptance are in progress. The original findings below describe the triage checkpoint; they do not override this progress entry or imply live acceptance. G3/G5 and the final public-install/distribution gates remain open.
+
 The owner retired CF-22 as an active planning umbrella on2026-10-22. The [source-backed current gap register](frontbase-current-product-gaps-20261022.md) identifies priority repairs: genuinely sealed engine transfer or safe refusal, the Neon HTTP adapter, visual workflow/executor/mail wiring and truthful in-app remote engine deployment. It also separates behavior/transport qualification and public-install/distribution gaps. These are current Frontbase requirements, not an old-product parity target. No fresh runtime acceptance of these findings is claimed by this documentation review.
 
 ## Completed and retained

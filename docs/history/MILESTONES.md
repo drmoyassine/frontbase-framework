@@ -1,5 +1,9 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+## 2026-10-22 frontend editing and first named repairs — verification in progress
+
+The owner adds text-only frontend editing before the concrete-gap sequence. Its staged multi-edit/cancel/save flow, locale-native revisions and shared source-copy projection are implemented; focused security/fault and locale tests pass. G1/G4 safely refuse unsupported engine transfer/provisioning, G2 adopts isolated guarded Neon HTTP/full-result semantics, and bounded G6 storage transport repairs are implemented. Workspace check/build pass (701 KB worker gzip). Cumulative/package/staging acceptance remains in progress. G3/G5 and the later public-install/distribution gates remain open under the [current plan](../plans/frontbase-public-release-finalization-20261022.md); the edition remains Developer Preview preparation.
+
 ## Current gap triage and CF-22 disposition — 2026-10-22
 
 CF-22 is retired as an active planning umbrella by owner agreement; older paused references below are history. Preserve useful regression coverage and follow the [named current gaps](../plans/frontbase-current-product-gaps-20261022.md). Source review adds engine-transfer sealing, truthful in-app provisioning and visual workflow/mail wiring to the existing Neon and measurement work. These findings need isolated reproduction/repair or explicit safe unsupported states; current CF/Vercel managed deployment and scoped recovery acceptance remain closed. The [overall release plan](../plans/frontbase-public-release-finalization-20261022.md) retains the Developer Preview gates.
