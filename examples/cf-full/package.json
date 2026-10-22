@@ -18,7 +18,8 @@
         "test": "node test/console-pin.mjs",
         "test:state-db": "node build.mjs && node test/state-db.mjs",
         "test:session-secret": "node build.mjs && node test/session-secret.mjs",
-        "test:vercel-config": "node build.mjs && node test/vercel-config.mjs"
+        "test:vercel-config": "node build.mjs && node test/vercel-config.mjs",
+        "test:node-fresh": "node test/fresh-node.mjs"
     },
     "dependencies": {
         "@frontbase/admin-console": "workspace:*",
@@ -35,5 +36,8 @@
     },
     "devDependencies": {
         "@playwright/test": "^1.62.0"
+    },
+    "engines": {
+        "node": "22.x"
     }
 }

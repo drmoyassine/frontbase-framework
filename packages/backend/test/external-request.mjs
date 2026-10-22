@@ -158,7 +158,7 @@ try {
             let calls = 0;
             await guardedExternalFetch(async (url, init) => {
                 assert.ok(url instanceof URL); assert.equal(init.redirect, 'manual');
-                assert.equal(init.signal, caller.signal); assert.equal(init.method, 'POST'); assert.equal(init.body, 'legacy');
+                assert.ok(init.signal instanceof AbortSignal);assert.notEqual(init.signal,caller.signal,'caller cancellation is composed with the host deadline'); assert.equal(init.method, 'POST'); assert.equal(init.body, 'legacy');
                 calls++;
                 return calls === 1 ? new Response(null, { status: 302, headers: { location: '/next' } }) : new Response('done');
             }, input, { method: 'POST', body: 'legacy', signal: caller.signal }, { followRedirects: true });
@@ -170,6 +170,17 @@ try {
         }, 'https://provider.example', {}, { followRedirects: true }), /provider_redirect_unsafe/);
         assert.equal(calls, 1);
     });
+    await test('URL caller signal cannot disable the fixed host deadline',async()=>{
+        const descriptor=Object.getOwnPropertyDescriptor(AbortSignal,'timeout'),native=AbortSignal.timeout.bind(AbortSignal),hold=setTimeout(()=>{},100);
+        Object.defineProperty(AbortSignal,'timeout',{configurable:true,writable:true,value:milliseconds=>{assert.equal(milliseconds,10000);return native(5);}});
+        try{await assert.rejects(guardedExternalFetch(async(_url,init)=>abortWait(init.signal),'https://provider.example/slow',{signal:new AbortController().signal}),error=>error.name==='TimeoutError');}
+        finally{clearTimeout(hold);Object.defineProperty(AbortSignal,'timeout',descriptor);}
+    });
+    await test('cross-authority redirects cannot forward credential headers or bodies',async()=>{
+        for(const init of [{headers:{authorization:'Bearer synthetic-only'}},{headers:{'x-private-token':'synthetic-only'}},{method:'POST',headers:{'content-type':'application/json'},body:'{"secret":"synthetic-only"}'}]){let calls=0;await assert.rejects(guardedExternalFetch(async()=>{calls++;return new Response('redirect',{status:302,headers:{location:'https://other.example/next'}});},'https://provider.example/start',init,{followRedirects:true}),/provider_redirect_cross_origin_credentials/);assert.equal(calls,1);}
+        let calls=0;const response=await guardedExternalFetch(async()=>++calls===1?new Response(null,{status:302,headers:{location:'https://other.example/next'}}):new Response('safe anonymous redirect'),'https://provider.example/start',{headers:{accept:'application/json'}},{followRedirects:true});assert.equal(await response.text(),'safe anonymous redirect');assert.equal(calls,2);
+    });
+    await test('redirect limits refuse rather than returning an unconfirmed redirect as success',async()=>{let calls=0;await assert.rejects(guardedExternalFetch(async()=>{calls++;return new Response(null,{status:302,headers:{location:'/again'}});},'https://provider.example/start',{}, {followRedirects:true,maxRedirects:1}),/provider_redirect_limit/);assert.equal(calls,2);});
     assert.equal(globalCalls, 0, 'all outbound calls use the per-call injected transport');
 } finally { globalThis.fetch = originalGlobalFetch; }
 console.log(`external Request: ${passed} passed, ${failed} failed; raw global calls ${globalCalls}`);

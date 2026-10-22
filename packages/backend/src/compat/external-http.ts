@@ -129,23 +129,25 @@ export async function guardedExternalFetch(
         return response;
     }
     let url = checkedExternalUrl(String(input));
-    const maxHops = opts.followRedirects ? Math.max(1, opts.maxRedirects ?? 5) : 0;
+    const requestedHops=opts.maxRedirects??5;
+    const maxHops = opts.followRedirects ? Math.max(0,Math.min(5,Number.isFinite(requestedHops)?Math.trunc(requestedHops):5)) : 0;
+    if(opts.followRedirects&&init.body instanceof ReadableStream)throw Error('provider_request_redirect_replay_unsupported');
 
     for (let hop = 0; ; hop++) {
-        const timeout = AbortSignal.timeout(10_000);
-        const response = await fetchImpl(url, {
+        const cancellation=requestDeadlineSignal(init.signal??new AbortController().signal);
+        cancellation.signal.throwIfAborted();
+        let response:Response;
+        try{response = await fetchImpl(url, {
             ...init,
             redirect: 'manual',
-            signal: init.signal ?? timeout,
-        });
+            signal: cancellation.signal,
+        });}catch(error){cancellation.dispose();throw error;}
 
         // Not a redirect (or redirects not opted in) — return as-is.
-        if (!(response.status >= 300 && response.status < 400) || hop >= maxHops) {
-            if (!opts.followRedirects && response.status >= 300 && response.status < 400) {
-                throw new Error('provider_redirect_rejected');
-            }
-            return response;
-        }
+        if (!(response.status >= 300 && response.status < 400))return response;
+        await response.body?.cancel();cancellation.dispose();
+        if(!opts.followRedirects)throw Error('provider_redirect_rejected');
+        if(hop>=maxHops)throw Error('provider_redirect_limit');
 
         // Redirect + opted in: resolve the Location (may be relative) and
         // RE-VALIDATE the target through the same SSRF guard before following.
@@ -158,6 +160,12 @@ export async function guardedExternalFetch(
             nextUrl = checkedExternalUrl(new URL(location, url).toString());
         } catch {
             throw new Error('provider_redirect_unsafe');
+        }
+        if(nextUrl.origin!==url.origin){
+            // Never forward arbitrary credential headers or a possibly credential-bearing
+            // body to another authority. Anonymous safe-header GET redirects remain usable.
+            const safe=new Set(['accept','accept-language','content-type','user-agent']);
+            if([...new Headers(init.headers).keys()].some(key=>!safe.has(key.toLowerCase()))||init.body!=null)throw Error('provider_redirect_cross_origin_credentials');
         }
         url = nextUrl;
         // The next loop iteration re-fetches with redirect:'manual' so every hop

@@ -382,7 +382,10 @@ const pgWorkerExternal = {
     },
 };
 await emitEdgeArtifact({ entry: 'src/worker.ts', outfile: 'dist/worker.mjs', external: NODE_BUILTINS, extraPlugins: [pgWorkerExternal] });
-await emitEdgeArtifact({ entry: 'src/vercel.ts', outfile: 'dist/vercel.mjs', extraPlugins: [edgeAlias, postgresUnavailable] });
+const undiciLicense = readFileSync(join(pkgDir('@frontbase/edge-infra'), 'node_modules/undici/LICENSE'), 'utf8');
+await emitEdgeArtifact({ entry: 'src/vercel.ts', outfile: 'dist/vercel.mjs', platform: 'node', external: NODE_BUILTINS,
+    banner: `/*! Bundled Undici license:\n${undiciLicense.replaceAll('*/', '* /')}\n*/\nimport { createRequire as __frontbaseHttpRequire } from 'node:module'; const require = __frontbaseHttpRequire(import.meta.url);`,
+    extraPlugins: [edgeAlias, postgresUnavailable] });
 await emitEdgeArtifact({ entry: 'src/deno.ts', outfile: 'dist/deno.mjs', extraPlugins: [edgeAlias, postgresUnavailable], external: ['node:*'] });
 
 // Minified template literals can retain harmless trailing editor whitespace.
@@ -397,7 +400,7 @@ writeFileSync(vercelSourcePath, normalizedVercelBundle);
 
 // Vercel discovers functions under api/ at the PROJECT ROOT regardless of
 // outputDirectory — stage the byte-identical copy the deploy consumes.
-// src/vercel.ts exports `config = { runtime: 'edge' }` (verify point E3).
+// src/vercel.ts exports a Web handler executed by Vercel Node Functions.
 // Vercel git-integration collects api/ functions from the UPLOADED source —
 // the zero-config function glob runs BEFORE the build command (vercel build
 // emits builds.json listing only @vercel/static-build even though this file
@@ -413,7 +416,7 @@ const apiCmsBundle = readFileSync(join(here, 'dist', 'vercel.mjs'));
 if (process.env.FRONTBASE_SKIP_VERCEL_STAGE !== '1'
     && (!existsSync(apiCmsPath) || !apiCmsBundle.equals(readFileSync(apiCmsPath)))) {
     writeFileSync(apiCmsPath, apiCmsBundle);
-    console.log('→ api/cms.mjs updated (tracked Vercel edge function)');
+    console.log('→ api/cms.mjs updated (tracked Vercel Node function)');
 }
 
 // Deno Deploy deploy root: the bundled entry + a deno.json (deployctl honors
@@ -528,16 +531,15 @@ console.log(`worker.mjs min+gzip: ${(gz / 1024).toFixed(1)} KB  (CF free limit 1
 console.log(`  includes inlined /sw.js: ${(SW_SOURCE.length / 1024).toFixed(1)} KB`);
 console.log(`  includes inlined editing client: ${(CLIENT_SOURCE.length / 1024).toFixed(1)} KB (gzip: ${(clientGz / 1024).toFixed(1)} KB)`);
 
-// A-24 per-host artifacts. The Vercel Edge limit is a HARD ceiling (fail the
-// build); Deno Deploy's limit varies by plan — print-only, no invented gate.
-const VERCEL_EDGE_LIMIT = 4 * 1024 * 1024;
+// Internal compressed-artifact budget; this is not a Vercel Node platform limit.
+const VERCEL_ARTIFACT_BUDGET = 4 * 1024 * 1024;
 const vercelGz = gzipSync(readFileSync(join(here, 'dist', 'vercel.mjs')), { level: 9 }).length;
 const denoGz = gzipSync(readFileSync(join(here, 'dist', 'deno.mjs')), { level: 9 }).length;
-console.log('=== per-host edge artifacts (A-24) ===');
-console.log(`vercel.mjs min+gzip: ${(vercelGz / 1024).toFixed(1)} KB  (Vercel Edge limit 4096 KB — ${vercelGz <= VERCEL_EDGE_LIMIT ? 'PASS ✅' : 'FAIL ❌'})`);
+console.log('=== per-host artifacts (A-24) ===');
+console.log(`vercel.mjs min+gzip: ${(vercelGz / 1024).toFixed(1)} KB  (internal artifact budget 4096 KB — ${vercelGz <= VERCEL_ARTIFACT_BUDGET ? 'PASS ✅' : 'FAIL ❌'})`);
 console.log(`deno.mjs   min+gzip: ${(denoGz / 1024).toFixed(1)} KB  (Deno Deploy limit varies by plan — informational)`);
-if (vercelGz > VERCEL_EDGE_LIMIT) {
-    console.error('✗ dist/vercel.mjs exceeds the Vercel Edge bundle limit — shrink the bundle (see docs/STACK.md A-24) before deploying.');
+if (vercelGz > VERCEL_ARTIFACT_BUDGET) {
+    console.error('✗ dist/vercel.mjs exceeds the internal compressed artifact budget.');
     process.exit(1);
 }
 

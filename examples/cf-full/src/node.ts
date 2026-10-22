@@ -21,6 +21,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { s3StorageProvider, bullmqDriver } from '@frontbase/edge-infra';
+import { createNodeHttpTransport } from '@frontbase/edge-infra/node-http';
 import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
 import { createDiskAssets } from './assets-disk.js';
 import { resolveStateDb } from './state-db.js';
@@ -91,7 +92,11 @@ const envServices = parseEnvServices(env);
 // migrateUp self-applies the schema at boot (worker.ts createCmsEngine); first
 // boot on a cold volume also seeds the homepage and, when ADMIN_* are set, the
 // first administrator (idempotent — a re-run with existing users never reseeds).
+const externalFetch = createNodeHttpTransport();
 const engine = await createCmsEngine({
+    externalFetch,
+    resend:env.RESEND_API_KEY?{apiKey:env.RESEND_API_KEY,from:env.RESEND_FROM}:undefined,
+    publicOrigin:env.FRONTBASE_PUBLIC_ORIGIN,
     runner: stateDb.runner,
     translationExecutionEnabled: readTranslationExecutionEnabled(env.FRONTBASE_TRANSLATION_EXECUTION_ENABLED),
     sessionSecret: SESSION_SECRET,
@@ -164,7 +169,7 @@ if (envServices.queue?.provider === 'bullmq' && envServices.queue.url) {
 const shutdown = (sig: string) => {
     console.log(`[frontbase] ${sig} — shutting down`);
     if (queueWorker) void queueWorker.close().catch(() => {});
-    server.close(() => process.exit(0));
+    server.close(() => { void externalFetch.close().finally(() => process.exit(0)); });
     setTimeout(() => process.exit(0), 5_000).unref();
 };
 process.on('SIGTERM', () => shutdown('SIGTERM'));

@@ -103,6 +103,8 @@ export interface CmsEnv {
     STRIPE_PRO_PRICE_ID?: string;
     /** Optional: enables email delivery of password-reset links (Resend). */
     RESEND_API_KEY?: string;
+    RESEND_FROM?: string;
+    FRONTBASE_PUBLIC_ORIGIN?: string;
 }
 
 /** Only an explicit operator value enables reviewed translation dispatch. */
@@ -163,6 +165,8 @@ export interface CmsEngineOptions {
     /** Resend credentials for password-reset email. Absent ⇒ reset delivery
      *  stays host-injected-capable but silent (non-enumerating response). */
     resend?: { apiKey: string; from?: string };
+    /** Explicit self-host origin for reset links; never inferred from an inbound header. */
+    publicOrigin?: string;
 }
 
 /**
@@ -223,6 +227,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // CF-22 Work C: retain health + first-run setup, explicitly retire every
     // other /api/console/* route with 410 Gone.
     const consoleApp = await createConsole({
+        externalFetch: opts.externalFetch,
         makeRunner: () => opts.runner,
         sessionSecret,
         setupToken: opts.setupToken,
@@ -256,7 +261,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         phase2For: enrichPhase2For,
         env: opts.envServices ?? {},
         nativeCache: opts.nativeCache,
-        externalFetch: (input, init) => globalThis.fetch(input, init),
+        externalFetch: opts.externalFetch ?? ((input, init) => globalThis.fetch(input, init)),
         log: (msg) => console.warn(msg),
     });
     const datasourcesFor = async (tenant: string): Promise<EnrichableDatasource[]> => {
@@ -440,11 +445,14 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         ...(cloud ? { cloudMode: true } : {}),
         ...(cloud && opts.cloudAuth ? { cloudAuth: opts.cloudAuth } : {}),
         ...(cloud && opts.billing ? { billing: opts.billing } : {}),
-        ...(cloud && opts.resend
+        ...(opts.resend && (cloud || opts.publicOrigin)
             ? {
                 passwordResetDelivery: createResendPasswordResetDelivery({
                     apiKey: opts.resend.apiKey,
-                    baseUrl: `https://app.${cloud.baseDomain}`,
+                    from: opts.resend.from,
+                    baseUrl: cloud ? `https://app.${cloud.baseDomain}` : opts.publicOrigin!,
+                    adminPath: cloud ? '/admin/reset-password' : '/frontbase-admin/reset-password',
+                    fetchImpl: opts.externalFetch,
                 }),
             }
             : {}),
@@ -976,7 +984,8 @@ export default {
                             baseDomain: env.FRONTBASE_BASE_DOMAIN as string,
                         },
                     } : {}),
-                    ...(env.RESEND_API_KEY ? { resend: { apiKey: env.RESEND_API_KEY } } : {}),
+                    ...(env.RESEND_API_KEY ? { resend: { apiKey: env.RESEND_API_KEY,from:env.RESEND_FROM } } : {}),
+                    publicOrigin:env.FRONTBASE_PUBLIC_ORIGIN,
                     // Host-side env parse (Workers have no process.env). Memoized
                     // on the raw strings — only actual secret changes recompute.
                     envServices,

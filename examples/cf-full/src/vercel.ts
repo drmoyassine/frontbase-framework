@@ -18,9 +18,9 @@
  *   dispatch : waitUntil owns asynchronous work for the request lifetime;
  *              durable retries remain the existing engine/queue responsibility.
  *
- * RUNTIME — Node, not Edge, deliberately. The bundle is runtime-portable (no
- * node: builtins, the web libsql client is fetch-based) and this handler runs
- * unchanged on either; but on Vercel's Edge isolate the ~2 MB bundle silently
+ * RUNTIME — Node, not Edge, deliberately. Node-only DNS-pinned HTTP egress
+ * rejects private resolved destinations. The web libsql client remains HTTP-based.
+ * On Vercel's Edge isolate the previous ~2 MB bundle silently
  * held every request until the platform's 300s kill, while the identical
  * bundle answers in milliseconds under plain Node — proven by the api/health
  * bisect (tiny edge function 200, cms edge function hung). No default config
@@ -38,6 +38,7 @@
  */
 import type { Hono } from 'hono';
 import { waitUntil } from '@vercel/functions';
+import { createNodeHttpTransport } from '@frontbase/edge-infra/node-http';
 import { vercelDispatcher } from './vercel-lifecycle.js';
 
 import { deploymentStorageOptions, parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
@@ -46,6 +47,7 @@ import { createCmsEngine, readTranslationExecutionEnabled } from './worker.js';
 import { bootTimeoutMs, raceBootTimeout, BootTimeoutError } from './boot-guard.js';
 
 let enginePromise: Promise<Hono> | null = null;
+const externalFetch = createNodeHttpTransport();
 
 function engine(): Promise<Hono> {
     if (!enginePromise) {
@@ -58,6 +60,9 @@ function engine(): Promise<Hono> {
             console.log(`[frontbase] state db: ${stateDb.kind} (${stateDb.displayUrl})`);
             const envServices = parseEnvServices(env);
             return createCmsEngine({
+                externalFetch,
+                resend:env.RESEND_API_KEY?{apiKey:env.RESEND_API_KEY,from:env.RESEND_FROM}:undefined,
+                publicOrigin:env.FRONTBASE_PUBLIC_ORIGIN,
                 runner: stateDb.runner,
                 translationExecutionEnabled: readTranslationExecutionEnabled(env.FRONTBASE_TRANSLATION_EXECUTION_ENABLED),
                 deploymentManifest: env.FRONTBASE_DEPLOYMENT_MANIFEST,
