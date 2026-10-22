@@ -35,26 +35,6 @@ function isRecord(v: unknown): v is Record<string, unknown> {
     return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-/**
- * Decode the `FBENG1.<base64>` envelope the export route mints (and the product
- * console pastes). Returns the parsed manifest, or the failure kind so the
- * route can answer with the product's 400 messages.
- */
-function unsealBundle(bundle: unknown): Record<string, unknown> | 'corrupt' | 'version' {
-    if (typeof bundle !== 'string' || !bundle.startsWith('FBENG1.')) return 'corrupt';
-    let json: unknown;
-    try {
-        const binary = atob(bundle.slice('FBENG1.'.length));
-        json = JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, (ch) => ch.charCodeAt(0))));
-    } catch {
-        return 'corrupt';
-    }
-    if (!isRecord(json)) return 'corrupt';
-    const header = isRecord(json.h) ? json.h : undefined;
-    if (header?.v !== 1) return header === undefined ? 'corrupt' : 'version';
-    return json;
-}
-
 export function registerEdgeEnginesRoutes(
     app: App,
     p2: (t: string) => Phase2Store,
@@ -240,72 +220,18 @@ export function registerEdgeEnginesRoutes(
         });
     });
 
-    // POST /api/edge-engines/deploy
-    app.post('/api/edge-engines/deploy', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as {
-            name?: string; provider?: string; provider_id?: string;
-        };
-        const store = p2(c.get('tenant'));
-        const provider = await store.getEdgeResource(b.provider_id ?? '');
-        if (!provider || provider.kind !== 'provider') {
-            return c.json({ detail: 'Provider account not found' }, 400);
-        }
-        const capDenied = await engineCapError(c);
-        if (capDenied) return c.json(capDenied, 402);
-        const id = crypto.randomUUID();
-        // Inject system_key into config for deployed engine
-        const config = { system_key: generateSystemKey() };
-        await store.upsertEdgeResource({
-            id,
-            kind: 'engine',
-            name: b.name ?? 'Deployed Engine',
-            // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
-            config: JSON.stringify(config),
-        }, now());
-        const engine = await store.getEdgeResource(id);
-        return c.json({
-            success: true,
-            engine: engine ? await serializeStoredEngine(store, engine) : null,
-            message: 'Deployed successfully',
-        });
-    });
+    // POST /api/edge-engines/deploy — managed CLI/bootstrap deployment is separate.
+    // Metadata registration is not remote provisioning: refuse before any write.
+    app.post('/api/edge-engines/deploy', async c => {c.header('X-Frontbase-External-Disabled','remote-deployment');return c.json({
+        detail: 'Remote engine deployment is unavailable in this console. Use the reviewed deployment setup for Cloudflare or Vercel.',
+        code: 'remote_deployment_unsupported',
+    }, 501);});
 
-    // POST /api/edge-engines/import — the mirror of the export route above: the
-    // FBENG1.<base64> envelope the product console pastes in. Envelope errors use
-    // the product's 400 messages; ImportRequest is {bundle: string, passphrase:
-    // string} (the contract validator rejects other shapes with 422s first).
-    app.post('/api/edge-engines/import', async (c) => {
-        const b = await c.req.json().catch(() => ({})) as { bundle?: unknown };
-        const manifest = unsealBundle(b.bundle);
-        if (manifest === 'corrupt') {
-            return c.json({ detail: 'Bundle is corrupt or has been tampered with' }, 400);
-        }
-        if (manifest === 'version') {
-            return c.json({ detail: 'Bundle format version is not supported' }, 400);
-        }
-        const denied = await importTierError(c.get('tenant'));
-        if (denied) return c.json(denied, 403);
-        const store = p2(c.get('tenant'));
-        const id = crypto.randomUUID();
-        // Fresh local identity — the product re-encrypts secrets with the local
-        // key on import, so the bundle's old system_key never carries over.
-        const config: Record<string, unknown> = {
-            ...(isRecord(manifest.config) ? manifest.config : {}),
-            system_key: generateSystemKey(),
-        };
-        await store.upsertEdgeResource({
-            id,
-            kind: 'engine',
-            name: typeof manifest.name === 'string' && manifest.name ? manifest.name : 'Imported Engine',
-            // provider: undefined - Product returns provider: null in response (handled by serializeEngine)
-            config: JSON.stringify(config),
-        }, now());
-        // ImportEngineResult: the confirm secret (S) is what the console shows
-        // for the finalize-move handshake — token_urlsafe(18) parity.
-        const confirmSecret = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(18))))
-            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        return c.json({ engine_id: id, summary: 'Engine imported', confirm_secret: confirmSecret });
-    });
+    // POST /api/edge-engines/import — legacy base64 is not an encrypted transfer.
+    app.post('/api/edge-engines/import', async c => {c.header('X-Frontbase-External-Disabled','engine-transfer');return c.json({
+        detail: 'Encrypted engine transfer is unavailable. Legacy FBENG1 bundles are not accepted.',
+        code: 'engine_transfer_unsupported',
+    }, 501);});
 
     // POST /api/edge-engines/batch/delete
     app.post('/api/edge-engines/batch/delete', async (c) => c.json(
@@ -559,49 +485,15 @@ export function registerEdgeEnginesRoutes(
         return c.json({ success: true, message: 'Source updated' });
     });
 
-    // POST /api/edge-engines/{engine_id}/export
-    app.post('/api/edge-engines/:engine_id/export', async (c) => {
-        const engineId = c.req.param('engine_id');
-        const engine = await p2(c.get('tenant')).getEdgeResource(engineId);
-        if (!engine) return c.json(namedEngineMissing(engineId), 404);
-        if (Boolean(engine.is_system)) {
-            return c.json({ detail: 'System engines cannot be moved' }, 400);
-        }
-        if (Boolean(engine.is_shared)) {
-            return c.json({ detail: 'Shared/community engines cannot be moved' }, 400);
-        }
-        const source = await engineState(c.get('tenant'), engineId, 'source', { files: [] });
-        const config = await p2(c.get('tenant')).getEdgeResourceConfig(engineId) ?? {};
-        // Build a portable manifest matching the product's bundle format
-        const manifest = {
-            h: { v: 1, mode: 'sealed', salt: '8H1rjv2iOeCuJ2MhFPkz7A==', wrapped_key: 'gAAAABqcUVMg182l50tssbORKqUKBXJjh...' },
-            engineId: String(engine.id),
-            name: String(engine.name),
-            source: { files: source.files ?? [] },
-            config,
-            metadata: {
-                created_at: String(engine.created_at ?? ''),
-                exported_at: now(),
-            },
-        };
-        // Encode as FBENG1.<base64> format (product-compatible bundle)
-        // Use TextEncoder + Uint8Array + btoa for Web-compatible base64 encoding
-        const textBytes = new TextEncoder().encode(JSON.stringify(manifest));
-        const binaryString = String.fromCharCode(...textBytes);
-        const bundle = `FBENG1.${btoa(binaryString)}`;
-        // Update engine state to reflect moved_out status
-        await p2(c.get('tenant')).upsertEdgeResource({
-            id: engineId,
-            kind: 'engine',
-            name: String(engine.name),
-            config: engine.config as string | undefined,
-            status: 'moved_out',
-        }, now());
+    // POST /api/edge-engines/{engine_id}/export — no secret decryption or move transition.
+    app.post('/api/edge-engines/:engine_id/export', async c => {
+        c.header('X-Frontbase-External-Disabled','engine-transfer');
+        const engine = await p2(c.get('tenant')).getEdgeResource(c.req.param('engine_id'));
+        if (!engine || engine.kind !== 'engine') return c.json({detail:'Engine not found'},404);
         return c.json({
-            bundle,
-            engine_id: String(engine.id),
-            move_status: 'moved_out',
-        });
+            detail: 'Encrypted engine transfer is unavailable. No bundle was created and the engine was not moved.',
+            code: 'engine_transfer_unsupported',
+        },501);
     });
 
     // POST /api/edge-engines/{engine_id}/finalize-move
