@@ -6,7 +6,7 @@ import {inspectTable,buildWhere,parseFilterList} from './routes/sync.js';
 /** Fulfill the existing validated list RPC contract on SQL adapters without RPCs. */
 export async function executeSingleTableRpc(db:DbRunner,dialect:'postgres'|'sqlite',input:RpcQueryPayload,savedFilters?:unknown) {
     if(input.joins.length)throw Error('single_table_only');
-    const schema=await inspectTable(db,dialect,input.table_name),names=schema.columns.map(column=>column.name);
+    const schema=await inspectTable(db,dialect,input.table_name,{foreignKeys:false}),names=schema.columns.map(column=>column.name);
     const quote=(value:string)=>`"${value.replace(/"/g,'""')}"`;
     const field=(value:string)=>{if(!names.includes(value))throw Error('invalid_column');return quote(value);};
     const columns=input.columns.split(',').map(raw=>{
@@ -18,7 +18,7 @@ export async function executeSingleTableRpc(db:DbRunner,dialect:'postgres'|'sqli
     }).join(',');
     const where=buildWhere(dialect,schema.columns,parseFilterList(input.filters),input.search_query,input.search_cols);
     if(savedFilters){
-        const saved=savedWhere(dialect,schema.columns,savedFilters);
+        const saved=savedWhere(dialect,schema.columns,savedFilters,schema.table);
         const offset=where.params.length;
         if(saved.sql)where.sql+= (where.sql?' AND ':' WHERE ')+saved.sql.replace(/^ WHERE /,'').replace(/\$(\d+)/g,(_,n)=>'$'+(Number(n)+offset));
         where.params.push(...saved.params);

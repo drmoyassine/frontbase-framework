@@ -64,11 +64,12 @@ export async function inspectTable(
     runner: DbRunner,
     dialect: 'sqlite' | 'postgres',
     rawTable: string,
+    options: {foreignKeys?: boolean} = {},
 ): Promise<{ table: string; columns: ColumnInfo[]; foreignKeys: Record<string, unknown>[] }> {
     const table = validateIdentifier(rawTable, await listTables(runner, dialect));
     if (dialect === 'sqlite') {
         const columnRows = await runner.query(`PRAGMA table_info("${table}")`);
-        const fkRows = await runner.query(`PRAGMA foreign_key_list("${table}")`);
+        const fkRows = options.foreignKeys === false ? [] : await runner.query(`PRAGMA foreign_key_list("${table}")`);
         return {
             table,
             columns: columnRows.map((row) => ({
@@ -89,21 +90,19 @@ export async function inspectTable(
         `SELECT c.column_name, c.data_type, c.is_nullable, c.column_default,
                 EXISTS (
                     SELECT 1
-                    FROM information_schema.table_constraints tc
-                    JOIN information_schema.key_column_usage kcu
-                      ON tc.constraint_name = kcu.constraint_name
-                     AND tc.table_schema = kcu.table_schema
-                    WHERE tc.constraint_type = 'PRIMARY KEY'
-                      AND tc.table_schema = 'public'
-                      AND tc.table_name = c.table_name
-                      AND kcu.column_name = c.column_name
+                    FROM pg_catalog.pg_index i
+                    JOIN pg_catalog.pg_class t ON t.oid = i.indrelid
+                    JOIN pg_catalog.pg_namespace n ON n.oid = t.relnamespace
+                    JOIN pg_catalog.pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(i.indkey)
+                    WHERE i.indisprimary AND n.nspname = c.table_schema
+                      AND t.relname = c.table_name AND a.attname = c.column_name
                 ) AS primary_key
          FROM information_schema.columns c
          WHERE c.table_schema='public' AND c.table_name=$1
          ORDER BY c.ordinal_position`,
         [table],
     );
-    const fkRows = await runner.query(
+    const fkRows = options.foreignKeys === false ? [] : await runner.query(
         `SELECT kcu.column_name AS column_name,
                 ccu.table_name AS referenced_table,
                 ccu.column_name AS referenced_column
