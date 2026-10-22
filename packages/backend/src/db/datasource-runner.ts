@@ -50,7 +50,7 @@ export function datasourceRunner(kind: string, config: Record<string, unknown>, 
             // F7c: Neon HTTP client. Neon pooler URLs only — Supabase DSNs are
             // rejected by postgresRunner (wire protocol, unreachable over HTTPS;
             // Supabase flows go through the Management API / PostgREST instead).
-            return postgresRunner({ connectionString: String(resolved.connectionString ?? resolved.url ?? '') });
+            return postgresRunner({ connectionString: String(resolved.connectionString ?? resolved.url ?? ''),fetchImpl:(input,init)=>transport(new Request(input,init)) });
         default:
             throw new Error('unknown_datasource_kind');
     }

@@ -5,10 +5,9 @@
  * builds without it and the SDK only loads when a postgres datasource is actually
  * used (matches the optional-dep pattern).
  *
- * The neon HTTP client: `neon(connectionString)` → `sql(text, params)` → row[].
- * `exec` returns affected-row count best-effort (the HTTP flavor returns the row
- * array, so count = array length for SELECT; for DML it may be 0 — acceptable for
- * the console's introspection/query use case).
+ * The pinned upstream serializer/parser has an internal client-scoped Fetch
+ * extension. Never swaps neonConfig globals. Conventional calls use .query();
+ * affected rows come only from validated full-result metadata.
  *
  * Supabase DSNs are REJECTED up front: their pooler (aws-*.pooler.supabase.com)
  * and direct (db.<ref>.supabase.co) endpoints are raw Postgres wire protocol on
@@ -25,6 +24,8 @@ import type { DbRunner } from './types.js';
 export interface PostgresOpts {
     /** Postgres connection string (Neon pooler URL, etc. — not Supabase). */
     connectionString: string;
+    fetchImpl?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+    signal?: AbortSignal;
 }
 
 /** Supabase Postgres endpoints — wire protocol only, unreachable over HTTP(S). */
@@ -52,25 +53,35 @@ function assertNotSupabaseDsn(connectionString: string): void {
 /** Build a Postgres DbRunner over the neon HTTP client. */
 export function postgresRunner(opts: PostgresOpts): DbRunner {
     assertNotSupabaseDsn(opts.connectionString);
-    let sqlPromise: Promise<(text: string, params?: unknown[]) => Promise<Record<string, unknown>[]>> | null = null;
+    let sqlPromise: Promise<import('./vendor/neon-client.mjs').NeonClient> | null = null;
     const getSql = async () => {
         if (!sqlPromise) {
-            sqlPromise = import('@neondatabase/serverless').then((m) => {
-                const neon = (m as unknown as { neon: (s: string) => (text: string, params?: unknown[]) => Promise<Record<string, unknown>[]> }).neon;
-                return neon(opts.connectionString);
-            });
+            sqlPromise = import('./vendor/neon-client.mjs').then(({neon}) => neon(opts.connectionString,{fullResults:true,arrayMode:false,fetchImpl:opts.fetchImpl,fetchOptions:opts.signal?{signal:opts.signal}:undefined}));
         }
         return sqlPromise;
     };
+    const execute=async(text:string,params:unknown[])=>{
+        try{return await(await getSql()).query(text,params);}catch(error){
+            // SDK messages can echo a malformed DSN, SQL or provider response. Callers such as
+            // Data Studio display .message, so preserve only fixed guard codes, never raw causes.
+            const safe=new Set(['unsafe_provider_url','invalid_provider_url','provider_redirect_rejected','provider_request_redirect_replay_unsupported']);
+            let cursor:unknown=error,code='postgres_http_failed';
+            for(let depth=0;cursor instanceof Error&&depth<8;depth++,cursor=cursor.cause){const guard=[...safe].find(value=>cursor instanceof Error&&(cursor.message===value||cursor.message.endsWith(': '+value)));if(guard){code=guard;break;}}
+            throw new Error(code);
+        }
+    };
     return {
+        dialect:'postgres',
         async query(text, params = []) {
-            const sql = await getSql();
-            return sql(text, params as unknown[]);
+            const result=await execute(text,params);
+            if(!Array.isArray(result.rows)||result.rows.some(row=>!row||typeof row!=='object'||Array.isArray(row)))throw Error('postgres_result_invalid');
+            return result.rows;
         },
         async exec(text, params = []) {
-            const sql = await getSql();
-            const rows = await sql(text, params as unknown[]);
-            return Array.isArray(rows) ? rows.length : 0;
+            const result=await execute(text,params),count=result.rowCount;
+            if(count===null&&/^(?:CREATE|ALTER|DROP|TRUNCATE|BEGIN|COMMIT|ROLLBACK|SET|GRANT|REVOKE|COMMENT)$/.test(result.command))return 0;
+            if(typeof count!=='number'||!Number.isSafeInteger(count)||count<0)throw Error('postgres_affected_rows_invalid');
+            return count;
         },
     };
 }

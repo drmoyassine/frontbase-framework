@@ -72,6 +72,16 @@ const missingTenant:Insert={slug:'/',title:'Synthetic',layoutData:'{}',updatedAt
     }
     writeFileSync(join(consumer,'imports.mjs'),`for(const name of ${JSON.stringify(entries)}) { const module=await import(name); if(!Object.keys(module).length)throw new Error('Empty export '+name); console.log('imported '+name); }`);
     run(['exec','node','imports.mjs'],consumer);
+    writeFileSync(join(consumer,'neon-http.mjs'),`import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';import {createHash} from 'node:crypto';
+import {postgresRunner} from '@frontbase/edge-infra';
+const base=new URL('./node_modules/@frontbase/edge-infra/dist/providers/vendor/',import.meta.url);
+assert.equal(createHash('sha256').update(readFileSync(new URL('neon-client.mjs',base))).digest('hex'),'69fb2f7053d74e939e99e158b1e3893eea1ab3ddb1e207834a1f9b8ca8cc9605');
+assert.match(readFileSync(new URL('NEON-LICENSE',base),'utf8'),/MIT/);assert.match(readFileSync(new URL('NEON-NOTICE.txt',base),'utf8'),/client-scoped/);
+let calls=0;globalThis.fetch=async()=>{throw Error('RAW_FETCH_FORBIDDEN')};
+const runner=postgresRunner({connectionString:'postgresql://fixture:invented@ep-fixture.us-east-2.aws.neon.tech/db',fetchImpl:async(input,init)=>{const request=new Request(input,init);assert.equal(request.method,'POST');calls++;return Response.json({command:'UPDATE',rowCount:7,rows:[],fields:[]});}});
+assert.equal(await runner.exec('UPDATE fixture SET n=$1',[1]),7);assert.equal(calls,1);console.log('installed archive Neon protocol, affected rows, transport and license/provenance pass');`);
+    run(['exec','node','neon-http.mjs'],consumer);
     const starter=join(output,'starter');
     run(['exec','frontbase','init',starter,'--pure','--json'],consumer);
     const pkg=JSON.parse(readFileSync(join(starter,'package.json'),'utf8'));
