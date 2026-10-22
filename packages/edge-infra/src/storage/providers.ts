@@ -500,11 +500,14 @@ export interface SupabaseStorageOpts {
     apiUrl: string;
     /** Service-role key (anon works only for public buckets). */
     serviceRoleKey: string;
+    /** Host-owned HTTP seam. Credentials remain server-side; never replaces global Fetch. */
+    fetchImpl?: typeof globalThis.fetch;
 }
 
 /** Build a Supabase StorageProvider over the Storage REST API (fetch + Bearer). */
 export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvider {
     const origin = opts.apiUrl.replace(/\/+$/, '');
+    const doFetch = opts.fetchImpl ?? globalThis.fetch;
     const base = `${origin}/storage/v1`;
     const headers = { authorization: `Bearer ${opts.serviceRoleKey}`, apikey: opts.serviceRoleKey };
     // Per-segment encoding, slashes preserved (the product's quote(path, safe="/")).
@@ -515,7 +518,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
 
     return {
         async put({ bucket, key, bytes, contentType }: PutOpts): Promise<{ key: string }> {
-            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(key)}`, {
+            const resp = await doFetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(key)}`, {
                 method: 'POST',
                 headers: { ...headers, 'content-type': contentType ?? 'application/octet-stream' },
                 body: bytes as BufferSource,
@@ -525,13 +528,13 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
         },
 
         async get(bucket: string, key: string) {
-            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(key)}`, { headers });
+            const resp = await doFetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(key)}`, { headers });
             await assertOk(resp, 'get');
             return { bytes: new Uint8Array(await resp.arrayBuffer()), contentType: resp.headers.get('content-type') ?? undefined };
         },
 
         async delete(bucket: string, key: string) {
-            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}`, {
+            const resp = await doFetch(`${base}/object/${encodeURIComponent(bucket)}`, {
                 method: 'DELETE',
                 headers: { ...headers, 'content-type': 'application/json' },
                 body: JSON.stringify({ prefixes: [key.replace(/^\/+/, '')] }),
@@ -542,7 +545,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
         async deleteFiles(bucket: string, paths: string[]) {
             // One batched request (supabase_adapter.py delete_files) — the whole
             // paths array travels in a single prefixes body.
-            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}`, {
+            const resp = await doFetch(`${base}/object/${encodeURIComponent(bucket)}`, {
                 method: 'DELETE',
                 headers: { ...headers, 'content-type': 'application/json' },
                 body: JSON.stringify({ prefixes: paths.map((p) => p.replace(/^\/+/, '')) }),
@@ -553,7 +556,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
         async move(bucket: string, sourceKey: string, destinationKey: string) {
             // Native server-side move (supabase_adapter.py move_file) — atomic,
             // no bytes transit the worker.
-            const resp = await fetch(`${base}/object/move`, {
+            const resp = await doFetch(`${base}/object/move`, {
                 method: 'POST',
                 headers: { ...headers, 'content-type': 'application/json' },
                 body: JSON.stringify({ bucketId: bucket, sourceKey, destinationKey }),
@@ -566,7 +569,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
         },
 
         async signedUrl(bucket: string, key: string, expiresInSeconds = 900): Promise<string> {
-            const resp = await fetch(`${base}/object/sign/${encodeURIComponent(bucket)}/${safePath(key)}`, {
+            const resp = await doFetch(`${base}/object/sign/${encodeURIComponent(bucket)}/${safePath(key)}`, {
                 method: 'POST',
                 headers: { ...headers, 'content-type': 'application/json' },
                 body: JSON.stringify({ expiresIn: expiresInSeconds }),
@@ -583,7 +586,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
         },
 
         async signedUploadUrl(bucket: string, key: string, _contentType?: string, expiresInSeconds = 900): Promise<string> {
-            const resp = await fetch(`${base}/upload/sign/${encodeURIComponent(bucket)}/${safePath(key)}`, {
+            const resp = await doFetch(`${base}/upload/sign/${encodeURIComponent(bucket)}/${safePath(key)}`, {
                 method: 'POST',
                 headers: { ...headers, 'content-type': 'application/json' },
                 body: JSON.stringify({ expiresIn: expiresInSeconds }),
@@ -597,7 +600,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
         // ---- management (product supabase_adapter.py shapes) ----
 
         async listBuckets(): Promise<BucketEntry[]> {
-            const resp = await fetch(`${base}/bucket`, { headers });
+            const resp = await doFetch(`${base}/bucket`, { headers });
             await assertOk(resp, 'list_buckets');
             const list = (await resp.json()) as Array<Record<string, unknown>>;
             return list.map((b) => ({
@@ -614,7 +617,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
             const payload: Record<string, unknown> = { id: opts.name, name: opts.name, public: opts.isPublic ?? false };
             if (opts.fileSizeLimit) payload.file_size_limit = opts.fileSizeLimit;
             if (opts.allowedMimeTypes) payload.allowed_mime_types = opts.allowedMimeTypes;
-            const resp = await fetch(`${base}/bucket`, {
+            const resp = await doFetch(`${base}/bucket`, {
                 method: 'POST',
                 headers: { ...headers, 'content-type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -625,7 +628,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
         },
 
         async getBucket(id: string): Promise<BucketEntry> {
-            const resp = await fetch(`${base}/bucket/${encodeURIComponent(id)}`, { headers });
+            const resp = await doFetch(`${base}/bucket/${encodeURIComponent(id)}`, { headers });
             await assertOk(resp, 'get_bucket');
             const b = (await resp.json()) as Record<string, unknown>;
             return { id: String(b.id ?? id), name: String(b.name ?? id), public: Boolean(b.public), ...b };
@@ -635,7 +638,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
             const payload: Record<string, unknown> = { public: opts.isPublic ?? false };
             if (opts.fileSizeLimit !== undefined) payload.file_size_limit = opts.fileSizeLimit;
             if (opts.allowedMimeTypes !== undefined) payload.allowed_mime_types = opts.allowedMimeTypes;
-            const resp = await fetch(`${base}/bucket/${encodeURIComponent(id)}`, {
+            const resp = await doFetch(`${base}/bucket/${encodeURIComponent(id)}`, {
                 method: 'PUT',
                 headers: { ...headers, 'content-type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -644,11 +647,11 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
         },
 
         async deleteBucket(id: string): Promise<void> {
-            await assertOk(await fetch(`${base}/bucket/${encodeURIComponent(id)}`, { method: 'DELETE', headers }), 'delete_bucket');
+            await assertOk(await doFetch(`${base}/bucket/${encodeURIComponent(id)}`, { method: 'DELETE', headers }), 'delete_bucket');
         },
 
         async emptyBucket(id: string): Promise<void> {
-            const resp = await fetch(`${base}/bucket/${encodeURIComponent(id)}/empty`, { method: 'POST', headers });
+            const resp = await doFetch(`${base}/bucket/${encodeURIComponent(id)}/empty`, { method: 'POST', headers });
             await assertOk(resp, 'empty_bucket');
         },
 
@@ -660,7 +663,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
                 sortBy: { column: 'name', order: 'asc' },
             };
             if (opts?.search) payload.search = opts.search;
-            const resp = await fetch(`${base}/object/list/${encodeURIComponent(bucket)}`, {
+            const resp = await doFetch(`${base}/object/list/${encodeURIComponent(bucket)}`, {
                 method: 'POST',
                 headers: { ...headers, 'content-type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -694,7 +697,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
 
         async createFolder(bucket: string, folderPath: string): Promise<void> {
             const target = `${folderPath.replace(/\/+$/, '')}/.folder`;
-            const resp = await fetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(target)}`, {
+            const resp = await doFetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(target)}`, {
                 method: 'POST',
                 headers: { ...headers, 'content-type': 'application/x-directory' },
                 body: '',

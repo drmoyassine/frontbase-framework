@@ -14,6 +14,12 @@
     "dist"
   ],
   "scripts": {
+    "test:frontend-edit": "node test/frontend-edit.mjs && node test/frontend-edit-locales.mjs",
+    "test:frontend-edit-mutation": "node test/frontend-edit-mutation.mjs",
+    "test:neon-http": "node test/neon-http-runner.mjs",
+    "test:http-provider-repairs": "node test/neon-http-runner.mjs && node test/storage-http-transport.mjs && node test/engine-transfer-refusal.mjs",
+    "test:http-provider-repairs-mutation": "node test/http-provider-repair-mutation.mjs",
+    "test:engine-transfer-refusal": "node test/engine-transfer-refusal.mjs",
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
     "test:publication-chunks": "node test/site-publication-chunks.mjs",

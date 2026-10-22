@@ -35,6 +35,7 @@ export type ResolvedStorage = { client: StorageProvider } | { status: 400 | 404 
  *  in the store — keeps the store-simulated surface, exactly as the product's
  *  local/filesystem adapter is served there. */
 const REAL_ADAPTER_TYPES = new Set(['cloudflare', 's3', 'r2', 'b2', 'supabase']);
+export const storageHttpTransport=(fetchImpl:CompatFetch):CompatFetch=>(input,init)=>guardedExternalFetch(fetchImpl,input,init);
 
 export function createStorageClientResolver(opts: {
     phase2For: (t: string) => Phase2Store;
@@ -45,7 +46,7 @@ export function createStorageClientResolver(opts: {
 }) {
     const { phase2For, kvFor, storageProvider, storageProviderFor } = opts;
     const boundProviderId=storageProviderFor?.deploymentBinding?.id??NATIVE_R2_PROVIDER_ID;
-    const transport: CompatFetch = (input, init) => guardedExternalFetch(opts.externalFetch ?? globalThis.fetch, input instanceof Request ? input.url : input, init);
+    const transport=storageHttpTransport(opts.externalFetch??globalThis.fetch);
     const sha256Hex = async (value: string): Promise<string> => {
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
         return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -67,12 +68,13 @@ export function createStorageClientResolver(opts: {
             const accountId = String(accountConfig.account_id ?? accountConfig.accountId ?? '');
             if (!apiToken) return { status: 400, message: 'Cloudflare account missing api_token' };
             if (!accountId) return { status: 400, message: 'Could not resolve Cloudflare account ID for R2' };
+            if(!/^[a-f0-9]{32}$/i.test(accountId))return {status:400,message:'Invalid Cloudflare account ID'};
             // S3 credentials derived from the Bearer token (product parity,
             // cloudflare_adapter.py): access key = token id, secret = SHA-256(token).
             // Never log the token or its derived secret.
             let tokenId = '';
             try {
-                const resp = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
+                const resp = await transport('https://api.cloudflare.com/client/v4/user/tokens/verify', {
                     headers: { authorization: `Bearer ${apiToken}` },
                 });
                 if (resp.ok) {
@@ -82,6 +84,7 @@ export function createStorageClientResolver(opts: {
             if (!tokenId) return { status: 400, message: 'Could not derive R2 credentials for this token' };
             return {
                 client: sigv4StorageProvider({
+                    fetch:transport,
                     accessKeyId: tokenId,
                     secretAccessKey: await sha256Hex(apiToken),
                     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
@@ -129,7 +132,8 @@ export function createStorageClientResolver(opts: {
             const apiUrl = String(accountConfig.api_url ?? accountConfig.url ?? '');
             const serviceRoleKey = String(accountConfig.service_role_key ?? accountConfig.serviceKey ?? accountConfig.anon_key ?? '');
             if (!apiUrl || !serviceRoleKey) return { status: 400, message: 'Supabase account missing api_url or keys' };
-            return { client: supabaseStorageProvider({ apiUrl, serviceRoleKey }) };
+            try{const url=checkedExternalUrl(apiUrl);if(url.search||url.hash)throw Error();}catch{return {status:400,message:'Invalid Supabase Storage URL'};}
+            return { client: supabaseStorageProvider({ apiUrl, serviceRoleKey,fetchImpl:transport }) };
         }
 
         // Types the product adapters cover but the framework does not port yet
