@@ -220,6 +220,18 @@ export class Phase2Store {
         }
     }
 
+    /** Equivalent Supabase key discovery must not overwrite concurrent account edits. */
+    async refreshSupabaseAccountConfig(id:string,before:Record<string,unknown>,after:Record<string,unknown>,now:string):Promise<void>{
+        const row=await this.getEdgeResource(id);
+        if(!row||row.kind!=='provider'||row.provider!=='supabase')return;
+        const raw=String(row.config??'');
+        if(!this.cipher.isEncrypted(raw))throw Error('secret_not_encrypted');
+        if(JSON.stringify(JSON.parse(await this.cipher.decrypt(raw)))!==JSON.stringify(before))return;
+        const encrypted=await this.cipher.encrypt(JSON.stringify(after));
+        if(!this.cipher.isEncrypted(encrypted))throw Error('secret_cipher_unavailable');
+        await this.runner.exec("UPDATE edge_resources SET config = ?, updated_at = ? WHERE tenant_slug = ? AND id = ? AND kind = 'provider' AND provider = 'supabase' AND config = ?",[encrypted,now,this.tenant,id,raw]);
+    }
+
     async upsertEdgeResource(input: EdgeResourceInput, now: string): Promise<void> {
         const currentRows = await this.runner.query(
             'SELECT provider, config, status FROM edge_resources WHERE id = ? AND tenant_slug = ?',

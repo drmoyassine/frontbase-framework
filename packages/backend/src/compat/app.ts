@@ -39,7 +39,7 @@ import { registerPagesOrganizationRoutes } from './routes/pages-organization.js'
 import { pagesWorkspace } from './pages-workspace.js';
 import { registerTemplateArtifactRoutes } from './routes/template-artifact.js';
 import { datasourceRunner } from '../db/datasource-runner.js';
-import { mergeAccountConfig } from './providers/merge-account.js';
+import { mergeAccountConfig, datasourceAccountConfigFor } from './providers/merge-account.js';
 import { registerEditorialRoutes } from './routes/editorial.js';
 import { registerSitePublicationRoutes } from './routes/site-publication.js';
 import { registerSecurityEventsRoutes } from './routes/security-events.js';
@@ -196,6 +196,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         ? await createSecretCipher(deps.sessionSecret)
         : noopCipher;
     const phase2For = storeCache((t: string) => new Phase2Store(runner, t, secretCipher));
+    const accountConfigFor=datasourceAccountConfigFor(phase2For,now);
     // Isolate/app boot time — the uptime source for the system-engine health
     // check (the product engine reports module-level startedAt the same way).
     const bootedAt = Date.now();
@@ -293,7 +294,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // 2. Client hydration data plane (product parity — public route, no systemKeyAuth)
     registerDataExecuteRoute(
         app, runner, syncStoreFor, kvFor, externalFetch, now,
-        (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId),
+        accountConfigFor,
         resolvePrincipal,
         deps.requestTenant,
     );
@@ -433,10 +434,10 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerProjectRoutes(app, kvFor, now);
     registerMenusRoutes(app, runner, kvFor, now);
     registerSiteConfigurationRoutes(app, runner, now);
-    registerTranslationStorageRoutes(app, runner, { syncFor: syncStoreFor, externalFetch, accountConfigFor: (tenant, id) => phase2For(tenant).getEdgeResourceConfig(id) }, now);
+    registerTranslationStorageRoutes(app, runner, { syncFor: syncStoreFor, externalFetch, accountConfigFor: accountConfigFor }, now);
     registerTranslationGenerationRoutes(app, runner, { accountsFor: phase2For, externalFetch }, now);
     registerTranslationBatchRoutes(app, runner, { pagesFor, syncFor: syncStoreFor, accountsFor: phase2For, externalFetch,
-        accountConfigFor: (tenant, id) => phase2For(tenant).getEdgeResourceConfig(id) }, now, deps.translationExecutionEnabled === true);
+        accountConfigFor: accountConfigFor }, now, deps.translationExecutionEnabled === true);
     registerTemplateArtifactRoutes(app);
     registerPageRouteAudit(app, runner);
     registerPagesWorkspaceRoutes(app, runner);
@@ -444,11 +445,11 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerTemplatePreflightRoutes(app, runner, async (tenant, id) => {
         const datasource = await syncStoreFor(tenant).getDatasource(id);
         if (!datasource) return null;
-        return datasourceRunner(datasource.kind, await mergeAccountConfig((t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), externalFetch, tenant, datasource.kind, datasource.config), externalFetch);
+        return datasourceRunner(datasource.kind, await mergeAccountConfig(accountConfigFor, externalFetch, tenant, datasource.kind, datasource.config), externalFetch);
     });
-    registerSitePublicationRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), now);
-    registerDirectoryPreviewRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId));
-    registerEditorialRoutes(app, runner, syncStoreFor, externalFetch, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId), now);
+    registerSitePublicationRoutes(app, runner, syncStoreFor, externalFetch, accountConfigFor, now);
+    registerDirectoryPreviewRoutes(app, runner, syncStoreFor, externalFetch, accountConfigFor);
+    registerEditorialRoutes(app, runner, syncStoreFor, externalFetch, accountConfigFor, now);
     registerSecurityEventsRoutes(app, secEventsFor);
     // A-25 WA5: the cloud plan gates ride the same accessor getEffectiveLimits
     // exposes (settings → per-tenant plan → `_global` catalog row). Null
@@ -458,7 +459,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         (t) => phase2For(t).getEffectiveLimits());
     registerDatabaseRoutes(
         app, runner, syncStoreFor, kvFor, externalFetch, now,
-        (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId),
+        accountConfigFor,
     );
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
@@ -532,7 +533,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Wave 5 — workspace agent
     registerAgentCompatRoutes(app, runner, kvFor, secretCipher, externalFetch);
     // Work A — DB-Synchronizer (/api/sync/*)
-    registerSyncRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now, sheetsAddonUrl, (t, accountId) => phase2For(t).getEdgeResourceConfig(accountId));
+    registerSyncRoutes(app, runner, syncStoreFor, kvFor, externalFetch, now, sheetsAddonUrl, accountConfigFor);
     // A-25 WA4 — platform-admin tenant management (master_admin per handler).
     // Registered before routedOps() so the six ops count as implemented.
     registerAdminTenantsRoutes(app, runner, tenants, deps.userStoreFor, pagesFor, now);
