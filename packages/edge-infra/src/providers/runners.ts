@@ -30,8 +30,9 @@ export interface D1DatabaseBinding {
 }
 
 /** A libsql client as a DbRunner (:memory:, file:, libsql://). */
-export function sqliteRunner(url: string, authToken?: string, fetchImpl?: ServiceFetch): DbRunner {
-    return libsqlRunner(createClient(libsqlHttpConfig(url, authToken, fetchImpl)));
+export function sqliteRunner(url: string, authToken?: string, fetchImpl?: ServiceFetch): DbRunner & {close():void} {
+    const client=createClient(libsqlHttpConfig(url,authToken,fetchImpl));
+    return {...libsqlRunner(client),close:()=>client.close()};
 }
 
 /** Build a DbRunner from an existing libsql client (shared by sqliteRunner + turso). */

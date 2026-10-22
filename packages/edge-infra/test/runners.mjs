@@ -22,6 +22,7 @@ const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; c
     check('sqliteRunner: query returns the row', rows.length === 1 && rows[0].name === 'a');
     const all = await r.query('SELECT * FROM t ORDER BY id');
     check('sqliteRunner: query returns all rows', all.length === 2);
+    r.close();let refused=false;try{await r.query('SELECT * FROM t');}catch{refused=true;}check('sqliteRunner: owned client close refuses subsequent work',refused);
 }
 
 // ---- d1RunnerFromBinding (live against a mock D1 binding) ----
