@@ -56,7 +56,7 @@ lands in the log with the exit code.
 |---|---|---|---|
 | 1 | `translation-homepage-mutation` rerun | **DEBT** — the 2026-10-22 background run was killed by the OS memory reaper, not a test failure; not restarted autonomously | A green `pnpm --filter @frontbase/backend test:translation-homepage-mutation` is REQUIRED before **any staging deployment claim** (steps A3+). This task did NOT run it. |
 | 2 | Staging `/ar/` re-prepare residual | **ACTIVE** on image `sha256:6645aa0b…` (source `ebc3ffc`) | `/ar/` returns 503 on staging by the strict fence — expected until A5 re-prepares the release under the current identity semantics. Do not treat the 503 as a deploy failure. |
-| 3 | 16-pointer cap unfenced | Task-6 confirmed defect; write-time fence + console resilience = open backlog item | **Operational rule for all environments until fenced: keep active `(locale,path)` publication pointers ≤ 16.** Failure mode if exceeded: the 17th activation *succeeds* in-console, then anonymous serving of every non-homepage page 503s site-wide, and the console Published-languages panel blanks (no in-console recovery). |
+| 3 | Publication scale — was "16-pointer cap unfenced" | **REPLACED 2026-10-22 (owner directive)** — the aggregate 16-pointer ceiling counted page–language publications rather than languages, raced on count-then-insert, and let one corrupt release 503 every unrelated page. Removed on branch: resolution is per `(locale,path)` exact-key lookup, admin listings paginate with per-row corrupt isolation, per-pointer CAS retained. `translation-publication-scale` + 5-fault mutation gate pin 18 concurrent Arabic pages, multi-language per-path switchers, same-pointer races and corrupt-release isolation | The ≤16 operational rule is OBSOLETE once the replacement image deploys to staging (redeploy pending). Until that deploy, the live staging image still runs the interim fence — keep active pointers ≤ 16 on it. |
 | 4 | Held translation batch `05b7a503` | Owner hold stands | Do NOT resume, retry, reconcile, or zero it during rehearsal or cutover. |
 | 5 | Localized live-list boundaries | Visible refusals shipped (tasks 7/8 reopen; ledger `docs/translation-exclusions.md`) | A serve check that meets `localized_live_table_not_supported`, `localized_interactive_list_not_supported`, or `localized_live_query_beyond_cap` is a DESIGNED boundary, not a failure — record it as evidence. |
 | 6 | Task-2 staging coverage pull | Pending since slice C | Folded into step A6. |
@@ -268,8 +268,10 @@ All must be true and evidenced before B1:
 1. Phase A complete with green evidence (A0–A8), including the A2 drift gate on a fresh capture.
 2. Gate #1 cleared (translation-homepage-mutation green in the deploying session) and gate #2 resolved
    (`/ar/` 200 post-re-prepare on staging).
-3. Gate #3: the 16-pointer write-time fence + console Published-languages resilience LANDED, or the owner
-   has explicitly accepted the ≤16 operational cap in writing for production.
+3. Gate #3: the scalable publication registry (no aggregate pointer cap; per-pointer CAS; per-row
+   corrupt isolation) is deployed to staging, evidenced by `translation-publication-scale` + its
+   mutation gate and the staging redeploy claim. The former "fence landed or ≤16 accepted in
+   writing" alternative is retired — the owner rejected 16 as a product limit (2026-10-22).
 4. Content coverage report (A6) reviewed by the owner; exclusion ledger (`docs/translation-exclusions.md`)
    accepted as the launch content boundary; served-coverage fraction from A7 reported.
 5. Task 7/8 reopen state understood by the owner (live-list localization scope as shipped).
