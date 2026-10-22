@@ -328,7 +328,10 @@ export async function listPublishedLocalePointers(db:DbRunner,tenant:string,opti
  *  sized by the number of LANGUAGES publishing the page, independent of site-wide scale. */
 export async function publishedLocalesForPath(db:DbRunner,tenant:string,path:string):Promise<PublishedLocalePointerEntry[]>{
     const prefix=path==='/'?HOMEPAGE_ACTIVE_PREFIX:SURFACE_ACTIVE_PREFIX+await surfaceHash(path)+':';
-    const rows=await db.query('SELECT key,value FROM settings WHERE tenant_slug = ? AND key LIKE ? ORDER BY key',[tenant,prefix+'%']);
+    // D1 bounds LIKE patterns to 50 bytes; hashed page keys exceed that bound.
+    // Both prefixes end in ':', so the next byte ';' gives an exact indexed prefix range.
+    const upper=prefix.slice(0,-1)+';';
+    const rows=await db.query('SELECT key,value FROM settings WHERE tenant_slug = ? AND key >= ? AND key < ? ORDER BY key',[tenant,prefix,upper]);
     const items:PublishedLocalePointerEntry[]=[];
     for(const row of rows)items.push(await localePointerEntry(db,tenant,String(row.key).slice(prefix.length),String(row.value)));
     return items;
