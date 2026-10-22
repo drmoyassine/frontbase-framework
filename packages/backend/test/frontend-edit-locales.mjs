@@ -10,6 +10,7 @@ import {renderReviewedSitePublication} from '../dist/compat/site-publication-ser
 import {projectFrontendCopy,copyFields,copyDisplayLayout,FrontendCopyStore,projectFrontendCopyRows} from '../dist/compat/frontend-copy.js';
 const f=await allowanceFixture(),owner='alpha',pageId=crypto.randomUUID();
 try{
+ assert.ok(await f.generation.save({...f.configuration,targetLocales:['ar','fr']},1,now));
  const config=emptyDirectoryConfiguration();config.site={name:'Study site',destination:'USA',origin:'https://site.test',locale:'en'};config.datasourceId='content';
  for(const role of ['institution','program','city']){const m=config.collections[role];m.table=role;m.scope={field:'country',value:22};Object.assign(m.fields,{id:'id',title:'title'});if(role!=='city')m.fields.originalPath='path';}config.collections.institution.fields.cityId='city';config.collections.program.fields.institutionId='institution';
  const layout={root:{},content:[{id:'heading',type:'Heading',props:{level:1,text:'Explore institutions'}},{id:'intro',type:'Text',props:{content:'Find a place to study'}},{id:'nav',type:'Navbar',props:{logo:{text:'Study site',link:'/'},menuItems:[],primaryButton:{enabled:false},secondaryButton:{enabled:false}}}]};
@@ -30,6 +31,11 @@ try{
  response=await renderReviewedSitePublication(f.db,owner,new Request('https://site.test/'));assert.equal(new JSDOM(await response.text()).window.document.querySelector('h1').textContent,'Explore institutions');
  const latestEn=await call('/api/frontend-edit/inventory/?path=%2F');await call('/api/frontend-edit/save/',edit(latestEn,'/','Edited English heading'));
  response=await renderReviewedSitePublication(f.db,owner,new Request('https://site.test/'));assert.equal(new JSDOM(await response.text()).window.document.querySelector('h1').textContent,'Edited English heading');
+ response=await renderReviewedSitePublication(f.db,owner,new Request('https://site.test/ar/'));assert.equal(new JSDOM(await response.text()).window.document.querySelector('h1').textContent,'عنوان عربي معدل');
+ // A third configured active language uses the same adapter, not an Arabic-only branch.
+ let french=await call(root+'review/?locale=fr');for(let offset=0;offset<french.fields.length;offset+=16)await call(root+'save/',{locale:'fr',token:french.token,entries:french.fields.slice(offset,offset+16).map(field=>({id:field.id,token:field.token,text:'Français '+field.source}))});
+ french=await call(root+'review/?locale=fr');const frenchPrepared=await call(root+'prepare/',{locale:'fr',token:french.token,approveTranslations:true});await call(root+'publish/',{hash:frenchPrepared.hash,expected:frenchPrepared.expected,approveTranslations:true});
+ const fr=await call('/api/frontend-edit/inventory/?path=%2Ffr%2F');assert.equal(fr.locale,'fr');await call('/api/frontend-edit/save/',edit(fr,'/fr/','Titre modifié'));response=await renderReviewedSitePublication(f.db,owner,new Request('https://site.test/fr/'));doc=new JSDOM(await response.text()).window.document;assert.equal(doc.querySelector('h1').textContent,'Titre modifié');assert.equal(doc.documentElement.lang,'fr');assert.equal(doc.documentElement.dir,'ltr');
  response=await renderReviewedSitePublication(f.db,owner,new Request('https://site.test/ar/'));assert.equal(new JSDOM(await response.text()).window.document.querySelector('h1').textContent,'عنوان عربي معدل');
  // Shared menu identity and row-key identity survive page/position changes.
  const shared={root:{},content:[{id:'managed-menu-123',type:'Navbar',props:{menuItems:[{id:'item-1',label:'Institutions',target:'/explore/'}]}}]};

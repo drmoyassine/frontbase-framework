@@ -38,4 +38,10 @@ await test('actual browser controller stages/re-edits/reverts/cancels before one
  for(let i=0;i<100&&!finished;i++)await new Promise(r=>setTimeout(r,5));assert.equal(finished,true);assert.equal(writes,1);
  const projected=await projectFrontendCopy(f.db,'alpha',f.page.id,f.layout,'en');assert.equal(projected.layout.content[0].props.text,'Saved title');assert.equal(projected.layout.content[1].props.content,'Saved paragraph');dom.window.close();
 });
+await test('responsive menu copies share one staged field while independent equal labels stay ambiguous',async()=>{
+ const fields=[{id:'a',blockId:'managed-menu-header',path:['label'],text:'Programs',label:'Navigation'},{id:'b',blockId:'managed-menu-ambiguous',path:['one'],text:'Same',label:'First'},{id:'c',blockId:'managed-menu-ambiguous',path:['two'],text:'Same',label:'Second'}];
+ const dom=new JSDOM('<html lang="en"><body><header id="managed-menu-header"><a href="/programs">Programs</a><a href="/programs">Programs</a></header><div id="managed-menu-ambiguous"><a href="/a">Same</a><a href="/b">Same</a></div></body></html>',{url:'https://site.example/',runScripts:'outside-only'});
+ dom.window.fetch=async path=>Response.json(String(path).includes('capability')?{enabled:true}:{fields,token:'x'});await dom.window.eval(FRONTEND_EDITOR_SCRIPT);
+ const spans=dom.window.document.querySelectorAll('[data-fb-copy="a"]');assert.equal(spans.length,2);assert.equal(dom.window.document.querySelectorAll('#managed-menu-ambiguous [data-fb-copy]').length,0);spans[0].click();spans[0].textContent='Courses';[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='Done').click();assert.equal(spans[1].textContent,'Courses');assert.match(dom.window.document.querySelector('[role=status]').textContent,/1 unsaved/);dom.window.close();
+});
 console.log(count+' frontend editing groups passed');
