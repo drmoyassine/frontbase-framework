@@ -376,9 +376,14 @@ No state DB was opened by R5 (`verify-backup` is offline by contract).
 ## 9. Decisions the owner must make
 
 1. Authorize (or withhold) production cutover once Phase A evidence exists; record as an accepted decision.
-2. Accept the ≤16-pointer operational cap explicitly, or direct the write-time fence + console
+2. ~~Accept the ≤16-pointer operational cap explicitly, or direct the write-time fence + console
    Published-languages resilience backlog item to land before cutover (recommended: land it — the failure
-   mode is silent until it is site-wide).
+   mode is silent until it is site-wide).~~ **RESOLVED 2026-10-22:** the write-time fence + console
+   resilience LANDED (commit `1f1da1b`) and are staging-verified (image `sha256:8d6b4599…`, action
+   `cmvj0ljcw00st07qq4xbib3o8`; deployed-dist suite exit 0). Over-cap pointers are now refused at
+   prepare/activation with 409 `locale_pointer_cap_exceeded{cap,count}`, and legacy over-cap states are
+   console-recoverable. The remaining owner choice is only whether 16 stays the accepted operational
+   limit.
 3. Provide/withhold owner-gated credentials for the D1 export drill, Supabase re-drill, and live-provider
    batch validation (via the platform, never via chat).
 4. Decide the fate of held batch `05b7a503` (the hold stands until then).
