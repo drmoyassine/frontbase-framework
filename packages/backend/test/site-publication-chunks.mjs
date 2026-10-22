@@ -38,6 +38,23 @@ assert.deepEqual(await owner.put(chunks[0], now), ref);
 for (const change of [{ count: 47 }, { bytes: ref.bytes - 1 }, { collection: 'articles' }])
     await assert.rejects(() => owner.get({ ...ref, ...change }), /publication_chunk_unavailable/);
 assert.equal(await owner.get({ ...ref, hash: '0'.repeat(64) }), null);
+// Schema evolution: a chunk prepared before a defaulted record field existed (e.g. the
+// nullable publishedAt default) is stored WITHOUT it; re-parsing under the current schema
+// adds the field, so integrity must be measured on the STORED serialization, never on the
+// transformed parse output (found by the 2026-10-22 staging restore drill: 6 live chunks
+// of cities/institutions/programs failed verification purely on parse-output drift).
+const legacy = { schemaVersion: 1, kind: 'directory-record-chunk', collection: 'cities',
+    records: cities.slice(0, 4) };
+const legacyRaw = stableStringify(legacy);
+const legacyRef = { hash: createHash('sha256').update(legacyRaw).digest('hex'), collection: 'cities',
+    count: legacy.records.length, bytes: Buffer.byteLength(legacyRaw) };
+await db.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?)',
+    ['alpha', `site_publication:chunk:v1:${legacyRef.hash}`, legacyRaw, now]);
+assert.deepEqual(await owner.get(legacyRef), parsePublicationChunk(legacy));
+const tamperLegacy = structuredClone(legacy); tamperLegacy.records[0].title = 'Xamper';
+await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',
+    [stableStringify(tamperLegacy), 'alpha', `site_publication:chunk:v1:${legacyRef.hash}`]);
+await assert.rejects(() => owner.get(legacyRef), /publication_chunk_unavailable/);
 const key = `site_publication:chunk:v1:${ref.hash}`;
 const tampered = structuredClone(chunks[0]); tampered.records[0].title = 'Tamper';
 assert.equal(Buffer.byteLength(stableStringify(tampered)), ref.bytes);

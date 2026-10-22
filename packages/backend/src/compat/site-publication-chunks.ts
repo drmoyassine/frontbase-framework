@@ -60,9 +60,18 @@ export class SitePublicationChunkStore {
         try {
             const raw = String(rows[0]!.value);
             if (new TextEncoder().encode(raw).byteLength > PUBLICATION_CHUNK_BYTES) throw new Error();
-            const chunk = parsePublicationChunk(JSON.parse(raw));
+            // Integrity metrics are measured on the STORED content, not on parsePublicationChunk's
+            // return value: the record schemas evolve (e.g. nullable defaults added), and a
+            // re-parse under a newer schema transforms an old chunk into a different
+            // serialization, which would fail the bytes/hash comparison forever after. put()
+            // hashed exactly the serialization it stored, and stableStringify(JSON.parse(s)) === s
+            // for any stableStringify output, so the raw value reproduces the put-time reference
+            // on every engine version. parsePublicationChunk still gates the shape; any tampered
+            // byte changes the parsed raw value and fails the hash.
+            const stored = JSON.parse(raw);
+            const chunk = parsePublicationChunk(stored);
             if (chunk.collection !== reference.collection || chunk.records.length !== reference.count
-                || bytes(chunk) !== reference.bytes || await publicationHash(chunk) !== reference.hash) throw new Error();
+                || bytes(stored) !== reference.bytes || await publicationHash(stored) !== reference.hash) throw new Error();
             return chunk;
         } catch { throw new Error('publication_chunk_unavailable'); }
     }
