@@ -169,6 +169,13 @@ export class SitePublicationManifestStore {
         const manifest = sitePublicationManifestSchema.parse(manifestInput), reference = publicationChunkReferenceSchema.parse(referenceInput);
         return this.loadVerifiedChunk(manifest, reference);
     }
+    /** Request-local reader: parse a detached manifest once, then retain every
+     * reference/membership/content/index check for each uncached chunk read.
+     * No DB bytes or authorization result are cached between requests. */
+    chunkReader(manifestInput: SitePublicationManifest): (reference: PublicationChunkReference) => Promise<PublicationChunk> {
+        const manifest = sitePublicationManifestSchema.parse(manifestInput);
+        return reference => this.loadVerifiedChunk(manifest, publicationChunkReferenceSchema.parse(reference));
+    }
     private async loadVerifiedChunk(manifest: SitePublicationManifest, reference: PublicationChunkReference): Promise<PublicationChunk> {
         if (!manifest.chunks.some(chunk => stableStringify(chunk) === stableStringify(reference))) throw new Error('publication_manifest_chunk_mismatch');
         const chunk = await this.chunks.get(reference);

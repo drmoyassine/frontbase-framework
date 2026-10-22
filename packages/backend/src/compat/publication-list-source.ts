@@ -61,10 +61,11 @@ export async function readPublicationList(db:DbRunner,owner:string,bindingInput:
     }));
     entries.sort((a,b)=>{const av=plan&&sortColumn==='title'?effectiveTitle(a):String(a[sortColumn]),bv=plan&&sortColumn==='title'?effectiveTitle(b):String(b[sortColumn]);return (av<bv?-1:av>bv?1:0)*(direction==='desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0);});
     const rows:Record<string,unknown>[]=[],store=new SitePublicationManifestStore(db,owner),loaded=new Map<string,Awaited<ReturnType<typeof store.loadChunk>>>();
+    const loadChunk=store.chunkReader(source);
     const selectedEntries=entries.slice(pageNumber*pageSize,(pageNumber+1)*pageSize),textByRecord=localizedRowText(catalog);
     for(const entry of selectedEntries){
         let chunk=loaded.get(entry.chunkHash);
-        if(!chunk){const reference=source.chunks.find(chunk=>chunk.hash===entry.chunkHash);if(!reference)throw Error();chunk=await store.loadChunk(source,reference);loaded.set(entry.chunkHash,chunk);}
+        if(!chunk){const reference=source.chunks.find(chunk=>chunk.hash===entry.chunkHash);if(!reference)throw Error();chunk=await loadChunk(reference);loaded.set(entry.chunkHash,chunk);}
         const row=chunk.records[entry.position];if(!row)throw Error();rows.push(Object.fromEntries(Object.entries(row).filter(([key])=>key!=='body')));
     }
     if(binding.tableName==='articles')await verifyManifestEditorial(db,owner,source,rows);

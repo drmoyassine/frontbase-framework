@@ -35,6 +35,7 @@ export function localizedIndexTitleReader(localizedTitles?:LocalizedTitles){
 export function createChunkDirectoryQueries(input:SitePublicationManifest,owner:string,db:DbRunner,localizedTitles?:LocalizedTitles):QueryRegistry{
     if(!owner)throw new Error('publication_owner_required');
     const manifest=sitePublicationManifestSchema.parse(input),store=new SitePublicationManifestStore(db,owner);
+    const loadChunk=store.chunkReader(manifest);
     const cache=new Map<string,Promise<Awaited<ReturnType<typeof store.loadChunk>>>>();
     const collections={institution:'institutions',program:'programs',city:'cities',article:'articles',page:'pages'} as const;
     // Localized queries filter and sort the FULL index by the effective (released ?? source) title
@@ -60,7 +61,7 @@ export function createChunkDirectoryQueries(input:SitePublicationManifest,owner:
             for(const entry of selected){
                 let loading=cache.get(entry.chunkHash);
                 if(!loading){const reference=manifest.chunks.find(ref=>ref.hash===entry.chunkHash);if(!reference)throw new Error('publication_chunk_unavailable');
-                    loading=store.loadChunk(manifest,reference);cache.set(entry.chunkHash,loading);}
+                    loading=loadChunk(reference);cache.set(entry.chunkHash,loading);}
                 const row=(await loading).records[entry.position];if(!row)throw new Error('publication_chunk_unavailable');rows.push(structuredClone(row));
             }
             if(role==='article' || role==='page')await verifyManifestEditorial(db,owner,manifest,rows);

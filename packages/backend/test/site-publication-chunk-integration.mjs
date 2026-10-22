@@ -229,7 +229,7 @@ const localizedMatch=await localizedQueries['directory.program.list'].execute({q
 assert.equal(localizedMatch.length,10,'localized search matches span the whole 10,049-record index');
 assert.equal(localizedMatch[0].title,'Program 10040');
 const localizedSearchMs=Number(process.hrtime.bigint()-localizedSearchStart)/1e6;
-assert.ok(localizedSliceMs<5000&&localizedSearchMs<5000,'localized full-index registry queries stay bounded');
+assert.ok(localizedSliceMs<5000&&localizedSearchMs<5000,`localized full-index registry queries stay bounded: slice=${localizedSliceMs.toFixed(0)}ms search=${localizedSearchMs.toFixed(0)}ms`);
 const capacityCatalog=capacity.index.filter(row=>row.collection==='programs').map(row=>({record:{collection:'programs',key:[{column:'id',value:row.id}]},fieldKey:'title',text:`برنامج ${String(row.id).padStart(5,'0')}`,sourceText:row.title}));
 const capacityBinding={componentId:'institutions',dataSourceId:'frontbase:publication',tableName:'programs',source:{kind:'publication',hash:capacityHash},pagination:{enabled:true,page:0,pageSize:12},sorting:{enabled:true,column:'title',direction:'desc'},filtering:{searchEnabled:false,filters:{}},columnOrder:['title','id'],columnOverrides:{},hiddenFilters:[]};
 const fetchStart=process.hrtime.bigint();
@@ -241,7 +241,7 @@ const fetchLateStart=process.hrtime.bigint();
 const capacityLateFetch=await readPublicationList(db,'alpha',capacityBinding,{componentId:'institutions',versionId:'default',page:836,pageSize:12,sortColumn:'title',direction:'desc',filters:[]},capacityCatalog);
 const fetchLateMs=Number(process.hrtime.bigint()-fetchLateStart)/1e6;
 assert.equal(capacityLateFetch.rows.length,12);assert.equal(capacityLateFetch.rows[0].title,'برنامج 00017','the fetch late page agrees with the registry order');
-assert.ok(fetchFirstMs<5000&&fetchLateMs<5000,'localized fetch reads stay bounded');
+assert.ok(fetchFirstMs<5000&&fetchLateMs<5000,`localized fetch reads stay bounded: first=${fetchFirstMs.toFixed(0)}ms late=${fetchLateMs.toFixed(0)}ms`);
 console.log(`capacity timings (10,049 titles): source late page ${sourcePageMs.toFixed(0)}ms | localized registry: construct ${localizedConstructMs.toFixed(0)}ms + Arabic late slice ${localizedSliceMs.toFixed(0)}ms + full-index search ${localizedSearchMs.toFixed(0)}ms | localized fetch: first page ${fetchFirstMs.toFixed(0)}ms + late page ${fetchLateMs.toFixed(0)}ms — per-request work stays bounded to page-size chunk reads beside one artifact validation`);
 const largeInventory=await captureRouteInventory(db,'alpha');assert.equal(largeInventory.paths.length,10051);
 const namespaceResponse=await app.request('/api/project/page-route-audit/'),namespace=await namespaceResponse.json();assert.equal(namespaceResponse.status,200);assert.equal(namespace.publicRecordsChecked,true);assert.ok(namespace.resourcesChecked>=10051);
