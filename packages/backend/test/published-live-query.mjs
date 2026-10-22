@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {publishedLiveQuery} from '../dist/compat/published-live-query.js';
+const binding={componentId:'list',dataSourceId:'ds',tableName:'items',viewId:'view',pagination:{enabled:true,pageSize:5,page:0},sorting:{enabled:true},filtering:{searchEnabled:false,filters:{}},columnOverrides:{}};
+const query={page:0,pageSize:5,filters:[],direction:'asc'};
+let calls=0,release;
+let barrier=new Promise(resolve=>{release=resolve;});
+let fail=false;
+const reader=publishedLiveQuery(async()=>{calls++;await barrier;return fail?new Response('',{status:502}):Response.json({success:true,data:[{id:1,title:'Live'}],total:1});});
+const read=(owner='one',b=binding,q=query,r=new Request('https://one.example/ar/'))=>reader(owner,b,q,r);
+const same=Array.from({length:4},()=>read());
+assert.equal(calls,1);release();
+const results=await Promise.all(same);results[0].rows[0].title='Changed';assert.equal(results[1].rows[0].title,'Live');
+await read();assert.equal(calls,2,'completed results must not be cached');
+barrier=new Promise(resolve=>{release=resolve;});
+const separated=[read(),read('two'),read('one',binding,query,new Request('https://two.example/ar/')),read('one',{...binding,sourceSchema:'other'}),read('one',{...binding,viewId:'other'}),read('one',binding,{...query,page:1}),read('one',binding,{...query,filters:[{column:'id',op:'eq',value:2}]}),read('one',binding,{...query,search:'other'}),read('one',binding,{...query,direction:'desc'})];
+assert.equal(calls,11);release();await Promise.all(separated);
+for(const header of ['cookie','authorization']){
+ barrier=new Promise(resolve=>{release=resolve;});const before=calls;
+ const reads=Array.from({length:3},()=>read('one',binding,query,new Request('https://one.example/ar/',{headers:{[header]:'synthetic'}})));
+ assert.equal(calls-before,3,header+' bypasses sharing');release();await Promise.all(reads);
+}
+barrier=new Promise(resolve=>{release=resolve;});fail=true;
+const failures=[read(),read()];const beforeFailure=calls;release();
+assert.deepEqual((await Promise.allSettled(failures)).map(r=>r.status),['rejected','rejected']);
+fail=false;await read();assert.equal(calls,beforeFailure+1,'rejection must be evicted');
+barrier=new Promise(resolve=>{release=resolve;});const beforeBound=calls;
+const many=Array.from({length:65},(_,page)=>read('one',binding,{...query,page}));
+many.push(read('one',binding,{...query,page:64}));
+assert.equal(calls-beforeBound,66,'full map bypasses rather than retaining more work');release();await Promise.all(many);
+console.log('published live read coalescing: concurrency, isolation, live freshness, failure recovery and bound PASS');

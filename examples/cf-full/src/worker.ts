@@ -850,6 +850,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     });
     app.route('/', compatApp);
 
+    const publicLiveQuery = publishedLiveQuery(request=>compatApp.fetch(request));
     // Reviewed captures own public routes once active. Terminal failures never enter legacy fallback.
     app.get('*', async (c, next) => {
         const path = new URL(c.req.url).pathname;
@@ -857,7 +858,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             || path === '/sw.js') return next();
         const tenant = hostTenantFor(c.req.raw);
         if (cloud && !tenant && hostKindOf(c.req.raw, cloud.baseDomain, cloud.appLabel) !== 'foreign') return next();
-        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE, liveQuery:publishedLiveQuery(request=>compatApp.fetch(request)), resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,Date.now,true) });
+        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE, liveQuery:publicLiveQuery, resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,Date.now,true) });
         if (reviewed) return reviewed;
         return next();
     });
