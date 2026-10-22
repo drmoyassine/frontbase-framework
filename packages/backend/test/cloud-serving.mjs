@@ -51,10 +51,12 @@ const acmeHomeResolved = await resolvePublishedPageForTenant(runner, 'acme', '/'
 check('tenant homepage resolves by is_homepage for THAT tenant', acmeHomeResolved?.title === 'Home');
 const aboutResolved = await resolvePublishedPageForTenant(runner, 'acme', '/about');
 check('tenant slug page resolves within the tenant', aboutResolved?.slug === 'about');
+check('ordinary pages retain exact row identity without a managed menu', aboutResolved?.pageId === 'p-acme-about' && aboutResolved?.owner === 'acme');
 const globexAbout = await resolvePublishedPageForTenant(runner, 'globex', '/about');
 check('missing slug in tenant → null (CLOUD: no fallback option passed)', globexAbout === null);
 const leaked = await resolvePublishedPageForTenant(runner, 'globex', '/about', { crossTenantFallback: true });
 check('SELF-HOST opt-in still reads across tenants (crossTenantFallback)', leaked?.slug === 'about');
+check('self-host fallback retains the actual owner, never the requested tenant', leaked?.pageId === 'p-acme-about' && leaked?.owner === 'acme');
 const globexHome = await resolvePublishedPageForTenant(runner, 'globex', '/');
 check('second tenant gets its OWN homepage (same slug space per tenant)', globexHome !== null && globexHome.slug === 'home');
 const deletedProbe = await pages('acme').create({ name: 'Gone', slug: 'gone', layout_data: { content: [] } }, 'p-acme-gone', NOW);

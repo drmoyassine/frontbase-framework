@@ -13,7 +13,7 @@
 import type { DbRunner } from '@frontbase/edge-infra';
 
 export interface PublishedPageRow {
-    /** Included only for managed-region layouts; binds their private snapshot to the actual row. */
+    /** Exact persisted row identity for managed menus and frontend editorial copy. */
     pageId?:string;
     owner?:string;
     title: string;
@@ -63,7 +63,7 @@ function mapRow(row: RawPageRow): PublishedPageRow {
         slug: String(row.slug ?? ''),
         description: row.description ? String(row.description) : undefined,
         layout,
-        ...((layout as {root?:{appMenus?:unknown}})?.root?.appMenus!==undefined?{pageId:String(row.id??''),owner:String(row.tenant_slug??'')} : {}),
+        ...(row.id!=null&&row.tenant_slug!=null?{pageId:String(row.id),owner:String(row.tenant_slug)} : {}),
         ...(isPublic !== undefined ? { isPublic } : {}),
         ...(primaryAuthForm ? { primaryAuthForm } : {}),
     };
