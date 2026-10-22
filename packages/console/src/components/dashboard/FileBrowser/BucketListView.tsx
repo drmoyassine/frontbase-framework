@@ -168,10 +168,10 @@ export function BucketListView({
                             <HardDrive className="h-5 w-5" />
                             Storage Buckets
                         </CardTitle>
-                        <CardDescription>Select a bucket to browse files</CardDescription>
+                        <CardDescription>Select a bucket to browse files. Deployment-managed buckets keep their private settings.</CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={handleOpenCreateBucket}>
+                        <Button size="sm" onClick={handleOpenCreateBucket} disabled={connectedProviders?.length===0 || !connectedProviders && !!buckets?.length && buckets.every(b=>b.deployment_managed)} title={connectedProviders?.length===0?'Add a storage provider that supports bucket creation':undefined}>
                             <Plus className="h-4 w-4 mr-2" />
                             New Bucket
                         </Button>
@@ -274,20 +274,20 @@ export function BucketListView({
                                         </div>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                <Button aria-label={`Bucket actions for ${bucket.name}`} variant="ghost" size="sm" className="h-8 w-8 p-0">
                                                     <MoreVertical className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                                <DropdownMenuItem onClick={(e) => handleOpenEditBucket(bucket, e)}>
+                                                {!bucket.deployment_managed && <DropdownMenuItem onClick={(e) => handleOpenEditBucket(bucket, e)}>
                                                     <Settings className="h-4 w-4 mr-2" /> Settings
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setConfirmDialog({ isOpen: true, title: 'Empty Bucket', description: `Are you sure you want to empty the bucket "${bucket.name}"? This cannot be undone.`, actionLabel: 'Empty', variant: 'destructive', actionType: 'empty', targetId: bucket.id }); }}>
+                                                </DropdownMenuItem>}
+                                                <DropdownMenuItem disabled={bucket.can_empty===false} onClick={(e) => { e.stopPropagation(); setConfirmDialog({ isOpen: true, title: 'Empty Bucket', description: `Are you sure you want to empty the bucket "${bucket.name}"? This cannot be undone.`, actionLabel: 'Empty', variant: 'destructive', actionType: 'empty', targetId: bucket.id }); }}>
                                                     <Archive className="h-4 w-4 mr-2" /> Empty Bucket
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); setConfirmDialog({ isOpen: true, title: 'Delete Bucket', description: `Are you sure you want to delete the bucket "${bucket.name}"? This action cannot be undone.`, actionLabel: 'Delete', variant: 'destructive', actionType: 'deleteBucket', targetId: bucket.id }); }}>
+                                                {!bucket.deployment_managed && <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); setConfirmDialog({ isOpen: true, title: 'Delete Bucket', description: `Are you sure you want to delete the bucket "${bucket.name}"? This action cannot be undone.`, actionLabel: 'Delete', variant: 'destructive', actionType: 'deleteBucket', targetId: bucket.id }); }}>
                                                     <X className="h-4 w-4 mr-2" /> Delete Bucket
-                                                </DropdownMenuItem>
+                                                </DropdownMenuItem>}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </div>

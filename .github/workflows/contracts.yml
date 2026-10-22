@@ -65,6 +65,8 @@ jobs:
       # *-fresh-deploy workflows — never here.
       - name: Per-host smoke (vercel/deno entries + artifact gates)
         run: pnpm --filter @frontbase/example-cf-full smoke:host
+      - name: Deployment profile and local bootstrap security
+        run: pnpm test:deployment-gates && pnpm test:deployment-setup
       - name: State-db resolver contract
         run: pnpm --filter @frontbase/example-cf-full test:state-db
       - name: vercel.json routing contract

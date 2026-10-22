@@ -10,13 +10,14 @@
     "build": "vite build --mode community",
     "build:cloud": "vite build --mode cloud",
     "build:dev": "vite build --mode development",
-    "check": "tsc -p tsconfig.check.json --noEmit && tsc -p tsconfig.translation-batches.json --noEmit && tsc -p tsconfig.session-recovery.json --noEmit",
+    "check": "tsc -p tsconfig.check.json --noEmit && tsc -p tsconfig.translation-batches.json --noEmit && tsc -p tsconfig.session-recovery.json --noEmit && tsc -p tsconfig.deployment-bindings.json --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run src/lib/auth/__tests__",
-    "client:generate": "openapi-ts"
+    "client:generate": "openapi-ts",
+    "test:deployment-bindings": "vitest run src/components/deployment/bindings-form.test.ts src/components/dashboard/settings/shared/DeploymentBindingsDialog.test.tsx src/components/dashboard/FileBrowser/native-storage-ui.test.tsx --pool=threads --maxWorkers=1 --no-file-parallelism"
   },
   "dependencies": {
     "@frontbase/edge-core": "workspace:*"

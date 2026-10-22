@@ -334,24 +334,24 @@ export function FileListView({
                                     <Button variant="outline" size="sm" className="h-9 w-9 p-0"><MoreVertical className="h-4 w-4" /></Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => {
+                                    {!currentBucketData?.deployment_managed && <DropdownMenuItem onClick={() => {
                                         const bucket = buckets?.find(b => b.name === currentBucket);
                                         if (bucket) handleOpenEditBucket(bucket, {} as React.MouseEvent);
                                     }}>
                                         <Settings className="h-4 w-4 mr-2" /> Bucket Settings
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => {
+                                    </DropdownMenuItem>}
+                                    <DropdownMenuItem disabled={currentBucketData?.can_empty===false} onClick={() => {
                                         const bucket = buckets?.find(b => b.name === currentBucket);
                                         if (bucket) setConfirmDialog({ isOpen: true, title: 'Empty Bucket', description: `Are you sure you want to empty "${bucket.name}"? This will delete all files.`, actionLabel: 'Empty', variant: 'destructive', actionType: 'empty', targetId: bucket.id });
                                     }}>
                                         <Archive className="h-4 w-4 mr-2" /> Empty Bucket
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem className="text-destructive" onClick={() => {
+                                    {!currentBucketData?.deployment_managed && <DropdownMenuItem className="text-destructive" onClick={() => {
                                         const bucket = buckets?.find(b => b.name === currentBucket);
                                         if (bucket) setConfirmDialog({ isOpen: true, title: 'Delete Bucket', description: `Are you sure you want to delete "${bucket.name}"?`, actionLabel: 'Delete', variant: 'destructive', actionType: 'deleteBucket', targetId: bucket.id });
                                     }}>
                                         <X className="h-4 w-4 mr-2" /> Delete Bucket
-                                    </DropdownMenuItem>
+                                    </DropdownMenuItem>}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
@@ -501,6 +501,7 @@ export function FileListView({
                 onOpenChange={(open) => { if (!open) setShareFile(null); }}
                 fileName={shareFile || ''}
                 isPublicBucket={currentBucketData?.public ?? false}
+                maxExpiry={currentBucketData?.max_signed_url_expiry}
                 onGenerateUrl={async (expiresIn) => {
                     const path = currentPath ? `${currentPath}/${shareFile}` : (shareFile || '');
                     return await getSignedUrl(storageProviderId, path, currentBucket, expiresIn);

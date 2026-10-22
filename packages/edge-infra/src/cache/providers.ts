@@ -141,24 +141,44 @@ export function resilientCache(opts: ResilientCacheOpts): CacheProvider {
 }
 
 /**
- * Cloudflare KV adapter (production). Constructed with a KV namespace binding.
- * KV stores strings; TTL via the `expirationTtl`-equivalent is KV's cacheTtl on
- * read, so setex stores the value with a metadata expiry checked on get.
+ * Best-effort Cloudflare KV cache. Not an atomic counter or coordination store.
+ * Physical TTL is at least 60s; a versioned envelope enforces shorter logical
+ * TTLs even when an eventually consistent read returns an expired value.
+ * keys() remains an isolate-local hint, not a global namespace scan.
  */
-export function kvCache(namespace: KVNamespaceBinding): CacheProvider {
-    const mem = memoryCache(); // KV has no native pattern/TTL-as-map; mirror for keys()
+export function kvCache(namespace: KVNamespaceBinding, now: () => number = Date.now): CacheProvider {
+    const mem = memoryCache();
+    const decode = (raw: string): {value:string; expiresAt?:number} => {
+        try {
+            const entry = JSON.parse(raw) as Record<string,unknown>;
+            if (entry && entry.__frontbaseKvCache === 1 && typeof entry.value === 'string' && typeof entry.expiresAt === 'number')
+                return {value:entry.value, expiresAt:entry.expiresAt};
+        } catch { /* Legacy raw values remain readable. */ }
+        return {value:raw};
+    };
+    const writeExpiring = async (key:string, seconds:number, value:string):Promise<void> => {
+        if (!Number.isFinite(seconds) || seconds <= 0) throw new Error('invalid_cache_ttl');
+        const raw=JSON.stringify({__frontbaseKvCache:1,value,expiresAt:now()+seconds*1000});
+        await namespace.put(key,raw,{expirationTtl:Math.max(60,Math.ceil(seconds))});
+        await mem.setex(key,seconds,value);
+    };
     return {
         async get(key) {
-            const raw = await namespace.get(key);
-            if (raw === null) return null;
-            await mem.set(key, raw);
-            try { return JSON.parse(raw) as unknown; } catch { return raw as unknown; }
+            const raw=await namespace.get(key);
+            if(raw===null)return null;
+            const entry=decode(raw);
+            if(entry.expiresAt!==undefined && entry.expiresAt<=now())return null;
+            try { return JSON.parse(entry.value) as unknown; } catch { return entry.value; }
         },
-        async set(key, value) { await namespace.put(key, value); await mem.set(key, value); },
-        async setex(key, seconds, value) { await namespace.put(key, value, { expirationTtl: seconds }); await mem.setex(key, seconds, value); },
-        async del(...keys) { await Promise.all(keys.map((k) => namespace.delete(k))); return keys.length; },
+        async set(key,value) { await namespace.put(key,value);await mem.set(key,value); },
+        setex:writeExpiring,
+        async del(...keys) { await Promise.all(keys.map(k=>namespace.delete(k)));await mem.del(...keys);return keys.length; },
         async keys(pattern) { return mem.keys(pattern); },
-        async incr(key) { const v = await this.get(key); const n = (Number(v) || 0) + 1; await namespace.put(key, String(n)); return n; },
-        async expire(key, seconds) { const v = await namespace.get(key); if (v === null) return 0; await namespace.put(key, v, { expirationTtl: seconds }); return 1; },
+        async incr(key) { const value=await this.get(key);const next=(Number(value)||0)+1;await this.set(key,String(next));return next; },
+        async expire(key,seconds) {
+            const raw=await namespace.get(key);if(raw===null)return 0;
+            const entry=decode(raw);if(entry.expiresAt!==undefined && entry.expiresAt<=now())return 0;
+            await writeExpiring(key,seconds,entry.value);return 1;
+        },
     };
 }

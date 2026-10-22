@@ -1,0 +1,28 @@
+# Provider tools and machine-local deployment state are never upload inputs.
+.agents/
+skills-lock.json
+.frontbase/
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+.secret.txt
+*.secret
+.vercel/
+
+# Ship only the current unified CMS function; omit stale conflict and probe artifacts.
+examples/cf-full/api/*
+!examples/cf-full/api/cms.mjs
+
+# Remote builds regenerate these; source and the canonical API entry remain inputs.
+node_modules/
+dist/
+deno-dist/
+console-dist/
+.wrangler/
+.publication-e2e/
+.cloud-e2e/
+test-results/
+e2e/report/
+e2e/test-results/

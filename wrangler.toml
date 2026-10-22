@@ -1,0 +1,31 @@
+# Portable self-host template used by the Deploy to Cloudflare button.
+# The native button replaces these inert placeholder IDs with the selected
+# account resources. Keep the ID fields present: missing keys were not filled
+# in native clones and caused Wrangler to provision duplicate resources.
+# For CLI installations use the reviewed deploy:setup path, which writes exact IDs.
+name = "frontbase-selfhost"
+main = "examples/cf-full/dist/worker.mjs"
+compatibility_date = "2026-09-07"
+compatibility_flags = ["nodejs_compat"]
+no_bundle = true
+find_additional_modules = true
+base_dir = "./examples/cf-full/dist"
+[[rules]]
+type = "ESModule"
+globs = ["pg-worker.mjs"]
+fallthrough = true
+[assets]
+directory = "./examples/cf-full/console-dist"
+binding = "ASSETS"
+run_worker_first = true
+[observability]
+enabled = true
+[[d1_databases]]
+binding = "DB"
+database_name = "frontbase-state"
+database_id = "00000000-0000-0000-0000-000000000000"
+[[kv_namespaces]]
+binding = "FRONTBASE_KV"
+id = "00000000000000000000000000000000"
+# Optional private storage: enable in the reviewed local setup or add an
+# R2 binding FRONTBASE_R2 through Cloudflare's resource-selection screen.

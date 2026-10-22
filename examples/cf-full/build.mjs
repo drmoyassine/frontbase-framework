@@ -57,7 +57,10 @@ const DEP_PKGS = [
 const missing = DEP_PKGS.filter((p) => !existsSync(join(pkgDir(p.name), p.artifact)));
 if (missing.length > 0) {
     console.log(`→ building ${missing.length} unbuilt workspace package(s): ${missing.map((p) => p.name).join(', ')}`);
-    const filters = missing.map((p) => ['--filter', p.name]).flat();
+    // Include each selected package's dependency closure. A fresh host has no
+    // workspace dist artifacts; selecting only direct consumers omits packages
+    // such as @frontbase/translation that edge-core needs before its own build.
+    const filters = missing.map((p) => ['--filter', `${p.name}...`]).flat();
     const r = spawnSync('pnpm', [...filters, 'build'], { cwd: REPO_ROOT, stdio: 'inherit', shell: process.platform === 'win32' });
     if (r.status !== 0) {
         console.error('\n✗ workspace dependency build failed. Run `pnpm -r build` manually, then retry.');

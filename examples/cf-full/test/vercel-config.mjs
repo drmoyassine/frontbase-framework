@@ -23,7 +23,7 @@
  *      BEFORE the broad shell rule (first matching rule wins a header key),
  *      broad shell rule 1 h.
  *   3. outputDirectory is console-dist (the staged layout) — plus trailing
- *      slash/cleanUrls OFF so engine-emitted URLs never get redirected.
+ *      slash policy UNSET / cleanUrls OFF so engine-emitted URLs never get redirected.
  *   4. The Deno deploy root (deno-dist) is a self-contained staging of entry +
  *      config + a FRESH console copy — checked for shape here, bytes are the
  *      build's job (smoke:host asserts byte identity).
@@ -44,7 +44,7 @@ const vercel = JSON.parse(readFileSync(join(exampleRoot, 'vercel.json'), 'utf8')
 
 console.log('=== vercel.json: project shape ===');
 check('outputDirectory is console-dist (the staged layout)', vercel.outputDirectory === 'console-dist');
-check('trailingSlash off (engine URLs never redirected)', vercel.trailingSlash === false);
+check('trailingSlash unset (engine owns API slash normalization)', !Object.hasOwn(vercel,'trailingSlash'));
 check('cleanUrls off (no .html mangling)', vercel.cleanUrls === false);
 
 console.log('=== vercel.json: routing order ===');
@@ -67,7 +67,7 @@ check('rewrites are exactly: root + hydration stage + icon + catch-all (nothing 
 check('the root path is rewritten EXPLICITLY (no reliance on :path* zero-segment matching for /)',
     rewrites[0].source === '/' && rewrites[0].destination === '/api/cms');
 check('catch-all → the function, listed last',
-    rewrites[rewrites.length - 1].source === '/:path*' && rewrites[rewrites.length - 1].destination === '/api/cms');
+    rewrites[rewrites.length - 1].source === '/(.*)' && rewrites[rewrites.length - 1].destination === '/api/cms');
 
 console.log('=== vercel.json: header policy ===');
 const headers = vercel.headers ?? [];

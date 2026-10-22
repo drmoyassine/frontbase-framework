@@ -205,4 +205,12 @@ check('token-without-URL error carries no token', () => {
 });
 
 console.log(`\n=== state-db resolver: ${failures === 0 ? 'ALL PASSED ✅' : `${failures} FAILURE(S) ❌`} ===`);
+// Marketplace credentials use the same HTTP runner and do not displace explicit APP_DB selections.
+{ const selected=describeStateDb({host:'vercel',env:{TURSO_DATABASE_URL:'https://test.turso.io',TURSO_AUTH_TOKEN:TOKEN}});
+ if(selected.kind!=='libsql-remote'||selected.url!=='https://test.turso.io')throw Error('marketplace alias failed');
+ const overridden=describeStateDb({host:'vercel',env:{APP_DB_URL:'https://explicit.example',APP_DB_AUTH_TOKEN:TOKEN,TURSO_DATABASE_URL:'https://test.turso.io',TURSO_AUTH_TOKEN:'other'}});
+ if(overridden.url!=='https://explicit.example')throw Error('marketplace override precedence failed');
+ const unrelated=describeStateDb({host:'node',env:{TURSO_DATABASE_URL:'https://test.turso.io',TURSO_AUTH_TOKEN:TOKEN}});if(unrelated.kind!=='sqlite-file')throw Error('unrelated host adopted Marketplace state');
+ console.log('PASS Marketplace Turso aliases preserve explicit state selection and host scope'); }
+
 process.exit(failures === 0 ? 0 : 1);

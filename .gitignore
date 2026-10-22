@@ -23,3 +23,11 @@ packages/backend/test/.gate-out*.txt
 
 # Claude Code local settings (personal, not shared)
 .claude/settings.local.json
+
+# Local deployment identities and journals
+.frontbase/
+
+# Local deployment links and provider files
+.vercel/
+.env.local
+.env.*.local

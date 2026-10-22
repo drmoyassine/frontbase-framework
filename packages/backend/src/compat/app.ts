@@ -1,3 +1,4 @@
+import { registerDeploymentBindingsRoutes } from './routes/deployment-bindings.js';
 import { registerMenusRoutes } from './routes/menus.js';
 import {registerAppUserRoutes} from './routes/app-users.js';
 /**
@@ -15,7 +16,7 @@ import {registerAppUserRoutes} from './routes/app-users.js';
  * with createConsole.
  */
 import { Hono } from 'hono';
-import type { DbRunner, ServiceFetch, StorageProvider } from '@frontbase/edge-infra';
+import type { DbRunner, ServiceFetch, StorageProvider, StorageProviderFactory, CacheProvider } from '@frontbase/edge-infra';
 import { defaultDenyAuth, withSessionVersion, type ConsoleAuthVars } from '../mw/auth.js';
 import { fastApiErrorEnvelope, opaqueErrors } from '../mw/errors.js';
 import { registerStubs } from './stubs.js';
@@ -117,6 +118,7 @@ export interface CreateCompatAppDeps {
     externalFetch?: CompatFetch;
     /** Object storage executor for compat upload/move/delete/signed-url routes. */
     storageProvider?: StorageProvider;
+    storageProviderFor?: StorageProviderFactory;
     /** Descriptor for the system edge — the worker this deployment runs on. The
      *  host (worker entry) owns it because it knows the platform (Cloudflare now;
      *  Deno/Vercel/Netlify entries later) and the real binding (D1). Defaults to a
@@ -134,6 +136,10 @@ export interface CreateCompatAppDeps {
      *  no process.env) and injected as data. Registry-adopted is_default rows
      *  take precedence over these; memory/no-op is the floor. */
     envServices?: EnvServices;
+    /** Trusted platform cache, never accepted from API configuration. */
+    nativeCache?: CacheProvider;
+    /** Strict nonsecret managed deployment metadata; operator review only. */
+    deploymentManifest?: unknown;
     /** Google Workspace Marketplace install URL for the Sheets connect add-on, surfaced
      *  by /api/sync/datasources/sheets/connect/issue/. Empty default => the SPA renders
      *  its bundled fallback (matches the product's FRONTBASE_SHEETS_ADDON_URL semantics). */
@@ -199,6 +205,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     const serviceResolver = createSystemServiceResolver({
         phase2For,
         env: deps.envServices ?? {},
+        nativeCache: deps.nativeCache,
         externalFetch,
         log: (msg) => console.warn(msg),
     });
@@ -208,7 +215,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // storage-client factory the storage routes resolve with. Null embedding
     // (FRONTBASE_EMBEDDING absent) leaves the routes answering "not
     // configured"; a null vector at resolve time does the same per-tenant.
-    const storageResolver = createStorageClientResolver({ phase2For, kvFor, storageProvider: deps.storageProvider, externalFetch });
+    const storageResolver = createStorageClientResolver({ phase2For, kvFor, storageProvider: deps.storageProvider, storageProviderFor: deps.storageProviderFor, externalFetch });
     const ragFetch: ServiceFetch = (input, init) =>
         guardedExternalFetch(externalFetch, input, init);
     const ragDeps: RagRouteDeps = {
@@ -455,10 +462,11 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     );
     registerRlsRoutes(app, kvFor, syncStoreFor, externalFetch);
     // Wave 2
-    registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now, externalFetch);
+    registerStorageRoutes(app, phase2For, kvFor, secretCipher, deps.storageProvider, now, externalFetch, deps.storageProviderFor);
     // RAG routes are framework-only (outside the 334-op community surface) and
     // console-authed like the storage routes they sit beside.
     registerRagRoutes(app, ragDeps);
+    registerDeploymentBindingsRoutes(app,{manifest:deps.deploymentManifest,cloudMode:deps.cloudMode});
     registerEdgeDatabasesRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation);
     registerAuthFormsRoutes(app, runner, now);
     registerWorkflowsRoutes(app, phase2For);

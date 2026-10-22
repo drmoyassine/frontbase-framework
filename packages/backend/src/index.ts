@@ -322,3 +322,5 @@ export {
     createD1RateLimitCache, authRateLimitMiddleware, AUTH_RATE_LIMIT_BUCKETS,
 } from './compat/rate-limit-store.js';
 export type { AuthRateLimitBucket } from './compat/rate-limit-store.js';
+
+export {deploymentStorageFromEnv,deploymentStorageOptions} from './compat/deployment-storage.js';

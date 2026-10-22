@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
+    "./deployment": {"types":"./dist/deployment.d.ts","import":"./dist/deployment.js"},
     "./localization": {"types":"./dist/localization/index.d.ts","import":"./dist/localization/index.js"},
     "./localization/batches": {"types":"./dist/localization/batches.d.ts","import":"./dist/localization/batches.js"},
     "./browser/render-block": {"types":"./dist/ssr/PageRenderer.d.ts","import":"./dist/ssr/PageRenderer.js"},
@@ -56,10 +57,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
+    "test:deployment": "node test/deployment.mjs && node test/deployment-mutation.mjs",
     "test:menus": "node test/menus.mjs && node test/menus-native.mjs",
     "test:localization": "node test/localization.mjs && node test/localization-mutation.mjs && node test/patterns-mutation.mjs",
-    "test": "node test/parity.mjs && node test/wysiwyg-parity.mjs && node test/engine.mjs && node test/scope.mjs && node test/fallback.mjs && node test/behaviors.mjs && node test/workflow.mjs && node test/directory-bindings.mjs && node test/public-form-draft.mjs && node test/template-landing.mjs && node test/direction.mjs && node test/localization.mjs && node test/localization-surfaces.mjs && node test/list-chrome-surfaces.mjs && node test/patterns.mjs",
-    "test:mutation": "node test/mutation.mjs && node test/directory-bindings-mutation.mjs && node test/public-form-draft-mutation.mjs && node test/template-landing-mutation.mjs && node test/direction-mutation.mjs && node test/localization-mutation.mjs && node test/patterns-mutation.mjs"
+    "test": "node test/parity.mjs && node test/wysiwyg-parity.mjs && node test/engine.mjs && node test/scope.mjs && node test/fallback.mjs && node test/behaviors.mjs && node test/workflow.mjs && node test/directory-bindings.mjs && node test/public-form-draft.mjs && node test/template-landing.mjs && node test/direction.mjs && node test/localization.mjs && node test/localization-surfaces.mjs && node test/list-chrome-surfaces.mjs && node test/patterns.mjs && node test/deployment.mjs",
+    "test:mutation": "node test/mutation.mjs && node test/directory-bindings-mutation.mjs && node test/public-form-draft-mutation.mjs && node test/template-landing-mutation.mjs && node test/direction-mutation.mjs && node test/localization-mutation.mjs && node test/patterns-mutation.mjs && node test/deployment-mutation.mjs"
   },
   "dependencies": {
     "@frontbase/translation": "workspace:*",

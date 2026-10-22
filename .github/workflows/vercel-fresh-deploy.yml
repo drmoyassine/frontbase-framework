@@ -1,6 +1,6 @@
 name: Vercel fresh deploy (A-24)
 
-# Dispatch-only live gate for the Vercel Edge host (the PR gate is the
+# Dispatch-only live gate for the Vercel Node host (the PR gate is the
 # credential-free `smoke:host` + config gates in contracts.yml). Deploys a
 # SCRATCH project named vz-<run_id>-<attempt> with Turso or D1-over-REST as the
 # state db, runs the browser acceptance suite against it, then deletes the
@@ -12,9 +12,9 @@ name: Vercel fresh deploy (A-24)
 #   APP_DB_D1_ACCOUNT_ID + APP_DB_D1_DATABASE_ID + CLOUDFLARE_API_TOKEN  (D1 over REST)
 #
 # Execution-time verify points (E1–E4 in the A-24 plan) resolve on the first
-# dispatch: header/rewrite behavior, edge-runtime engagement, runtime env
-# visibility. `vercel` is installed unpinned until then; pin the exact version
-# that first passed.
+# dispatch: header/rewrite behavior, Node Web-handler engagement, runtime env
+# visibility. CLI64.7.0 is pinned for the locally verified flag contract; real host acceptance
+# remains a separate credential-gated check.
 
 on:
   workflow_dispatch:
@@ -89,8 +89,8 @@ jobs:
           ADMIN_PASSWORD: ${{ secrets.VZ_ADMIN_PASSWORD }}
         run: |
           set -o pipefail
-          npm install -g vercel@latest
-          pnpm run deploy:vercel -- --project "$PROJECT" | tee deploy.log
+          npm install -g vercel@64.7.0
+          pnpm run deploy:vercel -- --project "$PROJECT" --scope "$VERCEL_ORG_ID" --first-install | tee deploy.log
           deploy_url="$(grep -Eo 'https://[A-Za-z0-9.-]+\.vercel\.app' deploy.log | tail -1)"
           test -n "$deploy_url"
           echo "deploy_url=$deploy_url" >> "$GITHUB_OUTPUT"
@@ -115,4 +115,4 @@ jobs:
 
       - name: Delete the scratch Vercel project
         if: always()
-        run: vercel project rm "$PROJECT" --yes || true
+        run: vercel project rm "$PROJECT" --scope "$VERCEL_ORG_ID" --yes || true

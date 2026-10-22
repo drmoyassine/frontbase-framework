@@ -1,7 +1,7 @@
 /**
  * LibSQL / Turso vector adapter — ported from the product edge
  * (LibSqlVectorAdapter). Vectors live as JSON text in a plain TEXT column;
- * remote (libsql:// Turso) orders by the server-side vector_distance(), local
+ * remote (libsql:// Turso) orders by server-side vector_distance_cos(), local
  * (file:/memory) computes cosine distance in-process — the vector extension
  * does not exist in local libsql builds, so the honest split keeps self-host
  * and tests on one contract. Score = 1 − distance either way.
@@ -39,7 +39,7 @@ function parseMetadata(raw: unknown): VectorMetadata {
     try { return JSON.parse(raw) as VectorMetadata; } catch { return {}; }
 }
 
-/** Cosine DISTANCE (0 identical, 2 opposite) — matches vector_distance's
+/** Cosine DISTANCE (0 identical, 2 opposite) — matches vector_distance_cos's
  *  cosine space, so 1 − distance is the similarity both paths return. */
 function cosineDistance(a: number[], b: number[]): number {
     let dot = 0, na = 0, nb = 0;
@@ -85,7 +85,7 @@ export function libsqlVectorAdapter(opts: LibsqlVectorOpts): VectorAdapter {
             const { clause, values } = metadataFilters(filters);
             if (remote) {
                 const rows = await client.execute({
-                    sql: `SELECT id, text, metadata, vector_distance(vector, ?) as distance FROM ${table} WHERE vector IS NOT NULL${clause} ORDER BY distance LIMIT ?`,
+                    sql: `SELECT id, text, metadata, vector_distance_cos(vector32(vector), vector32(?)) as distance FROM ${table} WHERE vector IS NOT NULL${clause} ORDER BY distance LIMIT ?`,
                     args: [JSON.stringify(queryVector), ...values, limit],
                 });
                 return rows.rows.map((row) => ({

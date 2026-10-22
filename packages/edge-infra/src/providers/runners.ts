@@ -36,6 +36,32 @@ export function sqliteRunner(url: string, authToken?: string, fetchImpl?: Servic
 
 /** Build a DbRunner from an existing libsql client (shared by sqliteRunner + turso). */
 export function libsqlRunner(client: Client): DbRunner {
+    // The HTTP client pins transactions to one server connection. Native file/
+    // memory clients retain their existing lifecycle (a new :memory: connection
+    // would otherwise create a different database after a transaction).
+    if (client.protocol !== 'http') return libsqlStatements(client);
+    return {
+        ...libsqlStatements(client),
+        dialect: 'sqlite',
+        async transaction(work) {
+            // Write intent acquires the database lock before migration discovery.
+            // The web client keeps all statements on the same HTTP transaction.
+            const transaction = await client.transaction('write');
+            try {
+                const value = await work(libsqlStatements(transaction));
+                await transaction.commit();
+                return value;
+            } catch (error) {
+                await transaction.rollback().catch(() => {});
+                throw error;
+            } finally {
+                transaction.close();
+            }
+        },
+    };
+}
+
+function libsqlStatements(client: Pick<Client, 'execute'>): DbRunner {
     return {
         async query(sql, params = []) {
             const res = await client.execute({ sql, args: params as never[] });

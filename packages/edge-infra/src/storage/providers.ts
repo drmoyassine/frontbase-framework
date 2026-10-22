@@ -50,6 +50,9 @@ export interface StorageProvider {
     publicUrl?(bucket: string, key: string): string;
 }
 
+/** Host-only per-tenant native binding factory; never accepted from client JSON. */
+export type StorageProviderFactory = ((tenant:string, request?:Request) => StorageProvider) & {deploymentBinding?:{id:string;name:string;provider:'s3'|'r2';maxSignedUrlExpiry?:number}};
+
 export interface BucketEntry {
     id: string;
     name: string;
@@ -434,34 +437,27 @@ export function sigv4StorageProvider(opts: SigV4StorageOpts): StorageProvider {
         },
 
         async listFiles(bucket: string, path: string, opts?: { limit?: number; offset?: number; search?: string }): Promise<FileEntry[]> {
+            const limit=opts?.limit??1000,offset=opts?.offset??0;
+            if(!Number.isSafeInteger(limit)||limit<1||limit>3000||!Number.isSafeInteger(offset)||offset<0||offset>10000)throw Error('invalid_list_range');
             const prefix = path.replace(/^\/+|\/+$/g, '') + (path ? '/' : '');
-            const query: Array<[string, string]> = [['list-type', '2'], ['prefix', prefix], ['delimiter', '/']];
-            if (opts?.limit) query.push(['max-keys', String(opts.limit)]);
-            const { url, headers } = await sign(ctx, { method: 'GET', canonicalPath: `/${uriEncode(bucket)}`, query, payloadHash: EMPTY_SHA256 });
-            const resp = await ctx.fetch(url, { method: 'GET', headers });
-            await assertOk(resp, 'list_files');
-            const xml = await resp.text();
-            const entries: FileEntry[] = [];
-            for (const block of xmlBlocks(xml, 'Contents')) {
-                const key = xmlDecode(xmlTag('Key', block));
-                const name = key.slice(prefix.length);
-                if (!name || name.endsWith('/')) continue; // the prefix itself / folder markers
-                entries.push({
-                    name,
-                    id: key,
-                    size: Number(xmlTag('Size', block) || 0),
-                    updated_at: xmlTag('LastModified', block) || null,
-                    mimetype: null,
-                    isFolder: false,
-                });
+            const all:FileEntry[]=[];let token='';
+            for(let page=0;page<32;page++) {
+                const query:Array<[string,string]>=[['list-type','2'],['prefix',prefix],['delimiter','/'],['max-keys',String(Math.min(1000,opts?.search?1000:offset+limit))],...(token?[['continuation-token',token] as [string,string]]:[])];
+                const {url,headers}=await sign(ctx,{method:'GET',canonicalPath:`/${uriEncode(bucket)}`,query,payloadHash:EMPTY_SHA256});
+                const resp=await ctx.fetch(url,{method:'GET',headers});await assertOk(resp,'list_files');const xml=await resp.text();
+                for(const block of xmlBlocks(xml,'Contents')) {
+                    const key=xmlDecode(xmlTag('Key',block)),name=key.slice(prefix.length);if(!name)continue;
+                    all.push({name,id:key,size:Number(xmlTag('Size',block)||0),updated_at:xmlTag('LastModified',block)||null,mimetype:null,isFolder:false});
+                }
+                for(const block of xmlBlocks(xml,'CommonPrefixes')) {
+                    const common=xmlDecode(xmlTag('Prefix',block)),name=common.slice(prefix.length).replace(/\/+$/,'');if(!name)continue;
+                    all.push({name,id:common,size:0,mimetype:null,isFolder:true});
+                }
+                const matched=opts?.search?all.filter(entry=>entry.name.includes(opts.search!)):all;
+                if(matched.length>=offset+limit||xmlTag('IsTruncated',xml).trim()!=='true')return matched.slice(offset,offset+limit);
+                const next=xmlDecode(xmlTag('NextContinuationToken',xml));if(!next||next===token||next.length>8192)throw Error('invalid_storage_cursor');token=next;
             }
-            for (const block of xmlBlocks(xml, 'CommonPrefixes')) {
-                const common = xmlDecode(xmlTag('Prefix', block));
-                const name = common.slice(prefix.length).replace(/\/+$/, '');
-                if (!name) continue;
-                entries.push({ name, id: common, size: 0, mimetype: null, isFolder: true });
-            }
-            return entries;
+            throw Error('storage_listing_limit');
         },
 
         async createFolder(bucket: string, folderPath: string): Promise<void> {

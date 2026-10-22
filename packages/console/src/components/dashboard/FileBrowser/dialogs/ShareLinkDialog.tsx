@@ -14,6 +14,7 @@ interface ShareLinkDialogProps {
     onOpenChange: (open: boolean) => void;
     fileName: string;
     isPublicBucket: boolean;
+    maxExpiry?: number;
     /** Called to generate a URL with the selected expiry */
     onGenerateUrl: (expiresIn: number) => Promise<string>;
     /** Called to get the public URL (for public buckets) */
@@ -21,10 +22,12 @@ interface ShareLinkDialogProps {
 }
 
 export function ShareLinkDialog({
-    open, onOpenChange, fileName, isPublicBucket,
+    open, onOpenChange, fileName, isPublicBucket, maxExpiry,
     onGenerateUrl, onGetPublicUrl,
 }: ShareLinkDialogProps) {
     const [expiry, setExpiry] = React.useState<number>(3600); // Default 1 hour
+    const effectiveExpiry=Math.min(expiry,maxExpiry??Number.POSITIVE_INFINITY);
+    const expiryOptions=LINK_EXPIRY_OPTIONS.filter(option=>option.value<=(maxExpiry??Number.POSITIVE_INFINITY));
     const [generatedUrl, setGeneratedUrl] = React.useState<string>('');
     const [isLoading, setIsLoading] = React.useState(false);
     const [copied, setCopied] = React.useState(false);
@@ -52,7 +55,7 @@ export function ShareLinkDialog({
         setIsLoading(true);
         setCopied(false);
         try {
-            const url = await onGenerateUrl(expiry);
+            const url = await onGenerateUrl(effectiveExpiry);
             setGeneratedUrl(url);
         } catch {
             setGeneratedUrl('');
@@ -72,7 +75,7 @@ export function ShareLinkDialog({
         if (generatedUrl) window.open(generatedUrl, '_blank');
     };
 
-    const selectedExpiryLabel = LINK_EXPIRY_OPTIONS.find(o => o.value === expiry)?.label || '';
+    const selectedExpiryLabel = expiryOptions.find(o => o.value === effectiveExpiry)?.label || '';
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -94,12 +97,12 @@ export function ShareLinkDialog({
                     ) : (
                         <div className="grid gap-2">
                             <Label>Link Expires In</Label>
-                            <Select value={String(expiry)} onValueChange={(v) => setExpiry(Number(v))}>
+                            <Select value={String(effectiveExpiry)} onValueChange={(v) => setExpiry(Number(v))}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select expiry..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {LINK_EXPIRY_OPTIONS.map(opt => (
+                                    {expiryOptions.map(opt => (
                                         <SelectItem key={opt.value} value={String(opt.value)}>
                                             {opt.label}
                                         </SelectItem>

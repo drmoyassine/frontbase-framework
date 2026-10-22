@@ -68,7 +68,10 @@ export type { VectorizeOpts } from './vector/vectorize.js';
 
 // storage (S3-compatible — R2/S3/B2/MinIO; Phase 3a / F4)
 export { s3StorageProvider, sigv4StorageProvider, supabaseStorageProvider, memoryStorageProvider } from './storage/providers.js';
-export type { StorageProvider, PutOpts, S3StorageOpts, SigV4StorageOpts, SupabaseStorageOpts, BucketEntry, FileEntry, CreateBucketOpts } from './storage/providers.js';
+export type { StorageProvider, StorageProviderFactory, PutOpts, S3StorageOpts, SigV4StorageOpts, SupabaseStorageOpts, BucketEntry, FileEntry, CreateBucketOpts } from './storage/providers.js';
+
+export { createNativeR2Storage, NATIVE_R2_PROVIDER_ID, NATIVE_R2_ACCESS_PATH } from './storage/r2.js';
+export type { R2BucketBinding } from './storage/r2.js';
 
 // provisioning (CF Management API — D1/KV/Queues; Phase 3a / F5)
 export { cloudflareProvisioner, noopProvisioner } from './provisioning/cloudflare.js';
@@ -84,3 +87,5 @@ export type { SecretVersion, VaultOptions } from './vault/vault.js';
 
 // executors
 export { aiChatExecutor, mcpCallExecutor, emailExecutor, queueTriggerExecutor, fullExecutorRegistry } from './executors/ai.js';
+
+export {scopedDeploymentStorage,DEPLOYMENT_S3_PROVIDER_ID} from './storage/deployment.js';

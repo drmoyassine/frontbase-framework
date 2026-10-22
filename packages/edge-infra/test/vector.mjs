@@ -96,6 +96,33 @@ test('vectorTableName rejects injection-shaped identifiers (product diverges)', 
     }
 });
 
+// Turso's documented HTTP SQL contract differs from local in-process ranking.
+// This wire fixture catches unsupported server function/conversion and binding regressions;
+// the separate disposable live-provider receipt establishes actual server execution.
+test('libsql HTTP: supported cosine function, JSON conversion and bound tenant predicate', async () => {
+    const calls = [];
+    const adapter = libsqlVectorAdapter({ url: 'libsql://vector.example', authToken: 'fixture-token', fetchImpl: async (input) => {
+        assert.equal(input.url, 'https://vector.example/v2/pipeline');
+        assert.equal(input.headers.get('authorization'), 'Bearer fixture-token');
+        const request = await input.json();
+        const results = request.requests.map(item => {
+            if (item.type !== 'execute') return {type:'ok',response:{type:item.type}};
+            const stmt = item.stmt; calls.push(stmt);
+            assert.match(stmt.sql, /vector_distance_cos\(vector32\(vector\), vector32\(\?\)\)/);
+            assert.match(stmt.sql, /json_extract\(metadata, '\$\.tenant_id'\) = \?/);
+            assert.ok(!stmt.sql.includes('tenant-a'));
+            assert.deepEqual(stmt.args.map(x => x.value), ['[1,0]', 'tenant-a', 2]);
+            return {type:'ok',response:{type:'execute',result:{cols:[{name:'id'},{name:'text'},{name:'metadata'},{name:'distance'}],rows:[[{type:'text',value:'a'},{type:'text',value:'alpha'},{type:'text',value:'{"tenant_id":"tenant-a"}'},{type:'float',value:0}]],affected_row_count:0,last_insert_rowid:null}}};
+        });
+        return new Response(JSON.stringify({baton:null,base_url:null,results}), {headers:{'content-type':'application/json'}});
+    }});
+    try {
+        const hits = await adapter.search('docs', [1,0], 2, {tenant_id:'tenant-a'});
+        assert.equal(calls.length, 1);
+        assert.deepEqual(hits, [{id:'a',text:'alpha',score:1,metadata:{tenant_id:'tenant-a'}}]);
+    } finally { await adapter.close(); }
+});
+
 // ---- Vectorize (fetch double) --------------------------------------------------
 
 function double() {

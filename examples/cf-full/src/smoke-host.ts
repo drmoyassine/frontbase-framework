@@ -76,8 +76,8 @@ for (const f of DIST_FILES) {
 }
 await check('worker.mjs: zero quoted node: specifiers (CF isolate)', async () =>
     !NODE_SPEC.test(readDist('worker.mjs')));
-await check('vercel.mjs: zero quoted node: specifiers (runtime-portable bundle)', async () =>
-    !NODE_SPEC.test(readDist('vercel.mjs')));
+await check('vercel.mjs: Node host has no native libSQL dependency', async () =>
+    !NATIVE_LIBSQL.test(readDist('vercel.mjs')));
 await check('deno.mjs: node:fs import preserved EXTERNAL (deno node-compat)', async () =>
     /['"]node:fs['"]/.test(readDist('deno.mjs')));
 await check('deno.mjs: Deno.serve present (import.meta.main gated)', async () =>
@@ -200,7 +200,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promis
 }) as typeof fetch;
 
 interface EntryModule {
-    default: (req: Request) => Promise<Response>;
+    default: ((req: Request) => Promise<Response>) | { fetch: (req: Request) => Promise<Response> };
     createRequestHandler?: () => (req: Request) => Promise<Response>;
 }
 
@@ -217,7 +217,7 @@ async function loadEntry(name: 'vercel' | 'deno'): Promise<EntryModule> {
 }
 
 const handlerOf = (mod: EntryModule): (req: Request) => Promise<Response> =>
-    mod.createRequestHandler ? mod.createRequestHandler() : mod.default;
+    mod.createRequestHandler ? mod.createRequestHandler() : typeof mod.default === 'function' ? mod.default : mod.default.fetch;
 
 async function driveMatrix(label: string, handle: (req: Request) => Promise<Response>): Promise<void> {
     const req = (path: string, init?: RequestInit) => handle(new Request('https://smoke-host.local' + path, init));
@@ -268,7 +268,10 @@ const wantDeno = hosts === 'all' || hosts === 'deno';
 let vercelStatuses: Record<string, number> = {};
 let denoStatuses: Record<string, number> = {};
 if (wantVercel) {
-    const vercel = handlerOf(await loadEntry('vercel'));
+    const vercelModule = await loadEntry('vercel');
+    await check('Vercel Node exports a Web fetch handler, not a legacy req/res function', async () =>
+        typeof vercelModule.default === 'object' && typeof vercelModule.default.fetch === 'function');
+    const vercel = handlerOf(vercelModule);
     await driveMatrix('vercel entry (dist/vercel.mjs default export)', vercel);
     // No assets binding on Vercel — /static/* is CDN-owned (vercel.json, pinned
     // by test/vercel-config.mjs). The function must NOT 500 on those paths.
@@ -337,7 +340,7 @@ const probe = (bundle: 'vercel.mjs' | 'deno.mjs', env: Record<string, string>, s
     const script = `
         import { pathToFileURL } from 'node:url';
         const mod = await import(pathToFileURL(${JSON.stringify(join(here, bundle))}));
-        const handle = mod.createRequestHandler ? mod.createRequestHandler() : mod.default;
+        const handle = mod.createRequestHandler ? mod.createRequestHandler() : typeof mod.default === 'function' ? mod.default : mod.default.fetch;
         const res = await handle(new Request('https://probe.local/frontbase-admin'));
         const body = await res.text();
         const leak = ${JSON.stringify(secretThatMustNotLeak)};
@@ -402,7 +405,7 @@ function probeBundleMessage(bundle: 'vercel.mjs' | 'deno.mjs', env: Record<strin
     const script = `
         import { pathToFileURL } from 'node:url';
         const mod = await import(pathToFileURL(${JSON.stringify(join(here, bundle))}));
-        const handle = mod.createRequestHandler ? mod.createRequestHandler() : mod.default;
+        const handle = mod.createRequestHandler ? mod.createRequestHandler() : typeof mod.default === 'function' ? mod.default : mod.default.fetch;
         const res = await handle(new Request('https://probe.local/frontbase-admin'));
         const body = await res.text();
         console.log(JSON.stringify({ status: res.status, body }));

@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { deploymentPlanCommand } from './deployment-plan.mjs';
+const defaults=deploymentPlanCommand(['--defaults','--target','cloudflare']);assert.equal(defaults.exitCode,0);
+assert.equal(defaults.result.bindings['state-db'].adapterId,'cloudflare-d1');
+assert.equal(deploymentPlanCommand(['--defaults','--target','deno']).exitCode,2);
+const manifest=structuredClone(defaults.result);manifest.bindings.cache.mode='disabled';
+const out=deploymentPlanCommand(['--validate','fixture'],()=>JSON.stringify(manifest));assert.equal(out.exitCode,0);assert.equal(out.result.operations.length,1);
+manifest.bindings['state-db'].config.apiKey='fixture-secret-never-print';
+const rejected=deploymentPlanCommand(['--validate','fixture'],()=>JSON.stringify(manifest));assert.equal(rejected.exitCode,2);assert.ok(!JSON.stringify(rejected).includes('fixture-secret-never-print'));
+assert.equal(deploymentPlanCommand(['--validate','fixture'],()=>'{broken').result.error,'invalid_manifest_file');
+console.log('PASS profile CLI: defaults, target validation, credential-free planning and error redaction');

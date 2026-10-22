@@ -346,6 +346,18 @@ export async function migrateUp(runner: DbRunner, now: () => string = () => new 
             return migrateUpUnlocked(transaction, now, migrations);
         });
     }
+    if (runner.dialect === 'sqlite' && runner.transaction) {
+        // Another cold start can hold the write lock. Retry only a known lock
+        // refusal; each failed transaction has rolled back before trying again.
+        for (let attempt = 0; ; attempt++) {
+            try {
+                return await runner.transaction(transaction => migrateUpUnlocked(transaction, now, migrations));
+            } catch (error) {
+                if ((error as { code?: string })?.code !== 'SQLITE_BUSY' || attempt >= 7) throw error;
+                await new Promise(resolve => setTimeout(resolve, Math.min(25 * 2 ** attempt, 250)));
+            }
+        }
+    }
     return migrateUpUnlocked(runner, now, migrations);
 }
 
