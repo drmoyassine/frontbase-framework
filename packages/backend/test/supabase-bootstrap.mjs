@@ -48,16 +48,21 @@ const created = await request('/api/sync/datasources/', {
     name: 'Connected Supabase', type: 'supabase', provider_account_id: 'supa-account',
 });
 assert.equal(created.status, 201);
-assert.equal(calls.length, 1);
-assert.equal(calls[0].url, 'https://api.supabase.com/v1/projects/abcdefgh/database/query');
-assert.equal(calls[0].token, 'Bearer management-token');
-assert.match(calls[0].body, /execute_query/);
-assert.match(calls[0].body, /execute_sql/);
+assert.deepEqual(calls.map(call => call.url), [
+    'https://api.supabase.com/v1/projects/abcdefgh/api-keys?reveal=true',
+    'https://api.supabase.com/v1/projects/abcdefgh/postgrest',
+    'https://api.supabase.com/v1/projects/abcdefgh/database/query',
+], 'legacy credential refresh must precede Management-only SQL bootstrap');
+assert.ok(calls.every(call => call.token === 'Bearer management-token'));
+const bootstrapCall = calls[2];
+assert.match(bootstrapCall.body, /execute_query/);
+assert.match(bootstrapCall.body, /execute_sql/);
+const connectedCallCount = calls.length;
 
 const manual = await request('/api/sync/datasources/', {
     name: 'Manual Supabase', type: 'supabase',
     api_url: 'https://abcdefgh.supabase.co', service_role_key: 'service-role-key',
 });
 assert.equal(manual.status, 201);
-assert.equal(calls.length, 1, 'manual key-only setup must not pretend to bootstrap');
+assert.equal(calls.length, connectedCallCount, 'manual key-only setup must not refresh credentials or pretend to bootstrap');
 console.log('supabase datasource bootstrap: PASS');

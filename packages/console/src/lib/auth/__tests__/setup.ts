@@ -14,8 +14,9 @@ Object.defineProperty(window, 'location', {
     hostname: 'localhost',
     port: '5173',
     pathname: '/',
-    search: {},
-    hash: {},
+    search: '',
+    hash: '',
+    href: 'http://localhost:5173/',
   },
   writable: true,
 });

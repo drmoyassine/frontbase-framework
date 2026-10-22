@@ -40,9 +40,19 @@ describe('Trailing Slash Guard — Frontend API Calls', () => {
         '/api/cloudflare', '/api/deno', '/api/settings', '/api/agent',
         '/api/tenants', '/api/admin/tenants',
     ];
+    // Exact Hono compatibility contracts added after the original FastAPI guard.
+    // Keep this finite: unknown trailing-slash routes must still fail the scan.
+    const CANONICAL_COMPAT_ROUTES = new Set([
+        '/api/variables/registry/',
+        '/api/project/translation-batches/',
+        '/api/project/translation-generation/',
+        '/api/project/site-configuration/publication/state/',
+        '/api/project/live-list-migration/editable/',
+    ]);
     const isTrailingSlashViolation = (url: string): boolean =>
         url !== '/' &&
         url.endsWith('/') &&
+        !CANONICAL_COMPAT_ROUTES.has(url) &&
         !url.includes('${') &&
         !EXCLUDED_PREFIXES.some((p) => url.startsWith(p));
 

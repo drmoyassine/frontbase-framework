@@ -299,7 +299,17 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
 
     // Env-wired provider stays in the harness: a provider_id op must NOT leak into it.
     const storage = memoryStorageProvider();
-    const { app, setTenant } = await harness({ storageProvider: storage });
+    // Keep the production HTTPS/private-host guard intact. Only this injected
+    // test transport bridges the named public-shaped fixture to its local server.
+    const fixtureOrigin = 'https://s3.work-e.example.test';
+    const { app, setTenant } = await harness({
+        storageProvider: storage,
+        externalFetch: async (input, init) => {
+            const url = new URL(input instanceof Request ? input.url : String(input));
+            assert.equal(url.origin, fixtureOrigin, 'unexpected outbound fixture request');
+            return fetch(new URL(url.pathname + url.search, s3Endpoint), init);
+        },
+    });
     try {
         const accountResponse = await request(app, 'POST', '/api/edge-providers/', {
             name: 'Tenant A S3 Account',
@@ -307,7 +317,7 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
             config: {
                 accessKeyId: 'access-key',
                 secretAccessKey: 'must-never-leak',
-                endpoint: s3Endpoint,
+                endpoint: fixtureOrigin,
             },
         });
         assert.equal(accountResponse.status, 201);
@@ -392,7 +402,7 @@ test('E3 storage: upload/move/cross-move/delete change provider bytes and metada
             'GET',
             `/api/storage/signed-url?provider_id=${provider.id}&bucket=target-bucket&path=docs%2Fmoved.txt`,
         )).json();
-        assert.ok(signed.signedUrl.startsWith(s3Endpoint), `unexpected signed url ${signed.signedUrl}`);
+        assert.ok(signed.signedUrl.startsWith(fixtureOrigin), `unexpected signed url ${signed.signedUrl}`);
         assert.match(signed.signedUrl, /X-Amz-Signature=/);
 
         // Console shape: {paths, bucket, provider_id} → bare {success: true}.

@@ -78,18 +78,21 @@ check('rate_limit_counters exists with the right shape', await (async () => {
     const by = Object.fromEntries(rows.map((r) => [r.name, r]));
     return by.bucket_key?.pk === 1 && Boolean(by.window_start) && Boolean(by.count) && rows.length === 3;
 })());
-// v21 roundtrip (proper down). v22 is appended after it, so roll back both.
-// v20 has an EMPTY down like v13/v17/v19 (SQLite
-// can't drop columns portably) — full-set convergence with v20 stays covered by
-// test/migrations.mjs, which rolls back everything and rebuilds tenants at v3.
+// Exercise the historical v21/v22 rollback on its actual schema boundary.
+// Later additive migrations may intentionally have empty downs; rolling back
+// the newest two is neither a v21 test nor a valid partial rollback of those.
+// Full-set convergence remains covered by test/migrations.mjs.
 {
+    const historical = MIGRATIONS.filter(migration => migration.version <= 22);
+    const historicalRunner = sqliteRunner(':memory:');
+    await migrateUp(historicalRunner, () => '2026-08-28T00:00:00Z', historical);
     const fp = (await import('../dist/db/migrations.js')).schemaFingerprint;
-    const before = await fp(runner);
-    await migrateDown(runner, 2, MIGRATIONS);
-    const midState = await runner.query("SELECT name FROM sqlite_master WHERE name = 'rate_limit_counters'");
+    const before = await fp(historicalRunner);
+    await migrateDown(historicalRunner, 2, historical);
+    const midState = await historicalRunner.query("SELECT name FROM sqlite_master WHERE name = 'rate_limit_counters'");
     check('v21 rollback drops rate_limit_counters', midState.length === 0);
-    await migrateUp(runner, () => '2026-08-28T00:00:00Z');
-    check('v21 apply→rollback→re-apply converges', (await fp(runner)) === before);
+    await migrateUp(historicalRunner, () => '2026-08-28T00:00:00Z', historical);
+    check('v21 apply→rollback→re-apply converges', (await fp(historicalRunner)) === before);
 }
 
 // ── 4. TenantStore plan/status ──────────────────────────────────────────────
