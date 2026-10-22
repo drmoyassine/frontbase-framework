@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync,writeFileSync,rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { transform } from 'esbuild';
 const source=readFileSync(new URL('../src/deployment.ts',import.meta.url),'utf8');
@@ -18,7 +19,9 @@ for(const [name,needle,replacement] of faults){
  try{
   const {code}=await transform(source.replace(needle,replacement),{loader:'ts',format:'esm',target:'node22'});
   writeFileSync(temporary,code);
-  const run=spawnSync(process.execPath,[suite.pathname.replace(/^\/(?=[A-Za-z]:)/,'')],{encoding:'utf8',env:{...process.env,FRONTBASE_DEPLOYMENT_TEST_MODULE:temporary.href},timeout:30000});
+  // fileURLToPath, not pathname stripping: a pathname keeps %20 for spaces, which the module
+  // loader then treats literally — the suite must run from checkouts whose path has a space.
+  const run=spawnSync(process.execPath,[fileURLToPath(suite)],{encoding:'utf8',env:{...process.env,FRONTBASE_DEPLOYMENT_TEST_MODULE:temporary.href},timeout:30000});
   assert.notEqual(run.status,0,name+' must be detected');
   assert.match(run.stderr,/AssertionError/,name+' must fail an assertion, not the harness');
   console.log('PASS detected: '+name);
