@@ -45,6 +45,8 @@ export type {HiddenFilterCondition, FilterVariableReader} from './hiddenFilters'
  * baked by the Edge publisher (carrying a `dataRequest`) at publish time.
  */
 export interface ComponentDataBinding {
+    _localePath?:string;
+    _localeLabels?:Record<string,string>;
     presentation?:import('./liveList').LiveListPresentation;
     sourceSchema?:string;
     viewId?:string;
@@ -269,5 +271,5 @@ export function isBuilderCanvas(): boolean {
     return typeof document!=='undefined'&&document.querySelector<HTMLMetaElement>('meta[name="chimera-rendered-by"]')?.content === 'builder';
 }
 
-export {fetchLiveList,liveListBody,liveListIdentity,liveListSortAvailable,liveListPageSize} from './liveList';
+export {listMessage,fetchLiveList,liveListBody,liveListIdentity,liveListSortAvailable,liveListPageSize} from './liveList';
 export type {LiveListBinding,LiveListQuery,LiveListPresentation} from './liveList';

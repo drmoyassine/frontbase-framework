@@ -177,7 +177,7 @@ try {
     const convertedDoc = new JSDOM(converted.text).window.document;
     const switchLabels = [...convertedDoc.querySelectorAll('button')].map(button => button.textContent.trim());
     assert.ok(switchLabels.includes('Institutions') && switchLabels.includes('Programs'), 'switch buttons are new units and keep source copy');
-    assert.ok(!converted.text.includes('data-react-component="Repeater"'), 'the converted list keeps its server-only first paint');
+    assert.ok(converted.text.includes('data-react-component="Repeater"'), 'the converted list keeps localized initial rows and interactive hydration');
     assert.deepEqual(rowTitles(converted.text), ['Institution 01 Renamed', ...['02', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13'].map(n => `عربي Institution ${n}`)], 'the converted initialRows follow the localized query plan');
     const convertedPrograms = await html('/ar/explore/?type=program'); assert.equal(convertedPrograms.status, 200);
     assert.ok(convertedPrograms.text.includes('عربي Program Alpha') && convertedPrograms.text.includes('عربي Program Gamma'), 'the version-scoped rendering joins the same release catalog');

@@ -10,6 +10,8 @@ export const templateMenuLabels = { browse:'Browse ☰', browseAria:'Browse navi
  *  Intl.PluralRules at render — see localization/patterns) so a release translates the
  *  pattern once and every page position composes in the page language. */
 export const directoryBrowsingLabels = { collectionsAria:'Directory collections', institutions:'Institutions', programs:'Programs', searchAria:'Search directory', searchLabel:'Search by title', placeholderInstitution:'Find an institution', placeholderProgram:'Find a program', placeholderArticle:'Find an article', apply:'Apply', orderLabel:'Order', sortAsc:'Title A-Z', sortDesc:'Title Z-A', matchLabel:'Title match', matchContains:'Contains', matchStartsWith:'Starts with', matchExact:'Exact title', pagesAria:'Directory pages', previous:'Previous', next:'Next', recordsRange:'{from}-{to} of {total} records', 'recordsRange.one':'{from}-{to} of {total} record', recordsZero:'0 records', 'recordsZero.one':'0 record', pageStatus:'Page {page}', emptyRecords:'No records matched this preview.' };
+/** Shared List Component chrome: reviewed once, reused by each browser renderer. */
+export const listComponentLabels={previous:'Previous',next:'Next',pagination:'Pagination',page:'Page {page}',pageOf:'Page {page} of {pages}',count:'{count} records',countOnPage:'{count} records on this page',range:'{from}-{to} of {count}',showing:'Showing {from}-{to} of {count} entries (Page {page} of {pages})',noResults:'No results',refresh:'Refresh data',search:'Search records',searchPlaceholder:'Search records',order:'Order by',defaultOrder:'Default',direction:'Direction',ascending:'Ascending',descending:'Descending',loading:'Loading data...',empty:'No data available',error:'Failed to load data. Check the binding and access configuration.',searchOrder:'This source uses its search result order. Clear search to choose sorting.',filter:'Filter {label}...',all:'All',select:'Select...',selected:'{count} selected',clearAll:'Clear all',clearFilters:'Clear Filters',yes:'Yes',no:'No',from:'{label} from',to:'{label} to'};
 export interface DisplayRecord { connectionId:string; collection:string; key:{column:string; value:string|number|boolean}[] }
 /** `versionId` marks a field that belongs to one alternative Block Version; absent means the Default (inherited) unit.
  *  `fieldKey` names the source record column a projected list row renders — identity uses it while application keeps the display path. */
@@ -61,16 +63,14 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
         if(['Repeater','DataTable','Grid'].includes(node.type)&&Array.isArray(p.initialRows)){
             const controls=p.controls as Record<string,unknown>|undefined;
             const binding=(p.binding??(node as {binding?:unknown}).binding)as Record<string,unknown>|undefined;
-            const pinned=(binding?.source as Record<string,unknown>|undefined)?.kind==='publication';
-            // A pinned publication binding re-fetches through the localized list endpoint, so its
-            // interactive controls stay coherent on a localized page; any other store keeps the refusal.
-            if(controls&&Object.values(controls).some(v=>v===true)&&!pinned)throw Error('localized_interactive_list_not_supported');
-            // DataTable and Grid render skeletons and fetch rows in the visitor's browser with no
-            // locale channel, so a localized page would surface source text: refuse live-bound
-            // ones outright instead of publishing an incoherent page.
-            if(node.type!=='Repeater'&&!pinned)throw Error('localized_live_table_not_supported');
-            // Data is still resolved live on every server request. Avoid a source-language client re-fetch.
-            p.localeReadOnly=true;
+            // Interactive controls keep hydration; the release supplies a page-scoped locale channel.
+            const interactive=!!controls&&Object.values(controls).some(v=>v===true)||(binding?.pagination as any)?.enabled===true||(binding?.filtering as any)?.searchEnabled===true;
+            // Table/Grid and interactive Repeaters continue through the page-scoped locale endpoint.
+            // Noninteractive Repeaters may keep pure SSR; interactive lists use the release channel.
+            p.localeReadOnly=node.type==='Repeater'&&!interactive;
+            // Pure SSR Repeaters expose no browser chrome: do not invent untranslated review units
+            // or invalidate an existing strict release with controls the page never renders.
+            if(node.type!=='Repeater'||interactive)p.localeLabels={...listComponentLabels,...p.localeLabels as object};
         }
         if(node.children)walk(node.children);
         // Alternative structures render through the same components; they need the same normalization.
@@ -109,10 +109,15 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
         if(p.templateMenu)nested(p.templateMenuLabels,[...base,'templateMenuLabels'],new Set(Object.keys(templateMenuLabels)));
         if(Array.isArray(p.directoryBrowsingState))nested((p.directoryBrowsingState[0] as any)?.labels,[...base,'directoryBrowsingState','0','labels'],new Set(Object.keys(directoryBrowsingLabels)));
         if(Array.isArray(p.templateHeroState))p.templateHeroState.forEach((state:any,i)=>{for(const key of ['heading','introduction'])emit([...base,'templateHeroState',String(i),'settings',key],state.settings[key],key);nested(state.settings.slides,[...base,'templateHeroState',String(i),'settings','slides'],new Set(['alt']));nested(state.labels,[...base,'templateHeroState',String(i),'labels'],new Set(Object.keys(homepageHeroLabels)));});
-        if(node.type==='Repeater'&&Array.isArray(p.initialRows)){
-            const columns=new Set(['title','summary','coverAlt']);
+        if(['Repeater','DataTable','Grid'].includes(node.type)&&Array.isArray(p.initialRows)){
+            nested(p.localeLabels,[...base,'localeLabels'],new Set(Object.keys(listComponentLabels)));
+            nested(p.controls,[...base,'controls'],new Set(['searchLabel','searchPlaceholder','label']));
+            nested((p.binding as any)?.presentation,[...base,'binding','presentation'],new Set(['searchLabel','searchPlaceholder','loadingText','emptyText','errorText']));
+            nested((p.binding as any)?.columnOverrides,[...base,'binding','columnOverrides'],new Set(['displayName','label']));
+            nested((p.binding as any)?.frontendFilters,[...base,'binding','frontendFilters'],new Set(['label']));
+            const columns=new Set(['title','summary','coverAlt',...(Array.isArray((p.binding as any)?.columnOrder)?(p.binding as any).columnOrder:[])]);
             const find=(children:PageComponent[])=>{for(const child of children){for(const [key,value]of Object.entries(child.props??{})){if(['content','text','label','alt','ariaLabel'].includes(key)&&typeof value==='string'){const match=/^\{\{\s*record\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$/.exec(value);if(match)columns.add(match[1]!);}}if(child.children)find(child.children);}};find(node.children??[]);
-            p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of columns)emit([...base,'initialRows',String(i),key],row[key],`Record ${String(row.id??i)} / ${key}`,record);});
+            p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of columns)if(key!=='id')emit([...base,'initialRows',String(i),key],row[key],`Record ${String(row.id??i)} / ${key}`,record);});
         }
         return collected;};
     // Default-tree texts are the inheritance baseline: an alternative field equal to its

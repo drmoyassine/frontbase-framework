@@ -1,3 +1,4 @@
+import {listMessage} from '@frontbase/types';
 import {liveListSortAvailable,liveListPageSize} from '@frontbase/types';
 import {useFilterOptions} from '../../datatable/src/hooks/useFilterOptions';
 import {FilterBar} from '../../datatable/src/components/FilterBar';
@@ -41,16 +42,16 @@ export function Grid({
     const {data:fetchedOptions={}}=useFilterOptions({mode,filters:binding?.frontendFilters??[],tableName:binding?.tableName,dataSourceId:binding?.dataSourceId,cascadingFilters:filters,searchQuery:search,enabled:!!binding?.tableName});
     const sortingAvailable=!binding||liveListSortAvailable(binding,search);
     const position=binding?.presentation?.paginationPosition??'bottom';
-    const pagination=binding?.pagination?.enabled?<Pagination currentPage={page} pageSize={queryBinding.pagination.pageSize} totalCount={totalCount} loadedCount={data?.length??0} showCount={binding?.presentation?.count!==false} loading={loading} onPageChange={setPage}/>:null;
+    const pagination=binding?.pagination?.enabled?<Pagination labels={binding?._localeLabels} currentPage={page} pageSize={queryBinding.pagination.pageSize} totalCount={totalCount} loadedCount={data?.length??0} showCount={binding?.presentation?.count!==false} loading={loading} onPageChange={setPage}/>:null;
     const renderShell=(content:React.ReactNode)=><div className="space-y-4" aria-busy={loading}>
         <div className="flex flex-wrap gap-3 items-end">
-            {binding?.filtering?.searchEnabled&&<label className="text-sm">{binding?.presentation?.searchLabel||'Search records'}<input type="search" aria-label={binding?.presentation?.searchLabel||'Search records'} placeholder={binding?.presentation?.searchPlaceholder||'Search records'} className="block rounded border bg-background p-2" value={search} onChange={event=>{setSearch(event.target.value);setPage(0);}}/></label>}
-            {binding?.sorting?.enabled&&<><label className="text-sm">Order by<select disabled={!sortingAvailable} aria-label="Order by" className="block rounded border bg-background p-2" value={sortColumn} onChange={event=>{setSortColumn(event.target.value);setPage(0);}}><option value="">Default</option>{(binding.columnOrder?.length?binding.columnOrder:Object.keys(data?.[0]??{})).map(column=><option key={column} value={column}>{binding.columnOverrides?.[column]?.displayName??column}</option>)}</select></label><label className="text-sm">Direction<select disabled={!sortingAvailable} aria-label="Direction" className="block rounded border bg-background p-2" value={direction} onChange={event=>{setDirection(event.target.value as 'asc'|'desc');setPage(0);}}><option value="asc">Ascending</option><option value="desc">Descending</option></select></label></>}
-            {binding?.presentation?.refresh!==false&&<button type="button" disabled={loading} onClick={()=>refetch()}>Refresh data</button>}
+            {binding?.filtering?.searchEnabled&&<label className="text-sm">{binding?.presentation?.searchLabel||listMessage(binding,'search')}<input type="search" aria-label={binding?.presentation?.searchLabel||listMessage(binding,'search')} placeholder={binding?.presentation?.searchPlaceholder||listMessage(binding,'search')} className="block rounded border bg-background p-2" value={search} onChange={event=>{setSearch(event.target.value);setPage(0);}}/></label>}
+            {binding?.sorting?.enabled&&<><label className="text-sm">{listMessage(binding,'order')}<select disabled={!sortingAvailable} aria-label={listMessage(binding,'order')} className="block rounded border bg-background p-2" value={sortColumn} onChange={event=>{setSortColumn(event.target.value);setPage(0);}}><option value="">{listMessage(binding,'defaultOrder')}</option>{(binding.columnOrder?.length?binding.columnOrder:Object.keys(data?.[0]??{})).map(column=><option key={column} value={column}>{binding.columnOverrides?.[column]?.displayName??column}</option>)}</select></label><label className="text-sm">{listMessage(binding,'direction')}<select disabled={!sortingAvailable} aria-label={listMessage(binding,'direction')} className="block rounded border bg-background p-2" value={direction} onChange={event=>{setDirection(event.target.value as 'asc'|'desc');setPage(0);}}><option value="asc">{listMessage(binding,'ascending')}</option><option value="desc">{listMessage(binding,'descending')}</option></select></label></>}
+            {binding?.presentation?.refresh!==false&&<button type="button" disabled={loading} onClick={()=>refetch()}>{listMessage(binding,'refresh')}</button>}
         </div>
-        {!sortingAvailable&&<p role="status">This source uses its search result order. Clear search to choose sorting.</p>}
-        {!!binding?.frontendFilters?.length&&<FilterBar filters={binding.frontendFilters} filterValues={filters} fetchedOptions={fetchedOptions} onFilterChange={(column,value)=>{setFilters(old=>({...old,[column]:value}));setPage(0);}} onClearAll={()=>{setFilters({});setPage(0);}}/>}
-        {binding?.presentation?.count!==false&&!binding?.pagination?.enabled&&<p role="status">{totalCount===undefined?`${data?.length??0} records on this page`:`${totalCount} records`}</p>}
+        {!sortingAvailable&&<p role="status">{listMessage(binding,'searchOrder')}</p>}
+        {!!binding?.frontendFilters?.length&&<FilterBar labels={binding?._localeLabels} filters={binding.frontendFilters} filterValues={filters} fetchedOptions={fetchedOptions} onFilterChange={(column,value)=>{setFilters(old=>({...old,[column]:value}));setPage(0);}} onClearAll={()=>{setFilters({});setPage(0);}}/>}
+        {binding?.presentation?.count!==false&&!binding?.pagination?.enabled&&<p role="status">{totalCount===undefined?listMessage(binding,'countOnPage',{count:data?.length??0}):listMessage(binding,'count',{count:totalCount})}</p>}
         {(position==='top'||position==='both')&&pagination}
         {content}
         {(position==='bottom'||position==='both')&&pagination}
@@ -117,7 +118,7 @@ export function Grid({
         return renderShell(
             <div className={cn(cardClass, className)} style={safeStyle}>
                 <div className="p-6 text-center space-y-4">
-                    <p className="text-destructive text-sm font-medium">{binding?.presentation?.errorText||'Failed to load data. Check the binding and access configuration.'}</p>
+                    <p className="text-destructive text-sm font-medium">{binding?.presentation?.errorText||listMessage(binding,'error')}</p>
                     <button
                         onClick={() => refetch()}
                         className="px-4 py-2 bg-destructive text-destructive-foreground text-sm font-medium rounded-md hover:bg-destructive/90 transition-colors"
@@ -133,7 +134,7 @@ export function Grid({
         return renderShell(
             <div className={cn(cardClass, className)} style={safeStyle}>
                 <div className="p-6 text-center text-muted-foreground text-sm">
-                    {binding?.presentation?.emptyText||'No data available'}
+                    {binding?.presentation?.emptyText||listMessage(binding,'empty')}
                 </div>
             </div>
         );

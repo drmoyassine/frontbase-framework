@@ -70,6 +70,8 @@ export interface QueryConfig {
 // =============================================================================
 
 export interface DataTableBinding {
+    _localePath?:string;
+    _localeLabels?:Record<string,string>;
     presentation?:import('@frontbase/types').LiveListPresentation;
     viewId?:string;
     viewName?:string;

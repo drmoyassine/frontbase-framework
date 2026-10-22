@@ -5,10 +5,8 @@ import { renderDirectoryBrowsing } from '../dist/ssr/components/directoryBrowsin
 import { homepageDisplayLayout } from '../dist/localization/surfaces.js';
 
 // Task 7 slice C: pin what list components actually render on localized published pages.
-// The localized Repeater is server-only (no client re-fetch, no client chrome); DataTable/Grid
-// render skeletons with no server-side record text (client bundle strings are a task-10
-// residual, their record identity a task-8 residual); the directory browsing node is the one
-// list chrome the real target renders, and its labels merge release text over defaults.
+// Pure SSR Repeaters stay server-only; interactive lists retain localized hydration.
+// Table/Grid loading shells preserve the released chrome and initial rows.
 const rows = [{ id: 1, title: 'Alpha', summary: 'Alpha summary' }];
 const repeaterHtml = renderDataComponent('Repeater', 'list', {
     binding: { componentId: 'list', dataSourceId: 'frontbase:publication', tableName: 'institutions' },
@@ -20,10 +18,10 @@ const hydrated = renderDataComponent('Repeater', 'list2', {
     binding: { componentId: 'list2', dataSourceId: 'frontbase:publication', tableName: 'institutions' }, initialRows: rows }, '');
 assert.ok(hydrated.includes('data-react-component="Repeater"'), 'unlocalized lists still hydrate');
 
-assert.throws(() => homepageDisplayLayout({ root: {}, content: [{ id: 'list', type: 'Repeater',
+const interactive = homepageDisplayLayout({ root: {}, content: [{ id: 'list', type: 'Repeater',
     props: { binding: { componentId: 'list', dataSourceId: 'frontbase:publication', tableName: 'institutions' },
-        initialRows: rows, controls: { loadMore: true } } }] }), /localized_interactive_list_not_supported/,
-    'interactive list controls refuse localization rather than silently dropping the strings');
+        initialRows: rows, controls: { loadMore: true } } }] });
+assert.equal(interactive.content[0].props.localeReadOnly,false,'interactive lists keep hydration through the localized endpoint');
 
 // Task 8 slice B: a pinned publication binding re-fetches through the localized list endpoint,
 // so its interactive controls stay coherent — the refusal applies only to stores without an
@@ -32,7 +30,7 @@ const converted = homepageDisplayLayout({ root: {}, content: [{ id: 'list', type
     props: { binding: { componentId: 'list', dataSourceId: 'frontbase:publication', tableName: 'institutions',
         source: { kind: 'publication', hash: 'a'.repeat(64) } },
         initialRows: rows, controls: { search: true, count: true } } }] });
-assert.equal(converted.content[0].props.localeReadOnly, true, 'pinned publication lists still render server-side for first paint');
+assert.equal(converted.content[0].props.localeReadOnly, false, 'pinned publication lists still render server-side for first paint');
 
 const binding = { dataSourceId: 'frontbase:publication', tableName: 'institutions', columnOrder: ['title', 'summary'] };
 const table = renderDataComponent('DataTable', 'tbl', { binding, title: 'Catalog' }, '');
@@ -54,4 +52,14 @@ assert.ok(arabic.includes('>مؤسسات</a>'), 'release labels override the tab
 assert.ok(arabic.includes('>التالي</a>'), 'release labels override the pager');
 assert.ok(arabic.includes('عربي A-Z'), 'release labels override the sorting options');
 assert.ok(arabic.includes('>Programs</a>'), 'untranslated keys keep defaults');
-console.log('list chrome surfaces PASS: localized Repeater server-only, interactive-control refusal, DataTable/Grid skeleton-only residuals, browsing label merge');
+const plain=homepageDisplayLayout({root:{},content:[{id:'plain',type:'Repeater',props:{initialRows:rows}}]});
+assert.equal(plain.content[0].props.localeLabels,undefined,'no invented chrome/review units for a pure SSR list');
+const localizedTable=renderDataComponent('DataTable','localized-table',{binding:{...binding,_localePath:'/ar/catalog/',_localeLabels:{previous:'السابق',next:'التالي',searchPlaceholder:'بحث'}},initialRows:rows,initialTotal:1},'');
+const localizedDom=new JSDOM(localizedTable).window.document;
+assert.equal(localizedDom.querySelector('input').placeholder,'بحث');
+assert.ok(localizedDom.body.textContent.includes('السابق'));
+assert.ok(localizedDom.body.textContent.includes('التالي'));
+const hydration=JSON.parse(localizedDom.querySelector('[data-react-props]').dataset.reactProps);
+assert.deepEqual(hydration.initialRows,rows);assert.equal(hydration.initialTotal,1);assert.equal(hydration.mode,'edge');
+assert.equal(hydration.binding._localePath,'/ar/catalog/');
+console.log('list chrome surfaces PASS: pure SSR stability, interactive localization, translated loading shell and seed-preserving Table/Grid hydration');

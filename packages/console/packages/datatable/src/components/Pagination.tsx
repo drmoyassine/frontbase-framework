@@ -1,8 +1,10 @@
+import {listMessage} from '@frontbase/types';
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface PaginationProps {
+    labels?:Record<string,string>;
     currentPage: number;
     pageSize: number;
     totalCount?: number;
@@ -17,6 +19,7 @@ interface PaginationProps {
  * Pagination controls for DataTable
  */
 export function Pagination({
+    labels,
     currentPage,
     pageSize,
     totalCount,
@@ -26,6 +29,7 @@ export function Pagination({
     onPageChange,
     className,
 }: PaginationProps) {
+    const message=(key:Parameters<typeof listMessage>[1],values:Record<string,string|number>={})=>listMessage({_localeLabels:labels},key,values);
     const totalPages = totalCount===undefined?undefined:Math.ceil(totalCount / pageSize);
     const start = totalCount === 0 || totalCount===undefined&&!loadedCount ? 0 : currentPage * pageSize + 1;
     const end = totalCount===undefined?currentPage*pageSize+loadedCount:Math.min((currentPage + 1) * pageSize, totalCount);
@@ -38,17 +42,17 @@ export function Pagination({
             )}
         >
             <div className="text-sm text-muted-foreground" hidden={!showCount}>
-                {totalCount === undefined ? <span>{`${loadedCount} records on this page`}</span> : totalCount > 0 ? (
+                {totalCount === undefined ? <span>{message('countOnPage',{count:loadedCount})}</span> : totalCount > 0 ? (
                     <>
                         {/* Mobile: Short format */}
-                        <span className="md:hidden">{`${start}-${end} of ${totalCount}`}</span>
+                        <span className="md:hidden">{message('range',{from:start,to:end,count:totalCount})}</span>
                         {/* Desktop: Full format */}
                         <span className="hidden md:inline">
-                            {`Showing ${start}-${end} of ${totalCount} entries (Page ${currentPage + 1} of ${totalPages || 1})`}
+                            {message('showing',{from:start,to:end,count:totalCount,page:currentPage+1,pages:totalPages||1})}
                         </span>
                     </>
                 ) : (
-                    <span>No results</span>
+                    <span>{message('noResults')}</span>
                 )}
             </div>
 
@@ -63,11 +67,11 @@ export function Pagination({
                     )}
                 >
                     <ChevronLeft className="h-4 w-4" />
-                    <span className="hidden md:inline">Previous</span>
+                    <span className="hidden md:inline">{message('previous')}</span>
                 </button>
 
                 <span className="text-sm px-2">
-                    Page {currentPage + 1}{totalPages===undefined?'':` of ${Math.max(1,totalPages)}`}
+                    {message(totalPages===undefined?'page':'pageOf',{page:currentPage+1,pages:Math.max(1,totalPages??1)})}
                 </span>
 
                 <button
@@ -79,7 +83,7 @@ export function Pagination({
                         'flex items-center gap-1'
                     )}
                 >
-                    <span className="hidden md:inline">Next</span>
+                    <span className="hidden md:inline">{message('next')}</span>
                     <ChevronRight className="h-4 w-4" />
                 </button>
             </div>

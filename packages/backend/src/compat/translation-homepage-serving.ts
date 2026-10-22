@@ -19,13 +19,20 @@ export function homepageLanguageLinks(sourceLocale:string,locales:string[],curre
  *  fetches must walk the source registry instead of 404ing on the prefixed URL. Null keeps the
  *  fetch pure source when no publication claims the prefix. Resolution is per-path point
  *  lookup — never a site-wide registry walk. */
-export async function localizedListRequest(db:DbRunner,tenant:string,path:string):Promise<{locale:string;path:string;catalog?:readonly import('./site-publication-chunk-queries.js').LocalizedCatalogEntry[]}|null>{
+export async function localizedListRequest(db:DbRunner,tenant:string,path:string,liveQuery?:PublishedLiveQuery):Promise<{locale:string;path:string;catalog?:readonly import('./site-publication-chunk-queries.js').LocalizedCatalogEntry[]}|null>{
     const prefix=path.slice(1).split('/')[0]??'';
     if(!LOCALE_PATTERN.test(prefix))return null;
     const stripped=path.slice(prefix.length+1)||'/';
     const forPath=await publishedLocalesForPath(db,tenant,stripped);
     const exact=forPath.find(item=>item.locale===prefix);
-    if(exact?.release)return {locale:prefix,path:stripped,catalog:exact.release.catalog};
+    if(exact?.corrupt)throw Error('locale_unavailable');
+    if(exact?.release){
+        if(exact.release.policy?.outdated!=='source-fallback'){
+            const current=await captureHomepage(db,tenant,new Request('https://locale-validation.invalid'+stripped),liveQuery,stripped);
+            if(current.active.pointer.hash!==exact.release.siteHash||current.sourceHash!==exact.release.sourceHash)throw Error('locale_unavailable');
+        }
+        return {locale:prefix,path:stripped,catalog:exact.release.catalog};
+    }
     const home=stripped==='/'?forPath:await publishedLocalesForPath(db,tenant,'/');
     if(home.some(item=>item.locale===prefix)||forPath.some(item=>item.locale===prefix))return {locale:prefix,path:stripped};
     return null;

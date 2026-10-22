@@ -1,3 +1,4 @@
+import {listMessage} from '@frontbase/types';
 import {useFilterOptions} from '../../../../console/packages/datatable/src/hooks/useFilterOptions';
 import {FilterBar} from '../../../../console/packages/datatable/src/components/FilterBar';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -57,9 +58,9 @@ export function Repeater({
     maxRows = 100,
     gap = 16,
     controls = {},
-    loadingText = 'Loading records…',
-    emptyText = 'No records matched.',
-    errorText = 'Data could not be loaded. Please try again.',
+    loadingText = binding?._localeLabels?listMessage(binding,'loading'):'Loading records…',
+    emptyText = binding?._localeLabels?listMessage(binding,'empty'):'No records matched.',
+    errorText = binding?._localeLabels?listMessage(binding,'error'):'Data could not be loaded. Please try again.',
     _blockVersionId = 'default',
     initialRows,
     initialTotal,
@@ -113,23 +114,23 @@ export function Repeater({
     const pageSize = queryBinding.pagination.pageSize;
     const hasNext = totalCount !== undefined ? (page + 1) * pageSize < totalCount : rows.length === pageSize;
     const pageCount = totalCount !== undefined ? Math.max(1, Math.ceil(totalCount / pageSize)) : undefined;
-    const pagination = binding?.pagination?.enabled ? <nav aria-label="Pagination" className="flex flex-wrap items-center gap-2">
-        <button type="button" disabled={!page || isLoading} onClick={() => setPage(value => value - 1)}>Previous</button>
-        {controls.paginationStyle === 'numbered' && pageCount ? Array.from({length:Math.min(7,pageCount)},(_,i)=>Math.max(0,Math.min(page-3,pageCount-7))+i).map(number => <button type="button" key={number} aria-current={number === page ? 'page' : undefined} onClick={()=>setPage(number)}>{number+1}</button>) : <span>Page {page+1}{pageCount ? ` of ${pageCount}` : ''}</span>}
-        <button type="button" disabled={!hasNext || isLoading} onClick={() => setPage(value => value + 1)}>Next</button>
+    const pagination = binding?.pagination?.enabled ? <nav aria-label={listMessage(binding,'pagination')} className="flex flex-wrap items-center gap-2">
+        <button type="button" disabled={!page || isLoading} onClick={() => setPage(value => value - 1)}>{listMessage(binding,'previous')}</button>
+        {controls.paginationStyle === 'numbered' && pageCount ? Array.from({length:Math.min(7,pageCount)},(_,i)=>Math.max(0,Math.min(page-3,pageCount-7))+i).map(number => <button type="button" key={number} aria-current={number === page ? 'page' : undefined} onClick={()=>setPage(number)}>{number+1}</button>) : <span>{listMessage(binding,pageCount?'pageOf':'page',{page:page+1,pages:pageCount??1})}</span>}
+        <button type="button" disabled={!hasNext || isLoading} onClick={() => setPage(value => value + 1)}>{listMessage(binding,'next')}</button>
     </nav> : null;
     const position = controls.paginationPosition ?? 'bottom';
 
     return (
         <div className="fb-repeater space-y-4" style={{gridColumn:'1 / -1',minWidth:0,width:'100%'}} aria-busy={isLoading}>
             <div className="flex flex-wrap items-end gap-3">
-                {controls.refresh&&<button type="button" disabled={isLoading} onClick={()=>refetch()}>Refresh data</button>}
-                {(controls.search ?? binding?.filtering?.searchEnabled) && controls.searchColumn && <label className="flex flex-col gap-1 text-sm">{controls.searchLabel || 'Search'}<input type="search" className="rounded border bg-background p-2" placeholder={controls.searchPlaceholder || 'Search records'} value={search} onChange={event=>{setSearch(event.target.value);setPage(0);}} /></label>}
-                {controls.ordering && <><label className="flex flex-col gap-1 text-sm">Order by<select value={sortColumn} className="rounded border bg-background p-2" onChange={event=>{setSortColumn(event.target.value);setPage(0);}}><option value="">Default</option>{(binding?.source?.kind==='publication'?['title','id']:binding?.columnOrder || []).map((column:string)=><option key={column} value={column}>{binding?.columnOverrides?.[column]?.displayName || column}</option>)}</select></label><label className="flex flex-col gap-1 text-sm">Direction<select className="rounded border bg-background p-2" value={direction} onChange={event=>{setDirection(event.target.value as 'asc'|'desc');setPage(0);}}><option value="asc">Ascending</option><option value="desc">Descending</option></select></label></>}
+                {controls.refresh&&<button type="button" disabled={isLoading} onClick={()=>refetch()}>{listMessage(binding,'refresh')}</button>}
+                {(controls.search ?? binding?.filtering?.searchEnabled) && controls.searchColumn && <label className="flex flex-col gap-1 text-sm">{controls.searchLabel || (binding?._localeLabels?listMessage(binding,'search'):'Search')}<input type="search" className="rounded border bg-background p-2" placeholder={controls.searchPlaceholder || listMessage(binding,'searchPlaceholder')} value={search} onChange={event=>{setSearch(event.target.value);setPage(0);}} /></label>}
+                {controls.ordering && <><label className="flex flex-col gap-1 text-sm">{listMessage(binding,'order')}<select value={sortColumn} className="rounded border bg-background p-2" onChange={event=>{setSortColumn(event.target.value);setPage(0);}}><option value="">{listMessage(binding,'defaultOrder')}</option>{(binding?.source?.kind==='publication'?['title','id']:binding?.columnOrder || []).map((column:string)=><option key={column} value={column}>{binding?.columnOverrides?.[column]?.displayName || column}</option>)}</select></label><label className="flex flex-col gap-1 text-sm">{listMessage(binding,'direction')}<select className="rounded border bg-background p-2" value={direction} onChange={event=>{setDirection(event.target.value as 'asc'|'desc');setPage(0);}}><option value="asc">{listMessage(binding,'ascending')}</option><option value="desc">{listMessage(binding,'descending')}</option></select></label></>}
                 {controls.filters?.map(filter=><label key={filter.id} className="flex flex-col gap-1 text-sm">{filter.label || filter.column}<input type={filter.type === 'number' ? 'number' : 'text'} value={filterValues[filter.id] ?? ''} className="rounded border bg-background p-2" onChange={event=>{setFilterValues(values=>({...values,[filter.id]:event.target.value}));setPage(0);}} /></label>)}
             </div>
-            {!!binding?.frontendFilters?.length&&<FilterBar filters={binding.frontendFilters} filterValues={filterValues} fetchedOptions={fetchedOptions} onFilterChange={(column,value)=>{setFilterValues(old=>({...old,[column]:value}));setPage(0);}} onClearAll={()=>{setFilterValues({});setPage(0);}}/>}
-            {controls.count && <p role="status" className="text-sm">{totalCount !== undefined ? `${totalCount} records` : `${rows.length} records on this page`}</p>}
+            {!!binding?.frontendFilters?.length&&<FilterBar labels={binding?._localeLabels} filters={binding.frontendFilters} filterValues={filterValues} fetchedOptions={fetchedOptions} onFilterChange={(column,value)=>{setFilterValues(old=>({...old,[column]:value}));setPage(0);}} onClearAll={()=>{setFilterValues({});setPage(0);}}/>}
+            {controls.count && <p role="status" className="text-sm">{totalCount !== undefined ? listMessage(binding,'count',{count:totalCount}) : listMessage(binding,'countOnPage',{count:rows.length})}</p>}
             {(position === 'top' || position === 'both') && pagination}
             <style>{'.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-mobile),minmax(0,1fr))}@media(min-width:768px){.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-tablet),minmax(0,1fr))}}@media(min-width:1024px){.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-desktop),minmax(0,1fr))}}'}</style>
             {error ? <div role="alert" className="rounded border p-6 text-sm">{errorText}</div> : isLoading ? <p role="status">{loadingText}</p> : !rows.length ? <p role="status">{emptyText}</p> : <div className={layoutClass} style={{gap:Math.max(0,Math.min(64,gap)),'--fb-list-mobile':Math.min(4,Math.max(1,mobileColumns)),'--fb-list-tablet':Math.min(4,Math.max(1,tabletColumns)),'--fb-list-desktop':Math.min(4,Math.max(1,columns))} as React.CSSProperties}>

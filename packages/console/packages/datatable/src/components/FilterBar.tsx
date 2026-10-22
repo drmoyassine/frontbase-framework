@@ -1,3 +1,4 @@
+import {listMessage} from '@frontbase/types';
 import React from 'react';
 import type { FilterConfig } from '../types';
 import { SearchableSelect } from './SearchableSelect';
@@ -5,6 +6,7 @@ import { SearchableMultiSelect } from './SearchableMultiSelect';
 import { cn } from '../lib/utils';
 
 interface FilterBarProps {
+    labels?:Record<string,string>;
     filters: FilterConfig[];
     filterValues: Record<string, any>;
     fetchedOptions: Record<string, { label: string; value: string }[]>;
@@ -18,6 +20,7 @@ interface FilterBarProps {
  * Renders filters based on their filterType configuration
  */
 export function FilterBar({
+    labels,
     filters,
     filterValues,
     fetchedOptions,
@@ -27,6 +30,7 @@ export function FilterBar({
 }: FilterBarProps) {
     if (!filters || filters.length === 0) return null;
 
+    const message=(key:Parameters<typeof listMessage>[1],values:Record<string,string|number>={})=>listMessage({_localeLabels:labels},key,values);
     const hasActiveFilters = Object.keys(filterValues).length > 0;
 
     return (
@@ -54,30 +58,30 @@ export function FilterBar({
                                 aria-label={label}
                                 value={value ?? ''}
                                 onChange={(e) => onFilterChange(filter.column, e.target.value)}
-                                placeholder={`Filter ${label}...`}
+                                placeholder={message('filter',{label})}
                                 className="px-2 py-1.5 rounded border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                         )}
 
                         {filter.filterType === 'dropdown' && (
-                            <SearchableSelect
+                            <SearchableSelect labels={labels}
                                 value={value ?? ''}
                                 onChange={(v) => onFilterChange(filter.column, v)}
                                 options={options}
-                                placeholder="All"
+                                placeholder={message('all')}
                             />
                         )}
 
                         {filter.filterType === 'multiselect' && (
-                            <SearchableMultiSelect
+                            <SearchableMultiSelect labels={labels}
                                 value={Array.isArray(value) ? value : []}
                                 onChange={(v) => onFilterChange(filter.column, v)}
                                 options={options}
-                                placeholder="Select..."
+                                placeholder={message('select')}
                             />
                         )}
 
-                        {filter.filterType === 'dateRange' && <div className="flex gap-2"><input type="date" aria-label={`${label} from`} value={value?.from??''} onChange={event=>onFilterChange(filter.column,{...value,from:event.target.value})}/><input type="date" aria-label={`${label} to`} value={value?.to??''} onChange={event=>onFilterChange(filter.column,{...value,to:event.target.value})}/></div>}
+                        {filter.filterType === 'dateRange' && <div className="flex gap-2"><input type="date" aria-label={message('from',{label})} value={value?.from??''} onChange={event=>onFilterChange(filter.column,{...value,from:event.target.value})}/><input type="date" aria-label={message('to',{label})} value={value?.to??''} onChange={event=>onFilterChange(filter.column,{...value,to:event.target.value})}/></div>}
                         {filter.filterType === 'boolean' && (
                             <select
                                 value={value === undefined ? '' : String(value)}
@@ -89,9 +93,9 @@ export function FilterBar({
                                 }
                                 className="px-2 py-1.5 rounded border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                             >
-                                <option value="">All</option>
-                                <option value="true">Yes</option>
-                                <option value="false">No</option>
+                                <option value="">{message('all')}</option>
+                                <option value="true">{message('yes')}</option>
+                                <option value="false">{message('no')}</option>
                             </select>
                         )}
 
@@ -106,7 +110,7 @@ export function FilterBar({
                                         e.target.value ? Number(e.target.value) : ''
                                     )
                                 }
-                                placeholder={`Filter ${label}...`}
+                                placeholder={message('filter',{label})}
                                 className="px-2 py-1.5 rounded border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                         )}
@@ -119,7 +123,7 @@ export function FilterBar({
                     onClick={onClearAll}
                     className="self-end px-3 py-1.5 text-xs rounded border border-input hover:bg-muted"
                 >
-                    Clear Filters
+                    {message('clearFilters')}
                 </button>
             )}
         </div>

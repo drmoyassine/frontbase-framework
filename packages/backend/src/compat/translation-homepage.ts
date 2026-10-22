@@ -378,6 +378,16 @@ export function projectHomepageLocale(capture:Awaited<ReturnType<typeof captureH
     for(const field of release.catalog)if(fresh(field))textByIdentity.set(JSON.stringify(stableIdentity(field)),field.text);
     const values=new Map<string,string>();
     for(const field of capture.fields){if(field.blockId==='$meta')continue;const text=textByIdentity.get(JSON.stringify(stableIdentity(field)));if(text!==undefined)values.set(JSON.stringify([field.blockId,field.versionId??'default',field.path]),text);}
-    const layout=applyHomepageDisplayFields(capture.layout,values,{partial}),meta=(key:string)=>textByIdentity.get(JSON.stringify(stableIdentity({blockId:'$meta',path:[key]})));
+    const layout=applyHomepageDisplayFields(capture.layout,values,{partial});
+    const mark=(nodes:PageLayoutData['content'])=>{for(const node of nodes){
+        if(['Repeater','DataTable','Grid'].includes(node.type)&&node.props?.binding){node.props.binding={...node.props.binding as object,componentId:node.id,_localePath:'/'+release.locale+release.path,_localeLabels:node.props.localeLabels??{}};}
+        if(node.children)mark(node.children);
+        for(const alternative of node.versions??[]){
+            const props=alternative.overrides.props as Record<string,unknown>|undefined;
+            if(props?.binding)props.binding={...props.binding as object,componentId:node.id,_localePath:'/'+release.locale+release.path,_localeLabels:{...node.props?.localeLabels as object,...props.localeLabels as object}};
+            if(alternative.overrides.children)mark(alternative.overrides.children as PageLayoutData['content']);
+        }
+    }};mark(layout.content);
+    const meta=(key:string)=>textByIdentity.get(JSON.stringify(stableIdentity({blockId:'$meta',path:[key]})));
     return {...capture.result,page:{...capture.result.page,title:meta('title')??capture.result.page.title,description:meta('description')??capture.result.page.description,layout}};
 }

@@ -1,3 +1,4 @@
+import {JSDOM} from 'jsdom';
 import assert from 'node:assert/strict';
 import {allowanceFixture,now} from './translation-allowance-fixture.mjs';
 import {mkdtempSync} from 'node:fs';
@@ -42,6 +43,8 @@ const interactiveLayout={root:{},content:[{id:'head2',type:'Heading',props:{text
 // "a" (Gamma) matches, while the source title filter matches every Campus row.
 const mixedLayout={root:{},content:[{id:'mixed-head',type:'Heading',props:{text:'Match list'}},{id:'mixed-list',type:'Repeater',props:{binding:{...structuredClone(binding),hiddenFilters:[{column:'title',operator:'contains',value:'a'}]}},children:[{id:'mixed-title',type:'Heading',props:{text:'{{ record.title }}'}},{id:'mixed-summary',type:'Paragraph',props:{content:'{{ record.summary }}'}}]}]};
 const tableLayout={root:{},content:[{id:'table-head',type:'Heading',props:{text:'Table list'}},{id:'table-list',type:'DataTable',props:{binding:structuredClone(binding)},children:[]}]};
+const scopedLayout={root:{},content:[{id:'scoped-list',type:'Repeater',props:{binding:{...structuredClone(binding),hiddenFilters:[{column:'id',operator:'gte',value:2}]},controls:{count:true}},children:[{id:'scoped-title',type:'Heading',props:{text:'{{ record.title }}'}}]}]};
+const gridLayout={root:{},content:[{id:'grid-list',type:'Grid',props:{binding:{...structuredClone(binding),columnOrder:['title','summary']}},children:[]}]};
 const bigLayout={root:{},content:[{id:'big-head',type:'Heading',props:{text:'Big list'}},{id:'big-list',type:'Repeater',props:{binding:{...structuredClone(binding),dataSourceId:String(big.id),tableName:'institutions_big',viewId:String(bigView.id),viewName:'Big campuses'}},children:[{id:'big-title',type:'Heading',props:{text:'{{ record.title }}'}},{id:'big-summary',type:'Paragraph',props:{content:'{{ record.summary }}'}}]}]};
 const manifests=new SitePublicationManifestStore(f.db,tenant);
 const hash=await manifests.prepare({configurationRevision:1,configuration:config,templates:[],staticPages:[
@@ -50,6 +53,8 @@ const hash=await manifests.prepare({configurationRevision:1,configuration:config
  {pageId:'00000000-0000-4000-8000-00000000a001',title:'Interactive',description:'',originalPath:'/interactive/',layout:interactiveLayout},
  {pageId:'00000000-0000-4000-8000-00000000a003',title:'Match',description:'',originalPath:'/mixed/',layout:mixedLayout},
  {pageId:'00000000-0000-4000-8000-00000000a004',title:'Table',description:'',originalPath:'/table/',layout:tableLayout},
+ {pageId:'00000000-0000-4000-8000-00000000a007',title:'Scoped',description:'',originalPath:'/scoped/',layout:scopedLayout},
+ {pageId:'00000000-0000-4000-8000-00000000a006',title:'Grid',description:'',originalPath:'/grid/',layout:gridLayout},
  {pageId:'00000000-0000-4000-8000-00000000a005',title:'Big',description:'',originalPath:'/big/',layout:bigLayout}]},{cities:[],institutions:[],programs:[],articles:[]},now);
 const reviews=new SitePublicationReviewStore(f.db,tenant);
 await reviews.approve({hash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Live-list fixture reviewed'},'reviewer',now);
@@ -105,8 +110,30 @@ try{
     assert.ok(!localizedMixed.text.includes('زيتون')&&!localizedMixed.text.includes('تفاح')&&!localizedMixed.text.includes('Campus One')&&!localizedMixed.text.includes('Campus Two'),'rows whose released title lacks "a" leave the localized result');
     // A live-bound DataTable refuses translation outright: it renders a skeleton and fetches rows
     // in the visitor's browser with no locale channel, so no honest localized serve exists.
-    const table=await call('review/?locale=ar&path=/table/',undefined,422);
-    assert.equal(table.code,'localized_live_table_not_supported');
+    const table=await call('review/?locale=ar&path=/table/');
+    assert.ok(table.fields.some(field=>field.source==='Campus One'),'tables expose their live row fields');
+    await translate('/table/');
+    const tablePage=await html('/ar/table/');assert.equal(tablePage.status,200);assert.ok(tablePage.text.includes('data-react-component="DataTable"'));
+    const browserProps=text=>{const element=new JSDOM(text).window.document.querySelector('[data-react-component]');return JSON.parse(element.getAttribute('data-react-props')??element.getAttribute('data-fb-props'));};
+    assert.equal(browserProps(tablePage.text).binding._localePath,'/ar/table/','hydrated tables retain the locale path');
+    const listFetch=async(path,componentId,changes={},status=200)=>{
+        const query={componentId,versionId:'default',page:0,pageSize:1,sortColumn:'title',direction:'asc',filters:[],...changes};
+        const response=await renderReviewedSitePublication(f.db,tenant,new Request('https://campus.test'+path,{headers:{'X-Frontbase-List':encodeURIComponent(JSON.stringify(query))}}),{liveQuery});
+        assert.equal(response.status,status,await response.clone().text());return {body:await response.json(),language:response.headers.get('Content-Language')};
+    };
+    await translate('/grid/');const gridPage=await html('/ar/grid/');assert.equal(gridPage.status,200);assert.ok(gridPage.text.includes('data-react-component="Grid"'));
+    const gridFetch=await listFetch('/ar/grid/','grid-list');assert.equal(gridFetch.body.rows[0].title,'تفاح');
+    await translate('/scoped/');const hidden=await listFetch('/ar/scoped/','scoped-list',{filters:[{column:'id',op:'eq',value:1}]});assert.equal(hidden.body.total,0,'authored hidden filters remain mandatory when omitted by the browser');
+    const tableFetch=await listFetch('/ar/table/','table-list');assert.equal(tableFetch.body.rows[0].title,'تفاح');assert.equal(tableFetch.body.total,3);assert.equal(tableFetch.language,'ar');
+    const arabicOnly=await listFetch('/ar/table/','table-list',{filters:[{column:'title',op:'contains',value:'زيتون'}]});assert.equal(arabicOnly.body.total,1,'Arabic-only search must not prefilter the source title');assert.equal(arabicOnly.body.rows[0].title,'زيتون');
+    const second=await listFetch('/ar/table/','table-list',{page:1});assert.equal(second.body.rows[0].title,'جمعية Gamma');
+    const numeric=await listFetch('/ar/table/','table-list',{sortColumn:'id'});assert.equal(numeric.body.rows[0].title,'زيتون','source-key sorting still joins localized text');
+    const unlocalized=await listFetch('/table/','table-list');assert.equal(unlocalized.body.rows[0].title,'Campus One');assert.equal(unlocalized.language,null);
+    await listFetch('/ar/table/','missing',{},404);
+    await listFetch('/ar/table/','table-list',{versionId:'forged'},403);
+    await listFetch('/ar/table/','table-list',{sortColumn:'title;DROP TABLE'},422);
+    await ext.exec("INSERT INTO institutions VALUES(99,'Forbidden','Outside saved view',77)");
+    const scoped=await listFetch('/ar/table/','table-list',{filters:[{column:'country_id',op:'eq',value:77}]});assert.equal(scoped.body.total,0,'visitor predicates cannot bypass saved-view membership');
     // Beyond the bounded full-dataset scan the localized serve refuses instead of sorting a window.
     await translate('/big/',true);
     const oversized=await html('/ar/big/');assert.equal(oversized.status,503);
@@ -129,7 +156,11 @@ try{
     const english=await html('/team/');assert.ok(english.text.includes('Renamed Campus'));assert.ok(!english.text.includes('عربي'));
     assert.ok(english.text.indexOf('Campus Four')<english.text.indexOf('Renamed Campus'),'English order stays source order');
     // Interactive live lists refuse translation with the precise code at review time.
-    const interactive=await call('review/?locale=ar&path=/interactive/',undefined,422);
-    assert.equal(interactive.code,'localized_interactive_list_not_supported');
-    console.log('translation-live-list: live-bound page localization (per-unit release fence, full-dataset localized sort/filter, fresh-join source reaction, membership growth, DataTable + interactive + beyond-scan refusals) PASS');
+    const interactive=await call('review/?locale=ar&path=/interactive/');
+    assert.ok(interactive.fields.some(field=>field.source==='Next'),'visible list chrome is reviewable');await translate('/interactive/',true);
+    const interactivePage=await html('/ar/interactive/');assert.equal(interactivePage.status,200);assert.ok(interactivePage.text.includes('data-react-component="Repeater"'));assert.ok(interactivePage.text.includes('عربي Next'),'released chrome reaches the browser binding');assert.equal(browserProps(interactivePage.text).binding._localeLabels.next,'عربي Next');
+    const interactiveFetch=await listFetch('/ar/interactive/','interactive-list');assert.equal(interactiveFetch.body.rows[0].title,'تفاح');
+    auth=false;await listFetch('/ar/table/','table-list',{pageSize:2});auth=true;
+    owner='other';await listFetch('/ar/table/','table-list',{},503);owner=tenant;
+    console.log('translation-live-list: live-bound page localization (per-unit release fence, full-dataset localized sort/filter, fresh-join source reaction, membership growth, Repeater/Table/Grid interactive locale continuation + beyond-scan refusal) PASS');
 }finally{}

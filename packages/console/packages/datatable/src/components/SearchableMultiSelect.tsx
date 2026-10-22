@@ -1,8 +1,10 @@
+import {listMessage} from '@frontbase/types';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface SearchableMultiSelectProps {
+    labels?:Record<string,string>;
     value: string[];
     onChange: (value: string[]) => void;
     options: { label: string; value: string }[];
@@ -15,6 +17,7 @@ interface SearchableMultiSelectProps {
  * Multi-select dropdown with embedded search functionality
  */
 export function SearchableMultiSelect({
+    labels,
     value = [],
     onChange,
     options,
@@ -22,6 +25,7 @@ export function SearchableMultiSelect({
     className,
     disabled = false,
 }: SearchableMultiSelectProps) {
+    const message=(key:Parameters<typeof listMessage>[1],values:Record<string,string|number>={})=>listMessage({_localeLabels:labels},key,values);
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
@@ -64,7 +68,7 @@ export function SearchableMultiSelect({
             ? placeholder
             : value.length === 1
                 ? options.find((opt) => opt.value === value[0])?.label || value[0]
-                : `${value.length} selected`;
+                : message('selected',{count:value.length});
 
     return (
         <div ref={containerRef} className={cn('relative', className)}>
@@ -92,7 +96,7 @@ export function SearchableMultiSelect({
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search..."
+                            placeholder={message('searchPlaceholder')}
                             className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                             autoFocus
                         />
@@ -102,7 +106,7 @@ export function SearchableMultiSelect({
                             className="px-3 py-2 text-sm cursor-pointer hover:bg-muted text-muted-foreground border-b border-input"
                             onClick={() => onChange([])}
                         >
-                            Clear all
+                            {message('clearAll')}
                         </div>
                     )}
                     <div className="max-h-[200px] overflow-y-auto">
@@ -132,7 +136,7 @@ export function SearchableMultiSelect({
                         ))}
                         {filteredOptions.length === 0 && (
                             <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                                No results
+                                {message('noResults')}
                             </div>
                         )}
                     </div>

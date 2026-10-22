@@ -6,7 +6,7 @@ export function publishedLiveQuery(execute:(request:Request)=>Response|Promise<R
     return async(_owner,input,query,request)=>{
         const binding=liveViewBindingSchema.parse(input);
         const body={table_name:binding.tableName,columns:'*',joins:[],page:query.page+1,page_size:query.pageSize,
-            filters:query.filters,sort_col:query.sortColumn||null,sort_dir:query.direction,search_query:'',search_cols:[]};
+            filters:query.filters,sort_col:query.sortColumn||null,sort_dir:query.direction,search_query:query.search??'',search_cols:binding.searchColumns??[]};
         const headers=new Headers({'Content-Type':'application/json'});
         // Retain the requesting host/session; never synthesize an administrator or tenant claim.
         if(request.headers.has('cookie'))headers.set('cookie',request.headers.get('cookie')!);

@@ -21,3 +21,8 @@ it('does not seed a newly sorted query with records from the original SSR order'
     fireEvent.change(screen.getByRole('combobox',{name:'Direction'}),{target:{value:'desc'}});
     expect((query.mock.calls.at(-1) as any)[0].initialData).toBeUndefined();
 });
+
+it('renders reviewed list chrome and keeps Arabic pagination interactive',()=>{
+ renderList(<Repeater binding={{componentId:'list',tableName:'catalog',pagination:{enabled:true,pageSize:1},_localePath:'/ar/list/',_localeLabels:{next:'التالي',previous:'السابق',page:'صفحة {page}',pageOf:'صفحة {page} من {pages}',count:'{count} سجل'}}} controls={{count:true}}/>);
+ expect(screen.getByRole('button',{name:'التالي'})).toBeTruthy();expect(screen.getByText('0 سجل')).toBeTruthy();expect(screen.getByText('صفحة 1 من 1')).toBeTruthy();
+});

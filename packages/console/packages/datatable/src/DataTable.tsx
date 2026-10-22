@@ -1,3 +1,4 @@
+import {listMessage} from '@frontbase/types';
 import {liveListSortAvailable,liveListPageSize} from '@frontbase/types';
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Search, Loader2 } from 'lucide-react';
@@ -161,7 +162,7 @@ export function DataTable({
     }
 
     const pagination=<>            {paginationEnabled && (
-                <Pagination
+                <Pagination labels={binding?._localeLabels}
                     currentPage={currentPage}
                     pageSize={pageSize}
                     totalCount={totalCount}
@@ -179,15 +180,15 @@ export function DataTable({
                 <h3 className="text-lg font-semibold">{title}</h3>
             )}
 
-            {binding?.presentation?.refresh!==false&&<button type="button" disabled={isLoading} onClick={()=>refetch()}>Refresh data</button>}
+            {binding?.presentation?.refresh!==false&&<button type="button" disabled={isLoading} onClick={()=>refetch()}>{listMessage(binding,'refresh')}</button>}
             {/* Search bar */}
             {binding?.filtering?.searchEnabled && (
                 <div className="relative max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input
                         type="text"
-                        aria-label={binding?.presentation?.searchLabel||'Search records'}
-                        placeholder={binding?.presentation?.searchPlaceholder||'Search...'}
+                        aria-label={binding?.presentation?.searchLabel||listMessage(binding,'search')}
+                        placeholder={binding?.presentation?.searchPlaceholder||listMessage(binding,'searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -198,10 +199,10 @@ export function DataTable({
                 </div>
             )}
 
-            {!sortingAvailable&&<p role="status">This source uses its search result order. Clear search to choose sorting.</p>}
+            {!sortingAvailable&&<p role="status">{listMessage(binding,'searchOrder')}</p>}
             {/* Filter bar */}
             {binding?.frontendFilters && binding.frontendFilters.length > 0 && (
-                <FilterBar
+                <FilterBar labels={binding?._localeLabels}
                     filters={binding.frontendFilters}
                     filterValues={filterValues}
                     fetchedOptions={fetchedOptions}
@@ -210,10 +211,10 @@ export function DataTable({
                 />
             )}
 
-            {!paginationEnabled&&binding?.presentation?.count!==false&&<p role="status">{totalCount===undefined?`${data.length} records on this page`:`${totalCount} records`}</p>}
+            {!paginationEnabled&&binding?.presentation?.count!==false&&<p role="status">{totalCount===undefined?listMessage(binding,'countOnPage',{count:data.length}):listMessage(binding,'count',{count:totalCount})}</p>}
             {(position==='top'||position==='both')&&pagination}
-            {error&&<div role="alert" className="rounded border p-4">{binding?.presentation?.errorText||'Failed to load data. Check the binding and access configuration.'}</div>}
-            {isLoading&&<p role="status">{binding?.presentation?.loadingText||'Loading data...'}</p>}
+            {error&&<div role="alert" className="rounded border p-4">{binding?.presentation?.errorText||listMessage(binding,'error')}</div>}
+            {isLoading&&<p role="status">{binding?.presentation?.loadingText||listMessage(binding,'loading')}</p>}
             {/* Table */}
             {!error&&!isLoading&&<div className="rounded-md border overflow-auto relative">
                 {isLoading && data.length > 0 && (
@@ -232,7 +233,7 @@ export function DataTable({
                         headerCellWrapper={headerCellWrapper as any}
                     />
                     <TableBody
-                        emptyText={binding?.presentation?.emptyText}
+                        emptyText={binding?.presentation?.emptyText||listMessage(binding,'empty')}
                         data={data}
                         columns={columns}
                         columnOverrides={binding?.columnOverrides}

@@ -108,7 +108,12 @@ function hydrateReactComponents() {
                 }
             }
 
-            console.log(`[React Hydrate] Hydrating ${componentName}`, props);
+            // Table and Grid use the same server-localized seed as Repeaters, without a second first-paint fetch.
+            if((componentName==='DataTable'||componentName==='Grid')&&Array.isArray(props.initialRows)){
+                props.initialData=props.initialRows;
+                if(props.binding&&props._initialQuery)props.binding={...props.binding,pagination:{...props.binding.pagination,page:props._initialQuery.page}};
+            }
+            console.log(`[React Hydrate] Hydrating ${componentName}`);
 
             const reactTree = (
                 <StrictMode>

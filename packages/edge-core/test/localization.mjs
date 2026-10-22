@@ -8,6 +8,6 @@ import * as compatibility from '@frontbase/edge-core/localization';
 const standaloneKeys=Object.keys(standalone).sort(),compatKeys=Object.keys(compatibility).sort();
 assert.deepEqual(standaloneKeys.filter(key=>!compatKeys.includes(key)),[],'edge-core/localization must carry every standalone export');
 for (const key of standaloneKeys) assert.equal(compatibility[key], standalone[key], `Compatibility export differs: ${key}`);
-assert.deepEqual(compatKeys.filter(key=>!standaloneKeys.includes(key)),['applyHomepageDisplayFields','directoryBrowsingLabels','formatLocalePattern','homepageDisplayFields','homepageDisplayLayout','homepageHeroLabels','homepageNavLabels','homepageSearchLabels','localeDirection','localizeNavigationProps','localizePublicHref','pluralPatternLabel','templateMenuLabels']);
+assert.deepEqual(compatKeys.filter(key=>!standaloneKeys.includes(key)),['applyHomepageDisplayFields','directoryBrowsingLabels','formatLocalePattern','homepageDisplayFields','homepageDisplayLayout','homepageHeroLabels','homepageNavLabels','homepageSearchLabels','listComponentLabels','localeDirection','localizeNavigationProps','localizePublicHref','pluralPatternLabel','templateMenuLabels']);
 await import('../../translation/test/localization.mjs');
 console.log('localization compatibility: identical standalone export identities PASS');

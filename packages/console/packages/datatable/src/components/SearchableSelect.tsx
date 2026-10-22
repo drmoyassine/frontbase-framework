@@ -1,8 +1,10 @@
+import {listMessage} from '@frontbase/types';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface SearchableSelectProps {
+    labels?:Record<string,string>;
     value: string;
     onChange: (value: string) => void;
     options: { label: string; value: string }[];
@@ -15,6 +17,7 @@ interface SearchableSelectProps {
  * Dropdown select with embedded search functionality
  */
 export function SearchableSelect({
+    labels,
     value,
     onChange,
     options,
@@ -22,6 +25,7 @@ export function SearchableSelect({
     className,
     disabled = false,
 }: SearchableSelectProps) {
+    const message=(key:Parameters<typeof listMessage>[1],values:Record<string,string|number>={})=>listMessage({_localeLabels:labels},key,values);
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
@@ -77,7 +81,7 @@ export function SearchableSelect({
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search..."
+                            placeholder={message('searchPlaceholder')}
                             className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                             autoFocus
                         />
@@ -91,7 +95,7 @@ export function SearchableSelect({
                                 setSearch('');
                             }}
                         >
-                            All
+                            {message('all')}
                         </div>
                         {filteredOptions.map((opt) => (
                             <div
@@ -111,7 +115,7 @@ export function SearchableSelect({
                         ))}
                         {filteredOptions.length === 0 && (
                             <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                                No results
+                                {message('noResults')}
                             </div>
                         )}
                     </div>

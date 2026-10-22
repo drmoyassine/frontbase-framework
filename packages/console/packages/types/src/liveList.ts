@@ -1,3 +1,4 @@
+import {listComponentLabels,formatLocalePattern} from '@frontbase/edge-core/localization';
 import type { WireFilter } from './index';
 
 export interface LiveListPresentation {
@@ -13,6 +14,11 @@ export interface LiveListPresentation {
 
 /** Browser list transport shared by Tables, Grids and Repeaters. Authorization stays server-side. */
 export interface LiveListBinding {
+    /** Server-projected localized page path; never a datasource URL or credential. */
+    _localePath?: string;
+    _localeLabels?:Record<string,string>;
+    componentId?: string;
+    _blockVersionId?: string;
     dataSourceId?: string;
     tableName?: string;
     sourceSchema?: string;
@@ -39,7 +45,7 @@ export function liveListPageSize(value?:number,fallback=20) {
 }
 
 export function liveListIdentity(binding: LiveListBinding) {
-    return [binding.dataSourceId, binding.sourceSchema, binding.tableName, binding.viewId, binding.dataRequest, binding.searchColumns, binding.frontendFilters, binding.filtering?.filters];
+    return [binding._localePath,binding.dataSourceId, binding.sourceSchema, binding.tableName, binding.viewId, binding.dataRequest, binding.searchColumns, binding.frontendFilters, binding.filtering?.filters];
 }
 
 export function liveListSortAvailable(binding:LiveListBinding,search?:string) {
@@ -77,7 +83,13 @@ export async function fetchLiveList(binding: LiveListBinding, query: LiveListQue
     let response: Response;
     let proxy = false;
     // Saved views always pass through their owner-scoped server resolver, including on canvas.
-    if (mode === 'builder' && !binding.viewId) {
+    if(mode==='edge'&&binding._localePath){
+        const path=binding._localePath;
+        if(!path.startsWith('/')||path.startsWith('//')||/[\\?#]/.test(path)||!binding.componentId)throw Error('Invalid localized list path.');
+        const filters=body.filters;
+        const query={componentId:binding.componentId,versionId:binding._blockVersionId||'default',page:body.page-1,pageSize:body.page_size,sortColumn:body.sort_col||'title',direction:body.sort_dir,search:body.search_query,filters};
+        response=await fetch(path+window.location.search,{signal,credentials:'include',headers:{'X-Frontbase-List':encodeURIComponent(JSON.stringify(query))}});
+    } else if (mode === 'builder' && !binding.viewId) {
         const params = new URLSearchParams({limit:String(body.page_size),offset:String((body.page-1)*body.page_size),filters:JSON.stringify(body.filters)});
         if (binding.sourceSchema) params.set('schema',binding.sourceSchema);
         if (body.sort_col) { params.set('sort', body.sort_col); params.set('order', body.sort_dir); }
@@ -114,3 +126,5 @@ export async function fetchLiveList(binding: LiveListBinding, query: LiveListQue
     const total = payload?.total ?? payload?.count ?? result.total;
     return {rows, total:typeof total === 'number' && Number.isFinite(total) && total >= 0 ? total : undefined};
 }
+
+export function listMessage(binding:{_localeLabels?:Record<string,string>}|null|undefined,key:keyof typeof listComponentLabels,values:Readonly<Record<string,string|number>>={}){return formatLocalePattern(binding?._localeLabels?.[key]??listComponentLabels[key],values);}

@@ -128,3 +128,21 @@ it.each(['Table','Grid'])('%s uses the same page-size bound for requests and pag
     fireEvent.click(screen.getByRole('button',{name:'Next',exact:true}));
     await waitFor(()=>expect(fetcher.mock.calls.some(call=>{const body=JSON.parse((call as any)[1].body).dataRequest.body;return body.page===2&&body.page_size===100;})).toBe(true));
 });
+
+it('uses the localized page transport for all shared list consumers and never sends datasource credentials',async()=>{
+ const fetcher=vi.fn(async()=>({ok:true,json:async()=>({rows:[{id:1,title:'عربي'}],total:3})}));vi.stubGlobal('fetch',fetcher);
+ const controller=new AbortController();const localized={...binding,_localePath:'/ar/explore/',_blockVersionId:'program',dataRequest:{fetchStrategy:'direct',url:'https://never.invalid',headers:{Authorization:'private'}}};
+ expect(await fetchLiveList(localized,{page:1,pageSize:2,sortColumn:'title',search:'عربي'},'edge',controller.signal)).toEqual({rows:[{id:1,title:'عربي'}],total:3});
+ const [path,options]=fetcher.mock.calls[0] as any;expect(path).toMatch(/^\/ar\/explore\//);expect(options.signal).toBe(controller.signal);expect(options.credentials).toBe('include');
+ const query=JSON.parse(decodeURIComponent(options.headers['X-Frontbase-List']));expect(query).toMatchObject({componentId:'list',versionId:'program',page:1,pageSize:2});expect(JSON.stringify(options)).not.toContain('private');
+ await expect(fetchLiveList({...localized,_localePath:'//attacker.invalid'},{page:0,pageSize:2},'edge')).rejects.toThrow('Invalid localized');
+});
+
+for(const kind of ['Grid','Table'] as const)it(kind+' keeps reviewed Arabic chrome and paginates through the same localized page endpoint',async()=>{
+ const fetcher=vi.fn(async()=>({ok:true,json:async()=>({rows:[{id:1,title:'بيانات'}],total:3})}));vi.stubGlobal('fetch',fetcher);
+ const localized={...binding,_localePath:'/ar/list/',_localeLabels:{next:'التالي',previous:'السابق',pageOf:'صفحة {page} من {pages}',refresh:'تحديث',search:'بحث',searchPlaceholder:'ابحث'}};
+ const props={binding:localized,mode:'edge' as const,componentId:'list'};render(kind==='Grid'?<Grid {...props}/>:<DataTable {...props}/>,{wrapper:provider()});
+ await screen.findByText('بيانات');expect(screen.getByRole('button',{name:'التالي'})).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'التالي'}));
+ await waitFor(()=>expect(fetcher.mock.calls.some(call=>{const options=(call as any)[1];return JSON.parse(decodeURIComponent(options.headers['X-Frontbase-List'])).page===1;})).toBe(true));
+ expect(fetcher.mock.calls.every(call=>(call as any)[0].startsWith('/ar/list/'))).toBe(true);
+});

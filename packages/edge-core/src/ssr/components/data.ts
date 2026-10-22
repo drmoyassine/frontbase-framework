@@ -10,6 +10,7 @@ import { renderIcon as renderIconPrimitive } from './static.js';
 import { escapeHtml } from './lib/utils.js';
 import { resolvePropsStyles } from './lib/attrs.js';
 import { renderPublicFormDraft } from './publicForm.js';
+import {listComponentLabels} from '../../localization/surfaces.js';
 
 /**
  * Helper to build common attributes (id, class, style, data-*)
@@ -90,6 +91,8 @@ export function renderDataComponent(
 
 function renderDataTable(id: string, props: Record<string, unknown>, propsJson: string): string {
     const binding = props.binding as Record<string, unknown> || {};
+    const localeLabels=(binding._localeLabels??props.localeLabels) as Record<string,string>|undefined;
+    const labels={...listComponentLabels,...localeLabels};
     // Read tableName from binding first (where the builder stores it), then fallback to props
     const tableName = (binding.tableName as string) || props.tableName as string || props.table as string || '';
     
@@ -124,6 +127,7 @@ function renderDataTable(id: string, props: Record<string, unknown>, propsJson: 
 
     // For React hydration
     const reactProps = {
+        ...JSON.parse(propsJson),
         binding: binding,
         tableName: tableName,
     };
@@ -155,7 +159,7 @@ function renderDataTable(id: string, props: Record<string, unknown>, propsJson: 
     const searchHtml = searchEnabled ? `
         <div class="relative max-w-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" placeholder="Search..." disabled class="w-full pl-10 pr-4 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            <input type="text" placeholder="${escapeHtml(localeLabels?labels.searchPlaceholder:'Search...')}" disabled class="w-full pl-10 pr-4 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>` : '';
 
     // Title HTML
@@ -178,8 +182,8 @@ function renderDataTable(id: string, props: Record<string, unknown>, propsJson: 
         ${showPagination ? `<div class="flex items-center justify-between px-2">
             <span class="text-sm text-muted-foreground fb-skeleton" style="width:100px;height:1rem">&nbsp;</span>
             <div class="flex items-center space-x-2">
-                <button disabled class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 disabled:opacity-50">← Previous</button>
-                <button disabled class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 disabled:opacity-50">Next →</button>
+                <button disabled class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 disabled:opacity-50">← ${escapeHtml(labels.previous)}</button>
+                <button disabled class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 disabled:opacity-50">${escapeHtml(labels.next)} →</button>
             </div>
         </div>` : ''}
     </div>`;
