@@ -100,14 +100,11 @@ async function create(path, body) {
 
 // Persist a representative tenant-A object for every state-backed identifier
 // family. The private sentinel is deliberately placed in display/config fields.
-const draft = await create('/api/actions/drafts', { name: SENTINEL, nodes: [], edges: [] });
+const draft = await create('/api/actions/drafts', { name: SENTINEL, nodes: [{id:'manual',name:'Manual trigger',type:'manual_trigger',position:{x:0,y:0}}], edges: [] });
 const draftId = idOf(draft);
 const actionVersion = await create(`/api/actions/drafts/${draftId}/versions/`, { label: SENTINEL });
-// Seeded rather than created through the API. POST .../test now answers the product's
-// 503 (a community deployment has no edge engine), so no execution can be minted here
-// — but the execution identifier family still has to be isolation-tested, and dropping
-// it would quietly shrink the matrix to whichever fixtures remain easy to build. The
-// row is what a real run would leave behind, sentinel included.
+// Seed the completed sentinel execution so every identifier family is tested
+// independently of the workflow execution test; do not shrink the isolation matrix.
 const executionId = crypto.randomUUID();
 await runner.exec(
     `INSERT INTO workflow_executions

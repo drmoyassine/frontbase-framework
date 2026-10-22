@@ -134,12 +134,12 @@ check('POST /api/edge-engines/ with edge_engines: 0 → 402 limit_exceeded/edge_
     const body = await r.json();
     return r.status === 402 && body.detail === 'limit_exceeded' && body.limit === 'edge_engines';
 })());
-check('POST /api/edge-engines/deploy → 402 too (provider check still runs first)', await (async () => {
+check('unsupported remote deploy stays refused independently of plan', await (async () => {
     const r = await call('POST', '/api/edge-engines/deploy', { name: 'D1', provider_id: 'prov-1', worker_name: 'd1' }, ownerCookie);
     const body = await r.json();
-    return r.status === 402 && body.limit === 'edge_engines';
+    return r.status === 501 && body.code === 'remote_deployment_unsupported';
 })());
-check('deploy with an unknown provider → 400 (validation order preserved)', (await call('POST', '/api/edge-engines/deploy', { name: 'D1', provider_id: 'ghost', worker_name: 'd1' }, ownerCookie)).status === 400);
+check('unsupported deploy never attempts unknown-provider provisioning', (await call('POST', '/api/edge-engines/deploy', { name: 'D1', provider_id: 'ghost', worker_name: 'd1' }, ownerCookie)).status === 501);
 check('POST /api/settings/invites at team_members cap → 402 limit_exceeded/team_members', await (async () => {
     const r = await call('POST', '/api/settings/invites', { email: 'friend@freeco.test', role: 'admin' }, ownerCookie);
     const body = await r.json();

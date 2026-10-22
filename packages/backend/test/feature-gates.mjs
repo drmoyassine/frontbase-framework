@@ -2,11 +2,9 @@
  * Tier gating of engine import — the `engine_imports` plan feature flag
  * (product LIMIT_REGISTRY `kind: 'bool'` convention, default False).
  *
- * Community/free (no plan, or a plan without the flag) cannot import: the
- * bundle endpoint AND discovery-style creates (is_imported) both 403, while
- * deploys (plain creates) stay open. A plan with {"engine_imports": true}
- * unlocks both paths, and GET /api/tenants/me/plan reports the signal in the
- * product MyPlanResponse shape the console reads.
+ * Discovery-style metadata registration remains plan-gated. Unsupported
+ * encrypted transfer is refused for every plan; upgrading cannot enable
+ * the unsafe legacy base64 bundle implementation. Registration is not deployment.
  */
 import { strict as assert } from 'node:assert';
 import { createCompatApp } from '../dist/compat/app.js';
@@ -45,31 +43,29 @@ const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; c
 // ---- 1. Community (no plan): both import paths 403; deploys stay open ----
 {
     const { app } = await appWith(MEMBER);
-    // Mint a real FBENG1 bundle via the export route — the import gate must sit
-    // behind envelope validation, so the 403 only fires for a decodable bundle.
     const created = await req(app, 'POST', '/api/edge-engines/', { name: 'Exported', url: 'https://engine.example' });
     const engineId = (await created.json()).id;
     const exported = await req(app, 'POST', `/api/edge-engines/${engineId}/export`, { passphrase: 'correct-horse' });
     const { bundle } = await exported.json();
-    check('fixture bundle minted via export', exported.status === 200 && typeof bundle === 'string' && bundle.startsWith('FBENG1.'));
+    check('unsupported export creates no bundle', exported.status === 501 && bundle === undefined);
 
-    const denied = await req(app, 'POST', '/api/edge-engines/import', { bundle, passphrase: 'correct-horse' });
-    check('bundle import → 403 on community', denied.status === 403);
-    check('403 carries the upgrade detail', (await denied.json()).detail === 'Engine import requires an upgraded plan');
+    const denied = await req(app, 'POST', '/api/edge-engines/import', { bundle: bundle ?? 'FBENG1.synthetic-unsupported', passphrase: 'correct-horse' });
+    check('unsupported bundle import refused on community', denied.status === 501);
+    check('refusal carries explicit unsupported code', (await denied.json()).code === 'engine_transfer_unsupported');
 
     const discovered = await req(app, 'POST', '/api/edge-engines/', { name: 'Discovered', url: 'https://engine.example', is_imported: true });
     check('discovery import (is_imported) → 403 on community', discovered.status === 403);
 
     const deployed = await req(app, 'POST', '/api/edge-engines/', { name: 'Deployed', url: 'https://engine.example' });
-    check('plain engine create (deploy wizard) stays open', deployed.status === 201);
+    check('plain engine metadata registration stays open', deployed.status === 201);
 
     const corrupt = await req(app, 'POST', '/api/edge-engines/import', { bundle: 'garbage', passphrase: 'correct-horse' });
-    check('corrupt bundle 400s before the gate', corrupt.status === 400
-        && (await corrupt.json()).detail === 'Bundle is corrupt or has been tampered with');
+    check('corrupt bundle is never parsed as a supported transfer', corrupt.status === 501
+        && (await corrupt.json()).code === 'engine_transfer_unsupported');
     const v2 = `FBENG1.${btoa(JSON.stringify({ h: { v: 2 } }))}`;
     const mismatch = await req(app, 'POST', '/api/edge-engines/import', { bundle: v2, passphrase: 'correct-horse' });
-    check('future bundle version 400s', mismatch.status === 400
-        && (await mismatch.json()).detail === 'Bundle format version is not supported');
+    check('future bundle is refused without inventing format support', mismatch.status === 501
+        && (await mismatch.json()).code === 'engine_transfer_unsupported');
 }
 
 // ---- 2. me/plan — the console's plan signal ----
@@ -105,13 +101,12 @@ const check = (l, c) => { if (c) console.log(`  ✅ ${l}`); else { failures++; c
     const again = await req(app, 'POST', '/api/admin/plans', { slug: 'pro', name: 'Pro' });
     check('duplicate slug → 409', again.status === 409);
 
-    const imported = await req(app, 'POST', '/api/edge-engines/import', { bundle, passphrase: 'correct-horse' });
+    const imported = await req(app, 'POST', '/api/edge-engines/import', { bundle: bundle ?? 'FBENG1.synthetic-unsupported', passphrase: 'correct-horse' });
     const importBody = await imported.json();
-    check('bundle import allowed on paid plan', imported.status === 200 && typeof importBody.engine_id === 'string');
-    check('ImportEngineResult shape (confirm_secret + summary)', typeof importBody.confirm_secret === 'string'
-        && typeof importBody.summary === 'string');
-    const roundTripped = await req(app, 'GET', `/api/edge-engines/${importBody.engine_id}`);
-    check('imported engine round-trips its name', (await roundTripped.json()).name === 'Portable');
+    check('paid plan cannot unlock unsupported transfer', imported.status === 501 && importBody.code === 'engine_transfer_unsupported');
+    check('refusal returns no imported id or secret', importBody.engine_id === undefined && importBody.confirm_secret === undefined);
+    const roundTripped = await req(app, 'GET', `/api/edge-engines/${engineId}`);
+    check('refused import preserves existing engine', (await roundTripped.json()).name === 'Portable');
 
     const discovered = await req(app, 'POST', '/api/edge-engines/', { name: 'Discovered', url: 'https://engine.example', is_imported: true });
     check('discovery import allowed on paid plan', discovered.status === 201);
