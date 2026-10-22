@@ -59,13 +59,25 @@ const plain = (value: unknown): value is null | string | number | boolean =>
 /** Read-consistent full-table export. Fails closed on values JSON cannot carry round-trip
  *  (BLOB/bigint-out-of-range) instead of silently corrupting a backup. */
 export async function exportStateBackup(db: DbRunner, now: string, envSecretPresent = false): Promise<StateBackup> {
+    if (db.transaction) return db.transaction((tx) => captureStateBackup(tx, now, envSecretPresent, true));
+    let consistent = true;
+    try { await db.exec('BEGIN'); } catch { consistent = false; }
+    try {
+        const backup = await captureStateBackup(db, now, envSecretPresent, consistent);
+        if (consistent) await db.exec('COMMIT');
+        return backup;
+    } catch (error) {
+        if (consistent) try { await db.exec('ROLLBACK'); } catch { /* retain original failure */ }
+        throw error;
+    }
+}
+
+async function captureStateBackup(db: DbRunner, now: string, envSecretPresent: boolean, consistent: boolean): Promise<StateBackup> {
     const migrations = await appliedVersions(db);
     if (!migrations.length) throw Error('backup_requires_migrated_state');
     const names = (await db.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"))
         .map((row) => String(row.name)).filter((name) => name !== '_migrations');
-    let consistent = true;
-    try { await db.exec('BEGIN'); } catch { consistent = false; }
-    try {
+    {
         const tables: Record<string, Row[]> = {};
         for (const name of names) {
             const rows = await db.query(`SELECT * FROM "${name}" ORDER BY rowid`);
@@ -85,11 +97,7 @@ export async function exportStateBackup(db: DbRunner, now: string, envSecretPres
             encTotal += n;
         }
         const bootSecretRowPresent = Number((await db.query("SELECT COUNT(*) AS n FROM settings WHERE tenant_slug='_system' AND key='boot.session_secret'"))[0]?.n ?? 0) > 0;
-        if (consistent) await db.exec('COMMIT');
         return { format: 'frontbase.state-backup', version: 1, createdAt: now, migrations, consistent, tables, counts: Object.fromEntries(names.map((name) => [name, tables[name]!.length])), encCounts, secretProvenance: { envSecretPresent, bootSecretRowPresent, encTotal } };
-    } catch (error) {
-        if (consistent) try { await db.exec('ROLLBACK'); } catch { /* the read already failed; nothing to preserve */ }
-        throw error;
     }
 }
 
@@ -110,10 +118,7 @@ export async function restoreStateBackup(db: DbRunner, backup: StateBackup, now:
     // OLDER backups are absorbed by migrateUp above (schema rollback is restore-from-backup,
     // never a down-migration walk).
     if (!backup.migrations.length || backup.migrations.some((version) => !headSet.has(version))) throw Error('restore_backup_foreign_schema');
-    let transactional = true;
-    try { await db.exec('BEGIN'); } catch { transactional = false; }
-    if (!transactional) throw Error('restore_target_not_transactional');
-    try {
+    const load = async (db: DbRunner): Promise<void> => {
         for (const name of Object.keys(backup.tables).sort()) {
             const rows = backup.tables[name]!;
             if (!rows.length) continue;
@@ -126,10 +131,18 @@ export async function restoreStateBackup(db: DbRunner, backup: StateBackup, now:
                     columns.map((column) => row[column] ?? null));
             }
         }
-        await db.exec('COMMIT');
-    } catch (error) {
-        try { await db.exec('ROLLBACK'); } catch { /* target is fresh; the failure rethrows below */ }
-        throw error;
+    };
+    if (db.transaction) {
+        await db.transaction(load);
+    } else {
+        try { await db.exec('BEGIN'); } catch { throw Error('restore_target_not_transactional'); }
+        try {
+            await load(db);
+            await db.exec('COMMIT');
+        } catch (error) {
+            try { await db.exec('ROLLBACK'); } catch { /* retain original failure */ }
+            throw error;
+        }
     }
     return { report: await verifyStateIntegrity(db, backup) };
 }

@@ -5,6 +5,8 @@ import { createHash } from 'node:crypto';
 import { repoRoot } from '../../../scripts/mutation-lib.mjs';
 import ts from 'typescript';
 const faults=[
+    ['HTTP export transaction callback','packages/backend/src/compat/backup-restore.ts','if (db.transaction) return db.transaction((tx) => captureStateBackup(tx, now, envSecretPresent, true));','if (false) return db.transaction((tx) => captureStateBackup(tx, now, envSecretPresent, true));'],
+    ['HTTP restore transaction callback','packages/backend/src/compat/backup-restore.ts','if (db.transaction) {','if (false) {'],
     ['isolated fresh-target refusal','packages/backend/src/compat/backup-restore.ts','if (existing > 0) throw Error(\'restore_target_not_empty\');','if (existing > 99) throw Error(\'restore_target_not_empty\');'],
     ['foreign-schema version fence','packages/backend/src/compat/backup-restore.ts','backup.migrations.some((version) => !headSet.has(version))','false'],
     ['secret ciphertext accounting','packages/backend/src/compat/backup-restore.ts','drift.length === 0 && encTotal === expected.secretProvenance.encTotal','true'],
@@ -32,4 +34,4 @@ try{
     for(const [file,original] of originals){writeFileSync(repoRoot+file,original);writeFileSync(artifact(file),originalArtifacts.get(file));}
     green('final baseline');for(const [file,original] of originals){assert.equal(hash(readFileSync(repoRoot+file)),hash(original));assert.equal(hash(readFileSync(artifact(file))),hash(originalArtifacts.get(file)));}
 }
-console.log('backup-restore mutation3/3; all source hashes restored');
+console.log('backup-restore mutation5/5; all source hashes restored');

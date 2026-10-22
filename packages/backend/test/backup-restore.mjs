@@ -97,5 +97,21 @@ try{
  await restoreStateBackup(drifted,driftBackup,now,{confirmEmptyTarget:true});
  const driftReport=await verifyStateIntegrity(drifted,driftBackup);assert.equal(driftReport.ok,false);
  assert.ok(driftReport.checks.some(item=>item.id==='secret-ciphertext-accounting'&&!item.ok),JSON.stringify(driftReport.checks));
+ // HTTP runners own a pinned transaction callback; standalone BEGIN cannot protect
+ // subsequent stateless requests. Exercise that contract with a real SQLite target.
+ const callbackRunner=(base,{failLoad=false}={})=>({
+   query:(sql,args)=>base.query(sql,args),
+   exec:async(sql,args)=>{if(/^(BEGIN|COMMIT|ROLLBACK)$/.test(sql))throw Error('standalone_http_transaction_forbidden');return base.exec(sql,args);},
+   transaction:async(work)=>{await base.exec('BEGIN');try{const tx={query:(sql,args)=>base.query(sql,args),exec:async(sql,args)=>{if(failLoad&&sql.startsWith('INSERT OR REPLACE INTO "variables"'))throw Error('injected_load_failure');return base.exec(sql,args);}};const result=await work(tx);await base.exec('COMMIT');return result;}catch(error){await base.exec('ROLLBACK');throw error;}},
+ });
+ const callbackBackup=await exportStateBackup(callbackRunner(source),now,false);
+ assert.equal(callbackBackup.consistent,true);assert.deepEqual(callbackBackup.tables,backup.tables);
+ const callbackTarget=stateDb();
+ await assert.doesNotReject(async()=>{assert.equal((await restoreStateBackup(callbackRunner(callbackTarget),callbackBackup,now,{confirmEmptyTarget:true})).report.ok,true);},'HTTP restore must use the pinned callback');
+ assert.equal((await render(callbackTarget,'/')).text,home.text);
+ const failedTarget=stateDb();
+ await assert.rejects(restoreStateBackup(callbackRunner(failedTarget,{failLoad:true}),callbackBackup,now,{confirmEmptyTarget:true}),/injected_load_failure/);
+ assert.equal(Number((await failedTarget.query('SELECT COUNT(*) AS n FROM compat_pages'))[0].n),0,'callback failure rolls back earlier page writes');
+ assert.equal(Number((await failedTarget.query("SELECT COUNT(*) AS n FROM settings WHERE tenant_slug=?",[tenant]))[0].n),0,'callback failure rolls back publication and settings writes');
  console.log('backup-restore: export inventory/consistency/accounting/provenance, fresh-target+confirm+newer+foreign+non-transactional refusals, byte-identical restored HTML, live integrity walk, manifest-tamper/torn-review/ciphertext-drift detection PASS');
 }catch(error){throw error;}finally{try{}catch{}}

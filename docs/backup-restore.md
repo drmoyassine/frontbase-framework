@@ -135,3 +135,7 @@ corruption — the walk is what proves a backup, on every path.
   re-parse) — content was intact, the live DB failed identically, and the walk did exactly its
   job. Fixed in `fc7d484`: integrity is measured on the stored serialization; mutation gate
   4/4 RED-proven including a fault that reintroduces the drift bug.
+
+### HTTP transaction and remote drill follow-up (2026-10-22)
+
+Turso HTTP requires the existing runner transaction callback: separate BEGIN/read/COMMIT requests do not establish a retained SQL transaction. Export captures migration inventory, rows and ciphertext counts inside that callback. Restore migrates the fresh target first, then loads all rows through one callback; a mid-load failure rolls back all loaded rows while leaving the migrated empty schema. File runners retain the SQL transaction fallback; D1 still uses platform export/import. The focused callback regression checks real SQLite rollback after preceding page/publication writes; the mutation gate now includes both callback selections. Exact live receipts are recorded in the integrated finalization plan after qualification.
