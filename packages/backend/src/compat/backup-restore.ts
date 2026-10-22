@@ -4,7 +4,7 @@ import { SitePublicationStore } from './site-publication-store.js';
 import { SitePublicationManifestStore } from './site-publication-manifest.js';
 import { SitePublicationReviewStore } from './site-publication-review-store.js';
 import { MenusSnapshotStore } from './menus-snapshot.js';
-import { readHomepageRelease, publishedHomepageLocales } from './translation-homepage.js';
+import { readHomepageRelease } from './translation-homepage.js';
 
 /** Operator-level state backup (task 11). Scope: the application state DB on the SQLite-family
  *  certified paths (file:, libsql/Turso, D1) — the publication plane is the `settings` table
@@ -203,10 +203,23 @@ export async function verifyStateIntegrity(db: DbRunner, expected?: StateBackup)
             check(report, `${tenant}:menu-snapshots`, missing === 0, missing === 0 ? `${hashes.size} present` : `${missing} missing`);
         } catch (error) { check(report, `${tenant}:menu-snapshots`, false, error instanceof Error ? error.message : 'unreadable'); }
         try {
-            const published = await publishedHomepageLocales(db, tenant);
-            let missing = 0;
-            for (const item of published) if (!await readHomepageRelease(db, tenant, item.pointer.hash)) missing++;
-            check(report, `${tenant}:locale-releases`, missing === 0, missing === 0 ? (published.length ? `${published.length} present` : 'none published') : `${missing} missing`);
+            // Paginated walk (locale pointers are unbounded — no aggregate cap), each row isolated:
+            // one unreadable pointer/release is reported, never fails the walk or its siblings.
+            let total = 0, missing = 0, corrupt = 0;
+            for (let offset = 0; ; offset += 100) {
+                const rows = await db.query('SELECT key,value FROM settings WHERE tenant_slug = ? AND (key LIKE ? OR key LIKE ?) ORDER BY key LIMIT ? OFFSET ?',
+                    [tenant, 'translation_homepage:active:v1:%', 'translation_surface:active:v1:%', 100, offset]);
+                for (const row of rows) {
+                    total++;
+                    let pointer: { hash?: unknown };
+                    try { pointer = JSON.parse(String(row.value)); } catch { corrupt++; continue; }
+                    if (!pointer || typeof pointer !== 'object' || typeof pointer.hash !== 'string') { corrupt++; continue; }
+                    try { if (!await readHomepageRelease(db, tenant, pointer.hash)) missing++; } catch { missing++; }
+                }
+                if (rows.length < 100) break;
+            }
+            const intact = missing === 0 && corrupt === 0;
+            check(report, `${tenant}:locale-releases`, intact, intact ? (total ? `${total} present` : 'none published') : `${missing} missing, ${corrupt} unreadable`);
         } catch (error) { check(report, `${tenant}:locale-releases`, false, error instanceof Error ? error.message : 'unreadable'); }
     }
     try {

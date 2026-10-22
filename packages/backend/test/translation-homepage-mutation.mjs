@@ -7,11 +7,14 @@ const module=new URL('../dist/compat/translation-homepage.js',import.meta.url),s
 // generalized publication suite (rollback/deactivate/per-unit drift are not exercised by the homepage one).
 // Slice C adds the release guards: display-text save fence, identity-collision fence, composed-label
 // stamp and the record supplement plain-text guard.
+// A stale strict release is refused TWICE by design (serve guard + projection re-check): a fault
+// that disables one layer must also disable the other, or the redundancy masks it and the gate
+// proves nothing. The optional 6th tuple element is a second [url,from,to] patch applied together.
 const faults=[
  ['configured target locale',module,'!config.targetLocales.includes(target)','false'],
  ['field revision fence',module,'prior.value.token !== e.token','false'],
  ['activation CAS',module,'JSON.stringify(current) !== JSON.stringify(pointerSchema.nullable().parse(expected))','false'],
- ['outdated locale refusal',serving,'if (selected && !available.includes(selected))','if (false)'],
+ ['outdated locale refusal',serving,'if (selected && !await isFresh(selected))','if (false)','translation-homepage.mjs',[module,'if (!perUnit && (capture.active.pointer.hash !== release.siteHash || capture.sourceHash !== release.sourceHash))','if (false && (capture.active.pointer.hash !== release.siteHash || capture.sourceHash !== release.sourceHash))']],
  ['explicit review consent',route,'approveTranslations: z.literal(true)','approveTranslations: z.boolean()'],
  ['deactivation CAS',module,'JSON.stringify(pointerSchema.parse(JSON.parse(prior))) !== JSON.stringify(pointerSchema.nullable().parse(expected))','false','translation-page-publication.mjs'],
  ['per-unit freshness join',module,'field.sourceText === undefined || sourceNow.get(JSON.stringify(stableIdentity(field))) === field.sourceText','true','translation-page-publication.mjs'],
@@ -33,8 +36,14 @@ for(const suite of ['translation-homepage.mjs','translation-page-publication.mjs
     const clean=run(suite);
     assert.equal(clean.status,0,suite+' clean baseline: '+clean.stdout.slice(-2000)+clean.stderr.slice(-2000));
 }
-for(const[name,url,from,to,suite='translation-homepage.mjs']of faults){const original=readFileSync(url,'utf8');assert.ok(original.includes(from),'fault anchor '+name);
- const hook=`import {registerHooks} from 'node:module';registerHooks({load(url,context,next){const result=next(url,context);return url===${JSON.stringify(url.href)}?{...result,source:String(result.source).replaceAll(${JSON.stringify(from)},${JSON.stringify(to)})}:result;}});`;
- const r=run(suite,hook);assert.ok(r.status!==0&&/AssertionError/.test(r.stderr),'behavioral fault '+name+'\n'+r.stderr);assert.equal(readFileSync(url,'utf8'),original);console.log('caught:',name);
+for(const[name,url,from,to,suite='translation-homepage.mjs',extra]of faults){
+ const patches=extra?[[url,from,to],extra]:[[url,from,to]];
+ const originals=new Map(patches.map(([u])=>[u.href,readFileSync(u,'utf8')]));
+ for(const[u,f]of patches)assert.ok(originals.get(u.href).includes(f),'fault anchor '+name);
+ const rules=patches.map(([u,f,t])=>`if(url===${JSON.stringify(u.href)}){result={...result,source:String(result.source).replaceAll(${JSON.stringify(f)},${JSON.stringify(t)})};}`).join('');
+ const hook=`import {registerHooks} from 'node:module';registerHooks({load(url,context,next){let result=next(url,context);${rules}return result;}});`;
+ const r=run(suite,hook);assert.ok(r.status!==0&&/AssertionError/.test(r.stderr),'behavioral fault '+name+'\n'+r.stderr);
+ for(const[u]of patches)assert.equal(readFileSync(u,'utf8'),originals.get(u.href));
+ console.log('caught:',name);
 }
 console.log('translation-homepage: nineteen in-memory faults caught; source unchanged');
