@@ -64,4 +64,4 @@ fresh consumer from the published versions before declaring distribution ready.
 
 No exact public versions, registry publish, default-main integration or USA
 production cutover is authorized by a passing local archive test. Remaining
-release gates stay in the [current plan](../plans/frontbase-public-release-finalization-20261022.md).
+release gates stay in the [current plan](../plans/frontbase-public-release-finalization-20261024.md).

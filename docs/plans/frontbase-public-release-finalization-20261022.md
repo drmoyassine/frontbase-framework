@@ -1,5 +1,7 @@
 # Frontbase public release finalization — 2026-10-22
 
+Current execution/status is superseded by the [2026-10-24 release plan](frontbase-public-release-finalization-20261024.md). The dated repair findings and pending statements below are historical checkpoints, not instructions to reopen accepted repairs.
+
 2026-10-23 recovery closeout: the staging PostgREST hold is resolved. Provider logs show a successful cache load at06:30UTC and zero further cache-load/57014 errors through12:17:30UTC. Current source27fab67 passes native English/Arabic two-field saves, anonymous projection, language isolation, per-field/global cancellation, responsive-menu staging/cancellation and exact original content plus37links per language restoration. The original admin session and deployed image are retained. Recovery preceded this session; no database restart, schema/grant/key/timeout change, app patch or redeploy was needed. The bounded repair/acceptance task is complete; previously deferred provider/inbox credentials, public-default-source and registry distribution remain separate release gates. Datasource translation completeness is excluded.
 
 Owner-approved security intake update, 2026-10-23: GitHub private vulnerability reporting for `drmoyassine/frontbase-framework` is enabled; the authenticated repository API verifies `enabled: true`. The prior activation-approval delta is resolved. No synthetic report was submitted and no response SLA is claimed. The reporting activation is complete; subsequent recovery closeout above supersedes the staging hold.
