@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "purpose": "engineering-repair-candidate",
-  "runtimeSource": "b7cb5d94a6e8502fc5b6a7ddd8a520a0fdcbb1c2",
-  "artifactCommit": "e9f3506d02cf96e692c28e94dc660fb678d51960",
+  "runtimeSource": "14ce8f8d620edffd129b2dfb7b3540b66a78c483",
+  "artifactCommit": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
   "runtime": {
     "node": "22.23.4",
     "officialWindowsBinarySha256": "dccc52de28d8df2ee22d2062424f8c563070d95d8ad70c54c4bf01d590dec14f"
@@ -10,7 +10,9 @@
   "workspace": {
     "check": "PASS",
     "build": "PASS",
-    "wholeTestSuite": "PASS"
+    "wholeTestSuite": "PASS",
+    "wholeTestSuiteSource": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+    "consoleBoundary": "Console build/check pass; whole functional run excludes the existing console unit-suite target; only descriptive text changed there."
   },
   "faults": {
     "backendSecurity": {
@@ -40,9 +42,17 @@
       "count": 2,
       "status": "PASS",
       "originalArtifactRetained": true
+    },
+    "frontendEditing": {
+      "count": 9,
+      "status": "PASS",
+      "sourcesRestored": true,
+      "evidence": "plain-page-editor-mutations.log"
     }
   },
   "behavior": {
+    "source": "b7cb5d94a6e8502fc5b6a7ddd8a520a0fdcbb1c2",
+    "qualification": "Four-order source receipt retained. The subsequent plain-page identity and descriptive UI-text fixes have fresh full-suite, tenant, editor fault and native host acceptance; no fresh four-order run is claimed for those fixes.",
     "total": 334,
     "orders": [
       "forward",
@@ -106,7 +116,7 @@
       {
         "name": "@frontbase/backend",
         "version": "0.0.0",
-        "sha256": "e5ae0804d95d12dceaa7cb033ede01dd739e1a7946a1f4b52011a0ad65f15270"
+        "sha256": "b4c48075670c10e7c060790b5db1fd48f165dd16784280c4d19dc0befcb4c7e3"
       },
       {
         "name": "@frontbase/builder",
@@ -124,11 +134,14 @@
         "skipLibCheck": false
       }
     },
-    "starter": "install/build/test/check and compiled routes PASS"
+    "starter": "install/build/test/check and compiled routes PASS",
+    "evidence": "frontbase-r1-consumer-BakyEw",
+    "strictNodeNextAndBundler": true,
+    "independentStarter": true
   },
   "freshNode": {
     "status": "PASS",
-    "evidence": "frontbase-fresh-node-6hmr1B",
+    "evidence": "frontbase-fresh-node-q6RToF",
     "journey": [
       "fresh state",
       "seed/login",
@@ -138,51 +151,111 @@
       "restart",
       "original session retained"
     ],
-    "notACleanRoomOrPublicDefaultSourceProof": true
+    "notACleanRoomOrPublicDefaultSourceProof": true,
+    "ordinaryPageEditorialSaveAndRestore": true,
+    "staleEditorTokenDenied": true
   },
   "artifacts": [
     {
       "path": "examples/cf-full/dist/worker.mjs",
-      "sha256": "1ad17b0a661ea48b813222a7450828cd77f0fe6712d17d669af7f5e9652f6e39",
-      "bytes": 2793189,
-      "gzipBytes": 721385
+      "sha256": "eaf757f22c173cec2c88c66b5aa33b61903bc4827ddc40a95583d081cb4a1570",
+      "bytes": 2793184,
+      "gzipBytes": 723728
     },
     {
       "path": "examples/cf-full/dist/vercel.mjs",
-      "sha256": "2d391c270dd35b913a6e7144df470f65827ef79aa12c6be0a309381a6b77169b",
-      "bytes": 3599050,
-      "gzipBytes": 975849
+      "sha256": "68960c0c5b7b69f1b72683f9050d8b42026ca3f09c21d3543868834a49cde874",
+      "bytes": 3599032,
+      "gzipBytes": 978529
     },
     {
       "path": "examples/cf-full/api/cms.mjs",
-      "sha256": "2d391c270dd35b913a6e7144df470f65827ef79aa12c6be0a309381a6b77169b",
-      "bytes": 3599050,
-      "gzipBytes": 975849
+      "sha256": "68960c0c5b7b69f1b72683f9050d8b42026ca3f09c21d3543868834a49cde874",
+      "bytes": 3599032,
+      "gzipBytes": 978529
     },
     {
       "path": "examples/cf-full/dist/node.mjs",
-      "sha256": "90f50c1da85fc9ea499a2e1f31fb06dd00f78c10b0b7ac01474c4a86216944e0",
-      "bytes": 269078,
-      "gzipBytes": 73178
+      "sha256": "eec5632d478c6a2a7f6d5bb36908e56bddeb1560bd722b20b3680f2990d0146a",
+      "bytes": 269076,
+      "gzipBytes": 73346
     }
   ],
   "staging": {
-    "status": "PENDING",
-    "retainedLiveSource": "e1a7b74",
+    "status": "DEPLOYED_ACCEPTANCE_BLOCKED",
     "before": {
       "englishTextHash": "8f593bfcc9a93ed284073d3295c2e505ff010e02f826494332bf7aa88b63d3ce",
       "arabicTextHash": "a5974bb1eb189eb4d78b8b924e760a3b31fef24cc520c98be15ecfbaa83383ca",
       "linksPerLanguage": 37
+    },
+    "source": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+    "image": "sha256:1331fea46b48d5313ba1ba58d11de20d2ec30ed732190409197c280ac88a0c74",
+    "archiveSha256": "4113b194d4fc009425eed6d40f7c68365ee46cba76eb759874f1a37c13121d19",
+    "deployedAt": "2026-10-22T23:44:13Z",
+    "publicRoutes": {
+      "/": 503,
+      "/ar/": 503
+    },
+    "causeBoundary": "Exact account-merge and datasource-runner SELECT 1 receives PostgREST schema-cache initialization failure under both native and guarded fetch. Provider service logs show repeated SQLSTATE 57014 during schema-cache load.",
+    "exposedSchemasExist": true,
+    "manualAuthenticatorSchemaOverride": false,
+    "standardSchemaReloadAttempted": true,
+    "schemaGrantsOrDataChanged": false,
+    "platformIncident": "https://status.supabase.com/incidents/01M5J8ZQ04EZXAYF10Q75MGC1T",
+    "incidentCausality": "correlated, not established",
+    "nativeWorkflow": {
+      "status": "PASS",
+      "manualOnly": true,
+      "persistedCompletedExecution": true,
+      "labeledVersionPersisted": true,
+      "published": false,
+      "providerDispatches": 0,
+      "source": "610a1af; workflow runtime unchanged by subsequent plain-page/wording fixes",
+      "postUpgradeReloadSource": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+      "postUpgradeVersionRetained": true,
+      "currentSnapshotWordingVerified": true
     }
   },
-  "existingCfAndVercelUpgrades": "PENDING",
+  "existingCfAndVercelUpgrades": {
+    "cf": {
+      "status": "PASS",
+      "source": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+      "origin": "https://frontbase-final-cf-261022.studygram-inc.workers.dev",
+      "originalSessionPreserved": true,
+      "publishedMarkerRetained": true,
+      "actualHostHealth": true,
+      "truthfulRemoteRefusal": true,
+      "multiFieldSave": true,
+      "publicProjection": true,
+      "staleTokenRefused": true,
+      "exactOriginalTextRestored": true,
+      "anonymousInventoryRefused": true
+    },
+    "vercel": {
+      "status": "PASS",
+      "source": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+      "origin": "https://frontbase-final-vercel-261022.vercel.app",
+      "originalSessionPreserved": true,
+      "publishedMarkerRetained": true,
+      "actualHostHealth": true,
+      "truthfulRemoteRefusal": true,
+      "multiFieldSave": true,
+      "publicProjection": true,
+      "staleTokenRefused": true,
+      "exactOriginalTextRestored": true,
+      "anonymousInventoryRefused": true
+    }
+  },
   "deltas": {
     "privateVulnerabilityReporting": "disabled; activation rejected by automatic approval review; explicit owner authorization needed",
     "namespaceOwnership": "not established; no registry publication",
     "realNeonAndOptionalProviders": "credential-specific acceptance not inferred",
     "resetInboxReceipt": "requires configured provider and authorized owned test mailbox; no real message sent",
     "nativeWindowsNode24": "conformance report followed by 0xC0000005; failed run retained and not credited",
-    "publicDefaultSourceAndDistribution": "separate release gates; no main merge, public package publication or production WP cutover"
+    "publicDefaultSourceAndDistribution": "separate release gates; no main merge, public package publication or production WP cutover",
+    "stagingDataApi": "Current upstream PostgREST schema-cache load fails with SQLSTATE 57014; English/Arabic live acceptance remains blocked. No broader project restart, schema removal, grant or timeout change performed.",
+    "providerIgnoreRules": "Vercel CLI protective .vercel/.env* ignore entries retained after automatic approval review rejected their removal."
   },
-  "publicReleaseAccepted": false
+  "publicReleaseAccepted": false,
+  "previousRuntimeSource": "b7cb5d94a6e8502fc5b6a7ddd8a520a0fdcbb1c2"
 }
