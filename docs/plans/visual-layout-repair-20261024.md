@@ -21,3 +21,11 @@ Owner-authorized session: start 2026-10-23 22:57:50 UTC; stop no later than 2026
 After core acceptance, consider a small “Wrap in Row/Column” action for the selected element. This is an independently proposed shortcut, not a prerequisite for the repair, and must not be merged or deployed until requested. No new freeform positioning engine, multi-user collaboration, vector editor or broad Figma-parity claim.
 
 Status: implementation and focused regressions underway; deployment/native acceptance pending. No release or owner-content publication claim.
+
+## First native acceptance and follow-up
+
+Source `3805d6e`, staged artifact `41b298f`, deployed on 2026-10-23 at 23:13:49 UTC (image `sha256:1df778f6f24689b029b2f952cf9d29466fb9d01a777768664f62e759f9e05a4a`). The real Explore builder accepted Row into the card, Layers title nesting, palette Icon insertion before the bound heading, 12px gap and centered alignment, canvas move-handle reparenting, Layers outdenting, canvas/property text changes across all 12 displayed records, and undo/redo. Test edits were discarded by reload; no owner page was saved or published.
+
+Follow-up: canvas typing previews in the Properties field without changing layout or losing the caret, then commits one history transaction on blur/Enter. Desktop/tablet/mobile preview widths now remain their selected dimensions instead of shrinking to sidebar space; zoom scales layout bounds and horizontal scrolling is available. Cache the overlay tree/geometry derivations across hover changes. The Row renderer regression is included in the normal edge-core test command.
+
+Verification: recursive check/build pass; focused suite 29 distinct tests passed, including 8 rerun after the live text follow-up. Edge-core functional suite and new visual-layout renderer check passed. Console and host builds pass; prohibited-symbol check passes. Full console standalone TypeScript remains failing in pre-existing unrelated debt, including Object.hasOwn library-target diagnostics; no claim that gate is clean. Follow-up deployment/native viewport and typing checks pending.

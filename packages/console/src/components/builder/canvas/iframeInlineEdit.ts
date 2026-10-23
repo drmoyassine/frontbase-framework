@@ -39,6 +39,7 @@ export function startInlineEdit(
     property: string,
     onCommit: (commit: InlineEditCommit) => void,
     onEnd?: () => void,
+    onInput?: (text: string) => void,
 ): () => void {
     const doc = root.ownerDocument;
     if (!doc) return () => {};
@@ -98,6 +99,8 @@ export function startInlineEdit(
 
     const onStopPropagation = (e: Event) => e.stopPropagation();
 
+    const onDraft = () => onInput?.(root.textContent ?? '');
+    root.addEventListener('input', onDraft);
     root.addEventListener('keydown', onKey);
     root.addEventListener('blur', onBlur);
     // Prevent pointer interactions inside the editor from triggering selection.
@@ -105,6 +108,7 @@ export function startInlineEdit(
     root.addEventListener('mousedown', onStopPropagation, true);
 
     function cleanup() {
+        root.removeEventListener('input', onDraft);
         root.removeEventListener('keydown', onKey);
         root.removeEventListener('blur', onBlur);
         root.removeEventListener('pointerdown', onStopPropagation, true);

@@ -17,7 +17,7 @@ import { inheritedVersionOwner } from '@/lib/tree-utils';
 export interface BuilderSlice {
     selectedComponentId: string | null;
     draggedComponentId: string | null;
-    editingTextNode: { componentId: string, property: string } | null;
+    editingTextNode: { componentId: string, property: string, text?: string } | null;
     copiedComponent: ComponentData | null;
     focusedField: { componentId: string; fieldName: string } | null;
 
@@ -35,7 +35,7 @@ export interface BuilderSlice {
 
     setSelectedComponentId: (id: string | null) => void;
     setDraggedComponentId: (componentId: string | null) => void;
-    setEditingTextNode: (node: { componentId: string, property: string } | null) => void;
+    setEditingTextNode: (node: { componentId: string, property: string, text?: string } | null) => void;
     setFocusedField: (field: { componentId: string; fieldName: string } | null) => void;
 
     // Card-level actions

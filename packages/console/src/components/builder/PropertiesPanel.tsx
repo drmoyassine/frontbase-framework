@@ -86,7 +86,8 @@ export const PropertiesPanel = () => {
     currentPageId,
     updateComponent,
     removeComponent,
-    project
+    project,
+    editingTextNode
   } = useBuilderStore(useShallow(s => ({
     selectedComponentId: s.selectedComponentId,
     pages: s.pages,
@@ -94,6 +95,7 @@ export const PropertiesPanel = () => {
     updateComponent: s.updateComponent,
     removeComponent: s.removeComponent,
     project: s.project,
+    editingTextNode: s.editingTextNode,
   })));
 
   const { setComponentBinding, initialize } = useDataBindingStore();
@@ -153,7 +155,12 @@ export const PropertiesPanel = () => {
   };
 
   const renderPropertyFields = (tab: string) => {
-    const { type, props } = selectedComponent;
+    const { type } = selectedComponent;
+    // Canvas typing previews in the panel without changing layout or resetting
+    // the iframe/caret. Blur/Enter commits one existing undo transaction.
+    const props = editingTextNode?.componentId===selectedComponent.id && editingTextNode.text!==undefined && !editingTextNode.property.includes('.')
+      ? {...selectedComponent.props,[editingTextNode.property]:editingTextNode.text}
+      : selectedComponent.props;
 
     // ── Tier 1: Framework registry descriptor (source of truth) ───────────
     // When the descriptor is reachable AND the component isn't in the

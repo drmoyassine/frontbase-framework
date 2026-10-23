@@ -80,9 +80,11 @@ export function attachIframeSelection(
             prop,
             commitText,
             () => {
+                useBuilderStore.getState().setEditingTextNode(null);
                 if (activeEdit === el) activeEdit = null;
                 editCleanup = null;
             },
+            text => useBuilderStore.getState().setEditingTextNode({componentId,property:prop,text}),
         );
     };
 
@@ -241,6 +243,7 @@ export function attachIframeSelection(
     // listeners/contentEditable cannot leak onto a stale document.
     cleanups.push(() => {
         editCleanup?.();
+        useBuilderStore.getState().setEditingTextNode(null);
     });
 
     return () => cleanups.forEach((fn) => fn());

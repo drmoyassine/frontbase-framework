@@ -72,7 +72,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ page }) => {
   return (
     <div
       className={cn(
-        "h-full p-8 bg-muted/30 transition-colors relative overflow-y-auto overflow-x-hidden",
+        "h-full p-8 bg-muted/30 transition-colors relative overflow-auto",
         scrollTargetSelectionMode && "ring-2 ring-primary ring-inset"
       )}
       style={{ minHeight: '100%' }}
@@ -108,18 +108,17 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ page }) => {
       )}
 
       {/* Device Frame / Viewport Container.
-          position: relative so the iframe (in-flow) and the overlay (absolute
-          inset:0) share an origin inside the same transform-scaled wrapper —
-          iframe-local coords map 1:1 to overlay coords at any zoom. */}
+          Keep the actual viewport width independent of sidebar space. CSS zoom
+          scales layout bounds too, avoiding phantom scroll space from transform.
+          The iframe and overlay share the same origin and zoom. */}
       <div
         className={cn(
-          "mx-auto transition-all duration-300 relative w-full",
+          "mx-auto transition-all duration-300 relative",
           showDeviceFrame && "shadow-2xl rounded-lg overflow-hidden bg-background"
         )}
         style={{
-          maxWidth: `${viewportWidth}px`,
-          transform: `scale(${scaleFactor})`,
-          transformOrigin: 'top center'
+          width: `${viewportWidth}px`,
+          zoom: scaleFactor
         }}
       >
         {/* Grid overlay — pure background, pointer-events handled by CSS. */}

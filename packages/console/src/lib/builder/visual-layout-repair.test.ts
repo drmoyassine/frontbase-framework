@@ -17,7 +17,10 @@ it('round trips inline text through the canonical property, history and a repeat
  const el=document.getElementById('instance')!;expect(el.getAttribute('data-fb-edit-prop')).toBe('content');
  const stop=attachIframeSelection(document,{onHoveredId:()=>{}});
  el.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));expect(el.getAttribute('contenteditable')).toBe('true');
- el.textContent='Changed on canvas';el.dispatchEvent(new FocusEvent('blur'));
+ el.textContent='Changed on canvas';el.dispatchEvent(new Event('input'));
+ expect(useBuilderStore.getState().editingTextNode).toMatchObject({componentId:'t',property:'content',text:'Changed on canvas'});
+ expect(tree()[0].props.content).toBe('t');expect(useBuilderStore.getState().layoutUndo).toHaveLength(0);
+ el.dispatchEvent(new FocusEvent('blur'));expect(useBuilderStore.getState().editingTextNode).toBeNull();
  expect(tree()[0].props.content).toBe('Changed on canvas');expect(tree()[0].props.text).toBe('' );
  useBuilderStore.getState().undoLayout();expect(tree()[0].props.content).toBe('t');
  useBuilderStore.getState().redoLayout();expect(tree()[0].props.content).toBe('Changed on canvas');stop();

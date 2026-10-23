@@ -53,9 +53,9 @@ export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({ page, rects, hover
     const hasComponents = content.length > 0 && rects.length > 0;
 
     // Resolve insertion indexes from the authored tree, never repeated DOM order.
-    const insertionRects = rects.map(rect => ({rect, loc: findNodeLocation(content, rect.id)})).filter(item => item.loc);
-    const rectById = new Map(rects.map(rect => [rect.id, rect]));
-    const containerRects = rects.filter((r) => CONTAINER_TYPES.has(r.type));
+    const insertionRects = React.useMemo(() => rects.map(rect => ({rect, loc: findNodeLocation(content, rect.id)})).filter(item => item.loc), [rects, content]);
+    const rectById = React.useMemo(() => new Map(rects.map(rect => [rect.id, rect])), [rects]);
+    const containerRects = React.useMemo(() => rects.filter((r) => CONTAINER_TYPES.has(r.type)), [rects]);
 
     const selectedRects = selectedComponentId ? rects.filter(r => r.id === selectedComponentId) : [];
     const hoveredRect =
