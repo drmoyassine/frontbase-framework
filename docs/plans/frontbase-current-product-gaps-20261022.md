@@ -1,5 +1,7 @@
 # Current Frontbase product and release gaps — 2026-10-22
 
+Owner-approved security intake update, 2026-10-23: GitHub private vulnerability reporting for `drmoyassine/frontbase-framework` is enabled; the authenticated repository API verifies `enabled: true`. The prior activation-approval delta is resolved. No synthetic report was submitted and no response SLA is claimed. The staging PostgREST hold and remaining distribution/provider gates are unchanged.
+
 **Evidence checkpoint:** source `9a85aaa` (documentation after runtime `12358b4`). This is a source/evidence triage, not a fresh runtime or penetration-test result. It records concrete findings independently of retired CF-22 parity counts. The [overall release plan](frontbase-public-release-finalization-20261022.md) retains completed acceptance and governs sequencing.
 
 ## Current repair progress

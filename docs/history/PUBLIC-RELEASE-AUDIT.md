@@ -1,5 +1,7 @@
 # R0 Public Release Scope and Truth Audit
 
+Owner-approved security intake update, 2026-10-23: GitHub private vulnerability reporting for `drmoyassine/frontbase-framework` is enabled; the authenticated repository API verifies `enabled: true`. The prior activation-approval delta is resolved. No synthetic report was submitted and no response SLA is claimed. The staging PostgREST hold and remaining distribution/provider gates are unchanged.
+
 ## 2026-10-22 frontend text editing and concrete gap repairs — ENGINEERING VERIFIED; STAGING HOLD
 
 Owner authorizes frontend text editing first, then G1/G2/G3/G4/G5/G6 and independent release qualification in the existing recommended order, with commit/push/staging deployment and verification. Own the isolated integration worktree; preserve other sessions, existing publications, secrets and content. Text editing must stage locally until explicit page Save Changes, support individual/global cancellation, map to locale/source identities, enforce privileged tenant scope and stale-write refusal, and reuse current rendering/translation/publication adapters. No datasource translation-completeness work, production WordPress cutover or public npm publication is inferred. Credential-dependent live proofs remain explicit deltas after independent work.

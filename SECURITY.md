@@ -8,17 +8,11 @@ a passing build alone is not a security certification.
 ## Reporting a vulnerability
 
 Do not post credentials, exploit details or private data in public issues.
-GitHub's private vulnerability reporting setting was confirmed disabled on
-2026-10-23. Enabling it requires the repository owner's specific authorization.
-If a private reporting option is subsequently enabled on the Security tab, use
-that option. Until then, contact the
-repository owner through an existing private channel to establish a reporting
-channel before transmitting sensitive details. This document does not establish
-an unverified security email address or promise a response SLA.
-
-Enabling and testing a publicly reachable private reporting channel remains a
-public-release gate. Until that check is recorded, do not advertise this policy
-as proof of an operational vulnerability intake service.
+Use [GitHub private vulnerability reporting](https://github.com/drmoyassine/frontbase-framework/security/advisories/new)
+to submit sensitive reports privately. The repository owner explicitly authorized
+enabling this setting on 2026-10-23; the authenticated GitHub API subsequently
+confirmed `{"enabled":true}`. No synthetic vulnerability report was submitted.
+This policy does not promise a response SLA.
 
 Include the affected commit/package version, runtime/provider, prerequisites,
 minimal reproduction and impact. Use synthetic data where possible. Never send

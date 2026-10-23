@@ -247,7 +247,7 @@
     }
   },
   "deltas": {
-    "privateVulnerabilityReporting": "disabled; activation rejected by automatic approval review; explicit owner authorization needed",
+    "privateVulnerabilityReporting": "enabled after explicit owner approval on 2026-10-23; authenticated GitHub private-vulnerability-reporting API verified enabled=true; no synthetic report submitted",
     "namespaceOwnership": "not established; no registry publication",
     "realNeonAndOptionalProviders": "credential-specific acceptance not inferred",
     "resetInboxReceipt": "requires configured provider and authorized owned test mailbox; no real message sent",

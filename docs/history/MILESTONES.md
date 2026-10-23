@@ -1,5 +1,7 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+Owner-approved security intake update, 2026-10-23: GitHub private vulnerability reporting for `drmoyassine/frontbase-framework` is enabled; the authenticated repository API verifies `enabled: true`. The prior activation-approval delta is resolved. No synthetic report was submitted and no response SLA is claimed. The staging PostgREST hold and remaining distribution/provider gates are unchanged.
+
 ## 2026-10-23 remaining concrete repairs — candidate qualification
 
 Latest:27fab67 is deployed to staging and both existing native fixtures. Full Node22 check/build/test, fresh ordinary-page editor/restart, seven strict consumers/starter and all nine editor faults pass. Both CF/Vercel upgrades preserve original sessions/configuration/publication and pass actual multi-field public save, stale denial and exact restoration. Native staging workflow execution/history/version pass. [Staging remains blocked by upstream PostgREST schema-cache SQLSTATE57014](../plans/staging-postgrest-cache-20261023.md), with source query failure reproduced under native and guarded fetch. Do not call staging accepted, the task closed or the product GA while that hold remains. The earlier checkpoint below is retained history.

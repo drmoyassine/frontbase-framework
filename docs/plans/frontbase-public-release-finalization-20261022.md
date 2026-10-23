@@ -1,12 +1,14 @@
 # Frontbase public release finalization — 2026-10-22
 
+Owner-approved security intake update, 2026-10-23: GitHub private vulnerability reporting for `drmoyassine/frontbase-framework` is enabled; the authenticated repository API verifies `enabled: true`. The prior activation-approval delta is resolved. No synthetic report was submitted and no response SLA is claimed. The staging PostgREST hold and remaining distribution/provider gates are unchanged.
+
 **Edition:** Frontbase Framework Developer Preview. **Status:** engineering repairs verified; staging operational hold and public-distribution gates remain open. **Candidate checkpoint:** runtime `14ce8f8`, generated artifact/deployed source `27fab67` on `codex/integrated-finalization-20261022`. Existing CF/Vercel upgrade and live editing acceptance pass; staging runs the same source but its source-project Data API returns a schema-cache failure. This is the current ordered execution plan under the existing [release strategy](../history/PUBLIC-RELEASE-STRATEGY.md), [readiness requirements](../history/RELEASE-READINESS.md) and accepted decisions. It supersedes older next-task ordering, without turning historical receipts into fresh runs or reopening completed work.
 
 ## Immediate remaining sequence
 
 1. Resolve the [shared source-project PostgREST schema-cache hold](staging-postgrest-cache-20261023.md), then rerun exact English/Arabic public and current-session native editor/navigation acceptance. Preserve safety limits, existing data and other applications' configuration.
 2. Certify the chosen public/default source and clean documented installation; current source-pinned fixture proofs do not certify an unmodified main-branch button.
-3. Establish namespace ownership/exact preview versions, operational private vulnerability reporting and the intended distribution/provenance decision; publish and certify registry consumption only within that explicit release scope.
+3. Establish namespace ownership/exact preview versions and the intended distribution/provenance decision; publish and certify registry consumption only within that explicit release scope.
 4. Finish actual credential-dependent Neon/optional-provider and authorized reset-inbox receipts for capabilities included in the release support matrix. Keep unsupported/unverified combinations explicit. Native Windows Node24 stress remains unaccepted; current certified runtime is Node22.
 
 The [final repair receipt](../reports/frontbase-repair-finalization-20261023.json) now records full final-source check/build/test, nine editor faults, strict seven-package consumers/starter, fresh Node editing/restart, and successful CF/Vercel multi-field public save/stale refusal/exact restoration. Native staging workflow test/history/version is verified. No production WordPress cutover, datasource-record translation campaign, main merge, registry publication or GA claim is inferred.
