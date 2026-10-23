@@ -14,7 +14,8 @@ export function CardProperties({componentId,props,updateComponentProp}:{componen
     return <div className="space-y-4"><Button variant="outline" disabled={!!version&&version!=='default'} onClick={()=>{
         const state=useBuilderStore.getState(),page=state.pages.find(page=>page.id===state.currentPageId),node=findComponent(page?.layoutData?.content??[],componentId);if(!node)return;
         const binding={componentId,dataSourceId:'',tableName:'',columnOrder:[],columnOverrides:{},pagination:{enabled:false,page:0,pageSize:1},sorting:{enabled:false},filtering:{searchEnabled:false,filters:{}}};
-        const children=node.children?.length?node.children:[{id:crypto.randomUUID(),type:'Heading',props:{text:props.title||'Card title',level:'3'}},...(props.description?[{id:crypto.randomUUID(),type:'Text',props:{text:props.description}}]:[])];
-        state.replaceComponent(componentId,{...node,props:{...node.props,title:'',description:'',binding},children});
+        const children=[...(props.image||props.imageUrl?[{id:crypto.randomUUID(),type:'Image',props:{src:props.image||props.imageUrl,alt:''}}]:[]),...(props.title?[{id:crypto.randomUUID(),type:'Heading',props:{text:props.title,level:'4'}}]:[]),...(props.subtitle||props.description?[{id:crypto.randomUUID(),type:'Text',props:{text:props.subtitle||props.description}}]:[]),...node.children??[]];
+        if(!children.length)children.push({id:crypto.randomUUID(),type:'Heading',props:{text:'Card title',level:'3'}});
+        state.replaceComponent(componentId,{...node,props:{...node.props,title:'',description:'',subtitle:'',image:'',imageUrl:'',binding},children});
     }}>Bind to a record</Button>{version&&version!=='default'&&<p className="text-xs text-muted-foreground">Configure the record binding in Default first, then enable Override binding on this version.</p>}<DisplayProperties type="Card" props={props} updateComponentProp={updateComponentProp}/></div>;
 }

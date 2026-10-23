@@ -1,3 +1,4 @@
+import {builderCollisionDetection} from '@/lib/builder/collisionDetection';
 import React, { useEffect, useState } from 'react';
 import {
   DndContext,
@@ -8,7 +9,6 @@ import {
   useSensors,
   PointerSensor,
   KeyboardSensor,
-  closestCenter
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
@@ -376,7 +376,7 @@ export const CustomBuilder: React.FC<{ onTranslate?(): void }> = ({ onTranslate 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={builderCollisionDetection}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >

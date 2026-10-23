@@ -54,3 +54,15 @@ it('disables the Saved View branch when the datasource has no views and keeps th
     expect(await screen.findByRole('menuitem',{name:'Saved View'})).toHaveAttribute('aria-disabled','true');
     expect(screen.queryByRole('combobox',{name:'Table'})).toBeNull();
 });
+
+it('retains legacy Card image/title/description and arbitrary children when opting into a record, with undo',async()=>{
+ const {useBuilderStore}=await import('@/stores/builder');const before=useBuilderStore.getState();
+ const card:any={id:'card',type:'Card',props:{title:'Original title',description:'Original copy',image:'https://example.test/card.png'},children:[{id:'kept',type:'Badge',props:{text:'Existing child'}}]};
+ try{
+ useBuilderStore.setState({currentPageId:'card-page',selectedComponentId:'card',editingVersions:{},layoutUndo:[],layoutRedo:[],pages:[{id:'card-page',name:'Card',slug:'card',createdAt:'',updatedAt:'',isPublic:false,isHomepage:false,layoutData:{root:{},content:[card]}}]});
+ render(<QueryClientProvider client={new QueryClient()}><CardProperties componentId="card" props={card.props} updateComponentProp={()=>{}}/></QueryClientProvider>);
+ fireEvent.click(screen.getByRole('button',{name:'Bind to a record'}));
+ const bound=useBuilderStore.getState().pages[0].layoutData!.content[0];expect(bound.children?.map(child=>child.type)).toEqual(['Image','Heading','Text','Badge']);expect(bound.children?.at(-1)?.id).toBe('kept');expect(bound.props.title).toBe('');expect(bound.props.image).toBe('');
+ useBuilderStore.getState().undoLayout();expect(useBuilderStore.getState().pages[0].layoutData!.content[0]).toEqual(card);
+ }finally{useBuilderStore.setState(before,true);}
+});
