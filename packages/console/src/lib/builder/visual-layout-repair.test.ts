@@ -2,7 +2,7 @@ import {afterEach,expect,it,vi} from 'vitest';
 vi.mock('@/lib/analytics',()=>({track:vi.fn(),syncIdentity:vi.fn(),captureException:vi.fn(),initAnalytics:vi.fn()}));
 import {useBuilderStore} from '@/stores/builder';
 import {stampComponentIds,queryComponentRects} from './iframeBridge';
-import {canonicalTextFields} from './textProperty';
+import {canonicalTextFields,canonicalTextProperty,textAliasReset} from './textProperty';
 import {stampEditableText} from './editableText';
 import {attachIframeSelection} from '@/components/builder/canvas/useIframeSelection';
 import {startInlineEdit} from '@/components/builder/canvas/iframeInlineEdit';
@@ -64,4 +64,14 @@ it('measures horizontal RTL flow and retains every rendered repeated target',()=
 it('property fields follow canonical content or legacy text without a second shadow value',()=>{
  expect(canonicalTextFields([{name:'text',label:'Heading'}],'Heading',{content:'Canonical',text:'Old'})[0].name).toBe('content');
  expect(canonicalTextFields([{name:'content'}],'Text',{text:'Legacy'})[0].name).toBe('text');
+});
+
+it('matches legacy fallback fields and clearing never resurrects another alias',()=>{
+ expect(canonicalTextProperty('Heading',{content:'',text:'Visible'})).toBe('text');
+ expect(canonicalTextProperty('Text',{value:'Legacy value'})).toBe('value');
+ const text=node('t');text.props={content:'Visible',text:'Old text',value:'Old value'};seed([text]);
+ useBuilderStore.getState().updateComponentText('t','content','');
+ const props=tree()[0].props;expect(props.content||props.text||props.value||'').toBe('');
+ expect(textAliasReset('Heading','text')).toEqual({content:''});
+ expect(textAliasReset('Input','value')).toEqual({});
 });

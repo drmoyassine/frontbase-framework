@@ -1,3 +1,4 @@
+import {textAliasReset} from '@/lib/builder/textProperty';
 import { StateCreator } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { ComponentData } from '@/types/builder';
@@ -241,7 +242,7 @@ const createBuilderSliceImplementation: StateCreator<BuilderState, [], [], Build
             const props=structuredClone(applyBlockVersion(node,editingVersion).props),parts=textProperty.split('.');
             if(parts.some(part=>['__proto__','constructor','prototype'].includes(part)))return;
             let target=props;for(const part of parts.slice(0,-1))target=target[part]??=(/^\d+$/.test(part)?[]:{});
-            target[parts.at(-1)!]=text;editingState.updateComponent(componentId,{...(textProperty==='content'&&['Text','Heading','Paragraph'].includes(node.type)?{text:''}:{}),[parts[0]]:props[parts[0]]});return;
+            target[parts.at(-1)!]=text;editingState.updateComponent(componentId,{...textAliasReset(node.type,textProperty),[parts[0]]:props[parts[0]]});return;
         }
         set((state) => {
             const { pages, currentPageId } = state;
@@ -283,7 +284,7 @@ const createBuilderSliceImplementation: StateCreator<BuilderState, [], [], Build
                                 current[parts[parts.length - 1]] = text;
                             } else {
                                 newProps[textProperty] = text;
-                                if(textProperty==='content' && ['Text','Heading','Paragraph'].includes(comp.type)) newProps.text='';
+                                Object.assign(newProps,textAliasReset(comp.type,textProperty));
                             }
                             return {
                                 ...comp,

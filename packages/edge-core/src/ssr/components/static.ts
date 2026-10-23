@@ -119,12 +119,15 @@ export function renderStaticComponent(
 
 function renderText(id: string, props: Record<string, unknown>): string {
     const content = escapeHtml(String(props.content || props.text || props.value || ''));
-    const size = props.size as string || 'base';
+    const requestedSize = String(props.size || 'base').trim();
+    const literalSize = /^(?:0|(?:\d*\.)?\d+(?:px|rem|em|%|vw|vh|vmin|vmax|ch|ex))$/.test(requestedSize);
+    const size = literalSize ? 'custom' : /^[a-z0-9-]+$/i.test(requestedSize) ? requestedSize : 'base';
+    const fontSize = literalSize ? requestedSize : `var(--fb-text-${size}, 1rem)`;
     const weight = props.weight as string || 'normal';
     const color = props.color as string || 'inherit';
     const align = props.align as string || 'inherit';  // Inherit from parent
 
-    const style = `font-size:var(--fb-text-${size}, 1rem);font-weight:${weight};color:${color};text-align:${align}`;
+    const style = `font-size:${fontSize};font-weight:${weight};color:${color};text-align:${align}`;
     const attrs = getCommonAttributes(id, `fb-text fb-text-${size}`, props, style);
 
     return `<span ${attrs}>${content}</span>`;

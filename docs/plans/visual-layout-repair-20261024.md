@@ -38,3 +38,11 @@ Verification: recursive check/build pass; focused suite 29 distinct tests passed
 The final browser pass verified desktop three-column layout at a true 1200px viewport, 50% zoom, mobile single-column layout, insertion through the second repeated card at 50% zoom, live canvas typing appearing immediately in Properties, Escape restoring both canvas and panel, and visible blue drop boundaries/container outlines during active drag. Temporary edits were discarded. Anonymous `/`, `/ar/`, `/explore/?type=institution`, and `/ar/explore/?type=institution` all return HTTP200. Core work does not change saved owner layouts.
 
 The existing eSSR preview still replaces its document after a committed layout change and refreshes live records; this is not a new instantaneous incremental-render engine. Typing now avoids those replacements until commit. No optional shortcut is included in this deployment.
+
+## Final review follow-up
+
+The canonical text helper now follows the renderer's actual legacy fallback order (`content`, `text`, and Text's `value`). Canvas, property edits and mapping shortcuts clear alternate aliases so empty edits cannot resurrect stale text; live draft projection uses the same helper. Fourteen targeted tests pass after this follow-up (one additional regression, 30 distinct core-focused cases across the session).
+
+Text's existing Font Size control accepted literal values such as `24px` but the renderer converted them to nonexistent theme-variable names. The shared renderer now accepts explicit CSS lengths/percentages, keeps existing named-token behavior and refuses malformed size input. Exact-size and invalid-input tests join the normal visual-layout renderer suite. Final build/deploy acceptance is recorded after qualification.
+
+Optional work is implemented only on `codex/visual-layout-shortcuts-20261024`, commit `20eef2f`: Wrap in Row / Wrap in Column in the Layers action menu, preserving child identity/bindings/versions, selecting and expanding the wrapper, and atomic undo/redo. Six tests and recursive check/build passed. It is not merged or deployed. It remains a reviewable experiment; merging requires the owner's request.

@@ -1,4 +1,4 @@
-import {canonicalTextFields} from '@/lib/builder/textProperty';
+import {canonicalTextFields,textAliasReset} from '@/lib/builder/textProperty';
 import {CardProperties} from './properties/basic/CardProperties';
 import React, { useState } from 'react';
 import { useBuilderStore } from '@/stores/builder';
@@ -146,7 +146,7 @@ export const PropertiesPanel = () => {
   if(inheritedOwner)return <div className="space-y-3 p-4"><p className="text-sm">This element’s structure inherits from Default. Enable Override structure on its parent version to edit it independently.</p><Button variant="outline" onClick={()=>focusComponent(inheritedOwner)}>Open parent version</Button></div>;
 
   const updateComponentProp = (key: string, value: any) => {
-    updateComponent(selectedComponentId, { ...(key==='content'&&['Text','Heading','Paragraph'].includes(selectedComponent.type)?{text:''}:{}), [key]: value });
+    updateComponent(selectedComponentId, { ...textAliasReset(selectedComponent.type,key), [key]: value });
   };
 
   const deleteComponent = () => {
@@ -159,7 +159,7 @@ export const PropertiesPanel = () => {
     // Canvas typing previews in the panel without changing layout or resetting
     // the iframe/caret. Blur/Enter commits one existing undo transaction.
     const props = editingTextNode?.componentId===selectedComponent.id && editingTextNode.text!==undefined && !editingTextNode.property.includes('.')
-      ? {...selectedComponent.props,[editingTextNode.property]:editingTextNode.text}
+      ? {...selectedComponent.props,...textAliasReset(type,editingTextNode.property),[editingTextNode.property]:editingTextNode.text}
       : selectedComponent.props;
 
     // ── Tier 1: Framework registry descriptor (source of truth) ───────────
