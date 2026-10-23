@@ -1,5 +1,17 @@
 # Staging Data API acceptance hold — 2026-10-23
 
+## CLOSED — recovery and deployed acceptance verified 2026-10-23
+
+2026-10-23 recovery closeout: the staging PostgREST hold is resolved. Provider logs show a successful cache load at06:30UTC and zero further cache-load/57014 errors through12:17:30UTC. Current source27fab67 passes native English/Arabic two-field saves, anonymous projection, language isolation, per-field/global cancellation, responsive-menu staging/cancellation and exact original content plus37links per language restoration. The original admin session and deployed image are retained. Recovery preceded this session; no database restart, schema/grant/key/timeout change, app patch or redeploy was needed. The bounded repair/acceptance task is complete; previously deferred provider/inbox credentials, public-default-source and registry distribution remain separate release gates. Datasource translation completeness is excluded.
+
+The latest native EasyPanel deployment log still identifies image `sha256:1331fea46b48d5313ba1ba58d11de20d2ec30ed732190409197c280ac88a0c74`, successful at2026-10-22T23:44:13Z. Management SQL confirms the database postmaster still dates to2026-08-11; this session did not restart it. Reviewed current performance/security advisors without altering unrelated findings. Public requests exercise the actual saved datasource path and render live program/article records again.
+
+Acceptance evidence is recorded in the [repair receipt](../reports/frontbase-repair-finalization-20261023.json). Anonymous capability remains false; inventory remains401. The source site manifest is unchanged by the tests. Editorial/Arabic release revisions advance through their normal immutable history when test text is saved and restored; final visible content and links exactly match the original hashes. This is not a claim that all datasource records or every non-homepage locale publication is translated. Existing source-language projection of unprepared non-homepage content is not newly certified as a complete Arabic page.
+
+No additional code change was required, so existing final-source check/build/security/package/CF/Vercel qualification remains valid rather than being relabeled as rerun. The incident's exact upstream recovery mechanism remains unknown.
+
+## Historical failure evidence (superseded by acceptance above)
+
 The exact repair source `27fab67` is deployed on USA staging as image `sha256:1331fea46b48d5313ba1ba58d11de20d2ec30ed732190409197c280ac88a0c74`. The image build succeeded at 2026-10-22 23:44:13 UTC. Current English and Arabic public routes return503, so staging acceptance and task closeout remain open. A successful container build is not a successful site acceptance.
 
 ## Established evidence

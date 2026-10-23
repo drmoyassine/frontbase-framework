@@ -182,7 +182,7 @@
     }
   ],
   "staging": {
-    "status": "DEPLOYED_ACCEPTANCE_BLOCKED",
+    "status": "PASS",
     "before": {
       "englishTextHash": "8f593bfcc9a93ed284073d3295c2e505ff010e02f826494332bf7aa88b63d3ce",
       "arabicTextHash": "a5974bb1eb189eb4d78b8b924e760a3b31fef24cc520c98be15ecfbaa83383ca",
@@ -193,10 +193,9 @@
     "archiveSha256": "4113b194d4fc009425eed6d40f7c68365ee46cba76eb759874f1a37c13121d19",
     "deployedAt": "2026-10-22T23:44:13Z",
     "publicRoutes": {
-      "/": 503,
-      "/ar/": 503
+      "/": 200,
+      "/ar/": 200
     },
-    "causeBoundary": "Exact account-merge and datasource-runner SELECT 1 receives PostgREST schema-cache initialization failure under both native and guarded fetch. Provider service logs show repeated SQLSTATE 57014 during schema-cache load.",
     "exposedSchemasExist": true,
     "manualAuthenticatorSchemaOverride": false,
     "standardSchemaReloadAttempted": true,
@@ -214,7 +213,67 @@
       "postUpgradeReloadSource": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
       "postUpgradeVersionRetained": true,
       "currentSnapshotWordingVerified": true
-    }
+    },
+    "previousStatus": "DEPLOYED_ACCEPTANCE_BLOCKED",
+    "recovery": {
+      "observedAt": "2026-10-23T12:09:45Z",
+      "providerCacheLoadedAt": "2026-10-23T06:30:00.106Z",
+      "cacheQueryMilliseconds": 40.9,
+      "cacheErrorsSinceRecovery": 0,
+      "providerLogsWindowEnd": "2026-10-23T12:17:30Z",
+      "databaseRestarted": false,
+      "databasePostmasterStartedAt": "2026-08-11T10:04:47.373332Z",
+      "configurationChangedByThisSession": false,
+      "causality": "Upstream recovered before this session; exact recovery cause not established. No app patch, redeployment or safety-limit relaxation was required."
+    },
+    "finalPublicProof": [
+      {
+        "path": "/",
+        "status": 200,
+        "lang": "en",
+        "dir": "ltr",
+        "textHash": "8f593bfcc9a93ed284073d3295c2e505ff010e02f826494332bf7aa88b63d3ce",
+        "siteVersion": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4",
+        "translationVersion": null,
+        "copyVersion": "0174dc2f040f71a2a5baafccbc38eb3c0cedafb293163bccea3e64b212b39893",
+        "links": 37
+      },
+      {
+        "path": "/ar/",
+        "status": 200,
+        "lang": "ar",
+        "dir": "rtl",
+        "textHash": "a5974bb1eb189eb4d78b8b924e760a3b31fef24cc520c98be15ecfbaa83383ca",
+        "siteVersion": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4",
+        "translationVersion": "9c04c6583e277cdcf7cedb47aeb756046ab5174244afda05833bf3644e2ab86e",
+        "copyVersion": "0174dc2f040f71a2a5baafccbc38eb3c0cedafb293163bccea3e64b212b39893",
+        "links": 37
+      }
+    ],
+    "nativeFrontendEditing": {
+      "status": "PASS",
+      "locales": [
+        "en",
+        "ar"
+      ],
+      "twoFieldBatchSaveEachLocale": true,
+      "anonymousPublicProjection": true,
+      "otherLanguageUnchanged": true,
+      "stagedChangesNotPersisted": true,
+      "perFieldCancelReedit": true,
+      "arabicPerFieldRevert": true,
+      "arabicGlobalCancel": true,
+      "responsiveMenuBothCopiesStageAndCancel": true,
+      "languageDropdownNavigation": true,
+      "arabicInternalLinksPrefixed": true,
+      "originalTextHashesAndAll37LinksRestored": true,
+      "anonymousCapabilityFalse": true,
+      "anonymousInventory401": true,
+      "existingAdminSessionRetained": true,
+      "testEditsRemaining": false
+    },
+    "deploymentIdentityRechecked": "EasyPanel latest deployment still image1331fea46b48, success2026-10-22T23:44:13Z; no redeploy during recovery acceptance.",
+    "historicalCauseBoundary": "Exact account-merge and datasource-runner SELECT 1 receives PostgREST schema-cache initialization failure under both native and guarded fetch. Provider service logs show repeated SQLSTATE 57014 during schema-cache load."
   },
   "existingCfAndVercelUpgrades": {
     "cf": {
@@ -253,9 +312,10 @@
     "resetInboxReceipt": "requires configured provider and authorized owned test mailbox; no real message sent",
     "nativeWindowsNode24": "conformance report followed by 0xC0000005; failed run retained and not credited",
     "publicDefaultSourceAndDistribution": "separate release gates; no main merge, public package publication or production WP cutover",
-    "stagingDataApi": "Current upstream PostgREST schema-cache load fails with SQLSTATE 57014; English/Arabic live acceptance remains blocked. No broader project restart, schema removal, grant or timeout change performed.",
+    "stagingDataApi": "RESOLVED: upstream cache loaded06:30UTC; current native frontend and anonymous English/Arabic acceptance pass with exact original copy and37links restored. Provider recovery mechanism not established; no shared configuration or safety deadline changed.",
     "providerIgnoreRules": "Vercel CLI protective .vercel/.env* ignore entries retained after automatic approval review rejected their removal."
   },
   "publicReleaseAccepted": false,
-  "previousRuntimeSource": "b7cb5d94a6e8502fc5b6a7ddd8a520a0fdcbb1c2"
+  "previousRuntimeSource": "b7cb5d94a6e8502fc5b6a7ddd8a520a0fdcbb1c2",
+  "boundedEngineeringRepairTask": "COMPLETE_WITH_PREVIOUSLY_DEFERRED_CREDENTIAL_AND_PUBLIC_RELEASE_DELTAS"
 }
