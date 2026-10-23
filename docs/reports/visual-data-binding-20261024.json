@@ -1,0 +1,116 @@
+{
+  "source": "300ada6",
+  "artifactCommit": "9bd64e3",
+  "branch": "codex/integrated-finalization-20261022",
+  "archiveSha256": "6470a1a4fae0368b350f82fc79477b1c9803d0d13d01e4a459b35e98217b740e",
+  "runtime": "Node22.23.4 local / Docker Node22 staging",
+  "checks": {
+    "workspaceCheck": "PASS",
+    "workspaceBuild": "PASS",
+    "workspaceFunctionalSerial": "PASS on635a5ca; engine unchanged by final console-only repairs",
+    "focusedConsole": {
+      "files": 9,
+      "passed": 47
+    },
+    "relatedFields": "PASS",
+    "nativePostgrestInspector": "PASS GET/HEAD only, zero SQL RPC",
+    "datasourceSchema": "PASS",
+    "independentMutationFaults": {
+      "newRelatedFields": 3,
+      "retainedPublication": 4,
+      "result": "all caught by behavioral assertions"
+    },
+    "finalPostgrestAndSchema": "PASS on final console-only candidate; GET/HEAD only, no SQL RPC"
+  },
+  "firstStagingCandidate": {
+    "source": "53ebc71",
+    "artifactCommit": "bc13088",
+    "image": "sha256:e257308dc67ef54589e673d705df3fcc7f6ee1032d4cf56f160a2d6ee8109c4a",
+    "finishedAt": "2026-10-23T20:54:24Z",
+    "nativeVerified": [
+      "single Bind Table/Saved View submenu",
+      "three real saved views",
+      "all source and virtual-lineage relationship fields",
+      "ordinary Heading mapped to cities.city, 12 real cities rendered",
+      "mapping undone and saved draft retained",
+      "Programs version exposes programs.degree_name, programs.tuition_fee, programs.intakes"
+    ]
+  },
+  "finalStagingCandidate": {
+    "source": "300ada6",
+    "artifactCommit": "9bd64e3",
+    "image": "sha256:31c5046b768f5ca5711847cb92cf11ad4c18a941f572b18833c1a2d39e3ae798",
+    "finishedAt": "2026-10-23T22:20:29Z",
+    "status": "ACCEPTED; scoped task complete",
+    "nativeVerified": [
+      "hydrated item drop bounds refreshed without a body resize",
+      "ordinary Text inserted inside existing repeated Container",
+      "Text @ picker exposes full record and relationship catalog",
+      "@ selects institutions.type and actual types render",
+      "mapping the same Text content to cities.city renders real cities",
+      "canonical content editor reflects bracket expression",
+      "temporary authoring edits discarded without Save or Publish"
+    ]
+  },
+  "public": {
+    "routes": [
+      {
+        "path": "/explore/?type=institution",
+        "status": 200,
+        "siteVersion": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4",
+        "translationVersion": null
+      },
+      {
+        "path": "/explore/?type=program",
+        "status": 200,
+        "siteVersion": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4",
+        "translationVersion": null
+      },
+      {
+        "path": "/ar/explore/?type=institution",
+        "status": 200,
+        "siteVersion": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4",
+        "translationVersion": "44d58200d4d91d84b4d7d22ee75ccfa570dfe684432794faa6bb75445bf1ec1b"
+      },
+      {
+        "path": "/ar/explore/?type=program",
+        "status": 200,
+        "siteVersion": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4",
+        "translationVersion": "44d58200d4d91d84b4d7d22ee75ccfa570dfe684432794faa6bb75445bf1ec1b"
+      }
+    ],
+    "sourceAndCopyPreserved": true,
+    "allLinkHrefsPreserved": true,
+    "concurrentArabicPublication": {
+      "before": "9c04c6583e277cdcf7cedb47aeb756046ab5174244afda05833bf3644e2ab86e",
+      "after": "44d58200d4d91d84b4d7d22ee75ccfa570dfe684432794faa6bb75445bf1ec1b",
+      "change": "header brand label only"
+    },
+    "anonymousEditorAndAdminDenied": true
+  },
+  "boundaries": [
+    "No source DDL/grant/credential changes",
+    "No datasource record writes",
+    "No owner draft saved or published during preview tests",
+    "Write Forms retain table targets",
+    "Protected source read admission retained",
+    "Bare PostgREST without SQL aggregation explicitly refuses saved-view chart aggregate",
+    "Composite FK and excess relationship fanout refuse/omit rather than partial match",
+    "No public package publication or WordPress production cutover"
+  ],
+  "historicalFailure": "Initial parallel cumulative runner hit Windows native access violation; exact translation test, remaining tail and full serial rerun pass.",
+  "finalPickerCandidate": {
+    "source": "fffd612",
+    "artifactCommit": "8d0ba8e",
+    "archiveSha256": "fefccd63b21ae16335afdec64043c21984504bb8a81b92b38aad9f62059808b8",
+    "workspaceCheck": "PASS",
+    "workspaceBuild": "PASS",
+    "focusedConsole": {
+      "passed": 45,
+      "files": 8
+    },
+    "relatedFields": "PASS",
+    "publishedLiveAdmission": "PASS",
+    "status": "deployed as e2dda7608ff2c1056698c097dd2af2fa197f705da3dfaec67c828c9cd41c090b; superseded by canvas target refresh"
+  }
+}
