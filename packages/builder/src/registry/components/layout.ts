@@ -72,10 +72,12 @@ export async function registerLayoutComponents(): Promise<void> {
             displayName: 'Row',
             category: 'layout',
             icon: 'rows',
-            description: 'Horizontal flex row for columns',
+            description: 'Horizontal row for any elements, including icons and text',
             props: [
                 { name: 'gap', label: 'Gap', type: 'text', default: '1rem', group: 'Spacing' },
-                { name: 'align', label: 'Alignment', type: 'select', default: 'stretch', group: 'Alignment',
+                { name: 'stackOnMobile', label: 'Stack on mobile', type: 'boolean', default: true, group: 'Layout' },
+                { name: 'wrap', label: 'Wrap children', type: 'boolean', default: false, group: 'Layout' },
+                { name: 'align', label: 'Vertical alignment', type: 'select', default: 'stretch', group: 'Alignment',
                     options: [
                         { value: 'stretch', label: 'Stretch' },
                         { value: 'start', label: 'Start' },

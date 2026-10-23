@@ -27,7 +27,6 @@
  */
 
 import {isSharedMenuPreview} from '@/lib/builder/sharedMenuPreview';
-import { INLINE_TEXT_TYPES } from '@/lib/builder/iframeTypes';
 import { findComponentId } from '@/lib/builder/iframeBridge';
 import { EDIT_ID_ATTR, EDIT_PROP_ATTR, findEditTarget } from '@/lib/builder/editableText';
 import { useBuilderStore } from '@/stores/builder';
@@ -220,21 +219,9 @@ export function attachIframeSelection(
             }
         }
 
-        // Priority 2 (fallback): a top-level INLINE_TEXT_TYPES root whose
-        // stamping was skipped (e.g. older framework build without the
-        // editableText affordance). Edits the whole root as 'text'.
-        const id = findComponentId(target);
-        if (!id) return;
-        const root = doc.getElementById(id);
-        if (!root) return;
-        const type = root.getAttribute('data-fb-component') || '';
-        if (!INLINE_TEXT_TYPES.has(type)) return;
+        // An unstamped field may be a record expression. Never replace its
+        // binding with one rendered record's text via an implicit fallback.
 
-        e.preventDefault();
-        e.stopPropagation();
-        if (activeEdit && activeEdit !== root) tryBlur(activeEdit);
-        state.setSelectedComponentId(id);
-        beginEdit(root, id, 'text');
     };
 
     // Capture phase → intercept before in-page handlers.

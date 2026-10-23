@@ -43,6 +43,7 @@
  * changes (worst case: no edit affordance, never a wrong edit).
  */
 import type { ComponentData } from '@/types/builder';
+import {canonicalTextProperty} from './textProperty';
 import { walkLayout } from './iframeBridge';
 
 export const EDIT_ID_ATTR = 'data-fb-edit-id';
@@ -147,7 +148,8 @@ function stampComponent(doc: Document, node: ComponentData): void {
     const type = node.type;
     const props = (node.props || {}) as Record<string, any>;
     const root = byId(doc, id);
-    if(typeof props.text==='string'&&props.text.includes('{{'))return;
+    const property = canonicalTextProperty(type,props);
+    if(typeof props[property]==='string'&&props[property].includes('{{'))return;
 
     // Future framework-emitted markers win and short-circuit heuristic lookup.
     if (root) stampFwMarkers(root, id);
@@ -155,13 +157,18 @@ function stampComponent(doc: Document, node: ComponentData): void {
     switch (type) {
         case 'Text':
         case 'Heading':
+        case 'Paragraph':
         case 'Button':
         case 'Badge':
         case 'Link':
             // The root element itself is the text node. Stamping the root in
             // addition to its data-fb-id makes the click→edit escalation in
             // useIframeSelection uniform with compound text.
-            mark(root, id, 'text');
+            // Every rendered record instance edits the same authored template.
+            for (const el of doc.querySelectorAll<HTMLElement>('[data-fb-id]')) {
+                if (el.getAttribute('data-fb-id') === id) mark(el, id, property);
+            }
+            mark(root, id, property);
             break;
 
         case 'Hero':

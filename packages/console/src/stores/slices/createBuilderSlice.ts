@@ -205,7 +205,14 @@ const createBuilderSliceImplementation: StateCreator<BuilderState, [], [], Build
                 component = { ...component, children: [{ id: uuidv4(), type: 'Card', props: { className: 'p-6' }, children: [{id:uuidv4(),type:'Heading',props:{text:'{{ record.title }}',level:'3'}}] }] };
             }
 
+            // Refuse cycles/missing destinations before removing anything.
+            if (parentId && (!findComponent(content, parentId) || parentId === componentId || (componentId && findComponent([component], parentId)))) return state;
             if (componentId) {
+                const source = findComponentWithParent(content, componentId);
+                if (!source) return state;
+                component = source.component;
+                // Drop indexes refer to boundaries in the original siblings.
+                if ((source.parent?.id ?? undefined) === parentId && targetIndex > source.index) targetIndex--;
                 content = removeComponentFromTree(content, componentId);
             }
 
@@ -234,7 +241,7 @@ const createBuilderSliceImplementation: StateCreator<BuilderState, [], [], Build
             const props=structuredClone(applyBlockVersion(node,editingVersion).props),parts=textProperty.split('.');
             if(parts.some(part=>['__proto__','constructor','prototype'].includes(part)))return;
             let target=props;for(const part of parts.slice(0,-1))target=target[part]??=(/^\d+$/.test(part)?[]:{});
-            target[parts.at(-1)!]=text;editingState.updateComponent(componentId,{[parts[0]]:props[parts[0]]});return;
+            target[parts.at(-1)!]=text;editingState.updateComponent(componentId,{...(textProperty==='content'&&['Text','Heading','Paragraph'].includes(node.type)?{text:''}:{}),[parts[0]]:props[parts[0]]});return;
         }
         set((state) => {
             const { pages, currentPageId } = state;
@@ -276,6 +283,7 @@ const createBuilderSliceImplementation: StateCreator<BuilderState, [], [], Build
                                 current[parts[parts.length - 1]] = text;
                             } else {
                                 newProps[textProperty] = text;
+                                if(textProperty==='content' && ['Text','Heading','Paragraph'].includes(comp.type)) newProps.text='';
                             }
                             return {
                                 ...comp,

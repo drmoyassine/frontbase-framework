@@ -43,6 +43,7 @@ export function startInlineEdit(
     const doc = root.ownerDocument;
     if (!doc) return () => {};
 
+    const originalHtml = root.innerHTML;
     root.setAttribute('contenteditable', 'true');
     root.focus();
 
@@ -72,6 +73,7 @@ export function startInlineEdit(
             }
             onCommit({ componentId, property, text });
         }
+        if (!doCommit) root.innerHTML = originalHtml;
         onEnd?.();
     };
 
@@ -82,6 +84,7 @@ export function startInlineEdit(
         // Stop the iframe keydown from bubbling to parent shortcuts (Delete /
         // Backspace would otherwise delete the component while typing).
         e.stopPropagation();
+        if (e.isComposing) return;
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             commit();

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay, DragOverEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { DndContext, useDroppable, useDndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import {builderCollisionDetection} from '@/lib/builder/collisionDetection';
+import {CONTAINER_TYPES} from '@/lib/builder/iframeTypes';
 import { CSS } from '@dnd-kit/utilities';
 import { useBuilderStore } from '@/stores/builder';
 import { useShallow } from 'zustand/react/shallow';
@@ -37,7 +39,6 @@ export const LayersPanel: React.FC = () => {
     pages,
     selectedComponentId,
     setSelectedComponentId,
-    updatePage,
     removeComponent,
     duplicateComponent,
     updateComponent
@@ -46,7 +47,6 @@ export const LayersPanel: React.FC = () => {
     pages: s.pages,
     selectedComponentId: s.selectedComponentId,
     setSelectedComponentId: s.setSelectedComponentId,
-    updatePage: s.updatePage,
     removeComponent: s.removeComponent,
     duplicateComponent: s.duplicateComponent,
     updateComponent: s.updateComponent
@@ -55,7 +55,6 @@ export const LayersPanel: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedComponents, setExpandedComponents] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
   const selections=useBuilderStore(state=>state.editingVersions);
   const move=useBuilderStore(state=>state.moveComponent);
 
@@ -136,53 +135,25 @@ export const LayersPanel: React.FC = () => {
     setActiveId(String(event.active.id));
   };
 
-  const handleDragOver = (event: DragOverEvent) => {
-    setOverId(event.over ? String(event.over.id) : null);
-  };
-
   const handleDragCancel = () => {
     setActiveId(null);
-    setOverId(null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (!over || active.id === over.id || !currentPage || !currentPageId) {
-      return;
-    }
-
-    const content = components;
-
-    // Find both components in the tree (works for nested components)
-    const activeResult = findComponentWithParent(content, String(active.id));
-    const overResult = findComponentWithParent(content, String(over.id));
-
-    if (!activeResult || !overResult) {
-      return;
-    }
-
-    // Only allow reordering within the same parent (same level)
-    const activeParentId = activeResult.parent?.id ?? null;
-    const overParentId = overResult.parent?.id ?? null;
-
-    if (activeParentId !== overParentId) {
-      // Different parents - don't allow cross-parent moves for now
-      console.log('Cannot move between different parents');
-      return;
-    }
-
-    // Same parent - reorder within siblings
-    const siblings = activeResult.siblings;
-    const activeIndex = activeResult.index;
-    const overIndex = overResult.index;
-
-    const original=findComponent(currentPage.layoutData?.content??[],String(active.id));
-    if(original)move(currentPageId,original.id,original,overIndex,activeParentId??undefined);
-
-    // Reset drag state
     setActiveId(null);
-    setOverId(null);
+    const {active,over}=event;
+    if (!over || !currentPage || !currentPageId) return;
+    const targetId=String(over.data.current?.componentId ?? over.id);
+    if (String(active.id)===targetId) return;
+    const source=findComponentWithParent(components,String(active.id));
+    const target=findComponentWithParent(components,targetId);
+    if (!source || !target) return;
+    const placement=over.data.current?.placement ?? (CONTAINER_TYPES.has(target.component.type)?'inside':'before');
+    const parentId=placement==='inside'?targetId:target.parent?.id;
+    if (parentId && findComponent([source.component],parentId)) return;
+    const index=placement==='inside'?-1:target.index+(placement==='after'?1:0);
+    move(currentPageId,source.component.id,source.component,index,parentId,source.parent?.id);
+    if(parentId)setExpandedComponents(previous=>new Set([...previous,parentId]));
   };
 
   const filteredComponents = components.filter(component =>
@@ -214,9 +185,8 @@ export const LayersPanel: React.FC = () => {
         ) : (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={builderCollisionDetection}
             onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
           >
@@ -322,20 +292,19 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
 
   return (
     <>
-      {/* Drop zone indicator above item */}
-      {isOver && !isDragging && (
-        <div className="h-0.5 bg-primary rounded-full mx-2 my-0.5" />
-      )}
       <div
         ref={setNodeRef}
         style={style}
         className={cn(
-          "group flex items-center gap-2 px-2 py-1.5 rounded transition-all",
+          "relative group flex items-center gap-2 px-2 py-1.5 rounded",
           "hover:bg-accent",
           isSelected && "bg-accent border-l-2 border-primary",
           isDragging && "ring-2 ring-primary/30 bg-muted"
         )}
       >
+        <LayerDrop component={component} placement="before" />
+        {CONTAINER_TYPES.has(component.type) && <LayerDrop component={component} placement="inside" />}
+        <LayerDrop component={component} placement="after" />
         {/* Indentation for depth */}
         {depth > 0 && <div style={{ width: depth * 16 }} />}
 
@@ -470,3 +439,14 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
     </>
   );
 };
+
+/** Explicit thirds keep nesting distinct from sibling ordering. */
+function LayerDrop({component,placement}:{component:ComponentData;placement:'before'|'inside'|'after'}) {
+  const {active}=useDndContext();
+  const {setNodeRef,isOver}=useDroppable({id:'layer-'+placement+'-'+component.id,data:{componentId:component.id,placement}});
+  if(!active || active.id===component.id)return null;
+  return <div ref={setNodeRef} style={{position:'absolute',left:0,right:0,height:placement==='inside'?'50%':'25%',top:placement==='before'?0:placement==='inside'?'25%':'75%',pointerEvents:'none',zIndex:10}}
+    className={cn(isOver && (placement==='inside'?'ring-2 ring-blue-500 bg-blue-500/20':placement==='before'?'border-t-2 border-blue-500':'border-b-2 border-blue-500'))}>
+    {isOver && <span className="absolute right-0 bg-blue-600 text-white text-[10px] px-1 rounded">{placement==='inside'?'Nest inside': 'Insert '+placement}</span>}
+  </div>;
+}

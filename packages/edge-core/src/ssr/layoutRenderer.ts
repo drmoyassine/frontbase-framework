@@ -41,6 +41,9 @@ export function renderLayoutComponent(
 
     propsAttr += clientVisibilityAttributes(props);
 
+    // Registry layout controls must reach both canvas and published output.
+    const alignment = (value: unknown) => ({start:'flex-start',end:'flex-end',center:'center',stretch:'stretch',between:'space-between',around:'space-around',evenly:'space-evenly',baseline:'baseline'} as Record<string,string>)[String(value)] || undefined;
+    const flexProps = escapeHtml(buildInlineStyles({}, {gap:props.gap,alignItems:alignment(props.align),justifyContent:alignment(props.justify),...(props.wrap===true?{flexWrap:'wrap'}:{})}));
     switch (type) {
         case 'Container':
             // Check if this container uses grid layout
@@ -80,14 +83,14 @@ export function renderLayoutComponent(
         case 'Row': {
             // Row: flex on desktop, stack on mobile. minHeight externalized (default reproduces the prior baked literal).
             const rowMinHeight = (props.minHeight as string) || '50px';
-            return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} fb-row flex flex-col md:flex-row" style="width:100%;min-height:${rowMinHeight};${inlineStyle}">${childrenHtml}</div>`;
+            return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} fb-row flex ${props.stackOnMobile === false ? 'flex-row' : 'flex-col md:flex-row'}" style="width:100%;min-height:${rowMinHeight};${flexProps}${inlineStyle}">${childrenHtml}</div>`;
         }
 
         case 'Column': {
             // minHeight/minWidth externalized (defaults reproduce the prior baked literals).
             const colMinHeight = (props.minHeight as string) || '50px';
             const colMinWidth = (props.minWidth as string) || '50px';
-            return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} fb-column" style="display:flex;flex-direction:column;min-height:${colMinHeight};min-width:${colMinWidth};${inlineStyle}">${childrenHtml}</div>`;
+            return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} fb-column" style="display:flex;flex-direction:column;min-height:${colMinHeight};min-width:${colMinWidth};${flexProps}${inlineStyle}">${childrenHtml}</div>`;
         }
 
         case 'Flex':

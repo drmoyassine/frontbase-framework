@@ -4,10 +4,10 @@ import {stampEditableText} from './editableText';
 import {cloneBlockTree} from '@frontbase/edge-core/block-versions';
 import {templateRecordFields,bindingWithTemplateFields} from '@frontbase/edge-core/directory/configuration';
 afterEach(()=>{document.body.innerHTML='';});
-it('maps repeated child hits back to the editable template and registers one drop target per node',()=>{
+it('maps repeated child hits back to the editable template and registers one drop target per rendered instance',()=>{
     const nodes:any=[{id:'list',type:'Repeater',props:{},children:[{id:'card',type:'Card',props:{},children:[{id:'label',type:'Text',props:{text:'{{ record.type }}'}}]}]}];
     document.body.innerHTML='<div id="list"><div id="card"><span id="label">Public</span></div><div id="list--row-1-1"><span id="list--row-1-2">Private</span></div></div>';
-    stampComponentIds(document,nodes);expect(findComponentId(document.getElementById('list--row-1-2'))).toBe('label');expect(queryComponentRects(document).filter(rect=>rect.id==='card')).toHaveLength(1);
+    stampComponentIds(document,nodes);expect(findComponentId(document.getElementById('list--row-1-2'))).toBe('label');expect(queryComponentRects(document).filter(rect=>rect.id==='card')).toHaveLength(2);
     stampEditableText(document,nodes,false);expect(document.getElementById('label')).not.toHaveAttribute('data-fb-edit-id');
 });
 it('collects arbitrary child fields and relationships, keeping a nested repeater record scope separate',()=>{

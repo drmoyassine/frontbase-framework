@@ -114,8 +114,13 @@ export function queryComponentRects(doc: Document): ComponentRect[] {
         const type = el.getAttribute('data-fb-component');
         if (!id || !type) return;
         const r = el.getBoundingClientRect();
+        const computed = doc.defaultView?.getComputedStyle(el);
+        const horizontal = computed?.display.includes('flex') && computed.flexDirection.startsWith('row');
         out.push({
+            flow: horizontal ? 'horizontal' : 'vertical',
+            reverse: horizontal ? (computed?.direction === 'rtl') !== (computed?.flexDirection === 'row-reverse') : computed?.flexDirection === 'column-reverse',
             id,
+            instanceId: el.id || id,
             type,
             left: r.left,
             top: r.top,
@@ -125,7 +130,7 @@ export function queryComponentRects(doc: Document): ComponentRect[] {
             depth: computeDepth(el),
         });
     });
-    const unique=new Map<string,ComponentRect>();for(const rect of out)if(!unique.has(rect.id))unique.set(rect.id,rect);return [...unique.values()];
+    return out;
 }
 
 /** Resolve the data-fb-id for an element by walking up to the closest stamp. */

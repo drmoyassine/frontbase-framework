@@ -132,6 +132,7 @@ export const IframeCanvas: React.FC<IframeCanvasProps> = ({
         (doc: Document) => {
             const { schedule, cancel } = coalesceRaf(window, () => {
                 stampComponentIds(doc, contentNodesRef.current);
+                stampEditableText(doc, contentNodesRef.current, useBuilderStore.getState().isPreviewMode);
                 measureContentHeight();
                 refreshRects();
             });

@@ -1,3 +1,4 @@
+import {canonicalTextFields} from '@/lib/builder/textProperty';
 import {CardProperties} from './properties/basic/CardProperties';
 import React, { useState } from 'react';
 import { useBuilderStore } from '@/stores/builder';
@@ -143,7 +144,7 @@ export const PropertiesPanel = () => {
   if(inheritedOwner)return <div className="space-y-3 p-4"><p className="text-sm">This element’s structure inherits from Default. Enable Override structure on its parent version to edit it independently.</p><Button variant="outline" onClick={()=>focusComponent(inheritedOwner)}>Open parent version</Button></div>;
 
   const updateComponentProp = (key: string, value: any) => {
-    updateComponent(selectedComponentId, { [key]: value });
+    updateComponent(selectedComponentId, { ...(key==='content'&&['Text','Heading','Paragraph'].includes(selectedComponent.type)?{text:''}:{}), [key]: value });
   };
 
   const deleteComponent = () => {
@@ -175,7 +176,7 @@ export const PropertiesPanel = () => {
         }
         return (
           <SchemaDrivenProperties
-            fields={fields}
+            fields={canonicalTextFields(fields,type,props)}
             props={props}
             updateProp={updateComponentProp}
           />
@@ -195,7 +196,7 @@ export const PropertiesPanel = () => {
       if (!fields || fields.length === 0) return null;
       return (
         <SchemaDrivenProperties
-          fields={fields}
+          fields={canonicalTextFields(fields,type,props)}
           props={props}
           updateProp={updateComponentProp}
         />

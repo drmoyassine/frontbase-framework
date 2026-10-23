@@ -27,6 +27,7 @@ import type { ComponentData } from '@/types/builder';
  */
 export interface ComponentRect {
     id: string;
+    instanceId?: string;
     type: string;
     left: number;
     top: number;
@@ -36,6 +37,9 @@ export interface ComponentRect {
     parentId?: string;
     /** Nesting depth (0 = top-level). */
     depth: number;
+    /** Actual rendered flow, including responsive Row direction and RTL. */
+    flow?: 'horizontal' | 'vertical';
+    reverse?: boolean;
 }
 
 /**
@@ -91,6 +95,7 @@ export const CONTAINER_TYPES: ReadonlySet<string> = new Set([
     'Container',
     'Row',
     'Column',
+    'Section', 'Flex', 'Stack', 'Box', 'Paper', 'Panel', 'Group',
     'Card',
     'Repeater',
 ]);

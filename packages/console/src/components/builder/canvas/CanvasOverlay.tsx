@@ -22,7 +22,7 @@
  */
 
 import React from 'react';
-import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { useDraggable, useDroppable, useDndContext } from '@dnd-kit/core';
 import { useBuilderStore } from '@/stores/builder';
 import type { Page } from '@/types/builder';
 import { cn } from '@/lib/utils';
@@ -34,9 +34,6 @@ import { CONTAINER_TYPES, type ComponentRect } from '@/lib/builder/iframeTypes';
 /** Side length (px) of the selection corner dots. They are offset by half this
  *  value so they sit centered on the selection rectangle's corners. */
 const CORNER_DOT_SIZE = 6;
-/** Default thickness (px) of a root before/after drop strip. The strip is
- *  centered on the edge it marks, so the offset is half this value. */
-const DROP_STRIP_HEIGHT = 6;
 /** Vertical offset (px) of the reorder MoveHandle above the selected rect
  *  (clamped to 0 so it never escapes the top of the viewport). */
 const MOVE_HANDLE_OFFSET = 18;
@@ -48,20 +45,19 @@ interface CanvasOverlayProps {
 }
 
 export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({ page, rects, hoveredId }) => {
+    const {active} = useDndContext();
     const selectedComponentId = useBuilderStore((s) => s.selectedComponentId);
     const isPreviewMode = useBuilderStore((s) => s.isPreviewMode);
 
     const content = page.layoutData?.content ?? [];
     const hasComponents = content.length > 0 && rects.length > 0;
 
-    // Root-level rects in document order (querySelectorAll is DOM-ordered, so
-    // their index among roots == their insertion index in `content`).
-    const rootRects = rects.filter((r) => r.parentId === undefined);
+    // Resolve insertion indexes from the authored tree, never repeated DOM order.
+    const insertionRects = rects.map(rect => ({rect, loc: findNodeLocation(content, rect.id)})).filter(item => item.loc);
+    const rectById = new Map(rects.map(rect => [rect.id, rect]));
     const containerRects = rects.filter((r) => CONTAINER_TYPES.has(r.type));
 
-    const selectedRect = selectedComponentId
-        ? rects.find((r) => r.id === selectedComponentId) ?? null
-        : null;
+    const selectedRects = selectedComponentId ? rects.filter(r => r.id === selectedComponentId) : [];
     const hoveredRect =
         hoveredId && hoveredId !== selectedComponentId
             ? rects.find((r) => r.id === hoveredId) ?? null
@@ -75,28 +71,18 @@ export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({ page, rects, hover
             {/* Container drop targets — full-rect so a palette item can be
                 dropped into any Container/Row/Column/Card/Repeater. */}
             {!isPreviewMode &&
-                containerRects.map((r) => <ContainerDrop key={`c-${r.id}`} rect={r} page={page} />)}
+                containerRects.map((r) => <ContainerDrop key={`c-${r.instanceId??r.id}`} rect={r} page={page} />)}
 
-            {/* Root before/after drop strips (mirror DraggableComponent). */}
-            {!isPreviewMode &&
-                rootRects.map((r, i) => (
-                    <React.Fragment key={`strip-${r.id}`}>
-                        <DropStrip
-                            id={`drop-before-${r.id}`}
-                            data={{ type: 'drop-zone', index: i, pageId: page.id, parentId: undefined }}
-                            rect={r}
-                            placement="before"
-                        />
-                        {i === rootRects.length - 1 && (
-                            <DropStrip
-                                id={`drop-after-${r.id}`}
-                                data={{ type: 'drop-zone', index: i + 1, pageId: page.id, parentId: undefined }}
-                                rect={r}
-                                placement="after"
-                            />
-                        )}
-                    </React.Fragment>
-                ))}
+            {/* Every sibling boundary is usable, including nested Row children. */}
+            {!isPreviewMode && active && insertionRects.map(({rect,loc}) => (
+                <React.Fragment key={'strip-'+(rect.instanceId??rect.id)}>
+                    {(['before','after'] as const).map(placement => <DropStrip
+                        key={placement} id={'drop-'+placement+'-'+(rect.instanceId??rect.id)}
+                        data={{type:'drop-zone',index:loc!.index+(placement==='after'?1:0),pageId:page.id,parentId:loc!.parentId}}
+                        rect={rect} placement={placement} parent={rect.parentId?rectById.get(rect.parentId):undefined}
+                    />)}
+                </React.Fragment>
+            ))}
 
             {/* Hover highlight. */}
             {hoveredRect && !isPreviewMode && (
@@ -112,8 +98,8 @@ export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({ page, rects, hover
             )}
 
             {/* Selection highlight + corner dots + reorder handle. */}
-            {selectedRect && !isPreviewMode && (
-                <>
+            {!isPreviewMode && selectedRects.map(selectedRect => (
+                <React.Fragment key={'selected-'+(selectedRect.instanceId??selectedRect.id)}>
                     <div
                         className="absolute rounded-sm border-2 border-primary"
                         style={{
@@ -129,8 +115,8 @@ export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({ page, rects, hover
                     <CornerDot left={selectedRect.left - CORNER_DOT_SIZE / 2} top={selectedRect.top + selectedRect.height - CORNER_DOT_SIZE / 2} />
                     <CornerDot left={selectedRect.left + selectedRect.width - CORNER_DOT_SIZE / 2} top={selectedRect.top + selectedRect.height - CORNER_DOT_SIZE / 2} />
                     <MoveHandle rect={selectedRect} page={page} />
-                </>
-            )}
+                </React.Fragment>
+            ))}
         </div>
     );
 };
@@ -142,45 +128,49 @@ const CornerDot: React.FC<{ left: number; top: number }> = ({ left, top }) => (
     />
 );
 
-/** Thin drop strip placed at the before/after edge of a root component. */
+/** A sibling boundary follows the parent’s rendered horizontal/vertical flow. */
 const DropStrip: React.FC<{
     id: string;
     data: Record<string, unknown>;
     rect: ComponentRect;
     placement: 'before' | 'after';
-}> = ({ id, data, rect, placement }) => {
+    parent?: ComponentRect;
+}> = ({ id, data, rect, placement, parent }) => {
     const { isOver, setNodeRef } = useDroppable({ id, data });
-    const top = placement === 'before' ? rect.top - DROP_STRIP_HEIGHT / 2 : rect.top + rect.height - DROP_STRIP_HEIGHT / 2;
-    return (
-        <div
-            ref={setNodeRef}
-            className={cn(
-                'absolute left-0 right-0 h-1.5 transition-all',
-                isOver && 'h-3 bg-primary/25 border-y-2 border-dashed border-primary',
-            )}
-            style={{ top, left: rect.left, width: rect.width, pointerEvents: 'none' }}
-        />
-    );
+    const horizontal=parent?.flow==='horizontal';
+    const leading=(placement==='before') !== Boolean(parent?.reverse);
+    const edge=horizontal ? rect.left+(leading?0:rect.width) : rect.top+(leading?0:rect.height);
+    return <div ref={setNodeRef} data-drop-placement={placement}
+        className="absolute z-20" style={{
+            left:horizontal?edge-5:rect.left,top:horizontal?rect.top:edge-5,
+            width:horizontal?10:rect.width,height:horizontal?rect.height:10,pointerEvents:'none',
+        }}>
+        <div style={{position:'absolute',background:isOver?'#2563eb':'rgba(59,130,246,.5)',
+            left:horizontal?4:0,top:horizontal?0:4,width:horizontal?2:'100%',height:horizontal?'100%':2}}/>
+        {isOver && <span className="absolute bg-blue-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">Insert {placement}</span>}
+    </div>;
+
 };
 
 /** Full-rect droppable for Container/Row/Column/Card/Repeater. */
 const ContainerDrop: React.FC<{ rect: ComponentRect; page: Page }> = ({ rect, page }) => {
+    const {active} = useDndContext();
     const { isOver, setNodeRef } = useDroppable({
-        id: `container-${rect.id}`,
+        id: `container-${rect.instanceId??rect.id}`,
         data: { type: 'container', componentId: rect.id, pageId: page.id },
     });
     return (
         <div
             ref={setNodeRef}
-            className={cn('absolute rounded-sm transition-all', isOver && 'bg-primary/10 ring-2 ring-primary/50 ring-inset')}
+            className={cn('absolute rounded-sm', active && 'border border-dashed border-blue-400/70', isOver && 'bg-blue-500/10 ring-2 ring-blue-500 ring-inset')}
             style={{
                 left: rect.left,
                 top: rect.top,
                 width: rect.width,
-                height: rect.height,
+                height: Math.max(rect.height, 24),
                 pointerEvents: 'none',
             }}
-        />
+        >{isOver && <span className="absolute top-1 left-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">Inside {rect.type}</span>}</div>
     );
 };
 
@@ -221,7 +211,7 @@ const MoveHandle: React.FC<{ rect: ComponentRect; page: Page }> = ({ rect, page 
     );
 
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-        id: rect.id,
+        id: `move-${rect.instanceId??rect.id}`,
         data: loc
             ? {
                   type: 'existing-component',
@@ -248,7 +238,7 @@ const MoveHandle: React.FC<{ rect: ComponentRect; page: Page }> = ({ rect, page 
                 top: Math.max(rect.top - MOVE_HANDLE_OFFSET, 0),
                 pointerEvents: 'auto',
             }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => { e.stopPropagation(); listeners?.onPointerDown?.(e); }}
         >
             ⇅ {rect.type}
         </div>
