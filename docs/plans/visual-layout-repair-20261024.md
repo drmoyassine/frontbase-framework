@@ -20,7 +20,7 @@ Owner-authorized session: start 2026-10-23 22:57:50 UTC; stop no later than 2026
 
 After core acceptance, consider a small “Wrap in Row/Column” action for the selected element. This is an independently proposed shortcut, not a prerequisite for the repair, and must not be merged or deployed until requested. No new freeform positioning engine, multi-user collaboration, vector editor or broad Figma-parity claim.
 
-Status: implementation and focused regressions underway; deployment/native acceptance pending. No release or owner-content publication claim.
+Status: core repairs deployed and verified; optional shortcut remains a separate-branch proposal. No release or owner-content publication claim.
 
 ## First native acceptance and follow-up
 
@@ -28,4 +28,13 @@ Source `3805d6e`, staged artifact `41b298f`, deployed on 2026-10-23 at 23:13:49 
 
 Follow-up: canvas typing previews in the Properties field without changing layout or losing the caret, then commits one history transaction on blur/Enter. Desktop/tablet/mobile preview widths now remain their selected dimensions instead of shrinking to sidebar space; zoom scales layout bounds and horizontal scrolling is available. Cache the overlay tree/geometry derivations across hover changes. The Row renderer regression is included in the normal edge-core test command.
 
-Verification: recursive check/build pass; focused suite 29 distinct tests passed, including 8 rerun after the live text follow-up. Edge-core functional suite and new visual-layout renderer check passed. Console and host builds pass; prohibited-symbol check passes. Full console standalone TypeScript remains failing in pre-existing unrelated debt, including Object.hasOwn library-target diagnostics; no claim that gate is clean. Follow-up deployment/native viewport and typing checks pending.
+Verification: recursive check/build pass; focused suite 29 distinct tests passed, including 8 rerun after the live text follow-up. Edge-core functional suite and new visual-layout renderer check passed. Console and host builds pass; prohibited-symbol check passes. Full console standalone TypeScript remains failing in pre-existing unrelated debt, including Object.hasOwn library-target diagnostics; no claim that gate is clean. Follow-up deployed and verified below.
+
+
+## Final core acceptance
+
+`0964163` source and `83336d5` host artifact are pushed. Archive SHA256 `84D19F195CF01F1CC86148B16BFFB03EBD35C9BBA3F0807B89ED37DCC89DA711`; EasyPanel deployment succeeded 2026-10-23 23:29:54 UTC with image `sha256:06a3289c41147163e7ba87b184dea54062a4497c5fce02591bc1399bace64175`.
+
+The final browser pass verified desktop three-column layout at a true 1200px viewport, 50% zoom, mobile single-column layout, insertion through the second repeated card at 50% zoom, live canvas typing appearing immediately in Properties, Escape restoring both canvas and panel, and visible blue drop boundaries/container outlines during active drag. Temporary edits were discarded. Anonymous `/`, `/ar/`, `/explore/?type=institution`, and `/ar/explore/?type=institution` all return HTTP200. Core work does not change saved owner layouts.
+
+The existing eSSR preview still replaces its document after a committed layout change and refreshes live records; this is not a new instantaneous incremental-render engine. Typing now avoids those replacements until commit. No optional shortcut is included in this deployment.
