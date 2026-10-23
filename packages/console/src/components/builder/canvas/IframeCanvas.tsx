@@ -27,6 +27,7 @@ import { attachIframeSelection } from './useIframeSelection';
 import { useIframePointerRouting } from './useIframeDnd';
 import { useIframeCanvas } from './useIframeCanvas';
 import { coalesceRaf } from './coalesceRaf';
+import { observeCanvasContent } from './observeCanvasContent';
 
 /**
  * Empty-canvas height floor — the iframe is at least this tall before the first
@@ -130,14 +131,17 @@ export const IframeCanvas: React.FC<IframeCanvasProps> = ({
     const attachHeightObserver = useCallback(
         (doc: Document) => {
             const { schedule, cancel } = coalesceRaf(window, () => {
+                stampComponentIds(doc, contentNodesRef.current);
                 measureContentHeight();
                 refreshRects();
             });
             const ro = new ResizeObserver(() => schedule());
             if (doc.body) ro.observe(doc.body);
             if (doc.documentElement) ro.observe(doc.documentElement);
+            const stopContentObserver = observeCanvasContent(doc, schedule);
             return () => {
                 ro.disconnect();
+                stopContentObserver();
                 cancel();
             };
         },
