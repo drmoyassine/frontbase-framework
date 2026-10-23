@@ -246,7 +246,7 @@ export function mapPropDefinitionToFieldConfig(
             return { ...base, type: 'text', syntaxContext: 'output' };
 
         case 'textarea':
-            return { ...base, type: 'textarea', rows: 4 };
+            return { ...base, type: 'text', syntaxContext: 'output', multiline: true };
 
         case 'code':
         case 'richtext':
@@ -277,8 +277,8 @@ export function mapPropDefinitionToFieldConfig(
             return { ...base, type: 'color' };
 
         case 'image':
-            // URL input — no variable interpolation needed for asset URLs.
-            return { ...base, type: 'input' };
+            // Image sources support the nearest record scope.
+            return { ...base, type: 'text', syntaxContext: 'output' };
 
         // No clean primitive yet — skip (component keeps bespoke editor or default).
         case 'multiselect':

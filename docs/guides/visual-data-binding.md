@@ -14,6 +14,8 @@ Tables and Grids keep their structured column layouts: selecting a field from th
 
 Block Versions retain direct Default inheritance. Enable the existing structure override before changing an alternative's item tree; enable binding override before changing its source. Configure a static Card's first record binding in Default, then override it in alternatives.
 
+Text content, multiline text and image sources use the shared @ input. Mapping shortcuts update the same content property that the element renders, including older elements that use the legacy text property. Raw code and rich-text editors retain their dedicated editing behavior.
+
 ## Access and adapter limits
 
 Saved-view filters remain server enforced. Metadata discovery requires an authenticated datasource administrator. Related reads use existing HTTP/SQL datasource adapters, discovered foreign keys and explicitly selected fields, without accepting arbitrary joins or SQL from a visitor. Related keys needed internally are not returned as extra visible fields. For existing reviewed generated catalog projections, read-only lineage to the canonical table comes from that owner's active publication; this does not alter its SQL view or grants. A published protected datasource admits only the related paths declared by its reviewed authored design. Adding another field requires the normal review/publication flow.
