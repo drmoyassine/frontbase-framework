@@ -1,3 +1,4 @@
+import {RecordFieldPicker} from '@/components/builder/data-binding/RecordFieldPicker';
 import {DataTablePropertiesPanel} from '@/components/builder/data-table/DataTablePropertiesPanel';
 import {LiveSourceSelector,updateAuthoredBinding} from '@/components/builder/data-binding/LiveSourceSelector';
 /**
@@ -57,6 +58,7 @@ export const GridProperties: React.FC<GridPropertiesProps> = ({
         return (
             <div className="space-y-4">
                 <LiveSourceSelector binding={effectiveBinding} onChange={onBindingUpdate}/>
+                <RecordFieldPicker binding={effectiveBinding} onChange={onBindingUpdate}/>
 
                 {effectiveBinding.tableName && binding && (
                     <div className="space-y-4 pt-4 border-t">

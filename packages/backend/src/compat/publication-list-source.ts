@@ -1,3 +1,4 @@
+import {bindingWithTemplateFields} from '@frontbase/edge-core/directory/configuration';
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { applyBlockVersion, blockVersionPossible, selectBlockVersion, type VersionedBlock } from '@frontbase/edge-core/block-versions';
@@ -138,7 +139,7 @@ export async function readLocalizedLiveList(owner:string,binding:Record<string,a
 export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[]):Promise<PageLayoutData>{
     const url=new URL(request.url),read=contextReader({url:Object.fromEntries(url.searchParams),user});
     const walk=async(nodes:PageComponent[]):Promise<PageComponent[]>=>Promise.all(nodes.map(async node=>{
-        const versionId=selectBlockVersion(node,read),effective=applyBlockVersion(node,versionId),binding=effective.props?.binding as any;
+        const versionId=selectBlockVersion(node,read),effective=applyBlockVersion(node,versionId),binding=effective.props?.binding?bindingWithTemplateFields(effective.props.binding as any,effective.children??[]):undefined;
         let result=node;
         if(binding?.source?.kind==='publication'||binding&&!binding.source){
             const live=!binding.source;
@@ -209,7 +210,7 @@ export async function publicationListResponse(db:DbRunner,owner:string,request:R
             const {search,...query}=input;
             result=await readPublicationList(db,owner,binding,{...query,filters:[...query.filters,...search?[{column:'title',op:'contains',value:search}]:[]]},localized?.catalog);
         }else if(binding&&!binding.source&&liveQuery){
-            const admitted=liveViewBindingSchema.parse(binding);
+            const admitted=liveViewBindingSchema.parse(bindingWithTemplateFields(binding,node.children??[]));
             const mandatory=[...Object.entries(admitted.filtering.filters).filter(([,value])=>value!==undefined&&value!=='').map(([column,value])=>({column,op:'eq',value})),
                 ...(admitted.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:resolveValue(filter.value,read)}))];
             const query={...input,sourceFilters:mandatory,filters:[...mandatory,...input.filters]};

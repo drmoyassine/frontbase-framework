@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { InfoListBinding } from '../types';
-import { isBuilderCanvas } from '@frontbase/types';
+import {fetchLiveList,isBuilderCanvas} from '@frontbase/types';
 
 interface UseInfoListQueryProps {
     mode: 'builder' | 'edge';
@@ -22,10 +22,17 @@ export function useInfoListQuery({
     const dataRequest = binding.dataRequest;
 
     return useQuery({
-        queryKey: ['infolist-data-v2', mode, binding.dataSourceId, tableName, recordId],
+        queryKey: ['infolist-data-v2', mode, binding.dataSourceId,binding.sourceSchema,binding.viewId,binding.fieldOrder,binding.columnOrder, tableName, recordId],
         queryFn: async () => {
             if (!tableName || !recordId) {
                 return { record: null, columns: [] };
+            }
+
+            if(binding.viewId){
+                const result=await fetchLiveList({...binding,columnOrder:binding.fieldOrder??binding.columnOrder},{page:0,pageSize:1,filters:{id:recordId}},mode);
+                const record=result.rows[0]??null;
+                const columns=binding.columns?.length?binding.columns:record?Object.keys(record).map(name=>({name,type:'text',nullable:true,primary_key:name==='id'})):[];
+                return {record,columns};
             }
 
             // In Builder mode, we call the sync data path directly to get schema

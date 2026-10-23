@@ -10,8 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DataSourceSelector } from '@/components/data-binding/DataSourceSelector';
-import { TableSelector } from '@/components/data-binding/TableSelector';
+import {LiveSourceSelector} from '@/components/builder/data-binding/LiveSourceSelector';
 import { ComponentDataBinding } from '@/hooks/data/useSimpleData';
 import { useDataBindingStore } from '@/stores/data-binding-simple';
 import { DefaultSortColumnSelector } from '@/components/builder/data-table/DataTablePropertiesPanel';
@@ -94,31 +93,7 @@ export const ChartProperties: React.FC<ChartPropertiesProps> = ({
     if (activeTab === 'general') {
         return (
             <div className="space-y-4">
-                <div>
-                    <DataSourceSelector
-                        value={effectiveBinding.dataSourceId}
-                        onValueChange={(value) => updateBinding({ dataSourceId: value })}
-                    />
-                </div>
-
-                <div>
-                    <TableSelector
-                        value={effectiveBinding.tableName}
-                        onValueChange={(value) => {
-                            updateBinding({
-                                tableName: value,
-                                columnOverrides: {},
-                                columnOrder: [],
-                                sorting: { enabled: false, column: undefined, direction: 'asc' },
-                                chartConfig: {
-                                    aggregation: 'count',
-                                    maxRows: 10
-                                }
-                            });
-                        }}
-                        dataSourceId={effectiveBinding.dataSourceId}
-                    />
-                </div>
+                <LiveSourceSelector binding={effectiveBinding} onChange={onBindingUpdate}/>
 
                 {effectiveBinding.tableName && binding && (
                     <div className="space-y-4 pt-4 border-t">

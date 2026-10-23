@@ -147,3 +147,5 @@ export function directoryConfigurationReadiness(value: unknown): string[] {
     return missing;
 }
 export { editorialCoverUrlSchema, editorialEditSchema, editorialReadRequestSchema, editorialSaveRequestSchema, editorialDocumentSchema, editorialApprovalRequestSchema, editorialReviewChecksSchema, type EditorialDocument, type EditorialEdit } from './editorial.js';
+
+export {templateRecordFields,bindingWithTemplateFields} from './live-list.js';

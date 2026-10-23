@@ -1,3 +1,4 @@
+import {bindingWithTemplateFields} from '../directory/live-list.js';
 import {publicConditionContext, contextReader} from '../conditions.js';
 import { applyBlockVersion, selectBlockVersion, validateBlockVersions, blockVersionPossible, cloneBlockTree } from '../block-versions.js';
 import { escapeHtml } from './components/lib/utils.js';
@@ -49,7 +50,11 @@ import { renderLandingComponent } from './landingDispatcher.js';
  * Render a single component to HTML.
  * NOW ASYNC due to LiquidJS template resolution.
  */
-async function renderComponent(
+async function renderComponent(component:PageComponent,context:TemplateContext,budget={remaining:20000}):Promise<string>{
+    const html=await renderComponentImpl(component,context,budget),source=component.props?._templateSourceId;
+    return html&&typeof source==='string'&&!component.versions?.length?`<div data-fb-template-source="${escapeHtml(source)}" data-fb-template-instance="${escapeHtml(component.id)}" style="display:contents">${html}</div>`:html;
+}
+async function renderComponentImpl(
     component: PageComponent,
     context: TemplateContext,
     budget = { remaining: 20000 }
@@ -81,6 +86,9 @@ async function renderComponent(
         return `<div data-block-versions="${escapeHtml(component.id)}" data-block-active="${escapeHtml(active)}"${record?` data-block-record="${escapeHtml(JSON.stringify(record))}"`:''} style="display:contents"><div data-block-content style="display:contents">${selected}</div>${templates.join('')}</div>`;
     }
     let { id, type, props, styles, children, binding, visibilityCondition } = component;
+
+    if(props?.binding&&['Repeater','Card'].includes(type))props={...props,binding:bindingWithTemplateFields(props.binding as any,children??[])};
+    if(binding&&['Repeater','Card'].includes(type))binding=bindingWithTemplateFields(binding as any,children??[]);
 
     // Check visibility condition first
     let isClientSideCondition = false;
@@ -138,9 +146,9 @@ async function renderComponent(
     const classification = classifyComponent(type);
 
     // Render children recursively (async)
-    const initialRows=type==='Repeater'&&Array.isArray(props?.initialRows)?props.initialRows as Record<string,unknown>[]:undefined;
-    const childrenHtml = initialRows ? (await Promise.all(initialRows.map(async(row,index)=>{
-        let counter=0;const unit=index===0?children??[]:cloneBlockTree(children??[],()=>`${id}--row-${index}-${++counter}`);
+    const initialRows=(type==='Repeater'||type==='Card'&&props?.binding)&&Array.isArray(props?.initialRows)?props.initialRows as Record<string,unknown>[]:undefined;
+    const childrenHtml = initialRows ? (await Promise.all((type==='Card'?initialRows.slice(0,1):initialRows).map(async(row,index)=>{
+        let counter=0;const unit=index===0?children??[]:cloneBlockTree(children??[],()=>`${id}--row-${index}-${++counter}`,true);
         return (await Promise.all(unit.map(child=>renderComponent(child,{...context,record:row},budget)))).join('');
     }))).join('') : children
         ? (await Promise.all(children.map(child => renderComponent(child, context, budget)))).join('')
@@ -169,7 +177,7 @@ async function renderComponent(
             return combinedCSS + renderInteractiveComponent(type, id, resolvedProps, childrenHtml);
 
         case 'data':
-            if (type === 'Repeater') resolvedProps.template = children ?? [];
+            if (type === 'Repeater'||type==='Card'&&props?.binding) resolvedProps.template = children ?? [];
             // Merge binding into props so renderDataComponent can access it
             if (binding) {
                 const { resolved, pending } = await resolveHiddenFiltersSSR(binding, context);

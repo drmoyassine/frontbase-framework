@@ -65,9 +65,11 @@ export function liveListBody(binding: LiveListBinding, query: LiveListQuery) {
         }
         return [{column,op:filterType==='text'?'contains':filterType==='multiselect'?'in':'eq',value}];
     });
+    const relatedFields=binding.columnOrder?.filter(column=>column.includes('.'))??[];
     return {
+        ...(relatedFields.length?{related_fields:relatedFields}:{}),
         table_name: binding.tableName || config?.tableName,
-        columns: config?.columns || '*', joins: config?.joins || [],
+        columns: relatedFields.length?'*':config?.columns || '*', joins: relatedFields.length?[]:config?.joins || [],
         page: Math.max(0, Math.trunc(query.page) || 0) + 1,
         page_size: liveListPageSize(query.pageSize),
         filters: [...filters, ...query.hidden ?? []],
@@ -89,7 +91,7 @@ export async function fetchLiveList(binding: LiveListBinding, query: LiveListQue
         const filters=body.filters;
         const query={componentId:binding.componentId,versionId:binding._blockVersionId||'default',page:body.page-1,pageSize:body.page_size,sortColumn:body.sort_col||'title',direction:body.sort_dir,search:body.search_query,filters};
         response=await fetch(path+window.location.search,{signal,credentials:'include',headers:{'X-Frontbase-List':encodeURIComponent(JSON.stringify(query))}});
-    } else if (mode === 'builder' && !binding.viewId) {
+    } else if (mode === 'builder' && !binding.viewId && !body.related_fields?.length) {
         const params = new URLSearchParams({limit:String(body.page_size),offset:String((body.page-1)*body.page_size),filters:JSON.stringify(body.filters)});
         if (binding.sourceSchema) params.set('schema',binding.sourceSchema);
         if (body.sort_col) { params.set('sort', body.sort_col); params.set('order', body.sort_dir); }
@@ -102,7 +104,7 @@ export async function fetchLiveList(binding: LiveListBinding, query: LiveListQue
         }
         if (related.size) params.set('select', ['*', ...[...related].map(([table,names])=>`${table}(${names.join(',')})`)].join(','));
         response = await fetch(`/api/sync/datasources/${encodeURIComponent(datasourceId)}/tables/${encodeURIComponent(binding.tableName)}/data/?${params}`, {signal, credentials:'include'});
-    } else if (binding.dataRequest?.fetchStrategy === 'direct' && !binding.viewId && !binding.sourceSchema) {
+    } else if (binding.dataRequest?.fetchStrategy === 'direct' && !binding.viewId && !binding.sourceSchema && !body.related_fields?.length) {
         const request = binding.dataRequest;
         const url = (request.url || '').replace('frontbase_get_rows', body.search_query ? 'frontbase_search_rows' : 'frontbase_get_rows');
         // These legacy RPCs have different signatures. The search RPC does not accept sort arguments.

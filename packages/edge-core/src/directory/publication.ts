@@ -45,7 +45,7 @@ const layout = z.record(z.unknown()).refine(value => {
                 if (props?.dataRequest || props?.queryConfig || props?.initialRows || props?.initialTotal!==undefined || props?._initialQuery
                     || props?.translationRecord!==undefined || props?.translationSources!==undefined || props?.translationLiteral!==undefined) throw new Error('mutable_binding');
                 if(node.binding || props?.binding){
-                    if(!['Repeater','DataTable','Grid'].includes(String(node.type)))throw Error('mutable_binding');
+                    if(!['Repeater','DataTable','Grid','Card','KPICard','Chart','InfoList'].includes(String(node.type)))throw Error('mutable_binding');
                     const binding=props?.binding??node.binding;
                     if((binding as any)?.source?.kind==='publication')sourceBinding.parse(binding);
                     else liveViewBindingSchema.parse(binding);

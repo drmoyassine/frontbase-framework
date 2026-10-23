@@ -58,8 +58,10 @@ export function renderDataComponent(
         case 'Form':
             return renderForm(id, props, childrenHtml, propsJson);
 
-        case 'InfoList':
-            return renderInfoList(id, props, propsJson);
+        case 'InfoList':{
+            const merged=props.binding?{...hydrationProps,binding:{...(props.binding as Record<string,unknown>),recordId:props.recordId??(props.binding as any).recordId,fieldOrder:props.fieldOrder??(props.binding as any).fieldOrder,fieldOverrides:props.fieldOverrides??(props.binding as any).fieldOverrides}}:props;
+            return renderInfoList(id, merged, props.binding?JSON.stringify(merged).replace(/</g,'\\u003c'):propsJson);
+        }
 
         case 'Chart':
             return renderChart(id, props, propsJson);
@@ -361,6 +363,12 @@ function renderChart(id: string, props: Record<string, unknown>, propsJson: stri
 }
 
 function renderDataCard(id: string, props: Record<string, unknown>, childrenHtml: string, propsJson: string): string {
+    if(props.binding&&Array.isArray(props.template)){
+        const binding={...(props.binding as Record<string,unknown>),pagination:{enabled:false,pageSize:1,page:0}};
+        const repeated={...props,binding,template:props.template,layout:'list',columns:1,maxRows:1,singleRecord:true,controls:{},initialRows:Array.isArray(props.initialRows)?props.initialRows.slice(0,1):undefined};
+        const inner=renderRepeater(id+'--record',repeated,JSON.stringify(repeated).replace(/</g,'\\u003c'),childrenHtml);
+        return renderDataCard(id,{...props,binding:undefined,template:undefined,title:'',description:'',subtitle:'',image:'',imageUrl:''},inner,JSON.stringify({...props,binding:undefined,template:undefined}));
+    }
     const title = escapeHtml(String(props.title || ''));
     const subtitle = escapeHtml(String(props.subtitle || props.description || ''));
     const image = props.image as string || props.imageUrl as string || '';
@@ -492,7 +500,7 @@ function renderRepeater(id: string, props: Record<string, unknown>, propsJson: s
     `).join('');
 
     return `<div ${attrs}>
-        <div class="${layoutClass}" style="grid-column:1/-1;min-width:0;width:100%">${Array.isArray(props.initialRows)?childrenHtml:skeletonCards}</div>
+        <div class="${layoutClass}" style="grid-column:1/-1;min-width:0;width:100%">${Array.isArray(props.initialRows)||!(props.binding as any)?.dataSourceId&&childrenHtml?childrenHtml:skeletonCards}</div>
     </div>`;
 }
 

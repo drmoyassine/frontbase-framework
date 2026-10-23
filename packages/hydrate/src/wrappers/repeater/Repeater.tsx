@@ -24,6 +24,7 @@ export interface RepeaterProps {
     template?: TemplateNode[];
     /** Cap rendered rows on the published page. */
     maxRows?: number;
+    singleRecord?:boolean;
     gap?: number;
     controls?: { refresh?:boolean; count?: boolean; ordering?: boolean; search?: boolean; searchColumn?: string; searchLabel?: string; searchPlaceholder?: string; paginationPosition?: 'top'|'bottom'|'both'; paginationStyle?: 'previous-next'|'numbered'; filters?: {id:string;column:string;label:string;operator?:'eq'|'contains';type?:'text'|'number'}[] };
     loadingText?: string;
@@ -56,6 +57,7 @@ export function Repeater({
     layout = 'grid',
     template = [],
     maxRows = 100,
+    singleRecord=false,
     gap = 16,
     controls = {},
     loadingText = binding?._localeLabels?listMessage(binding,'loading'):'Loading records…',
@@ -89,13 +91,13 @@ export function Repeater({
         return { ...(binding || fallbackBinding),
         _blockVersionId,
         filtering:{...binding?.filtering,filters:{...binding?.filtering?.filters,...Object.fromEntries((binding?.frontendFilters??[]).map((filter:any)=>[filter.column,filterValues[filter.column]]))}},
-        pagination: { ...binding?.pagination, page, pageSize: Math.min(100, Math.max(1, binding?.pagination?.pageSize || 12)) },
+        pagination: { ...binding?.pagination,...(singleRecord?{enabled:true}:{}), page:singleRecord?0:page, pageSize: singleRecord?1: Math.min(100, Math.max(1, binding?.pagination?.pageSize || 12)) },
         sorting: { ...binding?.sorting, column: sortColumn, direction },
         hiddenFilters: [...binding?.hiddenFilters ?? [],...interactive],
         // SSR has already resolved static hidden predicates. Visitor-entered
         // controls are new literal predicates and must join that resolved set.
         ...(binding?._resolvedHiddenFilters!==undefined?{_resolvedHiddenFilters:[...binding._resolvedHiddenFilters,...interactive.map(filter=>({column:filter.column,op:filter.operator,value:filter.value}))]}:{})
-    };}, [binding,page,search,sortColumn,direction,controls.searchColumn,controls.filters,filterValues,_blockVersionId]);
+    };}, [binding,page,search,sortColumn,direction,controls.searchColumn,controls.filters,filterValues,_blockVersionId,singleRecord]);
     const { data, isLoading, error, totalCount, refetch } = useGridQuery({
         mode: 'edge',
         binding: queryBinding,
@@ -131,7 +133,7 @@ export function Repeater({
             </div>
             {!!binding?.frontendFilters?.length&&<FilterBar labels={binding?._localeLabels} filters={binding.frontendFilters} filterValues={filterValues} fetchedOptions={fetchedOptions} onFilterChange={(column,value)=>{setFilterValues(old=>({...old,[column]:value}));setPage(0);}} onClearAll={()=>{setFilterValues({});setPage(0);}}/>}
             {controls.count && <p role="status" className="text-sm">{totalCount !== undefined ? listMessage(binding,'count',{count:totalCount}) : listMessage(binding,'countOnPage',{count:rows.length})}</p>}
-            {(position === 'top' || position === 'both') && pagination}
+            {!singleRecord&&(position === 'top' || position === 'both') && pagination}
             <style>{'.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-mobile),minmax(0,1fr))}@media(min-width:768px){.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-tablet),minmax(0,1fr))}}@media(min-width:1024px){.fb-repeater-grid{grid-template-columns:repeat(var(--fb-list-desktop),minmax(0,1fr))}}'}</style>
             {error ? <div role="alert" className="rounded border p-6 text-sm">{errorText}</div> : isLoading ? <p role="status">{loadingText}</p> : !rows.length ? <p role="status">{emptyText}</p> : <div className={layoutClass} style={{gap:Math.max(0,Math.min(64,gap)),'--fb-list-mobile':Math.min(4,Math.max(1,mobileColumns)),'--fb-list-tablet':Math.min(4,Math.max(1,tabletColumns)),'--fb-list-desktop':Math.min(4,Math.max(1,columns))} as React.CSSProperties}>
             {rows.slice(0, maxRows).map((row, i) => (
@@ -142,7 +144,7 @@ export function Repeater({
                 </RecordContextProvider>
             ))}
             </div>}
-            {(position === 'bottom' || position === 'both') && pagination}
+            {!singleRecord&&(position === 'bottom' || position === 'both') && pagination}
         </div>
     );
 }

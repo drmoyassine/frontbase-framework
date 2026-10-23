@@ -17,8 +17,8 @@ const externalFetch=async(input,init)=>{
     if(mode==='oversize')return Response.json(data,{headers:{'content-length':String(8*1024*1024+1)}});
     if(mode==='stream')return Response.json([...data,{id:4,name:'x'.repeat(8*1024*1024)}],{headers:{'content-range':'0-3/4'}});
     assert.ok(['/items','/owners'].includes(url.pathname));assert.ok(request.headers.get('prefer').includes('count=exact'));
-    let rows=url.pathname==='/owners'?[{id:1,name:'Owner'}]:[...data],filter=url.searchParams.get('or');
-    if(filter){assert.ok(filter.includes('name.'));rows=rows.filter(row=>row.name==='Alpha');}
+    let rows=url.pathname==='/owners'?[{id:1,name:'Owner',private_note:'DO_NOT_SEND'}]:[...data],filter=url.searchParams.get('or');
+    if(filter){if(filter.includes('name.'))rows=rows.filter(row=>row.name==='Alpha');else assert.equal(url.pathname,'/owners');}
     if(url.searchParams.get('order')==='name.desc')rows.sort((a,b)=>b.name.localeCompare(a.name));
     const total=rows.length,offset=Number(url.searchParams.get('offset')??0),limit=Number(url.searchParams.get('limit')??50);rows=rows.slice(offset,offset+limit);
     return new Response(request.method==='HEAD'?null:JSON.stringify(rows),{headers:{'content-type':'application/json',...(mode==='no-count'?{}:{'content-range':`${offset}-${offset+rows.length-1}/${total}`})}});
@@ -36,7 +36,9 @@ try{
  response=await req(base+'/tables/items/data/?sort=name&order=desc');assert.equal((await response.json()).records[0].name,'Beta');
  response=await req(base+'/search?q=Alpha');assert.equal((await response.json()).matches.length,2);
  for(const suffix of ['/tables/missing/schema/','/tables/items/data/?sort=bad','/tables/items/data/?offset=-1','/tables/items/data/?filters='+encodeURIComponent(JSON.stringify([{field:'missing',operator:'eq',value:1}]))]){response=await req(base+suffix);assert.equal(response.status,400);assert.ok(!JSON.stringify(await response.json()).includes('PRIVATE_KEY'));}
+ response=await req(base+'/tables/items/fields/');assert.equal(response.status,200);assert.ok((await response.json()).fields.some(field=>field.path==='owners.name'));
  const viewResponse=await req(base+'/views/','POST',{name:'Alpha only',target_table:'items',visible_columns:['id','name'],filters:[{field:'name',operator:'eq',value:'Alpha'}]});const view=await viewResponse.json();assert.equal(viewResponse.status,201);
+ const relatedResponse=await app.request('/api/data/execute',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({dataRequest:{fetchStrategy:'proxy',datasourceId:ds.id,viewId:view.id,body:{table_name:'items',columns:'*',joins:[],filters:[],page:1,page_size:10,related_fields:['owners.name']}}})});assert.equal(relatedResponse.status,200);const related=await relatedResponse.json();assert.equal(related.data[0]['owners.name'],'Owner');assert.ok(!JSON.stringify(related).includes('DO_NOT_SEND'));assert.ok(calls.some(request=>new URL(request.url).pathname==='/owners'&&new URL(request.url).searchParams.get('select')==='id,name'));
  response=await req('views/'+view.id+'/records/');result=await response.json();assert.equal(result.total_records,2);assert.equal(result.records.length,2);
  response=await req('views/'+view.id+'/count');assert.equal((await response.json()).total_records,2);
  response=await req('views/'+view.id+'/preview/','POST',{page:1});assert.equal((await response.json()).rows.length,2);

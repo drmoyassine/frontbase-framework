@@ -1,3 +1,5 @@
+import {LiveSourceSelector} from '@/components/builder/data-binding/LiveSourceSelector';
+import {RecordFieldPicker} from '@/components/builder/data-binding/RecordFieldPicker';
 import React, { useState, useEffect } from 'react';
 import { useBuilderStore } from '@/stores/builder';
 import { Label } from '@/components/ui/label';
@@ -42,7 +44,7 @@ export const FormPropertiesPanel: React.FC<FormPropertiesPanelProps> = ({
         const fetchSchema = async () => {
             setLoadingSchema(true);
             try {
-                const response = await fetch(`/api/sync/datasources/${props.dataSourceId}/tables/${props.tableName}/schema`);
+                const response = await fetch(`/api/sync/datasources/${encodeURIComponent(props.dataSourceId)}/tables/${encodeURIComponent(props.tableName)}/schema/${props.binding?.sourceSchema!==undefined?'?schema='+encodeURIComponent(props.binding.sourceSchema):''}`);
                 if (response.ok) {
                     const data = await response.json();
                     setSchema(data);
@@ -55,7 +57,7 @@ export const FormPropertiesPanel: React.FC<FormPropertiesPanelProps> = ({
         };
 
         fetchSchema();
-    }, [props.publicFormDraft, props.dataSourceId, props.tableName]);
+    }, [props.publicFormDraft, props.dataSourceId, props.tableName,props.binding?.sourceSchema]);
 
     // Derived state for current mode (default to create if not set)
     const currentMode = props.recordId !== undefined ? 'edit' : 'create';
@@ -70,6 +72,7 @@ export const FormPropertiesPanel: React.FC<FormPropertiesPanelProps> = ({
         return (
             <div className="max-h-[calc(100vh-250px)] overflow-y-auto px-1 pb-4 space-y-6">
                 {type === 'Form' && <Button variant="outline" onClick={() => updateComponentProp('publicFormDraft', createPublicFormDraft())}>Use public form draft</Button>}
+                {type==='InfoList'?<div className="space-y-4"><LiveSourceSelector binding={props.binding??{componentId,dataSourceId:props.dataSourceId??'',tableName:props.tableName??'',columnOrder:props.fieldOrder??[],columnOverrides:{},pagination:{enabled:false,page:0,pageSize:1},sorting:{enabled:false},filtering:{searchEnabled:false,filters:{}}}} onChange={binding=>useBuilderStore.getState().updateComponent(componentId,{binding,dataSourceId:binding.dataSourceId,tableName:binding.tableName,fieldOrder:binding.columnOrder??[],fieldOverrides:{}})}/>{props.binding&&<RecordFieldPicker binding={props.binding} onChange={binding=>useBuilderStore.getState().updateComponent(componentId,{binding,fieldOrder:binding.columnOrder??[]})}/>}</div>:<>
                 {/* Data Source Configuration */}
                 <div className="space-y-4">
                     <DataSourceSelector
@@ -83,6 +86,8 @@ export const FormPropertiesPanel: React.FC<FormPropertiesPanelProps> = ({
                         dataSourceId={props.dataSourceId}
                     />
                 </div>
+
+                </>}
 
                 <Separator />
 

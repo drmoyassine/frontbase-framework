@@ -132,6 +132,12 @@ function buildFilterList(binding: ComponentDataBinding) {
         }));
 }
 
+async function fetchSavedAggregate(binding:ComponentDataBinding,hidden:unknown[]){
+    const cfg=binding.chartConfig;if(!cfg?.category)return [];
+    const response=await fetch('/api/data/execute',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({dataRequest:{fetchStrategy:'proxy',datasourceId:binding.dataSourceId,sourceSchema:binding.sourceSchema,viewId:binding.viewId,body:{table_name:binding.tableName,columns:'*',joins:[],filters:[...buildFilterList(binding),...hidden],_aggregate:{category:cfg.category,aggregation:cfg.aggregation??'count',...(cfg.value?{value:cfg.value}:{}),sort:cfg.sort??'none',maxRows:cfg.maxRows??10}}}})});
+    if(!response.ok)throw Error('Saved-view aggregation unavailable');const result=await response.json();if(result.success!==true||!Array.isArray(result.data))throw Error('Invalid saved-view aggregate response');return result.data;
+}
+
 async function fetchAggregateFromBuilder(binding: ComponentDataBinding) {
     const cfg = binding.chartConfig!;
     const params = new URLSearchParams();
@@ -338,9 +344,10 @@ export function useChartQuery({
     const resolvedHiddenFilters=useMemo(()=>resolveBindingHiddenFilters(binding,readBrowserFilterVariable),[binding,storeVersion]);
 
     return useQuery({
-        queryKey: ['chart-data-v2', mode, binding.dataSourceId, binding.tableName, binding.sorting, binding.filtering, binding.chartConfig, resolvedHiddenFilters],
+        queryKey: ['chart-data-v2', mode, binding.dataSourceId,binding.sourceSchema,binding.viewId,binding.tableName, binding.sorting, binding.filtering, binding.chartConfig, resolvedHiddenFilters],
         queryFn: async () => {
             if (!binding.tableName) return [];
+            if(binding.viewId)return fetchSavedAggregate(binding,resolvedHiddenFilters);
             if (mode === 'builder') {
                 return fetchFromBuilder({
                     ...binding,

@@ -1,3 +1,5 @@
+import {readViewAggregate} from '../view-aggregate.js';
+import {recordPaths,projectRecordFields,projectionRelations,sqlRecordReader,type RecordReader} from '../record-fields.js';
 import {reportReadFailure} from '../read-failure.js';
 import {datasourceSchema,scopedDatasourceConfig} from '../datasource-schema.js';
 import {isNativePostgrest,nativePostgrestInspector} from '../postgrest-inspector.js';
@@ -200,9 +202,16 @@ export function registerDataExecuteRoute(
                 const scoped=scopedDatasourceConfig(ds.kind,merged,requestedSchema);
                 const config = resolveDatasourceConfig(ds.kind, scoped);
 
+                const requestedFields=recordPaths((dataRequest.body as any)?.related_fields);
+                const extra=requestedFields.length?await projectionRelations(_runner,tenant,ds.id,String((dataRequest.body as any)?.table_name??''),ds.kind==='supabase'?datasourceSchema(ds.kind,ds.config,requestedSchema):undefined):[];
+                const respondRecords=async(rows:unknown[],total:number,reader:RecordReader)=>{
+                    const records=requestedFields.length?await projectRecordFields(reader,String((dataRequest.body as any).table_name),rows as Record<string,unknown>[],requestedFields,extra):rows;
+                    return c.json({success:true,data:records,count:records.length,total});
+                };
                 // Selected schemas use the shared read-only HTTP protocol, never default-schema SQL.
-                if(isNativePostgrest(ds)||requestedSchema!==undefined){
+                if((isNativePostgrest(ds)||requestedSchema!==undefined)&&!((dataRequest.body as any)?._aggregate&&requestedSchema==='public'&&!isNativePostgrest(ds))){
                     try{
+                        if((dataRequest.body as any)?._aggregate)throw Error('native_aggregation_unavailable');
                         const valid=validateRpcQueryBody(dataRequest.body);if(!valid.ok||valid.payload.joins.length)throw Error('single_table_only');
                         const body=valid.payload,inspector=await nativePostgrestInspector(scoped,externalFetch);
                         const columns=body.columns==='*'?undefined:body.columns.split(',').map(value=>{
@@ -211,7 +220,10 @@ export function registerDataExecuteRoute(
                         const result=await inspector.rows(body.table_name,{offset:(body.page-1)*body.page_size,limit:body.page_size,columns,
                             filters:[...savedViewFilters(trustedViewFilters),...savedViewFilters(body.filters)],
                             sort:body.sort_col??trustedViewSort?.column,order:body.sort_col?body.sort_dir??'asc':trustedViewSort?.direction??'asc',search:body.search_query,searchColumns:body.search_cols});
-                        return c.json({success:true,data:result.records,count:result.records.length,total:result.total});
+                        return await respondRecords(result.records,result.total,{schema:async table=>inspector.schema(table),relationships:async()=>inspector.relationships().filter(edge=>{const keys=inspector.schema(edge.target_table).columns.filter(column=>column.primary_key);return keys.length===1&&keys[0]!.name===edge.target_column;}),read:async(table,column,values,fields)=>{
+                            if(!values.length)return [];const related=await inspector.rows(table,{filters:[{field:column,operator:'in',value:values}],columns:[...new Set([column,...fields])],limit:500});
+                            if(related.has_more)throw Error('related_record_limit');return related.records;
+                        }});
                     }catch(error){reportReadFailure('selected-schema',error);return c.json({success:false,error:'Selected-schema read unavailable. Check the table, filters and API permissions.'},422);}
                 }
                 let runner: DbRunner;
@@ -224,6 +236,10 @@ export function registerDataExecuteRoute(
                     }, 400);
                 }
 
+                if((dataRequest.body as any)?._aggregate){
+                    try{if(!dataRequest.viewId)throw Error('saved_view_required');const rows=await readViewAggregate(runner,dialectOf(ds.kind),(dataRequest.body as any).table_name,(dataRequest.body as any)._aggregate,(dataRequest.body as any).filters,trustedViewFilters);return c.json({success:true,data:rows,total:rows.length});}
+                    catch{return c.json({success:false,error:'Saved-view aggregation unavailable. Check the selected fields and adapter capability.'},422);}
+                }
                 // Parameterized SELECT body — the Form/InfoList record loads
                 // (a7/p7 edge hooks) and the chart aggregate fetch (fse) POST
                 // `{...body, query, params}`: a single-row lookup or the baked
@@ -246,7 +262,7 @@ export function registerDataExecuteRoute(
                             : [];
                         try {
                             const rows = await runner.query(query, params);
-                            return c.json({ success: true, data: rows, count: rows.length, total: rows.length });
+                            return await respondRecords(rows,rows.length,sqlRecordReader(runner,dialectOf(ds.kind)));
                         } catch {
                             return c.json({ success: false, error: 'Query execution failed' }, 500);
                         }
@@ -272,10 +288,10 @@ export function registerDataExecuteRoute(
                     }
                     const rpcBase = String(config.url ?? '').replace(/\/+$/, '');
                     if(trustedViewSort&&!validated.payload.sort_col){validated.payload.sort_col=trustedViewSort.column;validated.payload.sort_dir=trustedViewSort.direction;}
-                    if(['postgres','neon','sqlite','turso','d1'].includes(ds.kind)||!!trustedViewFilters){
+                    if(requestedFields.length||['postgres','neon','sqlite','turso','d1'].includes(ds.kind)||!!trustedViewFilters){
                         try{
                             const result=await executeSingleTableRpc(runner,dialectOf(ds.kind),validated.payload,trustedViewFilters);
-                            return c.json({success:true,data:result.rows,count:result.rows.length,total:result.total});
+                            return await respondRecords(result.rows,result.total,sqlRecordReader(runner,dialectOf(ds.kind)));
                         }catch(error){
                             reportReadFailure('single-table',error);
                             const message=error instanceof Error?error.message:'';
@@ -325,7 +341,7 @@ export function registerDataExecuteRoute(
                                 const total = typeof json.total === 'number' ? json.total : rows.length;
                                 // RPC rows are already flat (product sets
                                 // flattenRelations:false for RPC data).
-                                return c.json({ success: true, data: rows, count: rows.length, total });
+                                return await respondRecords(rows,total,sqlRecordReader(runner,dialectOf(ds.kind)));
                             }
                             // RPC missing/unavailable (404 etc.) → try the SQL paths.
                         } catch {

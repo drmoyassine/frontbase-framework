@@ -26,17 +26,22 @@ const control=sqliteRunner(':memory:');await migrateUp(control);
 const url='file:'+join(mkdtempSync(join(tmpdir(),'frontbase-pilot-live-')),'catalog.db').replaceAll('\\','/'),data=sqliteRunner(url);
 await data.exec('CREATE TABLE institutions(id INTEGER PRIMARY KEY,title TEXT,originalPath TEXT,country_id INTEGER,private_contract TEXT)');
 await data.exec("INSERT INTO institutions VALUES(1,'Campus One','/one/',22,'SECRET'),(2,'Campus Two','/two/',22,'SECRET'),(3,'Excluded','/excluded/',22,'SECRET'),(4,'Foreign','/foreign/',99,'SECRET')");
-await data.exec('CREATE VIEW live_institutions AS SELECT id,title,originalPath,country_id FROM institutions');
+await data.exec('CREATE TABLE cities(id INTEGER PRIMARY KEY,name TEXT)');
+await data.exec("INSERT INTO cities VALUES(1,'Boston')");
+await data.exec('ALTER TABLE institutions ADD COLUMN city_id INTEGER REFERENCES cities(id)');
+await data.exec("ALTER TABLE institutions ADD COLUMN type TEXT DEFAULT 'Public'");
+await data.exec('UPDATE institutions SET city_id=1');
+await data.exec('CREATE VIEW fb_live_deadbeef_12345678_institutions AS SELECT id,title,originalPath,country_id,city_id AS cityId FROM institutions');
 let tenant='fixture',authenticated=true,role='owner';
 const app=await createCompatApp({makeRunner:async()=>control,resolvePrincipal:async()=>({tenant,user:authenticated?{id:'owner',role}:null}),sessionSecret:'synthetic-pilot-live-proof'});
 const post=async(path,body)=>{const response=await app.request(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});assert.equal(response.status,201,await response.clone().text());return response.json();};
 const ds=await post('/api/sync/datasources/',{name:'Synthetic live',type:'sqlite',config:{url}});
-const view=await post(`/api/sync/datasources/${ds.id}/views/`,{name:'Admitted institutions',target_table:'live_institutions',filters:[{field:'country_id',operator:'eq',value:22},{field:'id',operator:'in',value:[1,2]}]});
+const view=await post(`/api/sync/datasources/${ds.id}/views/`,{name:'Admitted institutions',target_table:'fb_live_deadbeef_12345678_institutions',filters:[{field:'country_id',operator:'eq',value:22},{field:'id',operator:'in',value:[1,2]}]});
 const configuration=emptyDirectoryConfiguration();configuration.site={name:'Fixture',destination:'USA',origin:'https://study-in-usa.com',locale:'en'};configuration.datasourceId=ds.id;
 for(const role of ['institution','program','city']){const mapping=configuration.collections[role];mapping.table=role+'s';mapping.scope={field:'country_id',value:22};Object.assign(mapping.fields,{id:'id',title:'title'});if(role!=='city')Object.assign(mapping.fields,{originalPath:'originalPath',body:'body'});}
-configuration.collections.institution.fields.cityId='city_id';configuration.collections.program.fields.institutionId='institution_id';
+configuration.collections.city.table='cities';configuration.collections.institution.fields.cityId='city_id';configuration.collections.program.fields.institutionId='institution_id';
 Object.assign(configuration.collections.article,{table:'editorial_documents',scope:{field:'country_id',value:22}});Object.assign(configuration.collections.article.fields,{id:'id',title:'title',originalPath:'original_path',body:'body_blocks',contentRole:'collection_role',sourceOrigin:'source_origin'});
-const views={datasourceId:ds.id,institutions:{id:view.id,name:view.name,target_table:'live_institutions',columns:['id','title','originalPath','country_id']},programs:{id:'programs',name:'Programs',target_table:'live_programs',columns:['id','title','originalPath']},articles:{id:'articles',name:'Articles',target_table:'live_articles',columns:['id','title','originalPath']}};
+const views={datasourceId:ds.id,institutions:{id:view.id,name:view.name,target_table:'fb_live_deadbeef_12345678_institutions',columns:['id','title','originalPath','country_id']},programs:{id:'programs',name:'Programs',target_table:'live_programs',columns:['id','title','originalPath']},articles:{id:'articles',name:'Articles',target_table:'live_articles',columns:['id','title','originalPath']}};
 const legacy={root:{siteConfiguration:{version:1,role:'directory'}},content:[{id:'list',type:'Repeater',props:{binding:{componentId:'list',dataSourceId:'frontbase:publication',tableName:'institutions',source:{kind:'publication',hash:'a'.repeat(64)},pagination:{enabled:true,pageSize:1,page:0},sorting:{enabled:true,column:'title',direction:'asc'},filtering:{searchEnabled:false,filters:{}},columnOverrides:{}},controls:{count:true,search:true,searchColumn:'title'}},children:[{id:'title',type:'Heading',props:{text:'{{ record.title }}'}},{id:'link',type:'Link',props:{text:'Open',href:'{{ record.originalPath }}'}}],versions:[{id:'programs',name:'Programs',when:'url.type == "program"',overrides:{props:{binding:{componentId:'list',dataSourceId:'frontbase:publication',tableName:'programs',source:{kind:'publication',hash:'a'.repeat(64)},pagination:{enabled:true,pageSize:1,page:0},sorting:{enabled:true,column:'title',direction:'asc'},filtering:{searchEnabled:false,filters:{}},columnOverrides:{}}}}}]}]};
 const layout=convertPilotLiveLists(legacy,views);assert.equal(legacy.content[0].props.binding.source.kind,'publication');assert.equal(liveViewBindings(layout).length,2);assert.equal(applyBlockVersion(layout.content[0],'programs').props.binding.viewId,'programs');
 assert.deepEqual(layout.content[0].children,legacy.content[0].children);
@@ -48,6 +53,8 @@ for(const item of plan){assert(item.sql.includes('security_invoker=true'));asser
 assert(JSON.stringify(plan[2].filters).includes('revision'));assert(JSON.stringify(plan[0].filters).includes('cityId'));
 // Static-page fixture isolates live SSR/hydration transport from legacy catalog queries.
 const staticLayout={...layout,root:{}};staticLayout.content[0].versions=undefined;
+staticLayout.content[0].children.push({id:'institution-type',type:'Text',props:{text:'{{ record.institutions.type }}'}});
+staticLayout.content.push({id:'chart',type:'Chart',props:{binding:{...staticLayout.content[0].props.binding,componentId:'chart',chartConfig:{category:'country_id',aggregation:'count',maxRows:10}}}});
 const manifests=new SitePublicationManifestStore(control,'fixture'),hash=await manifests.prepare({configurationRevision:1,configuration,templates:[],staticPages:[{pageId:'00000000-0000-4000-8000-000000000001',title:'Live fixture',description:'',originalPath:'/',layout:staticLayout}]},{institutions:[],programs:[],cities:[],articles:[]},'2026-10-15T00:00:00Z');
 const reviews=new SitePublicationReviewStore(control,'fixture');await reviews.approve({hash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Synthetic live fixture'},'owner','2026-10-15T00:00:00Z');await reviews.activate(hash,null,'2026-10-15T00:00:00Z');
 const liveQuery=publishedLiveQuery(request=>app.fetch(request));
@@ -55,24 +62,31 @@ await protectPublishedLiveSource(control,'fixture',ds.id,'2026-10-15T00:00:00Z')
 authenticated=false;
 await resolvePublicationVersionPage(await manifests.get(hash),hash,'fixture',control,new Request('https://fixture.invalid/'),null,liveQuery);
 const render=async(path='/')=>{const response=await renderReviewedSitePublication(control,'fixture',new Request('https://fixture.invalid'+path),{liveQuery});assert.equal(response.status,200);return response.text();};
-let html=await render();assert(html.includes('Campus One'));assert(!html.includes('Excluded'));assert(!html.includes('SECRET'));
+let html=await render();assert(html.includes('Campus One'));assert.match(html,/>Public</);assert(!html.includes('Excluded'));assert(!html.includes('SECRET'));
 await data.exec("UPDATE institutions SET title='AAA Live change' WHERE id=2");html=await render();assert(html.includes('AAA Live change'));
 let projected=await projectPublicationListRows(staticLayout,control,'fixture',new Request('https://fixture.invalid/?page=2'),null,liveQuery);assert.deepEqual(projected.content[0].props.initialRows.map(row=>row.title),['Campus One']);
 projected=await projectPublicationListRows(staticLayout,control,'fixture',new Request('https://fixture.invalid/?q=missing'),null,liveQuery);assert.equal(projected.content[0].props.initialTotal,0);assert.deepEqual(projected.content[0].props.initialRows,[]);
-const requestBody={dataRequest:{fetchStrategy:'proxy',datasourceId:ds.id,viewId:view.id,body:{table_name:'live_institutions',columns:'*',joins:[],page:1,page_size:10,filters:[],sort_col:'title',sort_dir:'asc'}}};
+const requestBody={dataRequest:{fetchStrategy:'proxy',datasourceId:ds.id,viewId:view.id,body:{table_name:'fb_live_deadbeef_12345678_institutions',columns:'*',joins:[],page:1,page_size:10,filters:[],sort_col:'title',sort_dir:'asc'}}};
 const result=await (await app.request('/api/data/execute',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(requestBody)})).json();assert.equal(result.total,2);assert(!JSON.stringify(result).includes('SECRET'));
+const relatedResult=await (await app.request('/api/data/execute',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({dataRequest:{...requestBody.dataRequest,body:{...requestBody.dataRequest.body,related_fields:['institutions.type']}}})})).json();assert.equal(relatedResult.success,true);assert.equal(relatedResult.data[0]['institutions.type'],'Public');assert(!JSON.stringify(relatedResult).includes('SECRET'));
+
+const aggregateResult=await (await app.request('/api/data/execute',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({dataRequest:{...requestBody.dataRequest,body:{...requestBody.dataRequest.body,_aggregate:{category:'country_id',aggregation:'count',maxRows:10}}}})})).json();assert.equal(aggregateResult.success,true);assert.deepEqual(aggregateResult.data,[{category:22,value:2}]);
+assert.equal((await app.request(`/api/sync/datasources/${ds.id}/tables/institutions/fields/`)).status,401);
 for(const bypass of [
  {...requestBody.dataRequest,viewId:undefined,body:{...requestBody.dataRequest.body,table_name:'institutions'}},
  {...requestBody.dataRequest,body:{...requestBody.dataRequest.body,table_name:'institutions'}},
  {...requestBody.dataRequest,body:{...requestBody.dataRequest.body,query:'SELECT * FROM institutions'}},
  {...requestBody.dataRequest,body:{...requestBody.dataRequest.body,joins:[{type:'left',table:'institutions',on:'id=id'}]}},
  {...requestBody.dataRequest,viewId:'unpublished-view'},
+ {...requestBody.dataRequest,body:{...requestBody.dataRequest.body,_aggregate:{category:'private_contract',aggregation:'count'}}},
+ {...requestBody.dataRequest,body:{...requestBody.dataRequest.body,related_fields:['institutions.private_contract']}},
 ])assert.equal((await app.request('/api/data/execute',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({dataRequest:bypass})})).status,403);
 for(const [method,path]of [['GET','/api/data/institutions/1'],['POST','/api/data/institutions'],['PATCH','/api/data/institutions/1']])assert.equal((await app.request(path,{method,...(method==='GET'?{}:{headers:{'content-type':'application/json'},body:JSON.stringify({title:'ATTACK'})})})).status,403);
 assert.equal((await data.query('SELECT title FROM institutions WHERE id=1'))[0].title,'Campus One');
 tenant='other';const denied=await app.request('/api/data/execute',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(requestBody)});assert.equal(denied.status,403);
 tenant='fixture';authenticated=true;
 // The real Data entry point must expose the same saved assets used by public lists.
+const fieldsResponse=await app.request(`/api/sync/datasources/${ds.id}/tables/fb_live_deadbeef_12345678_institutions/fields/`);assert.equal(fieldsResponse.status,200,await fieldsResponse.clone().text());const fields=await fieldsResponse.json();assert(fields.fields.some(field=>field.path==='institutions.type'));assert(fields.fields.some(field=>field.path==='cities.name'));
 const listed=await (await app.request('/api/sync/datasources/')).json();assert.equal(listed[0].views[0].id,view.id);
 const assets=await (await app.request('/api/sync/views/')).json();assert.equal(assets[0].id,view.id);assert(assets[0].usage.some(use=>use.state==='Published'&&use.componentId==='list'));
 const patchView=body=>app.request(`/api/sync/views/${view.id}/`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
@@ -90,7 +104,7 @@ authenticated=true;
 assert.equal((await patchView({filters:[{field:'id',operator:'in',value:[1]}]})).status,200);
 authenticated=false;assert.equal((await (await app.request('/api/data/execute',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(requestBody)})).json()).total,1);
 authenticated=true;assert.equal((await patchView({filters:[{field:'country_id',operator:'eq',value:22},{field:'id',operator:'in',value:[1,2]}],default_sort:null})).status,200);
-const large=await executeSingleTableRpc(data,'sqlite',{table_name:'live_institutions',columns:'*',joins:[],page:1,page_size:10,filters:[],sort_col:'title',sort_dir:'asc',search_query:'',search_cols:[]},[{field:'id',operator:'in',value:Array.from({length:1100},(_,i)=>i+1)}]);assert.equal(large.total,4);
+const large=await executeSingleTableRpc(data,'sqlite',{table_name:'fb_live_deadbeef_12345678_institutions',columns:'*',joins:[],page:1,page_size:10,filters:[],sort_col:'title',sort_dir:'asc',search_query:'',search_cols:[]},[{field:'id',operator:'in',value:Array.from({length:1100},(_,i)=>i+1)}]);assert.equal(large.total,4);
 await data.exec('CREATE TABLE json_catalog(id INTEGER PRIMARY KEY,meta TEXT)');await data.exec('INSERT INTO json_catalog VALUES(?,?),(?,?)',[1,JSON.stringify({active:true,tags:['USA']}),2,JSON.stringify({active:false})]);
 const jsonRows=await executeSingleTableRpc(data,'sqlite',{table_name:'json_catalog',columns:'*',joins:[],page:1,page_size:10,filters:[],sort_col:'id',sort_dir:'asc',search_query:'',search_cols:[]},[{field:'meta',operator:'eq',value:{active:true,tags:['USA']}}]);assert.equal(jsonRows.total,1);assert.equal(jsonRows.rows[0].id,1);
 assert.throws(()=>savedViewFilters([{field:'meta',operator:'eq',value:JSON.parse('{"__proto__":{"admin":true}}')}]));
@@ -108,7 +122,7 @@ const planKey=async extra=>{
 };
 const publish=planHash=>app.request('/api/project/live-list-migration/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'publish',baseHash:hash,planHash})});
 let stored=await planKey({});
-role='viewer';assert.equal((await publish(stored.planHash)).status,403);role='owner';
+role='viewer';assert.equal((await app.request(`/api/sync/datasources/${ds.id}/tables/institutions/fields/`)).status,403);assert.equal((await publish(stored.planHash)).status,403);role='owner';
 assert.equal((await app.request('/api/project/live-list-migration/',{method:'POST',headers:{'content-type':'application/json'},body:'x'.repeat(4097)})).status,413);
 await control.exec('UPDATE settings SET value=? WHERE tenant_slug=? AND key=?',[JSON.stringify({...stored.plan,note:'tampered'}),tenant,`live_list_migration:v1:${stored.planHash}`]);assert.equal((await publish(stored.planHash)).status,409);
 stored=await planKey({});await pages.update(pageId,{title:'Concurrent owner edit'},now);assert.equal((await publish(stored.planHash)).status,409);

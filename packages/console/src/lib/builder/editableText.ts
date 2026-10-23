@@ -147,6 +147,7 @@ function stampComponent(doc: Document, node: ComponentData): void {
     const type = node.type;
     const props = (node.props || {}) as Record<string, any>;
     const root = byId(doc, id);
+    if(typeof props.text==='string'&&props.text.includes('{{'))return;
 
     // Future framework-emitted markers win and short-circuit heuristic lookup.
     if (root) stampFwMarkers(root, id);

@@ -7,7 +7,8 @@ export function publishedLiveQuery(execute:(request:Request)=>Response|Promise<R
     const pending=new Map<string,ReturnType<PublishedLiveQuery>>();
     return async(owner,input,query,request)=>{
         const binding=liveViewBindingSchema.parse(input);
-        const body={table_name:binding.tableName,columns:'*',joins:[],page:query.page+1,page_size:query.pageSize,
+        const fields=binding.columnOrder?.filter(column=>column.includes('.'))??[];
+        const body={table_name:binding.tableName,columns:'*',joins:[],...(fields.length?{related_fields:fields}:{}),page:query.page+1,page_size:query.pageSize,
             filters:query.filters,sort_col:query.sortColumn||null,sort_dir:query.direction,search_query:query.search??'',search_cols:binding.searchColumns??[]};
         const payload=JSON.stringify({dataRequest:{fetchStrategy:'proxy',datasourceId:binding.dataSourceId,sourceSchema:binding.sourceSchema,viewId:binding.viewId,body}});
         const run=async()=>{

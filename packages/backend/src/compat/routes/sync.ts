@@ -1,3 +1,5 @@
+import {consoleDataAdministrator} from '../published-live-access.js';
+import {recordFieldCatalog,sqlRecordReader,projectionRelations} from '../record-fields.js';
 import {datasourceSchema,scopedDatasourceConfig,schemaSessionKey} from '../datasource-schema.js';
 import {savedWhere} from '../saved-view-query.js';
 import {savedViewFilters} from '@frontbase/edge-core/saved-view-filters';
@@ -142,7 +144,7 @@ export async function inspectTable(
  * SQLite: PRAGMA foreign_key_list is per-table only, so iterate — but it's local
  *   in-process (no network), so the N cheap calls don't matter.
  */
-async function listRelationships(
+export async function listRelationships(
     runner: DbRunner,
     dialect: 'sqlite' | 'postgres',
 ): Promise<{ source_table: string; source_column: string; target_table: string; target_column: string }[]> {
@@ -151,7 +153,8 @@ async function listRelationships(
             `SELECT tc.table_name AS source_table,
                     kcu.column_name AS source_column,
                     ccu.table_name AS target_table,
-                    ccu.column_name AS target_column
+                    ccu.column_name AS target_column,
+                    COUNT(*) OVER (PARTITION BY tc.table_schema, tc.table_name, tc.constraint_name) AS key_count
              FROM information_schema.table_constraints tc
              JOIN information_schema.key_column_usage kcu
                ON tc.constraint_name = kcu.constraint_name
@@ -162,7 +165,7 @@ async function listRelationships(
              WHERE tc.constraint_type = 'FOREIGN KEY'
                AND tc.table_schema = 'public'`,
         );
-        return rows.map((row) => ({
+        return rows.filter(row=>Number(row.key_count??1)===1).map((row) => ({
             source_table: String(row.source_table),
             source_column: String(row.source_column),
             target_table: String(row.target_table),
@@ -174,7 +177,7 @@ async function listRelationships(
     for (const table of tables) {
         const safe = validateIdentifier(table, tables);
         const fkRows = await runner.query(`PRAGMA foreign_key_list("${safe}")`);
-        for (const row of fkRows) {
+        for (const row of fkRows.filter(row=>fkRows.filter(other=>other.id===row.id).length===1)) {
             relationships.push({
                 source_table: table,
                 source_column: String(row.from),
@@ -1439,6 +1442,21 @@ export function registerSyncRoutes(
     // =========================================================================
     // Wave A4 — Relationships, Sessions & Migration Checks (11 ops)
     // =========================================================================
+
+    app.get('/api/sync/datasources/:datasource_id/tables/:table/fields/',async c=>{
+        if(!consoleDataAdministrator(c.get('principal')))return c.json({detail:'Administrator access required'},403);
+        const owner=c.get('tenant'),ds=await syncStoreFor(owner).getDatasource(c.req.param('datasource_id'));
+        if(!ds)return c.json({detail:'Datasource not found'},404);
+        try{
+            const config=scopedDatasourceConfig(ds.kind,await mergeAccount(owner,ds.kind,ds.config),c.req.query('schema'));
+            const extra=await projectionRelations(controlRunner,owner,ds.id,c.req.param('table'),ds.kind==='supabase'?datasourceSchema(ds.kind,ds.config,c.req.query('schema')):undefined);
+            if(isNativePostgrest(ds)||ds.kind==='supabase'&&c.req.query('schema')!==undefined){
+                const inspector=await nativePostgrestInspector(config,externalFetch);
+                return c.json(await recordFieldCatalog({schema:async table=>inspector.schema(table),relationships:async()=>inspector.relationships().filter(edge=>{const keys=inspector.schema(edge.target_table).columns.filter(column=>column.primary_key);return keys.length===1&&keys[0]!.name===edge.target_column;}),read:async()=>{throw Error('metadata_only');}},c.req.param('table'),extra,c.req.query('relationship')));
+            }
+            return c.json(await recordFieldCatalog(sqlRecordReader(datasourceRunner(ds.kind,config,externalFetch),dialectOf(ds.kind)),c.req.param('table'),extra,c.req.query('relationship')));
+        }catch{return c.json({detail:'Record fields unavailable. Check selected schema and relationship permissions.'},502);}
+    });
 
     // GET /api/sync/datasources/{datasource_id}/relationships/
     app.get('/api/sync/datasources/:datasource_id/relationships/', async (c) => {

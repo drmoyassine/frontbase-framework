@@ -1,3 +1,4 @@
+import {RecordFieldPicker} from '@/components/builder/data-binding/RecordFieldPicker';
 import {ListPresentationOptions} from '@/components/builder/data-binding/ListPresentationOptions';
 import {liveListPageSize} from '@frontbase/types';
 import {LiveSourceSelector,updateAuthoredBinding} from '@/components/builder/data-binding/LiveSourceSelector';
@@ -453,6 +454,7 @@ export const DataTablePropertiesPanel: React.FC<DataTablePropertiesPanelProps> =
         return (
             <div className="space-y-4">
                 <LiveSourceSelector binding={effectiveBinding} onChange={onBindingUpdate}/>
+                <RecordFieldPicker binding={effectiveBinding} onChange={onBindingUpdate}/>
 
                 {effectiveBinding.tableName && binding && (
                     <div className="pt-4 border-t">

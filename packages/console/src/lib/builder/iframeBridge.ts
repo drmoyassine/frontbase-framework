@@ -74,13 +74,29 @@ export function walkLayout(
  * O(N) lookup. Re-run after EVERY srcdoc swap (the whole document is replaced).
  */
 export function stampComponentIds(doc: Document, nodes: ComponentData[]): void {
-    walkLayout(nodes, (node) => {
-        const el = doc.getElementById(node.id);
-        if (el) {
-            el.setAttribute('data-fb-id', node.id);
-            el.setAttribute('data-fb-component', node.type);
+    const authored=new Map<string,ComponentData>();
+    walkLayout(nodes,node=>authored.set(node.id,node));
+    const stamp=(element:Element,node:ComponentData)=>{element.setAttribute('data-fb-id',node.id);element.setAttribute('data-fb-component',node.type);};
+    for(const node of authored.values()){
+        const element=doc.getElementById(node.id);if(element)stamp(element,node);
+        if(node.type!=='Repeater')continue;
+        const templates=[node.children??[],...(node.versions??[]).filter(version=>version.overrides.children).map(version=>version.overrides.children as ComponentData[])];
+        for(const template of templates){
+            if(!template.some(root=>doc.getElementById(root.id)))continue;
+            const ordered:ComponentData[]=[];walkLayout(template,child=>ordered.push(child));
+            const prefix=node.id+'--row-';
+            for(const element of doc.querySelectorAll('[id]')){
+                if(!element.id.startsWith(prefix))continue;
+                const suffix=element.id.slice(prefix.length).match(/^\d+-(\d+)$/);
+                const source=suffix?ordered[Number(suffix[1])-1]:undefined;
+                if(source)stamp(element,source);
+            }
         }
-    });
+    }
+    // Hydrated records retain their original template identity in builder mode.
+    for(const element of doc.querySelectorAll('[data-fb-template-source]')){
+        const source=authored.get(element.getAttribute('data-fb-template-source')??'');if(source){const instance=element.getAttribute('data-fb-template-instance');stamp(instance?doc.getElementById(instance)??element:element,source);}
+    }
 }
 
 /**
@@ -109,7 +125,7 @@ export function queryComponentRects(doc: Document): ComponentRect[] {
             depth: computeDepth(el),
         });
     });
-    return out;
+    const unique=new Map<string,ComponentRect>();for(const rect of out)if(!unique.has(rect.id))unique.set(rect.id,rect);return [...unique.values()];
 }
 
 /** Resolve the data-fb-id for an element by walking up to the closest stamp. */

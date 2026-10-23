@@ -1,3 +1,4 @@
+import {CardProperties} from './properties/basic/CardProperties';
 import React, { useState } from 'react';
 import { useBuilderStore } from '@/stores/builder';
 import { useShallow } from 'zustand/react/shallow';
@@ -327,6 +328,7 @@ export const PropertiesPanel = () => {
       // framework descriptor is unreachable). Online, Embed is rendered
       // schema-driven from its framework editable.props (tier 1 above).
       case 'Card':
+        return <CardProperties componentId={selectedComponentId!} props={props} updateComponentProp={updateComponentProp}/>;
       case 'Embed':
         return <DisplayProperties type={type} props={props} updateComponentProp={updateComponentProp} />;
 

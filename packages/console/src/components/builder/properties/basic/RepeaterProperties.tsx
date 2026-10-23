@@ -1,3 +1,5 @@
+import {RecordFieldPicker} from '@/components/builder/data-binding/RecordFieldPicker';
+import {useRecordFields} from '@/hooks/data/useRecordFields';
 import {FilterConfigurator} from '@/components/builder/data-table/FilterConfigurator';
 import {LiveSourceSelector,updateAuthoredBinding} from '@/components/builder/data-binding/LiveSourceSelector';
 /**
@@ -55,12 +57,12 @@ export const RepeaterProperties: React.FC<RepeaterPropertiesProps> = ({
     const effectiveBinding = binding || defaultBinding;
 
     const updateBinding = (updates: Partial<ComponentDataBinding>) => {
-        const {dataRequest,_resolvedHiddenFilters,_pendingHiddenFilters,...authored}=effectiveBinding;
-        onBindingUpdate(JSON.parse(JSON.stringify({ ...authored, ...updates })));
+        onBindingUpdate(updateAuthoredBinding(effectiveBinding,updates));
     };
 
     const columns = useBindingColumns(effectiveBinding.tableName, effectiveBinding.dataSourceId, effectiveBinding.sourceSchema);
     const queryColumns=effectiveBinding.source?.kind==='publication'?columns.filter(column=>['title','id','parentId'].includes(column.name)):columns;
+    const recordFields=useRecordFields(effectiveBinding.tableName,effectiveBinding.dataSourceId,effectiveBinding.sourceSchema);
     const controls = props.controls ?? {};
     const updateControls = (patch: Record<string, unknown>) => updateComponentProp('controls', { ...controls, ...patch });
 
@@ -77,7 +79,7 @@ export const RepeaterProperties: React.FC<RepeaterPropertiesProps> = ({
                 </div>
 
                 {/* Layout: Display Mode / Columns / Gap */}
-                <RepeaterFieldMappings componentId={componentId} columns={columns}/>
+                <RepeaterFieldMappings componentId={componentId} columns={recordFields.fields}/><RecordFieldPicker browseOnly binding={effectiveBinding} onChange={onBindingUpdate}/>{recordFields.error&&<p role="alert" className="text-xs text-destructive">Additional fields or relationships could not be loaded. <button type="button" className="underline" onClick={()=>recordFields.refetch()}>Retry fields</button></p>}
                 <div className="space-y-4 pt-4 border-t">
                     <div className="space-y-2">
                         <Label htmlFor="repeater-layout" className="font-semibold block text-sm">Display Mode</Label>

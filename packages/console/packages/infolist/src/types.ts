@@ -30,6 +30,7 @@ export interface InfoListFieldOverride {
  * The unified Binding object (passed by Builder and baked by Edge during Publish)
  */
 export interface InfoListBinding {
+    viewId?:string;sourceSchema?:string;columnOrder?:string[];
     tableName?: string;
     dataSourceId?: string;
     datasourceId?: string;

@@ -1,7 +1,7 @@
 import { useBuilderStore } from '@/stores/builder';
 import { useShallow } from 'zustand/react/shallow';
 import { useDataBindingStore } from '@/stores/data-binding-simple';
-import { useBindingColumns } from '@/hooks/data/useBindingColumns';
+import {useRecordFields} from '@/hooks/data/useRecordFields';
 import { resolveBlockTree } from '@frontbase/edge-core/block-versions';
 
 interface TreeNode {
@@ -23,7 +23,7 @@ function findAncestorRepeater(
     for (const node of nodes ?? []) {
         if (node.id === targetId) {
             for (let i = chain.length - 1; i >= 0; i--) {
-                if (chain[i].type === 'Repeater') return chain[i];
+                if (chain[i].type === 'Repeater' || chain[i].type === 'Card' && chain[i].props?.binding) return chain[i];
             }
             return null;
         }
@@ -67,10 +67,9 @@ export function useRepeaterRecordColumns(componentId?: string): string[] | undef
     const columnOrder: string[] | undefined = binding?.columnOrder;
 
     // Hooks must be called unconditionally; returns [] when tableName is absent.
-    const columns = useBindingColumns(tableName, dataSourceId, binding?.sourceSchema);
+    const {fields:columns} = useRecordFields(tableName, dataSourceId, binding?.sourceSchema);
 
     if (!repeater || !tableName) return undefined;
     // Honor the user's column order when set, else fall back to schema order.
-    if (columnOrder && columnOrder.length > 0) return columnOrder;
-    return columns.map(c => c.name);
+    return [...new Set([...(columnOrder??[]),...columns.map(c=>c.name)])];
 }

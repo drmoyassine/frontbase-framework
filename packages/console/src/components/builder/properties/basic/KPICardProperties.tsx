@@ -1,3 +1,4 @@
+import {RecordFieldPicker} from '@/components/builder/data-binding/RecordFieldPicker';
 /**
  * KPICard Properties Panel
  * Configuration UI for the KPICard component
@@ -7,8 +8,7 @@ import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DataSourceSelector } from '@/components/data-binding/DataSourceSelector';
-import { TableSelector } from '@/components/data-binding/TableSelector';
+import {LiveSourceSelector} from '@/components/builder/data-binding/LiveSourceSelector';
 import { CompactColumnConfigurator } from '@/components/builder/data-table/CompactColumnConfigurator';
 import { ComponentDataBinding } from '@/hooks/data/useSimpleData';
 import { DefaultSortColumnSelector } from '@/components/builder/data-table/DataTablePropertiesPanel';
@@ -55,27 +55,8 @@ export const KPICardProperties: React.FC<KPICardPropertiesProps> = ({
     if (activeTab === 'general') {
         return (
             <div className="space-y-4">
-                <div>
-                    <DataSourceSelector
-                        value={effectiveBinding.dataSourceId}
-                        onValueChange={(value) => updateBinding({ dataSourceId: value })}
-                    />
-                </div>
-
-                <div>
-                    <TableSelector
-                        value={effectiveBinding.tableName}
-                        onValueChange={(value) => {
-                            updateBinding({
-                                tableName: value,
-                                columnOverrides: {},
-                                columnOrder: [],
-                                sorting: { enabled: false, column: undefined, direction: 'asc' },
-                            });
-                        }}
-                        dataSourceId={effectiveBinding.dataSourceId}
-                    />
-                </div>
+                <LiveSourceSelector binding={effectiveBinding} onChange={onBindingUpdate}/>
+                <RecordFieldPicker binding={effectiveBinding} onChange={onBindingUpdate}/>
 
                 {effectiveBinding.tableName && binding && (
                     <div className="pt-4 border-t">

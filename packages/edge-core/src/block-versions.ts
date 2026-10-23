@@ -141,19 +141,22 @@ export function walkBlockTree(nodes: VersionedBlock[], visit: (node: VersionedBl
 }
 
 /** Clone an owned tree including alternatives and known internal element references. */
-export function cloneBlockTree<T extends VersionedBlock>(nodes: T[], makeId: () => string): T[] {
+export function cloneBlockTree<T extends VersionedBlock>(nodes: T[], makeId: () => string, templateIdentity = false): T[] {
     const ids = new Map<string, string>();
     const components=new WeakSet<object>();
     walkBlockTree(nodes, node => {ids.set(node.id, makeId());components.add(node);});
     const clone = (value: any, key = ''): any => {
         if (typeof value === 'string') {
+            if(key==='_templateSourceId')return value;
             if (/(?:componentId|elementId|targetId|parentId|sourceId)$/i.test(key)) return ids.get(value) ?? value;
             if (['href', 'target', 'selector'].includes(key) && value.startsWith('#')) return ids.has(value.slice(1)) ? '#' + ids.get(value.slice(1)) : value;
             return value;
         }
         if (Array.isArray(value)) return value.map(child => clone(child));
         if (!value || typeof value !== 'object') return value;
-        return Object.fromEntries(Object.entries(value).map(([name, child]) => [name, name==='id'&&components.has(value)?ids.get(String(child))??child:clone(child, name)]));
+        const result=Object.fromEntries(Object.entries(value).map(([name, child]) => [name, name==='id'&&components.has(value)?ids.get(String(child))??child:clone(child, name)]));
+        if(templateIdentity&&components.has(value))result.props={...result.props,_templateSourceId:value.props?._templateSourceId??value.id};
+        return result;
     };
     return clone(nodes);
 }

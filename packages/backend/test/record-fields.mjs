@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {renderPage} from '@frontbase/edge-core';
+import {readViewAggregate} from '../dist/compat/view-aggregate.js';
+import {sqliteRunner} from '@frontbase/edge-infra';
+import {recordPaths,recordFieldCatalog,projectRecordFields,sqlRecordReader} from '../dist/compat/record-fields.js';
+const db=sqliteRunner(':memory:');
+try{
+ await db.exec('CREATE TABLE countries(id INTEGER PRIMARY KEY,name TEXT)');
+ await db.exec('CREATE TABLE cities(id INTEGER PRIMARY KEY,country_id INTEGER REFERENCES countries(id),name TEXT)');
+ await db.exec('CREATE TABLE institutions(id INTEGER PRIMARY KEY,city_id INTEGER REFERENCES cities(id),title TEXT,type TEXT,private_note TEXT)');
+ await db.exec("INSERT INTO countries VALUES(1,'USA')");await db.exec("INSERT INTO cities VALUES(1,1,'Boston')");await db.exec("INSERT INTO institutions VALUES(1,1,'Campus','Public','SECRET'),(2,1,'Other','Private','SECRET')");
+ const reader=sqlRecordReader(db,'sqlite'),catalog=await recordFieldCatalog(reader,'institutions');assert.ok(catalog.fields.some(f=>f.path==='cities.name'));
+ const expanded=await recordFieldCatalog(reader,'institutions',[],'cities');assert.ok(expanded.fields.some(field=>field.path==='cities.countries.name'));
+ const records=await projectRecordFields(reader,'institutions',[{id:1,city_id:1}],['cities.name','cities.countries.name']);
+ assert.equal(records[0].cities.name,'Boston');assert.equal(records[0].cities.countries.name,'USA');assert.equal(records[0]['cities.name'],'Boston');assert.ok(!JSON.stringify(records).includes('SECRET'));
+ const nestedMany=await projectRecordFields(reader,'countries',[{id:1}],['cities.institutions.title']);assert.deepEqual(nestedMany[0]['cities.institutions.title'],[['Campus','Other']]);
+ const reverse=await projectRecordFields(reader,'cities',[{id:1}],['institutions.title']);assert.deepEqual(reverse[0].institutions,[{title:'Campus'},{title:'Other'}]);assert.ok(!JSON.stringify(reverse).includes('private_note'));
+ for(const path of ['__proto__.x','cities.constructor.name','cities.name;delete','cities..name'])assert.throws(()=>recordPaths([path]));
+ await assert.rejects(()=>projectRecordFields(reader,'institutions',[{id:1,city_id:1}],['unknown.name']));
+ await db.exec('CREATE TABLE dual(id INTEGER PRIMARY KEY,home INTEGER REFERENCES cities(id),work INTEGER REFERENCES cities(id))');
+ assert.ok((await recordFieldCatalog(sqlRecordReader(db,'sqlite'),'dual')).fields.some(f=>f.path==='cities__home.name'));
+ await assert.rejects(()=>projectRecordFields(sqlRecordReader(db,'sqlite'),'dual',[{id:1,home:1,work:1}],['cities.name']));
+ await db.exec('CREATE TABLE composite_parent(a INTEGER,b INTEGER,PRIMARY KEY(a,b))');await db.exec('CREATE TABLE composite_child(id INTEGER PRIMARY KEY,a INTEGER,b INTEGER,FOREIGN KEY(a,b) REFERENCES composite_parent(a,b))');
+ assert.ok(!(await recordFieldCatalog(sqlRecordReader(db,'sqlite'),'composite_child')).relationships.some(edge=>edge.table==='composite_parent'));
+ const overfetch={...reader,read:async(...args)=>(await reader.read(...args)).map(row=>({...row,private_note:'SECRET'}))};const filtered=await projectRecordFields(overfetch,'cities',[{id:1}],['institutions.title']);assert.ok(!JSON.stringify(filtered).includes('SECRET'));
+ const excessive={...reader,read:async()=>Array.from({length:501},()=>({id:1,name:'Too many'}))};await assert.rejects(()=>projectRecordFields(excessive,'institutions',[{id:1,city_id:1}],['cities.name']),/related_record_limit/);
+ const grouped=await readViewAggregate(db,'sqlite','institutions',{category:'type',aggregation:'count'},[],[{field:'id',operator:'eq',value:1}]);assert.deepEqual(grouped,[{category:'Public',value:1}]);
+ await assert.rejects(()=>readViewAggregate(db,'sqlite','institutions',{category:'type; DROP TABLE institutions',aggregation:'count'},[],[]));
+ const cardHtml=await renderPage({root:{},content:[{id:'single',type:'Card',props:{binding:{componentId:'single',dataSourceId:'test',tableName:'institutions',pagination:{enabled:false,pageSize:1,page:0}},initialRows:[{title:'First selected record'},{title:'Do not render another record'}]},children:[{id:'card-title',type:'Heading',props:{text:'{{ record.title }}',level:'3'}}]}]},{page:{},user:null,visitor:{},system:{},app:{},url:{}});
+ assert.match(cardHtml,/>First selected record</);assert.ok(!cardHtml.includes('>Do not render another record<'));assert.ok(cardHtml.includes('data-react-component="Repeater"'));
+ console.log('PASS record-field catalog, forward/reverse/multilevel projection, selected-field-only output, ambiguity and injection refusals');
+}finally{await db.close?.();}

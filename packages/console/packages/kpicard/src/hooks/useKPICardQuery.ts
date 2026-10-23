@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ComponentDataBinding } from '../types';
-import { isBuilderCanvas } from '@frontbase/types';
+import {fetchLiveList,resolveBindingHiddenFilters,readBrowserFilterVariable,isBuilderCanvas} from '@frontbase/types';
 
 interface UseKPICardQueryProps {
     mode: 'builder' | 'edge';
@@ -131,9 +131,10 @@ export function useKPICardQuery({
     enabled = true,
 }: UseKPICardQueryProps) {
     return useQuery({
-        queryKey: ['kpicard-data-v2', mode, binding.dataSourceId, binding.tableName, binding.sorting, binding.filtering],
+        queryKey: ['kpicard-data-v2', mode, binding.dataSourceId, binding.sourceSchema,binding.viewId,binding.columnOrder,binding.tableName, binding.sorting, binding.filtering],
         queryFn: async () => {
             if (!binding.tableName) return [];
+            if(binding.viewId||binding.columnOrder?.some(column=>column.includes('.')))return (await fetchLiveList(binding,{page:0,pageSize:1,sortColumn:binding.sorting?.column,sortDirection:binding.sorting?.direction,hidden:resolveBindingHiddenFilters(binding,readBrowserFilterVariable)},mode)).rows;
             if (mode === 'builder') {
                 return fetchFromBuilder(binding);
             } else {
