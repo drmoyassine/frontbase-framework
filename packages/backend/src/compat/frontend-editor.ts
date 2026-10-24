@@ -50,7 +50,7 @@ span.addEventListener('paste',event=>{if(active?.span!==span)return;event.preven
 }}}
 // Stop navigation and configured click workflows before their document/element handlers.
 window.addEventListener('click',event=>{const span=event.target.closest?.('[data-fb-copy]');if(span&&(editActions.has(span)||recordActions.has(span))){if(busy){event.preventDefault();event.stopImmediatePropagation();return;}if(recordActions.has(span))recordActions.get(span).edit(event);else editActions.get(span)(event);}},true);
-const observer=new MutationObserver(()=>{if(typeof document!=='undefined'&&document?.body){bindRecords();update();void refreshRecords();}});observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['data-fb-record-fields']});bind();update();void refreshRecords();window.addEventListener('beforeunload',event=>{if(pending.size||active){event.preventDefault();event.returnValue='';}});
+const observer=new MutationObserver(()=>{if(typeof document!=='undefined'&&document?.body){bind();update();void refreshRecords();}});observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['data-fb-record-fields']});bind();update();void refreshRecords();window.addEventListener('beforeunload',event=>{if(pending.size||active){event.preventDefault();event.returnValue='';}});
 })().catch(()=>{});`;
 
 /** Host opt-in, public page HTML only. APIs/admin, preview frames and non-HTML stay untouched. */
