@@ -1,6 +1,6 @@
 # Program card refinement and frontend save provenance
 
-Status: implementation committed, pushed and deployed; native save-routing/layout acceptance passed on the initial candidate. Final live recheck is blocked by the shared source Supabase database returning statement timeouts. This task is not signed off as currently healthy.
+Status: implementation committed, pushed and deployed; native save-routing/layout acceptance passed. The shared-source outage was subsequently recovered through the reviewed same-price Micro resize/restart; final public English/Arabic and edit/cancel checks pass on c7a4dc3. See [recovery receipt](supabase-timeout-comparison-20261024.md).
 
 ## Authorized scope
 
@@ -35,7 +35,7 @@ Workspace check/build exit0;18 focused card/fallback tests pass. SQL/HTTP source
 - Desktop English/RTL Arabic cover, separate badges, logo/name arrangement, locale-prefixed detail links and no horizontal overflow passed. A native375px builder viewport shows the card, cover highlights and metadata fitting one column. Screenshots are retained as `record-card-final-en.png`, `record-card-final-ar.png` and `record-card-mobile-builder.png` in the private task evidence directory.
 - Last healthy anonymous smoke run: health, both homepages and all four Explore variants returned200; private inventory returned401 and editing capability was false. Anonymous keyed UNLV list reads returned exact source versus translated intake values. These are dated acceptance evidence, not a claim that the upstream dependency remains healthy.
 
-## Final dependency blocker
+## Historical dependency blocker (resolved by recovery receipt)
 
 After the final deployments, fresh source-backed reads began failing. The CMS state health endpoint remains200 and the deployed editor bytes match the candidate, but a fresh homepage returned503 and authenticated inventory returned409 after source-read failures. Sanitized CMS logs identify single-table reads and localized live queries. Supabase project logs show SQLSTATE57014 (`canceling statement due to statement timeout`), including the source RPC and an independent application's native `url_extractions` requests. The provider's performance-advisor call returns `Query read timeout`; a basic management SELECT also stalled. A read-only activity snapshot showed28 connections,3 active and0 waiting on locks, so there is no identified blocking transaction to cancel. The management status `ACTIVE_HEALTHY` alone does not establish query readiness.
 
