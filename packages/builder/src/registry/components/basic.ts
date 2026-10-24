@@ -202,6 +202,9 @@ export async function registerBasicComponents(): Promise<void> {
             description: 'Image with responsive sizing',
             props: [
                 { name: 'src', label: 'Image URL', type: 'url', required: true, group: 'Source' },
+                { name: 'fallbackSrc', label: 'Fallback image', type: 'url', group: 'Source', description: 'Used when the primary image is empty. Bind a related field with @.' },
+                { name: 'fallbackOnError', label: 'Try fallback if image fails to load', type: 'boolean', default: false, group: 'Source' },
+                { name: 'hideWhenUnavailable', label: 'Hide image when neither is available', type: 'boolean', default: false, group: 'Source' },
                 { name: 'alt', label: 'Alt Text', type: 'text', default: '', group: 'Source' },
                 { name: 'width', label: 'Width', type: 'text', placeholder: '100%', group: 'Size' },
                 { name: 'height', label: 'Height', type: 'text', placeholder: 'auto', group: 'Size' },
