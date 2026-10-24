@@ -1,8 +1,10 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-24 program cards and binding fallbacks — IN PROGRESS
+## 2026-10-24 program cards and binding fallbacks — COMPLETE
 
 Owner approved clean-cover program cards with details below, empty-value and failed-image fallback to the related institution image. Scope: consistent safe record references, shared fallback resolution, existing picker/mapping and RPC relationship paths, ordinary editable card elements, English/Arabic verification. Own isolated visual-binding-final checkout. Preserve Institutions and existing publication guards. No datasource translation expansion or broader release claim.
+
+Runtime785ebfa is deployed. Programs use normal editable children and related cover fallback; site generation24 and Arabic Explore generation2 are live. Twelve actual institution fallback covers load in each language; English/Arabic links, RTL, responsive builder layout and list pagination pass. Corrected copied-override translation propagation and seed-dependent list-control identities; live Programs search/pagination are Arabic. Workspace check/build,59 focused authoring/binding tests across the implementation, retained parity/layout/direction gates,16 binding mutation faults and19 translation mutation faults pass. Source-record translations remain explicit fallback; no GA/package/production-cutover claim. [Delivery receipt](../plans/program-card-fallbacks-20261024.md).
 
 ## 2026-10-24 card publication repair — COMPLETE
 
