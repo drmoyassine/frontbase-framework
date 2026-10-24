@@ -20,7 +20,7 @@ Owner-authorized session: start 2026-10-23 22:57:50 UTC; stop no later than 2026
 
 After core acceptance, consider a small “Wrap in Row/Column” action for the selected element. This is an independently proposed shortcut, not a prerequisite for the repair, and must not be merged or deployed until requested. No new freeform positioning engine, multi-user collaboration, vector editor or broad Figma-parity claim.
 
-Status: core repairs deployed and verified; optional shortcut remains a separate-branch proposal. No release or owner-content publication claim.
+Status: core repairs and the subsequently owner-approved wrapping shortcuts are deployed and verified. No release or owner-content publication claim.
 
 ## First native acceptance and follow-up
 
@@ -60,3 +60,9 @@ Claimed on `codex/visual-layout-shortcuts-20261024`: only add Wrap in Row / Wrap
 ## Owner-approved merge and deployment
 
 Owner requested merge and deployment of the optional shortcuts. Integration in progress; retain historical isolated-branch receipts above. Qualification and staging verification pending.
+
+## Approved shortcut deployment acceptance
+
+Owner requested merge and deploy. Regular merge313d387 includes20eef2f; qualified artifact fc6ae02 is pushed and deployed. Six focused tests, recursive check/build and client prohibited-symbol verification pass. Archive SHA25636859D97D2EAEF3CE098A758E1CA58B6B90341C5DCAC51C1905726BD615913D6. EasyPanel succeeded2026-10-24 03:10:37UTC, image sha256:8d1a9632ab79043b5f99080aaddffb1d5cfc34946b925b98dae84d1f34b2f88a.
+
+Native staging verifies Layers Heading action → Wrap in Row and Wrap in Column, selection/expansion, preserved record-bound headings and one-step Undo. Temporary edits discarded by reload; no owner page save/publication. Anonymous English/Arabic home and institution Explore routes all HTTP200. This supersedes the earlier unmerged/undeployed status; the original branch remains available as history.

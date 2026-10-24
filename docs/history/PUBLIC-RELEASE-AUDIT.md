@@ -1,8 +1,8 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-24 owner-approved layout shortcut merge — IN PROGRESS
+## 2026-10-24 owner-approved layout shortcut merge — COMPLETE
 
-Owner requested merging and deploying the reviewed Wrap in Row/Column branch. Merge313d387 preserves both historical receipts; six focused tests pass. Workspace qualification, staging deployment and native wrapper/undo verification are in progress. No owner page publication or public release is included.
+Owner requested merging and deploying the reviewed Wrap in Row/Column branch. Merge313d387 preserves both historical receipts; six focused tests pass. Workspace check/build and client verification pass. Artifact fc6ae02 is deployed as image8d1a9632; native Row/Column wrapping, binding preservation and one-step Undo pass. Temporary edits were discarded; four public English/Arabic routes return200. See the repair receipt for deployment evidence. No owner page publication or public release is included.
 
 2026-10-24 visual layout repair — COMPLETE WITH OPTIONAL BRANCH ISOLATED. Owner authorizes a maximum three-hour session (start 22:57:50 UTC, deadline 01:57:50 UTC) for visible nested canvas drop zones, canonical two-way text editing, Row/Icon/title composition and Layers reparenting, with existing history/version/data protections. Additional independently proposed features must remain on a separate unmerged branch. This session owns only the isolated visual-binding-final checkout; preserve other worktrees. Core source 3805d6e + 0964163 + d68dcca, final deployed artifact 629e938, passed focused/store/renderer and real staging authoring acceptance. See [repair receipt](../plans/visual-layout-repair-20261024.md). Optional Wrap in Row/Column is complete at 20eef2f on codex/visual-layout-shortcuts-20261024, pushed but unmerged and undeployed. Core staging acceptance and documented test gates pass; owner content was not saved/published. Full-console historical type debt and ordinary full-document preview refresh latency remain explicit; no general Figma-parity or public-release claim.
 
