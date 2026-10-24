@@ -5,6 +5,7 @@ import {evaluateCondition,conditionUsesClient,contextReader,resolveValue,valueUs
  */
 
 import { liquid } from './lib/liquid.js';
+import {isSimpleInterpolation,renderSync,bindingAlternatives,resolveBinding,bindingContext} from '../liquid-core/sync.js';
 import type { TemplateContext } from './lib/context.js';
 
 /**
@@ -26,7 +27,7 @@ export async function resolveProps(
     // only; an empty system (e.g. the byte-parity pinned context) is a no-op,
     // so golden snapshots stay deterministic.
     const system = (context as Record<string, any>).system || {};
-    const scope = { ...context, ...system };
+    const scope = bindingContext({ ...context, ...system });
 
     for (const [key, value] of Object.entries(props)) {
         if(key==='actionBindings'&&Array.isArray(value)&&context.record){
@@ -35,7 +36,12 @@ export async function resolveProps(
         if (typeof value === 'string' && (value.includes('{{') || value.includes('{%'))) {
             // Use LiquidJS for template rendering
             try {
-                resolved[key] = await liquid.parseAndRender(value, scope);
+                resolved[key] = isSimpleInterpolation(value)?renderSync(value,scope):await liquid.parseAndRender(value, scope);
+                if(key==='src'&&props.fallbackOnError===true){
+                    const expression=value.match(/^\s*\{\{([^{}]+)\}\}\s*$/)?.[1];
+                    const alternatives=expression?bindingAlternatives(expression):null;
+                    if(alternatives&&alternatives.length>1)resolved._imageFallbackSrc=resolveBinding(alternatives.slice(1).join(' || '),scope);
+                }
             } catch (error) {
                 console.error(`Template error in prop "${key}":`, error);
                 resolved[key] = value; // Fallback to original value

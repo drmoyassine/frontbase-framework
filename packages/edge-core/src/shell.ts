@@ -10,6 +10,7 @@
  */
 import { FALLBACK_CSS } from './ssr/baseStyles.js';
 import {publicThemeScript} from './public-theme.js';
+import {imageFallbackScript} from './image-fallback.js';
 import type { PageEntry } from './manifest.js';
 import { escapeHtml, HYDRATE_VERSION } from './ssr/htmlDocument.js';
 
@@ -66,6 +67,7 @@ ${opts.canonicalUrl ? `<link rel="canonical" href="${escapeHtml(opts.canonicalUr
 ${metadata ? metadata + '\n' : ''}${faviconLinks}<link rel="modulepreload" href="/static/react/hydrate.js?v=${HYDRATE_VERSION}">
 <style>${page.cssBundle || FALLBACK_CSS}</style>
 ${bodyHtml.includes('data-fb-theme-picker')?`<script>${publicThemeScript()}</script>`:''}
+${bodyHtml.includes('data-fb-image-fallback')?`<script>${imageFallbackScript()}</script>`:''}
 </head>
 <body>
 <div id="root">${bodyHtml}</div>

@@ -160,7 +160,10 @@ function renderParagraph(id: string, props: Record<string, unknown>): string {
 }
 
 function renderImage(id: string, props: Record<string, unknown>): string {
-    const src = props.src as string || props.url as string || '';
+    const safeImage=(value:unknown)=>typeof value==='string'&&/^(https?:\/\/|\/(?!\/))/.test(value.trim())?value.trim():'';
+    const fallback=safeImage(props.fallbackSrc)||safeImage(props._imageFallbackSrc);
+    const primary=typeof props.src==='string'?props.src.trim():'';
+    const src = primary || props.url as string || fallback;
     const alt = escapeHtml(String(props.alt || ''));
     const width = props.width as string || 'auto';
     const height = props.height as string || 'auto';
@@ -171,6 +174,7 @@ function renderImage(id: string, props: Record<string, unknown>): string {
     const attrs = getCommonAttributes(id, 'fb-image', props, style);
 
     if (!src) {
+        if(props.hideWhenUnavailable===true)return '';
         const placeholderBackground = props.placeholderBackground as string || '#e5e5e5';
         const placeholderColor = props.placeholderColor as string || '#999';
         return `<div ${attrs} class="fb-image-placeholder" style="${style};background:${placeholderBackground};display:flex;align-items:center;justify-content:center;">
@@ -178,7 +182,8 @@ function renderImage(id: string, props: Record<string, unknown>): string {
         </div>`;
     }
 
-    return `<img ${attrs} src="${escapeHtml(src)}" alt="${alt}" loading="lazy" />`;
+    const recovery=props.fallbackOnError===true?` data-fb-image-fallback="${escapeHtml(fallback)}" data-fb-image-hide="${props.hideWhenUnavailable===true}"`:'';
+    return `<img ${attrs}${recovery} src="${escapeHtml(src)}" alt="${alt}" loading="lazy" />`;
 }
 
 function renderBadge(id: string, props: Record<string, unknown>): string {

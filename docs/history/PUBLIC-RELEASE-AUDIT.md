@@ -1,5 +1,9 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-24 program cards and binding fallbacks — IN PROGRESS
+
+Owner approved clean-cover program cards with details below, empty-value and failed-image fallback to the related institution image. Scope: consistent safe record references, shared fallback resolution, existing picker/mapping and RPC relationship paths, ordinary editable card elements, English/Arabic verification. Own isolated visual-binding-final checkout. Preserve Institutions and existing publication guards. No datasource translation expansion or broader release claim.
+
 ## 2026-10-24 card publication repair — COMPLETE
 
 Owner authorizes tracing/fixing site preparation, preserving reviewed routes and translation safety, publishing the saved institution design and verifying actual English/Arabic layouts. Own only the isolated integration checkout; keep source data and provider credentials intact. COMPLETE at runtime58a19aa: reviewed site generation22 retains all1,282 paths/counts; Arabic Explore generation1 is published with62 reviewed UI units and explicit record-source fallback. English/Arabic RTL, flags, pagination, Programs preservation,375px canvas and anonymous HTTP/auth checks pass. Workspace builds/checks,26 focused UI tests, scoped fault and retained publication/security/RPC gates pass. [Acceptance receipt](../plans/record-card-starters-20261024.md).

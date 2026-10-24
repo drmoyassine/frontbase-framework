@@ -8,6 +8,7 @@
 import { TrackingConfig } from './lib/tracking.js';
 import { FALLBACK_CSS } from './baseStyles.js';
 import {publicThemeScript} from '../public-theme.js';
+import {imageFallbackScript} from '../image-fallback.js';
 import { escapeHtml } from './components/lib/utils.js';
 
 // Re-export the canonical escapeHtml so existing callers (e.g. shell.ts) that
@@ -124,6 +125,7 @@ export function generateHtmlDocument(
     </style>
     ${customHead}
     ${bodyHtml.includes('data-fb-theme-picker')?`<script>${publicThemeScript()}</script>`:''}
+    ${bodyHtml.includes('data-fb-image-fallback')?`<script>${imageFallbackScript()}</script>`:''}
 </head>
 <body>
     ${gtmNoscript}

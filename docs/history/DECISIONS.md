@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-24 shared field fallback and editable program cards
+
+Owner approves a clean program cover with metadata below and related institution image fallback for empty values and image load errors. Use the current-item `record` scope, preserve legacy bracket references, and generate readable dot references for ordinary fields/relationships. Resolve safe own flat or nested keys consistently without executable expressions. Bounded `||` chains use first nonempty semantics (preserving zero/false), while existing Liquid syntax remains supported through its engine. Source/fallback field choices are normal Image properties and ordinary authored card children; reuse relationship discovery and RPC projection, with no datasource rewrites. Source-record translation completeness remains outside this card-layout change.
+
 ## 2026-10-24 preserve RPC capabilities and prepare saved-template derivatives
 
 Owner directs reuse/consolidation of the existing HTTP RPC family for Supabase and standalone PostgREST. Endpoint, authentication, selected schema and explicit capability support determine compatibility. Keep specialized UI RPCs, validation, filters, pagination and relationship projection; native table reads remain an explicit compatibility path. The canonical setup is `packages/backend/src/compat/supabase-setup-sql.ts`. Its thin `execute_query` wrapper is not the entire optimized UI RPC family, and no deployed performance claim is inferred.

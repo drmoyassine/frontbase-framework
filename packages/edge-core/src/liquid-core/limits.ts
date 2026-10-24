@@ -1,4 +1,5 @@
 import type { LiquidEngine } from './types.js';
+import {isSimpleInterpolation,renderSync,bindingContext} from './sync.js';
 
 /** Tunable DoS limits for rendering user-authored templates. */
 export interface LiquidLimits {
@@ -125,8 +126,9 @@ export async function renderSafe(
     }
 
     try {
+        if(isSimpleInterpolation(template)&&!(engine as LiquidEngine&{options?:{strictVariables?:boolean}}).options?.strictVariables)return {ok:true,output:renderSync(template,context)};
         const tpl = parseCached(engine, template, options.cache !== false);
-        const output = await engine.render(tpl, context, {
+        const output = await engine.render(tpl, bindingContext(context), {
             templateLimit: maxIterations,
             renderLimit: timeoutMs,
         });

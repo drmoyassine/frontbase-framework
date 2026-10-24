@@ -4,7 +4,7 @@ import {renderBlock} from '@frontbase/edge-core/browser/render-block';
 import {templateRecordFields} from '@frontbase/edge-core/directory/configuration';
 const mapping={title:'title',image:'cover',logo:'logo',city:'institutions.city_name',country:'institutions.country_name',flag:'institutions.country_flag',href:'originalPath'};
 const details=[{field:'institutions.type',label:''},{field:'institutions.year_founded',label:''}];
-it.each(['image','compact','text'] as const)('%s generates only normal editable elements with unique identities and selected fields',layout=>{
+it.each(['image','profile','compact','text'] as const)('%s generates only normal editable elements with unique identities and selected fields',layout=>{
  const card=createRecordCard(layout,mapping,details);const ids=new Set<string>();const walk=(n:any)=>{expect(['Card','Column','Row','Image','Text','Heading','Link']).toContain(n.type);expect(ids.has(n.id)).toBe(false);ids.add(n.id);n.children?.forEach(walk);};walk(card);
  expect(templateRecordFields([card])).toContain('institutions.type');expect(JSON.stringify(card)).not.toContain('rating');
  expect(JSON.stringify(card)).not.toContain('text-align:left');

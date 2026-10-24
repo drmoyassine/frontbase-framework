@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
+    "./browser/images": {"types":"./dist/image-fallback.d.ts","import":"./dist/image-fallback.js"},
     "./deployment": {"types":"./dist/deployment.d.ts","import":"./dist/deployment.js"},
     "./localization": {"types":"./dist/localization/index.d.ts","import":"./dist/localization/index.js"},
     "./localization/batches": {"types":"./dist/localization/batches.d.ts","import":"./dist/localization/batches.js"},

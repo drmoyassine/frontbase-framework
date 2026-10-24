@@ -22,9 +22,11 @@ import './globals.css';
 import {startPublicTheme} from '@frontbase/edge-core/browser/theme';
 startPublicTheme();
 import { startHeroSlides } from '@frontbase/edge-core/browser/template';
+import {startImageFallbacks} from '@frontbase/edge-core/browser/images';
 
 // These SSR-native controls also run when the page has no React widgets.
 startHeroSlides();
+startImageFallbacks();
 
 // Create QueryClient with sensible defaults for SSR hydration
 const queryClient = new QueryClient({

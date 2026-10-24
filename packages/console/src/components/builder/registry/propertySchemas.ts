@@ -289,7 +289,10 @@ registerPropertySchema('Switch', {
 
 registerPropertySchema('Image', {
     general: [
-        { type: 'input', name: 'src', label: 'Image URL' },
+        { type: 'text', name: 'src', label: 'Image URL' },
+        { type: 'text', name: 'fallbackSrc', label: 'Fallback image', description: 'Choose a related field with @, or enter an image URL. Used when the primary value is empty.' },
+        { type: 'boolean', name: 'fallbackOnError', label: 'Try fallback if image fails to load' },
+        { type: 'boolean', name: 'hideWhenUnavailable', label: 'Hide image when neither is available' },
         { type: 'input', name: 'alt', label: 'Alt Text' },
     ],
 });

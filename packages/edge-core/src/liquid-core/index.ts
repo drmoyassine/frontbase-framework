@@ -23,5 +23,5 @@ export {
     type RenderSafeOptions,
     type RenderResult,
 } from './limits.js';
-export { renderSync, isSimpleInterpolation, resolvePath } from './sync.js';
+export { renderSync, isSimpleInterpolation, resolvePath, resolveBinding, bindingAlternatives } from './sync.js';
 export type { LiquidEngine } from './types.js';

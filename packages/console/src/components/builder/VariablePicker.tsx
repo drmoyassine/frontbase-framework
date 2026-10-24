@@ -119,10 +119,10 @@ export function VariablePicker({
     const recordVariables = useMemo<Variable[]>(() => {
         if (recordColumns && recordColumns.length > 0) {
             return recordColumns.map(col => ({
-                path: `record.${col}`,
+                path: /^[A-Za-z_$][\w$-]*(\.[A-Za-z_$][\w$-]*)*$/.test(col)?`record.${col}`:`record[${JSON.stringify(col)}]`,
                 type: 'any' as const,
                 source: 'record' as const,
-                description: col,
+                description: col.replaceAll('.', ' → '),
             }));
         }
         return groupedVariables['record'] || [];

@@ -1,5 +1,6 @@
 import React from 'react';
 import {RecordCardStarter} from './RecordCardStarter';
+import {recordExpression} from '@/lib/builder/recordCardTemplates';
 import {canonicalTextProperty,textAliasReset} from '@/lib/builder/textProperty';
 import {useBuilderStore} from '@/stores/builder';
 import {findComponent} from '@/lib/tree-utils';
@@ -14,7 +15,7 @@ export function RepeaterFieldMappings({componentId,columns}:{componentId:string;
     const effective=applyBlockVersion(node,selections[componentId]),version=node.versions?.find(version=>version.id===selections[componentId]);
     const inherited=!!version&&!version.overrides.children;
     const targets:{id:string;type:string;field:string;value:string}[]=[];
-    const fields:Record<string,string[]>={Text:['text'],Paragraph:['text'],Heading:['text'],Image:['src','alt'],Link:['text','href'],Button:['text'],Badge:['text'],Icon:['icon'],Card:['title','description']};
+    const fields:Record<string,string[]>={Text:['text'],Paragraph:['text'],Heading:['text'],Image:['src','fallbackSrc','alt'],Link:['text','href'],Button:['text'],Badge:['text'],Icon:['icon'],Card:['title','description']};
     const walk=(nodes:ComponentData[])=>{for(const child of nodes){if(child.props?.binding?.dataSourceId)continue;for(const name of fields[child.type]??[]){const field=name==='text'?canonicalTextProperty(child.type,child.props):name;targets.push({id:child.id,type:child.type,field,value:child.props[field]??''});}walk(child.children??[]);}};
     walk(effective.children??[]);
     const tree=(nodes:ComponentData[]):React.ReactNode=><ul className="space-y-1 pl-3">{nodes.map(child=><li key={child.id}><button type="button" className="text-sm underline" onClick={()=>select(child.id)}>{child.type}{child.props?.title?' · '+child.props.title:''}</button>{child.children?.length?tree(child.children):null}</li>)}</ul>;
@@ -24,6 +25,6 @@ export function RepeaterFieldMappings({componentId,columns}:{componentId:string;
         let mapped=match?.[1]??'';
         const bracket=expression.match(/^\{\{\s*record\[("(?:[^"\\]|\\.)*")\]\s*\}\}$/);
         if(bracket)try{mapped=JSON.parse(bracket[1]);}catch{/* Custom expression. */}
-        return <label key={`${target.id}:${target.field}`} className="block text-xs">{target.type} · {target.field}<select aria-label={`${target.type} ${target.field} mapping`} className="mt-1 w-full rounded border bg-background p-2" value={mapped} onChange={event=>update(target.id,{...textAliasReset(target.type,target.field),[target.field]:event.target.value?`{{ record[${JSON.stringify(event.target.value)}] }}`:''})}><option value="">Custom value / no mapping</option>{columns.map(column=><option key={column.name}>{column.name}</option>)}</select></label>;
+        return <label key={`${target.id}:${target.field}`} className="block text-xs">{target.type} · {target.field}<select aria-label={`${target.type} ${target.field} mapping`} className="mt-1 w-full rounded border bg-background p-2" value={mapped} onChange={event=>update(target.id,{...textAliasReset(target.type,target.field),[target.field]:event.target.value?recordExpression(event.target.value):''})}><option value="">Custom value / no mapping</option>{columns.map(column=><option key={column.name}>{column.name}</option>)}</select></label>;
     })}</fieldset><p className="text-xs text-muted-foreground">Use @ on each element for more advanced values and expressions.</p></details></section>;
 }

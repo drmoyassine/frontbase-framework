@@ -16,6 +16,7 @@ import {
     filtersAllowedForContext,
 } from '@/lib/liquid/syntaxContext';
 import { useRepeaterRecordColumns } from './hooks/useRepeaterRecordColumns';
+import {isSimpleInterpolation} from '@frontbase/liquid-core';
 
 interface VariableInputProps {
     value: string;
@@ -91,7 +92,7 @@ export function VariableInput({
         // the syntax context allows filters (never in an 'expression' field).
         if (showFiltersOnPipe && filtersAllowedForContext(syntaxContext)) {
             const pipeIndex = textBeforeCursor.lastIndexOf('|');
-            if (pipeIndex !== -1 && pipeIndex > lastBoundary) {
+            if (pipeIndex !== -1 && pipeIndex > lastBoundary && textBeforeCursor[pipeIndex-1]!=='|') {
                 // Check if we're inside {{ }} - filters only make sense there
                 const openBracket = textBeforeCursor.lastIndexOf('{{');
                 const closeBracket = textBeforeCursor.lastIndexOf('}}');
@@ -240,6 +241,14 @@ export function VariableInput({
                 )}
             />
             {/* Variable hint */}
+            {syntaxContext==='output'&&recordColumns.length>0&&/^\s*\{\{[^{}]+\}\}\s*$/.test(value)&&isSimpleInterpolation(value)&&(
+                <select aria-label="Add fallback field" value="" className="mt-1 w-full rounded border bg-background p-1 text-xs" onChange={event=>{
+                    if(!event.target.value)return;
+                    const field=event.target.value;
+                    const reference=/^[A-Za-z_$][\w$-]*(\.[A-Za-z_$][\w$-]*)*$/.test(field)?`record.${field}`:`record[${JSON.stringify(field)}]`;
+                    onChange(value.replace(/\s*\}\}\s*$/,` || ${reference} }}`));
+                }}><option value="">Add fallback field…</option>{recordColumns.map(field=><option key={field} value={field}>{field.replaceAll('.', ' → ')}</option>)}</select>
+            )}
             {!showPicker && !value && !placeholder && (
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
                     Type @ for variables
