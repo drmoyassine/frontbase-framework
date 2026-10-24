@@ -1,5 +1,11 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-24 shared Supabase timeout investigation — LOAD REPAIR DEPLOYED; SOURCE OPEN
+
+Owner authorizes investigation and repair of current source timeouts. Own isolated visual-binding-final checkout only. Check official provider status, distinguish control-plane from data-plane failures, inspect bounded reads/logs and verify English/Arabic live data. Preserve shared database records, tenant/SSRF/auth guards and live-data semantics; no blind timeout increase, paid resize, restart or unrelated job cancellation.
+
+Controlled real-controller comparison found one duplicate initial owner inventory, now removed in committed/pushed and byte-verified staging source c7a4dc3. Anonymous inventory traffic remains zero; unrelated DOM changes and failed reads cause no retry storm. Workspace check/build and frontend source/HTTP/CAS, bootstrap-race,11 editing groups and English/Arabic/French lifecycle suites pass. Shared source still reports57014 and PGRST003; the program ID lookup uses its existing index. Provider Management API incident and heavy pre-existing scraper traffic are evidence, not established causation. Correct-account dashboard metrics/sign-in remain pending. [Comparison and next causal check](../plans/supabase-timeout-comparison-20261024.md).
+
 ## 2026-10-24 provenance-based frontend saves and program card refinement — DEPLOYED; FINAL LIVE RECHECK BLOCKED
 
 Owner authorizes record-based frontend edits to write source records in their connected datasource, translated record edits to the configured translation datasource, and UI copy edits to the active state database in the selected language. Preserve staged page saves/cancellation, typed fields, stale-write refusal, tenant ownership and existing adapters. Refine Programs cards into a cover-overlay for tuition/duration/individual intake badges and a maximum-three-item details row; reconcile recoverable WordPress cover evidence without inventing assets or replacing populated fields. Own only isolated visual-binding-final checkout. Commit/push/deploy and verify actual English/Arabic routing. No public release or other-site migration.
