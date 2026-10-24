@@ -4,7 +4,7 @@ Reconciled 2026-10-24 against committed source and dated acceptance receipts. Th
 
 ## Delivered and accepted
 
-The latest accepted staging source includes the visual-binding delivery, the four canvas/Layers repairs and the owner-approved layout shortcuts. Regular merge `313d387` integrated `20eef2f`; deployed artifact `fc6ae02`, receipt checkpoint `bbdddca`, on `codex/integrated-finalization-20261022`. Staging image `sha256:8d1a9632ab79043b5f99080aaddffb1d5cfc34946b925b98dae84d1f34b2f88a` succeeded at 2026-10-24 03:10:37 UTC. [Latest authoring receipt](visual-layout-repair-20261024.md), [original binding receipt](../reports/visual-data-binding-20261024.json), [binding guide](../guides/visual-data-binding.md).
+The earlier accepted staging source includes the visual-binding delivery, the four canvas/Layers repairs and the owner-approved layout shortcuts. Regular merge `313d387` integrated `20eef2f`; deployed artifact `fc6ae02`, receipt checkpoint `bbdddca`, on `codex/integrated-finalization-20261022`. Staging image `sha256:8d1a9632ab79043b5f99080aaddffb1d5cfc34946b925b98dae84d1f34b2f88a` succeeded at 2026-10-24 03:10:37 UTC. [Latest authoring receipt](visual-layout-repair-20261024.md), [original binding receipt](../reports/visual-data-binding-20261024.json), [binding guide](../guides/visual-data-binding.md).
 
 - Visible nested drop boundaries and container targets, including repeated instances; canonical two-way canvas/property text editing with live drafts, Escape and empty-text handling.
 - Row/Column spacing/alignment controls reach the shared renderer; true desktop/tablet/mobile preview widths, Layers nesting/outdenting and guarded movement with undo/redo are verified.
@@ -21,9 +21,9 @@ Retained engineering acceptance also includes frontend multilingual text editing
 
 The staging PostgREST hold is closed. Security reporting is enabled, and SECURITY.md, CONTRIBUTING.md and CHANGELOG.md exist. Their former absence, the old behavior-ledger mismatch and the already-adopted Neon repair are not current implementation blockers.
 
-## Current scoped delivery delta
+## Scoped card delivery acceptance
 
-The [record-card starters receipt](record-card-starters-20261024.md) records deployed reusable Image/Compact/Text authoring controls and a saved institution design. Its live content activation is not accepted: existing shared-site preparation fails; the old healthy public card remains active. Resolve preparation diagnostics, preserve the full active route inventory and complete actual Arabic/English visual checks before closing that feature. This does not reopen CF-22 or require bulk record translation.
+The [record-card starters receipt](record-card-starters-20261024.md) closes reusable Image/Compact/Text starters, institution-card publication and actual English/Arabic RTL acceptance. Runtime58a19aa preserves the HTTP RPC layer and uses the existing reviewed layout derivative store. Site generation22 preserves all1,282 routes/counts; Arabic Explore generation1 uses62 reviewed interface units and explicit source fallback for datasource text. Both language layouts, flags, pagination and Programs preservation pass. No scoped card activation delta remains; bulk record translation and the release gates below stay separate.
 
 ## Actual remaining release gates, in execution order
 

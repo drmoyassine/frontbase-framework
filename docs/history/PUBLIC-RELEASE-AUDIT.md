@@ -1,12 +1,12 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-24 card publication repair — CLAIMED
+## 2026-10-24 card publication repair — COMPLETE
 
-Owner authorizes tracing/fixing site preparation, preserving reviewed routes and translation safety, publishing the saved institution design and verifying actual English/Arabic layouts. Own only the isolated integration checkout; keep source data and provider credentials intact.
+Owner authorizes tracing/fixing site preparation, preserving reviewed routes and translation safety, publishing the saved institution design and verifying actual English/Arabic layouts. Own only the isolated integration checkout; keep source data and provider credentials intact. COMPLETE at runtime58a19aa: reviewed site generation22 retains all1,282 paths/counts; Arabic Explore generation1 is published with62 reviewed UI units and explicit record-source fallback. English/Arabic RTL, flags, pagination, Programs preservation,375px canvas and anonymous HTTP/auth checks pass. Workspace builds/checks,26 focused UI tests, scoped fault and retained publication/security/RPC gates pass. [Acceptance receipt](../plans/record-card-starters-20261024.md).
 
-## 2026-10-24 editable record card starters — CODE DEPLOYED; CONTENT ACTIVATION OPEN
+## 2026-10-24 editable record card starters — COMPLETE
 
-Owner requests reusable visually editable card starting points and an institution card with logo, location, type and selected metadata, single-language without ratings. Own isolated integration checkout. Reuse ordinary child components, current bindings/conditions/version guards; no new renderer, automatic public-field grants or unrelated release scope. Verify English/Arabic and missing data; preserve Programs alternative and unrelated content. Source8f03ebb/artifact69c0a62 is deployed and native controls verified. The institution design is saved as a draft; shared-site preparation fails before a candidate is created. Existing live generation21 remains healthy. English/Arabic renderer tests pass; live Arabic visual acceptance and card activation remain open. See [receipt](../plans/record-card-starters-20261024.md).
+Owner requests reusable visually editable card starting points and an institution card with logo, location, type and selected metadata, single-language without ratings. Own isolated integration checkout. Reuse ordinary child components, current bindings/conditions/version guards; no new renderer, automatic public-field grants or unrelated release scope. Verify English/Arabic and missing data; preserve Programs alternative and unrelated content. Initial checkpoint: source8f03ebb/artifact69c0a62 was deployed and native controls verified. The institution design is saved as a draft; shared-site preparation fails before a candidate is created. Existing live generation21 remains healthy. This initial blocker is resolved by the publication repair and final native acceptance recorded above. See [receipt](../plans/record-card-starters-20261024.md).
 
 ## 2026-10-24 post-wrap release-plan reconciliation — COMPLETE
 
