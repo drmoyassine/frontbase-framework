@@ -1,0 +1,74 @@
+{
+  "scope": "Study-in-USA only; read-only original recovery and guarded blank-only canonical image updates",
+  "wordpress_changed": false,
+  "sources": [
+    {
+      "table": "programs",
+      "id": 46189,
+      "wp_id": 3642,
+      "column": "program_image",
+      "previous": ""
+    },
+    {
+      "table": "institutions",
+      "id": 509,
+      "wp_id": 3586,
+      "column": "institution_image",
+      "previous": ""
+    },
+    {
+      "table": "institutions",
+      "id": 508,
+      "wp_id": 2895,
+      "column": "institution_image",
+      "previous": ""
+    }
+  ],
+  "files": [
+    {
+      "name": "Bachelor-of-Science-Entertainment-Engineering-and-Design-1.jpg",
+      "source_sha256": "6ca69cd09b898f0b99fe6587165ec92d1d5a467321dd69ec87a3925890604154",
+      "sanitized_sha256": "8f5a9ecf05daf7d84933c7b092c81eb4a1ebe49b9f02c29385139520459d672c",
+      "dimensions": [
+        1400,
+        788
+      ],
+      "file": "Bachelor-of-Science-Entertainment-Engineering-and-Design-1.png",
+      "url": "https://s3.studygram.me/public-images/wordpress/study-in-usa/recovered-covers-20261024/Bachelor-of-Science-Entertainment-Engineering-and-Design-1.png",
+      "status": 200,
+      "sha256": "8f5a9ecf05daf7d84933c7b092c81eb4a1ebe49b9f02c29385139520459d672c"
+    },
+    {
+      "name": "University-of-Nevada-Las-Vegas-campus.jpg",
+      "source_sha256": "979fa82f20cafa2455a204169eefcfd1d1b4f846b3c46c2ae8227f7fc2ad33b0",
+      "sanitized_sha256": "212bcb24fde73fe4ba354d20c5d6e525b8e718f814bc42ec11a8d36caa9abd51",
+      "dimensions": [
+        1140,
+        641
+      ],
+      "file": "University-of-Nevada-Las-Vegas-campus.png",
+      "url": "https://s3.studygram.me/public-images/wordpress/study-in-usa/recovered-covers-20261024/University-of-Nevada-Las-Vegas-campus.png",
+      "status": 200,
+      "sha256": "212bcb24fde73fe4ba354d20c5d6e525b8e718f814bc42ec11a8d36caa9abd51"
+    },
+    {
+      "name": "Washington-State-University.jpg",
+      "source_sha256": "554a7f93eed9c1a64586f1ffe9acc3eb4b249c1cd242aa7ee6fa0ad5a09d0c11",
+      "sanitized_sha256": "a2b53629f7281da24ee221b7f785edbf483e89565bcb5eded75e144ff6506d45",
+      "dimensions": [
+        1024,
+        576
+      ],
+      "file": "Washington-State-University.png",
+      "url": "https://s3.studygram.me/public-images/wordpress/study-in-usa/recovered-covers-20261024/Washington-State-University.png",
+      "status": 200,
+      "sha256": "a2b53629f7281da24ee221b7f785edbf483e89565bcb5eded75e144ff6506d45"
+    }
+  ],
+  "agricultural_education": {
+    "id": 45937,
+    "program_image_unchanged": true,
+    "fallback_institution_id": 508,
+    "reason": "exact historical program file absent; recovered exact institution cover is used by configured relationship fallback"
+  }
+}

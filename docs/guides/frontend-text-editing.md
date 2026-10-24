@@ -8,9 +8,21 @@ Sign in to Frontbase as an owner or administrator, then open a public page in th
 - A failed/conflicting save retains the pending text. Keep that tab open and inspect a fresh tab before merging/retrying; do not assume a network failure proves no write occurred. Leaving with pending changes asks the browser to warn you.
 - **Close editor** restores ordinary link/button interaction. Clicking highlighted text while editing does not run its configured click action or navigate away.
 
-English, Arabic and other configured active page languages remain independent. Existing published locale pages use the manual translation adapter and configured translation datasource. Save Changes publishes only the selected changes, preserving all other published revision IDs; unrelated translation drafts are not promoted. These manual edits appear in the existing translation review/history.
+Save routing follows the field's origin, in the current page language:
 
-Source-language text and language surfaces without their own locale release use recoverable Frontbase copy revisions in the application's state store. The same resolver projects them into frontend, builder canvas and hydrated list reads. Menu/record identities are shared rather than tied to row positions. Source-text fingerprints prevent an older override from applying after the underlying field changes. This edits displayed copy; it does not update a connected business table, change bindings, rewrite URLs or alter workflow actions.
+| Edited text | Save destination |
+| --- | --- |
+| Source-language record field | Its owned connected datasource record, keyed by its real primary key |
+| Translated record field | The configured translation datasource, using the existing manual revision and publication lifecycle |
+| UI/component/menu copy, including translated UI copy | Recoverable locale-specific revisions in the active Frontbase state database |
+
+Record-backed values use raw field inputs in the bottom bar. A composed fee can expose currency and tuition separately; each intake remains one stored field even when rendered as separate badges. **Done** stages these values, and the shared Save Changes/Cancel Changes controls apply to the whole pending page batch. Related values resolve through admitted, unambiguous to-one relationship metadata. Changing an institution field on a program card edits that related institution; it does not create program-specific display text. Primary keys and unsupported data types are read-only. Numeric values must be raw numbers, without currency labels or duration units.
+
+Source writes use existing datasource runners or the shared Supabase/PostgREST HTTP transport. Each field uses a primary-key and original-value compare-and-set; source changes refuse stale writes. Managed editorial documents keep the existing revision/archive adapter and their separate review/publication requirement. Editing their draft does not bypass approval or replace an approved public snapshot.
+
+Translated record saves preserve all untouched published revisions and never promote unrelated drafts. The source record stays unchanged. UI copy remains in active host state even when a separate translation datasource is selected. Menus and record identities are shared across pages rather than tied to row positions. Source fingerprints prevent old copy revisions from masking changed underlying text. Structural/style/binding edits remain in the builder.
+
+A page batch can span independent databases. It is **not a distributed transaction**: source writes are individually guarded, translated publication uses the existing pointer CAS, and a private operation receipt records progress. If a provider fails after a write, keep the pending tab and inspect a fresh tab before retrying. There is no automatic replay of an uncertain write. Failed translated publication can leave recoverable drafts without exposing them publicly.
 
 Only administrator roles (`owner`, `admin`, `tenant_admin`, `master_admin`, `master_admin_root`) can use the editor. Inventory and writes are tenant-scoped/private/no-store. Anonymous visitors see the saved text without edit controls or the private inventory. Text must remain plain and preserve any composed-string tokens. Rich markup, URLs, generated dates/counts and unresolved variable expressions are outside text editing. Existing page inventory/resource bounds apply; a batch contains at most100 changed fields. The builder remains the place for structural/style/binding changes.
 

@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-24 provenance-based frontend text saves
+
+Owner explicitly requires source-record edits to update their connected records, translated record edits to update the configured translations datasource, and translated/static UI copy to update active state in its selected language. Reuse owned datasource resolution, native PostgREST transport, relationship discovery, manual translation revisions and immutable locale activation; do not invent per-card text overrides for business records. Stage edits locally until the page save. Use typed raw inputs for composed record values, keyed original-value CAS writes and private progress receipts across independent stores; do not claim cross-database atomicity. Existing editorial revision/archive and publication approval remain authoritative. Generic card highlights and split-value badges are ordinary editable components, not a fixed program renderer.
+
 ## 2026-10-24 shared field fallback and editable program cards
 
 Owner approves a clean program cover with metadata below and related institution image fallback for empty values and image load errors. Use the current-item `record` scope, preserve legacy bracket references, and generate readable dot references for ordinary fields/relationships. Resolve safe own flat or nested keys consistently without executable expressions. Bounded `||` chains use first nonempty semantics (preserving zero/false), while existing Liquid syntax remains supported through its engine. Source/fallback field choices are normal Image properties and ordinary authored card children; reuse relationship discovery and RPC projection, with no datasource rewrites. Source-record translation completeness remains outside this card-layout change.
