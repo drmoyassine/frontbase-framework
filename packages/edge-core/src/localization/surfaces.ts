@@ -117,7 +117,8 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
             nested((p.binding as any)?.presentation,[...base,'binding','presentation'],new Set(['searchLabel','searchPlaceholder','loadingText','emptyText','errorText']));
             nested((p.binding as any)?.columnOverrides,[...base,'binding','columnOverrides'],new Set(['displayName','label']));
             nested((p.binding as any)?.frontendFilters,[...base,'binding','frontendFilters'],new Set(['label']));
-            const columns=new Set(['title','summary','coverAlt',...(Array.isArray((p.binding as any)?.columnOrder)?(p.binding as any).columnOrder:[])]);
+            const displayOnly=node.type==='Repeater'&&!!node.children?.length;
+            const columns=new Set<string>(displayOnly?[]:['title','summary','coverAlt',...(Array.isArray((p.binding as any)?.columnOrder)?(p.binding as any).columnOrder:[])]);
             // Only authored display properties admit editable/translatable record fields.
             // Field selection, URLs, conditions, keys and arbitrary row columns are not display copy.
             const find=(children:PageComponent[])=>{for(const child of children){
