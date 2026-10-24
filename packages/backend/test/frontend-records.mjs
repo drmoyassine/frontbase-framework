@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {sqliteRunner} from '@frontbase/edge-infra';
+import {migrateUp} from '../dist/db/migrations.js';
+import {prepareFrontendRecordEdit,recordEditValue} from '../dist/compat/frontend-records.js';
+import {copyFields,copyDisplayLayout} from '../dist/compat/frontend-copy.js';
+import {createCompatApp} from '../dist/compat/app.js';
+import {PagesStore} from '../dist/compat/pages-store.js';
+import {SyncStore} from '../dist/compat/sync-store.js';
+import {createSecretCipher} from '../dist/db/secret-cipher.js';
+import {FRONTEND_EDITOR_SCRIPT} from '../dist/compat/frontend-editor.js';
+import {JSDOM} from 'jsdom';
+const dir=await mkdtemp(join(tmpdir(),'frontbase-records-')),url=pathToFileURL(join(dir,'source.db')).href,db=sqliteRunner(url);
+const host={syncFor:owner=>({getDatasource:async id=>owner==='alpha'&&id==='source'?{id,kind:'sqlite',config:{url}}:null}),accountConfigFor:async()=>null,externalFetch:async()=>{throw Error('No network expected');}};
+const field=(column,text)=>({blockId:'list',path:['props','initialRows','0',column],text,current:text,id:'a'.repeat(64),source:'b'.repeat(64),label:column,record:{connectionId:'source',collection:'programs',key:[{column:'id',value:1}]}});
+try{
+ await migrateUp(db);await db.exec('CREATE TABLE institutions(id INTEGER PRIMARY KEY,name TEXT)');await db.exec('CREATE TABLE programs(id INTEGER PRIMARY KEY,institution_id INTEGER REFERENCES institutions(id),name TEXT,tuition INTEGER,intakes TEXT)');
+ await db.exec("INSERT INTO institutions VALUES(9,'Campus')");await db.exec("INSERT INTO programs VALUES(1,9,'Program',27021,'Jan,Aug'),(2,9,'Other',27021,'Sep')");
+ const prepared=await prepareFrontendRecordEdit(host,db,'alpha',field('tuition','27021'),'28000');assert.equal((await db.query('SELECT tuition FROM programs WHERE id=1'))[0].tuition,27021,'preparation never writes');await prepared.commit();assert.equal((await db.query('SELECT tuition FROM programs WHERE id=1'))[0].tuition,28000);assert.equal((await db.query('SELECT tuition FROM programs WHERE id=2'))[0].tuition,27021,'key predicate preserves other records');
+ const related=await prepareFrontendRecordEdit(host,db,'alpha',field('institutions.name','Campus'),'New campus');await related.commit();assert.equal((await db.query('SELECT name FROM institutions WHERE id=9'))[0].name,'New campus');assert.equal((await db.query('SELECT name FROM programs WHERE id=1'))[0].name,'Program');
+ await assert.rejects(()=>prepareFrontendRecordEdit(host,db,'alpha',field('name','Old page'),'No'),/record_changed/);
+ const stale=await prepareFrontendRecordEdit(host,db,'alpha',field('name','Program'),'Edited');await db.exec("UPDATE programs SET name='Upstream' WHERE id=1");await assert.rejects(()=>stale.commit(),/not_confirmed/);assert.equal((await db.query('SELECT name FROM programs WHERE id=1'))[0].name,'Upstream');
+ for(const text of ['USD 27021','4 Years','Infinity','NaN','1;DELETE','2.3'])await assert.rejects(()=>prepareFrontendRecordEdit(host,db,'alpha',field('tuition','28000'),text));
+ await assert.rejects(()=>prepareFrontendRecordEdit(host,db,'beta',field('name','Upstream'),'No'),/datasource/);
+ await assert.rejects(()=>prepareFrontendRecordEdit(host,db,'alpha',field('id','1'),'2'),/read_only/);
+ await assert.rejects(()=>prepareFrontendRecordEdit(host,db,'alpha',field('missing','x'),'No'));
+ const layout=copyDisplayLayout({content:[{id:'list',type:'Repeater',props:{binding:{dataSourceId:'source',tableName:'programs'},initialRows:[{id:1,name:'Upstream',tuition:28000,'institutions.name':'New campus',intakes:'Jan,Aug'}]},children:[{id:'title',type:'Heading',props:{text:'{{ record["name"] }}'}},{id:'fee',type:'Text',props:{content:'USD {{ record.tuition }}'}},{id:'school',type:'Text',props:{content:'{{ record.institutions.name }}'}},{id:'intakes',type:'Badge',props:{text:'{{ record.intakes }}',splitValues:true}}]}]});
+ const fields=await copyFields('page',layout,'en',null);for(const value of ['Upstream','28000','New campus','Jan,Aug'])assert.ok(fields.some(field=>field.text===value),value);
+ assert.ok(!fields.some(field=>field.text==='9'));
+ const cipher=await createSecretCipher('source-record-tests-only'),sync=new SyncStore(db,'alpha',cipher);await sync.createDatasource({name:'Source',kind:'sqlite',config:{url}},'source','2026-10-24T00:00:00Z');
+ const pages=new PagesStore(db,'alpha'),page=await pages.create({name:'Record page',slug:'records',layout_data:layout},crypto.randomUUID(),'2026-10-24T00:00:00Z');await pages.publish(page.id,'local','2026-10-24T00:00:00Z');
+ const app=await createCompatApp({makeRunner:()=>db,sessionSecret:'source-record-tests-only',resolvePrincipal:async()=>({tenant:'alpha',user:{id:'admin',role:'owner'}}),secretCipher:cipher});
+ const state=await(await app.request('/api/frontend-edit/inventory/?path=%2Frecords%2F')).json(),feeField=state.fields.find(field=>field.fieldKey==='tuition');assert.ok(feeField);assert.equal(feeField.destination,'record');
+ const saved=await app.request('http://localhost/api/frontend-edit/save/',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/json','X-Frontbase-Editor':'1'},body:JSON.stringify({path:'/records/',token:state.token,operationId:crypto.randomUUID(),entries:[{id:feeField.id,text:'30000'}]})});assert.equal(saved.status,200,await saved.clone().text());assert.equal((await db.query('SELECT tuition FROM programs WHERE id=1'))[0].tuition,30000,'public editor reaches source database');
+ assert.equal((await db.query("SELECT COUNT(*) AS count FROM settings WHERE tenant_slug='alpha' AND key='frontend_copy:active:v1'"))[0].count,0,'record save creates no display override');
+ const apiRows=[{id:1,name:'HTTP source',tuition:500,intakes:['Jan','Aug']},{id:2,name:'Other HTTP',tuition:600}],apiCalls=[];
+ const apiHost={...host,syncFor:owner=>({getDatasource:async id=>owner==='alpha'&&id==='http'?{id,kind:'supabase',config:{api_url:'https://native.example.test',service_role_key:'TEST_ONLY',endpoint_format:'postgrest',schema:'content'}}:null}),externalFetch:async(input,init)=>{
+  const request=new Request(input,init),u=new URL(request.url);apiCalls.push(request);assert.equal(request.headers.get('authorization'),'Bearer TEST_ONLY');assert.ok(!u.pathname.includes('/rpc/'));
+  if(u.pathname==='/')return Response.json({swagger:'2.0',paths:{'/programs':{get:{}}},definitions:{programs:{required:['id'],properties:{id:{type:'integer',description:'Primary Key <pk/>'},name:{type:'string',format:'text'},tuition:{type:'integer',format:'integer'},intakes:{type:'array',format:'text[]'}}}}});
+  assert.equal(u.pathname,'/programs');assert.equal(request.headers.get(request.method==='PATCH'?'content-profile':'accept-profile'),'content');
+  if(request.method==='PATCH'){assert.equal(u.searchParams.get('id'),'eq.1');const change=await request.json();if('tuition' in change){assert.equal(u.searchParams.get('tuition'),'eq.500');assert.deepEqual(change,{tuition:550});}else{assert.equal(u.searchParams.get('intakes'),'eq.{"Jan","Aug"}');assert.deepEqual(change,{intakes:['Sep','Jan']});}apiRows[0]={...apiRows[0],...change};return Response.json([apiRows[0]]);}
+  const row=apiRows[0];return Response.json([row],{headers:{'content-range':'0-0/1'}});
+ }};
+ const httpField={...field('tuition','500'),record:{connectionId:'http',collection:'programs',key:[{column:'id',value:1}]}};
+ const http=await prepareFrontendRecordEdit(apiHost,db,'alpha',httpField,'550','content');assert.equal(apiRows[0].tuition,500);await http.commit();assert.equal(apiRows[0].tuition,550);assert.equal(apiRows[1].tuition,600);assert.equal(apiCalls.filter(r=>r.method==='PATCH').length,1,'existing HTTP transport performs one scoped CAS patch');
+ const arrayEdit=await prepareFrontendRecordEdit(apiHost,db,'alpha',{...httpField,text:'Jan,Aug',fieldKey:'intakes'},'Sep,Jan','content');await arrayEdit.commit();assert.deepEqual(apiRows[0].intakes,['Sep','Jan']);
+ const dom=new JSDOM('<html lang="en"><body><section id="list"><div data-fb-record-key="1" data-fb-record-scope=\'["source","programs"]\'><p data-fb-record-fields=\'["tuition"]\'>USD 28000</p><p data-fb-record-fields=\'["intakes"]\'><span>Jan</span><span>Aug</span></p></div></section></body></html>',{url:'https://site.example/',runScripts:'outside-only'});
+ const inventory=fields.map(field=>({...field,recordKey:'1',recordScope:'["source","programs"]',fieldKey:field.path.at(-1)}));let writes=0;dom.window.fetch=async(path,init)=>{if(init?.method==='POST'){writes++;return new Response('',{status:409});}return Response.json(String(path).includes('capability')?{enabled:true}:{token:'token',fields:inventory});};
+ await dom.window.eval(FRONTEND_EDITOR_SCRIPT);const d=dom.window.document,fee=d.querySelector('p');fee.click();assert.equal(d.querySelector('input').value,'28000');d.querySelector('input').value='29000';const click=text=>[...d.querySelectorAll('button')].find(button=>button.textContent===text).click();click('Done');assert.equal(writes,0);assert.equal(fee.dataset.dirty,'');fee.click();click('Revert this change');assert.equal(writes,0);assert.equal(fee.hasAttribute('data-dirty'),false);d.querySelectorAll('p')[1].click();assert.equal(d.querySelector('input').value,'Jan,Aug');d.querySelector('input').value='Sep';click('Done');click('Cancel Changes');assert.equal(writes,0);assert.equal(d.querySelectorAll('p')[1].textContent,'JanAug','cancel preserves badge structure');const later=d.createElement('p');later.textContent='USD 28000';d.querySelector('[data-fb-record-key]').append(later);await new Promise(resolve=>dom.window.setTimeout(resolve,0));later.setAttribute('data-fb-record-fields','["tuition"]');await new Promise(resolve=>dom.window.setTimeout(resolve,0));later.click();assert.equal(d.querySelector('input').value,'28000','late hydration markers remain editable');click('Cancel editing');dom.window.close();
+ console.log('PASS owned source writes, related-record routing, typed values, stale CAS, unbound/key/tenant refusals and staged detail editor');
+}finally{await db.close?.();await rm(dir,{recursive:true,force:true});}

@@ -39,7 +39,7 @@ export function bindingContext(context:Record<string,any>):Record<string,any>{
             const part=parts[i],existing=Object.hasOwn(target,part)?target[part]:undefined;
             if(existing!==undefined&&(existing===null||typeof existing!=='object'||Array.isArray(existing)))break;
             target[part]={...existing};target=target[part];
-            if(i===parts.length-2&&!Object.hasOwn(target,parts[i+1]))target[parts[i+1]]=value;
+            if(i===parts.length-2)target[parts[i+1]]=value;
         }
     }
     return {...context,record};

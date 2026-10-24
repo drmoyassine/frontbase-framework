@@ -139,7 +139,7 @@ export function Repeater({
             {rows.slice(0, maxRows).map((row, i) => (
                 <RecordContextProvider key={row.id ?? i} value={row}>
                     {template.map((node, j) => (
-                        <NativeRecordNode key={node.id || j} node={node as any} instance={i===0?'':String(row.id ?? i)} />
+                        <NativeRecordNode key={node.id || j} node={node as any} instance={i===0?'':String(row.id ?? i)} recordScope={JSON.stringify([binding.dataSourceId,binding.tableName])} />
                     ))}
                 </RecordContextProvider>
             ))}

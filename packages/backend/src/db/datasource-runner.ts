@@ -19,7 +19,7 @@ export type DatasourceKind = 'sqlite' | 'd1' | 'turso' | 'supabase' | 'postgres'
  *  Applies the per-kind credential resolver first, so callers may pass a raw account config
  *  (e.g. Supabase `service_role_key` + `api_url`/`project_ref`) and it is mapped to the
  *  runner-shaped config (`url` + `serviceKey`) automatically. */
-export function datasourceRunner(kind: string, config: Record<string, unknown>, externalFetch: CompatFetch = globalThis.fetch): DbRunner {
+export function datasourceRunner(kind: string, config: Record<string, unknown>, externalFetch: CompatFetch = globalThis.fetch): DbRunner & {close?():void|Promise<void>} {
     const resolved = resolveDatasourceConfig(kind, config);
     const transport: CompatFetch = (input, init) => guardedExternalFetch(externalFetch, input, init);
     switch (kind as DatasourceKind) {

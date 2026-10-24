@@ -1,5 +1,7 @@
 import type { PageLayoutData, PageComponent } from '../ssr/types.js';
 import { applyBlockVersion } from '../block-versions.js';
+import {templateRecordFields} from '../directory/live-list.js';
+import {resolvePath} from '../liquid-core/sync.js';
 
 export const homepageSearchLabels = { region:'Find study options', collection:'Explore', collectionAria:'Search collection', programs:'Programs', institutions:'Institutions', question:'What would you like to study?', placeholder:'Search by program or institution title', searchAria:'Search titles', submit:'Search' };
 export const homepageHeroLabels = { region:'Study options', eyebrow:'Explore your next chapter', controls:'Hero slideshow controls', previous:'Previous image', next:'Next image', pause:'Pause slideshow', resume:'Resume slideshow', slideStatus:'{index} / {count}' };
@@ -116,8 +118,18 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
             nested((p.binding as any)?.columnOverrides,[...base,'binding','columnOverrides'],new Set(['displayName','label']));
             nested((p.binding as any)?.frontendFilters,[...base,'binding','frontendFilters'],new Set(['label']));
             const columns=new Set(['title','summary','coverAlt',...(Array.isArray((p.binding as any)?.columnOrder)?(p.binding as any).columnOrder:[])]);
-            const find=(children:PageComponent[])=>{for(const child of children){for(const [key,value]of Object.entries(child.props??{})){if(['content','text','label','alt','ariaLabel'].includes(key)&&typeof value==='string'){const match=/^\{\{\s*record\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$/.exec(value);if(match)columns.add(match[1]!);}}if(child.children)find(child.children);}};find(node.children??[]);
-            if(Array.isArray(p.initialRows))p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of columns)if(key!=='id')emit([...base,'initialRows',String(i),key],row[key],`Record ${String(row.id??i)} / ${key}`,record);});
+            // Only authored display properties admit editable/translatable record fields.
+            // Field selection, URLs, conditions, keys and arbitrary row columns are not display copy.
+            const find=(children:PageComponent[])=>{for(const child of children){
+                if(child.props?.binding||child.binding)continue;
+                const display=Object.fromEntries(Object.entries(child.props??{}).filter(([key])=>['content','text','label','alt','ariaLabel'].includes(key)));
+                for(const field of templateRecordFields([{...child,props:display,children:undefined,versions:undefined}]))columns.add(field);
+                if(child.children)find(child.children);
+            }};find(node.children??[]);
+            if(Array.isArray(p.initialRows))p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of columns)if(key!=='id'){
+                const raw=resolvePath({record:row},'record.'+key),value=typeof raw==='number'&&Number.isFinite(raw)||typeof raw==='boolean'?String(raw):Array.isArray(raw)&&raw.every(value=>typeof value==='string')?raw.join(','):raw;
+                emit([...base,'initialRows',String(i),key],value,`Record ${String(row.id??i)} / ${key}`,record);
+            }});
         }
         return collected;};
     // Default-tree texts are the inheritance baseline: an alternative field equal to its

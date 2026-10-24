@@ -78,6 +78,9 @@ async function translate(path,saveAll=false){
     await call('publish/',{hash:prepared.hash,expected:prepared.expected,approveTranslations:true});
 }
 try{
+    const selected=async(component,ids,versionId='default')=>app.request('https://campus.test/api/frontend-edit/inventory/?path='+encodeURIComponent('/scoped/')+'&selection='+encodeURIComponent(JSON.stringify([{componentId:component,versionId,ids}])));
+    let selectionResponse=await selected('scoped-list',['2']);assert.equal(selectionResponse.status,200,await selectionResponse.clone().text());const selectedFields=(await selectionResponse.json()).fields.filter(field=>field.recordKey);assert.ok(selectedFields.length>0);assert.ok(selectedFields.every(field=>field.recordKey==='2'),'inventory contains only the admitted keyed selection');
+    for(const args of [['scoped-list',['1']],['not-a-published-list',['2']],['scoped-list',['2'],'forged'],['scoped-list',['2','2']]])assert.equal((await selected(...args)).status,409,'unpublished/hidden/duplicate selections refuse');
     // English serve resolves rows live through the saved view, anonymously (published-views-only).
     let page=await html('/team/');assert.equal(page.status,200);assert.ok(page.text.includes('Campus One'));assert.ok(!page.text.includes('عربي'));
     assert.ok(page.text.indexOf('Campus One')<page.text.indexOf('Campus Three')&&page.text.indexOf('Campus Three')<page.text.indexOf('Campus Two'),'source serve orders by source title');

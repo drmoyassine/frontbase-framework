@@ -89,7 +89,7 @@ export const LIVE_LOCALIZED_SCAN=1000;
  *  operator keeps source values — exact semantics for non-text columns — and membership stays
  *  live. The same path serves initial HTML and the page-scoped browser continuation. */
 export async function readLocalizedLiveList(owner:string,binding:Record<string,any>,query:Record<string,any>,request:Request,liveQuery:PublishedLiveQuery,catalog:readonly LocalizedCatalogEntry[]):Promise<{rows:Record<string,unknown>[];total:number}>{
-    const columns=new Set(catalog.filter(item=>item.record?.connectionId===String(binding.dataSourceId)&&item.record.collection===binding.tableName).map(item=>item.fieldKey??item.path?.at(-1)??'').filter(column=>column!=='id'&&/^[A-Za-z_][A-Za-z0-9_]*$/.test(column)));
+    const columns=new Set(catalog.filter(item=>item.record?.connectionId===String(binding.dataSourceId)&&item.record.collection===binding.tableName).map(item=>item.fieldKey??item.path?.at(-1)??'').filter(column=>column!=='id'&&/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*){0,3}$/.test(column)&&!column.split('.').some(part=>['constructor','prototype','__proto__'].includes(part))));
     const released=new Map<string,Map<string,{text:string;sourceText?:string}>>();
     for(const item of catalog){
         if(!item.record||!item.text.trim())continue;
@@ -105,7 +105,7 @@ export async function readLocalizedLiveList(owner:string,binding:Record<string,a
     const localized=!!query.search||query.filters.some((filter:Record<string,any>)=>columns.has(filter.column)&&['eq','neq','contains','starts_with','ends_with','in'].includes(filter.op))||columns.has(query.sortColumn);
     if(!released.size)return liveQuery(owner,binding,query,request);
     // Always join released row text, even when sorting/filtering uses a numeric source column.
-    if(!localized){const result=await liveQuery(owner,binding,query,request);return {...result,rows:result.rows.map(row=>{const copy={...row};for(const column of columns){const field=released.get(String(row.id))?.get(column);if(field&&typeof row[column]==='string'&&(field.sourceText===undefined||field.sourceText===row[column]))copy[column]=field.text;}return copy;})};}
+    if(!localized){const result=await liveQuery(owner,binding,query,request);return {...result,rows:result.rows.map(row=>{const copy={...row};for(const column of columns){const field=released.get(String(row.id))?.get(column);if(field&&['string','number','boolean'].includes(typeof row[column])&&(field.sourceText===undefined||field.sourceText===String(row[column])))copy[column]=field.text;}return copy;})};}
     const full=await liveQuery(owner,binding,{...query,page:0,pageSize:LIVE_LOCALIZED_SCAN,search:'',
         // Localized predicates must not prefilter source strings before the effective-text join.
         filters:[...(query.sourceFilters??[]),...query.filters.filter((filter:Record<string,any>)=>!columns.has(filter.column))]},request);
@@ -127,7 +127,7 @@ export async function readLocalizedLiveList(owner:string,binding:Record<string,a
         return (av<bv?-1:av>bv?1:0)*(query.direction==='desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0);});
     const page=Math.max(0,Number(query.page)||0);
     const rows=filtered.slice(page*query.pageSize,(page+1)*query.pageSize).map(row=>{
-        const copy={...row};for(const column of columns)if(typeof row[column]==='string')copy[column]=effective(row,column);return copy;
+        const copy={...row};for(const column of columns)if(['string','number','boolean'].includes(typeof row[column]))copy[column]=effective(row,column);return copy;
     });
     return {rows,total:filtered.length};
 }
