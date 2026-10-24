@@ -14,7 +14,15 @@ export function variablePath(path:string):string[]|null {
     return parts.length>=2 && parts.length<=12 && conditionScopes.includes(parts[0] as any) && parts.every(p=>/^[\w-]+$/.test(p)&&!forbidden.has(p))?parts:null;
 }
 export function contextReader(context:Record<string,unknown>):VariableReader {
-    return (scope,key)=>{let value:unknown=context;for(const part of [scope,...key.split('.')]){if(forbidden.has(part)||!value||typeof value!=='object'||!Object.hasOwn(value,part))return undefined;value=(value as any)[part];}return value;};
+    return (scope,key)=>{
+        const parts=[scope,...key.split('.')];
+        if(parts.some(part=>forbidden.has(part)))return undefined;
+        // Inspected related fields are returned as own flat record keys (e.g.
+        // "institutions.type"). Match the same key used by record field bindings.
+        const record=Object.hasOwn(context,'record')?context.record:undefined;
+        if(scope==='record'&&record&&typeof record==='object'&&Object.hasOwn(record,key))return (record as Record<string,unknown>)[key];
+        let value:unknown=context;for(const part of parts){if(!value||typeof value!=='object'||!Object.hasOwn(value,part))return undefined;value=(value as any)[part];}return value;
+    };
 }
 export function isJsonValue(value:unknown,depth=0):value is JsonValue {
     if(depth>12)return false;

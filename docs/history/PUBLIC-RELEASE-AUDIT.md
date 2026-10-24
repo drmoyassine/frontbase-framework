@@ -1,5 +1,9 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-24 editable record card starters — IN PROGRESS
+
+Owner requests reusable visually editable card starting points and an institution card with logo, location, type and selected metadata, single-language without ratings. Own isolated integration checkout. Reuse ordinary child components, current bindings/conditions/version guards; no new renderer, automatic public-field grants or unrelated release scope. Verify English/Arabic and missing data; preserve Programs alternative and unrelated content.
+
 ## 2026-10-24 post-wrap release-plan reconciliation — COMPLETE
 
 Owner requests current release gaps after approved shortcut deployment. Updated current plan, strategy and milestones to recognize fc6ae02/bbdddca wrapping and authoring acceptance. Six remaining gates retain frozen-candidate, public-install, provider/recovery, adopter and registry boundaries. Explicitly separate full-console type-error triage from optional incremental-preview work. Local links and whitespace checked; no runtime changes, fresh provider/registry inventory, deployment or release claimed.

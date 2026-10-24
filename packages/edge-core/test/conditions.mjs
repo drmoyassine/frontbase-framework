@@ -25,3 +25,10 @@ const grid=await renderPage(gridLayout,context);assert.ok(grid.includes('data-co
 assert.deepEqual(publicConditionContext({},context).user,{authenticated:true,id:'verified',contact_type:'student',permission_level:'reader'});
 assert.equal(audienceConditionUser({authenticated:false}),null);assert.deepEqual(audienceConditionUser({authenticated:true,userId:'verified',contactType:'student',permissionLevel:'reader'}),{authenticated:true,id:'verified',contact_type:'student',contactType:'student',permission_level:'reader',permissionLevel:'reader'});
 console.log('conditions: legacy/structured parity, typed operands, groups, malformed/prototype bounds, SSR filters/visibility and minimal context PASS');
+const flat=contextReader({record:{'institutions.type':'Private','institutions.empty':'',institutions:{type:'Nested'},'constructor.value':'SECRET'},user:{'profile.id':'NOT_NESTED'}});
+assert.equal(flat('record','institutions.type'),'Private');assert.equal(flat('record','institutions.missing'),undefined);
+assert.equal(flat('record','constructor.value'),undefined);assert.equal(flat('user','profile.id'),undefined);
+assert.equal(test({left:variable('record.institutions.type'),operator:'is_set'},flat),true);
+assert.equal(test({left:variable('record.institutions.empty'),operator:'is_set'},flat),false);
+assert.equal(contextReader({record:Object.create({'related.value':'SECRET'})})('record','related.value'),undefined);
+console.log('conditions: own flat related-record fields, empty values and prototype denial PASS');
