@@ -176,6 +176,18 @@ export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<strin
         // The node's own alternative wins the lookup; container-version-owned structures write in place.
         const ownAlternative=field.versionId!==undefined&&!!entry.node.versions?.some(candidate=>candidate.id===field.versionId);
         if(!ownAlternative&&(field.versionId===undefined||entry.containerVersion===field.versionId)){
+            // Equal explicit overrides share Default's translation identity during
+            // extraction. Update those copies too, otherwise they shadow the
+            // translated Default when the alternative becomes active.
+            if(field.versionId===undefined&&field.path[0]==='props'){
+                for(const version of entry.node.versions??[]){
+                    const override=version.overrides.props;
+                    if(!override||!Object.hasOwn(override,field.path[1]))continue;
+                    let existing:unknown=override;
+                    for(const key of field.path.slice(1))existing=existing&&typeof existing==='object'?Object.getOwnPropertyDescriptor(existing,key)?.value:undefined;
+                    if(existing===field.text)mergeVersionValue(entry.node.props??{},override,field.path.slice(1),text);
+                }
+            }
             let target:any=entry.node;for(const key of field.path.slice(0,-1))target=target[key]??(target[key]={});target[field.path.at(-1)!]=text;
         }else{
             const version=entry.node.versions?.find(candidate=>candidate.id===field.versionId);

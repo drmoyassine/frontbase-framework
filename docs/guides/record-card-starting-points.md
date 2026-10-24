@@ -14,6 +14,8 @@ The result is an ordinary Card tree containing Rows, Columns, Images, Heading/Li
 
 The layout follows page direction and uses start alignment. It displays one title from the active record/language, not both original and translated titles. Translation is handled by the existing localization system; applying a design does not generate missing record translations. Optional empty values use the shared visibility conditions. Related fields retain the same reviewed public-field admission rules as manually authored @ fields; picking them does not grant anonymous access.
 
+For multilingual metadata, value-only badges avoid hardcoded label prefixes. If a label needs translation, use a separate static Text element beside the bound value: template expressions are not translation units. Choose visibility rules appropriate to the data; the Study in USA example shows duration and tuition only when greater than zero, without treating zero as empty in the shared binding resolver or inventing a tuition period.
+
 Changing an existing published design follows the normal Save/Publish and locale review/prepare/publish lifecycle. Verify both language routes after a structural change. Never bypass stale-source or public-field review checks.
 
 For a template already included in a reviewed site, save the draft and open **Page Settings → Directory → Prepare this saved template update**. This keeps the existing route inventory, live bindings and other page designs, then requires private preview/review and explicit publication. Use full catalog preparation only when intentionally selecting content again. A foreign-origin or browser-rewritten source URL is refused; correct the source/selection instead of weakening URL validation.

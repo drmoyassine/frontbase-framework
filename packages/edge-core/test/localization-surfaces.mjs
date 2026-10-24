@@ -90,6 +90,11 @@ const winter = applyBlockVersion(seasonal, 'winter');
 assert.equal(winter.props.text, 'عربي Winter programs');
 assert.equal(winter.props.ariaLabel, 'عربي Programs', 'un-overridden siblings keep the translated Default value');
 assert.equal(applyBlockVersion(seasonal, 'spring').props.text, 'عربي Find your program');
+assert.equal(applyBlockVersion(seasonal, 'echo').props.text, 'عربي Find your program', 'equal explicit overrides share the translated Default unit');
+const listEcho={content:[{id:'echo-list',type:'Repeater',props:{initialRows:[],controls:{searchLabel:'Search by title',searchColumn:'title'}},versions:[{id:'program',name:'Programs',overrides:{props:{controls:{searchLabel:'Search by title',searchColumn:'program_name'}}}}]}]};
+const listEchoTranslated=applyHomepageDisplayFields(listEcho,valuesFor(homepageDisplayFields(listEcho)));
+assert.equal(applyBlockVersion(listEchoTranslated.content[0],'program').props.controls.searchLabel,'عربي Search by title');
+assert.equal(applyBlockVersion(listEchoTranslated.content[0],'program').props.controls.searchColumn,'program_name','binding identifiers remain untouched');
 assert.equal(wrapped.versions.find(candidate => candidate.id === 'members').overrides.children[0].props.text, 'عربي Members apply', 'override-child fields write into the alternative structure');
 
 // Serving-time selection renders the released text of whichever version the request selects.
