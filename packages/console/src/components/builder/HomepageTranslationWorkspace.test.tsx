@@ -107,3 +107,15 @@ it('clears the previous publication success when another page cannot load',async
  expect(screen.queryByTitle('Prepared homepage language preview')).toBeNull();
  expect(fetcher.mock.calls.filter(([url,o])=>url.endsWith('/publish/')&&o?.method==='POST')).toHaveLength(1);
 });
+
+it('allows explicit partial preparation only when each untranslated state has a source-fallback policy',async()=>{
+ const review={...base,fields:[field,{...field,id:'e'.repeat(64),state:'outdated',translation:'Old draft'}],complete:false};
+ const fetcher=vi.fn(async(url:string,options?:RequestInit)=>Response.json(url.includes('translation-generation')?{configuration:config}:url.endsWith('/prepare/')?{hash:'f'.repeat(64),previewUrl:'/api/project/translation-batches/homepage/preview/?hash='+'f'.repeat(64),expected:null}:review));
+ vi.stubGlobal('fetch',fetcher);render(<HomepageTranslationWorkspace onClose={()=>{}}/>);await screen.findByText('0 / 2 fields translated · Not published');
+ expect(screen.getByRole('checkbox')).toBeDisabled();
+ fireEvent.change(screen.getByLabelText('Missing units policy'),{target:{value:'source-fallback'}});expect(screen.getByRole('checkbox')).toBeDisabled();
+ fireEvent.change(screen.getByLabelText('Outdated units policy'),{target:{value:'source-fallback'}});expect(screen.getByRole('checkbox')).toBeEnabled();expect(screen.getByRole('button',{name:'Preview language'})).toBeDisabled();
+ fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Preview language'}));await screen.findByTitle('Prepared homepage language preview');
+ const prepare=fetcher.mock.calls.find(([url])=>url.endsWith('/prepare/'))!;expect(JSON.parse(String(prepare[1]?.body))).toMatchObject({approveTranslations:true,policy:{missing:'source-fallback',outdated:'source-fallback'}});
+ expect(fetcher.mock.calls.some(([url])=>url.endsWith('/publish/'))).toBe(false);
+});
