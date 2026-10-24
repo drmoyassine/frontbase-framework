@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { renderDataComponent } from '../dist/ssr/components/data.js';
 import { renderDirectoryBrowsing } from '../dist/ssr/components/directoryBrowsing.js';
-import { homepageDisplayLayout } from '../dist/localization/surfaces.js';
+import { homepageDisplayLayout, homepageDisplayFields } from '../dist/localization/surfaces.js';
 
 // Task 7 slice C: pin what list components actually render on localized published pages.
 // Pure SSR Repeaters stay server-only; interactive lists retain localized hydration.
@@ -22,6 +22,12 @@ const interactive = homepageDisplayLayout({ root: {}, content: [{ id: 'list', ty
     props: { binding: { componentId: 'list', dataSourceId: 'frontbase:publication', tableName: 'institutions' },
         initialRows: rows, controls: { loadMore: true } } }] });
 assert.equal(interactive.content[0].props.localeReadOnly,false,'interactive lists keep hydration through the localized endpoint');
+// Only the selected Block Version receives rows. Chrome identities must not
+// depend on whether this request selected Default or an alternative.
+const withoutSeed=structuredClone(interactive);delete withoutSeed.content[0].props.initialRows;delete withoutSeed.content[0].props.localeLabels;
+const normalizedWithoutSeed=homepageDisplayLayout(withoutSeed);
+const chromeFields=layout=>homepageDisplayFields(layout).filter(f=>!f.record).map(f=>[f.blockId,f.versionId??'default',f.path,f.text]);
+assert.deepEqual(chromeFields(normalizedWithoutSeed),chromeFields(interactive),'live bound list chrome is stable before its rows arrive');
 
 // Task 8 slice B: a pinned publication binding re-fetches through the localized list endpoint,
 // so its interactive controls stay coherent — the refusal applies only to stores without an

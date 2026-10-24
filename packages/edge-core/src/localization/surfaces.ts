@@ -60,7 +60,7 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
         if(Array.isArray(p.templateHeroState)){for(const state of p.templateHeroState as any[]){state.labels={...homepageHeroLabels,...state.labels};state.settings.heading=String(state.settings.heading).replaceAll('{destination}',String(state.destination));}}
         if(node.type==='Navbar'){p.localeLabels={...homepageNavLabels,...p.localeLabels as object};}
         if(node.type==='Footer'&&!p.copyright)p.copyright=`© ${new Date().getFullYear()} All rights reserved.`;
-        if(['Repeater','DataTable','Grid'].includes(node.type)&&Array.isArray(p.initialRows)){
+        if(['Repeater','DataTable','Grid'].includes(node.type)&&(Array.isArray(p.initialRows)||p.binding||node.binding)){
             const controls=p.controls as Record<string,unknown>|undefined;
             const binding=(p.binding??(node as {binding?:unknown}).binding)as Record<string,unknown>|undefined;
             // Interactive controls keep hydration; the release supplies a page-scoped locale channel.
@@ -109,7 +109,7 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
         if(p.templateMenu)nested(p.templateMenuLabels,[...base,'templateMenuLabels'],new Set(Object.keys(templateMenuLabels)));
         if(Array.isArray(p.directoryBrowsingState))nested((p.directoryBrowsingState[0] as any)?.labels,[...base,'directoryBrowsingState','0','labels'],new Set(Object.keys(directoryBrowsingLabels)));
         if(Array.isArray(p.templateHeroState))p.templateHeroState.forEach((state:any,i)=>{for(const key of ['heading','introduction'])emit([...base,'templateHeroState',String(i),'settings',key],state.settings[key],key);nested(state.settings.slides,[...base,'templateHeroState',String(i),'settings','slides'],new Set(['alt']));nested(state.labels,[...base,'templateHeroState',String(i),'labels'],new Set(Object.keys(homepageHeroLabels)));});
-        if(['Repeater','DataTable','Grid'].includes(node.type)&&Array.isArray(p.initialRows)){
+        if(['Repeater','DataTable','Grid'].includes(node.type)&&(Array.isArray(p.initialRows)||p.binding||node.binding)){
             nested(p.localeLabels,[...base,'localeLabels'],new Set(Object.keys(listComponentLabels)));
             nested(p.controls,[...base,'controls'],new Set(['searchLabel','searchPlaceholder','label']));
             nested((p.binding as any)?.presentation,[...base,'binding','presentation'],new Set(['searchLabel','searchPlaceholder','loadingText','emptyText','errorText']));
@@ -117,7 +117,7 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
             nested((p.binding as any)?.frontendFilters,[...base,'binding','frontendFilters'],new Set(['label']));
             const columns=new Set(['title','summary','coverAlt',...(Array.isArray((p.binding as any)?.columnOrder)?(p.binding as any).columnOrder:[])]);
             const find=(children:PageComponent[])=>{for(const child of children){for(const [key,value]of Object.entries(child.props??{})){if(['content','text','label','alt','ariaLabel'].includes(key)&&typeof value==='string'){const match=/^\{\{\s*record\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$/.exec(value);if(match)columns.add(match[1]!);}}if(child.children)find(child.children);}};find(node.children??[]);
-            p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of columns)if(key!=='id')emit([...base,'initialRows',String(i),key],row[key],`Record ${String(row.id??i)} / ${key}`,record);});
+            if(Array.isArray(p.initialRows))p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of columns)if(key!=='id')emit([...base,'initialRows',String(i),key],row[key],`Record ${String(row.id??i)} / ${key}`,record);});
         }
         return collected;};
     // Default-tree texts are the inheritance baseline: an alternative field equal to its
