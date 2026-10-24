@@ -54,7 +54,7 @@ export function VariableInput({
     // Derive the ancestor Repeater's columns so the Record group offers real
     // columns when authoring inside a Repeater template (unless overridden).
     const derivedRecordColumns = useRepeaterRecordColumns();
-    const recordColumns = recordColumnsProp ?? derivedRecordColumns;
+    const recordColumns = recordColumnsProp ?? derivedRecordColumns ?? [];
     const [showPicker, setShowPicker] = useState(false);
     const [pickerPosition, setPickerPosition] = useState({ top: 0, left: 0 });
     const [searchTerm, setSearchTerm] = useState('');
