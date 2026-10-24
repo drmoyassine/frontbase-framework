@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DndContext, useDroppable, useDndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import {wrapLayout} from '@/lib/builder/wrapLayout';
 import {builderCollisionDetection} from '@/lib/builder/collisionDetection';
 import {CONTAINER_TYPES} from '@/lib/builder/iframeTypes';
 import { CSS } from '@dnd-kit/utilities';
@@ -210,6 +211,7 @@ export const LayersPanel: React.FC = () => {
                   getComponentIcon={getComponentIcon}
                   onDelete={(id) => removeComponent(id)}
                   onDuplicate={(id) => duplicateComponent(id)}
+                  onWrap={(id,type) => {const wrapper=wrapLayout(id,type);if(wrapper)setExpandedComponents(previous=>new Set([...previous,wrapper]));}}
                   updateComponent={updateComponent}
                 />
               ))}
@@ -246,6 +248,7 @@ interface SortableLayerItemProps {
   getComponentIcon: (type: string) => string;
   onDelete: (componentId: string) => void;
   onDuplicate: (componentId: string) => void;
+  onWrap: (componentId:string,type:'Row'|'Column') => void;
   updateComponent: (id: string, propsUpdates: Record<string, any>) => void;
   isDropTarget?: boolean;
   isBeingDragged?: boolean;
@@ -265,6 +268,7 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
   getComponentIcon,
   onDelete,
   onDuplicate,
+  onWrap,
   updateComponent,
   isDropTarget = false,
   isBeingDragged = false
@@ -379,7 +383,8 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 shrink-0"
+              aria-label={`Actions for ${component.props?._layerName || component.type}`}
+              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -396,6 +401,8 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
               <Copy className="h-4 w-4 mr-2" />
               Duplicate
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onWrap(component.id,'Row')}>Wrap in Row</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onWrap(component.id,'Column')}>Wrap in Column</DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive"
               onClick={() => onDelete(component.id)}
@@ -430,6 +437,7 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
                 getComponentIcon={getComponentIcon}
                 onDelete={onDelete}
                 onDuplicate={onDuplicate}
+                onWrap={onWrap}
                 updateComponent={updateComponent}
               />
             ))}
