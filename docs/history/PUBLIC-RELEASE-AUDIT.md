@@ -1,8 +1,10 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-24 provenance-based frontend saves and program card refinement — IN PROGRESS
+## 2026-10-24 provenance-based frontend saves and program card refinement — DEPLOYED; FINAL LIVE RECHECK BLOCKED
 
 Owner authorizes record-based frontend edits to write source records in their connected datasource, translated record edits to the configured translation datasource, and UI copy edits to the active state database in the selected language. Preserve staged page saves/cancellation, typed fields, stale-write refusal, tenant ownership and existing adapters. Refine Programs cards into a cover-overlay for tuition/duration/individual intake badges and a maximum-three-item details row; reconcile recoverable WordPress cover evidence without inventing assets or replacing populated fields. Own only isolated visual-binding-final checkout. Commit/push/deploy and verify actual English/Arabic routing. No public release or other-site migration.
+
+Source2e0e9db is deployed and byte-verified. Native source-record save/readback/restoration, translated-record persistence with source isolation, translated UI active-state save/restoration, editable cover highlights/intake badges, English/RTL Arabic and375px authoring checks passed. Three recovered covers were sanitized/uploaded and guarded blank-only source updates verified. Workspace check/build, engine/focused suites,9 frontend +4 source +19 translation faults pass. Final source-backed smoke is blocked by shared Supabase57014 timeouts, also present in an independent application and the provider's advisor read. State health remains200; no source reset/grant/timeout/capacity change was made. Task is not closed as currently healthy. [Detailed receipt and next check](../plans/program-card-save-routing-20261024.md).
 
 ## 2026-10-24 program cards and binding fallbacks — COMPLETE
 
