@@ -4,7 +4,11 @@ Reconciled 2026-10-24 against committed source and dated acceptance receipts. Th
 
 ## Delivered and accepted
 
-The latest authoring delivery is source `300ada6`, host artifact `9bd64e3`, documentation checkpoint `6916572`, on `codex/integrated-finalization-20261022`. Staging runs image `sha256:31c5046b768f5ca5711847cb92cf11ad4c18a941f572b18833c1a2d39e3ae798`, built at 2026-10-23 22:20:29 UTC. [Receipt](../reports/visual-data-binding-20261024.json), [guide](../guides/visual-data-binding.md).
+The latest accepted staging source includes the visual-binding delivery, the four canvas/Layers repairs and the owner-approved layout shortcuts. Regular merge `313d387` integrated `20eef2f`; deployed artifact `fc6ae02`, receipt checkpoint `bbdddca`, on `codex/integrated-finalization-20261022`. Staging image `sha256:8d1a9632ab79043b5f99080aaddffb1d5cfc34946b925b98dae84d1f34b2f88a` succeeded at 2026-10-24 03:10:37 UTC. [Latest authoring receipt](visual-layout-repair-20261024.md), [original binding receipt](../reports/visual-data-binding-20261024.json), [binding guide](../guides/visual-data-binding.md).
+
+- Visible nested drop boundaries and container targets, including repeated instances; canonical two-way canvas/property text editing with live drafts, Escape and empty-text handling.
+- Row/Column spacing/alignment controls reach the shared renderer; true desktop/tablet/mobile preview widths, Layers nesting/outdenting and guarded movement with undo/redo are verified.
+- **Wrap in Row / Wrap in Column is now merged and deployed**, not an optional unmerged backlog item. Native staging verifies bound-heading preservation, wrapper selection/expansion and atomic Undo. Six focused shortcut tests and recursive check/build pass. Temporary tests were discarded; no owner page was saved or published.
 
 - A single **Bind → Table / Saved View** drilldown across Repeaters, Tables, Grids, bound Cards, KPI Cards, Charts and InfoLists. Saved views supply their own table/schema/filters; physical source is read-only detail. Empty saved-view menus are disabled. Write Forms retain explicit writable table targets.
 - Ordinary, visually composable Repeater items, with a normal Card as the new-item starting point. Existing items retain their design. Text, images, links and other children can be selected and configured rather than being a fixed card field form.
@@ -38,6 +42,18 @@ Work on documentation, package inventory and support choices can proceed alongsi
 - Current native qualification is Node 22. Windows Node 24 native-SQLite stress remains failed/unaccepted; this is a runtime support restriction, not a mandate to block a properly scoped Node 22 preview. Runtime claims must match that boundary.
 - CF is the leading edge target; Vercel evidence is for Node Functions, not Vercel Edge. Defaults are editable suggestions. Native CF mail/queues/vector provisioning is not delivered merely because it appears in a resource inventory. External optional providers do not become certified through dropdown availability.
 - Bare PostgREST without the required aggregation capability refuses saved-view chart aggregation. Composite relationship keys/excess fanout have explicit refusal/omission boundaries. These limits must stay visible in release documentation; they are not silently promised features.
+
+## Separate defects, evidence gaps and optional work
+
+| Classification | Current fact | Release treatment |
+|---|---|---|
+| Engineering debt | Full standalone console TypeScript has historical failures outside the required scoped checks. | Inventory the exact errors on the frozen candidate. Fix errors affecting supported shipped behavior or safety. Record any accepted build-tool/type-only residue explicitly; never claim a full-console pass. Current workspace check is green but narrower. |
+| UX limitation | Committed layout changes replace the full preview document and refresh live records. | Document current latency. Incremental preview rendering is an improvement, not an automatic Developer Preview blocker unless the final journey demonstrates lost edits or unusable behavior. |
+| Evidence gap | Latest UI receipts and broad security/package/host receipts name different revisions. | Run a risk-based cumulative candidate matrix; do not reopen each delivered feature or falsely label dated receipts as fresh. |
+| Support decision | Neon real-provider, optional external cache/queue/S3 and actual reset inbox delivery lack complete receipts in the reviewed evidence. | Test combinations promised in the edition. Explicitly exclude unverified optional combinations instead of making every adapter a release requirement. Required recovery for the advertised auth path must work. |
+| Distribution gap | Registry ownership/publication and exact public-default-source install remain unaccepted. | Resolve before announcing installable versioned availability. Local tarballs and staging alone do not close it. |
+
+No new reproducible runtime defect is established by this documentation review. That is not a claim of zero defects: final-candidate qualification and the type-error triage above remain open. No new live provider, registry or default-branch inspection was performed; earlier inventory observations retain their dates.
 
 ## Not blockers for this edition
 

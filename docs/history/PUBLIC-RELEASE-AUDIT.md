@@ -1,5 +1,9 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-24 post-wrap release-plan reconciliation — COMPLETE
+
+Owner requests current release gaps after approved shortcut deployment. Updated current plan, strategy and milestones to recognize fc6ae02/bbdddca wrapping and authoring acceptance. Six remaining gates retain frozen-candidate, public-install, provider/recovery, adopter and registry boundaries. Explicitly separate full-console type-error triage from optional incremental-preview work. Local links and whitespace checked; no runtime changes, fresh provider/registry inventory, deployment or release claimed.
+
 ## 2026-10-24 owner-approved layout shortcut merge — COMPLETE
 
 Owner requested merging and deploying the reviewed Wrap in Row/Column branch. Merge313d387 preserves both historical receipts; six focused tests pass. Workspace check/build and client verification pass. Artifact fc6ae02 is deployed as image8d1a9632; native Row/Column wrapping, binding preservation and one-step Undo pass. Temporary edits were discarded; four public English/Arabic routes return200. See the repair receipt for deployment evidence. No owner page publication or public release is included.
