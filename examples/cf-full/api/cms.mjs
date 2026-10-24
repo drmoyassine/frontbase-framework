@@ -3405,8 +3405,8 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA "${_}" GRANT ALL ON SEQUENCES TO ${D};`;retur
     <meta name="twitter:title" content="Frontbase - Build Apps Visually" />
     <meta name="twitter:description" content="The no-code platform for designers and developers." />
     <meta name="twitter:image" content="/logo.png" />
-    <script type="module" crossorigin src="/frontbase-admin/assets/index-D6s0oNta-232863066557387.js"></script>
-    <link rel="stylesheet" crossorigin href="/frontbase-admin/assets/index-BTwH8Vdy-232863066557387.css">
+    <script type="module" crossorigin src="/frontbase-admin/assets/index-Cln6T2uj-153502433320259.js"></script>
+    <link rel="stylesheet" crossorigin href="/frontbase-admin/assets/index-BTwH8Vdy-153502433320259.css">
   </head>
 
   <body>
