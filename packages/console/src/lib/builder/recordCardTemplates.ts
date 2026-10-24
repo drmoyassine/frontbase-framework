@@ -2,9 +2,9 @@ import {v4 as uuid} from 'uuid';
 import {serializeCondition,variablePath} from '@frontbase/edge-core/conditions';
 import type {ComponentData} from '@/types/builder';
 
-export const cardLayouts = {image:'Image card',profile:'Cover with logo',compact:'Compact card',text:'Text card'} as const;
+export const cardLayouts = {image:'Image card',profile:'Cover with logo',overlay:'Cover with highlights',compact:'Compact card',text:'Text card'} as const;
 export type CardLayout = keyof typeof cardLayouts;
-export type CardMapping = Partial<Record<'title'|'image'|'imageFallback'|'logo'|'subtitle'|'city'|'country'|'flag'|'flagText'|'href',string>>;
+export type CardMapping = Partial<Record<'title'|'image'|'imageFallback'|'logo'|'subtitle'|'city'|'country'|'flag'|'flagText'|'href'|'tuition'|'currency'|'duration'|'durationUnit'|'intakes',string>>;
 export type CardDetail = {field:string;label:string};
 export const recordExpression=(field:string)=>`{{ ${/^[A-Za-z_$][\w$-]*(\.[A-Za-z_$][\w$-]*)*$/.test(field)?`record.${field}`:`record[${JSON.stringify(field)}]`} }}`;
 const present=(field:string)=>variablePath(`record.${field}`)?serializeCondition({left:{kind:'variable',path:`record.${field}`},operator:'is_set'}):undefined;
@@ -20,11 +20,11 @@ export function createRecordCard(layout:CardLayout,mapping:CardMapping,details:C
     if(mapping.flag)location.push(bound('Image',mapping.flag,{src:recordExpression(mapping.flag),alt:'',objectFit:'contain'},{width:'22px',height:'16px',flexShrink:0}));
     else if(mapping.flagText)location.push(bound('Text',mapping.flagText,{content:recordExpression(mapping.flagText),size:'18px'}));
     for(const field of [mapping.city,mapping.country])if(field)location.push(bound('Text',field,{content:recordExpression(field),size:'14px'},{color:'#64748b',overflowWrap:'anywhere'}));
-    const metadata=details.filter(detail=>detail.field).map(detail=>bound('Text',detail.field,{content:(detail.label?detail.label+': ':'')+recordExpression(detail.field),size:'13px'},{padding:'5px 9px',borderRadius:'6px',backgroundColor:'#f1f5f9',color:'#334155',overflowWrap:'anywhere'}));
+    const metadata=(layout==='overlay'?details.slice(0,3):details).filter(detail=>detail.field).map(detail=>bound('Text',detail.field,{content:(detail.label?detail.label+': ':'')+recordExpression(detail.field),size:'13px'},{padding:'5px 9px',borderRadius:'6px',backgroundColor:'#f1f5f9',color:'#334155',overflowWrap:'anywhere',minWidth:'0'}));
     const body=node('Column',{gap:'12px',minHeight:'0',minWidth:'0'},[
         ...(layout==='profile'&&mapping.logo?[{...image(mapping.logo,true),styles:{width:'64px',height:'64px',marginTop:'0',position:'relative',zIndex:1,backgroundColor:'#fff',borderRadius:'10px',padding:'6px',alignSelf:'start',objectFit:'contain'}}]:[]),
         identity,
-        ...(location.length?[node('Row',{gap:'8px',align:'center',wrap:true,stackOnMobile:false,minHeight:'0'},location)]:[]),
+        ...(location.length&&layout!=='overlay'?[node('Row',{gap:'8px',align:'center',wrap:true,stackOnMobile:false,minHeight:'0'},location)]:[]),
         ...(mapping.subtitle?[bound('Text',mapping.subtitle,{content:recordExpression(mapping.subtitle),size:'14px'},{color:'#64748b',overflowWrap:'anywhere'})]:[]),
         ...(metadata.length?[node('Row',{gap:'8px',wrap:true,stackOnMobile:false,minHeight:'0'},metadata)]:[])
     ],{padding:'20px',flex:'1',textAlign:'start'});
@@ -35,7 +35,12 @@ export function createRecordCard(layout:CardLayout,mapping:CardMapping,details:C
         cover.props.hideWhenUnavailable=true;
         delete cover.visibilityCondition;
     }
-    const children=layout==='compact'?[node('Row',{gap:'0',align:'stretch',minHeight:'0'},[...(cover?[{...cover,styles:{...cover.styles,maxWidth:'160px'}}]:[]),body])]:[...(cover?[cover]:[]),body];
+    const overlay:ComponentData[]=[];
+    const highlight=(field:string,content:string)=>bound('Badge',field,{text:content,variant:'outline',textColor:'#fff',backgroundColor:'rgb(15 23 42 / 65%)',borderRadius:'6px',size:'sm'}, {maxWidth:'100%'});
+    for(const [field,prefix,suffix]of [[mapping.tuition,mapping.currency?recordExpression(mapping.currency)+' ':'',''],[mapping.duration,'',mapping.durationUnit?' '+recordExpression(mapping.durationUnit):'']] as const)if(field){const badge=highlight(field,prefix+recordExpression(field)+suffix);badge.visibilityCondition=serializeCondition({left:{kind:'variable',path:'record.'+field},operator:'gt',right:{kind:'literal',value:0}});overlay.push(badge);}
+    if(mapping.intakes){const values=highlight(mapping.intakes,recordExpression(mapping.intakes));values.props.splitValues=true;values.props.valueSeparator=',';overlay.push({...node('Row',{gap:'6px',align:'center',wrap:true,stackOnMobile:false,minHeight:'0'},[node('Text',{content:'Intakes:',size:'13px'},undefined,{color:'#fff',fontWeight:'600'}),values]),visibilityCondition:present(mapping.intakes)});}
+    const overlayCover=layout==='overlay'?node('Container',{},[...(cover?[{...cover,styles:{...cover.styles,gridArea:'1 / 1'}}]:[]),node('Column',{gap:'8px',minHeight:'0'},[node('Row',{gap:'8px',wrap:true,align:'start',stackOnMobile:false,minHeight:'0'},overlay)],{gridArea:'1 / 1',zIndex:1,padding:'16px',alignSelf:'start',minWidth:'0'})],{display:'grid',gridTemplateColumns:'repeat(1, minmax(0, 1fr))',backgroundColor:'#334155',minWidth:'0',overflow:'hidden'}):null;
+    const children=layout==='compact'?[node('Row',{gap:'0',align:'stretch',minHeight:'0'},[...(cover?[{...cover,styles:{...cover.styles,maxWidth:'160px'}}]:[]),body])]:[...(overlayCover?[overlayCover]:cover?[cover]:[]),body];
     return node('Card',{contentPadding:'0',textAlignment:'start',cardRadius:'12px'},children,{backgroundColor:'#fff',color:'#0f172a',height:'100%',minWidth:'0',boxShadow:'0 2px 8px rgb(15 23 42 / 5%)'});
 }
 

@@ -51,6 +51,9 @@ export function renderLayoutComponent(
             const isGridContainer = containerDisplay === 'grid';
 
             if (isGridContainer) {
+                // Explicit single-track grids are also used to overlay ordinary children.
+                // Adding a second track at tablet width changes the authored layout.
+                if(/^repeat\(\s*1\s*,/.test(String(styles.gridTemplateColumns??'')))return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} grid" style="margin:0 auto;width:100%;${inlineStyle}">${childrenHtml}</div>`;
                 // Parse grid columns for responsive behavior
                 const gridCols = (() => {
                     const colsStyle = styles.gridTemplateColumns || '';

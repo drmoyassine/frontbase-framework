@@ -187,6 +187,12 @@ function renderImage(id: string, props: Record<string, unknown>): string {
 }
 
 function renderBadge(id: string, props: Record<string, unknown>): string {
+    if(props.splitValues===true){
+        const raw=props.content??props.text??props.label??'',separator=String(props.valueSeparator??',').slice(0,10)||',';
+        let source:unknown=raw;if(typeof raw==='string'&&raw.length<=12000&&raw.trim().startsWith('[')){try{const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed)&&parsed.every(value=>typeof value==='string'))source=parsed;}catch{/* Ordinary delimited text. */}}
+        const values=(Array.isArray(source)?source.map(String):String(source).split(separator)).map(value=>value.trim()).filter(Boolean).slice(0,100);
+        return `<span id="${escapeHtml(id)}" class="fb-badge-values" style="display:inline-flex;flex-wrap:wrap;gap:6px;max-width:100%">${values.map((value,index)=>renderBadge(id+'--value-'+index,{...props,splitValues:false,content:value,text:value,label:value})).join('')}</span>`;
+    }
     const content = escapeHtml(String(props.content || props.text || props.label || ''));
     const variant = props.variant as string || 'default';
     const size = props.size as string || 'sm';

@@ -239,6 +239,8 @@ export async function registerBasicComponents(): Promise<void> {
             description: 'Small badge or label',
             props: [
                 { name: 'text', label: 'Badge Text', type: 'text', default: 'New', group: 'Content' },
+                { name: 'splitValues', label: 'One badge per value', type: 'boolean', default: false, group: 'Content' },
+                { name: 'valueSeparator', label: 'Value separator', type: 'text', default: ',', group: 'Content' },
                 { name: 'variant', label: 'Variant', type: 'select', default: 'default', group: 'Style',
                     options: [
                         { value: 'default', label: 'Default' },
