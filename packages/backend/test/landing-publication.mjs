@@ -55,5 +55,27 @@ await assert.rejects(()=>prepareLandingFromCapture(db,owner,{...draft,configurat
 await pages.update(pageId,{isHomepage:false},now);const nonHome=await new PageChangeStore(db,owner).state(pageId);await assert.rejects(()=>prepareLandingFromCapture(db,owner,draft,{...input,homepageStateHash:nonHome.hash},now));
 await pages.update(pageId,{isHomepage:true},now);const restored=await new PageChangeStore(db,owner).state(pageId);
 const unreviewed=await store.prepare({configurationRevision:1,configuration:config,templates,approvals:refs},records,now);await assert.rejects(()=>prepareLandingFromCapture(db,owner,draft,{...input,baseHash:unreviewed,homepageStateHash:restored.hash},now));
+// A template-only derivative must never re-query mutable canonical records.
+const {prepareTemplateFromCapture}=await import('../dist/compat/template-publication-prepare.js');
+const templateId=templates[0].pageId,priorTemplate=await pages.get(templateId);
+const changedLayout=JSON.parse(priorTemplate.layout_data);changedLayout.content.unshift({id:'new-card-label',type:'Heading',props:{text:'Editable institution cards'}});
+await pages.update(templateId,{layoutData:changedLayout},now);
+const templateState=await new PageChangeStore(db,owner).state(templateId),templateInput={baseHash,pageId:templateId,stateHash:templateState.hash};
+const derivative=await prepareChunkPublication(db,{query:async()=>{throw Error('canonical_read_forbidden');}},owner,draft,'sqlite',{format:'chunked',expectedConfigurationRevision:1,pageIds:[],templateBase:templateInput},{id:'reviewer'},now);
+const templateArtifact=derivative.artifact;
+for(const key of ['index','chunks','approvals','redirects','staticPages'])assert.equal(stableStringify(templateArtifact[key]),stableStringify(original[key]));
+assert.deepEqual(templateArtifact.templates.slice(1),original.templates.slice(1));
+assert.equal(templateArtifact.templates[0].layout.content[0].props.text,'Editable institution cards');
+assert.equal(await review.get(derivative.hash),null,'preparation must not approve');
+await assert.rejects(()=>prepareTemplateFromCapture(db,'other-owner',draft,templateInput,now));
+await assert.rejects(()=>prepareTemplateFromCapture(db,owner,draft,{...templateInput,stateHash:'0'.repeat(64)},now));
+await assert.rejects(()=>prepareTemplateFromCapture(db,owner,{...draft,configuration:{...config,site:{...config.site,name:'Changed'}}},templateInput,now));
+await assert.rejects(()=>prepareTemplateFromCapture(db,owner,draft,{...templateInput,baseHash:unreviewed},now));
+await assert.rejects(()=>prepareChunkPublication(db,{},owner,draft,'sqlite',{format:'chunked',expectedConfigurationRevision:1,pageIds:[templateId],templateBase:templateInput},{id:'reviewer'},now));
+await pages.update(templateId,{layoutData:{...changedLayout,root:{siteConfiguration:{version:1,role:'institution'}}}},now);
+const wrongRole=await new PageChangeStore(db,owner).state(templateId);await assert.rejects(()=>prepareTemplateFromCapture(db,owner,draft,{...templateInput,stateHash:wrongRole.hash},now));
+await pages.update(templateId,{layoutData:changedLayout,isPublic:false},now);
+const privateState=await new PageChangeStore(db,owner).state(templateId);await assert.rejects(()=>prepareTemplateFromCapture(db,owner,draft,{...templateInput,stateHash:privateState.hash},now));
+console.log('template publication: exact inventory/chunks/approvals/redirect preservation; no canonical reads; owner/review/configuration/stale/role/private/mixed-selection refusals PASS');
 console.log('landing publication: exact approved-record/configuration preservation, sole home route, bounded lists/search/canonical, owner/review/stale/configuration/namespace refusals PASS');
 process.exit(0);

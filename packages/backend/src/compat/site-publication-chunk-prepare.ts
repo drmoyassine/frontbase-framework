@@ -8,11 +8,13 @@ import { EditorialApprovalStore } from './editorial-approval-store.js';
 import { SiteConfigurationStore } from './site-configuration-store.js';
 import { SitePublicationManifestStore,publicationRedirectSchema } from './site-publication-manifest.js';
 import { prepareLandingFromCapture } from './landing-publication-prepare.js';
+import { prepareTemplateFromCapture } from './template-publication-prepare.js';
 
 const reference=z.object({id:z.string().uuid(),revision:z.number().int().positive(),fingerprint:z.string().regex(/^[a-f0-9]{64}$/),contentRole:z.enum(['article','page']).default('article')}).strict();
 export const chunkPreparationRequestSchema=z.object({format:z.literal('chunked'),expectedConfigurationRevision:z.number().int().positive(),
     pageIds:z.array(z.string().uuid()).max(7),staticPageIds:z.array(z.string().uuid()).max(1000).default([]),replaceEditorialHomepage:z.boolean().default(false),
     homepageBase:z.object({baseHash:z.string().regex(/^[a-f0-9]{64}$/),homepageId:z.string().uuid(),homepageStateHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict().optional(),
+    templateBase:z.object({baseHash:z.string().regex(/^[a-f0-9]{64}$/),pageId:z.string().uuid(),stateHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict().optional(),
     institutionPaths:z.array(publicationPathSchema).max(20000).default([]),programPaths:z.array(publicationPathSchema).max(20000).default([]),
     articles:z.array(reference).max(40000).default([]),redirects:z.array(publicationRedirectSchema).max(5000).optional(),includeMappedCatalog:z.boolean().default(false),includeApprovedEditorial:z.boolean().default(false)}).strict();
 
@@ -20,6 +22,10 @@ export async function prepareChunkPublication(control:DbRunner,canonical:DbRunne
     dialect:'postgres'|'sqlite',raw:z.infer<typeof chunkPreparationRequestSchema>,user:unknown,now:string){
     const request=chunkPreparationRequestSchema.parse(raw);
     if(!tenant || !user || request.expectedConfigurationRevision!==draft.revision)throw new Error('publication_context_required');
+    if(request.templateBase){
+        if(request.homepageBase || request.pageIds.length || request.staticPageIds.length || request.includeMappedCatalog || request.includeApprovedEditorial || request.institutionPaths.length || request.programPaths.length || request.articles.length || request.redirects?.length || request.replaceEditorialHomepage)throw Error('ambiguous_template_preparation');
+        return prepareTemplateFromCapture(control,tenant,draft,request.templateBase,now);
+    }
     if(request.homepageBase){
         if(request.pageIds.length || request.staticPageIds.length || request.includeMappedCatalog || request.includeApprovedEditorial || request.institutionPaths.length || request.programPaths.length || request.articles.length || request.redirects?.length || request.replaceEditorialHomepage)throw Error('ambiguous_homepage_preparation');
         return prepareLandingFromCapture(control,tenant,draft,request.homepageBase,now);

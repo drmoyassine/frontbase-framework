@@ -13,7 +13,7 @@ const roles=['directory','institution','program','article-index','article','edit
 type Role=typeof roles[number];
 type Approval={id:string;revision:number;fingerprint:string};
 /** Existing Page Settings owns preparation; saved layouts and draft editing stay separate. */
-export function SitePreparationPanel({draft,disabled=false}:{draft:SiteConfigurationDraft;disabled?:boolean}) {
+export function SitePreparationPanel({draft,disabled=false,currentPageId}:{draft:SiteConfigurationDraft;disabled?:boolean;currentPageId?:string}) {
     const [open,setOpen]=useState(false), [busy,setBusy]=useState(false), [message,setMessage]=useState('');
     const [redirectText,setRedirectText]=useState('');
     const [allCatalog,setAllCatalog]=useState(false),[allEditorial,setAllEditorial]=useState(false),[savedPages,setSavedPages]=useState<{id:string;name:string;landing:boolean}[]>([]),[staticIds,setStaticIds]=useState<string[]>([]),[pathSearch,setPathSearch]=useState('');
@@ -25,18 +25,31 @@ export function SitePreparationPanel({draft,disabled=false}:{draft:SiteConfigura
     const [reviewChecks,setReviewChecks]=useState<Record<string,boolean>>({}),[reviewNote,setReviewNote]=useState(''),[reviewAttempted,setReviewAttempted]=useState(false);
     const generation=useRef(0);
     useEffect(()=>setRedirectText(''),[draft.revision]);
-    useEffect(()=>{generation.current++;setOpen(false);setBusy(false);setTemplates([]);setPages({});setSavedPages([]);setStaticIds([]);setAllCatalog(false);setAllEditorial(false);setInstitutions([]);setPrograms([]);setArticles([]);setShown({role:'institution',rows:[]});setPrepared(undefined);setPreview('');setMessage('');return()=>{generation.current++;};},[draft.revision]);
+    useEffect(()=>{generation.current++;setOpen(false);setBusy(false);setTemplates([]);setPages({});setSavedPages([]);setStaticIds([]);setAllCatalog(false);setAllEditorial(false);setInstitutions([]);setPrograms([]);setArticles([]);setShown({role:'institution',rows:[]});setPrepared(undefined);setPreview('');setMessage('');return()=>{generation.current++;};},[draft.revision,currentPageId]);
     const changed=()=>{setPrepared(undefined);setPreview('');};
     useEffect(()=>{setReviewChecks({});setReviewNote('');setReviewAttempted(false);},[prepared?.hash,draft.revision]);
     async function operation(work:()=>Promise<void>) {
         const current=generation.current;setBusy(true);setMessage('');
-        try {await work();}catch {if(current===generation.current)setMessage('Operation unavailable. Reload saved settings and check the connection.');}
+        try {await work();}catch(error) {if(current===generation.current)setMessage(error instanceof Error&&error.message==='publication_route_serialization'?'A source URL cannot be captured without changing its spelling or origin. Review the source URLs, or update only the saved template from the reviewed site.':'Operation unavailable. Reload saved settings and check the connection.');}
         finally {if(current===generation.current)setBusy(false);}
     }
     async function post(path:string,input:unknown) {
         const current=generation.current,response=await fetch(`/api/project/site-configuration/${path}/`,{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
         if(current!==generation.current)throw new Error('stale');
-        if(!response.ok)throw new Error('unavailable');const value=await response.json();if(current!==generation.current)throw new Error('stale');return value;
+        if(!response.ok){const value=await response.json().catch(()=>({}));throw new Error(value.code==='publication_route_serialization'?value.code:'unavailable');}const value=await response.json();if(current!==generation.current)throw new Error('stale');return value;
+    }
+    async function prepareTemplate(){
+        if(!currentPageId)return;changed();const current=generation.current;
+        const responses=await Promise.all([fetch('/api/project/site-configuration/publication/state/',{credentials:'include',cache:'no-store'}),fetch(`/api/pages/${currentPageId}/change-state/`,{credentials:'include',cache:'no-store'})]);
+        if(responses.some(response=>!response.ok))throw Error('unavailable');
+        const [live,state]=await Promise.all(responses.map(response=>response.json()));if(current!==generation.current)return;
+        if(!live.pointer?.hash || !state.draft || !state.hash)throw Error('unavailable');
+        const result=await post('publication/prepare',{format:'chunked',expectedConfigurationRevision:draft.revision,pageIds:[],templateBase:{baseHash:live.pointer.hash,pageId:currentPageId,stateHash:state.hash}});
+        const hash=z.string().regex(/^[a-f0-9]{64}$/).parse(result.hash);
+        if(result.configurationRevision!==draft.revision || result.publicationAvailable!==false)throw Error('unavailable');
+        const paths=z.array(rowSchema).parse([...result.records.institutions,...result.records.programs,...result.records.articles,...(result.records.pages??[]),...redirectRows(result.redirects)]);
+        setPrepared({hash,revision:draft.revision,paths,directory:result.records.institutions.length||result.records.programs.length?draft.configuration.routes.directory:undefined,blog:result.records.articles.length?draft.configuration.routes.blog:undefined});
+        setMessage('Saved template update prepared. Existing records, URLs, other layouts and approvals are preserved. Review the private version before publishing.');
     }
     async function loadTemplates() {
         const current=generation.current,response=await fetch('/api/pages/',{credentials:'include'});if(!response.ok)throw new Error();
@@ -93,6 +106,7 @@ const result=await post('publication/prepare',{format:'chunked',expectedConfigur
     return <section aria-label="Site preparation" className="space-y-3 rounded-lg border p-3">
         <h4 className="font-medium">Prepare a site version</h4>
         <p className="text-sm text-muted-foreground">Capture saved templates, mapped directory records, approved content and selected ordinary pages together. Content requires approval first. This creates a private preview.</p>
+        {currentPageId&&<div className="space-y-2"><Button variant="outline" disabled={locked} onClick={()=>void operation(prepareTemplate)}>Prepare this saved template update</Button><p className="text-xs text-muted-foreground">Use the saved draft and keep the reviewed site's records, routes and other page designs. Save your page changes first.</p></div>}
         <div className="flex flex-wrap items-center gap-2"><input aria-label="Prepared version ID" value={recoveryHash} disabled={locked} maxLength={64} onChange={event=>setRecoveryHash(event.target.value)} className="min-w-0 flex-1 rounded border bg-background p-2 text-sm" placeholder="Paste a saved version ID"/><Button variant="outline" disabled={locked || !/^[a-f0-9]{64}$/.test(recoveryHash.trim())} onClick={()=>void operation(reopen)}>Reopen private version</Button></div>
         {!open?<Button disabled={locked} variant="outline" onClick={()=>void operation(loadTemplates)}>Choose templates and records</Button>:<>
             <label className="block text-sm">Original URL redirects<textarea aria-label="Original URL redirects" disabled={locked} value={redirectText} maxLength={2000000} onChange={event=>{changed();setRedirectText(event.target.value);}} className="mt-1 block w-full rounded border bg-background p-2" placeholder="/old-page/ /captured-page/"/><span className="text-xs text-muted-foreground">One old path and captured destination per line. Only direct redirects to pages in this version are accepted. Redirects are excluded from the sitemap.</span></label>

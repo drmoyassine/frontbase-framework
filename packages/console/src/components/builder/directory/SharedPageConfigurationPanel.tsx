@@ -43,6 +43,6 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
         {current.success && ['directory', 'article-index'].includes(current.data.role) && <Button variant="outline" disabled={editorialOpen || hasDirectoryBrowsing(page.layoutData?.content || [])} onClick={() => onChange(addDirectoryBrowsing(page))}>Add visitor browsing controls</Button>}
         <p className="text-sm">Save Changes persists the link. Shared values refresh in canvas preview after an edit or when you return to the builder. Existing custom text is preserved; only explicit shared bindings change.</p>
         {current.success && draft && <DirectoryQueryPreview draft={draft} onEditorialOpenChange={handleEditorialOpen} onAddTemplate={binding => onChange(addDirectoryTemplate(page, binding))} />}
-        {current.success && draft && <SitePreparationPanel draft={draft} disabled={editorialOpen} />}
+        {current.success && draft && <SitePreparationPanel draft={draft} currentPageId={page.id} disabled={editorialOpen} />}
     </div>;
 }

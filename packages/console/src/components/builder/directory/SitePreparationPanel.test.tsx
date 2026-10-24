@@ -89,3 +89,13 @@ describe('site preparation',()=>{
   await waitFor(()=>expect(screen.queryByText('Muhlenberg')).toBeNull());expect(screen.getByText('Choose templates and records')).toBeTruthy();
  });
 });
+
+it('prepares a saved template from the reviewed base without recapturing source records',async()=>{
+ const id='00000000-0000-4000-8000-000000000001',base='a'.repeat(64),state='b'.repeat(64),hash='c'.repeat(64);
+ const fetcher=vi.fn(async(path:string,init?:RequestInit)=>path.endsWith('/state/')?ok({pointer:{hash:base}}):path.endsWith('/change-state/')?ok({draft:true,hash:state}):ok({hash,configurationRevision:1,publicationAvailable:false,records:{institutions:[institution],programs:[],articles:[],pages:[]}}));
+ vi.stubGlobal('fetch',fetcher);render(<SitePreparationPanel draft={draft} currentPageId={id}/>);
+ fireEvent.click(screen.getByText('Prepare this saved template update'));await screen.findByText(/Saved template update prepared/);
+ const call=fetcher.mock.calls.find(([path])=>path.endsWith('/prepare/'))!;
+ expect(JSON.parse(String(call[1]?.body))).toEqual({format:'chunked',expectedConfigurationRevision:1,pageIds:[],templateBase:{baseHash:base,pageId:id,stateHash:state}});
+ expect(screen.getByText('Approve this private version')).toBeDisabled();
+});

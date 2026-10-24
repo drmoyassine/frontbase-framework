@@ -23,3 +23,7 @@ Next executable task: expose safe preparation diagnostics and trace the failed e
 ## Boundaries
 
 This is visual authoring, not a new renderer or fixed runtime card configuration. Arbitrary fields remain editable via @ and existing mapping controls. No record translation generation is inferred: the existing localization fallback governs records without translations. Applying/publishing a structural change must retain the locale stale-source and public-field review lifecycle. Preserve the Programs alternative and other page content.
+
+## Preparation failure traced and repair in qualification
+
+The staging RPC successfully selects an institution ID. Full scope selects 243 institution rows and 10,050 program rows; four program URLs belong to study-in-caribbean.com while the configured origin is study-in-usa.com. The exact failure is publication_route_serialization, not missing RPC support. No source records were altered. Saved-template preparation now reuses the existing layout derivative store, retains the entire reviewed inventory, and requires a saved-state hash and unchanged role/configuration. Native publication and locale acceptance remain pending until recorded below.
