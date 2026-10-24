@@ -21,6 +21,10 @@ Retained engineering acceptance also includes frontend multilingual text editing
 
 The staging PostgREST hold is closed. Security reporting is enabled, and SECURITY.md, CONTRIBUTING.md and CHANGELOG.md exist. Their former absence, the old behavior-ledger mismatch and the already-adopted Neon repair are not current implementation blockers.
 
+## Current scoped delivery delta
+
+The [record-card starters receipt](record-card-starters-20261024.md) records deployed reusable Image/Compact/Text authoring controls and a saved institution design. Its live content activation is not accepted: existing shared-site preparation fails; the old healthy public card remains active. Resolve preparation diagnostics, preserve the full active route inventory and complete actual Arabic/English visual checks before closing that feature. This does not reopen CF-22 or require bulk record translation.
+
 ## Actual remaining release gates, in execution order
 
 | Order | Remaining work | Concrete exit |

@@ -1,8 +1,8 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-24 editable record card starters — IN PROGRESS
+## 2026-10-24 editable record card starters — CODE DEPLOYED; CONTENT ACTIVATION OPEN
 
-Owner requests reusable visually editable card starting points and an institution card with logo, location, type and selected metadata, single-language without ratings. Own isolated integration checkout. Reuse ordinary child components, current bindings/conditions/version guards; no new renderer, automatic public-field grants or unrelated release scope. Verify English/Arabic and missing data; preserve Programs alternative and unrelated content.
+Owner requests reusable visually editable card starting points and an institution card with logo, location, type and selected metadata, single-language without ratings. Own isolated integration checkout. Reuse ordinary child components, current bindings/conditions/version guards; no new renderer, automatic public-field grants or unrelated release scope. Verify English/Arabic and missing data; preserve Programs alternative and unrelated content. Source8f03ebb/artifact69c0a62 is deployed and native controls verified. The institution design is saved as a draft; shared-site preparation fails before a candidate is created. Existing live generation21 remains healthy. English/Arabic renderer tests pass; live Arabic visual acceptance and card activation remain open. See [receipt](../plans/record-card-starters-20261024.md).
 
 ## 2026-10-24 post-wrap release-plan reconciliation — COMPLETE
 
