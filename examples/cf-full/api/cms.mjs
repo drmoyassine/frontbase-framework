@@ -2895,8 +2895,14 @@ data: ${JSON.stringify(E)}
 if(window.top!==window.self||document.querySelector('[data-frontbase-editor]'))return;
 const capability=await fetch('/api/frontend-edit/capability/',{credentials:'same-origin',cache:'no-store'}).catch(()=>null);
 if(!capability||!capability.ok||!(await capability.json()).enabled)return;
+function displayedRecords(){const groups=new Map();
+for(const root of document.querySelectorAll('[data-fb-record-key]')){const list=root.closest('[data-component-id]');if(!list||!root.dataset.fbRecordKey)continue;const componentId=list.dataset.componentId,versionId=list.closest('[data-block-active]')?.dataset.blockActive||'default',key=JSON.stringify([componentId,versionId]);if(!groups.has(key))groups.set(key,{componentId,versionId,ids:[]});const ids=groups.get(key).ids;if(!ids.includes(root.dataset.fbRecordKey))ids.push(root.dataset.fbRecordKey);}
+return [...groups.values()].map(group=>({...group,ids:group.ids.sort()})).sort((a,b)=>a.componentId.localeCompare(b.componentId));
+}
 let pagePath=location.pathname+location.search;
-const response=await fetch('/api/frontend-edit/inventory/?path='+encodeURIComponent(pagePath),{credentials:'same-origin',cache:'no-store'}).catch(()=>null);
+// Admit the already-rendered selection once; hydration races reconcile after bootstrap.
+const initialSelection=displayedRecords();
+const response=await fetch('/api/frontend-edit/inventory/?path='+encodeURIComponent(pagePath)+(initialSelection.length?'&selection='+encodeURIComponent(JSON.stringify(initialSelection)):''),{credentials:'same-origin',cache:'no-store'}).catch(()=>null);
 if(!response||!response.ok)return;
 let inventory=await response.json();const arabic=document.documentElement.lang.startsWith('ar');
 const words=arabic?{edit:'تحرير النص',done:'تم',revert:'تراجع عن هذا التعديل',cancelEdit:'إلغاء التحرير',save:'حفظ التغييرات',cancel:'إلغاء التغييرات',saving:'جارٍ الحفظ…',failed:'تعذر تأكيد الحفظ. تم الاحتفاظ بتعديلاتك. أعد تحميل الصفحة في علامة تبويب أخرى للمراجعة.',unsaved:'تعديلات غير محفوظة',close:'إغلاق المحرر'}:{edit:'Edit text',done:'Done',revert:'Revert this change',cancelEdit:'Cancel editing',save:'Save Changes',cancel:'Cancel Changes',saving:'Saving…',failed:'Save could not be confirmed. Your edits are retained. Reload in another tab to review.',unsaved:'unsaved changes',close:'Close editor'};
@@ -2906,11 +2912,9 @@ const status=document.createElement('span');status.setAttribute('role','status')
 function button(label,fn){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;bar.append(b);return b;}
 const pending=new Map(),bound=new Map(),editActions=new WeakMap(),recordActions=new WeakMap(),recordAttributes=new WeakMap(),recordNodes=new Set();let active=null,busy=false,error='';
 const original=new Map(inventory.fields.map(f=>[f.id,f.text]));
-let recordSelection=[],selectionKey='',refreshing=false;
+let recordSelection=initialSelection,selectionKey=JSON.stringify([pagePath,initialSelection]),refreshing=false;
 async function refreshRecords(){
-if(refreshing||busy||active||pending.size)return;const groups=new Map();
-for(const root of document.querySelectorAll('[data-fb-record-key]')){const list=root.closest('[data-component-id]');if(!list||!root.dataset.fbRecordKey)continue;const componentId=list.dataset.componentId,versionId=list.closest('[data-block-active]')?.dataset.blockActive||'default',key=JSON.stringify([componentId,versionId]);if(!groups.has(key))groups.set(key,{componentId,versionId,ids:[]});const ids=groups.get(key).ids;if(!ids.includes(root.dataset.fbRecordKey))ids.push(root.dataset.fbRecordKey);}
-const selected=[...groups.values()].map(group=>({...group,ids:group.ids.sort()})).sort((a,b)=>a.componentId.localeCompare(b.componentId)),nextPath=location.pathname+location.search,key=JSON.stringify([nextPath,selected]);if(!selected.length||key===selectionKey)return;selectionKey=key;refreshing=true;
+if(refreshing||busy||active||pending.size)return;const selected=displayedRecords(),nextPath=location.pathname+location.search,key=JSON.stringify([nextPath,selected]);if(!selected.length||key===selectionKey)return;selectionKey=key;refreshing=true;
 try{const response=await fetch('/api/frontend-edit/inventory/?path='+encodeURIComponent(nextPath)+'&selection='+encodeURIComponent(JSON.stringify(selected)),{credentials:'same-origin',cache:'no-store'});if(!response.ok)throw Error();const next=await response.json();if(active||pending.size){selectionKey='';return;}inventory=next;error='';recordSelection=selected;pagePath=nextPath;original.clear();for(const field of inventory.fields)original.set(field.id,field.text);for(const element of recordNodes){if(!element.isConnected){recordNodes.delete(element);continue;}recordActions.delete(element);element.removeAttribute('data-fb-copy');}bindRecords();update();}catch{error=arabic?'تعذر التحقق من السجلات المعروضة. أعد تحميل الصفحة.':'Displayed records could not be verified. Reload the page.';update();}finally{refreshing=false;queueMicrotask(()=>void refreshRecords());}
 }
 function previewRecords(){const records=new Map();for(const field of inventory.fields)if(field.recordKey){const key=JSON.stringify([field.recordScope,field.recordKey]);if(!records.has(key))records.set(key,{recordScope:field.recordScope,recordKey:field.recordKey,values:{}});if(pending.has(field.id))records.get(key).values[field.fieldKey]=pending.get(field.id);}for(const detail of records.values())window.dispatchEvent(new CustomEvent('frontbase:record-draft',{detail}));}
