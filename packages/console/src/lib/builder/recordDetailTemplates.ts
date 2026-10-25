@@ -83,7 +83,8 @@ export function createRecordDetailTemplate(input:DetailTemplateInput,newId=uuid)
 export function upgradeDetailPresentation(nodes:ComponentData[],role:'institution'|'program',newId=uuid):ComponentData[]{
  const next=structuredClone(nodes);
  const detail=next.find(item=>item.type==='Card'&&(item.props.binding?.hiddenFilters??[]).some((f:any)=>f.column==='id'&&f.value?.path==='page.recordId'));
- if(!detail||detail.props.detailPresentationVersion===2)return next;
+ if(!detail||detail.props.detailPresentationVersion===3)return next;
+ if(detail.props.detailPresentationVersion===2){const header=detail.children?.[0]?.children?.find(item=>item.props._layerName==='Detail identity and CTA');for(const child of header?.children??[])child.styles={...child.styles,width:'auto'};detail.props.detailPresentationVersion=3;return next;}
  const content=detail.children?.[0],children=content?.children;
  if(!content||!children)return next;
  const cover=children.find(item=>item.type==='Image');
@@ -95,7 +96,7 @@ export function upgradeDetailPresentation(nodes:ComponentData[],role:'institutio
  const node=(type:string,props:Record<string,any>,children:ComponentData[]=[],styles:Record<string,any>={}):ComponentData=>({id:newId(),type,props,children,styles});
  const clone=(item:ComponentData):ComponentData=>({...structuredClone(item),id:newId(),...(item.children?{children:item.children.map(clone)}:{})});
  if(cover){cover.type='Gallery';cover.props={...cover.props,media:'[]',coverSrc:cover.props.src,fallbackSrc:cover.props.fallbackSrc,coverHeight:360,gap:8,radius:16,layout:'featured',hideWhenUnavailable:true};delete cover.props.src;cover.styles={width:'100%',marginBottom:'28px'};}
- identity.styles={...identity.styles,flex:'1 1 520px',padding:'0',minWidth:'0'};
+ identity.styles={...identity.styles,flex:'1 1 520px',width:'auto',padding:'0',minWidth:'0'};
  const h1=identity.children?.flatMap(item=>item.children??[]).find(item=>item.type==='Heading'&&String(item.props.level)==='1');
  if(h1)h1.styles={...h1.styles,fontSize:'clamp(1.5rem,2.6vw,2.2rem)',lineHeight:'1.25'};
  const facts:ComponentData[]=[];
@@ -109,7 +110,7 @@ export function upgradeDetailPresentation(nodes:ComponentData[],role:'institutio
  }
  const cta=sidebar.children?.find(item=>item.type==='Link');
  if(cta){cta.props={...cta.props,text:role==='program'?'Apply':'Book consultation'};cta.styles={...cta.styles,width:'auto',whiteSpace:'nowrap',padding:'12px 22px',backgroundColor:'#123052'};cta.stylesData={activeProperties:[],values:{},stylingMode:'visual',viewportOverrides:{mobile:{position:'fixed',bottom:'16px',left:'16px',right:'16px',zIndex:'30',boxShadow:'0 8px 30px rgb(15 23 42 / 18%)'}}};facts.push(cta);}
- const header=node('Row',{gap:'24px',wrap:true,stackOnMobile:false,align:'center',minHeight:'0',_layerName:'Detail identity and CTA'},[identity,node('Row',{gap:'24px',wrap:true,stackOnMobile:false,align:'center',minHeight:'0',_layerName:'Header facts and action'},facts,{flex:'0 1 auto',marginInlineStart:'auto'})],{padding:'8px 0 28px'});
+ const header=node('Row',{gap:'24px',wrap:true,stackOnMobile:false,align:'center',minHeight:'0',_layerName:'Detail identity and CTA'},[identity,node('Row',{gap:'24px',wrap:true,stackOnMobile:false,align:'center',minHeight:'0',_layerName:'Header facts and action'},facts,{flex:'0 1 auto',width:'auto',marginInlineStart:'auto'})],{padding:'8px 0 28px'});
  if(role==='institution'){
   const grouped:ComponentData[]=[],navigation:ComponentData[]=[];
   const categories=[['Overview',['Overview','At a glance']],['Finances',['Tuition and funding']],['Eligibility',['Entry requirements','Intakes']],['Departments and teaching',['Curriculum','Career opportunities']],['Campus and facilities',['Facilities','Accommodation','Location']]] as const;
@@ -134,7 +135,7 @@ export function upgradeDetailPresentation(nodes:ComponentData[],role:'institutio
   body.children=body.children!.filter(item=>item.id!==sidebar.id);body.children[0].styles={...body.children[0].styles,flex:'1 1 100%'};
   content.children=[...(cover?[cover]:[]),header,nav,body];
  }
- detail.props.detailPresentationVersion=2;
+ detail.props.detailPresentationVersion=3;
  return next;
 }
 
