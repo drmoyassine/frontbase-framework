@@ -365,7 +365,7 @@ function renderChart(id: string, props: Record<string, unknown>, propsJson: stri
 function renderDataCard(id: string, props: Record<string, unknown>, childrenHtml: string, propsJson: string): string {
     if(props.binding&&Array.isArray(props.template)){
         const binding={...(props.binding as Record<string,unknown>),pagination:{enabled:false,pageSize:1,page:0}};
-        const repeated={...props,binding,template:props.template,layout:'list',columns:1,maxRows:1,singleRecord:true,controls:{},initialRows:Array.isArray(props.initialRows)?props.initialRows.slice(0,1):undefined};
+        const repeated={...props,componentId:id,binding,template:props.template,layout:'list',columns:1,maxRows:1,singleRecord:true,controls:{},initialRows:Array.isArray(props.initialRows)?props.initialRows.slice(0,1):undefined};
         const inner=renderRepeater(id+'--record',repeated,JSON.stringify(repeated).replace(/</g,'\\u003c'),childrenHtml);
         return renderDataCard(id,{...props,binding:undefined,template:undefined,title:'',description:'',subtitle:'',image:'',imageUrl:''},inner,JSON.stringify({...props,binding:undefined,template:undefined}));
     }
@@ -486,7 +486,7 @@ function renderRepeater(id: string, props: Record<string, unknown>, propsJson: s
         '',
         'repeater',
         propsJson,
-        props.localeReadOnly ? '' : `data-react-component="Repeater" data-component-id="${id}"`
+        props.localeReadOnly ? '' : `data-react-component="Repeater" data-component-id="${escapeHtml(String(props.componentId||id))}"`
     );
 
     const skeletonCards = Array(Math.min(columns || 3, 4)).fill(0).map(() => `

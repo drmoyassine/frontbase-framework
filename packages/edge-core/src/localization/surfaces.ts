@@ -74,6 +74,7 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
             // or invalidate an existing strict release with controls the page never renders.
             if(node.type!=='Repeater'||interactive)p.localeLabels={...listComponentLabels,...p.localeLabels as object};
         }
+        if(node.type==='Card'&&(p.binding||node.binding)){p.localeReadOnly=false;p.localeLabels={loading:listComponentLabels.loading,empty:listComponentLabels.empty,error:listComponentLabels.error,...p.localeLabels as object};}
         if(node.children)walk(node.children);
         // Alternative structures render through the same components; they need the same normalization.
         for(const version of node.versions??[])if(version.overrides.children)walk(version.overrides.children as PageComponent[]);
@@ -111,13 +112,13 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
         if(p.templateMenu)nested(p.templateMenuLabels,[...base,'templateMenuLabels'],new Set(Object.keys(templateMenuLabels)));
         if(Array.isArray(p.directoryBrowsingState))nested((p.directoryBrowsingState[0] as any)?.labels,[...base,'directoryBrowsingState','0','labels'],new Set(Object.keys(directoryBrowsingLabels)));
         if(Array.isArray(p.templateHeroState))p.templateHeroState.forEach((state:any,i)=>{for(const key of ['heading','introduction'])emit([...base,'templateHeroState',String(i),'settings',key],state.settings[key],key);nested(state.settings.slides,[...base,'templateHeroState',String(i),'settings','slides'],new Set(['alt']));nested(state.labels,[...base,'templateHeroState',String(i),'labels'],new Set(Object.keys(homepageHeroLabels)));});
-        if(['Repeater','DataTable','Grid'].includes(node.type)&&(Array.isArray(p.initialRows)||p.binding||node.binding)){
+        if(['Repeater','DataTable','Grid','Card'].includes(node.type)&&(Array.isArray(p.initialRows)||p.binding||node.binding)){
             nested(p.localeLabels,[...base,'localeLabels'],new Set(Object.keys(listComponentLabels)));
             nested(p.controls,[...base,'controls'],new Set(['searchLabel','searchPlaceholder','label']));
             nested((p.binding as any)?.presentation,[...base,'binding','presentation'],new Set(['searchLabel','searchPlaceholder','loadingText','emptyText','errorText']));
             nested((p.binding as any)?.columnOverrides,[...base,'binding','columnOverrides'],new Set(['displayName','label']));
             nested((p.binding as any)?.frontendFilters,[...base,'binding','frontendFilters'],new Set(['label']));
-            const displayOnly=node.type==='Repeater'&&!!node.children?.length;
+            const displayOnly=['Repeater','Card'].includes(node.type)&&!!node.children?.length;
             const columns=new Set<string>(displayOnly?[]:['title','summary','coverAlt',...(Array.isArray((p.binding as any)?.columnOrder)?(p.binding as any).columnOrder:[])]);
             // Only authored display properties admit editable/translatable record fields.
             // Field selection, URLs, conditions, keys and arbitrary row columns are not display copy.

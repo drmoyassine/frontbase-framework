@@ -8,6 +8,7 @@ interface TreeNode {
     id: string;
     type: string;
     props?: Record<string, any>;
+    binding?: Record<string, any>;
     children?: TreeNode[];
 }
 
@@ -23,7 +24,7 @@ function findAncestorRepeater(
     for (const node of nodes ?? []) {
         if (node.id === targetId) {
             for (let i = chain.length - 1; i >= 0; i--) {
-                if (chain[i].type === 'Repeater' || chain[i].type === 'Card' && chain[i].props?.binding) return chain[i];
+                if (chain[i].type === 'Repeater' || chain[i].type === 'Card' && (chain[i].props?.binding || chain[i].binding)) return chain[i];
             }
             return null;
         }
@@ -58,7 +59,7 @@ export function useRepeaterRecordColumns(componentId?: string): string[] | undef
     const tree: TreeNode[] = resolveBlockTree(page?.layoutData?.content ?? [],()=>undefined,selections);
     const repeater = id ? findAncestorRepeater(tree, id) : null;
 
-    const propBinding = repeater?.props?.binding;
+    const propBinding = repeater?.props?.binding ?? repeater?.binding;
     const storeBinding = repeater?.id ? getComponentBinding(repeater.id) : null;
     const binding: any = propBinding ?? storeBinding;
 

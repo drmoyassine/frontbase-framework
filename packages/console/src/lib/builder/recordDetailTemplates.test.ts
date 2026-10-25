@@ -1,8 +1,9 @@
+import {homepageDisplayLayout,homepageDisplayFields} from '@frontbase/edge-core/localization';
 import {expect,it} from 'vitest';
 import {renderPage} from '@frontbase/edge-core';
 import {renderBlock} from '@frontbase/edge-core/browser/render-block';
 import {templateRecordFields,directoryLayoutQueries} from '@frontbase/edge-core/directory/configuration';
-import {createRecordDetailTemplate,recordLinksToActions,replaceDetailTemplate} from './recordDetailTemplates';
+import {createRecordDetailTemplate,recordLinksToActions,replaceDetailTemplate,useSingleRecordCards} from './recordDetailTemplates';
 const binding:any={componentId:'source',dataSourceId:'ds',tableName:'campuses',viewId:'view',pagination:{enabled:true,pageSize:12,page:0},sorting:{enabled:true,column:'title',direction:'asc'},filtering:{searchEnabled:false,filters:{}},columnOverrides:{},hiddenFilters:[{column:'country_id',operator:'eq',value:22}]};
 const mapping={title:'title',image:'image',imageFallback:'institution.image',logo:'logo',description:'description',requirements:'requirements',tuition:'fee',currency:'currency',duration:'duration',durationUnit:'unit',intakes:'intakes',degree:'degree',city:'city',country:'country',subtitle:'institution.name',institutionHref:'institution.path',address:'institution.address'};
 it.each(['institution','program'] as const)('%s authors ordinary editable nodes and Actions links with mandatory current-route filtering',role=>{
@@ -54,4 +55,16 @@ it('presents imported HTML prose as safe readable text through the existing Liqu
 it('retains responsive layout overrides and viewport-sized detail content in the shared renderer',async()=>{
  const tree=createRecordDetailTemplate({role:'program',binding,mapping,previewPath:'/campus/',contactUrl:'mailto:test@example.org'});tree[1].props.initialRows=[{id:7,title:'History'}];tree[1].props.initialTotal=1;
  const html=await renderBlock(tree[1],{} as any);expect(html).toContain('position:fixed !important');expect(html).toContain('@media(max-width:640px)');expect(tree[1].children![0].styles).toMatchObject({width:'100%',boxSizing:'border-box'});
+});
+
+it('uses the existing bound single-record Card hydration for composed field editing without list chrome',async()=>{
+ const tree=createRecordDetailTemplate({role:'program',binding,mapping,previewPath:'/campus/'});expect(tree[1].type).toBe('Card');tree[1].props.initialRows=[{id:7,title:'History',duration:4,unit:'Year',intakes:'Jan,Aug'}];tree[1].props.initialTotal=1;
+ const html=await renderBlock(tree[1],{} as any);const dom=document.createElement('div');dom.innerHTML=html;const host=dom.querySelector('[data-react-component="Repeater"]');expect(host).not.toBeNull();const props=JSON.parse(host!.getAttribute('data-fb-props')!);expect(props.singleRecord).toBe(true);expect(host!.getAttribute('data-component-id')).toBe(tree[1].id);expect(props.template[0].children.length).toBeGreaterThan(0);expect(dom.textContent).toContain('4 Year');
+});
+
+it('upgrades existing detail wrappers without changing translations, child IDs or related-list behavior',()=>{
+ const tree=createRecordDetailTemplate({role:'institution',binding,mapping,previewPath:'/campus/',programBinding:binding});tree[1].type='Repeater';const before=JSON.stringify(tree),upgraded=useSingleRecordCards(tree);expect(upgraded[1].type).toBe('Card');expect(upgraded[1].id).toBe(tree[1].id);expect(upgraded[1].children).toEqual(tree[1].children);expect(upgraded[2]).toEqual(tree[2]);expect(JSON.stringify(tree)).toBe(before);
+});
+it('inventories bound Card fields by the same record identity and excludes unrelated row columns',()=>{
+ const tree=createRecordDetailTemplate({role:'program',binding,mapping,previewPath:'/campus/'});tree[1].props.initialRows=[{id:7,title:'History',duration:4,unit:'Year',secret:'UNAUTHORED'}];const layout=homepageDisplayLayout({root:{},content:tree} as any),fields=homepageDisplayFields(layout);expect(fields.some(field=>(field.fieldKey??field.path.at(-1))==='duration'&&field.record?.connectionId==='ds')).toBe(true);expect(fields.some(field=>field.text==='UNAUTHORED')).toBe(false);expect(layout.content[1].props.localeReadOnly).not.toBe(true);
 });
