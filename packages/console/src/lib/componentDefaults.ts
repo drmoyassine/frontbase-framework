@@ -43,6 +43,7 @@ export function getDefaultProps(componentType: string): Record<string, any> {
     Progress: { value: 50 },
     Container: { className: 'p-6' },
     Image: { src: '/placeholder.svg', alt: 'Placeholder image', width: '200px', height: '200px' },
+    Gallery: { media: '[]', coverSrc: '/placeholder.svg', coverHeight: 360, layout: 'featured', gap: 8, radius: 16, hideWhenUnavailable: true },
     Link: { text: 'Link', href: '#', target: '_self' },
     Icon: { icon: '⭐', size: 'md', color: 'currentColor' },
     DataTable: { binding: null },

@@ -1,4 +1,5 @@
 import {clientVisibilityAttributes} from '../visibility.js';
+import {renderGallery} from './gallery.js';
 /**
  * Static Component Renderers
  *
@@ -64,6 +65,9 @@ export function renderStaticComponent(
 
         case 'Image':
             return renderImage(id, props);
+
+        case 'Gallery':
+            return renderGallery(id, props);
 
         case 'Badge':
             return renderBadge(id, props);

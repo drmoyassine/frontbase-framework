@@ -1,5 +1,6 @@
 import {canonicalTextFields,textAliasReset} from '@/lib/builder/textProperty';
 import {CardProperties} from './properties/basic/CardProperties';
+import {GalleryProperties} from './properties/basic/GalleryProperties';
 import React, { useState } from 'react';
 import { useBuilderStore } from '@/stores/builder';
 import { useShallow } from 'zustand/react/shallow';
@@ -162,6 +163,7 @@ export const PropertiesPanel = () => {
       ? {...selectedComponent.props,...textAliasReset(type,editingTextNode.property),[editingTextNode.property]:editingTextNode.text}
       : selectedComponent.props;
 
+    if(type==='Gallery')return tab==='general'?<GalleryProperties props={props} updateProp={updateComponentProp}/>:null;
     // ── Tier 1: Framework registry descriptor (source of truth) ───────────
     // When the descriptor is reachable AND the component isn't in the
     // keep-bespoke set, render its editable.props via the schema engine.

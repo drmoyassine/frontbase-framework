@@ -4,7 +4,7 @@
  */
 
 const STATIC_COMPONENTS = new Set([
-    'Text', 'Heading', 'Paragraph', 'Image', 'Badge', 'Divider', 'Spacer',
+    'Text', 'Heading', 'Paragraph', 'Image', 'Gallery', 'Badge', 'Divider', 'Spacer',
     'Icon', 'Avatar', 'Logo', 'Label', 'MarkdownContent', 'Embed',
     'Alert', 'Progress', 'Input', 'Textarea', 'Select', 'Breadcrumb'
 ]);

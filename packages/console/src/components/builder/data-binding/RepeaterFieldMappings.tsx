@@ -15,7 +15,7 @@ export function RepeaterFieldMappings({componentId,columns}:{componentId:string;
     const effective=applyBlockVersion(node,selections[componentId]),version=node.versions?.find(version=>version.id===selections[componentId]);
     const inherited=!!version&&!version.overrides.children;
     const targets:{id:string;type:string;field:string;value:string}[]=[];
-    const fields:Record<string,string[]>={Text:['text'],Paragraph:['text'],Heading:['text'],Image:['src','fallbackSrc','alt'],Link:['text','href'],Button:['text'],Badge:['text'],Icon:['icon'],Card:['title','description']};
+    const fields:Record<string,string[]>={Text:['text'],Paragraph:['text'],Heading:['text'],Image:['src','fallbackSrc','alt'],Gallery:['media','coverSrc','videoSrc','fallbackSrc','alt'],Link:['text','href'],Button:['text'],Badge:['text'],Icon:['icon'],Card:['title','description']};
     const walk=(nodes:ComponentData[])=>{for(const child of nodes){if(child.props?.binding?.dataSourceId)continue;for(const name of fields[child.type]??[]){const field=name==='text'?canonicalTextProperty(child.type,child.props):name;targets.push({id:child.id,type:child.type,field,value:child.props[field]??''});}walk(child.children??[]);}};
     walk(effective.children??[]);
     const tree=(nodes:ComponentData[]):React.ReactNode=><ul className="space-y-1 pl-3">{nodes.map(child=><li key={child.id}><button type="button" className="text-sm underline" onClick={()=>select(child.id)}>{child.type}{child.props?.title?' · '+child.props.title:''}</button>{child.children?.length?tree(child.children):null}</li>)}</ul>;

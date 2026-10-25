@@ -302,8 +302,8 @@ export function AssetUploader({
                 onOpenChange={setShowFilePicker}
                 onSelect={(url) => handleFilePick(url)}
                 initialBucket={ASSETS_BUCKET}
-                fileFilter="image"
-                title="Select Image"
+                fileFilter={accept.includes('video')?'all':'image'}
+                title={accept.includes('video')?'Select Media':'Select Image'}
                 description={`Browse your storage to select an existing ${assetType}.`}
             />
         </div>

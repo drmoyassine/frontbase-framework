@@ -23,3 +23,12 @@ Saved-view filters remain server enforced. Metadata discovery requires an authen
 Traversal is bounded to three relationship hops, 100 selected paths, 100 distinct join keys per branch and 500 related records per query. Overflow, ambiguous relationships and unsupported composite foreign keys fail or are omitted visibly rather than silently matching partial keys. Source relationship/API permissions still apply. Source catalogs are metadata, not permission grants.
 
 Saved-view Chart aggregation uses the existing SQL-capable adapter over its supported transport, with typed validated category/value/aggregation and saved filters. Bare native PostgREST without aggregate support explicitly refuses this operation; it does not approximate an aggregate from the first page. Relationship aggregation and editable writes through arbitrary views are not supported by this change.
+
+
+## Gallery and detail headers
+
+Gallery is a normal editable element. Choose media through the existing asset picker/upload, enter URLs, or bind the media source with **@**. One item displays as a cover; multiple items use tiles. The media source accepts an array of URLs, JSON objects with `src`, `type`, `alt` and optional `poster`, or one URL per line. Cover source and fallback source are used when that list is empty. An additional video source can accompany the cover. Supported videos are native MP4/WebM and recognized YouTube/Vimeo URLs; arbitrary embed HTML is not accepted. Controls include featured/grid layout, height, spacing, corners and fit.
+
+Institution detail navigation is a desktop sidebar that adapts on smaller screens; program navigation stays horizontal. Header facts and consultation/Apply links remain independently editable, with destinations configured under **Properties > Actions**. Optional ranking mappings display actual source values only.
+
+Existing detail starters can opt into **Page Settings > Directory > Upgrade detail gallery, header and navigation**. This changes the unsaved design; save, prepare, review and publish it through the existing template lifecycle. Existing bindings and retained child identities are preserved. Media and newly added text labels must be reviewed for each active language.

@@ -434,6 +434,24 @@ export async function registerBasicComponents(): Promise<void> {
         defaultProps: { embedType: 'iframe', src: '', width: '100%', height: '400px' },
     };
 
+    const galleryComponent: ComponentDefinition = {
+        type:'Gallery',displayName:'Gallery',
+        editable:{displayName:'Gallery',category:'basic',icon:'image',description:'Single cover or image/video tiles',allowChildren:false,
+            props:[
+                {name:'media',label:'Media source',type:'text',default:'[]'},
+                {name:'coverSrc',label:'Cover when media is empty',type:'url'},
+                {name:'videoSrc',label:'Additional video URL',type:'url'},
+                {name:'fallbackSrc',label:'Fallback cover',type:'url'},
+                {name:'alt',label:'Default media description',type:'text'},
+                {name:'label',label:'Gallery accessible name',type:'text'},
+                {name:'layout',label:'Tile layout',type:'select',default:'featured',options:[{value:'featured',label:'Featured'},{value:'grid',label:'Equal tiles'}]},
+                {name:'coverHeight',label:'Cover height',type:'number',default:360},
+                {name:'gap',label:'Gap',type:'number',default:8},
+                {name:'radius',label:'Corners',type:'number',default:16},
+                {name:'hideWhenUnavailable',label:'Hide empty gallery',type:'boolean',default:true},
+            ],tags:['media','gallery','video','images']},
+        eSSRRenderer:createStaticRenderer('Gallery'),defaultProps:{media:'[]',coverSrc:'',layout:'featured',coverHeight:360,gap:8,radius:16},
+    };
     // Register all basic components
     globalRegistry.registerMany([
         buttonComponent,
@@ -441,6 +459,7 @@ export async function registerBasicComponents(): Promise<void> {
         textComponent,
         headingComponent,
         imageComponent,
+        galleryComponent,
         badgeComponent,
         alertComponent,
         avatarComponent,

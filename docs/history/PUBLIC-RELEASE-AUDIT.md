@@ -1,5 +1,9 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-25 gallery and differentiated detail layouts — IN PROGRESS
+
+Owner approves a reusable Gallery (single cover, multiple image/video tiles), editable header facts/CTA, institution sidebar navigation and section/subsection hierarchy, while programs retain horizontal navigation. Reuse standard elements, bindings, Actions, upload/storage and publication paths. Own isolated visual-binding-final checkout; preserve generated cms.mjs. Verify English/Arabic desktop/mobile, commit/push/deploy. Consultation/Apply use configured Actions; no invented rankings, external application submission or dataset translation expansion.
+
 ## 2026-10-25 post-detail release reconciliation — COMPLETE
 
 Owner requests an updated overall plan and concrete remaining release gaps after detail-page acceptance951fd32/runtime50f0580. Documentation-only scope: reconcile the six gates, identify actual diagnostics and missing evidence, distinguish optional site work, and correct directly observed stale support wording. Preserve generated cms.mjs and unrelated work; no runtime or release action is implied.

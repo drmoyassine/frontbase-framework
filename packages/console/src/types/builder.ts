@@ -40,6 +40,7 @@ export interface ComponentData {
 
 // Legacy type for backward compatibility
 export interface ContainerStyles {
+    color?: string;
     orientation?: 'row' | 'column';
     gap?: number;
     flexWrap?: 'nowrap' | 'wrap' | 'wrap-reverse';
@@ -57,6 +58,7 @@ export interface ContainerStyles {
 
 // New styles system
 export interface StylesData {
+    viewportOverrides?: { mobile?: Record<string, unknown>; tablet?: Record<string, unknown> };
     activeProperties: string[];
     values: Record<string, any>;
     stylingMode: 'visual' | 'css';

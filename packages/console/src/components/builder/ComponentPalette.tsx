@@ -52,6 +52,7 @@ const componentCategories = {
       { name: 'Heading', icon: Type, description: 'Headings (H1-H6)', section: 'basic' },
       { name: 'Link', icon: Globe, description: 'Navigation link', section: 'basic' },
       { name: 'Image', icon: Image, description: 'Image display', section: 'basic' },
+      { name: 'Gallery', icon: Image, description: 'Responsive image and video gallery', section: 'basic' },
       { name: 'Icon', icon: Star, description: 'Icon/emoji display', section: 'basic' },
       { name: 'Badge', icon: Star, description: 'Status badge with optional icon', section: 'basic' },
       { name: 'Embed', icon: Code, description: 'Embed iframe or script', section: 'basic' },

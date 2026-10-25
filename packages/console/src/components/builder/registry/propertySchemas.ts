@@ -305,6 +305,23 @@ registerPropertySchema('Avatar', {
     ],
 });
 
+registerPropertySchema('Gallery', {
+    general: [
+        {type:'text',name:'media',label:'Media source',multiline:true},
+        {type:'text',name:'coverSrc',label:'Cover when media is empty'},
+        {type:'text',name:'videoSrc',label:'Additional video URL'},
+        {type:'text',name:'fallbackSrc',label:'Fallback cover'},
+        {type:'text',name:'alt',label:'Default media description'},
+        {type:'text',name:'label',label:'Gallery accessible name'},
+        {type:'select',name:'layout',label:'Multiple items layout',options:[{value:'featured',label:'Featured tile'},{value:'grid',label:'Equal tiles'}]},
+        {type:'number',name:'coverHeight',label:'Desktop cover height',min:160,max:800,defaultValue:360},
+        {type:'number',name:'gap',label:'Tile gap',min:0,max:40,defaultValue:8},
+        {type:'number',name:'radius',label:'Tile corners',min:0,max:80,defaultValue:16},
+        {type:'select',name:'objectFit',label:'Image fit',options:[{value:'cover',label:'Cover'},{value:'contain',label:'Contain'}]},
+        {type:'boolean',name:'hideWhenUnavailable',label:'Hide when no media is available',defaultValue:true},
+    ],
+});
+
 registerPropertySchema('Icon', {
     general: [
         { type: 'icon', name: 'icon', label: 'Icon' },

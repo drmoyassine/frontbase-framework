@@ -3,12 +3,19 @@ import {expect,it} from 'vitest';
 import {renderPage} from '@frontbase/edge-core';
 import {renderBlock} from '@frontbase/edge-core/browser/render-block';
 import {templateRecordFields,directoryLayoutQueries} from '@frontbase/edge-core/directory/configuration';
-import {createRecordDetailTemplate,recordLinksToActions,replaceDetailTemplate,useSingleRecordCards} from './recordDetailTemplates';
+import {createRecordDetailTemplate,recordLinksToActions,replaceDetailTemplate,useSingleRecordCards,upgradeDetailPresentation} from './recordDetailTemplates';
 const binding:any={componentId:'source',dataSourceId:'ds',tableName:'campuses',viewId:'view',pagination:{enabled:true,pageSize:12,page:0},sorting:{enabled:true,column:'title',direction:'asc'},filtering:{searchEnabled:false,filters:{}},columnOverrides:{},hiddenFilters:[{column:'country_id',operator:'eq',value:22}]};
 const mapping={title:'title',image:'image',imageFallback:'institution.image',logo:'logo',description:'description',requirements:'requirements',tuition:'fee',currency:'currency',duration:'duration',durationUnit:'unit',intakes:'intakes',degree:'degree',city:'city',country:'country',subtitle:'institution.name',institutionHref:'institution.path',address:'institution.address'};
+
+it('differentiates institution sidebar hierarchy from program horizontal navigation and header facts',()=>{
+ const flatten=(nodes:any[]):any[]=>nodes.flatMap(node=>[node,...flatten(node.children??[])]);
+ const institution=createRecordDetailTemplate({role:'institution',binding,mapping:{...mapping,gallery:'media',ranking:'rank',rankingSource:'rankSource'},previewPath:'/campus/',contactUrl:'mailto:advice@example.org'});
+ const ni=flatten(institution);expect(ni.find(n=>n.props._layerName==='Institution section navigation')?.type).toBe('Column');expect(ni.some(n=>n.props._layerName==='Campus and facilities category')).toBe(true);expect(ni.find(n=>n.type==='Gallery')?.props.media).toContain('media');expect(ni.some(n=>n.props.text==='Book consultation')).toBe(true);expect(ni.some(n=>n.props._layerName==='Ranking')).toBe(true);
+ const program=createRecordDetailTemplate({role:'program',binding,mapping,previewPath:'/campus/program/',contactUrl:'mailto:advice@example.org'});const np=flatten(program);expect(np.some(n=>n.props._layerName==='Institution section navigation')).toBe(false);const header=np.find(n=>n.props._layerName==='Header facts and action');expect(JSON.stringify(header)).toContain('fee');expect(JSON.stringify(header)).toContain('duration');expect(JSON.stringify(header)).toContain('Apply');expect(upgradeDetailPresentation(program,'program')).toEqual(program);
+});
 it.each(['institution','program'] as const)('%s authors ordinary editable nodes and Actions links with mandatory current-route filtering',role=>{
  const tree=createRecordDetailTemplate({role,binding,mapping,previewPath:'/campus/program/',programBinding:role==='institution'?binding:undefined});
- const ids=new Set<string>(),walk=(nodes:any[])=>{for(const node of nodes){expect(ids.has(node.id)).toBe(false);ids.add(node.id);expect(['Container','Repeater','Column','Row','Image','Text','Heading','Link','Badge','Card','Embed']).toContain(node.type);if(node.type==='Link'){expect(node.props.actionBindings[0].trigger).toBe('onClick');expect(node.props.href).toBeUndefined();}walk(node.children??[]);}};walk(tree);
+ const ids=new Set<string>(),walk=(nodes:any[])=>{for(const node of nodes){expect(ids.has(node.id)).toBe(false);ids.add(node.id);expect(['Container','Repeater','Column','Row','Image','Gallery','Text','Heading','Link','Badge','Card','Embed']).toContain(node.type);if(node.type==='Link'){expect(node.props.actionBindings[0].trigger).toBe('onClick');expect(node.props.href).toBeUndefined();}walk(node.children??[]);}};walk(tree);
  expect(tree[1].props.binding.hiddenFilters).toContainEqual({column:'country_id',operator:'eq',value:22});expect(tree[1].props.binding.hiddenFilters.at(-1)).toMatchObject({column:'id',operator:'eq',value:{kind:'variable',path:'page.recordId'}});
  expect(templateRecordFields(tree[1].children!)).toContain('institution.address');
  expect(directoryLayoutQueries({root:{},content:tree})).toHaveLength(1);
@@ -50,7 +57,7 @@ it('presents imported HTML prose as safe readable text through the existing Liqu
  const html=await renderBlock(tree[1],{} as any);expect(html).toContain('Study history');const dom=document.createElement('div');dom.innerHTML=html;expect(dom.textContent).not.toContain('private metadata');expect(dom.textContent).not.toContain('<span');expect(templateRecordFields(tree[1].children!)).toContain('description');
 });
 
- it('applies editable light root values without dropping existing page styles',()=>{const layout=replaceDetailTemplate({layoutData:{root:{siteConfiguration:{version:1,role:'program'},containerStyles:{values:{backgroundColor:'#000',padding:'12px'}}},content:[]}} as any,{role:'program',binding,mapping,previewPath:'/campus/'});expect(layout.root.containerStyles.values).toEqual({backgroundColor:'#f8fafc',color:'#0f172a',padding:'12px'});});
+ it('applies editable light root values without dropping existing page styles',()=>{const layout=replaceDetailTemplate({layoutData:{root:{siteConfiguration:{version:1,role:'program'},containerStyles:{values:{backgroundColor:'#000',padding:'12px'}}},content:[]}} as any,{role:'program',binding,mapping,previewPath:'/campus/'});expect(layout.root.containerStyles && 'values' in layout.root.containerStyles ? layout.root.containerStyles.values : undefined).toEqual({backgroundColor:'#f8fafc',color:'#0f172a',padding:'12px'});});
 
 it('retains responsive layout overrides and viewport-sized detail content in the shared renderer',async()=>{
  const tree=createRecordDetailTemplate({role:'program',binding,mapping,previewPath:'/campus/',contactUrl:'mailto:test@example.org'});tree[1].props.initialRows=[{id:7,title:'History'}];tree[1].props.initialTotal=1;
