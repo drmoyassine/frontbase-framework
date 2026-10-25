@@ -19,6 +19,8 @@
     "test:workflow-authoring": "node test/workflow-authoring.mjs",
     "test:workflow-authoring-mutation": "node test/workflow-authoring-mutation.mjs",
     "test:behavior-isolated": "node test/behavior-outcomes-controls.mjs && node test/behavior-isolated-orders.mjs",
+    "test:detail-pages": "node test/publication-record-context.mjs",
+    "test:detail-pages-mutation": "node test/publication-record-context-mutation.mjs",
     "test:frontend-edit": "node test/frontend-records.mjs && node test/frontend-edit.mjs && node test/frontend-edit-locales.mjs",
     "test:frontend-edit-mutation": "node test/frontend-edit-mutation.mjs && node test/frontend-records-mutation.mjs",
     "test:neon-http": "node test/neon-http-runner.mjs",

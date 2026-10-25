@@ -85,6 +85,9 @@ export function getDefaultVariables(): VariablesResponse {
             { path: 'page.description', type: 'string', source: 'page', description: 'Meta description' },
             { path: 'page.image', type: 'string', source: 'page', description: 'OG image URL' },
 
+            // Published detail templates: resolved against the active catalog route.
+            { path: 'page.recordId', type: 'string', source: 'page', description: 'Current detail record ID (published catalog)' },
+            { path: 'page.parentId', type: 'string', source: 'page', description: 'Parent record ID (published catalog)' },
             // Visitor (Basic - Always Available)
             { path: 'visitor.country', type: 'string', source: 'visitor', description: 'Country code' },
             { path: 'visitor.city', type: 'string', source: 'visitor', description: 'City name' },

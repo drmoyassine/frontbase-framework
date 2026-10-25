@@ -1,3 +1,5 @@
+import {relativeSiteHref} from '../directory/navigation.js';
+import {localizePublicHref} from '../localization/navigation.js';
 import {evaluateCondition,conditionUsesClient,contextReader,resolveValue,valueUsesClient} from '../conditions.js';
 /**
  * LiquidJS template-resolution helpers.
@@ -54,6 +56,14 @@ export async function resolveProps(
         }
     }
 
+    // Resolve navigation after row interpolation; related URL fields are source content and
+    // must not be rewritten in the record itself. Reuse host/locale navigation guards.
+    for(const key of ['href','pageUrl'])if(typeof resolved[key]==='string'){
+        const origin=context.app?.siteNavigationOrigin;
+        if(typeof origin==='string')resolved[key]=relativeSiteHref(resolved[key],origin);
+        const locale=context.app?.navigationLocale,origins=context.app?.navigationOrigins;
+        if(typeof locale==='string'&&Array.isArray(origins))resolved[key]=localizePublicHref(String(resolved[key]),locale,origins);
+    }
     return resolved;
 }
 

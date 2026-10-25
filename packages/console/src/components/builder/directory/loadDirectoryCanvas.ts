@@ -1,9 +1,11 @@
 import { directoryLayoutQueries, projectDirectoryRecords, projectRelativeSiteLinks, projectTemplatePresentation, landingQueryParams, projectDirectoryBrowsing, type SiteConfigurationDraft } from '@frontbase/edge-core/directory/configuration';
+import {resolveValue,contextReader} from '@frontbase/edge-core/conditions';
 import type { PageLayoutLike } from '@/lib/builder/iframeTypes';
 
 /** Resolve registered authoring requests before the shared SW/network renderer. */
 export async function loadDirectoryCanvas(layout: PageLayoutLike, saved: SiteConfigurationDraft, signal: AbortSignal, previewCollection?: 'institution'|'program'): Promise<PageLayoutLike> {
     const rows = new Map<string, Record<string, unknown>[]>();
+    let recordContext:Record<string,unknown>={};
     let pageSize=saved.configuration.browsing.pageSize as number;
     let captureHash:string|undefined,configuration=saved.configuration,hasNext=false,total:number|undefined;
     const role=(layout.root?.siteConfiguration as {role?:string}|undefined)?.role;
@@ -21,9 +23,11 @@ export async function loadDirectoryCanvas(layout: PageLayoutLike, saved: SiteCon
         if(pageRole==='directory' && mode==='list' && ['institution','program'].includes(role) && role!==(previewCollection||configuration.browsing.defaultCollection)){inactive.add(id);continue;}
         if(mode==='list'){pageSize=result.pageSize??Math.min(('limit' in params?params.limit:undefined)||configuration.browsing.pageSize,configuration.browsing.pageSize);hasNext=!!result.hasMore;total=result.total;q=('q' in params?params.q:'')||'';sort=('sort' in params?params.sort:undefined)||'title-asc';match=('match' in params?params.match:undefined)||'contains';page=Math.floor((('offset' in params?params.offset:0)||0)/pageSize)+1;}
         rows.set(id, result.rows);
+        if(mode==='detail'&&role===(layout.root?.siteConfiguration as {role?:string}|undefined)?.role&&result.rows[0])recordContext={recordId:result.rows[0].id,parentId:result.rows[0].institutionId??result.rows[0].cityId??null};
     }
+    const bindContext=(nodes:PageLayoutLike['content']):PageLayoutLike['content']=>nodes.map(node=>{const binding=node.props?.binding;return {...node,...(binding?{props:{...node.props,binding:{...binding,hiddenFilters:(binding.hiddenFilters??[]).map((filter:any)=>filter.value?.kind==='variable'&&['page.recordId','page.parentId'].includes(filter.value.path)?{...filter,value:resolveValue(filter.value,contextReader({page:recordContext}))??null}:filter)}}}:{}),...(node.children?{children:bindContext(node.children)}:{})};});
     const prune=(nodes:PageLayoutLike['content']):PageLayoutLike['content']=>nodes.filter(node=>!inactive.has(node.id)).map(node=>({...node,...(node.children?{children:prune(node.children)}:{})}));
-    let projected=projectDirectoryRecords({...layout,content:prune(layout.content)},rows,{locale:configuration.site.locale});
+    let projected=projectDirectoryRecords({...layout,root:{...layout.root,publicationRecordContext:recordContext},content:bindContext(prune(layout.content))},rows,{locale:configuration.site.locale});
     if(role==='directory'||role==='article-index')projected=projectDirectoryBrowsing(projected,[{path:role==='directory'?configuration.routes.directory:configuration.routes.blog,collection:role==='directory'?(previewCollection||configuration.browsing.defaultCollection):null,q,page,hasNext,total,pageSize,searchEnabled:configuration.browsing.search,sort,match}]);
     return projectRelativeSiteLinks(projectTemplatePresentation(projected,saved.configuration),configuration.site.origin);
 }

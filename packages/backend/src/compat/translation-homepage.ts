@@ -117,7 +117,9 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
     // Template listing pages resolve with their request parameters (explore type/q/page); static pages never carry them.
     const listing=page?undefined:manifest.templates.find(template=>['directory','article-index'].includes(template.role)
         &&path===(template.role==='directory'?manifest.configuration.routes.directory:manifest.configuration.routes.blog));
-    const target=page??listing;
+    const detailEntry=manifest.index.find(entry=>entry.originalPath===path&&['institutions','programs'].includes(entry.collection));
+    const detail=detailEntry?manifest.templates.find(template=>template.role===(detailEntry.collection==='institutions'?'institution':'program')):undefined;
+    const target=page??listing??detail;
     if(!target)throw Error('homepage_required');
     // The localized query plan (fresh released titles + catalog) drives listing pages and —
     // since live-data slice 2 — static pages' live lists too (full-dataset localized
@@ -136,7 +138,7 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
     if(result.page.description)fields.push({blockId:'$meta',path:['description'],text:result.page.description,label:'Page description'});
     // Hash the identity→text pairs in canonical identity order: rendered row order must not invalidate a release.
     const sourceHash=await publicationHash(fields.map(field=>[stableIdentity(field),field.text] as const).sort((a,b)=>JSON.stringify(a[0])<JSON.stringify(b[0])?-1:JSON.stringify(a[0])>JSON.stringify(b[0])?1:0));
-    return {active,result,layout,fields,sourceHash,pageId:target.pageId,path,templateListing:!page};
+    return {active,result,layout,fields,sourceHash,pageId:target.pageId,path,templateListing:!!listing};
 }
 async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery,path:string='/',additionalRecords:DisplayField[]=[]){
     locale.parse(target);const config=(await new TranslationGenerationStore(db,tenant).get()).configuration;
@@ -382,8 +384,9 @@ export async function publishedTranslationPages(db:DbRunner,tenant:string){
     // their releases are per-unit only, joining every parameterized rendering in memory.
     const listings=active.artifact.templates.filter(template=>['directory','article-index'].includes(template.role))
         .map(template=>({path:template.role==='directory'?routes.directory:routes.blog,title:template.title.slice(0,200)}));
+    const detailPages=active.artifact.index.filter(entry=>['institutions','programs'].includes(entry.collection)&&entry.originalPath).slice(0,1000).map(entry=>({path:entry.originalPath!,title:entry.title.slice(0,200)}));
     const seen=new Set<string>();
-    const pages=[...(active.artifact.staticPages??[]).slice(0,64).map(page=>({path:page.originalPath,title:page.title.slice(0,200)})),...listings]
+    const pages=[...(active.artifact.staticPages??[]).slice(0,64).map(page=>({path:page.originalPath,title:page.title.slice(0,200)})),...listings,...detailPages]
         .filter(page=>(page.path==='/'||/^\/[A-Za-z0-9._~!$&'()*+,;=@%-]+(?:\/[A-Za-z0-9._~!$&'()*+,;=@%-]+)*\/$/.test(page.path))&&!seen.has(page.path)&&seen.add(page.path));
     return {version:1 as const,pages};
 }

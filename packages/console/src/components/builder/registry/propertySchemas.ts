@@ -164,10 +164,11 @@ registerPropertySchema('Text', {
 registerPropertySchema('Link', {
     general: [
         { type: 'input', name: 'text', label: 'Text', placeholder: 'Link text' },
-        { type: 'input', name: 'href', label: 'URL', placeholder: 'https://example.com' },
+        { type: 'input', name: 'href', label: 'URL (legacy; configure new navigation in Actions)', placeholder: 'https://example.com', visible:props=>!(props.actionBindings??[]).some((action:any)=>action.trigger==='onClick') },
         {
             type: 'select',
             name: 'target',
+            visible:props=>!(props.actionBindings??[]).some((action:any)=>action.trigger==='onClick'),
             label: 'Target',
             defaultValue: '_self',
             options: [

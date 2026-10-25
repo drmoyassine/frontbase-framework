@@ -5,7 +5,15 @@ export function projectRelativeSiteLinks<T extends PageLayoutData>(layout: T, si
     // Incomplete authoring drafts may not yet have an origin; publication admission requires one.
     if(!siteOrigin)return layout;
     const origin = new URL(siteOrigin).origin;
-    const relative = (href: unknown): unknown => {
+    const walk = (node: PageComponent): PageComponent => ({
+        ...node,
+        ...(node.props ? { props: { ...node.props, ...(Object.hasOwn(node.props, 'href') ? { href: relativeSiteHref(node.props.href,origin) } : {}) } } : {}),
+        ...(node.children ? { children: node.children.map(walk) } : {}),
+    });
+    return { ...layout, root:{...layout.root,siteNavigationOrigin:origin}, content: layout.content.map(walk) };
+}
+
+export function relativeSiteHref(href: unknown, origin: string): unknown {
         if (typeof href !== 'string' || !/^https?:\/\//i.test(href)) return href;
         try {
             const url = new URL(href);
@@ -15,11 +23,4 @@ export function projectRelativeSiteLinks<T extends PageLayoutData>(layout: T, si
             if (path.startsWith('//') || /[\\\x00-\x20]/.test(path)) return href;
             return url.pathname + url.search + url.hash;
         } catch { return href; }
-    };
-    const walk = (node: PageComponent): PageComponent => ({
-        ...node,
-        ...(node.props ? { props: { ...node.props, ...(Object.hasOwn(node.props, 'href') ? { href: relative(node.props.href) } : {}) } } : {}),
-        ...(node.children ? { children: node.children.map(walk) } : {}),
-    });
-    return { ...layout, content: layout.content.map(walk) };
 }

@@ -14,6 +14,14 @@ import { freshLocalizedIndexTitles, type LocalizedCatalogEntry } from './site-pu
 import {liveViewBindingSchema} from '@frontbase/edge-core/directory/configuration';
 import {projectFrontendCopyRows} from './frontend-copy.js';
 
+import {publicationRecordContext} from './publication-record-context.js';
+
+function routeFilterValue(value:unknown,read:ReturnType<typeof contextReader>):unknown{
+    const resolved=resolveValue(value,read);
+    if(value&&typeof value==='object'&&'kind' in value&&value.kind==='variable'&&'path' in value&&['page.recordId','page.parentId'].includes(String(value.path))&&(resolved===undefined||resolved===null))throw Error('publication_record_context_required');
+    return resolved;
+}
+
 export type PublishedLiveQuery=(owner:string,binding:Record<string,any>,query:Record<string,any>,request:Request)=>Promise<{rows:Record<string,unknown>[];total:number}>;
 
 export const publicationListRequestSchema = z.object({ componentId:z.string().min(1).max(200),versionId:z.string().min(1).max(128).default('default'),
@@ -136,8 +144,8 @@ export async function readLocalizedLiveList(owner:string,binding:Record<string,a
  *  catalog localizes pinned publication reads (query + returned text) and gives live views
  *  full-dataset localized sort/filter semantics (readLocalizedLiveList); without a catalog live
  *  views keep coherent source semantics. */
-export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[]):Promise<PageLayoutData>{
-    const url=new URL(request.url),read=contextReader({url:Object.fromEntries(url.searchParams),user});
+export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[],pageContext:Record<string,unknown>={}):Promise<PageLayoutData>{
+    const url=new URL(request.url),read=contextReader({url:Object.fromEntries(url.searchParams),user,page:pageContext});
     const walk=async(nodes:PageComponent[]):Promise<PageComponent[]>=>Promise.all(nodes.map(async node=>{
         const versionId=selectBlockVersion(node,read),effective=applyBlockVersion(node,versionId),binding=effective.props?.binding?bindingWithTemplateFields(effective.props.binding as any,effective.children??[]):undefined;
         let result=node;
@@ -147,11 +155,12 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
             const controls=effective.props?.controls as any??{};
             const page=Math.max(0,Number(url.searchParams.get('page')||1)-1),search=url.searchParams.get('q')??'';
             const sourceFilters=[...Object.entries(binding.filtering?.filters??{}).filter(([,value])=>value!==undefined&&value!=='').map(([column,value])=>({column,op:'eq',value})),
-                ...(binding.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:resolveValue(filter.value,read)}))];
+                ...(binding.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:routeFilterValue(filter.value,read)}))];
             const filters=[...sourceFilters,...(search&&controls.searchColumn?[{column:controls.searchColumn,op:'contains',value:search}]:[])];
             const query={componentId:node.id,versionId,page,...(live?{sourceFilters}:{}),pageSize:binding.pagination?.pageSize??12,sortColumn:binding.sorting?.column??'title',direction:binding.sorting?.direction??'asc',filters};
             const records=live?(catalog?await readLocalizedLiveList(owner,binding,query,request,liveQuery!,catalog):await liveQuery!(owner,binding,query,request)):await readPublicationList(db,owner,binding,query,catalog);
-            const props={initialRows:records.rows,initialTotal:records.total,_initialVersionId:versionId,_initialQuery:{page,search,sortColumn:query.sortColumn,direction:query.direction}};
+            const routeFilters=(binding.hiddenFilters??[]).map((filter:any)=>filter.value?.kind==='variable'&&['page.recordId','page.parentId'].includes(filter.value.path)?{...filter,value:routeFilterValue(filter.value,read)??null}:filter);
+            const props={binding:{...binding,hiddenFilters:routeFilters},initialRows:records.rows,initialTotal:records.total,_initialVersionId:versionId,_initialQuery:{page,search,sortColumn:query.sortColumn,direction:query.direction}};
             if(versionId==='default')result={...node,props:{...node.props,...props}};
             else result={...node,versions:node.versions?.map(version=>version.id===versionId?{...version,overrides:{...version.overrides,props:{...version.overrides.props,...props}}}:version)};
         }
@@ -164,7 +173,8 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
         }else if(result.children)result={...result,children:await walk(result.children)};
         return result;
     }));
-    return {...layout,content:await walk(layout.content)};
+    const {publicationRecordContext:_authoredContext,...root}=layout.root??{};
+    return {...layout,root:{...root,...(pageContext.recordId!==undefined?{publicationRecordContext:pageContext}:{})},content:await walk(layout.content)};
 }
 
 /** Same public page/host boundary, exact reviewed element binding; no arbitrary datasource access.
@@ -189,7 +199,7 @@ export async function publicationListResponse(db:DbRunner,owner:string,request:R
         const role=path===artifact.configuration.routes.directory?'directory':path===artifact.configuration.routes.blog?'article-index':entry?({institutions:'institution',programs:'program',articles:'article',pages:'editorial',cities:''}[entry.collection]):undefined;
         const page=artifact.staticPages?.find(page=>page.originalPath===path)??artifact.templates.find(page=>page.role===role);
         if(!page)return reply({error:'list_unavailable'},404);
-        const read=contextReader({url:Object.fromEntries(url.searchParams),user:audienceConditionUser(audience)});
+        const read=contextReader({url:Object.fromEntries(url.searchParams),user:audienceConditionUser(audience),page:publicationRecordContext(artifact,path)});
         let found:VersionedBlock|undefined;
         // Walk only Default structures here; alternative children are admitted only through a server-possible parent.
         const search=(nodes:VersionedBlock[])=>{for(const node of nodes){
@@ -212,7 +222,7 @@ export async function publicationListResponse(db:DbRunner,owner:string,request:R
         }else if(binding&&!binding.source&&liveQuery){
             const admitted=liveViewBindingSchema.parse(bindingWithTemplateFields(binding,node.children??[]));
             const mandatory=[...Object.entries(admitted.filtering.filters).filter(([,value])=>value!==undefined&&value!=='').map(([column,value])=>({column,op:'eq',value})),
-                ...(admitted.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:resolveValue(filter.value,read)}))];
+                ...(admitted.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:routeFilterValue(filter.value,read)}))];
             const query={...input,sourceFilters:mandatory,filters:[...mandatory,...input.filters]};
             result=localized?.catalog?await readLocalizedLiveList(owner,admitted,query,request,liveQuery,localized.catalog):await liveQuery(owner,admitted,query,request);
         }else return reply({error:'list_unavailable'},404);

@@ -1,5 +1,10 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-25 institution/program detail templates — IN PROGRESS
+
+Owner authorizes fully visually editable institution and program detail pages using existing primitives, datasource/relationship bindings and Properties → Actions click-through configuration. Own isolated visual-binding-final checkout. Reuse source/translation save routing, locale navigation and saved-template publication. Verify English/Arabic desktop/mobile, commit, push and deploy staging. Preserve existing source records and publication guards; no other-site migration or public release.
+
+
 ## 2026-10-25 overall release reconciliation — COMPLETE
 
 Documentation-only reconciliation of the six release gates against runtime c7a4dc3 and recovery receipt8adbe91. Remove the stale source-availability hold; retain candidate, public installation, provider/recovery, clean-room and distribution evidence gaps. No new feature, CF-22 work, live certification or publication is authorized by this planning update. Updated the current plan, strategy and milestones; exact-candidate qualification, standalone console diagnostic triage, public-source install, advertised-provider/reset receipts, docs-only adoption and versioned distribution remain open. Verification: documentation diff/links only; no runtime changes or rerun of dated tests.

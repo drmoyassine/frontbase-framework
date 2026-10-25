@@ -208,8 +208,10 @@ function renderButton(id: string, props: Record<string, unknown>, propsJson: str
 
 function renderLink(id: string, props: Record<string, unknown>, propsJson: string): string {
     const text = escapeHtml(String(props.text || props.label || props.children || 'Link'));
-    const href = escapeHtml(String(props.href || props.to || '#'));
-    const target = props.target as string || '_self';
+    const click = (props.actionBindings as Array<{trigger:string;actionType:string;config?:{pageUrl?:string;sectionId?:string;openInNewTab?:boolean}}> | undefined)?.find(action=>action.trigger==='onClick');
+    const actionUrl = click?.actionType==='openPage'?click.config?.pageUrl:click?.actionType==='scrollToSection'?click.config?.sectionId:undefined;
+    const href = escapeHtml(String(actionUrl || props.href || props.to || '#'));
+    const target = click?.actionType==='openPage' ? (click.config?.openInNewTab?'_blank':'_self') : props.target as string || '_self';
     const color = props.color as string || '#3b82f6';
     const underline = props.underline !== false;
 
@@ -217,7 +219,7 @@ function renderLink(id: string, props: Record<string, unknown>, propsJson: strin
     const attrs = getCommonAttributes(id, 'fb-link', props, style, 'link', propsJson);
     const accessibleName = typeof props.ariaLabel === 'string' && props.ariaLabel.trim() ? ` aria-label="${escapeHtml(props.ariaLabel)}"` : '';
 
-    return `<a ${attrs} href="${href}" target="${target}"${accessibleName}>${text}</a>`;
+    return `<a ${attrs} href="${href}" target="${escapeHtml(target)}"${target==='_blank'?' rel="noopener noreferrer"':''}${accessibleName}>${text}</a>`;
 }
 
 function renderTabs(id: string, props: Record<string, unknown>, childrenHtml: string, propsJson: string): string {

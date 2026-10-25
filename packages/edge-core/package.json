@@ -61,7 +61,8 @@
     "test:deployment": "node test/deployment.mjs && node test/deployment-mutation.mjs",
     "test:menus": "node test/menus.mjs && node test/menus-native.mjs",
     "test:localization": "node test/localization.mjs && node test/localization-mutation.mjs && node test/patterns-mutation.mjs",
-    "test": "node test/parity.mjs && node test/wysiwyg-parity.mjs && node test/visual-layout.mjs && node test/engine.mjs && node test/scope.mjs && node test/fallback.mjs && node test/behaviors.mjs && node test/workflow.mjs && node test/directory-bindings.mjs && node test/public-form-draft.mjs && node test/template-landing.mjs && node test/direction.mjs && node test/localization.mjs && node test/localization-surfaces.mjs && node test/list-chrome-surfaces.mjs && node test/patterns.mjs && node test/deployment.mjs",
+    "test:action-navigation-mutation": "node test/action-navigation-mutation.mjs",
+    "test": "node test/action-navigation.mjs && node test/parity.mjs && node test/wysiwyg-parity.mjs && node test/visual-layout.mjs && node test/engine.mjs && node test/scope.mjs && node test/fallback.mjs && node test/behaviors.mjs && node test/workflow.mjs && node test/directory-bindings.mjs && node test/public-form-draft.mjs && node test/template-landing.mjs && node test/direction.mjs && node test/localization.mjs && node test/localization-surfaces.mjs && node test/list-chrome-surfaces.mjs && node test/patterns.mjs && node test/deployment.mjs",
     "test:mutation": "node test/mutation.mjs && node test/directory-bindings-mutation.mjs && node test/public-form-draft-mutation.mjs && node test/template-landing-mutation.mjs && node test/direction-mutation.mjs && node test/localization-mutation.mjs && node test/patterns-mutation.mjs && node test/deployment-mutation.mjs"
   },
   "dependencies": {

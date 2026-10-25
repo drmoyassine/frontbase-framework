@@ -1,5 +1,10 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-25 editable detail templates and route-bound record context
+
+Owner authorizes institution/program detail templates composed from existing elements and data bindings. Current-record selection uses existing hidden filters with `page.recordId`/`page.parentId` resolved from the active immutable publication index. Neither visitor query parameters nor the authoring sample path choose the served identity. Public continuation re-applies mandatory filters; canvas substitutes a transient captured sample only. Existing datasource/view/tenant guards and frontend source/translation write routing remain authoritative. Text, sections, optional facts, related program lists, map embeds and inquiry actions remain ordinary configurable children. Navigation uses Properties → Actions quick actions (or the existing automation executor); explicit migration promotes legacy record hrefs without replacing existing click workflows. Detail paths join the existing per-path review/prepare/publish lifecycle, retaining its per-unit live-data policy. This is staging product work, not a public-release or production-cutover decision.
+
+
 ## 2026-10-24 provenance-based frontend text saves
 
 Owner explicitly requires source-record edits to update their connected records, translated record edits to update the configured translations datasource, and translated/static UI copy to update active state in its selected language. Reuse owned datasource resolution, native PostgREST transport, relationship discovery, manual translation revisions and immutable locale activation; do not invent per-card text overrides for business records. Stage edits locally until the page save. Use typed raw inputs for composed record values, keyed original-value CAS writes and private progress receipts across independent stores; do not claim cross-database atomicity. Existing editorial revision/archive and publication approval remain authoritative. Generic card highlights and split-value badges are ordinary editable components, not a fixed program renderer.

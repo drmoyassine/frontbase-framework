@@ -67,3 +67,9 @@ it('selecting a program Repeater previews that collection without changing its s
  const layout:any={root:{siteConfiguration:{version:1,role:'directory'}},content:[{id:'programs',type:'Repeater',props:{directoryQuery:{version:1,queryId:'directory.program.list',params:{}}},children:[{id:'program-title',type:'Text',props:{}}]}]};
  expect(selectedDirectoryCollection(layout,'program-title')).toBe('program');expect(selectedDirectoryCollection(layout,'unrelated')).toBeUndefined();expect(layout.root).toEqual({siteConfiguration:{version:1,role:'directory'}});
 });
+
+ it('resolves current-record preview filters from the captured detail, without persisting the sample ID',async()=>{
+ const layout:any={root:{siteConfiguration:{version:1,role:'program'}},content:[{id:'contract',type:'Container',props:{directoryQuery:{version:1,queryId:'directory.program.detail',params:{path:'/campus/history/'}}},children:[]},{id:'detail',type:'Repeater',props:{binding:{hiddenFilters:[{column:'id',operator:'eq',value:{kind:'variable',path:'page.recordId'}}]}},children:[]}]};
+ vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,json:async()=>({revision:saved.revision,queryId:'directory.program.detail',rows:[{id:7,institutionId:4}],configuration:saved.configuration})})));
+ const projected=await loadDirectoryCanvas(layout,saved,new AbortController().signal);expect(projected.content[1].props.binding.hiddenFilters[0].value).toBe(7);expect(layout.content[1].props.binding.hiddenFilters[0].value).toEqual({kind:'variable',path:'page.recordId'});
+ });

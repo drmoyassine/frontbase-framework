@@ -1,3 +1,4 @@
+import {publicationRecordContext} from './publication-record-context.js';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { buildSiteManifest } from '@frontbase/compiler/manifest';
 import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview, projectDirectoryBrowsing, projectRelativeSiteLinks, projectTemplatePresentation, readLandingSettings, landingQueryParams } from '@frontbase/edge-core/directory/configuration';
@@ -64,7 +65,7 @@ const params:Record<string,unknown>=mode==='detail'?{path:parentPath??path}:role
     projected=projectTemplatePresentation(projected,artifact.configuration,artifact.staticPages?.find(page=>page.originalPath==='/')?readLandingSettings(artifact.staticPages.find(page=>page.originalPath==='/')!.layout as unknown as PageLayoutData):undefined);
     projected=projectRelativeSiteLinks(projected,artifact.configuration.site.origin);
     const title=typeof row?.title==='string'?row.title:template.title,description=typeof row?.summary==='string'?row.summary:template.description;
-    projected=await projectPublicationListRows(projected,db,owner,request,user,liveQuery,localizedTitles?.catalog);
+    projected=await projectPublicationListRows(projected,db,owner,request,user,liveQuery,localizedTitles?.catalog,publicationRecordContext(artifact,path));
     const built=buildSiteManifest({pages:{[path]:{title,slug:path.replace(/^\//,''),description,layout:projected as unknown as Record<string,unknown>}},queries:{},versionPrefix:hash});
     const canonicalUrl=new URL(path,artifact.configuration.site.origin).href;
     const documentLanguage=typeof row?.language==='string'?row.language:artifact.configuration.site.locale||'en';

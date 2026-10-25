@@ -229,6 +229,12 @@ export async function renderPage(
 
     // Apply root styles if present
     const rootProps = layoutData.root || {};
+    // Runtime/canvas route identity is presentation context only. Data selection is independently
+    // enforced by the publication resolver against its immutable route index.
+    const route=rootProps.publicationRecordContext as Record<string,unknown>|undefined;
+    if(route){const scalars=Object.fromEntries(['recordId','parentId'].filter(key=>typeof route[key]==='string'||typeof route[key]==='number').map(key=>[key,route[key]]));context={...context,page:{...context.page,...scalars}};}
+    const navigationContext=rootProps.localeNavigation as {locale?:string;origins?:string[]}|undefined;
+    context={...context,app:{...context.app,siteNavigationOrigin:rootProps.siteNavigationOrigin,navigationLocale:navigationContext?.locale,navigationOrigins:navigationContext?.origins}};
     const { rootStyle, rootClass } = resolveRootStyles(rootProps);
 
     // Render all top-level components (async) - wrapped for proper block layout
@@ -243,6 +249,7 @@ export async function renderPage(
 
     const needsContext=/"(?:visibilityCondition|hiddenFilters|versions)"/.test(JSON.stringify(layoutData));
     const publicContext=publicConditionContext(layoutData,context as unknown as Record<string,unknown>);
+    if(typeof rootProps.siteNavigationOrigin==='string')publicContext.app={...(publicContext.app as Record<string,unknown>??{}),siteNavigationOrigin:rootProps.siteNavigationOrigin,...(navigationContext?.locale?{navigationLocale:navigationContext.locale,navigationOrigins:navigationContext.origins??[]}: {})};
     const bootstrap=needsContext?`<script>window.__CONDITION_CONTEXT__=${JSON.stringify(publicContext).replace(/</g,'\\u003c')};</script>`:'';
     const navigation=rootProps.localeNavigation as {locale?:string;origins?:string[]}|undefined;
     const navigationAttrs=navigation?.locale?` data-fb-nav-locale="${escapeHtml(navigation.locale)}" data-fb-nav-origins="${escapeHtml(JSON.stringify(navigation.origins??[]))}"`:'';
