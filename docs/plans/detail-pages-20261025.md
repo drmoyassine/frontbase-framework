@@ -23,3 +23,7 @@ Pending: staging deployment, saved-template publication, actual English/Arabic d
 ## Boundaries
 
 No other sites, registry publication, production cutover, shared-source schema changes, new keys or unrelated release scope. Maps use existing Embed elements and address/coordinate bindings; directions remain ordinary Actions links.
+
+## Native authoring follow-up
+
+Initial source52be8cc is pushed and deployed automatically by EasyPanel source upload. Native authoring exposed a cold-open source-picker gap: other page bindings were not cached, and API-enriched compiled request fields need authoring-only projection. The explicit Load sources from saved pages action reuses the existing Pages service, preserves the builder's unsaved page state, strips derived request fields and validates the remaining binding through the unchanged strict schema. Its UI regression proves cold loading, safe application and no store overwrite/compiled-request copying. Workspace check/build and the focused regression pass. Saved-template publication and final native acceptance remain pending.
