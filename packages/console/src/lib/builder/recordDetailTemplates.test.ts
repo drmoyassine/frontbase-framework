@@ -60,8 +60,8 @@ it('presents imported HTML prose as safe readable text through the existing Liqu
  it('applies editable light root values without dropping existing page styles',()=>{const layout=replaceDetailTemplate({layoutData:{root:{siteConfiguration:{version:1,role:'program'},containerStyles:{values:{backgroundColor:'#000',padding:'12px'}}},content:[]}} as any,{role:'program',binding,mapping,previewPath:'/campus/'});expect(layout.root.containerStyles && 'values' in layout.root.containerStyles ? layout.root.containerStyles.values : undefined).toEqual({backgroundColor:'#f8fafc',color:'#0f172a',padding:'12px'});});
 
 it('retains responsive layout overrides and viewport-sized detail content in the shared renderer',async()=>{
- const tree=createRecordDetailTemplate({role:'program',binding,mapping,previewPath:'/campus/',contactUrl:'mailto:test@example.org'});tree[1].props.initialRows=[{id:7,title:'History'}];tree[1].props.initialTotal=1;
- const html=await renderBlock(tree[1],{} as any);expect(html).toContain('position:fixed !important');expect(html).toContain('@media(max-width:640px)');expect(tree[1].children![0].styles).toMatchObject({width:'100%',boxSizing:'border-box'});
+ const tree=createRecordDetailTemplate({role:'institution',binding,mapping,previewPath:'/campus/',contactUrl:'mailto:test@example.org'});tree[1].props.initialRows=[{id:7,title:'History'}];tree[1].props.initialTotal=1;
+ const html=await renderBlock(tree[1],{} as any);expect(html).not.toContain('position:fixed !important');expect(html).toContain('@media(max-width:640px)');expect(tree[1].children![0].styles).toMatchObject({width:'100%',boxSizing:'border-box'});
 });
 
 it('uses the existing bound single-record Card hydration for composed field editing without list chrome',async()=>{

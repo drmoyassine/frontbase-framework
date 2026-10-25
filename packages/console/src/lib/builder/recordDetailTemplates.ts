@@ -83,8 +83,8 @@ export function createRecordDetailTemplate(input:DetailTemplateInput,newId=uuid)
 export function upgradeDetailPresentation(nodes:ComponentData[],role:'institution'|'program',newId=uuid):ComponentData[]{
  const next=structuredClone(nodes);
  const detail=next.find(item=>item.type==='Card'&&(item.props.binding?.hiddenFilters??[]).some((f:any)=>f.column==='id'&&f.value?.path==='page.recordId'));
- if(!detail||detail.props.detailPresentationVersion===3)return next;
- if(detail.props.detailPresentationVersion===2){const header=detail.children?.[0]?.children?.find(item=>item.props._layerName==='Detail identity and CTA');for(const child of header?.children??[])child.styles={...child.styles,width:'auto'};detail.props.detailPresentationVersion=3;return next;}
+ if(!detail||detail.props.detailPresentationVersion===4)return next;
+ if([2,3].includes(detail.props.detailPresentationVersion)){const header=detail.children?.[0]?.children?.find(item=>item.props._layerName==='Detail identity and CTA');for(const child of header?.children??[]){child.styles={...child.styles,width:'auto'};for(const action of child.children??[])if(action.type==='Link')delete action.stylesData;}detail.props.detailPresentationVersion=4;return next;}
  const content=detail.children?.[0],children=content?.children;
  if(!content||!children)return next;
  const cover=children.find(item=>item.type==='Image');
@@ -109,7 +109,7 @@ export function upgradeDetailPresentation(nodes:ComponentData[],role:'institutio
   if(duration){const value=clone(duration);value.styles={minWidth:'0'};facts.push(value);}
  }
  const cta=sidebar.children?.find(item=>item.type==='Link');
- if(cta){cta.props={...cta.props,text:role==='program'?'Apply':'Book consultation'};cta.styles={...cta.styles,width:'auto',whiteSpace:'nowrap',padding:'12px 22px',backgroundColor:'#123052'};cta.stylesData={activeProperties:[],values:{},stylingMode:'visual',viewportOverrides:{mobile:{position:'fixed',bottom:'16px',left:'16px',right:'16px',zIndex:'30',boxShadow:'0 8px 30px rgb(15 23 42 / 18%)'}}};facts.push(cta);}
+ if(cta){cta.props={...cta.props,text:role==='program'?'Apply':'Book consultation'};cta.styles={...cta.styles,width:'auto',whiteSpace:'nowrap',padding:'12px 22px',backgroundColor:'#123052'};delete cta.stylesData;facts.push(cta);}
  const header=node('Row',{gap:'24px',wrap:true,stackOnMobile:false,align:'center',minHeight:'0',_layerName:'Detail identity and CTA'},[identity,node('Row',{gap:'24px',wrap:true,stackOnMobile:false,align:'center',minHeight:'0',_layerName:'Header facts and action'},facts,{flex:'0 1 auto',width:'auto',marginInlineStart:'auto'})],{padding:'8px 0 28px'});
  if(role==='institution'){
   const grouped:ComponentData[]=[],navigation:ComponentData[]=[];
@@ -135,7 +135,7 @@ export function upgradeDetailPresentation(nodes:ComponentData[],role:'institutio
   body.children=body.children!.filter(item=>item.id!==sidebar.id);body.children[0].styles={...body.children[0].styles,flex:'1 1 100%'};
   content.children=[...(cover?[cover]:[]),header,nav,body];
  }
- detail.props.detailPresentationVersion=3;
+ detail.props.detailPresentationVersion=4;
  return next;
 }
 
