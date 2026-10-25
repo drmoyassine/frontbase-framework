@@ -25,7 +25,11 @@ export async function loadDirectoryCanvas(layout: PageLayoutLike, saved: SiteCon
         rows.set(id, result.rows);
         if(mode==='detail'&&role===(layout.root?.siteConfiguration as {role?:string}|undefined)?.role&&result.rows[0])recordContext={recordId:result.rows[0].id,parentId:result.rows[0].institutionId??result.rows[0].cityId??null};
     }
-    const bindContext=(nodes:PageLayoutLike['content']):PageLayoutLike['content']=>nodes.map(node=>{const binding=node.props?.binding;return {...node,...(binding?{props:{...node.props,...(node.type==='Repeater'&&!Array.isArray(node.props.initialRows)?{localeReadOnly:false}:{}),binding:{...binding,hiddenFilters:(binding.hiddenFilters??[]).map((filter:any)=>filter.value?.kind==='variable'&&['page.recordId','page.parentId'].includes(filter.value.path)?{...filter,value:resolveValue(filter.value,contextReader({page:recordContext}))??null}:filter)}}}:{}),...(node.children?{children:bindContext(node.children)}:{})};});
+    const bindContext=(nodes:PageLayoutLike['content']):PageLayoutLike['content']=>nodes.map(node=>{
+        const binding=node.props?.binding??node.binding;
+        const projected=binding?{...binding,hiddenFilters:(binding.hiddenFilters??[]).map((filter:any)=>filter.value?.kind==='variable'&&['page.recordId','page.parentId'].includes(filter.value.path)?{...filter,value:resolveValue(filter.value,contextReader({page:recordContext}))??null}:filter)}:undefined;
+        return {...node,...(projected?{...(node.binding?{binding:projected}:{}),props:{...node.props,...(node.type==='Repeater'&&!Array.isArray(node.props.initialRows)?{localeReadOnly:false}:{}),...(node.props.binding?{binding:projected}:{})}}:{}),...(node.children?{children:bindContext(node.children)}:{})};
+    });
     const prune=(nodes:PageLayoutLike['content']):PageLayoutLike['content']=>nodes.filter(node=>!inactive.has(node.id)).map(node=>({...node,...(node.children?{children:prune(node.children)}:{})}));
     let projected=projectDirectoryRecords({...layout,root:{...layout.root,publicationRecordContext:recordContext},content:bindContext(prune(layout.content))},rows,{locale:configuration.site.locale});
     if(role==='directory'||role==='article-index')projected=projectDirectoryBrowsing(projected,[{path:role==='directory'?configuration.routes.directory:configuration.routes.blog,collection:role==='directory'?(previewCollection||configuration.browsing.defaultCollection):null,q,page,hasNext,total,pageSize,searchEnabled:configuration.browsing.search,sort,match}]);

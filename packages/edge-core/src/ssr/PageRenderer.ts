@@ -191,7 +191,7 @@ async function renderComponentImpl(
 
         case 'layout':
             // Render layout components with proper styles and visibility (has its own CSS handling)
-            return renderLayoutComponent(type, id, resolvedProps, component.styles || {}, childrenHtml, component.visibility);
+            return combinedCSS + renderLayoutComponent(type, id, resolvedProps, component.styles || {}, childrenHtml, component.visibility);
 
         case 'landing':
             // Render landing page section components
