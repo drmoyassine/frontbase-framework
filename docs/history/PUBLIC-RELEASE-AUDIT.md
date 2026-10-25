@@ -1,8 +1,10 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-25 institution/program detail templates — IN PROGRESS
+## 2026-10-25 institution/program detail templates — COMPLETE; STAGING ACCEPTED
 
 Owner authorizes fully visually editable institution and program detail pages using existing primitives, datasource/relationship bindings and Properties → Actions click-through configuration. Own isolated visual-binding-final checkout. Reuse source/translation save routing, locale navigation and saved-template publication. Verify English/Arabic desktop/mobile, commit, push and deploy staging. Preserve existing source records and publication guards; no other-site migration or public release.
+
+Runtime50f0580 is pushed/deployed; site generation30 preserves1,294 paths. Both ordinary-element templates, Actions configuration/navigation, English/Arabic desktop/mobile and real source/translated/UI saves with exact restoration pass. Final anonymous routes200, editor inventory401, route-bound continuation and forged-filter refusal pass. Workspace check/build, engine, focused authoring/provenance, record/locale/security conformance pass; dated mutation coverage and standalone console debt are stated precisely in the [final receipt](../plans/detail-pages-20261025.md). New Arabic loading/error labels are published. Dataset translation completeness remains out of scope; six public-release gates remain open. Generated cms.mjs is intentionally unstaged.
 
 
 ## 2026-10-25 overall release reconciliation — COMPLETE

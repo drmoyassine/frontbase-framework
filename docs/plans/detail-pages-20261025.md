@@ -1,6 +1,6 @@
 # Editable institution and program detail pages
 
-Status: source implementation locally qualified; staging deployment, saved-template publication and native acceptance pending.
+Status: COMPLETE — committed, pushed, deployed and accepted on staging at runtime `50f0580`. Institution and program templates are published; English/Arabic desktop/mobile, Actions navigation and source/translated/UI save restoration passed. The chronological implementation notes below retain intermediate findings, superseded by the final receipt.
 
 ## Authorized delivery
 
@@ -18,7 +18,18 @@ Detail paths become targets of the existing per-page language lifecycle. Live de
 
 Workspace check/build exit0. Full engine suite passes;38 focused authoring/renderer/language-workspace tests pass. Route/continuation integration, actual retained live-list/per-page translation and English/Arabic editing suites pass. Five route/capture faults, three navigation faults, nine retained frontend editing faults and four retained source-write faults were detected and restored. Native host/language normalization applies after interpolation, including client-rendered records, while media/external URLs remain unchanged. CF artifact715.2KiB gzip and Vercel965.0KiB gzip pass their existing budgets. Standalone console diagnostics retain the documented pre-existing debt; no errors were identified in the new starter/template modules.
 
-Pending: staging deployment, saved-template publication, actual English/Arabic desktop/mobile acceptance, Actions click-through and save/reload/restoration.
+No remaining acceptance blocker in this bounded delivery. Dataset translation completeness and the six public-release gates remain separate.
+
+## Final deployment and acceptance receipt
+
+- Runtime source `50f0580`, exact Git archive SHA256 `6655C689648BFE0237A2C9DDBA5A76E47E24E8F70486F6878F8154DA2373F54D`, uploaded through the signed-in newpanel EasyPanel source flow. Site generation30 is `b4069766dc9da18781e867ff1451e1a16fad56d9de1c137bbb67bd16002e1160`; all1,294 captured paths remain intact. Existing bound Card supplies current-record content, with ordinary editable children; related lists remain Repeaters.
+- Native English/Arabic institution and program layouts passed at desktop and mobile widths. ELS profile/map/directions, Muhlenberg's bounded related program, UNLV requirements/fees/intake badges, mobile counselor CTA, actual section scrolling and Arabic institution click-through passed. Explore's existing Link was inspected in Properties → Actions: onClick → Open Page with record originalPath. No private-preview URL is required for public delivery.
+- English program46189 title and typed duration writes reached the connected source and were restored exactly. Arabic intakes persisted independently and were restored; English source intakes remained `Dec,Feb,Jan,Jun,Aug`. Arabic UI heading and navigation labels persisted in active-state copy and were restored. A stale inventory refused a save after publication, retaining the draft without a write. Final provenance repair natively confirms condition-only navigation labels edit UI copy, while the bound intake value edits its translated record.
+- Final Arabic releases: Nevada `365c7ebeca5a6cd526e010af681e3abcfe536ea1e6492e9259476ca33e12d250`, ELS `ceab8c7638910075b048125dd266e9de73b4d37982f2cda35837537e37006a8e`, program `bbaba5407ba191b4b96e21072536d7c966d3554e256e17e54a3096b6206ee150`. Review → Prepare → Publish also supplies the new Card loading/empty/error Arabic labels. Missing/outdated record units explicitly retain source fallback; this is not a claim that every record or every captured path has a complete Arabic publication.
+- Final anonymous HTTP checks: homepage, Explore Programs, ELS and UNLV program in both languages, plus Arabic Nevada, all200. Anonymous editor inventory401. English/Arabic Card continuation returns exactly program46189, with independent source/Arabic intakes. A forged id filter returns200 with zero rows, never another record.
+- Final source qualification: workspace `pnpm -r check` and `pnpm -r build` exit0; full edge-core suite,15 final template/real NativeRecordNode tests,11 frontend editing groups, owned/HTTP/Card/typed/CAS record-save conformance, route identity/filtering and English/Arabic lifecycle suites pass. Earlier route/navigation and13 retained editing/write mutation faults passed at their recorded source boundaries; they are not claimed as rerun after the final display-only provenance narrowing. Standalone console baseline diagnostics remain release-candidate triage, not hidden by the passing workspace check.
+- Local evidence directory: `C:/Users/drmoy/.codex/visualizations/2026/10/04/01a105ea-d8e3-7251-9d16-58014053c4d6/`. Logs: `detail-provenance-{check,build,final-test,core-test,ui-conformance,record-conformance,locales,route}.log`, `detail-final-anonymous.json`, `detail-final-continuation-summary.json`, `detail-final-forged-filter.log`. Screenshots: `detail-final-en-desktop.png`, `detail-final-ar-mobile.png`, `detail-actions-proof.png`.
+- Generated `examples/cf-full/api/cms.mjs` remains unstaged under the standing generated-artifact rule. No credentials, other-site migration, package publication or production cutover was required.
 
 ## Boundaries
 

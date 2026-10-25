@@ -4,6 +4,8 @@ Reconciled 2026-10-25 against committed source and dated acceptance receipts. Th
 
 Latest bounded delivery: provenance-based frontend saves and ordinary editable Programs cover highlights are deployed; source record edits, translated records and translated UI copy use their respective existing stores. The redundant owner-editor bootstrap request is repaired in runtime `c7a4dc3`. Recovery receipt `8adbe91` verifies same-price Supabase Nano-to-Micro recovery, English/Arabic homepages and all four Explore routes, preserved locale values, anonymous editing refusal and signed-in edit/cancel behavior. [Card/save receipt](program-card-save-routing-20261024.md), [source recovery](supabase-timeout-comparison-20261024.md). The source-availability hold is closed based on that dated acceptance, not an uptime guarantee. No new runtime tests were run for this documentation refresh.
 
+2026-10-25 bounded detail-page delivery is complete at staging runtime50f0580/site generation30. Institution/program templates reuse ordinary elements, existing Card/Repeater bindings and Properties → Actions; English/Arabic desktop/mobile, independent save routing and anonymous route/filter acceptance pass. See the [exact final receipt](detail-pages-20261025.md). This adds a candidate inclusion item; it does not substitute for cumulative exact-version release qualification or close any of the six gates.
+
 ## Release-critical summary
 
 There is no newly established product defect requiring another feature sprint. Six gates below remain, with concrete work inside them:
