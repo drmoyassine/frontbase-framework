@@ -46,7 +46,7 @@ export const SettingsPanel: React.FC = () => {
     setSearchParams({ tab: value }, { replace: true });
   };
 
-  if (rawTab === 'template') return <Navigate replace to="/frontbase-admin/data-studio/datasources?setup=collections" />;
+  if (rawTab === 'template') return <Navigate replace to="/data-studio/datasources?setup=collections" />;
 
   return (
     <div className="space-y-6">
