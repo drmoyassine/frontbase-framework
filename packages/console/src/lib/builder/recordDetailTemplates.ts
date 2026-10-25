@@ -15,6 +15,7 @@ export function createRecordDetailTemplate(input:DetailTemplateInput,newId=uuid)
  const heading=(text:string,level='2')=>node('Heading',{text,level},undefined,{margin:'0',fontSize:level==='1'?'clamp(1.8rem,4vw,3rem)':'1.5rem',lineHeight:'1.2',overflowWrap:'anywhere'});
  const text=(content:string,styles:Record<string,unknown>={})=>node('Text',{content},undefined,{lineHeight:'1.75',overflowWrap:'anywhere',...styles});
  const bound=(field:string,styles:Record<string,unknown>={})=>({...text(recordExpression(field),styles),visibilityCondition:present(field)});
+ const prose=(field:string)=>({...bound(field,{whiteSpace:'pre-wrap'}),props:{content:recordExpression(field).replace(' }}',' | strip_html }}')}});
  const action=(type:'openPage'|'scrollToSection',target:string)=>[{id:newId(),trigger:'onClick',actionType:type,config:type==='openPage'?{pageUrl:target,openInNewTab:false}:{sectionId:target},workflowId:null,parameterMappings:{}}];
  const link=(label:string,url:string)=>node('Link',{text:label,underline:false,color:'inherit',actionBindings:action('openPage',url)},undefined,{textDecoration:'none',fontWeight:'600'});
  const panel={padding:'28px',border:'1px solid #e2e8f0',borderRadius:'18px',backgroundColor:'#fff',minWidth:'0'};
@@ -30,9 +31,9 @@ export function createRecordDetailTemplate(input:DetailTemplateInput,newId=uuid)
  for(const [label,field] of [['Institution type',m.type],['Founded',m.founded],['Students',m.students],['Degree',m.degree],['Study mode',m.mode],['Language',m.language],['Application deadline',m.deadline]] as const)if(field)facts.push({...node('Column',{gap:'6px',minHeight:'0'},[text(label,{fontSize:'13px',color:'#64748b'}),bound(field,{fontWeight:'600'})],{padding:'16px',borderRadius:'12px',backgroundColor:'#f8fafc'}),visibilityCondition:field===m.founded?serializeCondition({left:{kind:'variable',path:'record.'+field},operator:'gt',right:{kind:'literal',value:0}}):present(field)});
  if(m.duration)facts.push({...node('Column',{gap:'6px',minHeight:'0'},[text('Duration',{fontSize:'13px',color:'#64748b'}),text(recordExpression(m.duration)+(m.durationUnit?' '+recordExpression(m.durationUnit):''),{fontWeight:'600'})],{padding:'16px',borderRadius:'12px',backgroundColor:'#f8fafc'}),visibilityCondition:present(m.duration)});
  const sections:ComponentData[]=[];
- if(m.description)sections.push(section('Overview',[bound(m.description,{whiteSpace:'pre-wrap'})],m.description));
+ if(m.description)sections.push(section('Overview',[prose(m.description)],m.description));
  if(facts.length)sections.push(section('At a glance',[node('Container',{},facts,{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,180px),1fr))',gap:'12px'})]));
- for(const [label,field]of [['Curriculum',m.curriculum],['Entry requirements',m.requirements],['Career opportunities',m.careers]] as const)if(field)sections.push(section(label,[bound(field,{whiteSpace:'pre-wrap'})],field));
+ for(const [label,field]of [['Curriculum',m.curriculum],['Entry requirements',m.requirements],['Career opportunities',m.careers]] as const)if(field)sections.push(section(label,[prose(field)],field));
  if(m.tuition){const fees=[text((m.currency?recordExpression(m.currency)+' ':'')+recordExpression(m.tuition),{fontSize:'1.7rem',fontWeight:'700'}),text('Confirm the fee period and current costs with the institution.',{fontSize:'14px',color:'#64748b'})];if(m.scholarship)fees.push(bound(m.scholarship,{whiteSpace:'pre-wrap'}));sections.push(section('Tuition and funding',fees,m.tuition));}
  if(m.intakes)sections.push(section('Intakes',[node('Badge',{text:recordExpression(m.intakes),splitValues:true,valueSeparator:',',variant:'outline',backgroundColor:'#eff6ff',textColor:'#123052',size:'md'})],m.intakes));
  if(m.address){const location:ComponentData[]=[bound(m.address,{whiteSpace:'pre-wrap'})];
@@ -78,7 +79,7 @@ export function createRecordDetailTemplate(input:DetailTemplateInput,newId=uuid)
 export function replaceDetailTemplate(page:Page,input:DetailTemplateInput):NonNullable<Page['layoutData']>{
  const old=page.layoutData??{root:{},content:[]};
  if(old.root.siteConfiguration?.role!==input.role)throw Error('Select the matching shared detail-page role first');
- return {...old,content:createRecordDetailTemplate(input)};
+ return {...old,root:{...old.root,containerStyles:old.root.containerStyles?.values?{...old.root.containerStyles,values:{...old.root.containerStyles.values,backgroundColor:'#f8fafc',color:'#0f172a'}}:{...old.root.containerStyles,backgroundColor:'#f8fafc',color:'#0f172a'}},content:createRecordDetailTemplate(input)};
 }
 
 /** Explicit authoring migration: retain other actions and alternatives, promote only record URLs. */

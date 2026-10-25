@@ -2,7 +2,7 @@ import {expect,it} from 'vitest';
 import {renderPage} from '@frontbase/edge-core';
 import {renderBlock} from '@frontbase/edge-core/browser/render-block';
 import {templateRecordFields,directoryLayoutQueries} from '@frontbase/edge-core/directory/configuration';
-import {createRecordDetailTemplate,recordLinksToActions} from './recordDetailTemplates';
+import {createRecordDetailTemplate,recordLinksToActions,replaceDetailTemplate} from './recordDetailTemplates';
 const binding:any={componentId:'source',dataSourceId:'ds',tableName:'campuses',viewId:'view',pagination:{enabled:true,pageSize:12,page:0},sorting:{enabled:true,column:'title',direction:'asc'},filtering:{searchEnabled:false,filters:{}},columnOverrides:{},hiddenFilters:[{column:'country_id',operator:'eq',value:22}]};
 const mapping={title:'title',image:'image',imageFallback:'institution.image',logo:'logo',description:'description',requirements:'requirements',tuition:'fee',currency:'currency',duration:'duration',durationUnit:'unit',intakes:'intakes',degree:'degree',city:'city',country:'country',subtitle:'institution.name',institutionHref:'institution.path',address:'institution.address'};
 it.each(['institution','program'] as const)('%s authors ordinary editable nodes and Actions links with mandatory current-route filtering',role=>{
@@ -43,3 +43,10 @@ it('keeps interpolated related institution Actions on the current host and Arabi
  const html=await renderPage({root:{siteNavigationOrigin:'https://source.test',localeNavigation:{locale:'ar',origins:['https://staging.test','https://source.test']}},content:[tree[1]]},{page:{},app:{},system:{env:'test'},user:null} as any);
  const dom=document.createElement('div');dom.innerHTML=html;expect([...dom.querySelectorAll('a')].find(a=>a.textContent==='Explore this institution')?.getAttribute('href')).toBe('/ar/campus/');
 });
+
+it('presents imported HTML prose as safe readable text through the existing Liquid filter',async()=>{
+ const tree=createRecordDetailTemplate({role:'program',binding,mapping,previewPath:'/campus/'});tree[1].props.initialRows=[{id:7,title:'History',description:'<span data-sheets-value="private metadata"><strong>Study history</strong></span>\nNext paragraph.'}];tree[1].props.initialTotal=1;
+ const html=await renderBlock(tree[1],{} as any);expect(html).toContain('Study history');const dom=document.createElement('div');dom.innerHTML=html;expect(dom.textContent).not.toContain('private metadata');expect(dom.textContent).not.toContain('<span');expect(templateRecordFields(tree[1].children!)).toContain('description');
+});
+
+ it('applies editable light root values without dropping existing page styles',()=>{const layout=replaceDetailTemplate({layoutData:{root:{siteConfiguration:{version:1,role:'program'},containerStyles:{values:{backgroundColor:'#000',padding:'12px'}}},content:[]}} as any,{role:'program',binding,mapping,previewPath:'/campus/'});expect(layout.root.containerStyles.values).toEqual({backgroundColor:'#f8fafc',color:'#0f172a',padding:'12px'});});
