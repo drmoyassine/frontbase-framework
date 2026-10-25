@@ -125,7 +125,7 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
             const find=(children:PageComponent[])=>{for(const child of children){
                 if(child.props?.binding||child.binding)continue;
                 const display=Object.fromEntries(Object.entries(child.props??{}).filter(([key])=>['content','text','label','alt','ariaLabel'].includes(key)));
-                for(const field of templateRecordFields([{...child,props:display,children:undefined,versions:undefined}]))columns.add(field);
+                for(const field of templateRecordFields([{...child,props:display,children:undefined,versions:undefined,visibilityCondition:undefined}]))columns.add(field);
                 if(child.children)find(child.children);
             }};find(node.children??[]);
             if(Array.isArray(p.initialRows))p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of columns)if(key!=='id'){

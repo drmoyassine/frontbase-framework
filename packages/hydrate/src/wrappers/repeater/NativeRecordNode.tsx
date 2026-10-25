@@ -29,7 +29,7 @@ export function NativeRecordNode({node,instance='',recordScope=''}:{node:PageCom
         if(isBuilderCanvas())for(const [id,source]of identity.current){const element=root.querySelector(`[id="${CSS.escape(id)}"]`);if(element){element.setAttribute('data-fb-template-source',source.id);element.setAttribute('data-fb-id',source.id);element.setAttribute('data-fb-component',source.type);}}
         const byId=new Map<string,PageComponent>();walkBlockTree([node],source=>byId.set(source.props?._templateSourceId??source.id,source));
         for(const [id,source]of identity.current){const original=byId.get(source.id),element=root.querySelector(`[id="${CSS.escape(id)}"]`);if(!element||!original||!['Text','Heading','Paragraph','Link','Button','Badge'].includes(original.type))continue;
-            const props=Object.fromEntries(Object.entries(original.props??{}).filter(([key])=>['content','text','value','label'].includes(key))),fields=templateRecordFields([{...original,props,children:undefined,versions:undefined}]);
+            const props=Object.fromEntries(Object.entries(original.props??{}).filter(([key])=>['content','text','value','label'].includes(key))),fields=templateRecordFields([{...original,props,children:undefined,versions:undefined,visibilityCondition:undefined}]);
             if(fields.length)element.setAttribute('data-fb-record-fields',JSON.stringify(fields));
         }
         window.dispatchEvent(new CustomEvent('frontbase:blocks-inserted',{detail:{root}}));
