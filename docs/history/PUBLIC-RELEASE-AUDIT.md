@@ -1,8 +1,10 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-25 gallery and differentiated detail layouts — IN PROGRESS
+## 2026-10-25 gallery and differentiated detail layouts — COMPLETE; STAGING ACCEPTED
 
 Owner approves a reusable Gallery (single cover, multiple image/video tiles), editable header facts/CTA, institution sidebar navigation and section/subsection hierarchy, while programs retain horizontal navigation. Reuse standard elements, bindings, Actions, upload/storage and publication paths. Own isolated visual-binding-final checkout; preserve generated cms.mjs. Verify English/Arabic desktop/mobile, commit/push/deploy. Consultation/Apply use configured Actions; no invented rankings, external application submission or dataset translation expansion.
+
+Runtime `bb27b27`, site generation32 and three refreshed Arabic releases are accepted. Gallery and header/sidebar/horizontal templates remain normal editable elements and Actions. Native EN/AR desktop/mobile, loaded covers, record-editor cancellation and anonymous route/filter checks pass; all1,294 paths remain. [Exact evidence and limits](../plans/detail-gallery-layout-20261025.md#final-acceptance-2026-10-25). Generated cms.mjs remains unstaged; candidate integration and the six release gates remain open.
 
 ## 2026-10-25 post-detail release reconciliation — COMPLETE
 
