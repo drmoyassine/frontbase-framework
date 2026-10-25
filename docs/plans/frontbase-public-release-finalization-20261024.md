@@ -8,6 +8,21 @@ Latest bounded delivery: provenance-based frontend saves and ordinary editable P
 
 ## Release-critical summary
 
+### Post-detail checkpoint: what is actually open
+
+The accepted product checkpoint is runtime `50f0580`, site generation30, with receipt commit `951fd32` on `codex/integrated-finalization-20261022`. Detail templates, cards, visual composition, binding/@ mapping, Actions and multilingual frontend save routing are delivered. They are candidate inputs, not unfinished implementation tasks. No new runtime failure was reproduced in this documentation review; do not interpret that as a fresh full-suite pass.
+
+| Priority | Real gap and evidence | Next concrete result | Dependency |
+|---|---|---|---|
+| P0 | There is no final public candidate manifest that unifies the current feature source, generated console/hydration/host assets and seven library archives. Current native acceptance is on the integrated branch, not a certified public default ref. | Inventory branch ancestry and inclusion; produce one immutable source/artifact/archive/version manifest. Resolve generated cms.mjs through the reproducible build policy, without committing the standing local drift blindly. | Local/Git work first; no new service key. |
+| P1 | The last captured standalone console `tsc --noEmit -p tsconfig.app.json` log contains175 diagnostic lines. Required workspace check/build passed, but that narrower result is not a clean console typecheck. | Rerun on the candidate; classify root causes (including library-target and component/type errors), fix supported-path/safety errors, and explicitly account for any accepted type/build-only residue. The175 figure is a dated log count, not175 proven runtime defects or a current rerun. | Local tooling. |
+| P1 | Final detail/Card, provenance and responsive renderer changes postdate the broad package/host acceptance receipts. | Run the combined candidate matrix: required check/build, targeted functional/security/mutation gates, full engine and strict seven-package consumer/starter proofs. Exercise the new detail/read/edit/localization paths on CF and Vercel as affected host regressions. Record retained dated tests separately. | Existing test environments where available. |
+| P2 | CF/Vercel profiles and earlier fresh installations are verified at their recorded revisions; the final public source/version and documentation-only adoption journey are not certified. | Clean README deployment on CF and Vercel Node22, plus the advertised Node/Docker path; prove setup, binding, editing, workflow/storage, publication, upgrade and backup/restore. Reuse fixtures for regression, but do not label a repaired installation a clean native-button pass. | Existing provider access; ask only for a specifically blocked action. |
+| P2 | Actual reset-mail inbox delivery and some advertised external-provider combinations lack full live receipts. | Prove owned-mailbox delivery, origin, expiry, single use and session behavior for supported reset mail. Test only promised provider combinations; mark unverified optional Neon/cache/queue/S3 combinations experimental rather than delaying release for every adapter. | Owned mailbox/mail configuration and only selected provider credentials. |
+| P3 | Registry inventory does not establish namespace ownership/publication; preview versions, provenance and a public adopter journey remain unaccepted. README retains historical translation/support paragraphs that contradict newer receipts. | Reconcile README/support matrix; verify npm ownership and existing versions, coordinate versions/ranges, pack/license/provenance checks, publish dry-run and partial-release recovery. Then publish the qualified preview and prove a fresh registry consumer. | Registry publishing authority at the final distribution step. |
+
+The next work package is **P0 candidate manifest + P1 console diagnostic triage**, followed by candidate qualification. No credential dependency prevents starting those. The release action itself follows the six gates below; this plan does not silently turn optional integrations or site-specific migration into mandatory scope.
+
 There is no newly established product defect requiring another feature sprint. Six gates below remain, with concrete work inside them:
 
 1. **Freeze/integrate:** produce an inclusion list and immutable source/artifact/version manifest. The deployed feature branch is not automatically the public release branch.
@@ -85,3 +100,5 @@ CF-22/product-equivalence work is retired. Complete Study in USA record translat
 ## Next executable task
 
 Prepare the release integration/candidate manifest first. Reconcile branches and public source refs without overwriting another session; identify the exact checks and live proofs affected by the latest backend/console changes. Then execute the clean candidate matrix and public-source adopter journey. Do not reopen closed Neon/behavior/workflow/PostgREST repairs without a new reproducible failure. No new product feature is required merely to advance this release plan.
+
+Documentation verification for this checkpoint: compared the committed detail receipt, support policy, README, existing registry inventory and retained standalone console log; checked changed Markdown links and whitespace. No application tests, provider/registry inventory refresh, live certification, deploy, package publication or branch integration were performed for this plan update. Existing credentials are not assumed to remain valid.

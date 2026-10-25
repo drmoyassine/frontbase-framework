@@ -1,5 +1,11 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-25 post-detail release reconciliation — COMPLETE
+
+Owner requests an updated overall plan and concrete remaining release gaps after detail-page acceptance951fd32/runtime50f0580. Documentation-only scope: reconcile the six gates, identify actual diagnostics and missing evidence, distinguish optional site work, and correct directly observed stale support wording. Preserve generated cms.mjs and unrelated work; no runtime or release action is implied.
+
+The [current plan](../plans/frontbase-public-release-finalization-20261024.md#post-detail-checkpoint-what-is-actually-open) now orders candidate manifest, standalone console diagnostic triage, cumulative qualification, exact-public-source adoption/recovery, scoped real-provider/reset acceptance and versioned distribution. Retained console log contains175 diagnostic lines, not a fresh candidate result or175 proven runtime defects. Corrected support-policy save routing to match the accepted frontend guide/receipt. Markdown links and diff checks pass; no runtime tests, provider/registry refresh or deployment was performed. Generated cms.mjs remains unstaged. Next executable work is candidate inventory and console triage; neither requires a new provider key.
+
 ## 2026-10-25 institution/program detail templates — COMPLETE; STAGING ACCEPTED
 
 Owner authorizes fully visually editable institution and program detail pages using existing primitives, datasource/relationship bindings and Properties → Actions click-through configuration. Own isolated visual-binding-final checkout. Reuse source/translation save routing, locale navigation and saved-template publication. Verify English/Arabic desktop/mobile, commit, push and deploy staging. Preserve existing source records and publication guards; no other-site migration or public release.

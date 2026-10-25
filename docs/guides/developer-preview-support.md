@@ -22,9 +22,12 @@ or private hosted control-plane dependency is established by this document.
 - [Workflow authoring](workflow-authoring.md) lists the implemented node subset.
   Unsupported remote targets, engine transfer and legacy in-app provisioning
   refuse explicitly. A local resource record does not prove remote deployment.
-- [Frontend text editing](frontend-text-editing.md) changes displayed plain copy
-  in the current language using its source identity. It does not update a
-  connected business table or change bindings/actions/URLs.
+- [Frontend text editing](frontend-text-editing.md) stages eligible text changes
+  in the current language. Source-record fields save to their owned connected
+  records, translated records to the configured translation datasource, and UI
+  copy to active host state. Typed fields and related-record writes retain their
+  existing admission/CAS guards; independent stores are not one distributed
+  transaction. Structure, bindings, actions and URLs remain builder controls.
 - [Reset mail](password-reset-delivery.md) needs explicit operator configuration
   and a real owned-mailbox receipt. Provider acceptance and opaque forgot-password
   responses are not delivery proofs.
