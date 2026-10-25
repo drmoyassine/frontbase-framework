@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 
 const endpoint = '/api/project/site-configuration/';
-export function SiteConfigurationForm() {
+export function SiteConfigurationForm({section='all', onSaved}: {section?: 'all'|'site'|'data'; onSaved?:()=>void}) {
     const [initialSite, setInitialSite] = useState<Partial<DirectoryConfiguration['site']>>({});
     const [configuration, setConfiguration] = useState<DirectoryConfiguration>();
     const [revision, setRevision] = useState<number | null>(null);
@@ -48,13 +48,13 @@ export function SiteConfigurationForm() {
             if (!response.ok) { setMessage(response.status === 403 ? 'You cannot save these settings or the selected datasource is unavailable.' : 'Could not save shared settings. Check the configuration and try again.'); return; }
             const body = await response.json(); const draft = siteConfigurationDraftSchema.parse(body.draft);
             if (body.revision !== draft.revision || body.revision !== revision + 1) throw new Error();
-            setRevision(body.revision); setMessage('Shared settings saved. Pages and live publication are not activated.');
+            setRevision(body.revision); setMessage('Shared settings saved. Pages and live publication are not activated.'); onSaved?.();
         } catch { setMessage('Could not save shared settings. Your edits are retained.'); }
         finally { setPending(false); }
     }
-    return <Card><CardHeader><CardTitle>Directory setup</CardTitle><CardDescription>Education-template data, browsing, URLs and contact actions. Site identity is managed in General. Saves update authoring settings; prepare and review a site version to publish.</CardDescription></CardHeader>
+    return <Card><CardHeader><CardTitle>{section==='data'?'Collection mappings and publication scope':section==='site'?'Shared routes and contact values':'Directory setup'}</CardTitle><CardDescription>Shared across linked pages. Site identity is managed in General. Saving updates authoring settings; prepare and review a site version in the builder to publish.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
-            <fieldset disabled={pending || revision === null}><DirectoryConfigurationPanel persistenceScope="site" hideIdentity elementBrowsing={elementBrowsing} initialSite={initialSite} value={configuration} onChange={setConfiguration} /></fieldset>
+            <fieldset disabled={pending || revision === null}><DirectoryConfigurationPanel section={section} persistenceScope="site" hideIdentity elementBrowsing={elementBrowsing} initialSite={initialSite} value={configuration} onChange={setConfiguration} /></fieldset>
             <div className="flex gap-3"><Button disabled={pending || revision === null || !configuration || conflict || directoryConfigurationIssues(configuration).length > 0} onClick={() => void save()}>Save shared settings</Button>
                 <Button variant="outline" disabled={pending} onClick={() => void load()}>Reload saved settings (discard edits)</Button></div>
             {revision !== null && <p className="text-sm text-muted-foreground">Saved revision: {revision}</p>}

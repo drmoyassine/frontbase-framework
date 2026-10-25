@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users } from 'lucide-react';
@@ -21,10 +21,6 @@ import { TranslationBatchForm } from './settings/shared/TranslationBatchForm';
 import { PrivacySettingsForm } from './settings/shared/PrivacySettingsForm';
 import { ProjectDetailsForm } from './settings/shared/ProjectDetailsForm';
 import { PublicSiteIdentityForm } from './settings/shared/PublicSiteIdentityForm';
-import { SiteConfigurationForm } from './settings/shared/SiteConfigurationForm';
-import { TemplateSettingsForm } from './settings/shared/TemplateSettingsForm';
-import { ElementSettingsMigration } from './settings/shared/ElementSettingsMigration';
-import {LiveListMigration} from './settings/shared/LiveListMigration';
 import { AdminInviteForm } from './settings/shared/AdminInviteForm';
 import { EdgeAPIKeysForm } from './settings/shared/EdgeAPIKeysForm';
 import { EdgeProvidersSection } from './settings/shared/EdgeProvidersSection';
@@ -35,8 +31,8 @@ import { isCloud } from '@/lib/edition';
 
 const CLOUD = isCloud();
 const VALID_TABS: string[] = CLOUD
-  ? ['general', 'translations', 'template', 'plan', 'team', 'privacy', 'keys', 'accounts', 'security']
-  : ['general', 'translations', 'template', 'team', 'privacy', 'keys', 'accounts', 'security'];
+  ? ['general', 'translations', 'plan', 'team', 'privacy', 'keys', 'accounts', 'security']
+  : ['general', 'translations', 'team', 'privacy', 'keys', 'accounts', 'security'];
 type SettingsTab = string;
 
 export const SettingsPanel: React.FC = () => {
@@ -50,6 +46,8 @@ export const SettingsPanel: React.FC = () => {
     setSearchParams({ tab: value }, { replace: true });
   };
 
+  if (rawTab === 'template') return <Navigate replace to="/frontbase-admin/data-studio/datasources?setup=collections" />;
+
   return (
     <div className="space-y-6">
       <div>
@@ -62,7 +60,6 @@ export const SettingsPanel: React.FC = () => {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="template">Template settings</TabsTrigger>
           <TabsTrigger value="translations">Translations</TabsTrigger>
           {CLOUD && <TabsTrigger value="plan">Plan & Usage</TabsTrigger>}
           <TabsTrigger value="team">Team</TabsTrigger>
@@ -73,7 +70,6 @@ export const SettingsPanel: React.FC = () => {
         </TabsList>
 
         <TabsContent value="translations" className="space-y-6 mt-6"><TranslationStorageForm /><TranslationGenerationForm /><TranslationBatchForm /></TabsContent>
-        <TabsContent value="template" className="space-y-6 mt-6"><SiteConfigurationForm /><TemplateSettingsForm /><LiveListMigration /><ElementSettingsMigration /></TabsContent>
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6 mt-6">
           <PublicSiteIdentityForm />

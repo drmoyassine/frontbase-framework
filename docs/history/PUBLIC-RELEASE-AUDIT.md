@@ -1,5 +1,9 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-25 settings consolidation — IN PROGRESS
+
+Owner authorizes moving shared mapping controls to Datasources, site routing/contact/appearance/publication controls to the builder, removing Template navigation with legacy-link compatibility. Preserve configuration API, revision guards, publication state and generated cms.mjs. Verify English/Arabic, commit/push/deploy. No data migration or release claim.
+
 ## 2026-10-25 gallery and differentiated detail layouts — COMPLETE; STAGING ACCEPTED
 
 Owner approves a reusable Gallery (single cover, multiple image/video tiles), editable header facts/CTA, institution sidebar navigation and section/subsection hierarchy, while programs retain horizontal navigation. Reuse standard elements, bindings, Actions, upload/storage and publication paths. Own isolated visual-binding-final checkout; preserve generated cms.mjs. Verify English/Arabic desktop/mobile, commit/push/deploy. Consultation/Apply use configured Actions; no invented rankings, external application submission or dataset translation expansion.

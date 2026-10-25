@@ -16,6 +16,13 @@ function fixture(conflict=false,unstable=false){let page={id,isHomepage:true,lay
     });vi.stubGlobal('fetch',fetcher);return {writes,fetcher};
 }
 describe('template settings guarded save',()=>{
+    it('builder publication mode does not expose another homepage editor or save path',async()=>{
+        const {writes}=fixture();render(<TemplateSettingsForm preparationOnly/>);
+        await waitFor(()=>expect(screen.getByText('Prepare homepage version')).not.toBeDisabled());
+        expect(screen.queryByLabelText('Preset')).toBeNull();
+        expect(screen.queryByText('Save template settings')).toBeNull();
+        expect(writes).toHaveLength(0);
+    });
     it('uses the existing draft-change API and retains the component tree',async()=>{
         const {writes}=fixture();render(<TemplateSettingsForm/>);await screen.findByLabelText('Preset');await waitFor(()=>expect(screen.getByText('Save template settings')).not.toBeDisabled());
         fireEvent.change(screen.getByLabelText('Preset'),{target:{value:'charcoal'}});fireEvent.click(screen.getByText('Save template settings'));await screen.findByText(/Template settings saved in the homepage draft/);

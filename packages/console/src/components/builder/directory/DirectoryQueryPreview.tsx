@@ -34,7 +34,7 @@ export function DirectoryQueryPreview({ draft, onAddTemplate, onEditorialOpenCha
     return <section className="space-y-2 rounded-lg border p-3" aria-label="Live directory data preview">
         <h4 className="font-medium">Preview connected directory data</h4>
         <p className="text-sm text-muted-foreground">Read-only authoring preview. These records are not approved for public publication.</p>
-        {!ready && <p>Complete and save the shared table, field and country mappings in Settings → General first.</p>}
+        {!ready && <p>Complete and save the shared table, field and country mappings in Datasources → Collection mappings and publication scope first.</p>}
         <div className="flex flex-wrap gap-2">
             <select aria-label="Preview collection" value={role} disabled={busy || !!editingId} onChange={e => { setRole(e.target.value); setRows([]); setLoadedQuery(undefined); setMessage(''); }} className="rounded border bg-background p-2">
                 <option value="institution">Institutions</option><option value="program">Programs</option><option value="city">Cities</option>

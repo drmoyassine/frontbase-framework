@@ -25,6 +25,19 @@ describe('shared site settings form', () => {
         expect(JSON.parse(init.body).configuration.site.name).toBe('Updated');
         expect(screen.getByText('Saved revision: 3')).toBeInTheDocument();
     });
+    it('preserves hidden collection bindings when saving site controls', async () => {
+        const original = reply(2); original.draft.configuration.datasourceId = 'source-existing';
+        const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(original))).mockResolvedValueOnce(new Response(JSON.stringify(reply(3))));
+        vi.stubGlobal('fetch', fetcher); render(<SiteConfigurationForm section="site" />);
+        await screen.findByDisplayValue('USA');
+        fireEvent.change(screen.getByLabelText('Shared site name'), {target:{value:'Changed'}});
+        fireEvent.click(screen.getByRole('button', {name:'Save shared settings'}));
+        await screen.findByText(/Shared settings saved/);
+        const payload=JSON.parse(fetcher.mock.calls[1][1].body);
+        expect(payload.configuration.datasourceId).toBe('source-existing');
+        expect(payload.configuration.collections).toEqual(original.draft.configuration.collections);
+        expect(payload.expectedRevision).toBe(2);
+    });
     it('retains conflicting edits and blocks further saves until explicit reload', async () => {
         const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(reply(2)))).mockResolvedValueOnce(new Response('{}', { status: 409 })).mockResolvedValueOnce(new Response(JSON.stringify(reply(3))));
         vi.stubGlobal('fetch', fetcher); render(<SiteConfigurationForm />);

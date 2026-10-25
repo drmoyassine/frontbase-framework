@@ -1,3 +1,5 @@
+import { SiteConfigurationForm } from '@/components/dashboard/settings/shared/SiteConfigurationForm'
+import { LiveListMigration } from '@/components/dashboard/settings/shared/LiveListMigration'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { datasourcesApi, Datasource, viewsApi } from '../api'
@@ -34,6 +36,8 @@ const TYPE_COLORS: Record<string, string> = {
 }
 
 export function Datasources() {
+    const [showSharedMappings, setShowSharedMappings] = useState(() => new URLSearchParams(window.location.search).get('setup') === 'collections')
+    const [showMaintenance, setShowMaintenance] = useState(false)
     const [showModal, setShowModal] = useState(false)
     const [editingDatasource, setEditingDatasource] = useState<Datasource | null>(null)
     const [relationshipDatasource, setRelationshipDatasource] = useState<Datasource | null>(null)
@@ -89,6 +93,11 @@ export function Datasources() {
 
     return (
         <div className="space-y-6">
+            <button type="button" className="underline" aria-expanded={showSharedMappings} onClick={() => setShowSharedMappings(value => !value)}>Collection mappings and publication scope</button>
+            {showSharedMappings && <><SiteConfigurationForm section="data" /><p className="text-sm">Configure routes, contact values and publication in the builder's Page settings / Directory panel. <a className="underline" href="/frontbase-admin/pages">Open Pages</a></p></>}
+            <button type="button" className="block text-sm underline" aria-expanded={showMaintenance} onClick={() => setShowMaintenance(value => !value)}>Legacy data maintenance</button>
+            {showMaintenance && <LiveListMigration />}
+
             {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-gray-400" />

@@ -32,3 +32,10 @@ Gallery is a normal editable element. Choose media through the existing asset pi
 Institution detail navigation is a desktop sidebar that adapts on smaller screens; program navigation stays horizontal. Header facts and consultation/Apply links remain independently editable, with destinations configured under **Properties > Actions**. Optional ranking mappings display actual source values only.
 
 Existing detail starters can opt into **Page Settings > Directory > Upgrade detail gallery, header and navigation**. This changes the unsaved design; save, prepare, review and publish it through the existing template lifecycle. Existing bindings and retained child identities are preserved. Media and newly added text labels must be reviewed for each active language.
+
+
+## Shared configuration locations
+
+The former Template settings tab is retired. Use **Data Studio > Datasources > Collection mappings and publication scope** for shared collection field/relationship mappings and publication scope. Use **Builder > Page settings > Directory > Shared routes and contact values** for shared index paths and contact values. Homepage appearance is in that homepage's Directory panel; its content and list settings remain on editable elements. Site identity stays in General.
+
+Saving shared configuration preserves the same revision-checked document and does not publish it. Prepare/review/publish from the builder as before. The saved-homepage preparation control refuses unsaved builder edits. Legacy layout maintenance is in the builder, and legacy live-list maintenance is in Datasources; opening these controls does not apply a migration. Old `settings?tab=template` links redirect to Datasources.

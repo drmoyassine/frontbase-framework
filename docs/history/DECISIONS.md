@@ -1,5 +1,9 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-25 Consolidate template configuration ownership
+
+Owner retires the Template settings tab. Datasources owns shared collection mappings, relationships and publication scope; the builder owns shared routes/contact values and homepage appearance, plus existing prepare/review/publish controls. Both edit the same revision-guarded configuration document: moving UI does not migrate or delete saved configuration, change adapters or activate a publication. Legacy tab URLs redirect to the mapping entry point, with a Pages link for builder controls. Legacy data/layout conversion tools are opt-in maintenance disclosures in their respective surfaces. Homepage publication from the existing published base uses the retained API and refuses unsaved builder edits.
+
 ## 2026-10-25 Gallery and differentiated detail presentation
 
 Owner specifies converged cover/gallery behavior, native video support and editable header actions/facts. Gallery is a reusable shared-renderer UI element with ordinary media bindings and existing storage selection/upload, not an institution-only renderer. One item renders as a cover; multiple items render as configurable tiles. Native video controls and allowlisted YouTube/Vimeo embeds avoid arbitrary embed HTML. Institution templates use desktop sidebar categories and subsections, collapsing on mobile; programs retain horizontal section navigation and expose tuition/duration with Apply in the header. Consultation/Apply remain normal Properties → Actions configuration using existing destinations. On phones they remain in the header instead of a fixed overlay, avoiding overlap with the footer badge. Optional rankings require mapped source data; no ranking is synthesized. Explicit starter upgrades retain existing record bindings and text IDs where possible and use the existing save/review/prepare/publish lifecycle.

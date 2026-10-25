@@ -26,7 +26,7 @@ export function ElementSettingsMigration(){
                 const response=await fetch(`/api/pages/${page.pageId}/changes/`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({operationId:crypto.randomUUID(),expectedStateHash:page.expectedStateHash,patch:{layoutData:page.layoutData}})});
                 if(!response.ok||(await response.json()).status!=='applied')throw Error();
             }
-            setPlan(undefined);setMessage('Drafts migrated. Reload Settings to see the remaining global controls. Preview and publish a new site version to apply the public layouts.');
+            setPlan(undefined);setMessage('Drafts migrated. Reload the builder to see the remaining shared controls. Preview and publish a new site version to apply the public layouts.');
         }catch{setPlan(undefined);setMessage('Migration stopped. Some drafts may have been applied; preview again to reconcile their current state. Nothing was published.');}finally{setBusy(false);}
     }
     const previewUrl=candidate?`/api/project/site-configuration/publication/render/?hash=${candidate.hash}&path=${encodeURIComponent(path)}`:'';
