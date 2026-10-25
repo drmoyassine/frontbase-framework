@@ -73,3 +73,10 @@ it('selecting a program Repeater previews that collection without changing its s
  vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,json:async()=>({revision:saved.revision,queryId:'directory.program.detail',rows:[{id:7,institutionId:4}],configuration:saved.configuration})})));
  const projected=await loadDirectoryCanvas(layout,saved,new AbortController().signal);expect(projected.content[1].props.binding.hiddenFilters[0].value).toBe(7);expect(layout.content[1].props.binding.hiddenFilters[0].value).toEqual({kind:'variable',path:'page.recordId'});
  });
+
+it('hydrates unseeded authoring previews even when a copy overlay marked the public list SSR-only',async()=>{
+ const layout:any={root:{siteConfiguration:{version:1,role:'institution'}},content:[{id:'contract',type:'Container',props:{directoryQuery:{version:1,queryId:'directory.institution.detail',params:{path:'/campus/'}}},children:[]},{id:'detail',type:'Repeater',props:{localeReadOnly:true,binding:{tableName:'institutions',hiddenFilters:[]}},children:[]},{id:'seeded',type:'Repeater',props:{localeReadOnly:true,initialRows:[{id:7}],binding:{tableName:'institutions',hiddenFilters:[]}},children:[]}]};
+ vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,json:async()=>({revision:saved.revision,queryId:'directory.institution.detail',rows:[{id:7}],configuration:saved.configuration})})));
+ const projected=await loadDirectoryCanvas(layout,saved,new AbortController().signal);
+ expect(projected.content[1].props.localeReadOnly).toBe(false);expect(projected.content[2].props.localeReadOnly).toBe(true);expect(layout.content[1].props.localeReadOnly).toBe(true);
+});
