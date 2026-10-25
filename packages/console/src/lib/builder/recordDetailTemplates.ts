@@ -61,7 +61,7 @@ export function createRecordDetailTemplate(input:DetailTemplateInput,newId=uuid)
  const routeBinding=(binding:Record<string,unknown>,componentId:string,column:string)=>{
   const parsed=liveViewBindingSchema.parse({...binding,componentId,pagination:{enabled:false,page:0,pageSize:column==='id'?1:12},hiddenFilters:[...(Array.isArray(binding.hiddenFilters)?binding.hiddenFilters:[]),{id:newId(),column,operator:'eq',value:{kind:'variable',path:'page.recordId'}}]});return parsed;
  };
- const detail=node('Card',{contentPadding:'0',cardBorderColor:'transparent',cardRadius:'0',columns:1,mobileColumns:1,tabletColumns:1,layout:'list',gap:0,controls:{search:false,count:false,ordering:false},_layerName:role==='institution'?'Institution detail':'Program detail'},[content],{minWidth:'0'});
+ const detail=node('Card',{contentPadding:'0',cardBorderColor:'transparent',cardRadius:'0',columns:1,mobileColumns:1,tabletColumns:1,layout:'list',gap:0,controls:{search:false,count:false,ordering:false},_layerName:role==='institution'?'Institution detail':'Program detail'},[content],{minWidth:'0',overflow:'visible',textAlign:'start'});
  detail.props.binding=routeBinding(input.binding,detail.id,'id');
  // Retain the existing detail route contract and its authoring sample for canvas context.
  const contract=node('Container',{directoryQuery:{version:1,queryId:'directory.'+role+'.detail',params:{path:input.previewPath}},_layerName:'Detail route preview'},[],{display:'none'});
@@ -95,5 +95,5 @@ export function recordLinksToActions(nodes:ComponentData[],newId=uuid):Component
 
 /** Upgrade only current-record wrappers; preserve child/action/translation identities and related lists. */
 export function useSingleRecordCards(nodes:ComponentData[]):ComponentData[]{
- return nodes.map(node=>{const binding=node.props?.binding??node.binding;const current=node.type==='Repeater'&&(binding?.hiddenFilters??[]).some((filter:any)=>filter.column==='id'&&filter.operator==='eq'&&filter.value?.kind==='variable'&&filter.value.path==='page.recordId');return {...node,...(current?{type:'Card',props:{...node.props,contentPadding:'0',cardBorderColor:'transparent',cardRadius:'0',localeReadOnly:false}}:{}),...(node.children?{children:useSingleRecordCards(node.children)}:{})};});
+ return nodes.map(node=>{const binding=node.props?.binding??node.binding;const current=node.type==='Repeater'&&(binding?.hiddenFilters??[]).some((filter:any)=>filter.column==='id'&&filter.operator==='eq'&&filter.value?.kind==='variable'&&filter.value.path==='page.recordId');return {...node,...(current?{type:'Card',styles:{...node.styles,overflow:'visible',textAlign:'start'},props:{...node.props,contentPadding:'0',cardBorderColor:'transparent',cardRadius:'0',localeReadOnly:false}}:{}),...(node.children?{children:useSingleRecordCards(node.children)}:{})};});
 }

@@ -59,7 +59,7 @@ it('retains responsive layout overrides and viewport-sized detail content in the
 
 it('uses the existing bound single-record Card hydration for composed field editing without list chrome',async()=>{
  const tree=createRecordDetailTemplate({role:'program',binding,mapping,previewPath:'/campus/'});expect(tree[1].type).toBe('Card');tree[1].props.initialRows=[{id:7,title:'History',duration:4,unit:'Year',intakes:'Jan,Aug'}];tree[1].props.initialTotal=1;
- const html=await renderBlock(tree[1],{} as any);const dom=document.createElement('div');dom.innerHTML=html;const host=dom.querySelector('[data-react-component="Repeater"]');expect(host).not.toBeNull();const props=JSON.parse(host!.getAttribute('data-fb-props')!);expect(props.singleRecord).toBe(true);expect(host!.getAttribute('data-component-id')).toBe(tree[1].id);expect(props.template[0].children.length).toBeGreaterThan(0);expect(dom.textContent).toContain('4 Year');
+ const html=await renderBlock(tree[1],{} as any);const dom=document.createElement('div');dom.innerHTML=html;const host=dom.querySelector('[data-react-component="Repeater"]');expect(host).not.toBeNull();const props=JSON.parse(host!.getAttribute('data-fb-props')!);expect(dom.querySelector('.fb-datacard')!.getAttribute('style')).toContain('overflow:visible');expect(props.singleRecord).toBe(true);expect(host!.getAttribute('data-component-id')).toBe(tree[1].id);expect(props.template[0].children.length).toBeGreaterThan(0);expect(dom.textContent).toContain('4 Year');
 });
 
 it('upgrades existing detail wrappers without changing translations, child IDs or related-list behavior',()=>{
