@@ -1,5 +1,7 @@
 # Frontbase Developer Preview: current release plan
 
+2026-10-26 settings consolidation COMPLETE: runtime035be80 retires the Template tab, moving shared data mappings to Datasources and routes/contacts/appearance/publication to the builder. Existing configuration revision4 and site generation32 remain unchanged. Workspace check/build,12 focused tests and native English/Arabic acceptance pass. [Receipt](settings-consolidation-20261025.md). The six release gates are unchanged.
+
 2026-10-25 gallery/detail refinement COMPLETE: runtime `bb27b27` and site generation32 publish the reusable Gallery, editable header facts/CTA, institution sidebar hierarchy and program horizontal navigation. EN/AR desktop/mobile and retained Actions/record-edit/filter checks pass;1,294 routes are preserved. [Final receipt and source-data limitations](detail-gallery-layout-20261025.md#final-acceptance-2026-10-25). This is another candidate inclusion item, not closure of the six public-release gates.
 
 Reconciled 2026-10-25 against committed source and dated acceptance receipts. This is the current execution order; it supersedes the ordering in the [2026-10-22 plan](frontbase-public-release-finalization-20261022.md), while preserving that plan as history. The accepted edition remains **Frontbase Framework Developer Preview**, not GA. No new release scope or publication authorization is created here.

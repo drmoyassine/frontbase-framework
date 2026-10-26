@@ -1,8 +1,10 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-25 settings consolidation — IN PROGRESS
+## 2026-10-25 settings consolidation — COMPLETE; STAGING ACCEPTED
 
 Owner authorizes moving shared mapping controls to Datasources, site routing/contact/appearance/publication controls to the builder, removing Template navigation with legacy-link compatibility. Preserve configuration API, revision guards, publication state and generated cms.mjs. Verify English/Arabic, commit/push/deploy. No data migration or release claim.
+
+Runtime035be80 is pushed/deployed. Shared configuration remains revision4 and site publication generation32; no state migration or live configuration write occurred. Final workspace check/build,12 focused tests, native relocated-controls/redirect checks and eight EN/AR HTTP routes pass. [Exact receipt](../plans/settings-consolidation-20261025.md). Generated cms.mjs remains unstaged; six release gates remain open.
 
 ## 2026-10-25 gallery and differentiated detail layouts — COMPLETE; STAGING ACCEPTED
 
