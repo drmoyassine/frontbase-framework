@@ -1,3 +1,4 @@
+import { NAVIGATION_CSS } from './navigationStyles.js';
 import {clientVisibilityAttributes} from './visibility.js';
 /**
  * Layout-component renderer (Container/Section/Row/Column/Flex/Stack/Box/Paper/Panel/Group).
@@ -31,7 +32,7 @@ export function renderLayoutComponent(
     const visibilityCSS = buildVisibilityCSS(id, visibility);
 
     // Combine CSS blocks
-    const combinedCSS = responsiveCSS + visibilityCSS;
+    let combinedCSS = responsiveCSS + visibilityCSS;
 
     // Build data-fb-props attribute if actionBindings exist (for hover tooltips, etc.)
     const actionBindings = props.actionBindings as Array<unknown> | undefined;
@@ -45,6 +46,7 @@ export function renderLayoutComponent(
     const horizontal = styles.overflowX === 'auto' || styles.viewportOverrides?.mobile?.overflowX === 'auto' || styles.viewportOverrides?.tablet?.overflowX === 'auto';
     const scrollNavigation = ['Row','Column'].includes(type) && (props.navigationOverflow === 'scroll' || props.navigationOverflow === 'wrap' || (props.navigationOverflow !== 'off' && horizontal && childrenHtml.includes('scrollToSection')));
     if (scrollNavigation) {
+        combinedCSS += `<style>${NAVIGATION_CSS}</style>`;
         propsAttr += ` data-fb-scroll-nav="${props.navigationOverflow === 'wrap' ? 'wrap' : 'scroll'}" data-scroll-arrows="${props.navigationArrows === 'hidden' ? 'hidden' : 'auto'}" data-scrollbar="${props.navigationScrollbar === 'visible' ? 'visible' : 'hidden'}"`;
     }
 

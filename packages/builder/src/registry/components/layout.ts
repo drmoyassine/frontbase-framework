@@ -74,9 +74,9 @@ export async function registerLayoutComponents(): Promise<void> {
             icon: 'rows',
             description: 'Horizontal row for any elements, including icons and text',
             props: [
-                {name:'navigationOverflow',label:'Navigation overflow',type:'select',group:'Navigation',options:[{value:'auto',label:'Automatic (section links)'},{value:'scroll',label:'Scroll'},{value:'wrap',label:'Wrap'},{value:'off',label:'Off'}]},
-                {name:'navigationArrows',label:'Scroll arrows',type:'select',group:'Navigation',options:[{value:'auto',label:'Automatic'},{value:'hidden',label:'Hidden'}]},
-                {name:'navigationScrollbar',label:'Scrollbar',type:'select',group:'Navigation',options:[{value:'hidden',label:'Hidden'},{value:'visible',label:'Visible'}]},
+                {name:'navigationOverflow',label:'Navigation overflow',type:'select',default:'auto',group:'Navigation',options:[{value:'auto',label:'Automatic (section links)'},{value:'scroll',label:'Scroll'},{value:'wrap',label:'Wrap'},{value:'off',label:'Off'}]},
+                {name:'navigationArrows',label:'Scroll arrows',type:'select',default:'auto',group:'Navigation',options:[{value:'auto',label:'Automatic'},{value:'hidden',label:'Hidden'}]},
+                {name:'navigationScrollbar',label:'Scrollbar',type:'select',default:'hidden',group:'Navigation',options:[{value:'hidden',label:'Hidden'},{value:'visible',label:'Visible'}]},
 
                 { name: 'gap', label: 'Gap', type: 'text', default: '1rem', group: 'Spacing' },
                 { name: 'stackOnMobile', label: 'Stack on mobile', type: 'boolean', default: true, group: 'Layout' },
@@ -115,9 +115,9 @@ export async function registerLayoutComponents(): Promise<void> {
             icon: 'columns',
             description: 'Vertical flex column',
             props: [
-                {name:'navigationOverflow',label:'Navigation overflow',type:'select',group:'Navigation',options:[{value:'auto',label:'Automatic (section links)'},{value:'scroll',label:'Scroll'},{value:'wrap',label:'Wrap'},{value:'off',label:'Off'}]},
-                {name:'navigationArrows',label:'Scroll arrows',type:'select',group:'Navigation',options:[{value:'auto',label:'Automatic'},{value:'hidden',label:'Hidden'}]},
-                {name:'navigationScrollbar',label:'Scrollbar',type:'select',group:'Navigation',options:[{value:'hidden',label:'Hidden'},{value:'visible',label:'Visible'}]},
+                {name:'navigationOverflow',label:'Navigation overflow',type:'select',default:'auto',group:'Navigation',options:[{value:'auto',label:'Automatic (section links)'},{value:'scroll',label:'Scroll'},{value:'wrap',label:'Wrap'},{value:'off',label:'Off'}]},
+                {name:'navigationArrows',label:'Scroll arrows',type:'select',default:'auto',group:'Navigation',options:[{value:'auto',label:'Automatic'},{value:'hidden',label:'Hidden'}]},
+                {name:'navigationScrollbar',label:'Scrollbar',type:'select',default:'hidden',group:'Navigation',options:[{value:'hidden',label:'Hidden'},{value:'visible',label:'Visible'}]},
 
                 { name: 'width', label: 'Width', type: 'text', placeholder: 'auto', group: 'Size' },
                 { name: 'gap', label: 'Gap', type: 'text', default: '1rem', group: 'Spacing' },
