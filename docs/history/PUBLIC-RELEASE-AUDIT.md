@@ -1,8 +1,8 @@
 # R0 Public Release Scope and Truth Audit
 
-## 2026-10-26 General and datasource simplification — IN PROGRESS
+## 2026-10-26 General and datasource simplification — COMPLETE; STAGING ACCEPTED
 
-Owner requests one site/project name and General form, no duplicated datasource operations, retirement of education Destination and special contact controls. Scope: General UI/save orchestration through existing APIs, Connections/Saved Views ownership, optional legacy decoding for existing content without new Destination requirements. Header buttons remain Menu Actions. Preserve generated cms.mjs and published text/links; no data or configuration purge. Verify tests/build and staging, commit/push/deploy under ongoing authorization.
+Owner requests one site/project name and General form, no duplicated datasource operations, retirement of education Destination and special contact controls. Scope: General UI/save orchestration through existing APIs, Connections/Saved Views ownership, optional legacy decoding for existing content without new Destination requirements. Header buttons remain Menu Actions. Runtime e7c0ae3 is pushed and deployed; 33 focused tests, workspace check/build, configuration conformance and 3/3 mutation cases pass. Native General save/reload/search, Connections/Saved Views filtering/inspection, legacy redirect and EN/AR checks pass. Saved the existing site name into project metadata, retaining configuration revision4; no publication activated or data purged. [Receipt](../plans/settings-consolidation-20261025.md). Generated cms.mjs remains unstaged; broader release gates unchanged.
 
 ## 2026-10-25 settings consolidation — COMPLETE; STAGING ACCEPTED
 

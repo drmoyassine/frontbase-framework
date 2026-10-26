@@ -1,5 +1,8 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+2026-10-26 General/Data simplification COMPLETE: runtime e7c0ae3 is pushed/deployed. General uses one site name and staged branding; Connections/Saved Views have distinct operations; Destination authoring is retired with legacy rendering preserved; header contact buttons belong to Menus/Actions. Configuration revision4 remains unchanged after project-name normalization. 33 focused tests, check/build, configuration mutation/conformance and live EN/AR verification pass. [Receipt](../plans/settings-consolidation-20261025.md#follow-up-staging-acceptance). Six release gates remain unchanged.
+
+
 2026-10-26 settings consolidation COMPLETE: runtime035be80 retires the Template tab, moving shared data mappings to Datasources and routes/contacts/appearance/publication to the builder. Existing configuration revision4 and site generation32 remain unchanged. Workspace check/build,12 focused tests and native English/Arabic acceptance pass. [Receipt](../plans/settings-consolidation-20261025.md). The six release gates are unchanged.
 
 2026-10-25 gallery/detail refinement COMPLETE: runtime `bb27b27` and site generation32 publish the reusable Gallery, editable header facts/CTA, institution sidebar hierarchy and program horizontal navigation. EN/AR desktop/mobile and retained Actions/record-edit/filter checks pass;1,294 routes are preserved. [Final receipt and source-data limitations](../plans/detail-gallery-layout-20261025.md#final-acceptance-2026-10-25). This is another candidate inclusion item, not closure of the six public-release gates.
