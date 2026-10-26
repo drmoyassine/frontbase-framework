@@ -119,7 +119,7 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
     const listing=page?undefined:manifest.templates.find(template=>['directory','article-index'].includes(template.role)
         &&path===(template.role==='directory'?manifest.configuration.routes.directory:manifest.configuration.routes.blog));
     const detailRoute=templateRoute(manifest,path);
-    const detail=detailRoute&&['institution','program'].includes(detailRoute.role)?detailRoute.template:undefined;
+    const detail=detailRoute&&['institution','program','article','editorial'].includes(detailRoute.role)?detailRoute.template:undefined;
     const target=page??listing??detail;
     if(!target)throw Error('homepage_required');
     // The localized query plan (fresh released titles + catalog) drives listing pages and —

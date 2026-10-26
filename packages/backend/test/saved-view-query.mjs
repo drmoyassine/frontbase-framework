@@ -29,3 +29,10 @@ await executeSingleTableRpc(runner,'postgres',{table_name:'items',columns:'*',jo
 assert.equal(sqlCalls.length,4);assert.ok(!sqlCalls.some(s=>s.includes('FOREIGN KEY')),'single-table reads must not fetch unused foreign keys');
 sqlCalls=[];await inspectTable(runner,'postgres','items');assert.ok(sqlCalls.some(s=>s.includes('FOREIGN KEY')),'Inspector retains complete relationship metadata');
 console.log('saved-view-query PASS: 1000 correlated typed memberships, parameter offsets/injection/null-safe SQL path, fallback shapes, field validation and selective schema inspection');
+
+const membershipCalls=[];const membershipRunner={...runner,query:async(sql,args)=>{if(sql.startsWith('SELECT COUNT')||sql.startsWith('SELECT *'))membershipCalls.push({sql,args});return runner.query(sql,args);}};
+await executeSingleTableRpc(membershipRunner,'postgres',{table_name:'items',columns:'*',joins:[],page:2,page_size:5,filters:[{column:'id',op:'gt',value:10},{column:'id',op:'in',value:Array.from({length:185},(_,i)=>i+1)}]},[{field:'country',operator:'eq',value:22}]);
+assert.deepEqual(membershipCalls[0].args,[10,...Array.from({length:185},(_,i)=>i+1),22]);
+assert.match(membershipCalls[0].sql,/"id" > \$1/);assert.match(membershipCalls[0].sql,/"country" = \$187/);
+assert.match(membershipCalls[1].sql,/LIMIT \$188 OFFSET \$189/);assert.deepEqual(membershipCalls[1].args.slice(-2),[5,5]);
+console.log('large RPC membership: PostgreSQL parameter offsets and saved-scope intersection PASS');

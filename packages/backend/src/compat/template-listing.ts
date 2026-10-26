@@ -17,7 +17,8 @@ export async function templateListingIds(db:DbRunner,owner:string,artifact:SiteP
         const row=chunk.records[entry.position]!;
         if(resolveTemplatePolicy(policy,`${collection}:${entry.id}`,locale??artifact.configuration.site.locale,row as unknown as Record<string,unknown>,{recordId:entry.id,path:entry.originalPath}).values.listed!==false)ids.push(entry.id);
     }
-    return ids;
+    // No membership predicate is needed when every captured record is listed.
+    return ids.length===artifact.index.filter(entry=>entry.collection===collection).length?null:ids;
 }
 export async function templateLiveListingFilter(db:DbRunner,owner:string,artifact:SitePublicationManifest,binding:{tableName:string;dataSourceId:string;sourceSchema?:string},locale?:string){
     if(binding.dataSourceId!==artifact.configuration.datasourceId)return [];
@@ -27,7 +28,7 @@ export async function templateLiveListingFilter(db:DbRunner,owner:string,artifac
         const projection=lineage.find(edge=>edge.source_table===binding.tableName&&edge.target_table===mapping.table&&edge.target_column===mapping.fields.id&&edge.source_column==='id');
         if(mapping.table!==binding.tableName&&!projection)continue;
         const ids=await templateListingIds(db,owner,artifact,role==='institution'?'institutions':role==='program'?'programs':'articles',locale);
-        if(ids)return [{column:projection?.source_column??mapping.fields.id,op:'in',value:ids}];
+        if(ids)return [{column:projection?.source_column??mapping.fields.id,op:'in',value:ids.length?ids:[null]}];
     }
     return [];
 }

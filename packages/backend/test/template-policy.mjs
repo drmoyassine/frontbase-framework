@@ -76,3 +76,15 @@ assert.equal((await app.request(path+'preview/',{method:'POST',headers:{'x-test-
 assert.equal((await app.request(path+'preview/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...previewBody,identity:'programs:foreign'})})).status,422);
 assert.equal((await new SitePublicationStore(db,owner).activeVersion()).pointer.hash,hash);
 console.log('SEO preview: actual renderer, Arabic metadata, unknown-record/admin refusal and no publication side effects PASS');
+
+// Actual query execution must preserve selections beyond the old 100-ID leaf limit.
+const {executeSingleTableRpc}=await import('../dist/compat/single-table-rpc.js');
+await db.exec('CREATE TABLE membership_fixture (id INTEGER PRIMARY KEY, title TEXT)');
+for(let id=1;id<=220;id++)await db.exec('INSERT INTO membership_fixture VALUES (?,?)',[id,'Record '+id]);
+const selection=Array.from({length:185},(_,i)=>i+1);
+const input={table_name:'membership_fixture',columns:'*',joins:[],page:1,page_size:10,filters:[{column:'id',op:'in',value:selection},{column:'id',op:'gt',value:100}],sort_col:'id',sort_dir:'asc'};
+const selected=await executeSingleTableRpc(db,'sqlite',input,[{field:'id',operator:'lt',value:180}]);
+assert.equal(selected.total,79);assert.deepEqual(selected.rows.map(row=>row.id),Array.from({length:10},(_,i)=>101+i));
+await assert.rejects(()=>executeSingleTableRpc(db,'sqlite',{...input,filters:[{column:'id',op:'in',value:Array(1001).fill(1)}]}),/invalid_in_filter/);
+await assert.rejects(()=>executeSingleTableRpc(db,'sqlite',{...input,filters:[{column:'not_a_column',op:'in',value:selection}]}));
+console.log('template membership: 185 IDs, intersected view scope, pagination/counts, bounded invalid selection PASS');

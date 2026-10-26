@@ -16,7 +16,17 @@ export async function executeSingleTableRpc(db:DbRunner,dialect:'postgres'|'sqli
         if(!match || match[2]&&match[1]!==schema.table)throw Error('invalid_columns');
         return field(match[2]??match[1]!)+(match[3]?` AS ${quote(match[3])}`:'');
     }).join(',');
-    const where=buildWhere(dialect,schema.columns,parseFilterList(input.filters),input.search_query,input.search_cols);
+    const filters=parseFilterList(input.filters);
+    // Reuse the saved-view compiler for bounded membership selections larger than
+    // one 100-value SQL leaf. Keep the original identifier/search validation.
+    const large=filters.filter(filter=>(filter.operator??filter.op)==='in'&&Array.isArray(filter.value)&&filter.value.length>100);
+    if(large.some(filter=>(filter.value as unknown[]).length>1000))throw Error('invalid_in_filter');
+    const where=buildWhere(dialect,schema.columns,filters.filter(filter=>!large.includes(filter)),input.search_query,input.search_cols);
+    if(large.length){
+        const membership=savedWhere(dialect,schema.columns,large,schema.table),offset=where.params.length;
+        where.sql+=(where.sql?' AND ':' WHERE ')+membership.sql.replace(/^ WHERE /,'').replace(/\$(\d+)/g,(_,n)=>'$'+(Number(n)+offset));
+        where.params.push(...membership.params);
+    }
     if(savedFilters){
         const saved=savedWhere(dialect,schema.columns,savedFilters,schema.table);
         const offset=where.params.length;
