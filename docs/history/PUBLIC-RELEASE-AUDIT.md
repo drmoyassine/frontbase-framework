@@ -1,4 +1,4 @@
-2026-10-26 local onboarding claim update: implementation and local qualification complete for resource discovery/reuse, shared HTTP lowering, credential-preserving managed redeployment and native-D1 operator recovery. Final source push/preflight and fresh live acceptance remain pending. [Evidence and exact limits](../plans/local-deployment-onboarding-20261026.md). No remote mutation, staging/data change or release publication.
+2026-10-26 local onboarding claim update: implementation and local qualification complete for resource discovery/reuse, shared HTTP lowering, credential-preserving managed redeployment and native-D1 operator recovery. Source 8e5ede0 and immutable preview tag frontbase-selfhost-preview-20261026 are pushed; remote source preflight passes with zero failures. Fresh live acceptance remains pending. [Evidence and exact limits](../plans/local-deployment-onboarding-20261026.md). No remote mutation, staging/data change or release publication.
 
 # R0 Public Release Scope and Truth Audit
 
