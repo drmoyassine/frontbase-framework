@@ -29,3 +29,12 @@ const bound={componentId:'detail',dataSourceId:'owned',viewId:'view',tableName:'
 const metadata={...emptyTemplatePolicy(),defaults:{values:{image:'{{ record["institutions.image"] }}'}}};
 const bindings=liveViewBindings({root:{templatePolicy:metadata},content:[{id:'detail',type:'Card',props:{binding:bound},children:[]}]});
 assert.ok(bindings[0].columnOrder.includes('institutions.image'),'metadata bracket bindings join the existing declared related-field capability');
+
+const {createEngine,directProvider}=await import('../dist/index.js');
+for(const locale of ['en','ar']){
+ const display=structuredClone(upgraded);display.root.publicationRecordContext={recordId:3,attached:true,secret:'NEVER_EXPOSE',settings:{notice:locale==='ar'?'تنبيه التوفر':'Availability unconfirmed',noticeTone:'warning',ctaLabel:'Contact adviser',ctaHref:'mailto:advice@example.test'}};
+ const manifest={version:'policy-context',pages:{'/record/':{title:'Record',slug:'record',layout:display}},queries:{}};
+ const response=await createEngine({manifest,data:directProvider(manifest),environment:'edge'}).fetch(new Request('https://site.test/record/'));
+ const html=await response.text();assert.equal(response.status,200);assert.ok(html.includes(locale==='ar'?'تنبيه التوفر':'Availability unconfirmed'),'notice survives engine block admission');assert.ok(html.includes('mailto:advice@example.test'),'conditional Actions survive admission');assert.ok(!html.includes('NEVER_EXPOSE'));
+}
+console.log('engine policy context: conditional notice and Actions survive pre-render admission in EN/AR; private fields excluded PASS');

@@ -57,3 +57,11 @@ export function resolveTemplatePolicy(policy:TemplatePolicy,identity:string,loca
     for(const key of ['image','ctaHref'] as const)if(resolved[key]&&!/^(https?:\/\/|\/(?!\/)|mailto:|tel:|#)/i.test(resolved[key]!))resolved[key]='';
     return {values:resolved,origin:override?'Record override':rule?rule.name:'Template defaults',ruleId:rule?.id??null};
 }
+
+/** Same whitelisted presentation context for engine admission and direct SSR. */
+export function publicationPageContext(value:unknown):Record<string,unknown>{
+    if(!value||typeof value!=='object')return {};
+    const route=value as Record<string,unknown>,scalars=Object.fromEntries(['recordId','parentId','siteName','attached','collection','path','locale'].filter(key=>['string','number','boolean'].includes(typeof route[key])).map(key=>[key,route[key]]));
+    const settings=templatePatchSchema.safeParse(route.settings);
+    return {...scalars,...(settings.success?{settings:settings.data}:{})};
+}

@@ -1,3 +1,4 @@
+import {publicationPageContext} from './template-policy.js';
 /**
  * The Chimera Engine — ONE Hono app, identical in every host (CHIMERA §1–2).
  *
@@ -83,6 +84,7 @@ function buildContext(page: PageEntry, path: string, records: Record<string, unk
             description: page.description ?? '', published: true,
             createdAt: '', updatedAt: '',
             image: '', type: 'page', custom: {},
+            ...publicationPageContext(page.layout.root?.publicationRecordContext),
         },
         user,
         visitor: {} as TemplateContext['visitor'],

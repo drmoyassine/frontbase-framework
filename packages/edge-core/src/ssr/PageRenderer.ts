@@ -1,3 +1,4 @@
+import {publicationPageContext} from '../template-policy.js';
 import {bindingWithTemplateFields} from '../directory/live-list.js';
 import {publicConditionContext, contextReader} from '../conditions.js';
 import { applyBlockVersion, selectBlockVersion, validateBlockVersions, blockVersionPossible, cloneBlockTree } from '../block-versions.js';
@@ -234,7 +235,7 @@ export async function renderPage(
     // Runtime/canvas route identity is presentation context only. Data selection is independently
     // enforced by the publication resolver against its immutable route index.
     const route=rootProps.publicationRecordContext as Record<string,unknown>|undefined;
-    if(route){const scalars=Object.fromEntries(['recordId','parentId','siteName','attached','collection','path','locale'].filter(key=>['string','number','boolean'].includes(typeof route[key])).map(key=>[key,route[key]]));context={...context,page:{...context.page,...scalars,...(route.settings&&typeof route.settings==='object'?{settings:route.settings}:{})}};}
+    if(route)context={...context,page:{...context.page,...publicationPageContext(route)}};
     const navigationContext=rootProps.localeNavigation as {locale?:string;origins?:string[]}|undefined;
     context={...context,app:{...context.app,siteNavigationOrigin:rootProps.siteNavigationOrigin,navigationLocale:navigationContext?.locale,navigationOrigins:navigationContext?.origins}};
     const { rootStyle, rootClass } = resolveRootStyles(rootProps);
