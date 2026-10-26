@@ -1,5 +1,24 @@
 # Frontbase Developer Preview: current release plan
 
+## Release closeout order — after template/SEO acceptance
+
+Documentation reconciliation at `cfd3bd4`; accepted staging runtime remains `6b8b96e`. The reusable-template/URLs/SEO feature is closed, including the three defects found during its acceptance. Do not carry those repaired defects forward as open blockers. No new runtime tests or provider checks were performed for this plan refresh.
+
+| Order | Remaining gap | Definition of done |
+|---|---|---|
+| 1 | Candidate integration and console type debt | One reviewed public source candidate and artifact/version manifest; reproduce the retained 160 diagnostics (not 160 distinct bugs), resolve supported-path errors and document any legitimate tooling-only residue. Reproducibly account for generated cms.mjs. |
+| 2 | Final combined-version qualification | Required check/build, applicable functional/security/mutation tests and strict external consumption of all seven package candidates pass on the same source. Include recent template policy, large saved-view selection, localized SEO and frontend save-routing regressions. |
+| 3 | Public install, upgrade and recovery | Actual README entry points work from clean environments on claimed hosts: Cloudflare, Vercel Node and advertised Node/Docker. Verify first admin through publication, then preserved data/session/configuration on upgrade and tested restore. Earlier host receipts remain valid dated evidence, but do not certify all later changes. |
+| 4 | Supported integration evidence | Actual password-reset email arrives in an owned inbox and expiry/single-use/session behavior passes. Only advertised supported provider combinations require live qualification; unverified optional combinations must be explicitly experimental. |
+| 5 | Distribution preparation | Current support/limitations and quick start agree; an external adopter completes the documented journey. Registry authority, coordinated versions, licenses, archive contents, provenance, publish dry-run and partial-publication recovery are verified. |
+| 6 | Release operation | Publish the qualified Developer Preview packages/tag/notes and verify a fresh registry installation. Record support ownership and known limitations. |
+
+Start with orders 1–2; neither requires a new external-provider key. Inspect existing authorization/access before reporting any mailbox, selected-provider or registry dependency. Do not repeat unchanged broad tests or provisioning merely to refresh timestamps: re-run tests affected by the final candidate and retain explicitly dated unchanged evidence.
+
+Already delivered: visual composition and data binding; record-aware multilingual frontend edits; cards/detail/gallery templates; configurable navigation; consolidated settings; reusable URL rules/notices and dynamic SEO; CF/Vercel deployment profiles. No newly reproduced unresolved runtime defect is established by this review. That does not establish full release readiness.
+
+Outside this release critical path: CF-22 parity, Deno/Vercel Edge parity, certification of every optional adapter, complete Study-in-USA translations/media, other WordPress sites and the production website cutover. Keep the accepted label **Frontbase Framework Developer Preview**; general availability is not claimed.
+
 ## Current checkpoint — 2026-10-26
 
 Latest accepted runtime is **6b8b96e** ([reusable-template URLs/SEO receipt](reusable-template-urls-seo-20261026.md)), on `codex/integrated-finalization-20261022`, with site generation35. Shared templates now own293 program,18 institution and957 article URLs, including110 reconciled retained routes. Dynamic multilingual SEO and editable conditional notices/Actions pass EN/AR desktop/mobile acceptance; original settings, views and paths are preserved. Qualification must include this later runtime. The earlier **e25e27b** [navigation/General translations delivery](navigation-general-translations-20261026.md) remains included. Configurable navigation arrows and General translation disclosures are complete and deployed, with EN/AR desktop/mobile acceptance. The preceding settings/data simplification is also complete: one site name/form, staged branding, distinct Connections/Saved Views operations, Destination authoring retired with legacy content preserved, header contact actions in Menus. Gallery/detail layouts, visual composition, bindings, multilingual frontend editing and deployment-profile implementations are also delivered. [Latest acceptance](settings-consolidation-20261025.md#follow-up-staging-acceptance). Older entries below retain their original dates and are not the current source checkpoint.

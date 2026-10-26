@@ -1,5 +1,12 @@
 # Deployment support matrix — 2026-10-22
 
+## Current public-button source warning — 2026-10-26
+
+The repository-default button is not the reviewed integrated source. A read-only GitHub check confirms `main` lacks root `wrangler.toml`, so successful local/native test receipts must not be read as certification of this public entry point. Before a native launch, run `node scripts/deployment-buttons.mjs --verify-source` (or add `--ref NAME` for an explicit slash-free reviewed ref). The preflight reads public GitHub source only and fails on missing configuration/network errors; it creates nothing. The local contract test remains useful but is insufficient by itself.
+
+Cloudflare's native provider form cannot embed Frontbase's shared adapter editor. The existing local browser setup has that editor, but its Cloudflare executor currently accepts new D1/KV/R2 only, not arbitrary adapter changes or existing-resource first installation. First-run setup already requires an operator-held capability and confirms passwords; it now adds accessible reveal and password-manager fields. Neither this UI improvement nor a new source link establishes the complete requested onboarding flow. Browser-launcher versus local-wizard entry is pending owner selection; broader onboarding remains in progress.
+
+
 This matrix retains dated deployment evidence at foundation5d9ca6f, vector fix375c078 and HTTP cold-start source81308ed, followed by the superseding receipts below. It distinguishes editable suggestions, executor support and actual provider evidence. It is not a general host-parity or public-release claim. Deno remains outside the current acceptance scope; CF-22 is a retired historical umbrella.
 
 | Surface | Cloudflare | Vercel |

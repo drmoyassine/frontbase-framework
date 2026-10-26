@@ -1,4 +1,16 @@
 # R0 Public Release Scope and Truth Audit
+
+## 2026-10-26 Clean deployment onboarding — IN PROGRESS
+
+Owner authorizes repairing native-button source selection, configurable binding/resource choices, first-administrator setup and recovery before the new production-site acceptance. Own isolated visual-binding-final; preserve generated cms.mjs and prior documentation edits. GitHub read-only inspection confirms default branch main lacks root wrangler.toml while the reviewed integrated branch contains it; current README buttons therefore do not launch the reviewed CF configuration. Current CF executor advertises create-only D1/KV/R2; adapter selection alone does not establish execution support. Native Cloudflare form cannot embed Frontbase controls: choice of existing local wizard versus new browser launcher requested before implementing a new authentication/control-plane path. Independent work implemented: first-run password show/hide, accessible labels/autofill, confirmation regression; public-source preflight and missing-config/network/malformed-response tests. Full check/build and focused form/button tests pass; live read-only preflight correctly fails main with missing wrangler.toml. This is a partial local repair, not native-button or full binding acceptance. No live resources or credentials changed; no completion claim.
+
+
+
+## 2026-10-26 Post-template release-plan reconciliation — COMPLETE
+
+Documentation-only owner request: reviewed current Git state, template/SEO acceptance, retained console diagnostic inventory and release gates. [Closeout order](../plans/frontbase-public-release-finalization-20261024.md#release-closeout-order--after-templateseo-acceptance) separates delivered features/repaired defects from candidate/type qualification, clean public installation/recovery, supported reset/provider evidence, distribution preparation and final publication. No new edition, architecture or support scope; Developer Preview remains the recommendation. No runtime tests, provider checks, deployment or publication performed. Generated cms.mjs preserved. Next executable work: candidate manifest and console diagnostic reproduction/triage.
+
+
 ## 2026-10-26 Reusable template URLs, exceptions and dynamic SEO — COMPLETE; STAGING ACCEPTED
 
 Owner authorizes one reusable template per record type, clean progressive URLs manager, conditional record exceptions, multilingual dynamic SEO using existing bindings, and EN/AR desktop/mobile acceptance. Scope includes preserving original URLs/settings and reconciling migrated availability notices to their source identities. Reuse Conditions, Actions, immutable publication, record editing and existing HTTP adapters. Claim: integrated-finalization session; generated cms.mjs preserved; no unrelated release or production cutover. Runtime `6b8b96e` and site generation 35 are live;293 program, 18 institution and 957 article URLs share their type templates. 113 Arabic releases, 12 anonymous HTTP checks and EN/AR desktop/mobile acceptance pass. Original settings/views/catalog/paths/aliases are preserved. [Exact receipt and repaired acceptance failures](../plans/reusable-template-urls-seo-20261026.md). Broader release gates remain open.
