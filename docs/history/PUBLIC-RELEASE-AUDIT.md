@@ -1,7 +1,7 @@
 # R0 Public Release Scope and Truth Audit
-## 2026-10-26 Reusable template URLs, exceptions and dynamic SEO — IN PROGRESS
+## 2026-10-26 Reusable template URLs, exceptions and dynamic SEO — COMPLETE; STAGING ACCEPTED
 
-Owner authorizes one reusable template per record type, clean progressive URLs manager, conditional record exceptions, multilingual dynamic SEO using existing bindings, and EN/AR desktop/mobile acceptance. Scope includes preserving original URLs/settings and reconciling migrated availability notices to their source identities. Reuse Conditions, Actions, immutable publication, record editing and existing HTTP adapters. Claim: integrated-finalization session; generated cms.mjs preserved; no unrelated release or production cutover.
+Owner authorizes one reusable template per record type, clean progressive URLs manager, conditional record exceptions, multilingual dynamic SEO using existing bindings, and EN/AR desktop/mobile acceptance. Scope includes preserving original URLs/settings and reconciling migrated availability notices to their source identities. Reuse Conditions, Actions, immutable publication, record editing and existing HTTP adapters. Claim: integrated-finalization session; generated cms.mjs preserved; no unrelated release or production cutover. Runtime `6b8b96e` and site generation 35 are live;293 program, 18 institution and 957 article URLs share their type templates. 113 Arabic releases, 12 anonymous HTTP checks and EN/AR desktop/mobile acceptance pass. Original settings/views/catalog/paths/aliases are preserved. [Exact receipt and repaired acceptance failures](../plans/reusable-template-urls-seo-20261026.md). Broader release gates remain open.
 
 
 ## 2026-10-26 Navigation overflow and General translations — COMPLETE; STAGING ACCEPTED

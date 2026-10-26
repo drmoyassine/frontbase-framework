@@ -1,5 +1,7 @@
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+2026-10-26 reusable template URL/SEO task COMPLETE: runtime `6b8b96e`/site generation 35 reconcile 110 retained routes into the program/institution templates, add progressive URLs/defaults/rules and localized @ SEO, and preserve settings/source catalog/paths/aliases. EN/AR desktop/mobile and targeted check/build/mutation acceptance pass. [Receipt](../plans/reusable-template-urls-seo-20261026.md). Include in candidate qualification; broader public-release gates remain open.
+
 2026-10-26 navigation/General translations COMPLETE: runtime e25e27b adds reusable responsive arrow controls and organizes translation settings under General with existing configuration preserved. Native builder and EN/AR desktop/mobile acceptance pass; check/build pass. [Receipt](../plans/navigation-general-translations-20261026.md). Include in candidate qualification; no public-release gate is closed by this UI task.
 
 

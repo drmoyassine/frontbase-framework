@@ -1,5 +1,7 @@
 # Frontbase Public Release Strategy
 
+2026-10-26 reusable template URL/SEO task COMPLETE: runtime `6b8b96e`/site generation 35 reconcile 110 retained routes into the program/institution templates, add progressive URLs/defaults/rules and localized @ SEO, and preserve settings/source catalog/paths/aliases. EN/AR desktop/mobile and targeted check/build/mutation acceptance pass. [Receipt](../plans/reusable-template-urls-seo-20261026.md). Include in candidate qualification; broader public-release gates remain open.
+
 2026-10-26 release-plan reconciliation COMPLETE (documentation only): accepted staging runtime e7c0ae3/receipt895694c closes General/Data simplification. [Current execution plan](../plans/frontbase-public-release-finalization-20261024.md#current-checkpoint--2026-10-26) orders candidate freeze/type triage, cumulative qualification, public-source install/upgrade/recovery, supported-provider/reset receipts, docs/distribution mechanics and final Developer Preview publication. The retained full-console log is inventoried as160 diagnostics across51 files (71 test,89 non-test), not160 independent defects. No runtime, registry or provider requalification occurred in this refresh. Existing generated cms.mjs is preserved; CF-22 stays parked. First executable deliverable is candidate manifest plus diagnostic triage; new product features are not required.
 
 
