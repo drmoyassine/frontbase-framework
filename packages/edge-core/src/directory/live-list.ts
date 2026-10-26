@@ -23,7 +23,8 @@ export function liveViewBindings(layout:PageLayoutData){
             const effective=applyBlockVersion(node,id),binding=effective.props?.binding??effective.binding;
             if(binding&&!(binding as any).source){
                 if(!['Repeater','DataTable','Grid','Card','KPICard','Chart','InfoList'].includes(node.type))throw Error('invalid_live_list_element');
-                found.push(liveViewBindingSchema.parse(bindingWithTemplateFields(binding as any,effective.children??[])));
+                const policyNodes=effective.type==='Card'&&layout.root?.templatePolicy?[{id:'$template-policy-fields',type:'Text',props:{templatePolicy:layout.root.templatePolicy}}]:[];
+                found.push(liveViewBindingSchema.parse(bindingWithTemplateFields(binding as any,[...effective.children??[],...policyNodes])));
             }
         }
     });

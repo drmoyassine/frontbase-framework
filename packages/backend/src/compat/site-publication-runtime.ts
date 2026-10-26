@@ -1,3 +1,4 @@
+import {templatePolicyPresentation} from './template-policy-runtime.js';
 import { buildSiteManifest } from '@frontbase/compiler/manifest';
 import { createSnapshotDirectoryQueries } from '@frontbase/compiler/queries/directory';
 import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview, projectDirectoryBrowsing, projectRelativeSiteLinks } from '@frontbase/edge-core/directory/configuration';
@@ -89,14 +90,16 @@ export async function resolveSitePublicationPage(input: SitePublicationArtifact,
         hasNext: hasNext && offset + pageSize <= 10000,
     }]);
     projected = projectRelativeSiteLinks(projected, artifact.configuration.site.origin);
-    const title = typeof row?.title === 'string' ? row.title : template.title;
-    const description = typeof row?.summary === 'string' ? row.summary : template.description;
+    let title = typeof row?.title === 'string' ? row.title : template.title;
+    let description = typeof row?.summary === 'string' ? row.summary : template.description;
+    const presentation=templatePolicyPresentation(projected,row,row?`${role==='institution'?'institutions':role==='program'?'programs':'articles'}:${row.id}`:'',recordsLocale??artifact.configuration.site.locale,{recordId:row?.id,path,siteName:artifact.configuration.site.name});
+    projected=presentation.layout;const seo=presentation.values;title=seo.title||title;description=seo.description||description;
     const manifest = buildSiteManifest({ pages: { [path]: { title, slug: path.replace(/^\//, ''), description, layout: projected as unknown as Record<string, unknown> } }, queries: {}, versionPrefix: hash });
     const canonicalUrl = new URL(path, artifact.configuration.site.origin).href;
     const documentLanguage = typeof row?.language === 'string' ? row.language : artifact.configuration.site.locale || 'en';
     return { sourcePageId:template.pageId, page: manifest.pages[path]!, version: manifest.version, cacheKey: JSON.stringify([owner, hash, path, normalized]),
         document: { faviconUrl: '', language: documentLanguage, direction: localeDirection(documentLanguage),
-            canonicalUrl, robots: url.searchParams.size ? 'noindex, follow' : 'index, follow',
-            openGraph: { title, description, url: canonicalUrl, type: role === 'article' ? 'article' : 'website', siteName: artifact.configuration.site.name, locale: documentLanguage,
-                ...(typeof row?.cover === 'string' ? { image: row.cover, imageAlt: typeof row.coverAlt === 'string' ? row.coverAlt : '' } : {}) } } };
+            canonicalUrl, robots: url.searchParams.size || seo.indexing==='noindex' ? 'noindex, follow' : 'index, follow',
+            openGraph: { title:seo.socialTitle||title, description:seo.socialDescription||description, url: canonicalUrl, type: role === 'article' ? 'article' : 'website', siteName: artifact.configuration.site.name, locale: documentLanguage,
+                ...(typeof (seo.image||row?.cover) === 'string' ? { image: seo.image||row!.cover as string, imageAlt: typeof row?.coverAlt === 'string' ? row.coverAlt : '' } : {}) } } };
 }

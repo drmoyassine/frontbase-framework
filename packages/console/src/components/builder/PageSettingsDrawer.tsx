@@ -1,3 +1,4 @@
+import {TemplateDefaults} from './TemplateDefaults';
 import React, { useState } from 'react';
 import { useBuilderStore } from '@/stores/builder';
 import { useShallow } from 'zustand/react/shallow';
@@ -288,6 +289,7 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
                                 <>
                                     <Separator />
 
+                                    {['program','institution','article','editorial'].includes(currentPage.layoutData?.root.siteConfiguration?.role)?<TemplateDefaults page={currentPage} onChange={layoutData=>handleUpdatePage({layoutData})}/>:<>
                                     {/* SEO Section Header */}
                                     <div className="text-sm font-medium text-muted-foreground">SEO Settings</div>
 
@@ -333,6 +335,7 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
 
                                     <Separator />
 
+                                    </>}
                                     {/* Homepage Toggle - Only visible when Public is ON */}
                                     <div className="flex items-center justify-between">
                                         <div className="space-y-0.5">

@@ -9,7 +9,7 @@ function editable(value:any,depth=0):value is Condition {
     const operand=(v:any)=>!!v&&(v.kind==='variable'?typeof v.path==='string'&&v.path.length<1024:v.kind==='literal'&&isJsonValue(v.value));
     return operand(value.left)&&operators.some(([operator])=>operator===value.operator)&&(['is_set','is_not_set'].includes(value.operator)||operand(value.right));
 }
-export function ConditionsEditor({value,onChange,title='Conditions'}:{value?:ConditionInput;onChange:(v:ConditionInput|undefined)=>void;title?:string}) {
+export function ConditionsEditor({value,onChange,title='Conditions',allowedGroups}:{value?:ConditionInput;onChange:(v:ConditionInput|undefined)=>void;title?:string;allowedGroups?:string[]}) {
     let authored=value;
     if(typeof value==='string'&&value.startsWith(conditionPrefix)&&value.length<=24000)try{authored=JSON.parse(value.slice(conditionPrefix.length));}catch{}
     const parsed=editable(authored)?authored:value?parseCondition(value):null;
@@ -20,9 +20,9 @@ export function ConditionsEditor({value,onChange,title='Conditions'}:{value?:Con
             <div className="flex gap-3"><button type="button" className="text-xs" onClick={()=>change({[mode]:[...rows,empty()]} as Condition)}>Add condition</button>{depth<5&&<button type="button" className="text-xs" onClick={()=>change({[mode]:[...rows,{all:[empty()]}]} as Condition)}>Add group</button>}</div>
         </div>;}
         return <div className="space-y-2 rounded border p-2">
-            <ConditionValueEditor label="Left value" value={node.left} onChange={left=>change({...node,left})}/>
+            <ConditionValueEditor allowedGroups={allowedGroups} label="Left value" value={node.left} onChange={left=>change({...node,left})}/>
             <select aria-label="Condition operator" className="h-8 w-full rounded border bg-background text-xs" value={node.operator} onChange={e=>change({...node,operator:e.target.value as ConditionOperator,right:node.right??{kind:'literal',value:''}})}>{operators.map(([v,label])=><option key={v} value={v}>{label}</option>)}</select>
-            {!['is_set','is_not_set'].includes(node.operator)&&<ConditionValueEditor label="Right value" value={node.right??{kind:'literal',value:''}} onChange={right=>change({...node,right})}/>}
+            {!['is_set','is_not_set'].includes(node.operator)&&<ConditionValueEditor allowedGroups={allowedGroups} label="Right value" value={node.right??{kind:'literal',value:''}} onChange={right=>change({...node,right})}/>}
         </div>;
     };
     return <div className="space-y-2"><div className="flex items-center justify-between"><span className="text-sm font-medium">{title}</span>{value&&<button type="button" className="text-xs" onClick={()=>onChange(undefined)}>Clear</button>}</div>

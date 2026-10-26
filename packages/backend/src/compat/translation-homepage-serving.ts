@@ -1,3 +1,4 @@
+import {templatePolicyPresentation} from './template-policy-runtime.js';
 import {SitePublicationManifestStore} from './site-publication-manifest.js';
 import {verifyManifestEditorial} from './site-publication-approval-check.js';
 import {localizeNavigationProps,localizePublicHref,localeDirection} from '@frontbase/edge-core/localization';
@@ -176,6 +177,14 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
         layout.root={...layout.root,localeMessages:Object.fromEntries(selected.release.catalog.filter(f=>f.blockId==='$root').map(f=>[f.path.at(-1)!,f.text]))};
         resolved.page={...resolved.page,layout};
     }
+    let templateSeo:import('@frontbase/edge-core/template-policy').TemplatePatch={};
+    const policyLayout=resolved.page.layout as unknown as PageLayoutData;
+    if(policyLayout.root?.templatePolicy){
+        const route=policyLayout.root.publicationRecordContext as Record<string,unknown>|undefined;
+        const presentation=templatePolicyPresentation(policyLayout,{title:resolved.page.title,summary:resolved.page.description},route?.collection?`${route.collection}:${route.recordId}`:'',current,route??{});
+        const seo=presentation.values;templateSeo=seo;resolved.page={...resolved.page,layout:presentation.layout,title:seo.title||resolved.page.title,description:seo.description||resolved.page.description};
+        resolved.document={...resolved.document,...(seo.indexing==='noindex'?{robots:'noindex, follow'}:{}),...(resolved.document.openGraph?{openGraph:{...resolved.document.openGraph,...(seo.image?{image:seo.image}:{})}}:{})};
+    }
     const switcherLocales=[...new Set([...scopedLocales,...(current!==sourceLocale?[current]:[])])];
     resolved.page={...resolved.page,layout:addHomepageLanguageLinks(resolved.page.layout as unknown as PageLayoutData,sourceLocale,switcherLocales,current,sourceUrl.pathname+sourceUrl.search,origins)};
     const canonical=new URL(isHomepage?(selected?`/${current}/`:'/'):(pageRelease?`/${current}${sourceUrl.pathname}`:sourceUrl.pathname),resolved.document.canonicalUrl??request.url);
@@ -189,7 +198,7 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     resolved.document={...resolved.document,language:contentLocale,direction:localeDirection(contentLocale),canonicalUrl:canonical.href,alternates,
         // SEO GAP-2: merge, never replace — the source document's image/imageAlt/type (and any
         // future keys) survive the localized serve; only identity fields are overridden.
-        openGraph:{...resolved.document.openGraph,title:resolved.page.title,description:resolved.page.description,url:canonical.href,siteName:resolved.document.openGraph?.siteName??'',type:resolved.document.openGraph?.type??'website',locale:contentLocale},
+        openGraph:{...resolved.document.openGraph,title:templateSeo.socialTitle||resolved.page.title,description:templateSeo.socialDescription||resolved.page.description,url:canonical.href,siteName:resolved.document.openGraph?.siteName??'',type:resolved.document.openGraph?.type??'website',locale:contentLocale},
         // og:locale follows the content locale; alternates mirror the per-path hreflang set minus current.
         localesAlternate:alternates?.map(link=>link.language).filter(code=>code!==contentLocale)};
     return {kind:'page' as const,resolved,siteHash:capture.active.pointer.hash,generation:capture.active.pointer.generation,releaseHash:selected?.pointer.hash??null,locale:current,contentLocale};

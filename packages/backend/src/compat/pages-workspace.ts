@@ -1,3 +1,4 @@
+import {templateRoute} from './template-route.js';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { stableStringify } from '@frontbase/compiler/manifest';
 import { PagesStore } from './pages-store.js';
@@ -10,7 +11,7 @@ export interface WorkspaceEntry {
     pageId?: string; role?: string; path?: string; paths?: string[]; serves?: number;
     publicationStatus: 'published' | 'changes-pending' | 'draft' | 'unknown';
     developmentOnly: boolean; source: 'saved' | 'derived';
-    contentAction?: { datasourceId: string; table: string; recordId?: string; contentRole?: 'page' | 'article' };
+    contentAction?: { datasourceId: string; table: string; keyColumn?:string; recordKey?:{column:string;value:string}; recordId?: string; contentRole?: 'page' | 'article' };
 }
 
 /** Authoring inventory, not a public catalog dump. Never reads connected data or credentials. */
@@ -30,6 +31,7 @@ export async function pagesWorkspace(db: DbRunner, owner: string) {
         article: rows?.articles.map(r => r.originalPath!) ?? [],
         editorial: rows?.pages.map(r => r.originalPath!) ?? [],
     };
+    if(active?.artifact.schemaVersion===2){for(const role of ['institution','program','article','editorial'])rolePaths[role]=active.artifact.index.filter(row=>row.originalPath&&templateRoute(active.artifact as any,row.originalPath)?.role===role).map(row=>row.originalPath!);}
     // URLs shown for published layouts must come from the published configuration.
     if (active) {
         rolePaths.directory = [active.artifact.configuration.routes.directory];
@@ -54,11 +56,12 @@ export async function pagesWorkspace(db: DbRunner, owner: string) {
                 ...(paths.length === 1 ? { path: paths[0] } : {}) } : { path: page.is_homepage ? '/' : page.slug.startsWith('/') ? page.slug : '/' + page.slug }),
             publicationStatus: captured ? unchanged && (!(role || layout.root?.directoryLanding) || !sharedChanged) ? 'published' : 'changes-pending' : page.is_published ? 'published' : 'draft',
             developmentOnly: !captured && /^(Editorial migration review|Shared settings proof)/i.test(page.name), source: 'saved',
-            ...(mapping?.table && configuration?.datasourceId ? { contentAction: { datasourceId: configuration.datasourceId, table: mapping.table, ...(role === 'editorial' ? { contentRole: 'page' as const } : {}) } } : {}),
+            ...(mapping?.table && configuration?.datasourceId ? { contentAction: { datasourceId: configuration.datasourceId, table: mapping.table, keyColumn:mapping.fields.id, ...(role === 'editorial' ? { contentRole: 'page' as const } : {}) } } : {}),
         });
     }
     // Ordinary captured pages are individually discoverable; article/program catalogs remain collection views.
     for (const row of rows?.pages ?? []) {
+        if(active?.artifact.schemaVersion===2&&row.originalPath&&templateRoute(active.artifact,row.originalPath)?.attached)continue;
         if (entries.some(entry => entry.source === 'saved' && entry.kind === 'page' && entry.path === row.originalPath && statics.some(page => page.pageId === entry.id))) continue;
         const mapping = configuration?.collections.article;
         entries.push({ id: `record:page:${row.id}`, name: row.title, kind: 'page', role: 'editorial', path: row.originalPath,

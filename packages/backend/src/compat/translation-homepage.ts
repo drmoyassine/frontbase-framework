@@ -1,3 +1,4 @@
+import {templateRoute} from './template-route.js';
 import {publicationPaths} from './publication-version.js';
 import {z} from 'zod';
 import type {DbRunner} from '@frontbase/edge-infra';
@@ -117,8 +118,8 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
     // Template listing pages resolve with their request parameters (explore type/q/page); static pages never carry them.
     const listing=page?undefined:manifest.templates.find(template=>['directory','article-index'].includes(template.role)
         &&path===(template.role==='directory'?manifest.configuration.routes.directory:manifest.configuration.routes.blog));
-    const detailEntry=manifest.index.find(entry=>entry.originalPath===path&&['institutions','programs'].includes(entry.collection));
-    const detail=detailEntry?manifest.templates.find(template=>template.role===(detailEntry.collection==='institutions'?'institution':'program')):undefined;
+    const detailRoute=templateRoute(manifest,path);
+    const detail=detailRoute&&['institution','program'].includes(detailRoute.role)?detailRoute.template:undefined;
     const target=page??listing??detail;
     if(!target)throw Error('homepage_required');
     // The localized query plan (fresh released titles + catalog) drives listing pages and —

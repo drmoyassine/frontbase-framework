@@ -1,3 +1,4 @@
+import {templateRoute} from './template-route.js';
 import {z} from 'zod';
 import type {DbRunner} from '@frontbase/edge-infra';
 import {stableStringify} from '@frontbase/compiler/manifest';
@@ -25,7 +26,7 @@ function audienceOverlap(a:MenuAudience,b:MenuAudience):boolean{
 function contexts(version:PublicationVersion){
     const points:{pageId:string;path:string}[]=[];const template=(role:string)=>version.templates.find(t=>t.role===role)?.pageId;
     if(version.schemaVersion===1){for(const [role,rows]of [['institution',version.records.institutions],['program',version.records.programs],['article',version.records.articles]] as const){for(const row of rows){const pageId=template(role);if(pageId)points.push({pageId,path:row.originalPath});}}}
-    else{for(const row of version.index){const role=({institutions:'institution',programs:'program',articles:'article',pages:'editorial',cities:''})[row.collection],pageId=template(role);if(pageId&&row.originalPath)points.push({pageId,path:row.originalPath});}for(const page of version.staticPages??[])points.push({pageId:page.pageId,path:page.originalPath});}
+    else{for(const row of version.index){const role=row.originalPath?templateRoute(version,row.originalPath)?.role??'':'',pageId=template(role);if(pageId&&row.originalPath)points.push({pageId,path:row.originalPath});}for(const page of version.staticPages??[])points.push({pageId:page.pageId,path:page.originalPath});}
     const directory=template('directory'),blog=template('article-index');if(directory)points.push({pageId:directory,path:version.configuration.routes.directory});if(blog)points.push({pageId:blog,path:version.configuration.routes.blog});return points;
 }
 function checkConflicts(document:MenuDocument,version:PublicationVersion){const points=contexts(version),enabled=document.menus.filter(m=>m.enabled),matched=new Map(enabled.map(m=>[m.id,new Set(points.filter(p=>menuPlacementMatches(m,p.pageId,p.path)).map(p=>p.path))]));

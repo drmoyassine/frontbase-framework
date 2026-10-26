@@ -1,4 +1,6 @@
-import {bindingWithTemplateFields} from '@frontbase/edge-core/directory/configuration';
+import {templateRoute} from './template-route.js';
+import {templateListingIds,templateLiveListingFilter} from './template-listing.js';
+import {bindingWithTemplateFields,templateRecordFields} from '@frontbase/edge-core/directory/configuration';
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { applyBlockVersion, blockVersionPossible, selectBlockVersion, type VersionedBlock } from '@frontbase/edge-core/block-versions';
@@ -51,7 +53,7 @@ function localizedRowText(catalog:readonly LocalizedCatalogEntry[]|undefined){
     return textByRecord;
 }
 
-export async function readPublicationList(db:DbRunner,owner:string,bindingInput:unknown,input:unknown,catalog?:readonly LocalizedCatalogEntry[]){
+export async function readPublicationList(db:DbRunner,owner:string,bindingInput:unknown,input:unknown,catalog?:readonly LocalizedCatalogEntry[],locale?:string){
     const binding=publicationListBindingSchema.parse(bindingInput),query=publicationListRequestSchema.parse(input);
     if(!await new SitePublicationReviewStore(db,owner).get(binding.source.hash))throw Error('snapshot_unavailable');
     const source=await new SitePublicationStore(db,owner).getVersion(binding.source.hash);
@@ -64,7 +66,8 @@ export async function readPublicationList(db:DbRunner,owner:string,bindingInput:
     // operator keeps source values, and membership stays the pinned index alone.
     const plan=catalog?freshLocalizedIndexTitles(catalog,new Map<string,string>(source.index.map(row=>[`${row.collection}:${row.id}`,row.title] as const))):undefined;
     const effectiveTitle=(row:typeof source.index[number])=>plan?.get(`${row.collection}:${row.id}`)??String(row.title);
-    const entries=source.index.filter(row=>row.collection===binding.tableName).filter(row=>filters.every(filter=>{
+    const listing=await templateListingIds(db,owner,source,binding.tableName,locale);const listingIds=listing?new Set(listing.map(String)):null;
+    const entries=source.index.filter(row=>!listingIds||listingIds.has(String(row.id))).filter(row=>row.collection===binding.tableName).filter(row=>filters.every(filter=>{
         if(plan&&filter.column==='title'&&(filter.op==='eq'||filter.op==='contains')){const left=effectiveTitle(row).toLowerCase(),right=String(filter.value??'').toLowerCase();
             return filter.op==='eq'?left===right:left.includes(right);}
         const value=filter.column==='institutionId'?row.parentId:(row as any)[filter.column];
@@ -147,18 +150,21 @@ export async function readLocalizedLiveList(owner:string,binding:Record<string,a
 export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[],pageContext:Record<string,unknown>={}):Promise<PageLayoutData>{
     const url=new URL(request.url),read=contextReader({url:Object.fromEntries(url.searchParams),user,page:pageContext});
     const walk=async(nodes:PageComponent[]):Promise<PageComponent[]>=>Promise.all(nodes.map(async node=>{
-        const versionId=selectBlockVersion(node,read),effective=applyBlockVersion(node,versionId),binding=effective.props?.binding?bindingWithTemplateFields(effective.props.binding as any,effective.children??[]):undefined;
+        const versionId=selectBlockVersion(node,read),effective=applyBlockVersion(node,versionId);let binding=effective.props?.binding?bindingWithTemplateFields(effective.props.binding as any,[...effective.children??[],...(effective.type==='Card'&&layout.root?.templatePolicy?[{id:'$template-policy-fields',type:'Text',props:{templatePolicy:layout.root.templatePolicy}}]:[])]):undefined;
+        if(binding&&effective.type==='Card'&&layout.root?.templatePolicy){const fields=templateRecordFields([{id:'$template-policy',type:'Text',props:{templatePolicy:layout.root.templatePolicy}}]);binding={...binding,columnOrder:[...new Set([...binding.columnOrder??[],...fields])]};}
         let result=node;
         if(binding?.source?.kind==='publication'||binding&&!binding.source){
             const live=!binding.source;
             if(live){liveViewBindingSchema.parse(binding);if(!liveQuery)throw Error('live_list_resolver_unavailable');}
             const controls=effective.props?.controls as any??{};
             const page=Math.max(0,Number(url.searchParams.get('page')||1)-1),search=url.searchParams.get('q')??'';
-            const sourceFilters=[...Object.entries(binding.filtering?.filters??{}).filter(([,value])=>value!==undefined&&value!=='').map(([column,value])=>({column,op:'eq',value})),
+            const listingArtifact=live&&node.type!=='Card'?(await new SitePublicationStore(db,owner).activeVersion())?.artifact:null;
+            const listingFilters=listingArtifact?.schemaVersion===2?await templateLiveListingFilter(db,owner,listingArtifact,binding,typeof pageContext.locale==='string'?pageContext.locale:undefined):[];
+            const sourceFilters=[...listingFilters,...Object.entries(binding.filtering?.filters??{}).filter(([,value])=>value!==undefined&&value!=='').map(([column,value])=>({column,op:'eq',value})),
                 ...(binding.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:routeFilterValue(filter.value,read)}))];
             const filters=[...sourceFilters,...(search&&controls.searchColumn?[{column:controls.searchColumn,op:'contains',value:search}]:[])];
             const query={componentId:node.id,versionId,page,...(live?{sourceFilters}:{}),pageSize:binding.pagination?.pageSize??12,sortColumn:binding.sorting?.column??'title',direction:binding.sorting?.direction??'asc',filters};
-            const records=live?(catalog?await readLocalizedLiveList(owner,binding,query,request,liveQuery!,catalog):await liveQuery!(owner,binding,query,request)):await readPublicationList(db,owner,binding,query,catalog);
+            const records=live?(catalog?await readLocalizedLiveList(owner,binding,query,request,liveQuery!,catalog):await liveQuery!(owner,binding,query,request)):await readPublicationList(db,owner,binding,query,catalog,typeof pageContext.locale==='string'?pageContext.locale:undefined);
             const routeFilters=(binding.hiddenFilters??[]).map((filter:any)=>filter.value?.kind==='variable'&&['page.recordId','page.parentId'].includes(filter.value.path)?{...filter,value:routeFilterValue(filter.value,read)??null}:filter);
             const props={binding:{...binding,hiddenFilters:routeFilters},initialRows:records.rows,initialTotal:records.total,_initialVersionId:versionId,_initialQuery:{page,search,sortColumn:query.sortColumn,direction:query.direction}};
             if(versionId==='default')result={...node,props:{...node.props,...props}};
@@ -196,10 +202,10 @@ export async function publicationListResponse(db:DbRunner,owner:string,request:R
         if(!active || active.artifact.schemaVersion!==2 || !await new SitePublicationReviewStore(db,owner).get(active.pointer.hash))return reply({error:'list_unavailable'},503);
         const artifact=active.artifact,url=new URL(request.url),path=localized?localized.path:url.pathname;
         const entry=artifact.index.find(row=>row.originalPath===path);
-        const role=path===artifact.configuration.routes.directory?'directory':path===artifact.configuration.routes.blog?'article-index':entry?({institutions:'institution',programs:'program',articles:'article',pages:'editorial',cities:''}[entry.collection]):undefined;
+        const role=path===artifact.configuration.routes.directory?'directory':path===artifact.configuration.routes.blog?'article-index':entry?templateRoute(artifact,path)?.role:undefined;
         const page=artifact.staticPages?.find(page=>page.originalPath===path)??artifact.templates.find(page=>page.role===role);
         if(!page)return reply({error:'list_unavailable'},404);
-        const read=contextReader({url:Object.fromEntries(url.searchParams),user:audienceConditionUser(audience),page:publicationRecordContext(artifact,path)});
+        const read=contextReader({url:Object.fromEntries(url.searchParams),user:audienceConditionUser(audience),page:publicationRecordContext(artifact,path,localized?.locale)});
         let found:VersionedBlock|undefined;
         // Walk only Default structures here; alternative children are admitted only through a server-possible parent.
         const search=(nodes:VersionedBlock[])=>{for(const node of nodes){
@@ -218,10 +224,11 @@ export async function publicationListResponse(db:DbRunner,owner:string,request:R
         let result;
         if(binding?.source?.kind==='publication'&&binding.dataSourceId==='frontbase:publication'&&collections.includes(binding.tableName)){
             const {search,...query}=input;
-            result=await readPublicationList(db,owner,binding,{...query,filters:[...query.filters,...search?[{column:'title',op:'contains',value:search}]:[]]},localized?.catalog);
+            result=await readPublicationList(db,owner,binding,{...query,filters:[...query.filters,...search?[{column:'title',op:'contains',value:search}]:[]]},localized?.catalog,localized?.locale);
         }else if(binding&&!binding.source&&liveQuery){
             const admitted=liveViewBindingSchema.parse(bindingWithTemplateFields(binding,node.children??[]));
-            const mandatory=[...Object.entries(admitted.filtering.filters).filter(([,value])=>value!==undefined&&value!=='').map(([column,value])=>({column,op:'eq',value})),
+            const listingFilters=node.type!=='Card'?await templateLiveListingFilter(db,owner,artifact,admitted,localized?.locale):[];
+            const mandatory=[...listingFilters,...Object.entries(admitted.filtering.filters).filter(([,value])=>value!==undefined&&value!=='').map(([column,value])=>({column,op:'eq',value})),
                 ...(admitted.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:routeFilterValue(filter.value,read)}))];
             const query={...input,sourceFilters:mandatory,filters:[...mandatory,...input.filters]};
             result=localized?.catalog?await readLocalizedLiveList(owner,admitted,query,request,liveQuery,localized.catalog):await liveQuery(owner,admitted,query,request);

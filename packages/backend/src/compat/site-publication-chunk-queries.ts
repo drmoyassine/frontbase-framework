@@ -1,3 +1,4 @@
+import {templateListingIds} from './template-listing.js';
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { defineQueries, type QueryRegistry } from '@frontbase/compiler/queries';
@@ -28,11 +29,11 @@ export function freshLocalizedIndexTitles(entries:readonly LocalizedCatalogEntry
 }
 
 /** Effective query title for a manifest index row: a threaded fresh released title, else source. */
-export function localizedIndexTitleReader(localizedTitles?:LocalizedTitles){
+export function localizedIndexTitleReader(localizedTitles?:LocalizedTitles,locale?:string){
     return (row:SitePublicationManifest['index'][number])=>localizedTitles?.get(`${row.collection}:${row.id}`)??row.title;
 }
 
-export function createChunkDirectoryQueries(input:SitePublicationManifest,owner:string,db:DbRunner,localizedTitles?:LocalizedTitles):QueryRegistry{
+export function createChunkDirectoryQueries(input:SitePublicationManifest,owner:string,db:DbRunner,localizedTitles?:LocalizedTitles,locale?:string):QueryRegistry{
     if(!owner)throw new Error('publication_owner_required');
     const manifest=sitePublicationManifestSchema.parse(input),store=new SitePublicationManifestStore(db,owner);
     const loadChunk=store.chunkReader(manifest);
@@ -55,6 +56,7 @@ export function createChunkDirectoryQueries(input:SitePublicationManifest,owner:
             if(p.path)entries=entries.filter(row=>row.originalPath===p.path);
             if(p.q)entries=entries.filter(row=>{const title=localizedTitle(row);return p.match==='equals'?title.toLowerCase()===p.q!.toLowerCase():p.match==='startsWith'?title.toLowerCase().startsWith(p.q!.toLowerCase()):title.toLowerCase().includes(p.q!.toLowerCase());});
             if(p.institutionId!==undefined)entries=entries.filter(row=>String(row.parentId)===String(p.institutionId));
+            if(mode==='list'){const visible=await templateListingIds(db,owner,manifest,collections[role],locale);if(visible){const ids=new Set(visible.map(String));entries=entries.filter(entry=>ids.has(String(entry.id)));}}
             entries.sort((a,b)=>{const at=localizedTitle(a),bt=localizedTitle(b);return (at<bt?-1:at>bt?1:0)*(p.sort==='title-desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0);});
             const selected=entries.slice(p.offset??0,(p.offset??0)+(mode==='detail'?1:(p.limit??manifest.configuration.browsing.pageSize)+1));
             const rows:Record<string,unknown>[]=[];

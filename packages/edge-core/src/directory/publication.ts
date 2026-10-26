@@ -1,3 +1,4 @@
+import {readTemplatePolicy} from '../template-policy.js';
 import { z } from 'zod';
 import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema } from './configuration.js';
 import { directoryLayoutQueries } from './bindings.js';
@@ -31,6 +32,7 @@ export const publicationPageSchema = publicationArticleSchema;
 
 const layout = z.record(z.unknown()).refine(value => {
     try {
+        readTemplatePolicy(value.root as Record<string,unknown>|undefined);
         if (!Array.isArray(value.content) || JSON.stringify(value).length > 200000) return false;
         // Existing binding validation and renderer own layout semantics. No new renderer.
         directoryLayoutQueries(value as unknown as PageLayoutData);

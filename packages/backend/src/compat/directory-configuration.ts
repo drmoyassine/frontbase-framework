@@ -1,3 +1,4 @@
+import {readTemplatePolicy} from '@frontbase/edge-core/template-policy';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, projectSharedDirectoryPreview, directoryLayoutQueries, landingRootSchema,standardPublicationQueries } from '@frontbase/edge-core/directory/configuration';
 import { SiteConfigurationStore } from './site-configuration-store.js';
@@ -13,6 +14,7 @@ export async function validateDirectoryLayout(layout: unknown, tenant: string, r
         try { validateBlockVersions((value as any).content); }
         catch { return { status: 422, body: { detail: 'Invalid block versions or component IDs' } }; }
     }
+    try{readTemplatePolicy((value as any)?.root);}catch{return {status:422,body:{detail:'Invalid template URL settings'}};}
     const root = (value as { root?: { directoryConfiguration?: unknown; siteConfiguration?: unknown; directoryLanding?:unknown } } | null)?.root;
     try {
         const queries = directoryLayoutQueries(value as any);

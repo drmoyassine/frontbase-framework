@@ -1,11 +1,13 @@
 import { directoryLayoutQueries, projectDirectoryRecords, projectRelativeSiteLinks, projectTemplatePresentation, landingQueryParams, projectDirectoryBrowsing, type SiteConfigurationDraft } from '@frontbase/edge-core/directory/configuration';
 import {resolveValue,contextReader} from '@frontbase/edge-core/conditions';
+import {readTemplatePolicy,resolveTemplatePolicy} from '@frontbase/edge-core/template-policy';
 import type { PageLayoutLike } from '@/lib/builder/iframeTypes';
 
 /** Resolve registered authoring requests before the shared SW/network renderer. */
 export async function loadDirectoryCanvas(layout: PageLayoutLike, saved: SiteConfigurationDraft, signal: AbortSignal, previewCollection?: 'institution'|'program'): Promise<PageLayoutLike> {
     const rows = new Map<string, Record<string, unknown>[]>();
     let recordContext:Record<string,unknown>={};
+    let currentRecord:Record<string,unknown>={};
     let pageSize=saved.configuration.browsing.pageSize as number;
     let captureHash:string|undefined,configuration=saved.configuration,hasNext=false,total:number|undefined;
     const role=(layout.root?.siteConfiguration as {role?:string}|undefined)?.role;
@@ -23,8 +25,9 @@ export async function loadDirectoryCanvas(layout: PageLayoutLike, saved: SiteCon
         if(pageRole==='directory' && mode==='list' && ['institution','program'].includes(role) && role!==(previewCollection||configuration.browsing.defaultCollection)){inactive.add(id);continue;}
         if(mode==='list'){pageSize=result.pageSize??Math.min(('limit' in params?params.limit:undefined)||configuration.browsing.pageSize,configuration.browsing.pageSize);hasNext=!!result.hasMore;total=result.total;q=('q' in params?params.q:'')||'';sort=('sort' in params?params.sort:undefined)||'title-asc';match=('match' in params?params.match:undefined)||'contains';page=Math.floor((('offset' in params?params.offset:0)||0)/pageSize)+1;}
         rows.set(id, result.rows);
-        if(mode==='detail'&&role===(layout.root?.siteConfiguration as {role?:string}|undefined)?.role&&result.rows[0])recordContext={recordId:result.rows[0].id,parentId:result.rows[0].institutionId??result.rows[0].cityId??null};
+        if(mode==='detail'&&role===(layout.root?.siteConfiguration as {role?:string}|undefined)?.role&&result.rows[0]){currentRecord=result.rows[0];recordContext={recordId:currentRecord.id,parentId:currentRecord.institutionId??currentRecord.cityId??null,collection:role==='institution'?'institutions':role==='program'?'programs':role==='article'?'articles':'pages',attached:!!(currentRecord._templateRoute as any)?.attached,path:currentRecord.originalPath,siteName:configuration.site.name,locale:configuration.site.locale};}
     }
+    if(layout.root?.templatePolicy){const policy=readTemplatePolicy(layout.root);recordContext.settings=resolveTemplatePolicy(policy,`${recordContext.collection}:${recordContext.recordId}`,configuration.site.locale,currentRecord,recordContext).values;}
     const bindContext=(nodes:PageLayoutLike['content']):PageLayoutLike['content']=>nodes.map(node=>{
         const binding=node.props?.binding??node.binding;
         const projected=binding?{...binding,hiddenFilters:(binding.hiddenFilters??[]).map((filter:any)=>filter.value?.kind==='variable'&&['page.recordId','page.parentId'].includes(filter.value.path)?{...filter,value:resolveValue(filter.value,contextReader({page:recordContext}))??null}:filter)}:undefined;

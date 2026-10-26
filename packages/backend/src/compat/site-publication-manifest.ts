@@ -1,3 +1,4 @@
+import {validateTemplateRoutes} from './template-route.js';
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { stableStringify } from '@frontbase/compiler/manifest';
@@ -29,6 +30,7 @@ export const sitePublicationManifestSchema = z.object({ schemaVersion: z.literal
     redirects:z.array(publicationRedirectSchema).max(5000).optional(),
 }).strict().superRefine((manifest, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+    try{validateTemplateRoutes(manifest);}catch{fail('template_route_invalid');}
     for(const page of [...manifest.templates,...(manifest.staticPages??[])]){const menus=(page.layout.root as Record<string,unknown>|undefined)?.appMenus;if(menus!==undefined){const reference=menuReferenceSchema.safeParse(menus);if(!reference.success||reference.data.pageId!==page.pageId)fail('menu_reference_invalid');}}
     if (byteSize(manifest) > MAX_MANIFEST_BYTES) fail('publication_manifest_too_large');
     if (directoryConfigurationReadiness(manifest.configuration).length) fail('configuration_incomplete');

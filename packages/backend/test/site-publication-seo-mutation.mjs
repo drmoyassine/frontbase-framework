@@ -3,7 +3,7 @@ const dir=repoRoot+'packages/backend/';
 if(!buildPackage('@frontbase/edge-core')||!buildPackage('@frontbase/backend')||runGate(dir,'test/site-publication-seo.mjs')!==0)process.exit(2);
 for(const [label,path,find,replacement,pkg] of [
  ['SEO request origin leak','packages/backend/src/compat/site-publication-runtime.ts','new URL(path, artifact.configuration.site.origin).href','new URL(path, request.url).href','@frontbase/backend'],
- ['SEO query index leak','packages/backend/src/compat/site-publication-runtime.ts',"url.searchParams.size ? 'noindex, follow' : 'index, follow'","'index, follow'",'@frontbase/backend'],
+ ['SEO query index leak','packages/backend/src/compat/site-publication-runtime.ts',"url.searchParams.size || seo.indexing==='noindex' ? 'noindex, follow' : 'index, follow'","'index, follow'",'@frontbase/backend'],
  ['SEO sitemap review bypass','packages/backend/src/compat/site-publication-serving.ts','if(!await new SitePublicationReviewStore(db,owner).get(active.pointer.hash))','if(false)','@frontbase/backend'],
  ['SEO sitemap owner leak','packages/backend/src/compat/site-publication-serving.ts','new SitePublicationStore(db,owner)',"new SitePublicationStore(db,'seo')",'@frontbase/backend'],
  ['SEO sitemap escaping','packages/backend/src/compat/site-publication-sitemap.ts','xml(new URL(path, artifact.configuration.site.origin).href)','new URL(path, artifact.configuration.site.origin).href','@frontbase/backend'],

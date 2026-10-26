@@ -17,6 +17,7 @@ import type { TemplateVariableStore } from '../store.js';
 import { zVariableCreateRequest, zVariableUpdateRequest } from '../zod.gen.js';
 import { REGISTRY as BASE_REGISTRY } from '../template-registry.js';
 const REGISTRY={...BASE_REGISTRY,variables:[...BASE_REGISTRY.variables,...[
+ ['page.siteName','string','Configured public site name'],['page.attached','boolean','Retained route associated with a source record'],['page.settings.notice','string','Effective record notice'],['page.settings.noticeTone','string','Notice presentation'],['page.settings.ctaLabel','string','Effective action label'],['page.settings.ctaHref','string','Effective action destination'],['page.settings.listed','boolean','Directory inclusion'],
  ['user.id','string','Verified app-user ID'],['user.contact_type','string','Verified Contact Type'],['user.permission_level','string','Verified Permission Level'],['user.authenticated','boolean','Verified app-user session'],['app.*','any','App variable'],['record.*','any','Current record field']
 ].filter(([path])=>!BASE_REGISTRY.variables.some(v=>v.path===path)).map(([path,type,description])=>({path,type,description,source:path!.split('.')[0]}))]};
 

@@ -1,3 +1,4 @@
+import {TemplateUrls} from './TemplateUrls';
 import React, {useEffect, useRef, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {Button} from '@/components/ui/button';
@@ -100,16 +101,17 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
     {(['rename','move-folder','remove'] as const).map(kind=><DropdownMenuItem key={kind} disabled={!ready||saving} className={kind==='remove'?'text-destructive':''} onSelect={()=>{setSelection([]);setFolderSelection([]);openDialog({kind,id});}}>{kind==='rename'?'Rename folder':kind==='remove'?'Delete folder':'Move folder'}</DropdownMenuItem>)}
     <DropdownMenuSeparator/><DropdownMenuItem disabled={!ready||saving} onSelect={()=>reorderFolder(id,-1)}>Move up</DropdownMenuItem><DropdownMenuItem disabled={!ready||saving} onSelect={()=>reorderFolder(id,1)}>Move down</DropdownMenuItem>
   </DropdownMenuContent></DropdownMenu>;
-  const entryActions = (entry:WorkspaceEntry) => <div className="flex w-full flex-wrap items-center justify-end gap-1">
-    {entry.pageId && <Button size="sm" onClick={()=>edit(entry.pageId!)}><Pencil className="mr-1 h-3.5 w-3.5"/>{entry.kind==='page'&&!entry.role?'Edit':'Design'}</Button>}
-    {(entry.path || entry.paths?.length) && <Button variant="outline" size="sm" onClick={()=>setRoutes(entry)}><Eye className="mr-1 h-3.5 w-3.5"/>URLs</Button>}
-    {entry.contentAction && <Button variant="outline" size="sm" onClick={async()=>{
+  const openContent=async(entry:WorkspaceEntry)=>{
       if(entry.contentAction?.recordId) {
         try {const response=await fetch('/api/project/site-configuration/',{credentials:'include'});if(!response.ok)throw Error();const configuration=await response.json();if(!configuration.draft||!Number.isInteger(configuration.revision))throw Error();setConfigurationRevision(configuration.revision);}
         catch {toast.error('Content settings are unavailable. Reload before editing.');return;}
       }
       setContent(entry);
-    }}><Database className="mr-1 h-3.5 w-3.5"/>{entry.contentAction.recordId?'Edit content':'Content'}</Button>}
+    };
+  const entryActions = (entry:WorkspaceEntry) => <div className="flex w-full flex-wrap items-center justify-end gap-1">
+    {entry.pageId && <Button size="sm" onClick={()=>edit(entry.pageId!)}><Pencil className="mr-1 h-3.5 w-3.5"/>{entry.kind==='page'&&!entry.role?'Edit':'Design'}</Button>}
+    {(entry.path || entry.paths?.length) && <Button variant="outline" size="sm" onClick={()=>setRoutes(entry)}><Eye className="mr-1 h-3.5 w-3.5"/>URLs</Button>}
+    {entry.contentAction && <Button variant="outline" size="sm" onClick={()=>void openContent(entry)}><Database className="mr-1 h-3.5 w-3.5"/>{entry.contentAction.recordId?'Edit content':'Content'}</Button>}
     {entry.role && <Button variant="ghost" size="sm" aria-label={`Configure ${entry.name}`} onClick={()=>navigate('/settings?tab=template')}><Settings2 className="h-4 w-4"/></Button>}
     <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="sm" aria-label={`Actions for ${entry.name}`}><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
       <DropdownMenuItem disabled={!ready||saving} onSelect={()=>{setSelection([entry.id]);setFolderSelection([]);openDialog({kind:'move-entries'});}}><Move className="mr-2 h-4 w-4"/>Move</DropdownMenuItem>
@@ -175,8 +177,8 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
       {dialog&&['new','move-entries','move-folder','move-folders'].includes(dialog.kind)&&<label className="space-y-2 text-sm">Destination folder<select className="block w-full rounded-md border bg-background p-2" value={destination} onChange={e=>setDestination(e.target.value)}><option value="">Unfiled / root</option>{organization.folders.filter(f=>(dialog.kind!=='move-folder'||!folderDescendants(organization,dialog.id!).has(f.id))&&(dialog.kind!=='move-folders'||!folderSelection.some(id=>folderDescendants(organization,id).has(f.id)))).map(f=><option value={f.id} key={f.id}>{folderTrail(organization,f.id)}</option>)}</select></label>}
       <DialogFooter><Button variant="outline" disabled={saving} onClick={()=>setDialog(null)}>Cancel</Button><Button disabled={!ready||saving||((dialog?.kind==='new'||dialog?.kind==='rename')&&!name.trim())} onClick={()=>void confirmDialog()}>{saving?'Saving…':dialog?.kind==='remove'?'Delete folder':dialog?.kind==='remove-folders'?'Delete folders':'Save'}</Button></DialogFooter>
     </DialogContent></Dialog>
-    <Dialog open={!!routes} onOpenChange={open=>{if(!open)setRoutes(null);}}><DialogContent><DialogHeader><DialogTitle>Public URLs · {routes?.name}</DialogTitle><DialogDescription>{routes?.kind==='layout'?'This layout is reused across these published records.':'Public route for this site entry.'}</DialogDescription></DialogHeader><div className="max-h-80 space-y-2 overflow-auto">{(routes?.paths?.length?routes.paths:routes?.path?[routes.path]:[]).map(path=><a key={path} href={path} target="_blank" rel="noopener noreferrer" className="block break-all text-sm text-primary underline">{path}</a>)}</div></DialogContent></Dialog>
+    {routes?.kind==='layout'&&routes.pageId?<TemplateUrls key={routes.pageId} pageId={routes.pageId} name={routes.name} onClose={()=>setRoutes(null)} onSaved={()=>void load()} onContent={routes.contentAction?record=>{const entry={...routes,name:record.title,contentAction:{...routes.contentAction!,...(['article','editorial'].includes(routes.role??'')?{recordId:String(record.id),contentRole:(routes.role==='article'?'article':'page') as 'article'|'page'}:{recordKey:{column:routes.contentAction!.keyColumn??'id',value:String(record.id)}})}};setRoutes(null);void openContent(entry);}:undefined} design={()=>{const id=routes.pageId!;setRoutes(null);edit(id);}}/>:<Dialog open={!!routes} onOpenChange={open=>{if(!open)setRoutes(null);}}><DialogContent><DialogHeader><DialogTitle>Public URLs · {routes?.name}</DialogTitle><DialogDescription>{routes?.kind==='layout'?'This layout is reused across these published records.':'Public route for this site entry.'}</DialogDescription></DialogHeader><div className="max-h-80 space-y-2 overflow-auto">{(routes?.paths?.length?routes.paths:routes?.path?[routes.path]:[]).map(path=><a key={path} href={path} target="_blank" rel="noopener noreferrer" className="block break-all text-sm text-primary underline">{path}</a>)}</div></DialogContent></Dialog>}
     {content?.contentAction?.recordId && configurationRevision !== null ? <Dialog open onOpenChange={open=>{if(!open)setContent(null);}}><DialogContent className="max-h-[90vh] max-w-4xl overflow-auto"><DialogHeader><DialogTitle>Edit content · {content.name}</DialogTitle><DialogDescription>Editing this record creates a draft. Publication is a separate step.</DialogDescription></DialogHeader><EditorialDraftEditor id={content.contentAction.recordId} contentRole={content.contentAction.contentRole??'page'} configurationRevision={configurationRevision} onClose={()=>setContent(null)}/></DialogContent></Dialog>
-      : content?.contentAction && <DataPreviewModal isOpen onClose={()=>setContent(null)} datasourceId={content.contentAction.datasourceId} datasourceName="Connected content" table={content.contentAction.table}/>}
+      : content?.contentAction && <DataPreviewModal isOpen onClose={()=>setContent(null)} datasourceId={content.contentAction.datasourceId} datasourceName="Connected content" table={content.contentAction.table} initialFilters={content.contentAction.recordKey?[{field:content.contentAction.recordKey.column,operator:'eq',value:content.contentAction.recordKey.value}]:undefined}/>}
   </div>;
 }

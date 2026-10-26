@@ -14,6 +14,7 @@
     "dist"
   ],
   "scripts": {
+    "test:template-urls": "node test/template-policy.mjs && node test/template-policy-mutation.mjs",
     "test:record-fields": "node test/record-fields.mjs && node test/postgrest-inspector.mjs && node test/datasource-schema.mjs",
     "test:record-fields-mutation": "node test/record-fields-mutation.mjs",
     "test:workflow-authoring": "node test/workflow-authoring.mjs",

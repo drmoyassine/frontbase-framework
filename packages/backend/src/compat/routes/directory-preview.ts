@@ -12,6 +12,7 @@ import { datasourceRunner, dialectOf } from '../../db/datasource-runner.js';
 import { mergeAccountConfig, type AccountConfigFor } from '../providers/merge-account.js';
 import type { CompatFetch } from '../external-http.js';
 import {readPublicationList,publicationListBindingSchema,publicationListRequestSchema} from '../publication-list-source.js';
+import {templateRoute} from '../template-route.js';
 
 export function registerDirectoryPreviewRoutes(app: Hono<{ Variables: ConsoleAuthVars }>, control: DbRunner,
     storeFor: (tenant: string) => SyncStore, externalFetch: CompatFetch, accounts: AccountConfigFor): void {
@@ -48,8 +49,10 @@ export function registerDirectoryPreviewRoutes(app: Hono<{ Variables: ConsoleAut
                     const version=active.artifact,queryId=`directory.${request.data.role}.${request.data.mode}`;
                     const registry=version.schemaVersion===2?createChunkDirectoryQueries(version,tenant,control):createSnapshotDirectoryQueries(version,tenant);
                     const params={...request.data.params,...(request.data.mode==='list'?{limit:Math.min(request.data.params.limit??version.configuration.browsing.pageSize,version.configuration.browsing.pageSize)}:{})};
-                    const query=registry[queryId];if(!query || !query.params?.safeParse(params).success)return c.json({detail:'Invalid captured preview parameters'},422);
-                    const all=await query.execute(params,{tenant,user}),limit=params.limit??version.configuration.browsing.pageSize;
+                    const routed=version.schemaVersion===2&&request.data.mode==='detail'&&params.path?templateRoute(version,params.path):null;
+                    const attached=routed?.attached&&routed.role===request.data.role?routed:null;
+                    const query=registry[attached?'directory.page.detail':queryId];if(!query || !query.params?.safeParse(params).success)return c.json({detail:'Invalid captured preview parameters'},422);
+                    const captured=await query.execute(params,{tenant,user}),all=attached?captured.map(row=>({...row,id:attached.recordId,...(attached.role==='program'?{institutionId:attached.parentId}:{cityId:attached.parentId}),_templateRoute:{attached:true,collection:attached.collection,path:params.path}})):captured,limit=params.limit??version.configuration.browsing.pageSize;
                     const collection={institution:'institutions',program:'programs',city:'cities',article:'articles',page:'pages'} as const;
                     const entries=publicationRows(version)[collection[request.data.role]];
                     const q=(request.data.params.q||'').toLowerCase(),match=request.data.params.match;

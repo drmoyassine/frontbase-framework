@@ -81,3 +81,10 @@ it.each(['props','root'])('hydrates unseeded %s-binding authoring previews even 
  const projected=await loadDirectoryCanvas(layout,saved,new AbortController().signal);
  expect(projected.content[1].props.localeReadOnly).toBe(false);expect(projected.content[2].props.localeReadOnly).toBe(true);expect(layout.content[1].props.localeReadOnly).toBe(true);
 });
+
+it('previews retained-record notice settings without persisting runtime context',async()=>{
+ const policy={schemaVersion:1 as const,defaults:{values:{}},overrides:{},rules:[{id:'notice',name:'Retained',when:{left:{kind:'variable' as const,path:'page.attached'},operator:'eq' as const,right:{kind:'literal' as const,value:true}},settings:{values:{notice:'Contact our advisers'}}}]};
+ const layout:any={root:{siteConfiguration:{version:1,role:'program'},templatePolicy:policy},content:[{id:'contract',type:'Container',props:{directoryQuery:{version:1,queryId:'directory.program.detail',params:{path:'/old-program/'}}},children:[]}]};
+ vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,json:async()=>({revision:saved.revision,queryId:'directory.program.detail',rows:[{id:7,title:'Program',institutionId:4,originalPath:'/old-program/',_templateRoute:{attached:true}}],configuration:saved.configuration})})));
+ const projected=await loadDirectoryCanvas(layout,saved,new AbortController().signal);expect(projected.root?.publicationRecordContext.settings.notice).toBe('Contact our advisers');expect(layout.root.publicationRecordContext).toBeUndefined();
+});

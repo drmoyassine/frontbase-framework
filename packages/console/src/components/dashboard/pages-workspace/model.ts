@@ -3,7 +3,7 @@ export interface WorkspaceEntry {
   pageId?: string; role?: string; path?: string; paths?: string[]; serves?: number;
   publicationStatus: 'published' | 'changes-pending' | 'draft' | 'unknown';
   developmentOnly: boolean; source: 'saved' | 'derived';
-  contentAction?: { datasourceId: string; table: string; recordId?: string; contentRole?: 'page'|'article' };
+  contentAction?: { datasourceId: string; table: string; keyColumn?:string; recordKey?:{column:string;value:string}; recordId?: string; contentRole?: 'page'|'article' };
 }
 export interface Organization {
   schemaVersion: 1; revision: number;

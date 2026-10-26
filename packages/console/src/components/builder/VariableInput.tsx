@@ -19,6 +19,7 @@ import { useRepeaterRecordColumns } from './hooks/useRepeaterRecordColumns';
 import {isSimpleInterpolation} from '@frontbase/liquid-core';
 
 interface VariableInputProps {
+    ariaLabel?: string;
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
@@ -50,6 +51,7 @@ export function VariableInput({
     syntaxContext = DEFAULT_SYNTAX_CONTEXT,
     allowedGroups,
     recordColumns: recordColumnsProp,
+    ariaLabel,
 }: VariableInputProps) {
     // Derive the ancestor Repeater's columns so the Record group offers real
     // columns when authoring inside a Repeater template (unless overridden).
@@ -228,6 +230,8 @@ export function VariableInput({
     return (
         <div className="variable-input-wrapper relative">
             <InputComponent
+                aria-label={ariaLabel}
+                dir="auto"
                 ref={inputRef as any}
                 value={value}
                 onChange={handleInput}
@@ -247,7 +251,7 @@ export function VariableInput({
                     const field=event.target.value;
                     const reference=/^[A-Za-z_$][\w$-]*(\.[A-Za-z_$][\w$-]*)*$/.test(field)?`record.${field}`:`record[${JSON.stringify(field)}]`;
                     onChange(value.replace(/\s*\}\}\s*$/,` || ${reference} }}`));
-                }}><option value="">Add fallback field…</option>{recordColumns.map(field=><option key={field} value={field}>{field.replaceAll('.', ' → ')}</option>)}</select>
+                }}><option value="">Add fallback field…</option>{recordColumns.map(field=><option key={field} value={field}>{field.split('.').join(' → ')}</option>)}</select>
             )}
             {!showPicker && !value && !placeholder && (
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">

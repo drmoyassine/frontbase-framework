@@ -1,5 +1,12 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-26 Reusable record templates, retained routes and SEO ownership
+
+Owner requires programs, institutions and articles to keep their respective reusable templates, including retained availability notices. Existing approved notice content and original URLs remain recoverable in their immutable catalog; explicit source-identity associations on the target template select the real connected record and parent, never visitor input. Associations are captured and collision/orphan checked through the existing review/prepare/publish lifecycle. Directory selection and detail-route publication are independent; retained records do not imply current availability. Detail saved views stay limited to published record identities; raw-table anonymous access is not widened.
+
+Template layout root owns optional versioned defaults, ordered first-match Conditions and stable record overrides, with explicit language patches. SEO resolves existing scalar/fallback record bindings on the server against the same authored detail row, and canonical/hreflang stay with existing routing. Effective notice/action settings are ordinary page variables for normal elements, Conditions, Block Versions and Actions; no alternate notice renderer or per-record layout copies. The URLs drawer uses progressive disclosure: searchable paginated records, focused Overview/SEO/Exceptions, separate rule authoring and existing builder design/content editors. Settings writes preserve all layout properties and compare existing hash plus full layout; activation remains separate. Existing settings without this optional root property retain their behavior.
+
+
 ## 2026-10-26 Navigation overflow and translation settings ownership
 
 Owner approves scroll/wrap controls on existing Row/Column elements, with automatic bounded arrows and optional native scrollbar visibility. Existing overflowing section-link navigation is progressively enhanced, including mobile institution sidebars; arbitrary overflowing layouts are not reclassified. Native touch scrolling remains available and RTL follows reading direction.
