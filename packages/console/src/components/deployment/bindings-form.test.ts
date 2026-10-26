@@ -66,3 +66,17 @@ test('connected integration resources use a scoped selector without any credenti
  expect(root.textContent).toContain('Preview database');expect(root.querySelector('input[type=password]')).toBeNull();
  select(root,'binding-resource-state-db','store_test');expect(form!.snapshot().manifest.bindings['state-db'].resourceRef).toBe('store_test');expect(form!.snapshot().credentials).toEqual({});
 });
+
+it('keeps the selected native name with its ID and restores the create default',()=>{
+ const manifest=defaultDeploymentManifest('cloudflare');
+ const original=manifest.bindings['state-db'].config.resourceName;
+ const id='11111111-2222-3333-4444-555555555555';
+ const root=mount('cloudflare',{manifest,resourceOptions:{'cloudflare-d1':[{id,name:'Existing state'}]}});
+ select(root,'binding-mode-state-db','reuse');
+ select(root,'binding-resource-state-db',id);
+ expect(form!.snapshot().manifest.bindings['state-db'].config.resourceName).toBe('Existing state');
+ expect(form!.snapshot().manifest.bindings['state-db'].resourceRef).toBe(id);
+ select(root,'binding-mode-state-db','create');
+ expect(form!.snapshot().manifest.bindings['state-db'].resourceRef).toBeUndefined();
+ expect(form!.snapshot().manifest.bindings['state-db'].config.resourceName).toBe(original);
+});

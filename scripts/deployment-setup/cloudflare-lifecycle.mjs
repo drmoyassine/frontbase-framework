@@ -11,7 +11,7 @@ import { acquireDeploymentLock, receiptPath, readReceipt, writeReceipt } from '.
 const defaultRoot=fileURLToPath(new URL('../..',import.meta.url));
 export function reuseManifest(receipt) {
  const manifest=structuredClone(receipt.manifest);
- for(const [role,key] of [['state-db','database'],['cache','cache'],['storage','storage']])if(manifest.bindings[role].mode!=='disabled'){
+ for(const [role,key] of [['state-db','database'],['cache','cache'],['storage','storage']])if(['create','reuse'].includes(manifest.bindings[role].mode)){
   manifest.bindings[role].mode='reuse';
   manifest.bindings[role].resourceRef=receipt.resources[key]?.id??receipt.resources[key]?.name;
  }
@@ -39,7 +39,7 @@ export async function executeManagedCloudflare(prepared,context,{intent='create'
  };
  try {
   receipt=readReceipt(path,context);
-  if(!validateDeploymentManifest(prepared?.manifest).ready || !prepared.credentials || Object.keys(prepared.credentials).length || managedExecutionIssues(prepared.manifest,context,intent,receipt).length)throw new Error('unsupported_managed_deployment_plan');
+  if(!validateDeploymentManifest(prepared?.manifest).ready || !prepared.credentials || (intent!=='create' && Object.keys(prepared.credentials).length) || managedExecutionIssues(prepared.manifest,context,intent,receipt).length)throw new Error('unsupported_managed_deployment_plan');
   if(intent==='create') {
    if(receipt)throw new Error('deployment_receipt_already_exists');
    receipt={schemaVersion:1,installationId:randomUUID(),operationId:randomUUID(),revision:-1,accountId:context.accountId,appName:context.appName,environment:context.environment,artifactHash:context.artifactHash,manifest:structuredClone(prepared.manifest),phase:'prepared',pending:null,resources:{},identity:null,url:null};
@@ -73,7 +73,7 @@ export async function executeManagedCloudflare(prepared,context,{intent='create'
   if(!isDeepStrictEqual(before,receipt.identity))throw new Error('deployment_remote_state_changed');
   stage=stageCloudflareArtifacts(context,exampleRoot);
   const resources=receipt.resources;
-  let config='\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "'+resources.database.name+'"\ndatabase_id = "'+resources.database.id+'"\n';
+  let config=resources.database?'\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "'+resources.database.name+'"\ndatabase_id = "'+resources.database.id+'"\n':'';
   if(resources.cache)config+='\n[[kv_namespaces]]\nbinding = "FRONTBASE_KV"\nid = "'+resources.cache.id+'"\n';
   if(resources.storage)config+='\n[[r2_buckets]]\nbinding = "FRONTBASE_R2"\nbucket_name = "'+resources.storage.name+'"\n';
   appendFileSync(join(stage,'wrangler.toml'),config);
@@ -93,7 +93,7 @@ export async function executeManagedCloudflare(prepared,context,{intent='create'
    uploaded=true;
    return runWrangler([...args,'--keep-vars','--var',installationBinding+':'+receipt.installationId,'--tag',receipt.operationId,'--var','FRONTBASE_DEPLOYMENT_MANIFEST:'+JSON.stringify(managedRuntimeManifest(receipt.manifest,receipt.resources))],options);
   };
-  const result=await deploy('.',{cwd:stage,target:'cloudflare',appName:context.appName,d1DatabaseId:resources.database.id,runWrangler:run});
+  const result=await deploy('.',{cwd:stage,target:'cloudflare',appName:context.appName,...(resources.database?{d1DatabaseId:resources.database.id}:{externalStateConfigured:true}),runWrangler:run});
   if(!result.ok || !uploaded || result.details?.workerUrl!==receipt.url)throw new Error('managed_redeploy_failed');
   const after=await readIdentity(context);
   if(after.installationId!==receipt.installationId || after.operationId!==receipt.operationId || after.versionId===previousIdentity.versionId || !isDeepStrictEqual(after.secrets,previousIdentity.secrets))throw new Error('deployment_postcondition_failed');

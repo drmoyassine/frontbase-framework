@@ -14,7 +14,7 @@ const originals=new Map([helper,lowering,runtime].map(file=>[file,readFileSync(f
 const faults=[
  ['uncertain-plan fence',helper,"previous.phase!=='succeeded'&&!isDeepStrictEqual(previous.manifest,manifest)",'false','FRONTBASE_BINDING_CHANGE_MODULE'],
  ['unsupported role fence',helper,"role!=='state-db'&&!supported.has(role)&&!isDeepStrictEqual(previous.manifest.bindings[role],binding)",'false','FRONTBASE_BINDING_CHANGE_MODULE'],
- ['explicit disabled host value',lowering,"if(plan.manifest.target==='vercel'&&name)",'if(false)','FRONTBASE_PROFILE_ENV_MODULE'],
+ ['explicit disabled host value',lowering,"if(name)",'if(false)','FRONTBASE_PROFILE_ENV_MODULE'],
  ['cache legacy resurrection',runtime,"cache.provider === 'none' || hasContent(cache)",'hasContent(cache)','FRONTBASE_SERVICE_ENV_MODULE'],
  ['queue legacy resurrection',runtime,"explicitQueue.provider === 'none' || hasContent(explicitQueue)",'hasContent(explicitQueue)','FRONTBASE_SERVICE_ENV_MODULE'],
  ['disabled queue callback credential',runtime,"explicitQueue.provider !== 'none' && env.FRONTBASE_QUEUE_CALLBACK_SECRET",'env.FRONTBASE_QUEUE_CALLBACK_SECRET','FRONTBASE_SERVICE_ENV_MODULE'],

@@ -58,6 +58,8 @@ export interface DeployOptions {
     /** Bind to an EXISTING D1 database instead of creating one — skips
      *  `wrangler d1 create` entirely. Ignored if wrangler.toml already has a binding. */
     d1DatabaseId?: string;
+    /** Internal reviewed-profile handoff: state credentials are supplied by the host executor. */
+    externalStateConfigured?: boolean;
     /** Deno Deploy project id — forwarded to the deno deploy script
      *  (`--deno-project-id`). Only meaningful with `--target deno`. */
     denoProjectId?: string;
@@ -192,6 +194,7 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
 
     // CF-19: admin seeding needs BOTH email and password (one alone is a
     // mistake) — on every target (the per-host scripts enforce the same rule).
+    if (opts.externalStateConfigured && opts.d1DatabaseId) return { ok: false, summary: 'Choose either external state or a D1 binding' };
     if ((opts.adminEmail ? 1 : 0) + (opts.adminPassword ? 1 : 0) === 1) {
         return { ok: false, summary: '--admin-email and --admin-password must be given together' };
     }
@@ -205,6 +208,7 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
         const host = opts.target;
         // Fail loud on options that belong to another target — never ignore.
         const unsupported: string[] = [];
+        if (opts.externalStateConfigured) unsupported.push('external state handoff (Cloudflare only)');
         if (opts.d1DatabaseId) unsupported.push('--d1-database-id (Cloudflare D1 provisioning)');
         if (opts.setupLink) unsupported.push('--setup-link (edge hosts always emit a setup link when no admin is seeded)');
         if (opts.setupTtlMinutes !== undefined) unsupported.push('--setup-ttl-minutes (edge hosts fix the setup-link lifetime at 30 minutes)');
@@ -320,7 +324,7 @@ export async function deployCommand(projectPath: string, opts: DeployOptions = {
     // Live deploy — provision D1 (idempotent — reuse if the app already
     // existed, create fresh otherwise), then wrangler deploy --name <appName>,
     // then push secrets (stdin, never argv).
-    try {
+    if (!opts.externalStateConfigured) try {
         let databaseId = opts.d1DatabaseId;
         if (appExisted && !databaseId) {
             // The app already exists on Cloudflare — look up ITS real D1 id

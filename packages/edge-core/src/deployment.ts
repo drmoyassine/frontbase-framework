@@ -134,6 +134,7 @@ export function managedRuntimeManifest(manifest: DeploymentManifest, resources: 
     for(const role of configurableRoles) {
         const binding=result.bindings[role];
         if(binding.mode==='disabled'){binding.config={};binding.secretRefs={};delete binding.resourceRef;continue;}
+        if(binding.mode==='connect')continue;
         const key=role==='state-db'?'database':role;
         const resource=resources[key];
         if(!resource)throw new Error('missing_managed_resource_identity');
@@ -159,11 +160,12 @@ export function readManagedRuntimeManifest(input: unknown): DeploymentManifest |
         }
         for(const role of configurableRoles) {
             const binding=parsed.manifest.bindings[role];
+            if(binding.mode==='connect'){if(binding.resourceRef)return null;continue;}
             if(Object.keys(binding.secretRefs).length || Object.keys(binding.config).some(k=>k!=='resourceName'))return null;
             if(binding.mode==='disabled'){if(Object.keys(binding.config).length || binding.resourceRef)return null;continue;}
             const nativeAdapters:Partial<Record<ConfigurableRole,string>>={'state-db':'cloudflare-d1',cache:'cloudflare-kv',storage:'cloudflare-r2'};
             const expected=nativeAdapters[role];
-            if(!expected || binding.adapterId!==expected || binding.mode!=='reuse' || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(binding.config.resourceName??''))return null;
+            if(!expected || binding.adapterId!==expected || binding.mode!=='reuse' || !(role==='storage'?/^[a-z0-9][a-z0-9-]{0,62}$/:/^[A-Za-z0-9_][A-Za-z0-9_. -]{0,127}$/).test(binding.config.resourceName??''))return null;
             if(role==='state-db'&&!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(binding.resourceRef??''))return null;
             if(role==='cache'&&!/^[a-f0-9]{32}$/.test(binding.resourceRef??''))return null;
             if(role==='storage'&&binding.resourceRef!==binding.config.resourceName)return null;

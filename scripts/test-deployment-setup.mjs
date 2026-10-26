@@ -75,3 +75,17 @@ try {
  assert.equal((await call(left,'/api/bootstrap',{headers:{origin:left.origin,cookie:a.cookie+'; '+b.cookie}})).status,200);
  console.log('PASS independent local setups: unique cookie names and no cross-session access');
 } finally {await left.close();await right.close();}
+
+const preserve=await startDeploymentSetup({target:'cloudflare',credentialsMode:'references',executionIssues:manifest=>manifest.bindings['state-db'].config.url==='https://state.example'?[]:[{code:'migration_required'}]});
+try {
+ const auth=await claim(preserve);
+ assert.equal((await call(preserve,'/api/bootstrap',{headers:auth})).json().credentialsMode,'references');
+ const value=payload('cloudflare');value.credentials={};
+ assert.equal((await call(preserve,'/api/prepare',{method:'POST',body:value,headers:auth})).status,200);
+ assert.deepEqual(preserve.consumePrepared().credentials,{});
+ value.credentials={'setup/state/token':secret};
+ assert.equal((await call(preserve,'/api/prepare',{method:'POST',body:value,headers:auth})).status,422);
+ value.credentials={};value.manifest.bindings['state-db'].config.url='https://different.example';
+ assert.equal((await call(preserve,'/api/prepare',{method:'POST',body:value,headers:auth})).status,422);
+ console.log('PASS preserved-credential review: no key reentry, credential injection and state change refused');
+} finally {await preserve.close();}

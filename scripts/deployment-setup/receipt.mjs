@@ -1,3 +1,4 @@
+import { resourceName } from './cloudflare-resources.mjs';
 import { isDeepStrictEqual } from 'node:util';
 import { validateDeploymentManifest } from '../../packages/edge-core/dist/deployment.js';
 import { randomUUID } from 'node:crypto';
@@ -30,7 +31,7 @@ export function validateReceipt(value,context) {
  if(!exact(resources,['database','cache','storage']))throw new Error('invalid_deployment_receipt');
  for(const [role,item] of Object.entries(resources)) {
   const fields=role==='storage'?['name','binding','created']:['name','binding','id'];
-  if(!exact(item,fields) || item.name!==context.appName+({database:'-db',cache:'-cache',storage:'-storage'}[role]) || item.binding!==({database:'DB',cache:'FRONTBASE_KV',storage:'FRONTBASE_R2'}[role]))throw new Error('invalid_deployment_receipt');
+  if(!exact(item,fields) || !resourceName.test(item.name??'') || item.binding!==({database:'DB',cache:'FRONTBASE_KV',storage:'FRONTBASE_R2'}[role]))throw new Error('invalid_deployment_receipt');
   if(role!=='storage' && !(role==='database'?uuid:hex).test(item.id??''))throw new Error('invalid_deployment_receipt');
   if(role==='storage' && item.created!==undefined && (typeof item.created!=='string'||new Date(item.created).toISOString()!==item.created))throw new Error('invalid_deployment_receipt');
  }
@@ -43,9 +44,15 @@ export function validateReceipt(value,context) {
  if(!exact(manifest,['version','target','environment','profileId','profileVersion','bindings']))throw new Error('invalid_deployment_receipt');
  if(!validateDeploymentManifest(manifest).ready || !manifest || manifest.target!=='cloudflare' || manifest.environment!==context.environment)throw new Error('invalid_deployment_receipt');
  for(const [role,binding] of Object.entries(manifest.bindings??{})) {
-  if(binding.mode!=='disabled' && (binding.mode!=='create' || binding.adapterId!==({'state-db':'cloudflare-d1',cache:'cloudflare-kv',storage:'cloudflare-r2'}[role])))throw new Error('invalid_deployment_receipt');
-  if(!exact(binding,['adapterId','mode','config','secretRefs','origin']) || !exact(binding.secretRefs,[]) || !exact(binding.config,['resourceName']))throw new Error('invalid_deployment_receipt');
-  if(binding.config.resourceName!==undefined && ![context.appName+'-db',context.appName+'-cache',context.appName+'-storage'].includes(binding.config.resourceName))throw new Error('invalid_deployment_receipt');
+  if(binding.mode==='connect'){if(resources[role==='state-db'?'database':role] || binding.resourceRef)throw new Error('invalid_deployment_receipt');continue;}
+  if(binding.mode!=='disabled' && (!['create','reuse'].includes(binding.mode) || binding.adapterId!==({'state-db':'cloudflare-d1',cache:'cloudflare-kv',storage:'cloudflare-r2'}[role])))throw new Error('invalid_deployment_receipt');
+  if(!exact(binding,['adapterId','mode','resourceRef','config','secretRefs','origin']) || !exact(binding.secretRefs,[]) || !exact(binding.config,['resourceName']))throw new Error('invalid_deployment_receipt');
+  const key=role==='state-db'?'database':role;
+  if(binding.mode==='reuse') {
+   if(!['state-db','cache'].includes(role)||!resourceName.test(binding.config.resourceName??'')||!(role==='state-db'?uuid:hex).test(binding.resourceRef??''))throw new Error('invalid_deployment_receipt');
+  }else if(binding.config.resourceName!==undefined && ![context.appName+'-db',context.appName+'-cache',context.appName+'-storage'].includes(binding.config.resourceName))throw new Error('invalid_deployment_receipt');
+  if(binding.mode!=='reuse' && binding.resourceRef!==undefined)throw new Error('invalid_deployment_receipt');
+  if(resources[key] && (binding.mode==='disabled'||resources[key].name!==binding.config.resourceName || binding.mode==='reuse' && resources[key].id!==binding.resourceRef))throw new Error('invalid_deployment_receipt');
  }
  if(value.identity!==null) {
   if(!exact(value.identity,['installationId','versionId','deploymentId','resources','secrets','operationId']) || value.identity.installationId!==value.installationId || !uuid.test(value.identity.operationId??'') || !uuid.test(value.identity.versionId??'') || !uuid.test(value.identity.deploymentId??'') || !Array.isArray(value.identity.secrets) || value.identity.secrets.some(x=>typeof x!=='string'||!/^[A-Z][A-Z0-9_]{0,127}$/.test(x)) || !isDeepStrictEqual(value.identity.resources,resources))throw new Error('invalid_deployment_receipt');

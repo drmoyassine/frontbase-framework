@@ -1,3 +1,5 @@
+2026-10-26 onboarding implementation: local CF resource selection, shared HTTP adapter execution and managed native-D1 operator reset are locally verified. Native source points at an explicit preview snapshot. Fresh live installation and external-provider acceptance remain open; no staging change or release claim. [Evidence](../plans/local-deployment-onboarding-20261026.md).
+
 # Frontbase Framework Evolution: Milestones (Chimera)
 
 2026-10-26 reusable template URL/SEO task COMPLETE: runtime `6b8b96e`/site generation 35 reconcile 110 retained routes into the program/institution templates, add progressive URLs/defaults/rules and localized @ SEO, and preserve settings/source catalog/paths/aliases. EN/AR desktop/mobile and targeted check/build/mutation acceptance pass. [Receipt](../plans/reusable-template-urls-seo-20261026.md). Include in candidate qualification; broader public-release gates remain open.

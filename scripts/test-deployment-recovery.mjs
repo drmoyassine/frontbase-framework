@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import {DatabaseSync} from 'node:sqlite';
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join,dirname} from 'node:path';
+import {defaultDeploymentManifest} from '../packages/edge-core/dist/deployment.js';
+import {PasswordResetStore} from '../packages/backend/dist/compat/store.js';
+import {managedAdministratorRecovery} from './deployment-setup/recovery.mjs';
+import {receiptPath} from './deployment-setup/receipt.mjs';
+const root=mkdtempSync(join(tmpdir(),'frontbase-recovery-'));
+const db=new DatabaseSync(':memory:');
+const runner={query:async(sql,args=[])=>db.prepare(sql).all(...args),exec:async(sql,args=[])=>Number(db.prepare(sql).run(...args).changes)};
+db.exec(`CREATE TABLE users(id TEXT,email TEXT,password_hash TEXT,role TEXT,tenant_slug TEXT,created_at TEXT); CREATE TABLE password_reset_tokens(token_hash TEXT PRIMARY KEY,user_id TEXT,tenant_slug TEXT,email TEXT,expires_at TEXT,used_at TEXT,created_at TEXT); INSERT INTO users VALUES('owner','owner@example.test','unchanged','owner','_default','2026-10-26'),('editor','editor@example.test','unchanged','editor','_default','2026-10-26');`);
+const id='11111111-2222-3333-4444-555555555555',context={accountId:'a'.repeat(32),appName:'recovery-fixture',environment:'production'};
+const manifest=defaultDeploymentManifest('cloudflare');
+manifest.environment='production';manifest.bindings['state-db'].config.resourceName=context.appName+'-db';
+for(const role of ['cache','storage']){manifest.bindings[role].mode='disabled';manifest.bindings[role].config={};}
+const resources={database:{id,name:context.appName+'-db',binding:'DB'}};
+const identity={installationId:id,operationId:id,versionId:id,deploymentId:id,resources,secrets:['SESSION_SECRET']};
+const receipt={schemaVersion:1,installationId:id,operationId:id,revision:0,...context,artifactHash:'a'.repeat(64),manifest,phase:'succeeded',pending:null,resources,identity,url:'https://recovery-fixture.fixture.workers.dev'};
+const path=receiptPath(root,context);mkdirSync(dirname(path),{recursive:true});writeFileSync(path,JSON.stringify(receipt));
+const options={root,makeRunner:()=>runner,readIdentity:async()=>identity,now:()=> '2026-10-26T12:00:00.000Z'};
+try {
+ assert.deepEqual((await managedAdministratorRecovery(context,options)).admins.map(u=>u.email),['owner@example.test']);
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM password_reset_tokens').get().n,0);
+ await assert.rejects(managedAdministratorRecovery(context,{...options,issueLink:true,email:'editor@example.test'}),/unique_administrator/);
+ let reads=0;await assert.rejects(managedAdministratorRecovery(context,{...options,issueLink:true,email:'owner@example.test',readIdentity:async()=>++reads===1?identity:{...identity,versionId:'changed'}}),/remote_state_changed/);
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM password_reset_tokens').get().n,0);
+ const result=await managedAdministratorRecovery(context,{...options,issueLink:true,email:'owner@example.test'});
+ const url=new URL(result.url),token=url.searchParams.get('token');assert.ok(token);
+ assert.equal(url.pathname,'/frontbase-admin/reset-password');
+ assert.equal(result.expiresAt,'2026-10-26T13:00:00.000Z');
+ assert.ok(!JSON.stringify(db.prepare('SELECT * FROM password_reset_tokens').all()).includes(token));
+ assert.equal(db.prepare("SELECT password_hash FROM users WHERE id='owner'").get().password_hash,'unchanged');
+ const store=new PasswordResetStore(runner);
+ assert.equal(await store.consume('editor@example.test',token,options.now()),null);
+ assert.equal((await store.consume('owner@example.test',token,options.now())).userId,'owner');
+ assert.equal(await store.consume('owner@example.test',token,options.now()),null);
+ const expired=new URL((await managedAdministratorRecovery(context,{...options,issueLink:true,email:'owner@example.test'})).url).searchParams.get('token');
+ assert.equal(await store.consume('owner@example.test',expired,'2026-10-26T13:00:00.000Z'),null);
+ console.log('PASS managed recovery: owner-only, identity drift refusal before writes, hashed/expiring/single-use existing reset capability, password unchanged');
+} finally {db.close();rmSync(root,{recursive:true,force:true});}

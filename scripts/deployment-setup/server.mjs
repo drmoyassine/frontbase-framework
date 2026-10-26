@@ -19,7 +19,8 @@ function sessionCookie(req,name) {
 }
 
 /** Local trusted-process bridge only. No DB, remote transport, provisioner or persistent secret store. */
-export async function startDeploymentSetup({ target='cloudflare', environment='preview', ttlMs=15*60_000, now=Date.now, onReview=()=>{}, initialManifest, resourceOptions, executionInfo, executionCapabilities, executionIssues=()=>[], onDeploy }={}) {
+export async function startDeploymentSetup({ target='cloudflare', environment='preview', ttlMs=15*60_000, now=Date.now, onReview=()=>{}, credentialsMode='entry', initialManifest, resourceOptions, executionInfo, executionCapabilities, executionIssues=()=>[], onDeploy }={}) {
+    if(!['entry','references'].includes(credentialsMode))throw Error('invalid_credentials_mode');
     if (!['cloudflare','vercel'].includes(target) || !['preview','production'].includes(environment)) throw new Error('invalid_deployment_target');
     if (!Number.isFinite(ttlMs) || ttlMs<1 || ttlMs>30*60_000) throw new Error('invalid_setup_lifetime');
     const bindingAssets=buildBindingsAssets();
@@ -65,7 +66,7 @@ export async function startDeploymentSetup({ target='cloudflare', environment='p
                 return reply(200,{ok:true},{'set-cookie':`${cookieName}=${session}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.max(1,Math.floor((expires-now())/1000))}`});
             }
             if(!session || !equal(sessionCookie(req,cookieName),session))return reply(401,{error:'setup_session_required'});
-            if(req.method==='GET' && req.url==='/api/bootstrap')return reply(200,{manifest:prepared?.manifest??executedManifest??defaults,adapters:deploymentAdapters,resourceOptions,deploymentEnabled:typeof onDeploy==='function',executionInfo:typeof onDeploy==='function'?executionInfo:undefined,executionCapabilities:typeof onDeploy==='function'?executionCapabilities:undefined,executionStatus,executionUrl,expiresAt:new Date(expires).toISOString()});
+            if(req.method==='GET' && req.url==='/api/bootstrap')return reply(200,{manifest:prepared?.manifest??executedManifest??defaults,adapters:deploymentAdapters,resourceOptions,credentialsMode,deploymentEnabled:typeof onDeploy==='function',executionInfo:typeof onDeploy==='function'?executionInfo:undefined,executionCapabilities:typeof onDeploy==='function'?executionCapabilities:undefined,executionStatus,executionUrl,expiresAt:new Date(expires).toISOString()});
             if(req.method==='POST' && req.url==='/api/prepare') {
                 if(attempted)return reply(409,{error:'deployment_already_attempted'});
                 reviewId=undefined;prepared=undefined;const requestRevision=++revision;
@@ -77,7 +78,7 @@ export async function startDeploymentSetup({ target='cloudflare', environment='p
                 if(plan.manifest.target!==target || plan.manifest.environment!==environment)return reply(422,{ready:false,issues:[{code:'setup_target_mismatch'}]});
                 const executionProblems=executionIssues(plan.manifest);
                 if(executionProblems.length)return reply(422,{ready:false,issues:executionProblems});
-                const refs=new Set(Object.values(plan.manifest.bindings).filter(b=>b.mode!=='disabled').flatMap(b=>Object.values(b.secretRefs)));
+                const refs=new Set(credentialsMode==='references'?[]:Object.values(plan.manifest.bindings).filter(b=>b.mode!=='disabled').flatMap(b=>Object.values(b.secretRefs)));
                 const credentials=input.credentials;
                 if(!credentials || typeof credentials!=='object' || Array.isArray(credentials) || Object.keys(credentials).some(k=>!refs.has(k)) || [...refs].some(k=>typeof credentials[k]!=='string' || !credentials[k] || credentials[k].length>8192))return reply(422,{ready:false,issues:[{code:'invalid_credentials'}]});
                 const secrets=Object.fromEntries([...refs].map(k=>[k,credentials[k]]));

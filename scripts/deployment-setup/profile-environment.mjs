@@ -11,10 +11,11 @@ export function profileEnvironment(prepared) {
   if(b.mode==='disabled') {
    // A nonempty explicit sentinel replaces old host values without deleting secrets.
    const name={cache:'FRONTBASE_CACHE',vector:'FRONTBASE_VECTOR',queue:'FRONTBASE_QUEUE',storage:'FRONTBASE_STORAGE'}[role];
-   if(plan.manifest.target==='vercel'&&name)json(name,{provider:'none'});
+   if(name)json(name,{provider:'none'});
    continue;
   }
   if(b.adapterId==='turso-marketplace'&&b.mode==='reuse'&&/^store_[a-zA-Z0-9]+$/.test(b.resourceRef??''))continue;
+  if(plan.manifest.target==='cloudflare' && ['cloudflare-d1','cloudflare-kv','cloudflare-r2'].includes(b.adapterId) && ['create','reuse'].includes(b.mode))continue;
   if(b.mode!=='connect')throw Error('profile_requires_host_native_executor');
   const c=b.config;
   switch(b.adapterId) {

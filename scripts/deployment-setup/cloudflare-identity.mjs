@@ -1,3 +1,4 @@
+import { resourceName } from './cloudflare-resources.mjs';
 import { readManagedRuntimeManifest } from '../../packages/edge-core/dist/deployment.js';
 import { nativeWrangler, readNativeR2Identity } from './cloudflare.mjs';
 import { assertReceiptTarget } from './receipt.mjs';
@@ -34,14 +35,17 @@ export function projectWorkerIdentity(settings,deployments,context) {
   if(binding.type==='r2_bucket' && binding.name==='FRONTBASE_R2' && binding.bucket_name===context.appName+'-storage' && !binding.jurisdiction){resources.storage={name:binding.bucket_name,binding:'FRONTBASE_R2'};continue;}
   throw new Error('cloudflare_unmanaged_binding_refused');
  }
- if(!installationId || !resources.database || !secrets.includes('SESSION_SECRET'))throw new Error('cloudflare_ownership_unverified');
+ if(!installationId || (!resources.database && runtimeManifest?.bindings['state-db'].mode!=='connect') || !secrets.includes('SESSION_SECRET'))throw new Error('cloudflare_ownership_unverified');
  if(runtimeManifest){
   for(const [role,key] of [['state-db','database'],['cache','cache'],['storage','storage']]){
    const binding=runtimeManifest.bindings[role],actual=resources[key];
+   if(binding.mode==='connect'){if(actual)throw new Error('cloudflare_runtime_manifest_mismatch');continue;}
+   if(actual && ['state-db','cache'].includes(role) && resourceName.test(binding.config.resourceName??''))actual.name=binding.config.resourceName;
    if(binding.mode==='disabled'){if(actual)throw new Error('cloudflare_runtime_manifest_mismatch');}
    else if(!actual || binding.resourceRef!==(actual.id??actual.name) || binding.config.resourceName!==actual.name)throw new Error('cloudflare_runtime_manifest_mismatch');
   }
  }
+ if(runtimeManifest)for(const [role,b] of Object.entries(runtimeManifest.bindings)){if(b.mode!=='connect')continue;const required=role==='state-db'?(b.adapterId==='libsql-http'?['APP_DB_URL','APP_DB_AUTH_TOKEN']:['APP_DB_D1_ACCOUNT_ID','APP_DB_D1_DATABASE_ID','CLOUDFLARE_API_TOKEN']):[{cache:'FRONTBASE_CACHE',vector:'FRONTBASE_VECTOR',storage:'FRONTBASE_STORAGE',queue:'FRONTBASE_QUEUE'}[role]];if(required.some(name=>!name||!secrets.includes(name)))throw Error('cloudflare_profile_secrets_missing');}
  secrets.sort();
  return {installationId,versionId:latest.versions[0].version_id,deploymentId:latest.id,resources,secrets};
 }

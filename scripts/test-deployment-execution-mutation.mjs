@@ -14,6 +14,7 @@ const faults=[
  ['private consumption','server',s=>s.replace('const selected=prepared;executedManifest=structuredClone(selected.manifest);prepared=undefined;reviewId=undefined;revision++;','const selected=prepared;executedManifest=structuredClone(selected.manifest);reviewId=undefined;revision++;')],
  ['execution policy','server',s=>s.replace('if(executionProblems.length)','if(false)')],
  ['execution response secrecy','server',s=>s.replace('return reply(200,{ok:true,url:url.origin});','return reply(200,{ok:true,url:url.origin,credentials:selected.credentials});')],
+ ['existing resource admission','executor',s=>s.replace('await verifyEmptyCloudflareResources(plan.manifest,runWrangler,stage);','/* omitted */')],
  ['build fingerprint','executor',s=>s.replaceAll('!==context.artifactHash','===null')],
  ['create collision adoption','executor',s=>s.replace("if(args[0]==='d1' && args[1]==='create' && result.code!==0)",'if(false)')],
  ['KV existing namespace refusal','executor',s=>s.replace("if(entries.some(entry=>entry.title===cache.config.resourceName))","if(false)")],
@@ -27,7 +28,7 @@ const faults=[
 try {
  for(const [name,type,mutate] of faults){
   const url=type==='server'?serverUrl:executorUrl;const source=readFileSync(url,'utf8');let changed=mutate(source);if(!name.startsWith('baseline'))assert.notEqual(changed,source,name);
-  for(const path of ['../../packages/edge-core/dist/deployment.js','../../packages/compiler/dist/cli/deploy.js','../../packages/compiler/dist/cli/app-identity.js','../../packages/compiler/dist/cli/provision-d1.js','../console-pin.mjs','./bindings-assets.mjs'])changed=changed.replace(JSON.stringify(path).replaceAll('"',"'"),JSON.stringify(new URL(path,url).href));
+  for(const path of ['../../packages/edge-core/dist/deployment.js','../../packages/compiler/dist/cli/deploy.js','../../packages/compiler/dist/cli/app-identity.js','../../packages/compiler/dist/cli/provision-d1.js','../console-pin.mjs','./bindings-assets.mjs','./cloudflare-resources.mjs','./profile-environment.mjs','./cloudflare-state.mjs'])changed=changed.replace(JSON.stringify(path).replaceAll('"',"'"),JSON.stringify(new URL(path,url).href));
   changed=changed.replace('new URL(asset[0],import.meta.url)',`new URL(asset[0],${JSON.stringify(serverUrl.href)})`);
   const candidate=join(temp,'fault.mjs');writeFileSync(candidate,changed);
   const suite=fileURLToPath(new URL(type==='server'?'./test-deployment-setup-execution.mjs':'./test-cloudflare-setup-executor.mjs',import.meta.url));
@@ -36,4 +37,4 @@ try {
   if(name.startsWith('baseline')){assert.equal(result.status,0,`transformed baseline failed: ${name}: ${result.stderr}`);console.log(`PASS ${name}`);}else{assert.ok(result.status!==0 && result.status!==null,`fault escaped or timed out: ${name}`);console.log(`PASS detected: ${name}`);}
  }
 } finally {rmSync(temp,{recursive:true,force:true});}
-console.log('Fourteen execution faults detected; production source unchanged');
+console.log('Fifteen execution faults detected; production source unchanged');

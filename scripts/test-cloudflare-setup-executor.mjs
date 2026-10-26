@@ -56,6 +56,48 @@ try {
   if(fault==='none'){await operation;const stage=stages.at(-1);assert.ok(readFileSync(join(stage,'wrangler.toml'),'utf8').includes(kvId));assert.equal(JSON.parse(readFileSync(join(stage,'deployment-receipt.json'),'utf8')).resources.cache.id,kvId);const create=calls.find(args=>args.slice(0,3).join(' ')==='kv namespace create');assert.equal(create[3],'profile-fixture-cache');}
   else {await assert.rejects(operation);assert.ok(!calls.some(args=>args[0]==='secret'||args[0]==='deploy'||args[1]==='create'),'KV refusal must precede D1/Worker mutation');}
  }
+ // Existing resources are explicitly selected, rechecked and never recreated.
+ for(const fault of ['none','nonempty-db','nonempty-cache','renamed','missing']) {
+  const reused=structuredClone(withCache);
+  reused.manifest.bindings['state-db']={adapterId:'cloudflare-d1',mode:'reuse',resourceRef:databaseId,config:{resourceName:'existing-state'},secretRefs:{}};
+  reused.manifest.bindings.cache={adapterId:'cloudflare-kv',mode:'reuse',resourceRef:kvId,config:{resourceName:'existing-cache'},secretRefs:{}};
+  const base=fixture(),calls=[];
+  const run=async(args,opts)=>{
+   calls.push(args);
+   if(args[0]==='d1'&&args[1]==='list')return {code:0,stdout:JSON.stringify(fault==='missing'?[]:[{uuid:databaseId,name:fault==='renamed'?'renamed-state':'existing-state'}]),stderr:''};
+   if(args[0]==='d1'&&args[1]==='execute')return {code:0,stdout:JSON.stringify([{success:true,results:fault==='nonempty-db'?[{name:'users'}]:[]}]),stderr:''};
+   if(args.slice(0,3).join(' ')==='kv namespace list')return {code:0,stdout:JSON.stringify([{id:kvId,title:'existing-cache'}]),stderr:''};
+   if(args.slice(0,3).join(' ')==='kv key list')return {code:0,stdout:JSON.stringify(fault==='nonempty-cache'?[{name:'occupied'}]:[]),stderr:''};
+   return base.run(args,opts);
+  };
+  const operation=executeCloudflareFirstInstall(reused,context,{exampleRoot:root,runWrangler:run,onReceipt:receipt});
+  if(fault==='none') {
+   await operation;
+   const saved=JSON.parse(readFileSync(join(stages.at(-1),'deployment-receipt.json'),'utf8'));
+   assert.equal(saved.resources.database.name,'existing-state');assert.equal(saved.resources.database.id,databaseId);
+   assert.equal(saved.resources.cache.name,'existing-cache');assert.equal(saved.resources.cache.id,kvId);
+   assert.ok(!calls.some(args=>args.includes('create')),'reuse cannot create duplicates');
+  } else {
+   await assert.rejects(operation);
+   assert.ok(!calls.some(args=>args[0]==='secret'||args[0]==='deploy'||args.includes('create')),'invalid/occupied selection must refuse before writes');
+  }
+ }
+ // HTTP adapters reuse the existing environment lowering; no unused D1 is provisioned.
+ const external=structuredClone(prepared);
+ external.manifest.bindings['state-db']={adapterId:'libsql-http',mode:'connect',config:{url:'https://fixture.turso.io'},secretRefs:{token:'state/token'}};
+ external.manifest.bindings.vector={adapterId:'cloudflare-vectorize-http',mode:'connect',config:{accountId:context.accountId,indexName:'fixture-vector'},secretRefs:{token:'vector/token'}};
+ external.credentials={'state/token':'fixture-state-secret','vector/token':'fixture-vector-secret'};
+ const externalFake=fixture();let probed=0;
+ await executeCloudflareFirstInstall(external,context,{exampleRoot:root,runWrangler:externalFake.run,onReceipt:receipt,checkExternalState:async value=>{assert.deepEqual(value,external);probed++;}});
+ assert.equal(probed,1);
+ assert.ok(!externalFake.calls.some(c=>c.args[0]==='d1'||c.args.includes('create')));
+ for(const secret of Object.values(external.credentials)) {
+  assert.ok(externalFake.calls.some(c=>c.options.stdin?.includes(secret)));
+  assert.ok(!externalFake.calls.some(c=>JSON.stringify(c.args).includes(secret)));
+  for(const path of walk(stages.at(-1)))assert.ok(!readFileSync(path,'utf8').includes(secret));
+ }
+ const failedProbe=fixture();await assert.rejects(executeCloudflareFirstInstall(external,context,{exampleRoot:root,runWrangler:failedProbe.run,onReceipt:receipt,checkExternalState:async()=>{throw Error('not empty');}}));
+ assert.ok(!failedProbe.calls.some(c=>c.args[0]==='secret'||c.args[0]==='deploy'||c.args.includes('create')));
  const wrongName=structuredClone(withCache);wrongName.manifest.bindings.cache.config.resourceName='other-cache';const unused=fixture();await assert.rejects(executeCloudflareFirstInstall(wrongName,context,{exampleRoot:root,runWrangler:unused.run}));assert.equal(unused.calls.length,0);
 
  const withStorage=structuredClone(withCache);withStorage.manifest.bindings.storage.mode='create';withStorage.manifest.bindings.storage.config.resourceName='profile-fixture-storage';

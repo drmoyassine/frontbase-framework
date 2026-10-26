@@ -16,7 +16,7 @@ const faults=[
  ['immediate version fence','lifecycle',s=>s.replace("if(!isDeepStrictEqual(current,previousIdentity))","if(false)")],
  ['preserve remote variables','lifecycle',s=>s.replace("'--keep-vars',","")],
  ['redeploy command restriction','lifecycle',s=>s.replace("if(options.cwd!==stage || !['deployments','deploy'].includes(args[0]) || args[args.indexOf('--name')+1]!==context.appName || uploaded)","if(false)").replace("if(args.length!==3)","if(false)")],
- ['worker ownership marker','identity',s=>s.replace("if(!installationId || !resources.database", "if(!resources.database")],
+ ['worker ownership marker','identity',s=>s.replace("if(!installationId || (!resources.database", "if((!resources.database")],
  ['unmanaged binding refusal','identity',s=>s.replace("throw new Error('cloudflare_unmanaged_binding_refused');","continue;")],
 ];
 try {

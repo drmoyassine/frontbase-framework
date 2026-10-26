@@ -14,6 +14,7 @@ export interface BindingsFormOptions {
 /** One browser-only editor for bootstrap and console. Credential values never enter the manifest. */
 export function mountBindingsForm(root: HTMLElement, options: BindingsFormOptions) {
     let manifest=structuredClone(options.manifest);
+    const createNames=new Map(Object.entries(options.manifest.bindings).map(([role,binding])=>[role,binding.config.resourceName]));
     const secrets=new Map<string,string>(), document=root.ownerDocument;
     const adapters=options.adapters??deploymentAdapters;
     const entry=options.credentials!=='references';
@@ -65,7 +66,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                     const modeWrapper=node('div',undefined,'fb-binding-field'),modeTitle=node('label','Resource action'),mode=node('select');
                     mode.id='binding-mode-'+role;modeTitle.htmlFor=mode.id;
                     for(const value of modes(selected))mode.append(option({create:'Create resource',reuse:'Reuse resource',connect:'Connect existing service',disabled:'Disabled'}[value],value));
-                    mode.value=binding.mode;mode.addEventListener('change',()=>{binding.mode=mode.value as BindingSelection['mode'];delete binding.resourceRef;render();change();});
+                    mode.value=binding.mode;mode.addEventListener('change',()=>{binding.mode=mode.value as BindingSelection['mode'];delete binding.resourceRef;if(binding.mode==='create' && createNames.get(role))binding.config.resourceName=createNames.get(role)!;render();change();});
                     modeWrapper.append(modeTitle,mode);card.append(modeWrapper);
                     if(binding.mode==='reuse') {
                         const resources=options.resourceOptions?.[selected.id];
@@ -73,7 +74,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                             const row=node('div',undefined,'fb-binding-field'),label=node('label','Resource'),resource=node('select');resource.id='binding-resource-'+role;label.htmlFor=resource.id;resource.append(option('Select a connected resource',''));
                             for(const item of resources)resource.append(option(item.name,item.id));
                             if(binding.resourceRef&&!resources.some(r=>r.id===binding.resourceRef)){const unavailable=option('Recorded resource — unavailable in this environment',binding.resourceRef);unavailable.disabled=true;resource.append(unavailable);}
-                            resource.value=binding.resourceRef??'';resource.addEventListener('change',()=>{if(resource.value)binding.resourceRef=resource.value;else delete binding.resourceRef;change();});row.append(label,resource);card.append(row);
+                            resource.value=binding.resourceRef??'';resource.addEventListener('change',()=>{if(resource.value){binding.resourceRef=resource.value;if(selected.configKeys.includes('resourceName'))binding.config.resourceName=resources.find(item=>item.id===resource.value)!.name;}else {delete binding.resourceRef;if(selected.configKeys.includes('resourceName'))delete binding.config.resourceName;}change();});row.append(label,resource);card.append(row);
                             if(!resources.length)card.append(node('p','Connect a compatible resource to this project and environment, then restart local setup.','fb-binding-note'));
                         } else field(card,'Resource reference',binding.resourceRef,value=>binding.resourceRef=value,false,true);
                     }

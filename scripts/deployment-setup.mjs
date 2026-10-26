@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {discoverCloudflareResources} from './deployment-setup/cloudflare-resources.mjs';
 import {executeManagedVercel,readVercelReceipt,reconcileManagedVercel} from './deployment-setup/vercel-receipt.mjs';
 import {discoverVercelResources,assertVercelProfileContext,vercelExecutionCapabilities,vercelExecutionIssues} from './deployment-setup/vercel.mjs';
 import {readDeploymentProposal} from './deployment-setup/proposal.mjs';
@@ -6,9 +7,10 @@ import { receiptPath, readReceipt } from './deployment-setup/receipt.mjs';
 import { executeManagedCloudflare, managedExecutionIssues, reuseManifest } from './deployment-setup/cloudflare-lifecycle.mjs';
 import { pathToFileURL } from 'node:url';
 import { defaultDeploymentManifest } from '../packages/edge-core/dist/deployment.js';
-import { assertCloudflareExecutionContext, cloudflareExecutionCapabilities, fingerprintCloudflareArtifacts } from './deployment-setup/cloudflare.mjs';
+import { nativeWrangler, assertCloudflareExecutionContext, cloudflareExecutionCapabilities, fingerprintCloudflareArtifacts } from './deployment-setup/cloudflare.mjs';
 import { startDeploymentSetup } from './deployment-setup/server.mjs';
 export async function deploymentSetupCommand(args,{reconcileVercel=reconcileManagedVercel}={}) {
+    if(args[0]==='--')args=args.slice(1);
     if(args.includes('--help')){console.log('Usage: pnpm run deploy:setup -- --target cloudflare|vercel [--environment preview|production] [--manifest PATH] [--deploy --intent create|redeploy|resume] [Cloudflare: --app-name NAME --account-id ACCOUNT_ID] [Vercel: --project NAME --scope TEAM_ID] [--setup-link with Vercel redeploy] [--deployment canonical_URL with Vercel resume]');return;}
     const flags=args.filter(value=>!['--deploy','--setup-link'].includes(value));
     if(['--deploy','--setup-link'].some(flag=>args.filter(value=>value===flag).length>1))throw new Error('invalid_setup_options');
@@ -41,11 +43,11 @@ export async function deploymentSetupCommand(args,{reconcileVercel=reconcileMana
         if(intent==='create' && prior)throw new Error('managed_receipt_already_exists');
         if(intent!=='create' && !prior)throw new Error('managed_receipt_required');
         const initialManifest=proposal??(intent==='create'?defaultDeploymentManifest(target,environment):reuseManifest(prior));
-        if(!proposal)initialManifest.bindings['state-db'].config.resourceName=`${context.appName}-db`;
-        if(!proposal)initialManifest.bindings.cache.config.resourceName=`${context.appName}-cache`;
-        if(!proposal)initialManifest.bindings.storage.config.resourceName=`${context.appName}-storage`;
-        const executionCapabilities=intent==='create'?cloudflareExecutionCapabilities:{adapters:{'cloudflare-d1':['reuse'],'cloudflare-kv':['reuse'],'cloudflare-r2':['reuse']}};
-        execution={initialManifest,executionCapabilities,executionInfo:`Account ${context.accountId} / Worker ${context.appName} / ${intent==='create'?'new managed installation':intent==='redeploy'?'reuse recorded bindings; preserve secrets':'verify the previous completed upload; no provider mutation'}`,executionIssues:manifest=>managedExecutionIssues(manifest,context,intent,prior),onDeploy:prepared=>executeManagedCloudflare(prepared,context,{
+        if(!proposal && intent==='create')initialManifest.bindings['state-db'].config.resourceName=`${context.appName}-db`;
+        if(!proposal && intent==='create')initialManifest.bindings.cache.config.resourceName=`${context.appName}-cache`;
+        if(!proposal && intent==='create')initialManifest.bindings.storage.config.resourceName=`${context.appName}-storage`;
+        const executionCapabilities=intent==='create'?cloudflareExecutionCapabilities:{adapters:{...cloudflareExecutionCapabilities.adapters,'cloudflare-d1':['reuse'],'cloudflare-kv':['reuse'],'cloudflare-r2':['reuse']}};
+        execution={initialManifest,credentialsMode:intent==='create'?'entry':'references',executionCapabilities,resourceOptions:intent==='create'?await discoverCloudflareResources(nativeWrangler(context.accountId),process.cwd()):undefined,executionInfo:`Account ${context.accountId} / Worker ${context.appName} / ${intent==='create'?'new managed installation; existing D1/KV must be empty and dedicated to this app':intent==='redeploy'?'reuse recorded bindings; preserve secrets':'verify the previous completed upload; no provider mutation'}`,executionIssues:manifest=>managedExecutionIssues(manifest,context,intent,prior),onDeploy:prepared=>executeManagedCloudflare(prepared,context,{
             intent,root:process.cwd(),
             onSetupLink:link=>{console.log('Private first-administrator setup link:');console.log(link.url);},
             onReceipt:receipt=>console.log(`Durable deployment receipt: ${receipt.path}`),

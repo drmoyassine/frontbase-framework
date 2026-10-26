@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {defaultDeploymentManifest} from '../packages/edge-core/dist/deployment.js';
+import {verifyEmptyExternalState} from './deployment-setup/cloudflare-state.mjs';
+const manifest=defaultDeploymentManifest('cloudflare');
+manifest.bindings['state-db']={adapterId:'libsql-http',mode:'connect',config:{url:'https://example.turso.io'},secretRefs:{token:'state/token'}};
+const prepared={manifest,credentials:{'state/token':'fixture-secret'}};
+let calls=0;
+await verifyEmptyExternalState(prepared,{makeRunner:env=>{assert.equal(env.APP_DB_AUTH_TOKEN,'fixture-secret');return {query:async sql=>{calls++;assert.match(sql,/^SELECT name FROM sqlite_schema/);return [];}};}});
+assert.equal(calls,1);
+for(const outcome of [[{name:'users'}],null])await assert.rejects(verifyEmptyExternalState(prepared,{makeRunner:()=>({query:async()=>outcome})}),/external_state_not_verified_empty/);
+await assert.rejects(verifyEmptyExternalState(prepared,{makeRunner:()=>({query:async()=>{throw Error('private provider error');}})}),/external_state_not_verified_empty/);
+console.log('PASS external state preflight: shared resolver configuration, read-only schema probe, nonempty/unknown refusal');

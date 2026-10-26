@@ -1,3 +1,5 @@
+2026-10-26 owner-approved deployment entry decision: reuse the existing local browser Bindings wizard for full provider/resource configuration and secure administrator setup; retain native buttons for default profiles. No new hosted launcher/control plane. Existing resources require dedicated empty-state admission. See [implementation and limits](../plans/local-deployment-onboarding-20261026.md).
+
 # Frontbase Framework: Decisions Log
 
 ## 2026-10-26 Reusable record templates, retained routes and SEO ownership

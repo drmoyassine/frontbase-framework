@@ -2,12 +2,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
+// Nonrelease source snapshot; the public default branch is not the accepted deploy source.
+export const nativeSourceRef = 'frontbase-selfhost-preview-20261026';
 export const nativeRepository = 'https://github.com/drmoyassine/frontbase-framework';
 export const nativeStore = Object.freeze({ type: 'integration', integrationSlug: 'tursocloud', productSlug: 'database', protocol: 'storage', allowConnectExistingProduct: true });
 
 // Named test tags avoid the ambiguous slash-branch parsing observed in native clone UIs.
 // This is a conservative launcher constraint, not a restriction on Git or provider APIs.
-export function nativeDeployButtons({ ref, name = 'frontbase-cms' } = {}) {
+export function nativeDeployButtons({ ref = nativeSourceRef, name = 'frontbase-cms' } = {}) {
   if (ref !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(ref)) throw new Error('Use an explicit unambiguous named ref (no slash), or omit ref for the repository default');
   if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(name)) throw new Error('Invalid project name');
   const source = nativeRepository + (ref ? '/tree/' + ref : '');
@@ -46,7 +48,7 @@ export function verifyNativeButtons({ read = path => readFileSync(new URL('../' 
 /** Read only the public source named by the button, not the local checkout.
  * Native providers import that source; local contract success cannot certify it.
  */
-export async function verifyNativeSource({ ref, fetchImpl = fetch } = {}) {
+export async function verifyNativeSource({ ref = nativeSourceRef, fetchImpl = fetch } = {}) {
   const buttons = nativeDeployButtons({ ref }); // validates the optional ref
   const paths = ['README.md', 'package.json', 'wrangler.toml', '.env.example', 'examples/cf-full/vercel.json'];
   const files = new Map();

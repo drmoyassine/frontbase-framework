@@ -1,3 +1,5 @@
+2026-10-26 setup entry clarification: full configuration uses the existing local wizard; native buttons use provider defaults. The [onboarding receipt](../plans/local-deployment-onboarding-20261026.md) separates local security/regression verification from remaining fresh-live and credential-dependent acceptance. First edition remains Developer Preview; distribution gates are unchanged.
+
 # Frontbase Public Release Strategy
 
 2026-10-26 reusable template URL/SEO task COMPLETE: runtime `6b8b96e`/site generation 35 reconcile 110 retained routes into the program/institution templates, add progressive URLs/defaults/rules and localized @ SEO, and preserve settings/source catalog/paths/aliases. EN/AR desktop/mobile and targeted check/build/mutation acceptance pass. [Receipt](../plans/reusable-template-urls-seo-20261026.md). Include in candidate qualification; broader public-release gates remain open.
