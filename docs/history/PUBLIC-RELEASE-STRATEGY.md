@@ -1,3 +1,5 @@
+2026-10-26 owner-approved onboarding extension: resource-free hosted setup on CF/Vercel/Docker is now implementation scope. Existing local wizard acceptance is preserved; hosted bootstrap is not yet available and must pass host-specific persistence/auth/activation evidence before native-button replacement. Developer Preview release gates remain open. See ../plans/hosted-bootstrap-20261026.md.
+
 2026-10-26 setup entry clarification: full configuration uses the existing local wizard; native buttons use provider defaults. The [onboarding receipt](../plans/local-deployment-onboarding-20261026.md) separates local security/regression verification from remaining fresh-live and credential-dependent acceptance. First edition remains Developer Preview; distribution gates are unchanged.
 
 # Frontbase Public Release Strategy

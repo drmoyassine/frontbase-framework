@@ -30,7 +30,8 @@
     "console:stage": "node scripts/build-console.mjs --skip-build",
     "console:check": "node scripts/validate-console-pin.mjs",
     "test:deployment-bindings": "node packages/backend/test/deployment-bindings.mjs && node scripts/test-deployment-bindings-mutation.mjs && pnpm --filter @frontbase/console test:deployment-bindings",
-    "test:deployment-buttons": "node scripts/test-deployment-buttons.mjs"
+    "test:deployment-buttons": "node scripts/test-deployment-buttons.mjs",
+    "test:hosted-bootstrap": "node packages/edge-core/test/deployment-bootstrap.mjs && node packages/edge-core/test/deployment-bootstrap-mutation.mjs && node packages/backend/test/hosted-bootstrap.mjs && node packages/backend/test/hosted-bootstrap-mutation.mjs && node scripts/test-docker-bootstrap-journal.mjs"
   },
   "devDependencies": {
     "c8": "^11.0.0",

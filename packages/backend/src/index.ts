@@ -332,3 +332,5 @@ export {
 export type { AuthRateLimitBucket } from './compat/rate-limit-store.js';
 
 export {deploymentStorageFromEnv,deploymentStorageOptions} from './compat/deployment-storage.js';
+
+export { createHostedBootstrap, type HostedBootstrapDeps } from './hosted-bootstrap.js';

@@ -1,3 +1,5 @@
+2026-10-26 hosted bootstrap is IN PROGRESS: shared contract, protected zero-state startup, host configuration executors and isolated acceptance precede native-button replacement. Existing wizard live acceptance remains valid; site-template installer remains separate. See ../plans/hosted-bootstrap-20261026.md.
+
 2026-10-26 onboarding implementation: local CF resource selection, shared HTTP adapter execution and managed native-D1 operator reset are locally verified. Native source points at an explicit preview snapshot. Fresh live installation and external-provider acceptance remain open; no staging change or release claim. [Evidence](../plans/local-deployment-onboarding-20261026.md).
 
 # Frontbase Framework Evolution: Milestones (Chimera)

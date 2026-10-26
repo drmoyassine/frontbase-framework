@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
+    "./deployment-bootstrap": {"types":"./dist/deployment-bootstrap.d.ts","import":"./dist/deployment-bootstrap.js"},
     "./template-policy": {"types":"./dist/template-policy.d.ts","import":"./dist/template-policy.js"},
     "./browser/images": {"types":"./dist/image-fallback.d.ts","import":"./dist/image-fallback.js"},
     "./deployment": {"types":"./dist/deployment.d.ts","import":"./dist/deployment.js"},
@@ -59,6 +60,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
+    "test:bootstrap": "node test/deployment-bootstrap.mjs && node test/deployment-bootstrap-mutation.mjs",
     "test:deployment": "node test/deployment.mjs && node test/deployment-mutation.mjs",
     "test:menus": "node test/menus.mjs && node test/menus-native.mjs",
     "test:localization": "node test/localization.mjs && node test/localization-mutation.mjs && node test/patterns-mutation.mjs",
