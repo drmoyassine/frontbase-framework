@@ -8,6 +8,9 @@ export interface HostedBootstrapDeps {
     context: BootstrapContext; journal: BootstrapJournal; executor: BootstrapExecutor;
     now?: ()=>number;
     nextSetup?: ()=>string;
+    initialize?: ()=>Promise<void>;
+    configuration?: ()=>Promise<Record<string,unknown>>;
+    pendingSetup?: boolean;
 }
 const base='/frontbase-bootstrap/api';
 const cookieName='__Host-fb_bootstrap';
@@ -32,6 +35,7 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
             return payload.aud===audience&&Number.isSafeInteger(payload.exp)&&payload.exp>now()&&payload.exp<=expiry&&payload.exp<=now()+900000;
         }catch{return false;}
     };
+    const active=async()=> (await deps.journal.read(deps.context))?.phase==='active';
     app.use('*',async(c,next)=>{
         c.header('Cache-Control','no-store');c.header('Referrer-Policy','no-referrer');c.header('X-Content-Type-Options','nosniff');c.header('X-Frame-Options','DENY');c.header('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'");
         if(!deps.enabled||now()>=expiry)return c.json({error:'bootstrap_unavailable'},410);
@@ -40,8 +44,8 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
         if(c.req.method==='POST'){
             if(c.req.header('origin')!==deps.origin||c.req.header('content-type')?.split(';')[0]!=='application/json')return c.json({error:'bootstrap_refused'},403);
         }
-        if((await deps.journal.read(deps.context))?.phase==='active')return c.json({error:'bootstrap_unavailable'},410);
         if(c.req.path!==base+'/claim'&&!await authenticated(c.req.raw))return c.json({error:'bootstrap_refused'},403);
+        if(c.req.path!==base+'/claim'&&await active())return c.json({error:'bootstrap_unavailable'},410);
         await next();
     });
     const body=async(request:Request):Promise<Record<string,unknown>>=>{
@@ -54,14 +58,16 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
         const input=await body(c.req.raw);exact(input,['token']);if(typeof input.token!=='string'||input.token.length>256)return c.json({error:'bootstrap_refused'},403);
         const digest=async(value:string)=>new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
         if(!timingSafeEqual(await digest(input.token),await digest(deps.token)))return c.json({error:'bootstrap_refused'},403);
+        if(await active())return c.json({error:'bootstrap_unavailable'},410);
         const exp=Math.min(expiry,now()+900000),payload=encode(new TextEncoder().encode(JSON.stringify({aud:audience,exp})));
         c.header('Set-Cookie',cookieName+'='+payload+'.'+await sign(payload)+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age='+Math.floor((exp-now())/1000));
         return c.json({ok:true,expiresAt:new Date(exp).toISOString()});
     });
-    app.get(base+'/configuration',async c=>c.json({operation:await deps.journal.read(deps.context).then(record=>record?{phase:record.phase,operationId:record.operationId}:null),manifest:defaultDeploymentManifest(deps.context.target),adapters:deploymentAdapters.filter(a=>a.targets.includes(deps.context.target)),target:deps.context.target}));
+    app.post(base+'/initialize',async c=>{const input=await body(c.req.raw);exact(input,[]);await deps.initialize?.();return c.json({ok:true});});
+    app.get(base+'/configuration',async c=>c.json({operation:await deps.journal.read(deps.context).then(record=>record?{phase:record.phase,operationId:record.operationId}:null),manifest:defaultDeploymentManifest(deps.context.target),adapters:deploymentAdapters.filter(a=>a.targets.includes(deps.context.target)),target:deps.context.target,...(deps.configuration?await deps.configuration():{})}));
     app.post(base+'/review',async c=>{const input=await body(c.req.raw);exact(input,['manifest']);const result=await reviewBootstrap(deps.context,input.manifest,deps.journal,deps.executor);return c.json({reviewId:result.operationId,phase:result.phase,manifest:result.manifest});});
-    app.post(base+'/apply',async c=>{const input=await body(c.req.raw);exact(input,['reviewId','credentials']);if(typeof input.reviewId!=='string')throw Error('invalid');const result=await applyBootstrap(deps.context,input.reviewId,input.credentials as Record<string,string>,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId,...(result.phase==='active'&&deps.nextSetup?{nextSetup:deps.nextSetup()}: {})});});
-    app.post(base+'/reconcile',async c=>{const input=await body(c.req.raw);exact(input,[]);const result=await reconcileBootstrap(deps.context,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId});});
-    app.onError((_error,c)=>c.json({error:'bootstrap_operation_refused'},409));
+    app.post(base+'/apply',async c=>{const input=await body(c.req.raw);exact(input,['reviewId','credentials']);if(typeof input.reviewId!=='string')throw Error('invalid');const result=await applyBootstrap(deps.context,input.reviewId,input.credentials as Record<string,string>,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId,...((result.phase==='active'||deps.pendingSetup)&&deps.nextSetup?{nextSetup:deps.nextSetup()}: {})});});
+    app.post(base+'/reconcile',async c=>{const input=await body(c.req.raw);exact(input,[]);const result=await reconcileBootstrap(deps.context,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId,...(deps.nextSetup?{nextSetup:deps.nextSetup()}: {})});});
+    app.onError((error,c)=>{console.warn('bootstrap_operation_refused', error.message.includes('Illegal invocation')?'invalid_receiver':['TypeError','RangeError','DOMException'].includes(error.name)?error.name:'Error');return c.json({error:'bootstrap_operation_refused'},409);});
     return app;
 }

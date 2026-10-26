@@ -1,3 +1,5 @@
+2026-10-26 hosted cloud runtime activation ACCEPTED on isolated CF/Vercel installations: actual provisioning/redeployment, active receipt, user-created administrator, page publication and session persistence pass. This supersedes earlier cloud executor checkpoints. Native button replacement, full site-template installer and public release gates remain separate. See ../plans/hosted-bootstrap-20261026.md.
+
 2026-10-26 hosted bootstrap: durable SQL journal is locally verified; cloud coordinator identity and hosted activation remain IN PROGRESS. SQLite/D1-adapter fixtures are not live CF/Vercel acceptance. See ../plans/hosted-bootstrap-20261026.md.
 
 2026-10-26 hosted bootstrap update: Docker host integration verified on actual Node and Linux container; Cloudflare/Vercel hosted coordination/execution remains IN PROGRESS. Existing configured startup and native paths retained. See ../plans/hosted-bootstrap-20261026.md.

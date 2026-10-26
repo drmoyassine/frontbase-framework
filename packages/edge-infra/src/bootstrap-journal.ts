@@ -6,7 +6,7 @@ import type {DbRunner} from './providers/types.js';
 import type {BootstrapContext,BootstrapJournal,BootstrapRecord} from '@frontbase/edge-core/deployment-bootstrap';
 import {validateDeploymentManifest} from '@frontbase/edge-core/deployment';
 const table='_frontbase_bootstrap';
-const inventory="SELECT name FROM sqlite_schema WHERE type='table' AND name NOT GLOB 'sqlite_*' AND name NOT IN ('_cf_METADATA','_frontbase_bootstrap') LIMIT 1";
+const inventory="SELECT name FROM sqlite_schema WHERE type='table' AND name NOT GLOB 'sqlite_*' AND name NOT IN ('_cf_METADATA','_cf_KV','_frontbase_bootstrap') LIMIT 1";
 const fail=():never=>{throw Error('bootstrap_state_refused');};
 function identity(context:BootstrapContext):string {
  if(!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(context.installationId)||!['cloudflare','vercel','docker'].includes(context.target)||!context.destination||context.destination.length>256||!/^[A-Za-z0-9_./:-]+$/.test(context.destination))fail();

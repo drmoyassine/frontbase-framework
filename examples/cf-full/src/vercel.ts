@@ -1,3 +1,5 @@
+let bootstrapCompletion:Promise<void>|undefined;
+import {createCloudBootstrap,bootstrapRuntimeProof,completeCloudBootstrap} from './hosted-cloud.js';
 /**
  * Vercel entry (A-24) — the FULL CMS as one serverless function.
  *
@@ -47,6 +49,7 @@ import { createCmsEngine, readTranslationExecutionEnabled } from './worker.js';
 import { bootTimeoutMs, raceBootTimeout, BootTimeoutError } from './boot-guard.js';
 
 let enginePromise: Promise<Hono> | null = null;
+let bootstrapHost:any;
 const externalFetch = createNodeHttpTransport();
 
 function engine(): Promise<Hono> {
@@ -95,6 +98,7 @@ function engine(): Promise<Hono> {
 }
 
 export async function handler(req: Request): Promise<Response> {
+    if(process.env.FRONTBASE_BOOTSTRAP==='1'){try{bootstrapHost??=createCloudBootstrap(process.env,'vercel',externalFetch);return await bootstrapHost.fetch(req);}catch{return new Response('Setup unavailable',{status:503});}}
     // Boot AND request-path engine work are bounded: an unreachable state DB
     // must answer as a legible 503, not hold the request until the platform's
     // own kill (every request awaits the same pending init — the hang would
@@ -103,6 +107,9 @@ export async function handler(req: Request): Promise<Response> {
     const budget = bootTimeoutMs(process.env as { FRONTBASE_BOOT_TIMEOUT_MS?: string });
     try {
         const e = await raceBootTimeout(engine(), budget, 'the full-CMS engine');
+        await (bootstrapCompletion??=completeCloudBootstrap(process.env,'vercel',()=>e.fetch(new Request(new URL('/health',req.url))),externalFetch).catch(()=>{console.warn('bootstrap_receipt_completion_pending')}));
+            const proof=await bootstrapRuntimeProof(req,process.env,()=>e.fetch(new Request(new URL('/health',req.url))));if(proof)return proof;
+        if(new URL(req.url).pathname.startsWith('/frontbase-bootstrap/'))return new Response('Setup closed',{status:410});
         return await raceBootTimeout(e.fetch(req), budget, 'the state database-backed engine');
     } catch (err) {
         if (err instanceof StateDbConfigError) return new Response(err.message, { status: 500 });

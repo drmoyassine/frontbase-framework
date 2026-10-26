@@ -274,6 +274,16 @@ const postgresUnavailable = {
 };
 const NODE_BUILTINS = [...new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)])];
 
+const formAssets=buildBindingsAssets();
+const bootstrapAssets={
+ '/frontbase-bootstrap/':{body:readFileSync(join(here,'../../scripts/deployment-setup/hosted-index.html'),'utf8'),type:'text/html; charset=utf-8'},
+ '/frontbase-bootstrap/app.js':{body:readFileSync(join(here,'../../scripts/deployment-setup/hosted-app.js'),'utf8'),type:'text/javascript'},
+ '/frontbase-bootstrap/bindings-form.js':{body:formAssets.js,type:'text/javascript'},
+ '/frontbase-bootstrap/style.css':{body:formAssets.css+'\nbody{font:16px system-ui;background:#f6f8fb;color:#172033;margin:0}main{max-width:960px;margin:2rem auto;padding:1.5rem;background:white;border-radius:12px}button,input{font:inherit;padding:.65rem;margin:.4rem}input{max-width:90%}button{cursor:pointer}#result{white-space:pre-wrap}[hidden]{display:none!important}',type:'text/css'}
+};
+const bootstrapAssetPlugin={name:'bootstrap-assets',setup(build){build.onResolve({filter:/packages\/edge-core\/dist\/deployment\.js$/},()=>({path:'@frontbase/edge-core/deployment',external:true}));build.onResolve({filter:/packages\/backend\/dist\/(?:compat\/deployment-storage|hosted-bootstrap)\.js$/},()=>({path:'@frontbase/backend',external:true}));build.onResolve({filter:/packages\/edge-infra\/dist\/index\.js$/},()=>({path:'@frontbase/edge-infra',external:true}));build.onResolve({filter:/^virtual:bootstrap-assets$/},()=>({path:'assets',namespace:'bootstrap'}));build.onLoad({filter:/.*/,namespace:'bootstrap'},()=>({contents:'export default '+JSON.stringify(bootstrapAssets),loader:'js'}));}};
+const bootstrapAssetsPlugin={name:"portable-bootstrap-assets",setup(build){build.onResolve({filter:/^virtual:bootstrap-assets$/},()=>({path:"assets",namespace:"bootstrap-assets"}));build.onLoad({filter:/.*/,namespace:"bootstrap-assets"},()=>({contents:"export default "+JSON.stringify(bootstrapAssets),loader:"js"}));}};
+
 // One emit shape for every self-contained edge artifact (the worker and the new
 // per-host bundles): fully bundled (workspaceResolver), same virtual inlines,
 // optional-dep stubs, minified ESM.
@@ -286,7 +296,7 @@ async function emitEdgeArtifact({ entry, outfile, extraPlugins = [], external, p
         minify: true,
         ...(banner ? { banner: { js: banner } } : {}),
         ...(external ? { external } : {}),
-        plugins: [workspaceResolver, inlineSwPlugin, consoleShellPlugin, optionalStub, inlineClientPlugin, ...extraPlugins],
+        plugins: [workspaceResolver, inlineSwPlugin, consoleShellPlugin, optionalStub, inlineClientPlugin, bootstrapAssetsPlugin, ...extraPlugins],
     });
 }
 
@@ -457,17 +467,9 @@ await esbuild.build({
     entryPoints: ['src/smoke.ts'],
     outfile: join(here, 'dist', 'smoke.mjs'),
     minify: false,
-    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
+    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin, bootstrapAssetPlugin],
 });
 
-const formAssets=buildBindingsAssets();
-const bootstrapAssets={
- '/frontbase-bootstrap/':{body:readFileSync(join(here,'../../scripts/deployment-setup/hosted-index.html'),'utf8'),type:'text/html; charset=utf-8'},
- '/frontbase-bootstrap/app.js':{body:readFileSync(join(here,'../../scripts/deployment-setup/hosted-app.js'),'utf8'),type:'text/javascript'},
- '/frontbase-bootstrap/bindings-form.js':{body:formAssets.js,type:'text/javascript'},
- '/frontbase-bootstrap/style.css':{body:formAssets.css+'\nbody{font:16px system-ui;background:#f6f8fb;color:#172033;margin:0}main{max-width:960px;margin:2rem auto;padding:1.5rem;background:white;border-radius:12px}button,input{font:inherit;padding:.65rem;margin:.4rem}input{max-width:90%}button{cursor:pointer}#result{white-space:pre-wrap}[hidden]{display:none!important}',type:'text/css'}
-};
-const bootstrapAssetPlugin={name:'bootstrap-assets',setup(build){build.onResolve({filter:/packages\/edge-core\/dist\/deployment\.js$/},()=>({path:'@frontbase/edge-core/deployment',external:true}));build.onResolve({filter:/packages\/backend\/dist\/(?:compat\/deployment-storage|hosted-bootstrap)\.js$/},()=>({path:'@frontbase/backend',external:true}));build.onResolve({filter:/packages\/edge-infra\/dist\/index\.js$/},()=>({path:'@frontbase/edge-infra',external:true}));build.onResolve({filter:/^virtual:bootstrap-assets$/},()=>({path:'assets',namespace:'bootstrap'}));build.onLoad({filter:/.*/,namespace:'bootstrap'},()=>({contents:'export default '+JSON.stringify(bootstrapAssets),loader:'js'}));}};
 // 4. Node server build — the self-host/Docker entry (src/node.ts → dist/node.mjs).
 //    Identical shape to the smoke build above (same rationale: external packages
 //    so the libsql native binding and workspace @frontbase/* dist resolve from
@@ -505,7 +507,7 @@ for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/sessi
         entryPoints: [entry],
         outfile: join(here, 'dist', outfile),
         minify: false,
-        plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
+        plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin, bootstrapAssetPlugin],
     });
 }
 
@@ -520,7 +522,7 @@ await esbuild.build({
     entryPoints: ['e2e/cloud/server.ts'],
     outfile: join(here, '.cloud-e2e', 'server.mjs'),
     minify: false,
-    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
+    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin, bootstrapAssetPlugin],
 });
 
 // Test-only actual-browser transition harness, outside deployable dist/.
@@ -528,7 +530,7 @@ await esbuild.build({
     ...shared, platform: 'node', packages: 'external', target: 'node22',
     entryPoints: ['e2e/publication/browser.ts'],
     outfile: join(here, '.publication-e2e', 'browser.mjs'), minify: false,
-    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
+    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin, bootstrapAssetPlugin],
 });
 
 const raw = statSync(join(here, 'dist', 'worker.mjs')).size;

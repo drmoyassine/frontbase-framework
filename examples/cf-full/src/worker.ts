@@ -1,3 +1,5 @@
+let bootstrapCompletion:Promise<void>|undefined;
+import {createCloudBootstrap,bootstrapRuntimeProof,completeCloudBootstrap} from './hosted-cloud.js';
 import {audienceConditionUser} from '@frontbase/edge-core';
 /**
  * Cloudflare Worker entry — the FULL CMS as ONE worker: the eSSR engine
@@ -882,10 +884,12 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
 
 let enginePromise: Promise<Hono> | null = null;
 let currentCtx: ExecutionContext | null = null;
+let bootstrapHost:any;
 
 export default {
     async fetch(req: Request, env: CmsEnv, ctx: ExecutionContext): Promise<Response> {
         try {
+            if((env as any).FRONTBASE_BOOTSTRAP==='1'){bootstrapHost??=createCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
             // Self-host uses the shared persisted resolver after migrations.
             // Managed cloud retains its explicit operator-secret requirement.
             if (env.FRONTBASE_DEPLOYMENT_MODE === 'cloud' && !env.SESSION_SECRET) {
@@ -1018,6 +1022,9 @@ export default {
                 }).catch((e) => { enginePromise = null; throw e; });
             }
             const engine = await enginePromise;
+            await (bootstrapCompletion??=completeCloudBootstrap(env,'cloudflare',()=>engine.fetch(new Request(new URL('/health',req.url)),env,ctx)).catch(()=>{console.warn('bootstrap_receipt_completion_pending')}));
+            const proof=await bootstrapRuntimeProof(req,env,()=>engine.fetch(new Request(new URL('/health',req.url)),env,ctx));if(proof)return proof;
+            if(new URL(req.url).pathname.startsWith('/frontbase-bootstrap/'))return new Response('Setup closed',{status:410});
             return engine.fetch(req, env, ctx);
         } catch (e) {
             console.error('[cf-full] worker fetch failed:', (e as Error)?.stack ?? e);
