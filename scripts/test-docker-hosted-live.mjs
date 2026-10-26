@@ -1,0 +1,17 @@
+/** Isolated Linux container acceptance. Creates/removes only uniquely named test resources. */
+import assert from 'node:assert/strict';import {execFileSync} from 'node:child_process';import {mkdtempSync,writeFileSync,unlinkSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {randomBytes,randomUUID} from 'node:crypto';
+const image=process.env.FRONTBASE_TEST_IMAGE||'frontbase-hosted-bootstrap:261026',name='fb-bootstrap-'+randomUUID(),volume=name+'-state',dir=mkdtempSync(join(tmpdir(),'fb-container-')),file=join(dir,'runtime.env');
+const docker=args=>execFileSync('docker',args,{encoding:'utf8',windowsHide:true,stdio:['ignore','pipe','pipe']}).trim();let created=false,volumeCreated=false,cookie='';const token=randomBytes(32).toString('hex');
+try{
+ docker(['volume','create',volume]);volumeCreated=true;
+ const {createServer}=await import('node:net');const {once}=await import('node:events');const server=createServer();server.listen(0,'127.0.0.1');await once(server,'listening');const port=server.address().port;server.close();await once(server,'close');
+ const local='http://127.0.0.1:'+port,origin='https://127.0.0.1:'+port;
+ writeFileSync(file,['FRONTBASE_BOOTSTRAP=1','FRONTBASE_BOOTSTRAP_DIRECTORY=/data/bootstrap','FRONTBASE_PUBLIC_ORIGIN='+origin,'FRONTBASE_INSTALLATION_ID='+randomUUID(),'FRONTBASE_BOOTSTRAP_TOKEN='+token,'FRONTBASE_BOOTSTRAP_EXPIRES_AT='+new Date(Date.now()+3600000).toISOString()].join('\n'),{mode:0o600});
+ docker(['create','--name',name,'--publish','127.0.0.1:'+port+':8787','--volume',volume+':/data','--env-file',file,image]);created=true;docker(['start',name]);
+ const ready=async()=>{for(let i=0;i<120;i++){try{if((await fetch(local+'/health')).ok)return;}catch{}await new Promise(r=>setTimeout(r,250));}throw Error('container_not_ready');};await ready();
+ const request=(path,body)=>fetch(local+path,{method:body===undefined?'GET':'POST',headers:{origin,'content-type':'application/json',...(cookie?{cookie}:{})},body:body===undefined?undefined:JSON.stringify(body),redirect:'manual'});
+ assert.equal((await request('/frontbase-bootstrap/')).status,200);assert.equal((await request('/frontbase-bootstrap/api/configuration')).status,403);
+ const claim=await request('/frontbase-bootstrap/api/claim',{token});assert.equal(claim.status,200);cookie=claim.headers.get('set-cookie').split(';')[0];const config=await(await request('/frontbase-bootstrap/api/configuration')).json();const review=await(await request('/frontbase-bootstrap/api/review',{manifest:config.manifest})).json();const applied=await(await request('/frontbase-bootstrap/api/apply',{reviewId:review.reviewId,credentials:{}})).json();assert.equal(applied.phase,'active');assert.ok(applied.nextSetup.startsWith('/setup#/setup?claim='));assert.equal((await request('/api/console/setup/status')).status,200);
+ assert.equal(docker(['exec',name,'stat','-c','%a','/data/bootstrap/runtime.json']),'600');assert.equal(docker(['exec',name,'id','-un']),'node');docker(['restart',name]);await ready();assert.equal((await request('/frontbase-bootstrap/')).status,410);assert.equal((await request('/api/auth/me')).status,401);assert.equal((await request('/api/console/setup/status')).status,200);
+ console.log('PASS Linux Docker hosted bootstrap: non-root, shared wizard, SQLite activation, private config permissions, existing setup handoff, mounted-volume restart and closed installer');
+}finally{if(created)docker(['rm','--force',name]);if(volumeCreated)docker(['volume','rm',volume]);try{unlinkSync(file);}catch{}}

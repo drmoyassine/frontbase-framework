@@ -46,6 +46,7 @@ export interface DeploymentAdapter {
 const both: readonly DeploymentTarget[] = ['cloudflare', 'vercel', 'docker'];
 /** Inventory-backed adapters. Native wiring not yet accepted remains a recommendation only. */
 export const deploymentAdapters: readonly DeploymentAdapter[] = [
+    {id:'sqlite-file',role:'state-db',targets:['docker'],selectable:true,modes:['connect'],configKeys:[],secretKeys:[]},
     {id:'cloudflare-d1',role:'state-db',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'turso-marketplace',role:'state-db',targets:['vercel'],selectable:true,modes:['reuse'],configKeys:[],secretKeys:[]},
     {id:'libsql-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
@@ -68,7 +69,7 @@ function choice(adapterId: string, mode: BindingSelection['mode'], config: Recor
 /** Suggestions do not imply provisioning or validated readiness. */
 export function defaultDeploymentManifest(target: DeploymentTarget, environment: DeploymentManifest['environment'] = 'preview'): DeploymentManifest {
     return {version:1,target,environment,profileVersion:1,bindings:{
-        'state-db':target === 'cloudflare' ? choice('cloudflare-d1','create',{resourceName:`frontbase-state-${environment}`}) : choice('libsql-http','connect'),
+        'state-db':target === 'docker' ? choice('sqlite-file','connect') : target === 'cloudflare' ? choice('cloudflare-d1','create',{resourceName:`frontbase-state-${environment}`}) : choice('libsql-http','connect'),
         cache:choice(target === 'cloudflare' ? 'cloudflare-kv' : 'upstash-http',target === 'cloudflare' ? 'create' : 'disabled',target === 'cloudflare' ? {resourceName:`frontbase-cache-${environment}`} : {}),
         storage:choice(target === 'cloudflare' ? 'cloudflare-r2' : 's3-http','disabled'),
         vector:choice('cloudflare-vectorize-http','disabled'),

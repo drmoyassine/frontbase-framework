@@ -19,6 +19,7 @@ export function profileEnvironment(prepared) {
   if(b.mode!=='connect')throw Error('profile_requires_host_native_executor');
   const c=b.config;
   switch(b.adapterId) {
+   case 'sqlite-file':if(plan.manifest.target!=='docker')throw Error('invalid_local_state');env.APP_DB_URL='file:application.db';break;
    case 'libsql-http':env.APP_DB_URL=c.url;env.APP_DB_AUTH_TOKEN=get(b,'token');break;
    case 'd1-http':if(!/^[a-f0-9]{32}$/.test(c.accountId)||! /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(c.databaseId))throw Error('invalid_state_identity');env.APP_DB_D1_ACCOUNT_ID=c.accountId;env.APP_DB_D1_DATABASE_ID=c.databaseId;env.CLOUDFLARE_API_TOKEN=get(b,'token');break;
    case 'upstash-http':json('FRONTBASE_CACHE',{provider:'upstash',url:c.url,token:get(b,'token')});break;

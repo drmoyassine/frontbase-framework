@@ -7,6 +7,7 @@ export interface HostedBootstrapDeps {
     enabled: boolean; origin: string; token: string; expiresAt: string;
     context: BootstrapContext; journal: BootstrapJournal; executor: BootstrapExecutor;
     now?: ()=>number;
+    nextSetup?: ()=>string;
 }
 const base='/frontbase-bootstrap/api';
 const cookieName='__Host-fb_bootstrap';
@@ -57,9 +58,9 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
         c.header('Set-Cookie',cookieName+'='+payload+'.'+await sign(payload)+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age='+Math.floor((exp-now())/1000));
         return c.json({ok:true,expiresAt:new Date(exp).toISOString()});
     });
-    app.get(base+'/configuration',c=>c.json({manifest:defaultDeploymentManifest(deps.context.target),adapters:deploymentAdapters.filter(a=>a.targets.includes(deps.context.target)),target:deps.context.target}));
+    app.get(base+'/configuration',async c=>c.json({operation:await deps.journal.read(deps.context).then(record=>record?{phase:record.phase,operationId:record.operationId}:null),manifest:defaultDeploymentManifest(deps.context.target),adapters:deploymentAdapters.filter(a=>a.targets.includes(deps.context.target)),target:deps.context.target}));
     app.post(base+'/review',async c=>{const input=await body(c.req.raw);exact(input,['manifest']);const result=await reviewBootstrap(deps.context,input.manifest,deps.journal,deps.executor);return c.json({reviewId:result.operationId,phase:result.phase,manifest:result.manifest});});
-    app.post(base+'/apply',async c=>{const input=await body(c.req.raw);exact(input,['reviewId','credentials']);if(typeof input.reviewId!=='string')throw Error('invalid');const result=await applyBootstrap(deps.context,input.reviewId,input.credentials as Record<string,string>,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId});});
+    app.post(base+'/apply',async c=>{const input=await body(c.req.raw);exact(input,['reviewId','credentials']);if(typeof input.reviewId!=='string')throw Error('invalid');const result=await applyBootstrap(deps.context,input.reviewId,input.credentials as Record<string,string>,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId,...(result.phase==='active'&&deps.nextSetup?{nextSetup:deps.nextSetup()}: {})});});
     app.post(base+'/reconcile',async c=>{const input=await body(c.req.raw);exact(input,[]);const result=await reconcileBootstrap(deps.context,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId});});
     app.onError((_error,c)=>c.json({error:'bootstrap_operation_refused'},409));
     return app;

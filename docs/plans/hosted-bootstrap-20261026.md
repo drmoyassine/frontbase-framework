@@ -29,3 +29,20 @@ Shared deployment manifests now recognize Docker for existing HTTP adapters. The
 Verification: workspace check/build PASS; final backend export build and workspace check PASS; transaction behavior and 11 injected faults PASS; hosted API behavior and seven injected faults PASS; existing deployment contracts and five faults PASS; persistent journal tests PASS outside the Windows sandbox (sandbox atomic rename EPERM retained as environment evidence); existing selfhost-reset suite PASS. No hosted route is mounted on current production entries; no native button is changed and no live resources or settings changed in this checkpoint. Generated cms.mjs remains excluded.
 
 Still open: storage-independent host entry mounting and browser assets, Cloudflare/Vercel durable coordination and provider executors, Docker configuration activation/restart, and live acceptance. The abstract journal contract is not proof that provider environment APIs implement CAS. Select/establish the host journal before enabling writes; do not substitute process memory in serverless hosts. Existing user sessions and state must remain outside bootstrap. Next executable task is Docker host integration against the persistent journal, followed by the explicit Cloudflare/Vercel persistence/provisioning boundary and the common browser form. This checkpoint is foundational implementation, not a usable hosted installer.
+
+## Docker host integration checkpoint — 2026-10-26
+
+Implemented the opt-in Node/Docker entry, preserving ordinary startup through the existing factory. The hosted form uses the existing Bindings component and shared adapter metadata; Docker now has a local SQLite default plus HTTP alternatives. Owner authentication precedes review/apply; selected environment values are privately persisted, the same CMS engine initializes state, and the existing administrator form receives the setup capability. Existing state and configured environment admission are refused. Configured restarts cannot reopen setup, even when the database fails. The operation journal and exclusive private runtime file survive process/container restarts. A partial runtime file fails closed rather than replacing an installation.
+
+Evidence:
+- Full workspace check/build PASS; final check and rebuilt actual Node artifact PASS.
+- Shared bootstrap behavior, 11 transaction faults and seven authorization faults PASS.
+- Docker host behavior including failed initialization/uncertain reconciliation and five host faults PASS.
+- Actual bundled Node hosted journey PASS: zero-state boot, assets, adapters, claim/review/apply, existing setup, restart and closed installer.
+- Existing actual Node login/create/publish/frontend edit/restart/session suite PASS.
+- Linux Docker full source image build PASS; final Node artifact layered into that image after the last admission guard change. Actual non-root Linux container activation/restart/0600 permissions PASS; disposable test container and volume removed. This is not a final-source clean-room release certificate.
+- Existing 16 deployment contracts, environment lowering and native button contracts PASS.
+
+No Cloudflare/Vercel settings, native buttons or Study-in-USA staging were changed. Generated cms.mjs remains excluded. The Docker private volume is credential-bearing; the journal and public responses contain no provider credential values.
+
+Remaining ordered work: (1) establish durable cloud operation ownership before provider changes, using a selected-state/provider-specific coordinator rather than process memory; (2) implement and test CF binding/secrets activation and Vercel environment/redeployment executors; (3) actual HTTPS browser setup plus live HTTP-provider acceptance; (4) isolated native entry replacement acceptance; (5) separate full site-template installer. The overall hosted-bootstrap task stays IN PROGRESS. Docker evidence must not be used to claim the cloud-hosted pipeline is complete.

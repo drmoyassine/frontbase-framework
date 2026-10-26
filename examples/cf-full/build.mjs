@@ -14,6 +14,7 @@
  * connect/schema flows (Supabase/Neon Postgres) need it at runtime.
  */
 import * as esbuild from 'esbuild';
+import {buildBindingsAssets} from '../../scripts/deployment-setup/bindings-assets.mjs';
 import { gzipSync } from 'node:zlib';
 import { existsSync, readFileSync, readdirSync, statSync, mkdirSync, copyFileSync, cpSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -459,6 +460,14 @@ await esbuild.build({
     plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
 });
 
+const formAssets=buildBindingsAssets();
+const bootstrapAssets={
+ '/frontbase-bootstrap/':{body:readFileSync(join(here,'../../scripts/deployment-setup/hosted-index.html'),'utf8'),type:'text/html; charset=utf-8'},
+ '/frontbase-bootstrap/app.js':{body:readFileSync(join(here,'../../scripts/deployment-setup/hosted-app.js'),'utf8'),type:'text/javascript'},
+ '/frontbase-bootstrap/bindings-form.js':{body:formAssets.js,type:'text/javascript'},
+ '/frontbase-bootstrap/style.css':{body:formAssets.css+'\nbody{font:16px system-ui;background:#f6f8fb;color:#172033;margin:0}main{max-width:960px;margin:2rem auto;padding:1.5rem;background:white;border-radius:12px}button,input{font:inherit;padding:.65rem;margin:.4rem}input{max-width:90%}button{cursor:pointer}#result{white-space:pre-wrap}[hidden]{display:none!important}',type:'text/css'}
+};
+const bootstrapAssetPlugin={name:'bootstrap-assets',setup(build){build.onResolve({filter:/packages\/edge-core\/dist\/deployment\.js$/},()=>({path:'@frontbase/edge-core/deployment',external:true}));build.onResolve({filter:/packages\/backend\/dist\/(?:compat\/deployment-storage|hosted-bootstrap)\.js$/},()=>({path:'@frontbase/backend',external:true}));build.onResolve({filter:/packages\/edge-infra\/dist\/index\.js$/},()=>({path:'@frontbase/edge-infra',external:true}));build.onResolve({filter:/^virtual:bootstrap-assets$/},()=>({path:'assets',namespace:'bootstrap'}));build.onLoad({filter:/.*/,namespace:'bootstrap'},()=>({contents:'export default '+JSON.stringify(bootstrapAssets),loader:'js'}));}};
 // 4. Node server build — the self-host/Docker entry (src/node.ts → dist/node.mjs).
 //    Identical shape to the smoke build above (same rationale: external packages
 //    so the libsql native binding and workspace @frontbase/* dist resolve from
@@ -469,10 +478,10 @@ await esbuild.build({
     platform: 'node',
     packages: 'external',
     target: 'node22',
-    entryPoints: ['src/node.ts'],
+    entryPoints: ['src/node-entry.ts'],
     outfile: join(here, 'dist', 'node.mjs'),
     minify: false,
-    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin],
+    plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin, bootstrapAssetPlugin],
 });
 
 // 5. A-24 node-side support emits (platform node, packages external — the

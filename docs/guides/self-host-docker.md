@@ -153,3 +153,26 @@ caveats above.
   `buildx --platform a,b` without configuring pnpm `supportedArchitectures`).
 - **First boot is slow to go healthy** — cold volume runs all migrations;
   `start_period=30s` covers it, extend on slow disks.
+
+## Opt-in hosted setup (implementation preview, 2026-10-26)
+
+The Node/Docker entry can start the shared Bindings wizard before opening an application database. Ordinary startup remains unchanged unless `FRONTBASE_BOOTSTRAP=1` is explicitly set. This mode is for a new installation, not changing the state database of an installed app.
+
+Set these runtime variables through the operator's private environment file or secret manager:
+
+- `FRONTBASE_BOOTSTRAP=1`.
+- `FRONTBASE_PUBLIC_ORIGIN=https://your-host.example`: exact public origin. Terminate TLS at your reverse proxy and preserve its Host header. The app does not trust forwarded-host headers.
+- `FRONTBASE_BOOTSTRAP_DIRECTORY=/data/bootstrap`: private directory on the persistent mounted volume, writable by the container's node user.
+- `FRONTBASE_INSTALLATION_ID`: a fresh UUID, retained across restarts.
+- `FRONTBASE_BOOTSTRAP_TOKEN`: a securely generated 32–256 character owner capability.
+- `FRONTBASE_BOOTSTRAP_EXPIRES_AT`: a short-lived ISO timestamp.
+
+Do not supply ADMIN_EMAIL/ADMIN_PASSWORD or an existing configured database for this flow. The image's default `file:/data/app.db` is allowed only when that file does not exist. An existing runtime configuration takes precedence on restart; an unavailable database never reopens setup.
+
+Open `/frontbase-bootstrap/`, unlock with the owner capability, select adapters and enter their credentials, review, then apply. Docker defaults to SQLite on the mounted volume; the shared dropdowns also expose compatible HTTP providers such as Turso/libSQL and Upstash. External state must be empty. Application state lives at `/data/bootstrap/application.db` for the SQLite choice. Successful activation opens the existing administrator form, including password confirmation. No administrator password is collected by the bindings wizard.
+
+The volume contains private `runtime.json` (0600 on Linux), the durable operation journal and, for SQLite, the application database. Back up and protect this volume as credential-bearing application state. Retain the bootstrap mode, installation ID, public origin and directory when restarting this installation. The owner capability can expire after activation. Changing volume/identity does not migrate data.
+
+A failed or interrupted activation is recorded as uncertain and never automatically dispatched again. Preserve the volume; inspect/recover the recorded operation before any new attempt. A malformed/partial runtime file or failed configured startup fails closed. The initial administrator handoff capability is in the private runtime configuration if the browser response is lost; it expires after one hour. There is no new automatic credential-reset mechanism in this preview.
+
+Acceptance covers the actual bundled Node server and a non-root Linux Docker container: no initial database, protected owner exchange, shared form assets, SQLite activation, existing setup handoff, private file permissions, mounted-volume restart and closed bootstrap. Existing Node login/create/publish/restart acceptance also passes. The test simulates TLS termination with the configured HTTPS origin; an external reverse-proxy/browser deployment and live external-provider credentials are not covered. Cloudflare/Vercel hosted executors and native-button replacement remain pending.
