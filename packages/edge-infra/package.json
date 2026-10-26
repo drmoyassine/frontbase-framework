@@ -24,6 +24,10 @@
     "./ai": {
       "types": "./dist/ai-http.d.ts",
       "import": "./dist/ai-http.js"
+    },
+    "./bootstrap-journal": {
+      "types": "./dist/bootstrap-journal.d.ts",
+      "import": "./dist/bootstrap-journal.js"
     }
   },
   "files": [
@@ -36,7 +40,8 @@
     "test:d1-rest-count": "node test/d1-rest-count.mjs",
     "test:mutation": "node test/mutation.mjs && node test/d1-rest-count-mutation.mjs",
     "test:translation": "node test/translation.mjs",
-    "test:node-http": "node test/node-http.mjs && node test/node-http-mutation.mjs"
+    "test:node-http": "node test/node-http.mjs && node test/node-http-mutation.mjs",
+    "test:bootstrap-journal": "node test/bootstrap-journal.mjs && node test/bootstrap-journal-mutation.mjs"
   },
   "peerDependencies": {
     "@frontbase/edge-core": "workspace:*"

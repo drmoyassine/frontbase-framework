@@ -1,3 +1,5 @@
+2026-10-26 hosted bootstrap: durable SQL journal is locally verified; cloud coordinator identity and hosted activation remain IN PROGRESS. SQLite/D1-adapter fixtures are not live CF/Vercel acceptance. See ../plans/hosted-bootstrap-20261026.md.
+
 2026-10-26 hosted bootstrap update: Docker host integration verified on actual Node and Linux container; Cloudflare/Vercel hosted coordination/execution remains IN PROGRESS. Existing configured startup and native paths retained. See ../plans/hosted-bootstrap-20261026.md.
 
 2026-10-26 hosted bootstrap is IN PROGRESS: shared contract, protected zero-state startup, host configuration executors and isolated acceptance precede native-button replacement. Existing wizard live acceptance remains valid; site-template installer remains separate. See ../plans/hosted-bootstrap-20261026.md.
