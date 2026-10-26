@@ -1,5 +1,10 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-26 Navigation overflow and General translations — IN PROGRESS
+
+Owner authorizes configurable horizontal navigation arrows and moving/refactoring Translations under General. Scope: reusable Row/Column overflow controls, existing section-link compatibility, RTL/touch/keyboard behavior, progressive translation settings/work panels preserving APIs/drafts/approvals and old links. Verify EN/AR desktop/mobile, commit/push/deploy. Preserve generated cms.mjs; no automatic translation execution or publication.
+
+
 2026-10-26 release-plan reconciliation COMPLETE (documentation only): accepted staging runtime e7c0ae3/receipt895694c closes General/Data simplification. [Current execution plan](../plans/frontbase-public-release-finalization-20261024.md#current-checkpoint--2026-10-26) orders candidate freeze/type triage, cumulative qualification, public-source install/upgrade/recovery, supported-provider/reset receipts, docs/distribution mechanics and final Developer Preview publication. The retained full-console log is inventoried as160 diagnostics across51 files (71 test,89 non-test), not160 independent defects. No runtime, registry or provider requalification occurred in this refresh. Existing generated cms.mjs is preserved; CF-22 stays parked. First executable deliverable is candidate manifest plus diagnostic triage; new product features are not required.
 
 

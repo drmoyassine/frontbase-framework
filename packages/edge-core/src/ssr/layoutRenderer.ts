@@ -41,6 +41,13 @@ export function renderLayoutComponent(
 
     propsAttr += clientVisibilityAttributes(props);
 
+    // Existing section-link rows keep their authored styles, with progressive overflow controls.
+    const horizontal = styles.overflowX === 'auto' || styles.viewportOverrides?.mobile?.overflowX === 'auto' || styles.viewportOverrides?.tablet?.overflowX === 'auto';
+    const scrollNavigation = ['Row','Column'].includes(type) && (props.navigationOverflow === 'scroll' || props.navigationOverflow === 'wrap' || (props.navigationOverflow !== 'off' && horizontal && childrenHtml.includes('scrollToSection')));
+    if (scrollNavigation) {
+        propsAttr += ` data-fb-scroll-nav="${props.navigationOverflow === 'wrap' ? 'wrap' : 'scroll'}" data-scroll-arrows="${props.navigationArrows === 'hidden' ? 'hidden' : 'auto'}" data-scrollbar="${props.navigationScrollbar === 'visible' ? 'visible' : 'hidden'}"`;
+    }
+
     // Registry layout controls must reach both canvas and published output.
     const alignment = (value: unknown) => ({start:'flex-start',end:'flex-end',center:'center',stretch:'stretch',between:'space-between',around:'space-around',evenly:'space-evenly',baseline:'baseline'} as Record<string,string>)[String(value)] || undefined;
     const flexProps = escapeHtml(buildInlineStyles({}, {gap:props.gap,alignItems:alignment(props.align),justifyContent:alignment(props.justify),...(props.wrap===true?{flexWrap:'wrap'}:{})}));

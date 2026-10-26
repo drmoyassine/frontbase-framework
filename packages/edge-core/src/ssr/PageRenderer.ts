@@ -190,6 +190,8 @@ async function renderComponentImpl(
             return combinedCSS + renderDataComponent(type, id, resolvedProps, childrenHtml);
 
         case 'layout':
+            // Builder responsive styles live in stylesData; preserve automatic section-nav enhancement.
+            if (['Row', 'Column'].includes(type) && (!resolvedProps.navigationOverflow || resolvedProps.navigationOverflow === 'auto') && childrenHtml.includes('scrollToSection') && [stylesForCSS?.overflowX, stylesForCSS?.viewportOverrides?.mobile?.overflowX, stylesForCSS?.viewportOverrides?.tablet?.overflowX].includes('auto')) resolvedProps.navigationOverflow = 'scroll';
             // Render layout components with proper styles and visibility (has its own CSS handling)
             return combinedCSS + renderLayoutComponent(type, id, resolvedProps, component.styles || {}, childrenHtml, component.visibility);
 

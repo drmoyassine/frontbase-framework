@@ -1,5 +1,11 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-26 Navigation overflow and translation settings ownership
+
+Owner approves scroll/wrap controls on existing Row/Column elements, with automatic bounded arrows and optional native scrollbar visibility. Existing overflowing section-link navigation is progressively enhanced, including mobile institution sidebars; arbitrary overflowing layouts are not reclassified. Native touch scrolling remains available and RTL follows reading direction.
+
+General owns Languages & translations. Language/AI, storage, review/publication links and advanced jobs are disclosed on demand; visited panels retain local drafts when collapsed. Existing revision-guarded APIs, adapters, explicit generation/publication actions and saved settings remain unchanged. Legacy Translations URLs redirect to the General subsection. This changes presentation, not release scope.
+
 ## 2026-10-26 One site identity and datasource operation ownership
 
 Owner supersedes the previous contact-settings placement: header contact email/WhatsApp are ordinary Menu items with Actions. General has one Site settings form and one name for public identity and project metadata, with branding staged until explicit Save. Existing revision-guarded configuration and project APIs remain separate; a partial save is reported and requires reload, never represented as atomic success. No new storage adapter is introduced.

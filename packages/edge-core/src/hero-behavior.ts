@@ -1,7 +1,9 @@
+import {startNavigationScroll} from './navigation-scroll.js';
 /** Local slideshow only: no network, storage, application data or arbitrary code. */
 /** Bounded `{token}` substitution matching the released slide-status pattern (localization/patterns). */
 const heroStatusText=(pattern:string,index:number,count:number):string=>pattern.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g,(token,name:string)=>name==='index'?String(index):name==='count'?String(count):token);
 export function startHeroSlides():void {
+    startNavigationScroll();
     document.querySelectorAll<HTMLDetailsElement>('[data-fb-template-menu]').forEach(menu=>{
         if(menu.dataset.menuReady)return;menu.dataset.menuReady='1';const wide=window.matchMedia?.('(min-width: 768px)');
         const update=()=>{menu.open=wide?wide.matches:window.innerWidth>=768;};update();wide?.addEventListener?.('change',update);
