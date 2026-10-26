@@ -70,13 +70,16 @@ if (missing.length > 0) {
     console.log('→ workspace packages built\n');
 }
 
-// Stage the console artifact when it is missing (fresh clone) or stale on
-// demand (--refresh-console). `pnpm -r build` / the self-heal above produce
+// Stage missing or rebuilt community artifacts, or refresh on explicit demand.
+// `pnpm -r build` / the self-heal above produce
 // packages/console/dist, so staging reuses it via --skip-build instead of
 // building the SPA twice. After a console source edit WITHOUT rebuilding,
 // pass --refresh-console or run `pnpm console:build` explicitly.
 const STAGED_SHELL = join(here, 'console-dist', 'frontbase-admin', 'index.html');
-if (!existsSync(STAGED_SHELL) || process.argv.includes('--refresh-console')) {
+const BUILT_SHELL = join(pkgDir('@frontbase/console'), 'dist', 'index.html');
+const builtCommunityShell=existsSync(BUILT_SHELL)?readFileSync(BUILT_SHELL,'utf8'):null;
+const rebuiltCommunity=!!builtCommunityShell?.includes('/frontbase-admin/assets/')&&existsSync(STAGED_SHELL)&&builtCommunityShell!==readFileSync(STAGED_SHELL,'utf8');
+if (!existsSync(STAGED_SHELL) || rebuiltCommunity || process.argv.includes('--refresh-console')) {
     const skip = existsSync(join(pkgDir('@frontbase/console'), 'dist', 'index.html'));
     console.log(`→ staging console artifact (${skip ? 'dist exists, skipping console build' : 'building console first'})...`);
     // process.execPath, NOT shell:true: with a shell, Node joins args unquoted
