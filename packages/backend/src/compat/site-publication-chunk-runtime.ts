@@ -17,7 +17,7 @@ import { localeDirection } from '@frontbase/edge-core/localization';
  *  `recordsLocale` threads the SERVE locale into record projection (formatted dates follow the
  *  page language); capture/prepare paths omit it and keep the site locale, so release hashes —
  *  which hash the display-field inventory, never formatted dates — stay byte-stable. */
-export async function resolveChunkPublicationPage(input:SitePublicationManifest,hash:string,owner:string,db:DbRunner,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string):Promise<{sourcePageId:string;page:PageEntry;version:string;cacheKey:string;document:NonNullable<EngineOptions['document']>}|null>{
+export async function resolveChunkPublicationPage(input:SitePublicationManifest,hash:string,owner:string,db:DbRunner,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string):Promise<{templateRecord:Record<string,unknown>;sourcePageId:string;page:PageEntry;version:string;cacheKey:string;document:NonNullable<EngineOptions['document']>}|null>{
     if(!owner || !/^[a-f0-9]{64}$/.test(hash))throw new Error('publication_context_required');
     const artifact=sitePublicationManifestSchema.parse(input),url=new URL(request.url),path=url.pathname;
     if(!publicationPathSchema.safeParse(path).success)return null;
@@ -75,6 +75,6 @@ const params:Record<string,unknown>=mode==='detail'?{path:parentPath??path}:role
     const built=buildSiteManifest({pages:{[path]:{title,slug:path.replace(/^\//,''),description,layout:projected as unknown as Record<string,unknown>}},queries:{},versionPrefix:hash});
     const canonicalUrl=new URL(path,artifact.configuration.site.origin).href;
     const documentLanguage=typeof row?.language==='string'?row.language:artifact.configuration.site.locale||'en';
-    return {sourcePageId:template.pageId,page:built.pages[path]!,version:built.version,cacheKey:JSON.stringify([owner,hash,path,normalized]),document:{faviconUrl:'',language:documentLanguage,direction:localeDirection(documentLanguage),canonicalUrl,robots:url.searchParams.size||seo.indexing==='noindex'?'noindex, follow':'index, follow',
+    return {templateRecord:presentation.record,sourcePageId:template.pageId,page:built.pages[path]!,version:built.version,cacheKey:JSON.stringify([owner,hash,path,normalized]),document:{faviconUrl:'',language:documentLanguage,direction:localeDirection(documentLanguage),canonicalUrl,robots:url.searchParams.size||seo.indexing==='noindex'?'noindex, follow':'index, follow',
         openGraph:{title:seo.socialTitle||title,description:seo.socialDescription||description,url:canonicalUrl,type:role==='article'?'article':'website',siteName:artifact.configuration.site.name,locale:documentLanguage,...(typeof (seo.image||row?.cover)==='string'?{image:seo.image||row!.cover as string,imageAlt:typeof row?.coverAlt==='string'?row.coverAlt:''}:{})}}};
 }

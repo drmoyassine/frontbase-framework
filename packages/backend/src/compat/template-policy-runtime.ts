@@ -1,3 +1,4 @@
+import {homepageDisplayFields} from '@frontbase/edge-core/localization';
 import {readTemplatePolicy,resolveTemplatePolicy} from '@frontbase/edge-core/template-policy';
 import type {PageLayoutData} from '@frontbase/edge-core';
 
@@ -12,4 +13,11 @@ export function templatePolicyPresentation(layout:PageLayoutData,row:Record<stri
     const policy=readTemplatePolicy(layout.root as Record<string,unknown>),result=resolveTemplatePolicy(policy,identity,locale,record,page);
     const root=layout.root??{},context={...page,...root.publicationRecordContext as Record<string,unknown>};
     return {values:result.values,layout:{...layout,root:{...root,publicationRecordContext:{...context,settings:result.values}}},record};
+}
+
+/** Reproject localized semantic fields, never feed formatted SEO back into record.title. */
+export function localizedPolicyRecord(layout:PageLayoutData,record:Record<string,unknown>,route:Record<string,unknown>){
+    const projected={...record};
+    for(const field of homepageDisplayFields(layout))if(field.record?.connectionId==='frontbase:publication'&&field.record.collection===route.collection&&field.record.key.some(key=>key.column==='id'&&String(key.value)===String(route.recordId))&&field.fieldKey)projected[field.fieldKey]=field.text;
+    return projected;
 }

@@ -1,4 +1,4 @@
-import {templatePolicyPresentation} from './template-policy-runtime.js';
+import {templatePolicyPresentation,localizedPolicyRecord} from './template-policy-runtime.js';
 import {SitePublicationManifestStore} from './site-publication-manifest.js';
 import {verifyManifestEditorial} from './site-publication-approval-check.js';
 import {localizeNavigationProps,localizePublicHref,localeDirection} from '@frontbase/edge-core/localization';
@@ -181,7 +181,7 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     const policyLayout=resolved.page.layout as unknown as PageLayoutData;
     if(policyLayout.root?.templatePolicy){
         const route=policyLayout.root.publicationRecordContext as Record<string,unknown>|undefined;
-        const presentation=templatePolicyPresentation(policyLayout,{title:resolved.page.title,summary:resolved.page.description},route?.collection?`${route.collection}:${route.recordId}`:'',current,route??{});
+        const presentation=templatePolicyPresentation(policyLayout,localizedPolicyRecord(policyLayout,resolved.templateRecord??{},route??{}),route?.collection?`${route.collection}:${route.recordId}`:'',current,route??{});
         const seo=presentation.values;templateSeo=seo;resolved.page={...resolved.page,layout:presentation.layout,title:seo.title||resolved.page.title,description:seo.description||resolved.page.description};
         resolved.document={...resolved.document,...(seo.indexing==='noindex'?{robots:'noindex, follow'}:{}),...(resolved.document.openGraph?{openGraph:{...resolved.document.openGraph,...(seo.image?{image:seo.image}:{})}}:{})};
     }

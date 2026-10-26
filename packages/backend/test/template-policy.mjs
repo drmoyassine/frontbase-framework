@@ -88,3 +88,10 @@ assert.equal(selected.total,79);assert.deepEqual(selected.rows.map(row=>row.id),
 await assert.rejects(()=>executeSingleTableRpc(db,'sqlite',{...input,filters:[{column:'id',op:'in',value:Array(1001).fill(1)}]}),/invalid_in_filter/);
 await assert.rejects(()=>executeSingleTableRpc(db,'sqlite',{...input,filters:[{column:'not_a_column',op:'in',value:selection}]}));
 console.log('template membership: 185 IDs, intersected view scope, pagination/counts, bounded invalid selection PASS');
+
+const {templatePolicyPresentation,localizedPolicyRecord}=await import('../dist/compat/template-policy-runtime.js');
+const articleLayout={root:{templatePolicy:{...emptyTemplatePolicy(),defaults:{values:{title:'{{ record.title }} · Site'}}}},content:[{id:'article-heading',type:'Heading',props:{text:'عنوان المقال',translationRecord:{connectionId:'frontbase:publication',collection:'articles',key:[{column:'id',value:'article-1'}]},translationSources:{text:'title'}}}]};
+const articleRecord={id:'article-1',title:'Raw article',summary:'Raw summary'},articleRoute={collection:'articles',recordId:'article-1'};
+const firstSeo=templatePolicyPresentation(articleLayout,articleRecord,'articles:article-1','en',articleRoute);assert.equal(firstSeo.values.title,'Raw article · Site');
+const localizedSeo=templatePolicyPresentation(articleLayout,localizedPolicyRecord(articleLayout,firstSeo.record,articleRoute),'articles:article-1','ar',articleRoute);assert.equal(localizedSeo.values.title,'عنوان المقال · Site');
+console.log('article SEO: raw semantic identity, localized visible title, single suffix across locale reprojection PASS');
