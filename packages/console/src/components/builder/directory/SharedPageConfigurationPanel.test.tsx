@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { emptyDirectoryConfiguration, projectSharedDirectoryPreview } from '@frontbase/edge-core/directory/configuration';
 import { SharedPageConfigurationPanel } from './SharedPageConfigurationPanel';
-import { linkSharedConfiguration, addSharedPageHeader } from './linkSharedConfiguration';
+import { linkSharedConfiguration } from './linkSharedConfiguration';
 const config = emptyDirectoryConfiguration(); config.site.name = 'USA';
 const page: any = { id: 'page', layoutData: { root: { custom: 'keep', directoryConfiguration: config }, content: [{ id: 'custom', type: 'Text', props: { text: 'Owner text' } }] } };
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -15,12 +15,12 @@ describe('shared page configuration', () => {
     });
     it('projects explicit shared bindings for all roles while leaving the saved layout untouched', () => {
         const linked = { ...page, layoutData: linkSharedConfiguration(page, config, { version: 1, role: 'article' }) };
-        const layout = addSharedPageHeader(linked); const before = JSON.stringify(layout);
+        const layout = { ...linked.layoutData, content: [{id:'legacy-header',type:'Container',props:{},children:[{id:'brand',type:'Text',props:{text:'Site name',siteBindings:{text:'site.name'}}}]}, ...linked.layoutData.content] }; const before = JSON.stringify(layout);
         const usa = projectSharedDirectoryPreview(layout, config);
         const hungary = projectSharedDirectoryPreview(layout, { ...config, site: { ...config.site, name: 'Hungary' } });
         expect(usa.content[0].children?.[0].props.text).toBe('USA'); expect(hungary.content[0].children?.[0].props.text).toBe('Hungary');
         expect(hungary.content[1].props.text).toBe('Owner text'); expect(JSON.stringify(layout)).toBe(before);
-        expect(addSharedPageHeader({ ...linked, layoutData: layout })).toBe(layout);
+
     });
     it('shows mismatch diagnostics and prevents automatic selection', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ draft: { schemaVersion: 1, revision: 3, configuration: { ...config, site: { ...config.site, name: 'Hungary' } } } }) }));

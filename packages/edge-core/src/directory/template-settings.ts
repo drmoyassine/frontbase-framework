@@ -21,7 +21,7 @@ export const landingRootSchema = z.object({ version: z.literal(1), settings: tem
 });
 export function defaultTemplateSettings(): TemplateSettings {
     return { version:1,preset:'navy',colors:{},font:'system',width:1180,spacing:56,radius:16,
-        hero:{mode:'image',heading:'Find your study options in {destination}',introduction:'Explore institutions and programs. Find a path that fits your goals, and get guidance for your next step.',height:340,mobileHeight:280,slides:[],autoplay:false,interval:7,controls:true},
+        hero:{mode:'image',heading:'Find your study options',introduction:'Explore institutions and programs. Find a path that fits your goals, and get guidance for your next step.',height:340,mobileHeight:280,slides:[],autoplay:false,interval:7,controls:true},
         sections:{guidance:true,programs:true,articles:true,counselor:true},programCount:6,articleCount:3,
         programHeading:'Explore study programs',articleHeading:'Study guides',counselorHeading:'Your next step starts with a conversation.',counselorCopy:'Talk through your study goals and application options with a counselor.' };
 }
@@ -69,7 +69,7 @@ export function landingQueryParams(layout:PageLayoutData,id:string,params:Record
 const literal=(s:string)=>s.replace(/\{(?=[{%])/g,'{\u200b');
 const hsl=(hex:string)=>{const [r,g,b]=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255) as [number,number,number];const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min,l=(max+min)/2;let h=0,s=0;if(d){s=d/(1-Math.abs(2*l-1));h=max===r?((g-b)/d)%6:max===g?(b-r)/d+2:(r-g)/d+4;h=(h*60+360)%360;}return `${h.toFixed(2)} ${(s*100).toFixed(2)}% ${(l*100).toFixed(2)}%`;};
 /** Settings live in the saved homepage, separately from approved source content. */
-export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, configuration:{site:{name:string;destination:string};routes:{directory:string;blog:string};browsing:{defaultCollection:string}}, inherited?:TemplateSettings):T {
+export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, configuration:{site:{name:string;destination?:string};routes:{directory:string;blog:string};browsing:{defaultCollection:string}}, inherited?:TemplateSettings):T {
     const settings=readLandingSettings(layout)??inherited;
     if(!settings)return layout;
     const s=templateSettingsSchema.parse(settings),p=templatePalette(s);
@@ -90,7 +90,7 @@ export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, 
         if(props.templateLink==='institutions')props.href=configuration.routes.directory+'?type=institution';
         if(props.templateLink==='programs')props.href=configuration.routes.directory+'?type=program';
         // Like browsing state, a tuple keeps public copy out of recursive Liquid resolution.
-        if(props.templateHero!==undefined)props.templateHeroState=[{settings:templateSettingsSchema.shape.hero.parse((props.templateHero as any)?.settings??s.hero),palette:p,destination:configuration.site.destination}];
+        if(props.templateHero!==undefined)props.templateHeroState=[{settings:templateSettingsSchema.shape.hero.parse((props.templateHero as any)?.settings??s.hero),palette:p,destination:configuration.site.destination??''}];
         if(props.templateSearch!==undefined)props.templateSearchState={path:configuration.routes.directory,collection:(props.templateSearch as any)?.defaultCollection??(configuration.browsing.defaultCollection==='program'?'program':'institution')};
         const styles={...(typeof props.templateStyle==='string'?slots[props.templateStyle]??{}:{}),...node.styles};
         return {...node,props,styles,...(node.children?{children:node.children.map(walk).filter((n):n is PageComponent=>!!n)}:{})};

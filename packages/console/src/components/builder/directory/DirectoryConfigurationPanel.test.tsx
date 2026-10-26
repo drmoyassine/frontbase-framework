@@ -20,7 +20,7 @@ describe('directory admin configuration', () => {
     it('maps a datasource, collection, numeric scope and media without SQL', () => {
         render(<Harness />);
         fireEvent.click(screen.getByRole('button', { name: 'Add directory configuration' }));
-        fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'USA' } });
+        expect(screen.queryByLabelText('Destination')).not.toBeInTheDocument();
         fireEvent.change(screen.getByLabelText('Data Source'), { target: { value: 'demo' } });
         fireEvent.change(screen.getByLabelText('institution table'), { target: { value: 'institutions' } });
         fireEvent.change(screen.getByLabelText('institution Scope field'), { target: { value: 'country_id' } });
@@ -29,9 +29,9 @@ describe('directory admin configuration', () => {
         const c = directoryConfigurationSchema.parse(JSON.parse(screen.getByTestId('saved').textContent!));
         expect(c.collections.institution.scope.value).toBe(22);
         expect(c.collections.institution.fields.cover).toBe('cover');
-        fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'Hungary' } });
-        fireEvent.change(screen.getByLabelText('Counselor email'), { target: { value: 'bad?email' } });
-        expect(screen.getByRole('alert').textContent).toContain('contacts.email');
+        fireEvent.change(screen.getByLabelText('Directory path'), { target: { value: '/universities/' } });
+        fireEvent.change(screen.getByLabelText('Directory path'), { target: { value: '//external.test/' } });
+        expect(screen.getByRole('alert').textContent).toContain('routes.directory');
         expect(screen.getByRole('button', { name: 'Apply configured layout to this page' })).toBeDisabled();
     });
     it('keeps public identity out of template setup, hides unsupported controls and preserves saved values', () => {
@@ -40,13 +40,13 @@ describe('directory admin configuration', () => {
         expect(screen.queryByLabelText('Site name')).not.toBeInTheDocument(); expect(screen.queryByLabelText('Site origin')).not.toBeInTheDocument(); expect(screen.queryByLabelText('Locale')).not.toBeInTheDocument();
         expect(screen.queryByLabelText('Default sort')).not.toBeInTheDocument(); expect(screen.queryByLabelText('City filter')).not.toBeInTheDocument(); expect(screen.queryByLabelText('institution Gallery')).not.toBeInTheDocument(); expect(screen.queryByLabelText('pathway table')).not.toBeInTheDocument();
         expect(screen.getByLabelText('article Cover alt text')).toBeInTheDocument();
-        fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'Hungary' } });
+        fireEvent.change(screen.getByLabelText('Directory path'), { target: { value: '/universities/' } });
         expect(change.mock.calls[0][0].collections.institution.fields.gallery).toBe('old_gallery'); expect(change.mock.calls[0][0].browsing.sort).toBe('latest'); expect(change.mock.calls[0][0].site.name).toBe('Configured site');
     });
     it('seeds new template setup only on explicit initialization', () => {
         const change = vi.fn(); render(<DirectoryConfigurationPanel hideIdentity persistenceScope="site" initialSite={{ name: 'Core name', origin: 'https://core.example.com', locale: 'ar' }} onChange={change} />);
         expect(change).not.toHaveBeenCalled(); fireEvent.click(screen.getByText('Add directory configuration'));
-        expect(change.mock.calls[0][0].site).toEqual({ name: 'Core name', origin: 'https://core.example.com', locale: 'ar', destination: '' });
+        expect(change.mock.calls[0][0].site).toEqual({ name: 'Core name', origin: 'https://core.example.com', locale: 'ar' });
     });
     it('applies each destination through the same template and preserves unrelated page content', () => {
         const page: Page = { id: 'fixture', name: 'Directory', slug: 'directory', isPublic: false, isHomepage: false, createdAt: '2026-10-05', updatedAt: '2026-10-05', layoutData: { root: { existing: true }, content: [{ id: 'keep', type: 'Text', props: { text: 'Unrelated content' } }] } };

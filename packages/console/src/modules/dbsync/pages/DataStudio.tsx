@@ -3,7 +3,7 @@ import { Database, Plus, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const tabs = [
-    { path: 'datasources', label: 'Datasources', icon: Database },
+    { path: 'datasources', label: 'Connections', icon: Database },
     { path: 'saved-views', label: 'Saved Views', icon: Filter },
 ]
 
@@ -21,7 +21,7 @@ export function DataStudio() {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">Data</h2>
-                    <p className="text-muted-foreground">Manage your data sources, synchronizations, and integrity.</p>
+                    <p className="text-muted-foreground">Connect data and manage reusable saved views.</p>
                 </div>
                 {isOnDatasources && (
                     <Button onClick={handleAddDatasource}>

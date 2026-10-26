@@ -1,5 +1,14 @@
 # Frontbase Framework: Decisions Log
 
+## 2026-10-26 One site identity and datasource operation ownership
+
+Owner supersedes the previous contact-settings placement: header contact email/WhatsApp are ordinary Menu items with Actions. General has one Site settings form and one name for public identity and project metadata, with branding staged until explicit Save. Existing revision-guarded configuration and project APIs remain separate; a partial save is reported and requires reload, never represented as atomic success. No new storage adapter is introduced.
+
+Data Studio keeps Connections for connection/test/inspection/relationship work and Saved Views for reusable filter inspection/editing/deletion. Connection cards link to filtered Saved Views rather than duplicating view operations. Used views cannot be deleted through this UI. Shared collection mappings/scope and optional legacy maintenance sit under Advanced publication setup. Existing URLs remain compatible.
+
+Destination is retired from authoring and publication readiness. Its optional legacy value and old binding decoding are retained solely to avoid breaking existing serialized pages/publications; no automatic content deletion or republishing occurs. New default hero copy has no Destination requirement. Builder shared setup exposes index routes; header actions belong to Menus. Existing published contact links remain readable while authors can replace them through normal element/Menu Actions.
+
+
 ## 2026-10-25 Consolidate template configuration ownership
 
 Owner retires the Template settings tab. Datasources owns shared collection mappings, relationships and publication scope; the builder owns shared routes/contact values and homepage appearance, plus existing prepare/review/publish controls. Both edit the same revision-guarded configuration document: moving UI does not migrate or delete saved configuration, change adapters or activate a publication. Legacy tab URLs redirect to the mapping entry point, with a Pages link for builder controls. Legacy data/layout conversion tools are opt-in maintenance disclosures in their respective surfaces. Homepage publication from the existing published base uses the retained API and refuses unsaved builder edits.

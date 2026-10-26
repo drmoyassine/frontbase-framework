@@ -50,7 +50,6 @@ export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, pe
         <p className="text-sm text-muted-foreground">{persistenceScope === 'site' ? 'Save shared settings below, then prepare and review a site version to publish.' : 'Save with the page’s Save Changes button. Incomplete mappings can be saved as drafts. Prepare and review a site version to publish.'}</p>
         {section!=='data'&&<fieldset className="space-y-3"><legend className="font-semibold">{hideIdentity ? 'Site setup' : 'Site identity'}</legend>
             {!hideIdentity && edit('Site name', value.site.name, name => onChange({ ...value, site: { ...value.site, name } }))}
-            {edit('Destination', value.site.destination, destination => onChange({ ...value, site: { ...value.site, destination } }))}
             {!hideIdentity && edit('Site origin', value.site.origin, origin => onChange({ ...value, site: { ...value.site, origin } }), 'url')}
             {!hideIdentity && edit('Locale', value.site.locale, locale => onChange({ ...value, site: { ...value.site, locale } }))}
             {hideIdentity && <p className="text-sm text-muted-foreground">{value.site.name || 'Set public site name in General'} · {value.site.origin || 'Set canonical URL in General'} · {value.site.locale}</p>}
@@ -65,12 +64,10 @@ export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, pe
             <p className="text-xs text-muted-foreground">Results currently use name ordering. City, degree and intake filters, galleries and pathway rendering are not available. Existing saved values are retained.</p>
         </fieldset>}
         {section!=='data'&&elementBrowsing&&<p className="text-sm text-muted-foreground">Default collection, page size, search and ordering are configured on the page elements in Pages.</p>}
-        {section!=='data'&&<fieldset className="space-y-3"><legend className="font-semibold">URLs and contacts</legend>
+        {section!=='data'&&<fieldset className="space-y-3"><legend className="font-semibold">Index routes</legend>
             {edit('Directory path', value.routes.directory, directory => onChange({ ...value, routes: { ...value.routes, directory } }))}
             {edit('Blog path', value.routes.blog, blog => onChange({ ...value, routes: { ...value.routes, blog } }))}
             <p className="text-xs text-muted-foreground">Existing record URLs remain authoritative. These paths configure collection indexes.</p>
-            {edit('Counselor email', value.contacts.email, email => onChange({ ...value, contacts: { ...value.contacts, email } }), 'email')}
-            {edit('WhatsApp link', value.contacts.whatsapp, whatsapp => onChange({ ...value, contacts: { ...value.contacts, whatsapp } }), 'url')}
         </fieldset>}
         {issues.length > 0 && <p role="alert" className="text-sm text-destructive">Fix invalid settings: {issues.join(', ')}</p>}
         <p className="text-xs text-muted-foreground">{missing.length ? `${missing.length} configuration items remain before publication review.` : 'Mappings complete. Prepare and review a site version to publish.'}</p>

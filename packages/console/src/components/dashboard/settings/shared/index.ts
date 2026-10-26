@@ -1,5 +1,5 @@
 export * from './RedisSettingsForm';
 export * from './PrivacySettingsForm';
-export * from './ProjectDetailsForm';
+export * from './SiteSettingsForm';
 export * from './AdminInviteForm';
 export * from './SecuritySettingsForm';

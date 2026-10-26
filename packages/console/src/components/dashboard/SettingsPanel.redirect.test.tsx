@@ -7,8 +7,7 @@ vi.mock('./settings/shared/TranslationStorageForm',()=>({TranslationStorageForm:
 vi.mock('./settings/shared/TranslationGenerationForm',()=>({TranslationGenerationForm:()=>null}));
 vi.mock('./settings/shared/TranslationBatchForm',()=>({TranslationBatchForm:()=>null}));
 vi.mock('./settings/shared/PrivacySettingsForm',()=>({PrivacySettingsForm:()=>null}));
-vi.mock('./settings/shared/ProjectDetailsForm',()=>({ProjectDetailsForm:()=>null}));
-vi.mock('./settings/shared/PublicSiteIdentityForm',()=>({PublicSiteIdentityForm:()=>null}));
+vi.mock('./settings/shared/SiteSettingsForm',()=>({SiteSettingsForm:()=>null}));
 vi.mock('./settings/shared/AdminInviteForm',()=>({AdminInviteForm:()=>null}));
 vi.mock('./settings/shared/EdgeAPIKeysForm',()=>({EdgeAPIKeysForm:()=>null}));
 vi.mock('./settings/shared/EdgeProvidersSection',()=>({EdgeProvidersSection:()=>null}));

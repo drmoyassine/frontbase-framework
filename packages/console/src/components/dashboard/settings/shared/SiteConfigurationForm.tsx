@@ -52,7 +52,7 @@ export function SiteConfigurationForm({section='all', onSaved}: {section?: 'all'
         } catch { setMessage('Could not save shared settings. Your edits are retained.'); }
         finally { setPending(false); }
     }
-    return <Card><CardHeader><CardTitle>{section==='data'?'Collection mappings and publication scope':section==='site'?'Shared routes and contact values':'Directory setup'}</CardTitle><CardDescription>Shared across linked pages. Site identity is managed in General. Saving updates authoring settings; prepare and review a site version in the builder to publish.</CardDescription></CardHeader>
+    return <Card><CardHeader><CardTitle>{section==='data'?'Collection mappings and publication scope':section==='site'?'Shared routes':'Directory setup'}</CardTitle><CardDescription>Shared across linked pages. Site identity is managed in General. Saving updates authoring settings; prepare and review a site version in the builder to publish.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
             <fieldset disabled={pending || revision === null}><DirectoryConfigurationPanel section={section} persistenceScope="site" hideIdentity elementBrowsing={elementBrowsing} initialSite={initialSite} value={configuration} onChange={setConfiguration} /></fieldset>
             <div className="flex gap-3"><Button disabled={pending || revision === null || !configuration || conflict || directoryConfigurationIssues(configuration).length > 0} onClick={() => void save()}>Save shared settings</Button>

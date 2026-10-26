@@ -2,12 +2,12 @@ import { SiteConfigurationForm } from '@/components/dashboard/settings/shared/Si
 import { LiveListMigration } from '@/components/dashboard/settings/shared/LiveListMigration'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { datasourcesApi, Datasource, viewsApi } from '../api'
+import { datasourcesApi, Datasource } from '../api'
 import DataPreviewModal from '../components/DataPreviewModal'
 import { DatasourceModal } from '../components/DatasourceModal'
 import { RelationshipModal } from '../components/RelationshipModal'
 import { supportsManualRelationships } from '../types/relationship'
-import { Plus, Database, Trash2, TestTube, CheckCircle, XCircle, Loader2, Edit2, Filter, Link2 } from 'lucide-react'
+import { Database, Trash2, TestTube, CheckCircle, XCircle, Loader2, Edit2, Link2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { PROVIDER_CONFIGS } from '@/components/dashboard/settings/shared/edgeConstants'
 import { connectionTestFeedback } from '../lib/connectionTestFeedback'
@@ -70,7 +70,7 @@ export function Datasources() {
         return () => window.removeEventListener('open-datasource-modal', handleOpenModal);
     }, []);
 
-    const { data: datasources, isLoading } = useQuery({
+    const { data: datasources, isLoading, error, refetch } = useQuery({
         queryKey: ['datasources'],
         queryFn: () => datasourcesApi.list().then(r => r.data),
     })
@@ -93,27 +93,25 @@ export function Datasources() {
 
     return (
         <div className="space-y-6">
-            <button type="button" className="underline" aria-expanded={showSharedMappings} onClick={() => setShowSharedMappings(value => !value)}>Collection mappings and publication scope</button>
-            {showSharedMappings && <><SiteConfigurationForm section="data" /><p className="text-sm">Configure routes, contact values and publication in the builder's Page settings / Directory panel. <a className="underline" href="/frontbase-admin/pages">Open Pages</a></p></>}
-            <button type="button" className="block text-sm underline" aria-expanded={showMaintenance} onClick={() => setShowMaintenance(value => !value)}>Legacy data maintenance</button>
-            {showMaintenance && <LiveListMigration />}
+            <details open={showSharedMappings} onToggle={e => setShowSharedMappings(e.currentTarget.open)} className="rounded border p-4">
+                <summary className="cursor-pointer font-medium">Advanced publication setup</summary>
+                {showSharedMappings && <div className="mt-4 space-y-4"><SiteConfigurationForm section="data" />
+                    <p className="text-sm">Configure routes and publish in the builder’s Page settings. <a className="underline" href="/frontbase-admin/pages">Open Pages</a></p>
+                    <button type="button" className="text-sm underline" aria-expanded={showMaintenance} onClick={() => setShowMaintenance(value => !value)}>Legacy data maintenance</button>
+                    {showMaintenance && <LiveListMigration />}
+                </div>}
+            </details>
 
             {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
                 </div>
-            ) : datasources?.length === 0 ? (
+            ) : error ? <p role="alert">Connections could not be loaded. <button className="underline" onClick={() => void refetch()}>Retry</button></p> : datasources?.length === 0 ? (
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-12 text-center border border-gray-200 dark:border-gray-700">
                     <Database className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                     <h3 className="text-lg font-medium mb-2">No datasources yet</h3>
                     <p className="text-gray-500 mb-4">Add your first database connection to get started.</p>
-                    <button
-                        onClick={() => setShowModal(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-primary-foreground rounded-lg hover:bg-primary-700 transition-colors"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Add Data Source
-                    </button>
+
                 </div>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -240,9 +238,9 @@ function DatasourceCard({
             </div>
 
             <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400 mb-4">
-                <p><span className="font-medium">Host:</span> {datasource.host}:{datasource.port}</p>
-                <p><span className="font-medium">Database:</span> {datasource.database}</p>
-                {datasource.type === 'supabase' && <p><span className="font-medium">Schema:</span> {datasource.extra_config?.schema || 'public'}</p>}
+                {datasource.host && <p><span className="font-medium">Host:</span> {datasource.host}{datasource.port ? `:${datasource.port}` : ''}</p>}
+                {datasource.database && <p><span className="font-medium">Database:</span> {datasource.database}</p>}
+                {['supabase','postgrest'].includes(datasource.type) && <p><span className="font-medium">Schema:</span> {datasource.extra_config?.schema || 'public'}</p>}
                 {datasource.last_tested_at && (
                     <p className="text-xs">
                         Tested {formatDistanceToNow(new Date(datasource.last_tested_at), { addSuffix: true })}
@@ -250,39 +248,7 @@ function DatasourceCard({
                 )}
             </div>
 
-            {/* Views Section */}
-            {datasource.views && datasource.views.length > 0 && (
-                <div className="mb-4 pt-3 border-t border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-1.5 text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">
-                        <Filter className="w-3 h-3" />
-                        Saved Views ({datasource.views.length})
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                        {datasource.views.map(view => (
-                            <div
-                                key={view.id}
-                                className="group flex items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-md text-[10px] font-medium text-gray-500 transition-all hover:border-primary-200 hover:bg-white dark:hover:bg-gray-800"
-                            >
-                                <a href={'/frontbase-admin/data-studio/saved-views?view='+encodeURIComponent(view.id)} className="text-sm underline break-words" title={`Inspect ${view.name} (${view.target_table})`}>{view.name}</a>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (window.confirm(`Delete view "${view.name}"?`)) {
-                                            viewsApi.delete(view.id).then(() => {
-                                                window.location.reload();
-                                            });
-                                        }
-                                    }}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded text-red-400 hover:text-red-600"
-                                    title="Delete view"
-                                >
-                                    <Trash2 className="w-2.5 h-2.5" />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+            {!!datasource.views?.length && <a className="mb-4 block text-sm underline" href={'/frontbase-admin/data-studio/saved-views?datasource='+encodeURIComponent(datasource.id)}>Saved views ({datasource.views.length})</a>}
 
             <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
                 <button

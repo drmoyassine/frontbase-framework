@@ -96,7 +96,7 @@ export function educationDirectoryTemplate(options: EducationDirectoryOptions = 
             ], styles: { display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '24px', padding: '24px 40px' } },
             { type: 'Container', props: { className: 'directory-hero' }, children: [
                 text(`STUDY IN ${destination.toUpperCase()}`, 'directory-eyebrow'),
-                { type: 'Heading', props: { level: 'h1', text: directoryLiteral(options.heading || `A clearer path to studying in ${destination}.`) } },
+                { type: 'Heading', props: { level: 'h1', text: directoryLiteral(options.heading || (options.destination ? `A clearer path to studying in ${destination}.` : 'Find your study options')) } },
                 text(options.introduction || 'Explore institutions and programs, compare your options, and talk to a counselor about your next step.', 'directory-introduction'),
                 { type: 'Container', props: { className: 'directory-actions' }, children: [link('Explore institutions', directoryPath + '?type=institution', 'directory-primary'), link('Find a program', directoryPath + '?type=program', 'directory-secondary')] },
             ], styles: { padding: '64px 32px', display: 'flex', flexDirection: 'column', gap: '20px', backgroundColor: '#e9f0e8' } },

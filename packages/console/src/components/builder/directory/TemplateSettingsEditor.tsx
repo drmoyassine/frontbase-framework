@@ -22,7 +22,7 @@ export function TemplateSettingsEditor({value,onChange,scope='all'}:{value:Templ
             </div></details>
         </fieldset>}
         {scope!=='appearance'&&<fieldset className="space-y-3"><legend className="font-medium">Hero imagery and slider</legend>
-            {text('Hero heading',value.hero.heading,heading=>hero({heading}))}<p className="text-xs text-muted-foreground">Use {'{destination}'} to insert this site's configured country.</p>
+            {text('Hero heading',value.hero.heading,heading=>hero({heading}))}
             {text('Hero introduction',value.hero.introduction,introduction=>hero({introduction}))}
             <label className="block text-sm">Hero mode<select className={input} aria-label="Hero mode" value={value.hero.mode} onChange={e=>hero({mode:e.target.value as TemplateSettings['hero']['mode']})}><option value="none">Plain surface</option><option value="image">Single image</option><option value="slider">Slideshow</option></select></label>
             <div className="grid gap-3 sm:grid-cols-2">{numeric('Hero height',value.hero.height,240,560,height=>hero({height}))}{numeric('Mobile hero height',value.hero.mobileHeight,200,460,mobileHeight=>hero({mobileHeight}))}</div>

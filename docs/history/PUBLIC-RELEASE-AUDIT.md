@@ -1,5 +1,9 @@
 # R0 Public Release Scope and Truth Audit
 
+## 2026-10-26 General and datasource simplification — IN PROGRESS
+
+Owner requests one site/project name and General form, no duplicated datasource operations, retirement of education Destination and special contact controls. Scope: General UI/save orchestration through existing APIs, Connections/Saved Views ownership, optional legacy decoding for existing content without new Destination requirements. Header buttons remain Menu Actions. Preserve generated cms.mjs and published text/links; no data or configuration purge. Verify tests/build and staging, commit/push/deploy under ongoing authorization.
+
 ## 2026-10-25 settings consolidation — COMPLETE; STAGING ACCEPTED
 
 Owner authorizes moving shared mapping controls to Datasources, site routing/contact/appearance/publication controls to the builder, removing Template navigation with legacy-link compatibility. Preserve configuration API, revision guards, publication state and generated cms.mjs. Verify English/Arabic, commit/push/deploy. No data migration or release claim.

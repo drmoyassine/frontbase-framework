@@ -16,3 +16,14 @@ Both relocated forms retain configuration revision4, original collection mapping
 Native browser English and Arabic homepage/directory navigation and program detail rendering pass. Arabic retains RTL and localized navigation/labels; both language program details load the cover, tuition27021 and duration4. Existing source-language fallbacks remain as before; dataset translation completeness is not part of this change. Native curl with normal Windows TLS validation returns200 for `/`, `/ar/`, both program Explore URLs, both ELS institution URLs and both Entertainment Engineering program URLs. Earlier Python-based checks hit local DNS/TLS failures; those are not successful HTTP evidence and were superseded by the direct native curl/browser checks. No TLS validation was disabled.
 
 Generated `examples/cf-full/api/cms.mjs` remains intentionally unstaged. All six broader public-release gates remain separate. Next release task remains candidate integration and qualification, not another settings migration.
+
+
+## General and Data simplification follow-up (2026-10-26)
+
+Owner correction: one site name, one General form, header contact buttons in Menus/Actions, no Destination authoring, and no duplicated datasource/view management. General now stages identity and branding through existing APIs, detects stale configuration and reports partial saves honestly. The old independent forms and their internal-name control are removed. Connections retains test/edit/inspect/relationships; Saved Views owns inspection/editing/deletion, with connection filtering and used-view deletion disabled. Shared mappings and optional legacy maintenance are grouped in Advanced publication setup. Missing host/database fields are omitted for HTTP connections.
+
+Destination is optional legacy decoding only and no longer a readiness requirement. The field/help and obsolete shared-header generator are removed. New hero defaults do not require it. Existing configuration/contact bindings and published text remain readable; no saved data is purged or publication activated. Shared builder controls expose index routes, while new header actions belong to Menus.
+
+Local acceptance: 33 focused console tests pass; workspace check/build pass. Backend directory-configuration/site-configuration conformance, all 3 site-configuration mutation cases, and edge directory-bindings/template-landing pass. The mutation runner initially selected the global pnpm shim; setting its supported npm_execpath to the installed pinned CLI fixed the local tooling failure. No test or security guard was weakened. Staging receipt follows after deployment.
+
+Full-console diagnostic inspection remains nonzero due to existing type debt; changed runtime files have no diagnostics. One test still imported the retired header generator and was corrected to exercise a serialized legacy fixture; its four tests pass. The targeted workspace check is not represented as a full-console type-clean claim.

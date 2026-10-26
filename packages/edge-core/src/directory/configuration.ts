@@ -42,7 +42,7 @@ const collection = z.object({
 
 export const directoryConfigurationSchema = z.object({
     version: z.literal(1), template: z.literal('education-directory'),
-    site: z.object({ name: label, destination: label, origin, locale: z.string().max(35).regex(/^(?:[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*)?$/) }).strict(),
+    site: z.object({ name: label, destination: label.optional(), origin, locale: z.string().max(35).regex(/^(?:[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*)?$/) }).strict(),
     datasourceId: z.string().max(128).regex(/^[A-Za-z0-9_-]*$/),
     collections: z.object({ institution: collection, program: collection, city: collection, article: collection, pathway: collection }).strict(),
     browsing: z.object({ defaultCollection: z.enum(directoryRoles), pageSize: z.union([z.literal(12), z.literal(24), z.literal(48)]),
@@ -87,7 +87,7 @@ export function directoryCopiesMatch(a: unknown, b: unknown): boolean {
 /** Display-only projection; caller keeps the original authoring layout for saving. */
 export function projectSharedDirectoryPreview<T>(layout: T, configuration: DirectoryConfiguration): T {
     const config = directoryConfigurationSchema.parse(configuration);
-    const values = { 'site.name': config.site.name, 'site.destination': config.site.destination,
+    const values = { 'site.name': config.site.name, 'site.destination': config.site.destination ?? '',
         'contacts.email': config.contacts.email ? `mailto:${config.contacts.email}` : '',
         'contacts.whatsapp': config.contacts.whatsapp, 'routes.directory': config.routes.directory };
     const walk = (node: any): any => {
@@ -108,7 +108,7 @@ export function projectSharedDirectoryPreview<T>(layout: T, configuration: Direc
 
 export function emptyDirectoryConfiguration(): DirectoryConfiguration {
     const empty = () => ({ table: '', fields: Object.fromEntries([...directoryFieldNames, ...directoryEditorialFields].map(f => [f, ''])) as DirectoryConfiguration['collections']['institution']['fields'], scope: { field: '', value: '' } });
-    return { version: 1, template: 'education-directory', site: { name: '', destination: '', origin: '', locale: 'en' }, datasourceId: '',
+    return { version: 1, template: 'education-directory', site: { name: '', origin: '', locale: 'en' }, datasourceId: '',
         collections: { institution: empty(), program: empty(), city: empty(), article: empty(), pathway: empty() },
         browsing: { defaultCollection: 'institution', pageSize: 12, search: true, cityFilter: true, degreeFilter: true, intakeFilter: true, sort: 'name' },
         routes: { directory: '/explore/', blog: '/blog/', preserveOriginalPaths: true }, contacts: { email: '', whatsapp: '' } };
@@ -127,7 +127,7 @@ export function directoryConfigurationReadiness(value: unknown): string[] {
     if (!parsed.success) return directoryConfigurationIssues(value);
     const c = parsed.data;
     const missing: string[] = [];
-    for (const key of ['name', 'destination', 'origin'] as const) if (!c.site[key]) missing.push(`site.${key}`);
+    for (const key of ['name', 'origin'] as const) if (!c.site[key]) missing.push(`site.${key}`);
     if (!c.datasourceId) missing.push('datasourceId');
     if (!c.routes.directory) missing.push('routes.directory');
     for (const role of ['institution', 'program', 'city'] as const) {

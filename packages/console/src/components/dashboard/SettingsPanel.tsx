@@ -19,8 +19,7 @@ import { TranslationStorageForm } from './settings/shared/TranslationStorageForm
 import { TranslationGenerationForm } from './settings/shared/TranslationGenerationForm';
 import { TranslationBatchForm } from './settings/shared/TranslationBatchForm';
 import { PrivacySettingsForm } from './settings/shared/PrivacySettingsForm';
-import { ProjectDetailsForm } from './settings/shared/ProjectDetailsForm';
-import { PublicSiteIdentityForm } from './settings/shared/PublicSiteIdentityForm';
+import { SiteSettingsForm } from './settings/shared/SiteSettingsForm';
 import { AdminInviteForm } from './settings/shared/AdminInviteForm';
 import { EdgeAPIKeysForm } from './settings/shared/EdgeAPIKeysForm';
 import { EdgeProvidersSection } from './settings/shared/EdgeProvidersSection';
@@ -72,8 +71,7 @@ export const SettingsPanel: React.FC = () => {
         <TabsContent value="translations" className="space-y-6 mt-6"><TranslationStorageForm /><TranslationGenerationForm /><TranslationBatchForm /></TabsContent>
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6 mt-6">
-          <PublicSiteIdentityForm />
-          <ProjectDetailsForm withCard />
+          <SiteSettingsForm />
         </TabsContent>
 
         {/* Plan & Usage Tab (cloud only) */}

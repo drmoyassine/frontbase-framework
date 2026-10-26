@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createCompatApp } from '../dist/compat/app.js';
 import { sqliteRunner } from '@frontbase/edge-infra';
-import { emptyDirectoryConfiguration, directoryConfigurationSchema } from '@frontbase/edge-core/directory/configuration';
+import { emptyDirectoryConfiguration, directoryConfigurationSchema, directoryConfigurationReadiness } from '@frontbase/edge-core/directory/configuration';
 import { migrateUp } from '../dist/db/migrations.js';
 
 const runner = sqliteRunner(':memory:');
@@ -27,6 +27,10 @@ function fixture(destination, scope) {
 }
 const layout = config => ({ root: { directoryConfiguration: config, unrelated: 'preserved' }, content: [] });
 const usa = fixture('USA', 'US');
+const withoutDestination = structuredClone(usa); delete withoutDestination.site.destination;
+assert.equal(directoryConfigurationSchema.safeParse(withoutDestination).success, true);
+assert.ok(!directoryConfigurationReadiness(withoutDestination).includes('site.destination'));
+assert.equal('destination' in emptyDirectoryConfiguration().site, false);
 const created = await request('POST', '/api/pages/', { name: 'Directory', slug: 'directory', layoutData: layout(usa) });
 assert.equal(created.status, 201);
 const page = (await created.json()).data;

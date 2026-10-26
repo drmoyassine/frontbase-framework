@@ -6,7 +6,7 @@ import {DetailTemplateStarter} from './DetailTemplateStarter';
 import React, { useCallback, useEffect, useState } from 'react';
 import { directoryCopiesMatch, siteConfigurationDraftSchema, sitePageRoles, sitePageReferenceSchema, readLandingSettings, type SiteConfigurationDraft, type SitePageReference } from '@frontbase/edge-core/directory/configuration';
 import type { Page } from '@/types/builder';
-import { linkSharedConfiguration, addSharedPageHeader } from './linkSharedConfiguration';
+import { linkSharedConfiguration } from './linkSharedConfiguration';
 import { Button } from '@/components/ui/button';
 import { DirectoryQueryPreview } from './DirectoryQueryPreview';
 import { addDirectoryTemplate } from './addDirectoryTemplate';
@@ -40,7 +40,7 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
     const landing=page.layoutData?readLandingSettings(page.layoutData):undefined;
     const sharedControls=<div className="space-y-3">
         <a className="underline" href="/frontbase-admin/data-studio/datasources?setup=collections">Collection mappings and publication scope in Datasources</a>
-        <Button variant="outline" disabled={editorialOpen} aria-expanded={sharedOpen} onClick={()=>setSharedOpen(value=>!value)}>Shared routes and contact values</Button>
+        <Button variant="outline" disabled={editorialOpen} aria-expanded={sharedOpen} onClick={()=>setSharedOpen(value=>!value)}>Shared routes</Button>
         {sharedOpen&&<SiteConfigurationForm section="site" onSaved={()=>setReload(value=>value+1)}/>}
         <Button variant="outline" disabled={editorialOpen} aria-expanded={maintenanceOpen} onClick={()=>setMaintenanceOpen(value=>!value)}>Legacy layout maintenance</Button>
         {maintenanceOpen&&<ElementSettingsMigration/>}
@@ -55,13 +55,12 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
         {message && <p role="status">{message}</p>}
         <Button disabled={!draft || conflict || editorialOpen} onClick={() => { if (draft) onChange(linkSharedConfiguration(page, draft.configuration, { version: 1, role })); }}>Use shared settings for this page</Button>
         <Button variant="outline" disabled={editorialOpen} onClick={() => setReload(n => n + 1)}>Reload shared settings</Button>
-        {current.success && page.layoutData?.root.appMenus===undefined && <Button variant="outline" disabled={editorialOpen || page.layoutData?.content.some(node => node.props?.sharedSiteHeader === true)} onClick={() => onChange(addSharedPageHeader(page))}>Add shared site header and contact links</Button>}
         {current.success && ['directory', 'article-index'].includes(current.data.role) && <Button variant="outline" disabled={editorialOpen || hasDirectoryBrowsing(page.layoutData?.content || [])} onClick={() => onChange(addDirectoryBrowsing(page))}>Add visitor browsing controls</Button>}
         {current.success && <Button variant="outline" disabled={editorialOpen} onClick={()=>{if(page.layoutData)onChange({...page.layoutData,content:recordLinksToActions(page.layoutData.content)});}}>Use Actions for record click-throughs</Button>}
         {current.success && ['institution','program'].includes(current.data.role) && <Button variant="outline" disabled={editorialOpen} onClick={()=>{if(page.layoutData)onChange({...page.layoutData,content:useSingleRecordCards(page.layoutData.content)});}}>Use single-record Cards for detail content</Button>}
         {current.success && ['institution','program'].includes(current.data.role) && <Button variant="outline" disabled={editorialOpen} onClick={()=>{if(page.layoutData)onChange({...page.layoutData,content:upgradeDetailPresentation(page.layoutData.content,current.data.role as 'institution'|'program')});}}>Upgrade detail gallery, header and navigation</Button>}
         <p className="text-sm">Save Changes persists the link. Shared values refresh in canvas preview after an edit or when you return to the builder. Existing custom text is preserved; only explicit shared bindings change.</p>
-        {current.success && draft && !editorialOpen && <DetailTemplateStarter page={page} onChange={onChange} contactUrl={draft.configuration.contacts.email?'mailto:'+draft.configuration.contacts.email:''} />}
+        {current.success && draft && !editorialOpen && <DetailTemplateStarter page={page} onChange={onChange} contactUrl="" />}
         {current.success && draft && <DirectoryQueryPreview draft={draft} onEditorialOpenChange={handleEditorialOpen} onAddTemplate={binding => onChange(addDirectoryTemplate(page, binding))} />}
         {current.success && draft && <SitePreparationPanel draft={draft} currentPageId={page.id} disabled={editorialOpen} />}
     </div>;
