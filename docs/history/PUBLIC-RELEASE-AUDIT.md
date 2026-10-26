@@ -1,3 +1,5 @@
+2026-10-26 onboarding live verification: real local browser resource/provider/review and missing-credential checks pass. Fresh installation is awaiting explicit backup/retirement authorization for one obsolete fixture; all six test D1 databases are populated. Export was rejected before execution by automatic approval review. No remote writes. See the onboarding receipt.
+
 2026-10-26 local onboarding claim update: implementation and local qualification complete for resource discovery/reuse, shared HTTP lowering, credential-preserving managed redeployment and native-D1 operator recovery. Source 8e5ede0 and immutable preview tag frontbase-selfhost-preview-20261026 are pushed; remote source preflight passes with zero failures. Fresh live acceptance remains pending. [Evidence and exact limits](../plans/local-deployment-onboarding-20261026.md). No remote mutation, staging/data change or release publication.
 
 # R0 Public Release Scope and Truth Audit
