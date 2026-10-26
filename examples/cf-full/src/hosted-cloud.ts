@@ -1,4 +1,5 @@
 import {createHostedBootstrap} from '@frontbase/backend';
+import {resolveProviderOAuthCredentials,createSecretCipher,createProviderOAuth,providerOAuthClients,providerOAuthVault,type OAuthVault} from '@frontbase/backend';
 import {guardedExternalFetch} from '../../../packages/backend/src/compat/external-http';
 import {reconcileBootstrap} from '@frontbase/edge-core/deployment-bootstrap';
 import {d1RunnerFromRest,d1RunnerFromBinding,sqliteRunner,timingSafeEqual} from '@frontbase/edge-infra';
@@ -24,7 +25,8 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
  if(target==='cloudflare'?!/^[a-f0-9]{32}$/.test(account??''):!/^team_[a-zA-Z0-9]+$/.test(account??''))refuse();
  const context={installationId,target,destination:account+'/'+project+'/'+environment};
  const external:typeof fetch=(input,init)=>guardedExternalFetch(transport,input,init);
- const initialBinding=(b:any)=>b.type==='assets'&&b.name==='ASSETS'||['plain_text','secret_text'].includes(b.type)&&['FRONTBASE_BOOTSTRAP','FRONTBASE_INSTALLATION_ID','FRONTBASE_PUBLIC_ORIGIN','FRONTBASE_BOOTSTRAP_TOKEN','FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN','FRONTBASE_BOOTSTRAP_EXPIRES_AT','FRONTBASE_BOOTSTRAP_ACCOUNT','FRONTBASE_BOOTSTRAP_PROJECT','FRONTBASE_BOOTSTRAP_ENVIRONMENT'].includes(b.name);
+ const oauthKey=(name:string)=>/^FRONTBASE_(CLOUDFLARE|VERCEL)_OAUTH_(CLIENT_ID|CLIENT_SECRET|SCOPES|INTEGRATION_SLUG)$/.test(name);
+ const initialBinding=(b:any)=>b.type==='assets'&&b.name==='ASSETS'||['plain_text','secret_text'].includes(b.type)&&(['FRONTBASE_BOOTSTRAP','FRONTBASE_INSTALLATION_ID','FRONTBASE_PUBLIC_ORIGIN','FRONTBASE_BOOTSTRAP_TOKEN','FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN','FRONTBASE_BOOTSTRAP_EXPIRES_AT','FRONTBASE_BOOTSTRAP_ACCOUNT','FRONTBASE_BOOTSTRAP_PROJECT','FRONTBASE_BOOTSTRAP_ENVIRONMENT'].includes(b.name)||oauthKey(b.name));
  const apiOrigin=target==='cloudflare'?'https://api.cloudflare.com':'https://api.vercel.com';
  async function api(path:string,method='GET',body?:any){
   const response=await transport(apiOrigin+path,{method,headers:{authorization:'Bearer '+token,...(body instanceof FormData?{}:{'content-type':'application/json'})},body:body===undefined?undefined:body instanceof FormData?body:JSON.stringify(body),redirect:'manual',signal:AbortSignal.timeout(20000)});
@@ -45,13 +47,13 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
   try{const result=await api('/v10/projects/'+project+'/env?'+team,'POST',{key:prefix+next.revision,value:JSON.stringify(next),type:'plain',target:[environment]});if(result.failed?.length)return false;if(!result.created?.id&&!result.id&&!(Array.isArray(result.created)&&result.created.length===1&&result.created[0].id))refuse();return true;}catch(e:any){if(e.status===400&&['ENV_CONFLICT','ENV_ALREADY_EXISTS','env_already_exists'].includes(e.code))return false;throw e;}
  }};
  async function configuration(){const manifest=defaultDeploymentManifest(target,environment);if(target==='cloudflare'){const id=await locate();if(id)manifest.bindings['state-db']={adapterId:'cloudflare-d1',mode:'reuse',config:{resourceName:coordinatorName},resourceRef:id,secretRefs:{}};manifest.bindings.cache.config.resourceName=project+'-cache';manifest.bindings.storage.config.resourceName=project+'-storage';}if(target==='vercel')manifest.bindings['state-db']={adapterId:'libsql-http',mode:'connect',config:{url:''},secretRefs:{token:'state/token'}};return {manifest,adapters:deploymentAdapters.filter(a=>a.targets.includes(target)&&['cloudflare-d1','cloudflare-kv','libsql-http','d1-http','upstash-http','libsql-vector-http','cloudflare-vectorize-http','s3-http','qstash-http'].includes(a.id))};}
- async function empty(db:any,owned=false){const rows=await db.query("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT GLOB 'sqlite_*' AND name NOT IN ('_cf_METADATA','_cf_KV'"+(owned?",'_frontbase_bootstrap'":'')+") LIMIT 1");if(rows.length)refuse();}
+ async function empty(db:any,owned=false){const rows=await db.query("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT GLOB 'sqlite_*' AND name NOT IN ('_cf_METADATA','_cf_KV'"+(owned?",'_frontbase_bootstrap','_frontbase_oauth_vault'":'')+") LIMIT 1");if(rows.length)refuse();}
  async function preflight(c:any,manifest:any){if(c.destination!==context.destination||manifest.target!==target||manifest.environment!==environment||!validateDeploymentManifest(manifest).ready)refuse();
   if(target==='cloudflare'){const settings=await api(cf+'/workers/scripts/'+project+'/settings');const bindings=settings.bindings;if(!Array.isArray(bindings)||bindings.find(b=>b.name==='FRONTBASE_INSTALLATION_ID')?.text!==installationId||bindings.find(b=>b.name==='FRONTBASE_BOOTSTRAP')?.text!=='1'||bindings.some(b=>!initialBinding(b)))refuse();}
   else{const deployment=await api('/v13/deployments/'+env.VERCEL_DEPLOYMENT_ID+'?'+team);if(deployment.projectId!==project||deployment.readyState!=='READY'||(deployment.target??'preview')!==environment)refuse();}
   for(const b of Object.values(manifest.bindings) as any[])if(b.mode!=='disabled'&&!['cloudflare-d1','cloudflare-kv','libsql-http','d1-http','upstash-http','libsql-vector-http','cloudflare-vectorize-http','s3-http','qstash-http'].includes(b.adapterId))refuse();
  }
- async function runtimeValues(record:any,credentials:any){const values=profileEnvironment({manifest:record.manifest,credentials});values.SESSION_SECRET=await secret(owner,'session:'+record.operationId);values.SETUP_TOKEN=await secret(owner,'administrator:'+installationId);values.SETUP_EXPIRES_AT=env.FRONTBASE_BOOTSTRAP_EXPIRES_AT;values.FRONTBASE_PUBLIC_ORIGIN=origin;values.FRONTBASE_BOOTSTRAP='0';values.FRONTBASE_INSTALLATION_ID=installationId;values.FRONTBASE_BOOTSTRAP_ACCOUNT=account;values.FRONTBASE_BOOTSTRAP_PROJECT=project;values.FRONTBASE_BOOTSTRAP_ENVIRONMENT=environment;values.FRONTBASE_BOOTSTRAP_OPERATION=record.operationId;values.FRONTBASE_BOOTSTRAP_FINGERPRINT=record.fingerprint;values.FRONTBASE_BOOTSTRAP_PROOF_KEY=await secret(owner,'proof:'+record.operationId);if(values.FRONTBASE_STORAGE){const s=JSON.parse(values.FRONTBASE_STORAGE);if(s.provider!=='none'){s.namespace='installation-'+installationId;values.FRONTBASE_STORAGE=JSON.stringify(s);}}return values;}
+ async function runtimeValues(record:any,credentials:any){const values=profileEnvironment({manifest:record.manifest,credentials});values.SESSION_SECRET=await secret(owner,'session:'+record.operationId);values.SETUP_TOKEN=await secret(owner,'administrator:'+installationId);values.SETUP_EXPIRES_AT=env.FRONTBASE_BOOTSTRAP_EXPIRES_AT;values.FRONTBASE_PUBLIC_ORIGIN=origin;values.FRONTBASE_BOOTSTRAP='0';values.FRONTBASE_INSTALLATION_ID=installationId;values.FRONTBASE_BOOTSTRAP_ACCOUNT=account;values.FRONTBASE_BOOTSTRAP_PROJECT=project;values.FRONTBASE_BOOTSTRAP_ENVIRONMENT=environment;values.FRONTBASE_BOOTSTRAP_OPERATION=record.operationId;values.FRONTBASE_BOOTSTRAP_FINGERPRINT=record.fingerprint;values.FRONTBASE_BOOTSTRAP_PROOF_KEY=await secret(owner,'proof:'+record.operationId);if(values.FRONTBASE_STORAGE){const s=JSON.parse(values.FRONTBASE_STORAGE);if(s.provider!=='none'){s.namespace='installation-'+installationId;values.FRONTBASE_STORAGE=JSON.stringify(s);}}for(const [name,value] of Object.entries(env))if((oauthKey(name)||name==='FRONTBASE_OAUTH_CONNECTIONS')&&typeof value==='string')values[name]=value;return values;}
  const executor:any={preflight,apply:async(record:any,credentials:any)=>{
   const values=await runtimeValues(record,credentials),manifest=structuredClone(record.manifest),state=manifest.bindings['state-db'];
   if(state.mode==='connect'){const db=state.adapterId==='libsql-http'?sqliteRunner(values.APP_DB_URL,values.APP_DB_AUTH_TOKEN,external):d1RunnerFromRest({accountId:values.APP_DB_D1_ACCOUNT_ID,databaseId:values.APP_DB_D1_DATABASE_ID,apiToken:values.CLOUDFLARE_API_TOKEN,fetchImpl:external});await empty(db);}
@@ -71,10 +73,39 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
  }};
  const nextSetup=async()=>'/setup#/setup?claim='+await secret(owner,'administrator:'+installationId);
  let appPromise:Promise<any>|undefined;
+ const oauthPrefix='FB_OAUTH_'+installationId.replaceAll('-','').toUpperCase()+'_';
+ const vault:OAuthVault={
+  get:async key=>(await vault.entries(key)).find(r=>r.key===key)?.value??null,
+  entries:async key=>{
+   if(target==='cloudflare'){const id=await locate();if(!id)refuse();const db=runner(id!);await db.exec('CREATE TABLE IF NOT EXISTS _frontbase_oauth_vault (key TEXT PRIMARY KEY, value TEXT NOT NULL)');return (await db.query('SELECT key,value FROM _frontbase_oauth_vault WHERE key LIKE ?',[key+'%'])).map(r=>({key:String(r.key),value:String(r.value)}));}
+   const result=await api('/v9/projects/'+project+'/env?'+team);return result.envs.filter(r=>r.key.startsWith(oauthPrefix)).map(r=>{if(r.type!=='plain'||r.gitBranch||r.target?.length!==1||r.target[0]!==environment)refuse();return JSON.parse(r.value);}).filter(r=>r.key.startsWith(key));
+  },
+  insert:async(key,value)=>{
+   if(target==='cloudflare'){await vault.entries(key);const db=runner((await locate())!);return (await db.query('INSERT INTO _frontbase_oauth_vault (key,value) VALUES (?,?) ON CONFLICT(key) DO NOTHING RETURNING key',[key,value])).length===1;}
+   try{const result=await api('/v10/projects/'+project+'/env?'+team,'POST',{key:oauthPrefix+await hex(key),value:JSON.stringify({key,value}),type:'plain',target:[environment]});if(result.failed?.length)return false;return !!(result.id||result.created?.id||Array.isArray(result.created)&&result.created[0]?.id);}catch(e:any){if(e.status===400&&['ENV_CONFLICT','ENV_ALREADY_EXISTS','env_already_exists'].includes(e.code))return false;throw e;}
+  },
+ };
+ const actor={tenant:'_root',subject:installationId};
+ let oauthPromise:Promise<any>|undefined;
+ async function oauth(){
+  return oauthPromise??=createSecretCipher(owner).then(cipher=>{
+   const connection=providerOAuthVault(vault,cipher,actor);
+   return {...connection,app:createProviderOAuth({origin,clients:providerOAuthClients(env,origin),store:connection.store,fetch:transport,authorize:async request=>{
+    if(new URL(request.url).origin!==origin||!appPromise)return null;
+    const probe=await (await appPromise).fetch(new Request(origin+'/frontbase-bootstrap/api/configuration',{headers:{cookie:request.headers.get('cookie')??''}}));if(!probe.ok)return null;const state=await probe.json();return state.operation&&['applying','uncertain'].includes(state.operation.phase)?null:actor;
+   }})};
+  });
+ }
+ const originalApply=executor.apply;
+ executor.apply=async(record:any,credentials:any)=>{
+  const grants=await (await oauth()).grants();
+  if(grants.length){const cipher=await createSecretCipher(await secret(owner,'session:'+record.operationId));env.FRONTBASE_OAUTH_CONNECTIONS=await cipher.encrypt(JSON.stringify({installationId,grants}));if(env.FRONTBASE_OAUTH_CONNECTIONS.length>65536)refuse();}
+  return originalApply(record,credentials);
+ };
  return {journal,executor,initialize,configuration,context,fetch:async(request:Request)=>{
   if(new URL(request.url).origin!==origin)return new Response('Invalid origin',{status:403});
-  if(!appPromise)appPromise=nextSetup().then(link=>createHostedBootstrap({enabled:true,origin,token:owner,expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT,context,journal,executor,initialize,configuration,pendingSetup:true,nextSetup:()=>link}));
-  const url=new URL(request.url);if(url.pathname.startsWith('/frontbase-bootstrap/api/'))return (await appPromise).fetch(request);
+  if(!appPromise)appPromise=nextSetup().then(link=>createHostedBootstrap({enabled:true,origin,token:owner,expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT,context,journal,executor,initialize,configuration,resolveCredentials:async(manifest,input)=>resolveProviderOAuthCredentials(manifest,input,await (await oauth()).grants()),pendingSetup:true,nextSetup:()=>link}));
+  const url=new URL(request.url);if(url.pathname.startsWith('/api/provider-oauth/'))return (await oauth()).app.fetch(request);if(url.pathname.startsWith('/frontbase-bootstrap/api/'))return (await appPromise).fetch(request);
   const headers={'cache-control':'no-store','referrer-policy':'no-referrer','x-content-type-options':'nosniff','content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
   if(url.pathname==='/health')return Response.json({status:'setup_required'},{headers});
   const asset=assets[url.pathname];if(asset&&request.method==='GET')return new Response(asset.body,{headers:{...headers,'content-type':asset.type}});

@@ -9,6 +9,9 @@ export interface BindingsFormOptions {
     executionCapabilities?: {adapters: Record<string, readonly BindingSelection['mode'][]>};
     credentials?: 'entry' | 'references';
     resourceOptions?: Record<string,Array<{id:string;name:string}>>;
+    /** Only supplied by a host with an authenticated server-side connection flow. */
+    providerConnections?: Partial<Record<'cloudflare'|'vercel',{available:boolean;connected:boolean;label?:string;accountId?:string}>>;
+    onConnect?: (provider:'cloudflare'|'vercel')=>Promise<void>;
     onChange?: () => void;
 }
 /** One browser-only editor for bootstrap and console. Credential values never enter the manifest. */
@@ -36,6 +39,23 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     };
     function render() {
         root.classList.add('fb-bindings-form');root.replaceChildren();
+        if(options.providerConnections){
+            const needed=new Set<'cloudflare'|'vercel'>();
+            for(const binding of Object.values(manifest.bindings))if(binding.mode!=='disabled'){
+                if(binding.adapterId.startsWith('cloudflare-')||binding.adapterId==='d1-http')needed.add('cloudflare');
+                if(binding.adapterId==='turso-marketplace')needed.add('vercel');
+            }
+            for(const provider of needed){
+                const connection=options.providerConnections[provider],label=provider==='cloudflare'?'Cloudflare':'Vercel';
+                const row=node('section',undefined,'fb-binding-connection');row.setAttribute('aria-label',label+' connection');
+                if(connection?.connected)row.append(node('p',connection.label??label+' connected'));
+                else if(connection?.available&&options.onConnect){
+                    const button=node('button','Connect to '+label);button.type='button';
+                    button.addEventListener('click',async()=>{button.disabled=true;try{await options.onConnect!(provider);}catch{row.append(node('p','Connection could not start. Please try again.','fb-binding-note'));}finally{button.disabled=false;}});row.append(button);
+                }else row.append(node('p',label+' authorization is not configured for this installation.','fb-binding-note'));
+                root.append(row);
+            }
+        }
         for(const role of configurableRoles) {
             const binding=manifest.bindings[role],card=node('section',undefined,'fb-binding-card');
             const heading=node('h3',bindingLabels[role]);heading.append(node('span',role==='state-db'?'Required':'Optional','fb-binding-tag'));card.append(heading);
@@ -61,6 +81,9 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             });
             wrapper.append(title,select);card.append(wrapper);
             if(binding.mode!=='disabled'&&selected) {
+                const oauth=options.providerConnections?.cloudflare;
+                const useOAuth=oauth?.connected&&['d1-http','cloudflare-vectorize-http'].includes(selected.id);
+                if(useOAuth){if(!binding.config.accountId&&oauth.accountId)binding.config.accountId=oauth.accountId;binding.secretRefs.token='oauth/cloudflare/token';}
                 if(!compatible.includes(selected))card.append(node('p','This adapter is unavailable in this deployment flow.','fb-binding-note'));
                 else {
                     const modeWrapper=node('div',undefined,'fb-binding-field'),modeTitle=node('label','Resource action'),mode=node('select');
@@ -80,10 +103,11 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                     }
                     for(const key of selected.configKeys.filter(key=>key!=='resourceName'||binding.mode==='create'))field(card,fields[key]??key,binding.config[key],value=>binding.config[key]=value,false,selected.requiredConfig?.includes(key));
                     if(entry)for(const key of selected.secretKeys){
+                        if(useOAuth&&key==='token'){card.append(node('p','Authorization uses your connected Cloudflare account.','fb-binding-note'));continue;}
                         const reference=binding.secretRefs[key]??role+'/'+key;
                         field(card,fields[key]??key,secrets.get(reference),value=>{if(value){binding.secretRefs[key]=reference;secrets.set(reference,value);}else{delete binding.secretRefs[key];secrets.delete(reference);}},true,selected.requiredSecrets?.includes(key));
                     }
-                    if(selected.secretKeys.length)card.append(node('p',entry?'Credentials stay in this local setup session. After reloading, re-enter them before validating edits.':'New credentials are entered privately in the local deployment review. This plan contains references only.','fb-binding-note'));
+                    if(selected.secretKeys.length)card.append(node('p',entry?'Credentials stay in this setup session. After reloading, re-enter them before validating edits.':'New credentials are entered privately in the local deployment review. This plan contains references only.','fb-binding-note'));
                 }
             }
             root.append(card);

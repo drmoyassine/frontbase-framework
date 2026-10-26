@@ -66,6 +66,7 @@ function engine(): Promise<Hono> {
                 externalFetch,
                 resend:env.RESEND_API_KEY?{apiKey:env.RESEND_API_KEY,from:env.RESEND_FROM}:undefined,
                 publicOrigin:env.FRONTBASE_PUBLIC_ORIGIN,
+                providerOAuthEnv:env,
                 runner: stateDb.runner,
                 translationExecutionEnabled: readTranslationExecutionEnabled(env.FRONTBASE_TRANSLATION_EXECUTION_ENABLED),
                 deploymentManifest: env.FRONTBASE_DEPLOYMENT_MANIFEST,

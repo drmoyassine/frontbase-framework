@@ -1,4 +1,5 @@
 let bootstrapCompletion:Promise<void>|undefined;
+import {providerOAuthClients,importProviderOAuth} from '@frontbase/backend';
 import {createCloudBootstrap,bootstrapRuntimeProof,completeCloudBootstrap} from './hosted-cloud.js';
 import {audienceConditionUser} from '@frontbase/edge-core';
 /**
@@ -169,6 +170,7 @@ export interface CmsEngineOptions {
     resend?: { apiKey: string; from?: string };
     /** Explicit self-host origin for reset links; never inferred from an inbound header. */
     publicOrigin?: string;
+    providerOAuthEnv?: Record<string,unknown>;
 }
 
 /**
@@ -195,6 +197,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // at-rest cipher, JWT verify). env wins; one-click deploys without one
     // generate + persist on this first boot (see resolveSessionSecret).
     const sessionSecret = await resolveSessionSecret(opts.runner, opts.sessionSecret);
+    if(typeof opts.providerOAuthEnv?.FRONTBASE_OAUTH_CONNECTIONS==='string')await importProviderOAuth(opts.runner,await createSecretCipher(sessionSecret),'_root',opts.providerOAuthEnv.FRONTBASE_OAUTH_CONNECTIONS);
     if (cloud) {
         // Cloud boot: seed the global plan catalog ('_global' rows, idempotent —
         // a re-boot never resets an operator-tuned plan). NEVER in MIGRATIONS:
@@ -395,6 +398,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         ? async (req: Request) => scopePrincipalToHost(await rawResolvePrincipal(req), hostTenantFor(req))
         : rawResolvePrincipal;
     const compatApp = await createCompatApp({
+        ...(opts.publicOrigin?{providerOAuth:{origin:opts.publicOrigin,clients:providerOAuthClients(opts.providerOAuthEnv??{},opts.publicOrigin)}}:{}),
         makeRunner: () => opts.runner,
         translationExecutionEnabled: opts.translationExecutionEnabled===true,
         resolvePrincipal: scopedResolvePrincipal as (req: Request) => Promise<any>,
@@ -990,6 +994,7 @@ export default {
                     } : {}),
                     ...(env.RESEND_API_KEY ? { resend: { apiKey: env.RESEND_API_KEY,from:env.RESEND_FROM } } : {}),
                     publicOrigin:env.FRONTBASE_PUBLIC_ORIGIN,
+                    providerOAuthEnv:env as unknown as Record<string,unknown>,
                     // Host-side env parse (Workers have no process.env). Memoized
                     // on the raw strings — only actual secret changes recompute.
                     envServices,

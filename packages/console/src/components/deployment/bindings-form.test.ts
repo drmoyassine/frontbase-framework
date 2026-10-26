@@ -17,6 +17,29 @@ test('native defaults are editable recommendations and required state cannot be 
  select(root,'binding-provider-storage','cloudflare-r2');expect(form!.snapshot().manifest.bindings.storage.mode).toBe('create');
  expect(root.textContent).toContain('Cloudflare R2 (private)');
 });
+test('Connect is shown once per selected provider and disappears when no binding needs it',()=>{
+ const onConnect=vi.fn(async()=>{}),root=mount('cloudflare',{providerConnections:{cloudflare:{available:true,connected:false}},onConnect});
+ expect(root.querySelectorAll('.fb-binding-connection button')).toHaveLength(1);
+ select(root,'binding-provider-state-db','libsql-http');
+ expect(root.querySelectorAll('.fb-binding-connection button')).toHaveLength(1); // KV still needs Cloudflare.
+ select(root,'binding-provider-cache','disabled');expect(root.querySelector('.fb-binding-connection')).toBeNull();
+ select(root,'binding-provider-vector','cloudflare-vectorize-http');
+ expect(root.querySelectorAll('.fb-binding-connection button')).toHaveLength(1);
+ fireEvent.click(root.querySelector('.fb-binding-connection button')!);expect(onConnect).toHaveBeenCalledWith('cloudflare');
+});
+test('a retained provider shows its account label without another Connect button',()=>{
+ const root=mount('cloudflare',{providerConnections:{cloudflare:{available:true,connected:true,label:'Existing account'}}});
+ expect(root.querySelector('.fb-binding-connection')!.textContent).toContain('Existing account');
+ expect(root.querySelector('.fb-binding-connection button')).toBeNull();
+});
+test('connected Cloudflare HTTP bindings use a server reference rather than exposing a token input',()=>{
+ const root=mount('vercel',{providerConnections:{cloudflare:{available:true,connected:true,accountId:'a'.repeat(32)}}});
+ select(root,'binding-provider-state-db','d1-http');
+ expect(form!.snapshot().manifest.bindings['state-db'].secretRefs.token).toBe('oauth/cloudflare/token');
+ expect(form!.snapshot().manifest.bindings['state-db'].config.accountId).toBe('a'.repeat(32));
+ expect(form!.snapshot().credentials).toEqual({});
+ expect(root.querySelector('input[type=password]')).toBeNull();
+});
 test('Vercel shows compatible adapters without native Cloudflare state/cache/storage',()=>{
  const root=mount('vercel');expect(root.querySelector('#binding-provider-state-db')!.textContent).not.toContain('Cloudflare D1 over HTTP —');
  const providers=[...root.querySelectorAll('option')].map(o=>o.value);

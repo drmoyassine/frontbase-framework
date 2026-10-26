@@ -12,7 +12,8 @@
  *   - Turso save flow          — Inline (find-or-create + add DB) — small enough
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import {connectProvider,readProviderConnections} from '@/components/deployment/provider-connect';
 import { useQueryClient } from '@tanstack/react-query';
 import {
     AlertTriangle, CheckCircle2, Cloud, Loader2,
@@ -63,6 +64,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
 }) => {
     const effectiveLockedProvider = editProvider?.provider || lockedProvider;
     const queryClient = useQueryClient();
+    const [oauthAvailable,setOAuthAvailable]=useState(false);
     const state = useConnectProvider(effectiveLockedProvider, open, editProvider);
     const {
         providers, refetch,
@@ -78,6 +80,10 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
         handleGenericSave,
         resetForm,
     } = state;
+    useEffect(()=>{let current=true;setOAuthAvailable(false);
+        if(open&&['cloudflare','vercel'].includes(effectiveProvider))void readProviderConnections().then(status=>{if(current)setOAuthAvailable(status.providers.some(p=>p.provider===effectiveProvider&&p.available));}).catch(()=>{});
+        return ()=>{current=false;};
+    },[open,effectiveProvider]);
 
     // ── Provider-specific discovery state ────────────────────────────────
     // Supabase
@@ -255,7 +261,8 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                         </div>
                     )}
 
-                    {currentConfig.fields.map(field => (
+                    {oauthAvailable&&<Button type="button" onClick={()=>void connectProvider(effectiveProvider as 'cloudflare'|'vercel','/frontbase-admin/settings?tab=accounts',editProvider?.id).catch(()=>setError('Could not start provider authorization. Please try again.'))}>Connect to {currentConfig.label}</Button>}
+                    {!oauthAvailable&&currentConfig.fields.map(field => (
                         <div key={field.key} className="space-y-2">
                             <Label>{field.label}{!editProvider && field.required && ' *'}</Label>
                             <Input

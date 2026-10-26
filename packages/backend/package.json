@@ -98,6 +98,7 @@
     "test:selfhost-reset": "node test/selfhost-reset.mjs",
     "test:http-policy-mutation": "node test/http-policy-mutation.mjs",
     "test:engine-remote-refusal": "node test/engine-remote-refusal.mjs",
+    "test:provider-oauth": "node test/provider-oauth.mjs && node test/provider-oauth-mutation.mjs",
     "test:hosted-bootstrap": "node test/hosted-bootstrap.mjs && node test/hosted-bootstrap-mutation.mjs"
   },
   "peerDependencies": {

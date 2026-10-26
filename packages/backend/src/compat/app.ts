@@ -1,4 +1,6 @@
 import { registerDeploymentBindingsRoutes } from './routes/deployment-bindings.js';
+import {createProviderOAuth,type ProviderOAuthClient,type OAuthProvider} from '../provider-oauth.js';
+import {providerOAuthStore} from '../provider-oauth-store.js';
 import { registerMenusRoutes } from './routes/menus.js';
 import {registerFrontendEditRoutes} from './routes/frontend-edit.js';
 import {frontendEditorAllowed} from './frontend-copy.js';
@@ -86,6 +88,7 @@ import { embeddingFromEnv } from './rag/embedding.js';
 import { registerRagRoutes, runRagIndex, type RagRouteDeps } from './rag/routes.js';
 
 export interface CreateCompatAppDeps {
+    providerOAuth?: {origin:string;clients:Partial<Record<OAuthProvider,ProviderOAuthClient>>};
     /** Internal rollout gate; no production AI execution until reviewed-batch acceptance/UI is complete. */
     translationExecutionEnabled?: boolean;
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */
@@ -294,6 +297,13 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // UNAUTHENTICATED routes — registered BEFORE default-deny:
     // 1. Meta (health/liveness)
     registerMetaRoutes(app, runner, deps.includeProductRoot);
+    if(deps.providerOAuth)app.route('/',createProviderOAuth({
+        ...deps.providerOAuth,store:providerOAuthStore(runner,secretCipher),fetch:externalFetch as typeof fetch,
+        authorize:async request=>{const principal=await resolvePrincipal(request);const user=principal.user as {id?:string;sub?:string;role?:string}|null;
+            if(deps.cloudMode||!principal.tenant||!user||!['master_admin','owner','admin'].includes(user.role??''))return null;
+            const subject=user.id??user.sub;return subject?{tenant:principal.tenant,subject}:null;
+        },
+    }));
     registerAppUserRoutes(app,runner,secretCipher,externalFetch,now,deps.requestTenant??(deps.cloudMode?async()=>undefined:undefined));
     // 2. Client hydration data plane (product parity — public route, no systemKeyAuth)
     registerDataExecuteRoute(

@@ -1,7 +1,8 @@
 /** Explicit, mounted-volume bootstrap. Existing installations never fall back here. */
-import {existsSync,lstatSync,readFileSync,openSync,writeFileSync,fsyncSync,closeSync,mkdirSync} from 'node:fs';
+import {existsSync,lstatSync,readFileSync,openSync,writeFileSync,fsyncSync,closeSync,mkdirSync,readdirSync} from 'node:fs';
 import {join,resolve,dirname,parse} from 'node:path';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,createHash} from 'node:crypto';
+import {resolveProviderOAuthCredentials,createSecretCipher,createProviderOAuth,providerOAuthClients,providerOAuthVault} from '../../packages/backend/dist/index.js';
 import {createHostedBootstrap} from '../../packages/backend/dist/hosted-bootstrap.js';
 import {dockerBootstrapJournal} from './docker-bootstrap-journal.mjs';
 import {profileEnvironment} from './profile-environment.mjs';
@@ -30,6 +31,8 @@ export async function createDockerBootstrapHost({env,boot,assets,probeExternal=v
    if(record.manifest.bindings['state-db'].adapterId==='sqlite-file'){if(existsSync(database))throw Error('existing_state_refused');values.APP_DB_URL='file:'+database.replaceAll('\\','/');}else await probeExternal(prepared);
    if(values.FRONTBASE_STORAGE){const storage=JSON.parse(values.FRONTBASE_STORAGE);if(storage.provider!=='none'){storage.namespace='installation-'+context.installationId;values.FRONTBASE_STORAGE=JSON.stringify(storage);}}
    const environment={...values,FRONTBASE_PUBLIC_ORIGIN:origin,SESSION_SECRET:randomBytes(32).toString('hex'),SETUP_TOKEN:randomBytes(32).toString('hex'),SETUP_EXPIRES_AT:new Date(Date.now()+3600000).toISOString()};
+   for(const [name,value] of Object.entries(env))if(/^FRONTBASE_(CLOUDFLARE|VERCEL)_OAUTH_(CLIENT_ID|CLIENT_SECRET|SCOPES|INTEGRATION_SLUG)$/.test(name))environment[name]=value;
+   const grants=await oauth.grants();if(grants.length){environment.FRONTBASE_OAUTH_CONNECTIONS=await (await createSecretCipher(environment.SESSION_SECRET)).encrypt(JSON.stringify({installationId:context.installationId,grants}));if(environment.FRONTBASE_OAUTH_CONNECTIONS.length>65536)throw Error('oauth_handoff_too_large');}
    const data={version:1,installationId:context.installationId,origin,operationId:record.operationId,fingerprint:record.fingerprint,environment};
    // Exclusive creation is the activation boundary. A partial write fails closed on restart.
    const fd=openSync(file,'wx',0o600);try{writeFileSync(fd,JSON.stringify(data));fsyncSync(fd);}finally{closeSync(fd);}
@@ -39,13 +42,35 @@ export async function createDockerBootstrapHost({env,boot,assets,probeExternal=v
  };
  const nextSetup=()=>'/setup#/setup?claim='+encodeURIComponent(configured.environment.SETUP_TOKEN);
  // Configured restarts don't require an unexpired owner capability or re-enable the API.
- const api=runtime?null:createHostedBootstrap({enabled:true,origin,token:env.FRONTBASE_BOOTSTRAP_TOKEN??'',expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT??'',context,journal,executor,nextSetup});
+ const api=runtime?null:createHostedBootstrap({enabled:true,origin,token:env.FRONTBASE_BOOTSTRAP_TOKEN??'',expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT??'',context,journal,executor,nextSetup,resolveCredentials:async(manifest,input)=>resolveProviderOAuthCredentials(manifest,input,await oauth.grants())});
+ const oauthDirectory=join(directory,'oauth');
+ const vault={
+  entries:async prefix=>{
+   if(!existsSync(oauthDirectory))return [];
+   if(!lstatSync(oauthDirectory).isDirectory()||lstatSync(oauthDirectory).isSymbolicLink())throw Error('oauth_directory_refused');
+   return readdirSync(oauthDirectory).filter(name=>/^[a-f0-9]{64}\.json$/.test(name)).map(name=>{
+    const file=join(oauthDirectory,name),stat=lstatSync(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>65536)throw Error('oauth_file_refused');return JSON.parse(readFileSync(file,'utf8'));
+   }).filter(row=>typeof row.key==='string'&&row.key.startsWith(prefix));
+  },
+  get:async key=>(await vault.entries(key)).find(row=>row.key===key)?.value??null,
+  insert:async(key,value)=>{
+   mkdirSync(oauthDirectory,{recursive:true,mode:0o700});await vault.entries('');
+   const file=join(oauthDirectory,createHash('sha256').update(key).digest('hex')+'.json');let fd;
+   try{fd=openSync(file,'wx',0o600);writeFileSync(fd,JSON.stringify({key,value}));fsyncSync(fd);return true;}catch(error){if(error.code==='EEXIST')return false;throw error;}finally{if(fd!==undefined)closeSync(fd);}
+  }
+ };
+ const actor={tenant:'_root',subject:context.installationId};
+ const oauth=providerOAuthVault(vault,await createSecretCipher(env.FRONTBASE_BOOTSTRAP_TOKEN??''),actor);
+ const oauthApp=createProviderOAuth({origin,clients:providerOAuthClients(env,origin),store:oauth.store,fetch:(input,init)=>fetch(input,init),authorize:async request=>{
+  if(!api)return null;const probe=await api.fetch(new Request(origin+'/frontbase-bootstrap/api/configuration',{headers:{cookie:request.headers.get('cookie')??''}}));if(!probe.ok)return null;const state=await probe.json();return state.operation&&['applying','uncertain'].includes(state.operation.phase)?null:actor;
+ }});
  const headers={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
  return {context,journal,executor,close:()=>runtime?.externalFetch?.close(),fetch:async request=>{
   const url=new URL(request.url);
   // Origin comes from the explicit operator configuration, never a forwarded header.
   if(url.origin!==origin)return new Response('Invalid origin',{status:403,headers});
   if(runtime){if(url.pathname.startsWith('/frontbase-bootstrap'))return new Response('Setup closed',{status:410,headers});return runtime.engine.fetch(request);}
+  if(url.pathname.startsWith('/api/provider-oauth/'))return oauthApp.fetch(request);
   if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'setup_required'},{headers});
   if(url.pathname.startsWith('/frontbase-bootstrap/api/'))return api.fetch(request);
   if(request.method!=='GET'||url.search)return new Response('Not found',{status:404,headers});
