@@ -1,3 +1,5 @@
+**Provider connections:** [Direct self-hosted OAuth](docs/guides/provider-oauth.md) is implemented for explicitly registered Cloudflare/Vercel clients. Native deployment-button OAuth replacement and live consent acceptance remain open; no shared credential relay is deployed.
+
 **Hosted setup:** the opt-in [Cloudflare/Vercel operator entry](docs/guides/hosted-cloud-setup.md) has isolated live activation, administrator and publication evidence. Native buttons remain on their existing defaults; this is not a new OAuth launcher or full template installer.
 
 **Deployment setup:** use the [local browser wizard](docs/plans/local-deployment-onboarding-20261026.md) for adapter dropdowns, existing empty D1/KV selection and secure administrator setup. Native buttons retain provider defaults and target an explicit preview snapshot.

@@ -70,3 +70,8 @@ Live repairs: Workers fetch does not accept redirect mode `error`, so bounded pr
 Verification: full `pnpm -r check` and `pnpm -r build` PASS; setup form and real setup-claim module PASS; cloud host normal/pending/concurrent activation cases PASS; four cloud host fault injections PASS; existing bootstrap transaction eleven faults and hosted authorization seven faults PASS; SQL journal real SQLite/concurrency tests and four faults PASS. Final focused checks are recorded at closeout. Generated `api/cms.mjs` remains excluded from source commits, as required by the standing repository rule.
 
 Supported boundary: shared bindings and existing HTTP adapters are reused; this pass live-proves CF D1/KV and Vercel Turso. Optional S3/vector/queue adapters are not newly live-qualified here. The cloud host currently needs operator-provided deployment identity, scoped provisioning credential and expiring owner capability; it is not a new OAuth launcher. See the operator guide for configuration. Existing local wizard/native buttons are unchanged.
+
+
+## Direct OAuth continuation — 2026-10-27
+
+[Direct OAuth qualification and remaining native gaps](provider-oauth-20261027.md) supersedes the operator-only connection discussion where explicitly configured clients are available. Both existing cloud acceptance apps are upgraded and current UI/public/session preservation passes. Fresh Docker setup/publication/restart passes. Native-button OAuth first install remains incomplete; no relay is implemented or deployed.
