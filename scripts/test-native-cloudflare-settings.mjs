@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {preserveNativeCloudflareSettings} from './deployment-setup/native-cloudflare-settings.mjs';
+const uuid='11111111-2222-4333-8444-555555555555';
+const settings={bindings:[{name:'ASSETS',type:'assets'},{name:'FRONTBASE_BOOTSTRAP',type:'plain_text',text:'0'},{name:'FRONTBASE_INSTALLATION_ID',type:'plain_text',text:uuid},{name:'DB',type:'d1',id:uuid},{name:'FRONTBASE_SETUP_JOURNAL',type:'d1',id:uuid},{name:'FRONTBASE_KV',type:'kv_namespace',namespace_id:'a'.repeat(32)},{name:'SESSION_SECRET',type:'secret_text'}]};
+const template={name:'fixture',vars:{FRONTBASE_BOOTSTRAP:'1'},assets:{binding:'ASSETS',directory:'console-dist'}};
+const before=JSON.stringify(settings),result=preserveNativeCloudflareSettings(template,settings);
+assert.equal(result.vars.FRONTBASE_BOOTSTRAP,'0');assert.equal(result.keep_vars,true);assert.equal(result.d1_databases.length,2);assert.equal(result.kv_namespaces[0].id,'a'.repeat(32));assert.ok(!JSON.stringify(result).includes('SESSION_SECRET'));assert.equal(JSON.stringify(settings),before);assert.equal(template.vars.FRONTBASE_BOOTSTRAP,'1');
+for(const binding of [{name:'SERVICE',type:'service'},{name:'DB',type:'d1',id:uuid}])assert.throws(()=>preserveNativeCloudflareSettings(template,{bindings:[...settings.bindings,binding]}));
+assert.throws(()=>preserveNativeCloudflareSettings(template,{bindings:settings.bindings.filter(b=>b.name!=='ASSETS')}));
+assert.throws(()=>preserveNativeCloudflareSettings(template,{bindings:settings.bindings.filter(b=>b.name!=='FRONTBASE_BOOTSTRAP')}));
+console.log('PASS native CF preservation: exact resource IDs, closed setup, retained secrets, unknown/duplicate binding refusal');
