@@ -43,9 +43,44 @@ export function verifyNativeButtons({ read = path => readFileSync(new URL('../' 
   return { ok: failures.length === 0, failures, buttons };
 }
 
+/** Read only the public source named by the button, not the local checkout.
+ * Native providers import that source; local contract success cannot certify it.
+ */
+export async function verifyNativeSource({ ref, fetchImpl = fetch } = {}) {
+  const buttons = nativeDeployButtons({ ref }); // validates the optional ref
+  const paths = ['README.md', 'package.json', 'wrangler.toml', '.env.example', 'examples/cf-full/vercel.json'];
+  const files = new Map();
+  const failures = [];
+  for (const path of paths) {
+    const url = new URL('https://api.github.com/repos/drmoyassine/frontbase-framework/contents/' + path);
+    if (ref) url.searchParams.set('ref', ref);
+    try {
+      const response = await fetchImpl(url, { headers: { accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(15000), redirect: 'error' });
+      if (!response.ok) { failures.push(`${path}: source unavailable (HTTP ${response.status})`); continue; }
+      const text = await response.text();
+      if (text.length > 2_000_000) throw new Error('oversized response');
+      const file = JSON.parse(text);
+      if (file.type !== 'file' || file.encoding !== 'base64' || typeof file.content !== 'string' || file.size > 1_000_000) throw new Error('invalid source');
+      files.set(path, Buffer.from(file.content, 'base64').toString('utf8'));
+    } catch {
+      failures.push(`${path}: source could not be verified`);
+    }
+  }
+  if (!failures.length) {
+    try { failures.push(...verifyNativeButtons({ read: path => files.get(path) }).failures); }
+    catch { failures.push('Source deployment contract could not be parsed'); }
+  }
+  return { ok: failures.length === 0, source: ref ?? 'repository default branch', failures, buttons };
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const refArg = process.argv.indexOf('--ref');
-  if (refArg !== -1) {
+  if (process.argv.includes('--verify-source')) {
+    if (refArg !== -1 && !process.argv[refArg + 1]) throw new Error('--ref requires a named ref');
+    const result = await verifyNativeSource({ ref: refArg === -1 ? undefined : process.argv[refArg + 1] });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.ok) process.exitCode = 1;
+  } else if (refArg !== -1) {
     if (!process.argv[refArg + 1]) throw new Error('--ref requires a named ref');
     console.log(JSON.stringify(nativeDeployButtons({ ref: process.argv[refArg + 1] }), null, 2));
   } else {

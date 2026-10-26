@@ -9,6 +9,7 @@ export function Setup({ status }: { status: SetupStatus }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [setupToken, setSetupToken] = useState('');
     const [claimAuthorized, setClaimAuthorized] = useState(false);
     const [checkingClaim, setCheckingClaim] = useState(true);
@@ -102,20 +103,26 @@ export function Setup({ status }: { status: SetupStatus }) {
 
             {!checkingClaim && setupEnabled && <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground">Email</label>
+                    <label htmlFor="setup-email" className="block text-sm font-medium text-muted-foreground">Email</label>
                     <input
                         className="mt-2 w-full rounded border px-3 py-2"
+                        id="setup-email"
                         type="email"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
                         required
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground">Password</label>
+                    <label htmlFor="setup-password" className="block text-sm font-medium text-muted-foreground">Password</label>
                     <input
                         className="mt-2 w-full rounded border px-3 py-2"
-                        type="password"
+                        id="setup-password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
                         minLength={8}
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
@@ -123,23 +130,39 @@ export function Setup({ status }: { status: SetupStatus }) {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground">Confirm password</label>
+                    <label htmlFor="setup-confirm-password" className="block text-sm font-medium text-muted-foreground">Confirm password</label>
                     <input
                         className="mt-2 w-full rounded border px-3 py-2"
-                        type="password"
+                        id="setup-confirm-password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
                         minLength={8}
                         value={confirmPassword}
                         onChange={(event) => setConfirmPassword(event.target.value)}
                         required
                     />
                 </div>
+                <button
+                    type="button"
+                    aria-controls="setup-password setup-confirm-password"
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword(value => !value)}
+                    className="rounded border px-3 py-2 text-sm"
+                >
+                    {showPassword ? 'Hide passwords' : 'Show passwords'}
+                </button>
+                <p className="text-sm text-muted-foreground">
+                    Check your email before continuing. Save these credentials in your password manager.
+                    Password-reset email requires mail delivery to be configured for this installation.
+                </p>
                 {setupTokenRequired && !claimAuthorized && (
                     <details className="rounded border px-4 py-3">
                         <summary className="cursor-pointer text-sm font-medium">Enter a setup token manually</summary>
                         <div className="mt-3">
-                            <label className="block text-sm text-muted-foreground">Setup token</label>
+                            <label htmlFor="setup-token" className="block text-sm text-muted-foreground">Setup token</label>
                             <input
                                 className="mt-2 w-full rounded border px-3 py-2"
+                                id="setup-token"
                                 type="password"
                                 autoComplete="off"
                                 value={setupToken}
@@ -148,7 +171,7 @@ export function Setup({ status }: { status: SetupStatus }) {
                         </div>
                     </details>
                 )}
-                {error && <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+                {error && <p role="alert" className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
                 <button
                     type="submit"
                     disabled={loading}

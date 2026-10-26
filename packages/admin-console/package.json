@@ -9,7 +9,7 @@
     "dev": "vite",
     "build": "vite build",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "node test/no-leak.mjs",
+    "test": "node test/setup-form.mjs && node test/no-leak.mjs",
     "test:mutation": "node test/mutation.mjs"
   },
   "dependencies": {

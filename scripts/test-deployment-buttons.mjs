@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { nativeDeployButtons, verifyNativeButtons } from './deployment-buttons.mjs';
+import { nativeDeployButtons, verifyNativeButtons, verifyNativeSource } from './deployment-buttons.mjs';
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 assert.equal(verifyNativeButtons().ok, true, JSON.stringify(verifyNativeButtons().failures));
 const named = nativeDeployButtons({ ref: 'frontbase-native-test-example' });
@@ -25,3 +25,19 @@ for (const [label, path, replace] of [
   console.log('PASS refuse: ' + label);
 }
 console.log('PASS native button contract and exact named-ref generation');
+
+const sourceFetch = async (url, options) => {
+  assert.equal(url.origin, 'https://api.github.com');
+  assert.equal(url.searchParams.get('ref'), 'reviewed-source');
+  assert.equal(options.redirect, 'error');
+  const path = url.pathname.split('/contents/')[1];
+  const content = read(path);
+  return new Response(JSON.stringify({ type: 'file', encoding: 'base64', size: Buffer.byteLength(content), content: Buffer.from(content).toString('base64') }));
+};
+assert.equal((await verifyNativeSource({ ref: 'reviewed-source', fetchImpl: sourceFetch })).ok, true);
+const missing = await verifyNativeSource({ ref: 'reviewed-source', fetchImpl: (url, opts) => url.pathname.endsWith('/wrangler.toml') ? new Response('{}', { status: 404 }) : sourceFetch(url, opts) });
+assert.equal(missing.ok, false);
+assert.deepEqual(missing.failures, ['wrangler.toml: source unavailable (HTTP 404)']);
+assert.equal((await verifyNativeSource({ fetchImpl: async () => { throw new Error('network failure'); } })).ok, false);
+assert.equal((await verifyNativeSource({ fetchImpl: async () => new Response('not JSON') })).ok, false);
+console.log('PASS source preflight refuses missing remote config, network errors and malformed responses');
