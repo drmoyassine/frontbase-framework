@@ -7,21 +7,26 @@ import { postSetupClaim } from './api';
  * the clean `/setup` route.
  */
 let initialClaim: string | undefined;
-if (typeof window !== 'undefined') {
+let exchangePromise: Promise<boolean> | null = null;
+function captureClaim(): void {
+    if (typeof window === 'undefined') return;
     const hash = window.location.hash;
     const queryIndex = hash.indexOf('?');
     const params = new URLSearchParams(queryIndex >= 0 ? hash.slice(queryIndex + 1) : hash.replace(/^#/, ''));
-    initialClaim = params.get('claim') ?? undefined;
-    if (initialClaim) window.history.replaceState(null, '', `${window.location.pathname}#/setup`);
+    const claim = params.get('claim');
+    if (claim) { initialClaim = claim; exchangePromise = null; window.history.replaceState(null, '', `${window.location.pathname}#/setup`); }
 }
+
+captureClaim();
 
 // StrictMode may run effects twice in development. Share one exchange promise
 // so both runs observe the same successful authorization and the capability is
 // submitted only once.
-let exchangePromise: Promise<boolean> | null = null;
-
 export function authorizeInitialSetupClaim(setupEnabled: boolean): Promise<boolean> {
-    if (!setupEnabled || !initialClaim) return Promise.resolve(false);
+    captureClaim();
+    if (!setupEnabled) return Promise.resolve(false);
+    if (exchangePromise) return exchangePromise;
+    if (!initialClaim) return Promise.resolve(false);
     exchangePromise ??= postSetupClaim(initialClaim).then(() => {
         initialClaim = undefined;
         return true;

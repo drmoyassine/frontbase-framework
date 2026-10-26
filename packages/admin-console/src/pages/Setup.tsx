@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { loginProductAdmin, postSetup, postSetupClaim, type SetupStatus } from '@/lib/api';
+import { loginProductAdmin, postSetup, type SetupStatus } from '@/lib/api';
 import { authorizeInitialSetupClaim } from '@/lib/setup-claim';
 
 const PRODUCT_DASHBOARD = '/frontbase-admin/dashboard';
@@ -10,16 +10,15 @@ export function Setup({ status }: { status: SetupStatus }) {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [setupToken, setSetupToken] = useState('');
     const [claimAuthorized, setClaimAuthorized] = useState(false);
     const [checkingClaim, setCheckingClaim] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const { setupEnabled, setupTokenRequired, setupExpired } = status;
+    const { setupEnabled, setupExpired } = status;
 
     useEffect(() => {
         let active = true;
-        void authorizeInitialSetupClaim(setupEnabled)
+        const authorize = () => { void authorizeInitialSetupClaim(setupEnabled)
             .then((authorized) => {
                 if (active && authorized) setClaimAuthorized(true);
             })
@@ -30,7 +29,10 @@ export function Setup({ status }: { status: SetupStatus }) {
             .finally(() => {
                 if (active) setCheckingClaim(false);
             });
-        return () => { active = false; };
+        };
+        authorize();
+        window.addEventListener('hashchange', authorize);
+        return () => { active = false; window.removeEventListener('hashchange', authorize); };
     }, [setupEnabled]);
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -43,10 +45,7 @@ export function Setup({ status }: { status: SetupStatus }) {
         setLoading(true);
 
         try {
-            if (!claimAuthorized && setupTokenRequired) {
-                await postSetupClaim(setupToken);
-                setClaimAuthorized(true);
-            }
+            if (!claimAuthorized) throw new Error('Open a valid secure setup link before creating an administrator.');
             await postSetup(email, password);
             try {
                 await loginProductAdmin(email, password);
@@ -97,11 +96,11 @@ export function Setup({ status }: { status: SetupStatus }) {
 
             {!checkingClaim && setupEnabled && !claimAuthorized && (
                 <p className="mt-8 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    Open the secure setup link printed by the deployment command. If you only have a token, enter it manually below.
+                    Open the secure setup link provided when you deployed Frontbase. If it has expired, generate a new setup link for this installation.
                 </p>
             )}
 
-            {!checkingClaim && setupEnabled && <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            {!checkingClaim && setupEnabled && claimAuthorized && <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                 <div>
                     <label htmlFor="setup-email" className="block text-sm font-medium text-muted-foreground">Email</label>
                     <input
@@ -155,22 +154,6 @@ export function Setup({ status }: { status: SetupStatus }) {
                     Check your email before continuing. Save these credentials in your password manager.
                     Password-reset email requires mail delivery to be configured for this installation.
                 </p>
-                {setupTokenRequired && !claimAuthorized && (
-                    <details className="rounded border px-4 py-3">
-                        <summary className="cursor-pointer text-sm font-medium">Enter a setup token manually</summary>
-                        <div className="mt-3">
-                            <label htmlFor="setup-token" className="block text-sm text-muted-foreground">Setup token</label>
-                            <input
-                                className="mt-2 w-full rounded border px-3 py-2"
-                                id="setup-token"
-                                type="password"
-                                autoComplete="off"
-                                value={setupToken}
-                                onChange={(event) => setSetupToken(event.target.value)}
-                            />
-                        </div>
-                    </details>
-                )}
                 {error && <p role="alert" className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
                 <button
                     type="submit"

@@ -13,14 +13,14 @@ const require = createRequire(new URL('../package.json', import.meta.url));
 const React = require('react');
 const { createRoot } = require('react-dom/client');
 const calls = [];
-globalThis.setupFormCalls = calls;
+globalThis.setupFormCalls = calls;globalThis.setupClaimAllowed=true;
 const result = await build({
   entryPoints: [fileURLToPath(new URL('../src/pages/Setup.tsx', import.meta.url))],
   bundle: true, write: false, platform: 'node', format: 'cjs', jsx: 'automatic', external: ['react', 'react/jsx-runtime'],
   plugins: [{ name: 'setup-test-api', setup(builder) {
     builder.onResolve({ filter: /^@\/lib\/(api|setup-claim)$/ }, args => ({ path: args.path, namespace: 'mock' }));
     builder.onLoad({ filter: /.*/, namespace: 'mock' }, args => ({ contents: args.path.endsWith('setup-claim')
-      ? 'export async function authorizeInitialSetupClaim(){return true}'
+      ? 'export async function authorizeInitialSetupClaim(){return globalThis.setupClaimAllowed}'
       : 'export async function postSetup(...args){globalThis.setupFormCalls.push(args)}; export async function postSetupClaim(){throw Error("unexpected claim")}; export async function loginProductAdmin(){}' }));
   } }],
 });
@@ -55,7 +55,13 @@ assert.equal(calls.length, 0);
 await React.act(async () => input(confirm, 'Synthetic-test-2026!'));
 await React.act(async () => document.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
 assert.deepEqual(calls, [['owner@example.test', 'Synthetic-test-2026!']]);
+assert.equal(document.getElementById('setup-token'),null);
 await React.act(async () => root.unmount());
+const second=createRoot(document.getElementById('root'));globalThis.setupClaimAllowed=false;
+await React.act(async()=>second.render(React.createElement(Setup,{status:{needsSetup:true,setupEnabled:true,setupTokenRequired:true}})));
+assert.equal(document.querySelector('form'),null);assert.ok(document.body.textContent.includes('Open the secure setup link'));
+globalThis.setupClaimAllowed=true;await React.act(async()=>window.dispatchEvent(new window.HashChangeEvent('hashchange')));assert.ok(document.getElementById('setup-email'));assert.equal(document.getElementById('setup-token'),null);
+await React.act(async()=>second.unmount());delete globalThis.setupClaimAllowed;
 dom.window.close();
 delete globalThis.setupFormCalls;
 console.log('PASS setup form: visible email, accessible reveal, confirmation and guarded submit');
