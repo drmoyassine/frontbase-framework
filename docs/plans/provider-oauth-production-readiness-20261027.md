@@ -2,6 +2,12 @@
 
 Status: **not production-ready**. Owner requests promotion of hosted setup to the main Cloudflare and Vercel buttons and a production OAuth service. The isolated native snapshots have live acceptance; the main buttons and general multi-tenant service do not. Do not expose the test relay as a production relay or silently replace its enrollment policy.
 
+## Implementation continuation
+
+A separate, unmounted `publicNativeRelayTargetPolicy` now checks fresh install targets across accounts. For Cloudflare it retrieves the Workers subdomain from the authorized account through the fixed Cloudflare API before reusing the existing account/Worker/native-state verifier; for Vercel it reuses the existing authorized project, ready production deployment and alias checks. It refuses `connect` targets. This target validation alone does not prove receiver control and must not be mounted as a public relay. Provider-authoritative identity is not a substitute for the outstanding authenticated receiver enrollment, reconnect, operational and registration gates below. Existing private policy and running services are unchanged.
+
+Workspace `pnpm -r check` and `pnpm -r build` passed. The full relay suite passed with 16 security mutations, including new checks for provider-derived subdomains and unsuccessful provider responses; the tests also cover two CF accounts, mismatched accounts, expiry, wrong URLs and Vercel project/deployment/alias refusals. The commands ran outside the Windows sandbox after pnpm's sandboxed atomic rename failed with EPERM. Local Node 26 emits the existing example Node 22 compatibility warning; this does not expand the supported runtime. No live deployment or public promotion is claimed.
+
 ## Verified constraints
 
 - `packages/backend/src/provider-oauth-relay-target.ts` validates one configured Cloudflare account/subdomain and one Vercel team. Its `connect` path permits only explicitly configured origins and deliberately does not run provider ownership verification for those enrolled origins. This is suitable for an operator's known installations, not arbitrary customers. `native-claim.ts` rechecks provider ownership before writes; retain that check.

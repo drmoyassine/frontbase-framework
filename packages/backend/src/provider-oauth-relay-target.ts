@@ -37,3 +37,36 @@ export function relayTargetPolicy(policy:RelayTargetPolicy,transport:typeof fetc
     }
     return {admit,verify};
 }
+
+/** Public native-install admission, deliberately excluding reconnect. Provider
+ * ownership, including the CF account's real Workers subdomain, is checked
+ * using the consented grant. This is only a target check: public relay use
+ * additionally requires receiver-control proof, authenticated reconnect and
+ * operational qualification. Do not mount it as a standalone public service. */
+export function publicNativeRelayTargetPolicy(transport:typeof fetch){
+    const uuid=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/;
+    const account=/^[a-f0-9]{32}$/, team=/^team_[A-Za-z0-9]+$/, project=/^[a-z0-9][a-z0-9-]{0,62}$/;
+    function admit(t:OAuthRelayTarget,p:OAuthProvider){
+        try {
+            if(!t||t.purpose!=='install'||t.host!==p||!uuid.test(t.installationId??'')||Object.keys(t).some(key=>!['origin','host','purpose','account','project','installationId','deploymentId'].includes(key)))return false;
+            const url=new URL(t.origin);if(url.protocol!=='https:'||url.origin!==t.origin||url.username||url.password||url.port)return false;
+            if(p==='cloudflare')return account.test(t.account??'')&&project.test(t.project??'')&&t.deploymentId===undefined&&url.hostname.endsWith('.workers.dev');
+            return p==='vercel'&&team.test(t.account??'')&&/^prj_[A-Za-z0-9]+$/.test(t.project??'')&&/^dpl_[A-Za-z0-9]+$/.test(t.deploymentId??'')&&url.hostname.endsWith('.vercel.app');
+        } catch{return false;}
+    }
+    async function verify(t:OAuthRelayTarget,a:OAuthAuthorization){
+        if(!admit(t,a.provider)||!a.accounts.some(item=>item.id===t.account)||a.expiresAt!==undefined&&a.expiresAt<=Date.now())throw Error('relay_ownership_refused');
+        let subdomain='unused';
+        if(t.host==='cloudflare'){
+            const response=await transport('https://api.cloudflare.com/client/v4/accounts/'+t.account+'/workers/subdomain',{headers:{authorization:'Bearer '+a.accessToken},redirect:'manual',signal:AbortSignal.timeout(15000)});
+            if(!response.ok||!response.body)throw Error('relay_ownership_refused');
+            const reader=response.body.getReader();let size=0,text='';const decoder=new TextDecoder();
+            try {for(;;){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>1048576)throw Error('relay_ownership_refused');text+=decoder.decode(part.value,{stream:true});}}finally{await reader.cancel().catch(()=>{});}
+            const body=JSON.parse(text+decoder.decode());subdomain=body.result?.subdomain;
+            if(body.success!==true||typeof subdomain!=='string'||!/^[a-z0-9][a-z0-9-]{0,62}$/.test(subdomain))throw Error('relay_ownership_refused');
+        }
+        const bound=relayTargetPolicy({cloudflareAccount:t.host==='cloudflare'?t.account!:'0'.repeat(32),cloudflareSubdomain:subdomain,vercelTeam:t.host==='vercel'?t.account!:'team_unused',connectedOrigins:[]},transport);
+        await bound.verify(t,a);
+    }
+    return {admit,verify};
+}
