@@ -13,7 +13,7 @@ const require = createRequire(new URL('../package.json', import.meta.url));
 const React = require('react');
 const { createRoot } = require('react-dom/client');
 const calls = [];
-globalThis.setupFormCalls = calls;globalThis.setupClaimAllowed=true;
+globalThis.setupFormCalls = calls;globalThis.setupClaimAllowed=true;globalThis.setupCurrentStatus={setupEnabled:true,setupExpired:false};globalThis.setupRefused=false;
 const result = await build({
   entryPoints: [fileURLToPath(new URL('../src/pages/Setup.tsx', import.meta.url))],
   bundle: true, write: false, platform: 'node', format: 'cjs', jsx: 'automatic', external: ['react', 'react/jsx-runtime'],
@@ -21,7 +21,7 @@ const result = await build({
     builder.onResolve({ filter: /^@\/lib\/(api|setup-claim)$/ }, args => ({ path: args.path, namespace: 'mock' }));
     builder.onLoad({ filter: /.*/, namespace: 'mock' }, args => ({ contents: args.path.endsWith('setup-claim')
       ? 'export async function authorizeInitialSetupClaim(){return globalThis.setupClaimAllowed}'
-      : 'export async function postSetup(...args){globalThis.setupFormCalls.push(args)}; export async function postSetupClaim(){throw Error("unexpected claim")}; export async function loginProductAdmin(){}' }));
+      : 'export async function getSetupStatus(){return globalThis.setupCurrentStatus}; export async function postSetup(...args){if(globalThis.setupRefused)throw Error("http_403");globalThis.setupFormCalls.push(args)}; export async function postSetupClaim(){throw Error("unexpected claim")}; export async function loginProductAdmin(){}' }));
   } }],
 });
 const module = { exports: {} };
@@ -53,6 +53,14 @@ await React.act(async () => document.querySelector('form').dispatchEvent(new win
 assert.equal(document.querySelector('[role="alert"]').textContent, 'Passwords do not match');
 assert.equal(calls.length, 0);
 await React.act(async () => input(confirm, 'Synthetic-test-2026!'));
+globalThis.setupCurrentStatus={setupEnabled:false,setupExpired:true};
+await React.act(async () => document.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
+assert.equal(calls.length,0);assert.match(document.querySelector('[role="alert"]').textContent,/expired/);assert.equal(password.value,'Synthetic-test-2026!');assert.equal(email.value,'owner@example.test');
+globalThis.setupCurrentStatus={setupEnabled:true,setupExpired:false};globalThis.setupRefused=true;
+await React.act(async () => document.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
+assert.equal(calls.length,0);assert.match(document.querySelector('[role="alert"]').textContent,/authorization was refused/);assert.equal(confirm.value,'Synthetic-test-2026!');
+globalThis.setupRefused=false;
+
 await React.act(async () => document.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
 assert.deepEqual(calls, [['owner@example.test', 'Synthetic-test-2026!']]);
 assert.equal(document.getElementById('setup-token'),null);
