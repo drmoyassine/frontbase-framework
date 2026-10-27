@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getSetupStatus, type SetupStatus } from '@/lib/api';
+import { ApiError, getSetupStatus, type SetupStatus } from '@/lib/api';
 import { Setup } from '@/pages/Setup';
 
 const PRODUCT_DASHBOARD = '/frontbase-admin/dashboard';
@@ -24,7 +24,7 @@ function Splash({ message = 'Loading…' }: { message?: string }) {
  */
 export function App() {
     const [status, setStatus] = useState<SetupStatus | null>(null);
-    const [failed, setFailed] = useState(false);
+    const [failed, setFailed] = useState<string | null>(null);
 
     useEffect(() => {
         let active = true;
@@ -37,14 +37,14 @@ export function App() {
                 }
                 setStatus(next);
             })
-            .catch(() => {
-                if (active) setFailed(true);
+            .catch((err) => {
+                if (active) setFailed(err instanceof ApiError ? err.message : 'Unable to check setup status. Refresh to retry; if this continues, ask the deployment owner to inspect the server logs.');
             });
         return () => { active = false; };
     }, []);
 
     if (failed) {
-        return <Splash message="Unable to load setup. Refresh the page to try again." />;
+        return <Splash message={failed} />;
     }
     if (!status) return <Splash />;
     return <Setup status={status} />;
