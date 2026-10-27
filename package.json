@@ -17,7 +17,7 @@
     "test:mutation": "pnpm -r test:mutation",
     "deploy:cf-full": "node scripts/deploy.mjs",
     "deploy:community-edge": "node scripts/deploy-community.mjs",
-    "deploy": "wrangler deploy --config wrangler.toml --experimental-auto-create=false",
+    "deploy": "node scripts/deploy-native-cloudflare.mjs --config wrangler.toml",
     "deploy:recover": "node scripts/deployment-recover.mjs",
     "deploy:setup": "node scripts/deployment-setup.mjs",
     "test:deployment-setup": "node scripts/test-deployment-setup.mjs && node scripts/test-deployment-setup-options.mjs && node scripts/test-deployment-setup-mutation.mjs && node scripts/test-deployment-setup-execution.mjs && node scripts/test-cloudflare-resources.mjs && node scripts/test-cloudflare-state.mjs && node scripts/test-cloudflare-profile.mjs && node scripts/test-cloudflare-setup-executor.mjs && node scripts/test-deployment-execution-mutation.mjs && node scripts/test-cloudflare-lifecycle.mjs && node scripts/test-cloudflare-lifecycle-mutation.mjs && node scripts/test-deployment-proposal.mjs && node scripts/test-profile-environment.mjs && node scripts/test-vercel-profile.mjs && node scripts/test-vercel-receipt.mjs && node scripts/test-vercel-binding-changes.mjs && node scripts/test-vercel-binding-changes-mutation.mjs && node scripts/test-deployment-storage-profile.mjs && node scripts/test-vercel-reconciliation.mjs && node scripts/test-vercel-reconciliation-mutation.mjs && node scripts/test-deployment-recovery.mjs",
