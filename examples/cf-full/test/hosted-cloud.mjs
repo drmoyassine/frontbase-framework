@@ -28,6 +28,12 @@ async function fixture(target,pending=false){
  throw Error('unexpected route '+url.pathname);
  };
  let host=createCloudBootstrap(env,target,transport),cookie;
+ const transitioning=await host.fetch(new Request(origin+'/setup'));
+ assert.equal(transitioning.status,503);
+ assert.equal(transitioning.headers.get('location'),null,'old runtime must not move the admin claim into the bootstrap path');
+ assert.equal(transitioning.headers.get('cache-control'),'no-store');
+ assert.equal(transitioning.headers.get('retry-after'),'2');
+ assert.ok((await transitioning.text()).includes('http-equiv="refresh"'));
  const request=async(path,body)=>host.fetch(new Request(origin+'/frontbase-bootstrap/api/'+path,{method:body===undefined?'GET':'POST',headers:{origin,'content-type':'application/json',...(cookie?{cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)}));
  assert.equal((await host.fetch(new Request('https://wrong.example/health'))).status,403);assert.equal((await request('configuration')).status,403);assert.equal(writes.length,0);
  const claim=await request('claim',{token:env.FRONTBASE_BOOTSTRAP_TOKEN});assert.equal(claim.status,200);cookie=claim.headers.get('set-cookie').split(';')[0];

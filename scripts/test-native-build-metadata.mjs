@@ -23,7 +23,10 @@ const v=vercelNativeBuildMetadata(env);assert.equal(v.FRONTBASE_NATIVE_ACCOUNT,'
 for(const patch of [{VERCEL_ENV:'preview'},{VERCEL_PROJECT_ID:'prj_other'},{VERCEL_OIDC_TOKEN:''},{FRONTBASE_NATIVE_RELAY_URL:'https://relay.example.com/path'}])assert.throws(()=>vercelNativeBuildMetadata({...env,...patch}));
 assert.throws(()=>nativeMetadata({host:'cloudflare',account,project,origin:'https://x.example:444',relay}));
 console.log('PASS native metadata: stable identity, no token serialization, explicit opt-in, project/environment checks, active-binding preservation and uncertain-state refusal');
-const snapshot=nativeSnapshotFiles({read:p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),relay,ref:'frontbase-native-fixture'});
+const snapshot=nativeSnapshotFiles({read:p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),relay,ref:'frontbase-native-fixture',paths:['.github/workflows/contracts.yml','.github/SECURITY.md','src/app.ts']});
+assert.equal(snapshot['.github/workflows/contracts.yml'],null);
+assert.ok(!Object.hasOwn(snapshot,'.github/SECURITY.md'));
+assert.ok(!Object.hasOwn(snapshot,'src/app.ts'));
 assert.ok(!snapshot['.env.example'].includes('ADMIN_PASSWORD='));
 assert.ok(!snapshot['wrangler.toml'].includes('[[d1_databases]]'));
 assert.ok(!snapshot['wrangler.toml'].includes('[[kv_namespaces]]'));
