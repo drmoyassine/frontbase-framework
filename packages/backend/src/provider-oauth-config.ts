@@ -1,13 +1,14 @@
 import type {OAuthProvider,ProviderOAuthClient} from './provider-oauth.js';
 import type {OAuthRelayTarget} from './provider-oauth-relay.js';
 /** Explicit operator configuration only; never infer a credential recipient from request headers. */
-export function providerOAuthRelay(env:Record<string,unknown>,origin:string):{origin:string;relayOrigin:string;target:OAuthRelayTarget}|undefined{
+export function providerOAuthRelay(env:Record<string,unknown>,origin:string):{origin:string;relayOrigin:string;target:OAuthRelayTarget;registrationKey?:string}|undefined{
     const relay=env.FRONTBASE_OAUTH_RELAY_URL;if(relay===undefined||relay==='')return;
     if(typeof relay!=='string'||new URL(relay).origin!==relay||!relay.startsWith('https://'))throw Error('invalid_oauth_relay');
     const raw=env.FRONTBASE_OAUTH_RELAY_TARGET;if(typeof raw!=='string')throw Error('invalid_oauth_relay');
     const target=JSON.parse(raw) as OAuthRelayTarget;
     if(target.origin!==origin||target.purpose!=='connect'||!['cloudflare','vercel','docker'].includes(target.host)||Object.keys(target).some(k=>!['origin','host','purpose'].includes(k)))throw Error('invalid_oauth_relay');
-    return {origin,relayOrigin:relay,target};
+    const key=env.FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY;if(key!==undefined&&(typeof key!=='string'||!/^[\w-]{43}$/.test(key)))throw Error('invalid_oauth_relay');
+    return {origin,relayOrigin:relay,target,...(typeof key==='string'?{registrationKey:key}:{})};
 }
 /** Host-only parsing: public IDs and server secrets are never accepted from a browser request. */
 export function providerOAuthClients(env:Record<string,unknown>,origin:string):Partial<Record<OAuthProvider,ProviderOAuthClient>>{

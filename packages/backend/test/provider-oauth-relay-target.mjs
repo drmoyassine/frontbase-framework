@@ -19,6 +19,8 @@ await assert.rejects(verify({...v,origin:'https://other.vercel.app'},vg));
 for(const patch of [{projectId:'prj_other'},{readyState:'BUILDING'},{target:'preview'}]){const previous=deployment;deployment={...previous,...patch};await assert.rejects(verify(v,vg));deployment=previous;}
 const enrolled={origin:'https://installed.example',host:'docker',purpose:'connect'};assert.equal(admit(enrolled,'cloudflare'),true);const before=calls.length;await verify(enrolled,grant);assert.equal(calls.length,before);assert.equal(admit({...enrolled,origin:'https://other.example'},'cloudflare'),false);
 const env={FRONTBASE_OAUTH_RELAY_URL:'https://relay.example',FRONTBASE_OAUTH_RELAY_TARGET:JSON.stringify(enrolled)};assert.equal(providerOAuthRelay(env,enrolled.origin).relayOrigin,'https://relay.example');assert.equal(providerOAuthRelay({},enrolled.origin),undefined);
+assert.equal(providerOAuthRelay({...env,FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY:'a'.repeat(43)},enrolled.origin).registrationKey,'a'.repeat(43));
+assert.throws(()=>providerOAuthRelay({...env,FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY:'short'},enrolled.origin));
 for(const patch of [{FRONTBASE_OAUTH_RELAY_URL:'http://relay.example'},{FRONTBASE_OAUTH_RELAY_URL:'https://relay.example/path'},{FRONTBASE_OAUTH_RELAY_TARGET:JSON.stringify({...enrolled,origin:'https://other.example'})},{FRONTBASE_OAUTH_RELAY_TARGET:JSON.stringify({...enrolled,purpose:'install'})}])assert.throws(()=>providerOAuthRelay({...env,...patch},enrolled.origin));
 console.log('PASS relay account/deployment/alias/native-state ownership, enrolled origins and trusted operator configuration');
 
@@ -49,3 +51,15 @@ await assert.rejects(publicPolicy.verify({...v,origin:'https://other.vercel.app'
 await assert.rejects(publicPolicy.verify(v,{...vg,accounts:[{id:'team_other'}]}));
 for(const patch of [{projectId:'prj_other'},{readyState:'BUILDING'},{target:'preview'}]){const previous=deployment;deployment={...previous,...patch};await assert.rejects(publicPolicy.verify(v,vg));deployment=previous;}
 console.log('PASS public native admission derives CF origin from authorized account and refuses unauthenticated reconnect');
+
+const registry=async(t,proof)=>t.origin==='https://registered.example'&&t.host==='cloudflare'&&proof==='q'.repeat(43);
+const registeredPolicy=publicNativeRelayTargetPolicy(async()=>{throw Error('unexpected provider call for reconnect');},registry);
+const reg={origin:'https://registered.example',host:'cloudflare',purpose:'connect'};
+assert.equal(registeredPolicy.requireReceiverProof,true);assert.equal(registeredPolicy.admit(reg,'vercel'),true,'cross-provider connection can use registered recipient');
+assert.equal(await registeredPolicy.verifyReceiver(reg,'q'.repeat(43)),true);
+assert.equal(await registeredPolicy.verifyReceiver({...reg,origin:'https://other.example'},'q'.repeat(43)),false);
+assert.equal(await registeredPolicy.verifyReceiver(reg,'x'.repeat(43)),false);
+await registeredPolicy.verify(reg,vg);
+assert.equal(registeredPolicy.admit({...reg,host:'docker'},'cloudflare'),false,'unenrolled Docker flow remains unavailable');
+assert.equal(registeredPolicy.admit({...reg,extra:'field'},'cloudflare'),false);
+console.log('PASS public reconnect requires enrolled receiver registry');

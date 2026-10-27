@@ -7,7 +7,7 @@ const fail=():never=>{throw Error('native_installation_refused');};
 const uuid=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/;
 const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
 const hash=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
-export interface NativeClaimContext {target:OAuthRelayTarget;relayOrigin:string;}
+export interface NativeClaimContext {target:OAuthRelayTarget;relayOrigin:string;registrationKey?:string;}
 /** Internal relay-receiver establish hook only, after its durable project claim.
  * Never mount as a browser-callable API. No credentials may appear in logs/receipts. */
 export async function claimNativeInstallation(context:NativeClaimContext,grant:OAuthAuthorization,transport:typeof fetch=fetch){
@@ -22,6 +22,7 @@ export async function claimNativeInstallation(context:NativeClaimContext,grant:O
   const reader=response.body?.getReader();if(!reader)fail();let size=0,text='';const decoder=new TextDecoder();try{for(;;){const part=await reader!.read();if(part.done)break;size+=part.value.length;if(size>1048576)fail();text+=decoder.decode(part.value,{stream:true});}}finally{await reader!.cancel().catch(()=>{});}let parsed:any;try{parsed=JSON.parse(text+decoder.decode());}catch{fail();}if(!response.ok||parsed.success===false)fail();return host==='cloudflare'?parsed.result:parsed;
  }
  const owner=random(),expires=new Date(Date.now()+3600000).toISOString(),environment:any={FRONTBASE_BOOTSTRAP:'1',FRONTBASE_INSTALLATION_ID:installationId,FRONTBASE_PUBLIC_ORIGIN:origin,FRONTBASE_BOOTSTRAP_TOKEN:owner,FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN:grant.accessToken,FRONTBASE_BOOTSTRAP_EXPIRES_AT:expires,FRONTBASE_BOOTSTRAP_ACCOUNT:account,FRONTBASE_BOOTSTRAP_PROJECT:project,FRONTBASE_BOOTSTRAP_ENVIRONMENT:'production',FRONTBASE_OAUTH_RELAY_URL:context.relayOrigin,FRONTBASE_OAUTH_RELAY_TARGET:JSON.stringify({origin,host,purpose:'connect'})};
+ if(context.registrationKey!==undefined){if(!/^[\w-]{43}$/.test(context.registrationKey))fail();environment.FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY=context.registrationKey;}
  const selected=grant.accounts.find(a=>a.id===account);if(!selected)fail();
  environment.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS=await (await createSecretCipher(owner)).encrypt(JSON.stringify([{...grant,accounts:[selected,...grant.accounts.filter(a=>a.id!==account)]}]));
  if(environment.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS.length>65536)fail();

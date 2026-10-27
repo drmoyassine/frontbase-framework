@@ -2,7 +2,8 @@ import type {DbRunner} from '@frontbase/edge-infra';
 import type {OAuthRelayVault} from './provider-oauth-relay.js';
 import type {OAuthRelayTarget} from './provider-oauth-relay.js';
 /** Nonsecret native claim ledger. A new alias/build ID must not create a second owner. */
-export async function sqlOAuthNativeClaims(runner:DbRunner,now=Date.now){
+export async function sqlOAuthNativeClaims(runner:DbRunner,now=Date.now,limit=1024){
+    if(!Number.isSafeInteger(limit)||limit<1||limit>100000)throw Error('native_claim_limit_refused');
     await runner.exec('CREATE TABLE IF NOT EXISTS _frontbase_native_claims (resource TEXT PRIMARY KEY, installation_id TEXT NOT NULL, origin TEXT NOT NULL, receiver_proof TEXT NOT NULL, created_at INTEGER NOT NULL)');
     return async(target:OAuthRelayTarget,proof:string)=>{
         if(target.purpose!=='install'||!['cloudflare','vercel'].includes(target.host)||
@@ -10,8 +11,24 @@ export async function sqlOAuthNativeClaims(runner:DbRunner,now=Date.now){
             !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(target.installationId??'')||!/^[\w-]{43}$/.test(proof))throw Error('native_claim_refused');
         const origin=new URL(target.origin);if(origin.origin!==target.origin||origin.protocol!=='https:')throw Error('native_claim_refused');
         const resource=JSON.stringify([target.host,target.account,target.project,'production']);
-        const rows=await runner.query('INSERT INTO _frontbase_native_claims (resource,installation_id,origin,receiver_proof,created_at) SELECT ?,?,?,?,? WHERE (SELECT COUNT(*) FROM _frontbase_native_claims) < 1024 ON CONFLICT(resource) DO NOTHING RETURNING resource',[resource,target.installationId,target.origin,proof,now()]);
+        const rows=await runner.query('INSERT INTO _frontbase_native_claims (resource,installation_id,origin,receiver_proof,created_at) SELECT ?,?,?,?,? WHERE (SELECT COUNT(*) FROM _frontbase_native_claims) < ? ON CONFLICT(resource) DO NOTHING RETURNING resource',[resource,target.installationId,target.origin,proof,now(),limit]);
         return rows.length===1;
+    };
+}
+/** Match an installation's previously claimed receiver proof. The proof is a
+ * digest, not a credential; only a successfully claimed native installation
+ * can enroll. Ambiguous origins and malformed ledger entries fail closed. */
+export async function sqlOAuthNativeReceiver(runner:DbRunner){
+    await runner.exec('CREATE TABLE IF NOT EXISTS _frontbase_native_claims (resource TEXT PRIMARY KEY, installation_id TEXT NOT NULL, origin TEXT NOT NULL, receiver_proof TEXT NOT NULL, created_at INTEGER NOT NULL)');
+    return async(target:OAuthRelayTarget,proof:string):Promise<boolean>=>{
+        if(target.purpose!=='connect'||!['cloudflare','vercel'].includes(target.host)||!/^[\w-]{43}$/.test(proof))return false;
+        try{
+            const origin=new URL(target.origin);if(origin.protocol!=='https:'||origin.origin!==target.origin||origin.port||origin.username||origin.password)return false;
+            const rows=await runner.query('SELECT resource FROM _frontbase_native_claims WHERE origin = ? AND receiver_proof = ? LIMIT 2',[target.origin,proof]);
+            if(rows.length!==1)return false;
+            const resource=JSON.parse(String(rows[0]!.resource));
+            return Array.isArray(resource)&&resource.length===4&&resource[0]===target.host&&resource[3]==='production';
+        }catch{return false;}
     };
 }
 /** Dedicated bounded expiring store; never uses or migrates an application's state database. */

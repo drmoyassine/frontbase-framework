@@ -1,0 +1,19 @@
+{
+  "name": "frontbase-oauth-production",
+  "main": "dist/worker.mjs",
+  "compatibility_date": "2026-09-07",
+  "no_bundle": true,
+  "observability": { "enabled": false },
+  "triggers": { "crons": ["* * * * *"] },
+  "d1_databases": [{ "binding": "DB", "database_name": "frontbase-oauth-production", "database_id": "00000000-0000-0000-0000-000000000000" }],
+  "vars": {
+    "FRONTBASE_PUBLIC_ORIGIN": "https://oauth.example.com",
+    "FRONTBASE_RELAY_MODE": "public-native",
+    "FRONTBASE_CLOUDFLARE_OAUTH_CLIENT_ID": "REPLACE_WITH_REGISTERED_CLIENT_ID",
+    "FRONTBASE_CLOUDFLARE_OAUTH_SCOPES": "account-settings.read d1.read d1.write workers-scripts.edit workers-kv-storage.read workers-kv-storage.write workers-scripts.metadata_read",
+    "FRONTBASE_VERCEL_OAUTH_CLIENT_ID": "REPLACE_WITH_REGISTERED_CLIENT_ID",
+    "FRONTBASE_VERCEL_OAUTH_INTEGRATION_SLUG": "REPLACE_WITH_REGISTERED_SLUG",
+    "FRONTBASE_RELAY_PRIVACY": "REPLACE_WITH_REVIEWED_NOTICE",
+    "FRONTBASE_RELAY_TERMS": "REPLACE_WITH_REVIEWED_NOTICE"
+  }
+}

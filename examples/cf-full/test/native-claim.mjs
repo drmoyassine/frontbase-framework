@@ -8,10 +8,10 @@ const out=new URL('../.native-claim-test/',import.meta.url);mkdirSync(out,{recur
 try{
  await build({entryPoints:[fileURLToPath(new URL('../src/native-claim.ts',import.meta.url))],outfile:fileURLToPath(new URL('claim.mjs',out)),bundle:true,platform:'node',format:'esm',packages:'external'});
  const {claimNativeInstallation}=await import(new URL('claim.mjs',out));
- const installationId='11111111-2222-4333-8444-555555555555',database='aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+ const registrationKey='a'.repeat(43),installationId='11111111-2222-4333-8444-555555555555',database='aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
  async function fixture(host,fault){
   const account=host==='cloudflare'?'a'.repeat(32):'team_fixture',project=host==='cloudflare'?'native-fixture':'prj_fixture',origin=host==='cloudflare'?'https://native-fixture.fixture.workers.dev':'https://native-fixture.vercel.app';
-  const target={origin,host,purpose:'install',account,project,installationId,...(host==='vercel'?{deploymentId:'dpl_fixture'}:{})};
+  const target={origin,host,purpose:'install',account,project,installationId,...(host==='vercel'?{deploymentId:'dpl_fixture'}:{})},key=fault==='bad-key'?'short':registrationKey;
   const grant={provider:host,accessToken:'sensitive-fixture-token',accounts:[{id:account,name:'Fixture'}],expiresAt:Date.now()+3600000};
   const db=new DatabaseSync(':memory:');let writes=[],settings,variables;
   const bindings=[{type:'assets',name:'ASSETS'},{type:'plain_text',name:'FRONTBASE_HOSTED_SETUP',text:'1'},{type:'plain_text',name:'FRONTBASE_BOOTSTRAP',text:'native'},{type:'plain_text',name:'FRONTBASE_INSTALLATION_ID',text:installationId}];
@@ -33,16 +33,17 @@ try{
    throw Error('unexpected endpoint '+url.pathname);
   };
   try{
-   if(fault){await assert.rejects(()=>claimNativeInstallation({target,relayOrigin:'https://relay.example'},grant,transport));assert.equal(writes.filter(x=>x==='database').length,fault==='lost'?1:0);assert.equal(writes.filter(x=>x==='deploy').length,0);return;}
-   const result=await claimNativeInstallation({target,relayOrigin:'https://relay.example'},grant,transport),owner=new URLSearchParams(result.returnPath.split('#')[1]).get('claim');assert.match(owner,/^[a-f0-9]{64}$/);assert.ok(!JSON.stringify(result).includes(grant.accessToken));
+   if(fault){await assert.rejects(()=>claimNativeInstallation({target,relayOrigin:'https://relay.example',registrationKey:key},grant,transport));assert.equal(writes.filter(x=>x==='database').length,fault==='lost'?1:0);assert.equal(writes.filter(x=>x==='deploy').length,0);return;}
+   const result=await claimNativeInstallation({target,relayOrigin:'https://relay.example',registrationKey:key},grant,transport),owner=new URLSearchParams(result.returnPath.split('#')[1]).get('claim');assert.match(owner,/^[a-f0-9]{64}$/);assert.ok(!JSON.stringify(result).includes(grant.accessToken));assert.ok(!JSON.stringify(result).includes(registrationKey));
    const env=host==='cloudflare'?Object.fromEntries(settings.bindings.filter(b=>b.text!==undefined).map(b=>[b.name,b.text])):Object.fromEntries(variables.map(v=>[v.key,v.value]));
+   assert.equal(env.FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY,registrationKey);if(host==='cloudflare')assert.equal(settings.bindings.find(b=>b.name==='FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY').type,'secret_text');
    assert.equal(env.FRONTBASE_BOOTSTRAP,'1');assert.equal(env.FRONTBASE_BOOTSTRAP_TOKEN,owner);assert.equal(env.FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN,grant.accessToken);
    const cipher=await createSecretCipher(owner);assert.ok(cipher.isEncrypted(env.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS));const retained=JSON.parse(await cipher.decrypt(env.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS));assert.equal(retained[0].accessToken,grant.accessToken);
    if(host==='cloudflare'){assert.equal(writes.filter(x=>x==='database').length,1);assert.deepEqual(settings.bindings.filter(b=>b.type==='assets'),[{type:'assets',name:'ASSETS'}]);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM _frontbase_bootstrap').get().n,1);}
    else{assert.equal(writes.filter(x=>x==='deploy').length,1);assert.ok(variables.every(v=>v.type==='encrypted'));}
   }finally{db.close();}
  }
- await fixture('cloudflare');for(const fault of ['occupied','unknown','assets','identity','lost'])await fixture('cloudflare',fault);
- await fixture('vercel');for(const fault of ['preview','conflict'])await fixture('vercel',fault);
+ await fixture('cloudflare');for(const fault of ['occupied','unknown','assets','identity','lost','bad-key'])await fixture('cloudflare',fault);
+ await fixture('vercel');for(const fault of ['preview','conflict','bad-key'])await fixture('vercel',fault);
  console.log('PASS native establish hooks: verified deployment, fixed coordinator admission, encrypted grant handoff, secret-free receipt, existing/unknown state refusal and no replay after lost response');
 }finally{rmSync(out,{recursive:true,force:true});}

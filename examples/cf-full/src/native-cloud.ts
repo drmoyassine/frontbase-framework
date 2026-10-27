@@ -10,7 +10,7 @@ export function createNativeCloudBootstrap(env:any,host:'cloudflare'|'vercel',tr
  if(typeof origin!=='string'||new URL(origin).origin!==origin||!origin.startsWith('https://')||!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(installationId??'')||!account||!project)fail();
  const target:OAuthRelayTarget={origin,host,purpose:'install',account,project,installationId,...(host==='vercel'?{deploymentId:env.VERCEL_DEPLOYMENT_ID}:{})};
  const actor={tenant:'_native',subject:installationId};
- const receiver=createProviderRelayClient({origin,relayOrigin,target,mode:'native-install',fetch:transport,authorize:async request=>new URL(request.url).origin===origin?actor:null,establish:async authorization=>(await claimNativeInstallation({target,relayOrigin},authorization,transport)).returnPath});
+ const receiver=createProviderRelayClient({origin,relayOrigin,target,mode:'native-install',fetch:transport,authorize:async request=>new URL(request.url).origin===origin?actor:null,establish:async (authorization,_request,registrationKey)=>(await claimNativeInstallation({target,relayOrigin,registrationKey},authorization,transport)).returnPath});
  return {fetch:async(request:Request)=>{
   const url=new URL(request.url),headers={'cache-control':'no-store','referrer-policy':'no-referrer','x-content-type-options':'nosniff','content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
   if(url.origin!==origin)return new Response('Invalid origin',{status:403,headers});

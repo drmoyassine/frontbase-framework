@@ -90,7 +90,7 @@ import { embeddingFromEnv } from './rag/embedding.js';
 import { registerRagRoutes, runRagIndex, type RagRouteDeps } from './rag/routes.js';
 
 export interface CreateCompatAppDeps {
-    providerOAuth?: {origin:string;clients:Partial<Record<OAuthProvider,ProviderOAuthClient>>;relay?:{relayOrigin:string;target:OAuthRelayTarget}};
+    providerOAuth?: {origin:string;clients:Partial<Record<OAuthProvider,ProviderOAuthClient>>;relay?:{relayOrigin:string;target:OAuthRelayTarget;registrationKey?:string}};
     /** Internal rollout gate; no production AI execution until reviewed-batch acceptance/UI is complete. */
     translationExecutionEnabled?: boolean;
     /** Build the DbRunner (env-aware). Called lazily; the app caches one runner. */

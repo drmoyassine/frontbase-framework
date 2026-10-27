@@ -5,8 +5,8 @@ import type {OAuthRelayTarget} from './provider-oauth-relay.js';
 export interface ProviderRelayClientDeps {
     origin:string;relayOrigin:string;target:OAuthRelayTarget;fetch:typeof fetch;
     authorize(request:Request):Promise<OAuthActor|null>;store?:ProviderOAuthStore;cipher?:SecretCipher;
-    mode:'authenticated'|'native-install';now?:()=>number;
-    establish?:(authorization:OAuthAuthorization,request:Request)=>Promise<string>;
+    mode:'authenticated'|'native-install';now?:()=>number;registrationKey?:string;
+    establish?:(authorization:OAuthAuthorization,request:Request,registrationKey:string)=>Promise<string>;
 }
 const base='/api/provider-oauth',random=()=>btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const hash=async(value:string)=>btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -32,7 +32,7 @@ export function createProviderRelayClient(deps:ProviderRelayClientDeps){
     app.post(base+'/:provider/start',async c=>{
         const provider=c.req.param('provider')??'';if(!['cloudflare','vercel'].includes(provider))return c.json({error:'relay_refused'},400);
         const input=await json(c.req.raw,8192);if(typeof input.returnPath!=='string'||!input.returnPath.startsWith('/')||input.returnPath.startsWith('//')||/[\\\r\n#]/.test(input.returnPath)||Object.keys(input).some(k=>!['returnPath','accountId'].includes(k))||input.accountId!==undefined&&(typeof input.accountId!=='string'||input.accountId.length>256))throw Error('relay_refused');
-        const actor=await deps.authorize(c.req.raw);if(!actor)throw Error('relay_refused');const verifier=random();
+        const actor=await deps.authorize(c.req.raw);if(!actor)throw Error('relay_refused');const verifier=deps.mode==='authenticated'&&deps.registrationKey?deps.registrationKey:random();if(!/^[\w-]{43}$/.test(verifier))throw Error('relay_refused');
         const value=await seal({...actor,verifier,provider,expires:now()+600000,target:deps.target,returnPath:input.returnPath,accountId:input.accountId});if(value.length>4096)throw Error('relay_refused');
         c.header('Set-Cookie','__Host-fb_relay_client_'+provider+'='+value+'; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600');
         const url=new URL('/connect',deps.relayOrigin);url.searchParams.set('provider',provider);url.searchParams.set('target',JSON.stringify(deps.target));url.searchParams.set('challenge',await hash(verifier));return c.json({url:url.href,relayOrigin:deps.relayOrigin});
@@ -47,7 +47,7 @@ export function createProviderRelayClient(deps:ProviderRelayClientDeps){
         if(!response.ok)throw Error('relay_refused');const result=await json(response);
         if(canonical(result.target)!==canonical(deps.target)||result.authorization?.provider!==provider||typeof result.authorization?.accessToken!=='string'||!result.authorization.accessToken||!Array.isArray(result.authorization.accounts)||!result.authorization.accounts.length||result.authorization.expiresAt!==undefined&&result.authorization.expiresAt<=now())throw Error('relay_refused');
         let returnPath=pending.returnPath;
-        if(deps.mode==='native-install')returnPath=await deps.establish!(result.authorization,c.req.raw);
+        if(deps.mode==='native-install')returnPath=await deps.establish!(result.authorization,c.req.raw,pending.verifier);
         else await deps.store!.save(actor,result.authorization,pending.accountId);
         if(typeof returnPath!=='string'||!returnPath.startsWith('/')||returnPath.startsWith('//')||/[\\\r\n]/.test(returnPath))throw Error('relay_refused');
         c.header('Set-Cookie',name+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');return c.json({returnPath});
