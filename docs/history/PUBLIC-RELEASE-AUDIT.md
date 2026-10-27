@@ -1,4 +1,4 @@
-2026-10-28 ACTIVE setup error clarity: replace opaque HTTP codes with safe actionable messages across status, claim and submission; show claim errors outside the gated form. Preserve authorization and secret boundaries.
+2026-10-28 setup error clarity DELIVERED: b2cc313 pushed; Worker 988134d6 deployed; native snapshot ab0d255d verified. Safe actionable messages now cover setup error/detail envelopes, HTTP/network/malformed responses; claim errors visible outside gated form. Workspace check/build, final admin check, regression/no-leak/mutation PASS. Live invalid-link error verified. Owner administrator submission remains pending. See repair receipt.
 
 2026-10-28 refresh repair DELIVERED: 14d2749 pushed; native snapshot 1b618c7 verified; frontbase-usa Worker aa2e69ed deployed. Uncached status validates the existing HttpOnly setup cookie after refresh without exposing tokens. Workspace check/build, setup/backend/form/no-leak tests and admin-console mutation PASS. Live refresh retains verified form; scoped temporary recovery removed (404/no cookie). Owner administrator submission remains pending. See [receipt](../plans/cloudflare-setup-repair-20261027.md).
 

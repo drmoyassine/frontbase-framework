@@ -58,3 +58,10 @@ Source `14d2749` committed/pushed. Status now returns only a boolean derived fro
 Workspace check/build PASS; backend setup, admin claim/form/no-leak tests and admin-console mutation PASS. Full backend mutation suite was not rerun for this read-only status change. Native source `1b618c7bc10cced6e564b84c2d7dab8318272258` published and deployment-button source verifier PASS.
 
 Live Worker `aa2e69ed-146d-4618-820e-350eec36e9d3`; unauthenticated status false/no-store and health 200 verified. Browser claim had expired during investigation; previously approved installation-specific one-use recovery refreshed it without altering resources or the configured setup expiry. Recovery route removed and verified 404/no Set-Cookie; local consumed link deleted. Reloading the clean /setup#/setup URL now visibly retains Secure setup link verified and administrator form. Owner must submit the new password; no administrator-created claim. Unrelated pre-existing files remain unstaged.
+
+
+## 2026-10-28: actionable setup errors
+
+Source b2cc313 pushed; native snapshot ab0d255dcf291a6623c89c96127469812150602c verified; Worker 988134d6-d505-4148-8744-42750373561d deployed. Setup client recognizes error/detail codes and explains expired/invalid authorization, disabled setup, existing administrator, validation, database, HTTP, network and malformed responses without raw server details. Claim errors render outside the gated form; successful reauthorization clears stale errors.
+
+Workspace check/build PASS; final admin check PASS after typed lookup correction. API/form/claim/no-leak and admin mutation tests PASS. A live synthetic invalid claim in a separate tab displayed the clear invalid-session message, not http_403; test tab closed. Live SPA and health200 verified. This covers first-run setup, not all broader product error surfaces. Administrator creation awaits owner password entry/submission. Unrelated work remains unstaged.
