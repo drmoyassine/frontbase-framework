@@ -49,3 +49,12 @@ Repair `bfb35c5` gives each activation a fresh bounded one-hour administrator wi
 Live frontbase-usa setup expiry renewed for one hour without changing its token, account or resources. Previously approved temporary one-use recovery renewed the HttpOnly claim in a separate background tab, preserving the original entered form. Route removed immediately; final request returns 404/no cookie and local consumed capability file deleted.
 
 Workspace check/build, hosted functional + five mutation tests, setup form, claim handoff, no-leak and mutation tests PASS. Final Worker `3dfdaaba-b775-4f2b-a106-e236007b9edf`; health 200, setupEnabled=true, setupExpired=false, updated setup SPA verified. Native snapshot `ec46a354d981ae3c16d2454c6c989791e2205b51` published and source verifier PASS. Administrator password submission remains the owner's pending handoff; no signed-in verification claim.
+
+
+## 2026-10-28: refresh-safe setup authorization
+
+Source `14d2749` committed/pushed. Status now returns only a boolean derived from the existing signed HttpOnly setup cookie with no-store; the setup page checks that status when no fragment remains. No capability is persisted in browser storage. Missing/tampered cookies and initialized installations remain unauthorized. Existing POST authorization is unchanged.
+
+Workspace check/build PASS; backend setup, admin claim/form/no-leak tests and admin-console mutation PASS. Full backend mutation suite was not rerun for this read-only status change. Native source `1b618c7bc10cced6e564b84c2d7dab8318272258` published and deployment-button source verifier PASS.
+
+Live Worker `aa2e69ed-146d-4618-820e-350eec36e9d3`; unauthenticated status false/no-store and health 200 verified. Browser claim had expired during investigation; previously approved installation-specific one-use recovery refreshed it without altering resources or the configured setup expiry. Recovery route removed and verified 404/no Set-Cookie; local consumed link deleted. Reloading the clean /setup#/setup URL now visibly retains Secure setup link verified and administrator form. Owner must submit the new password; no administrator-created claim. Unrelated pre-existing files remain unstaged.
