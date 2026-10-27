@@ -1,0 +1,50 @@
+{
+  "name": "@frontbase/builder",
+  "version": "0.1.0",
+  "description": "Frontbase Builder - eSSR-based visual editor canvas",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./registry": {
+      "types": "./dist/registry/index.d.ts",
+      "import": "./dist/registry/index.js"
+    },
+    "./editing": {
+      "types": "./dist/editing/index.d.ts",
+      "import": "./dist/editing/index.js"
+    },
+    "./editing/client": {
+      "types": "./dist/editing/client/index.d.ts",
+      "import": "./dist/editing/client/index.js"
+    },
+    "./canvas": {
+      "types": "./dist/canvas/index.d.ts",
+      "import": "./dist/canvas/index.js"
+    },
+    "./builder": {
+      "types": "./dist/BuilderEngine.d.ts",
+      "import": "./dist/BuilderEngine.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node test/registry.mjs"
+  },
+  "dependencies": {
+    "@frontbase/edge-core": "workspace:*",
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

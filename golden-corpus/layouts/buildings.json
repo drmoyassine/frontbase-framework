@@ -1,0 +1,466 @@
+{
+  "title": "Frontbase for Smart Buildings | Resilient Building Automation",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "sb-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "sb-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "sb-menu-problem",
+                  "label": "The Risk",
+                  "navType": "scroll",
+                  "target": "#the-problem"
+                },
+                {
+                  "id": "sb-menu-solution",
+                  "label": "Edge Automation",
+                  "navType": "scroll",
+                  "target": "#the-solution"
+                },
+                {
+                  "id": "sb-menu-enterprise",
+                  "label": "Enterprise",
+                  "navType": "link",
+                  "target": "/enterprise"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Talk to Engineering",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "sb-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "80px 24px",
+              "minHeight": "520px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(200 30% 8%) 0%, hsl(190 25% 14%) 50%, hsl(180 30% 8%) 100%)"
+            },
+            "children": [
+              {
+                "id": "sb-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Smart Buildings",
+                  "variant": "secondary",
+                  "icon": "Building2",
+                  "iconPosition": "left",
+                  "backgroundColor": "#2dd4bf",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "sb-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "When the BMS goes down, the building shouldn't.",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "56px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF",
+                  "maxWidth": "800px"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 32
+                    }
+                  }
+                }
+              },
+              {
+                "id": "sb-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Johnson Controls: $27M. MGM Resorts: casino floors dark. Omni Hotels: keycards dead. The Building Management System is the nerve center — and a centralized one is a single point of failure. Deploy autonomous HVAC, access, and energy dashboards to every building edge."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "760px",
+                  "fontSize": "20px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "sb-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "24px"
+                },
+                "children": [
+                  {
+                    "id": "sb-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Protect Your Buildings",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "sb-hero-cta-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "sb-problem-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The Smart Building's Achilles Heel: Centralized BMS",
+              "subtitle": "The BMS controls HVAC, elevators, fire suppression, and access control. When it's centralized, one breach controls everything.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "lg",
+              "iconAlignment": "left",
+              "textAlignment": "left",
+              "iconColor": "hsl(0 84% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-problem",
+              "features": [
+                {
+                  "id": "sb-prob-1",
+                  "icon": "Lock",
+                  "title": "Johnson Controls — $27M (Sep 2023)",
+                  "description": "Dark Angels ransomware hit the building automation giant. Data exfiltrated. The company that manages HVAC, fire, and security for thousands of buildings worldwide lost $27 million in a single quarter from the incident — and exposed the systemic risk of centralized BMS control."
+                },
+                {
+                  "id": "sb-prob-2",
+                  "icon": "AlertOctagon",
+                  "title": "MGM Resorts — Casino Floors Dark (2023)",
+                  "description": "A sophisticated cyberattack shut down slot machines, room keycards, reservation systems, and payment processing across multiple hotel and casino properties simultaneously. Guests locked out. Revenue stopped. One centralized system controlled everything — and everything went down together."
+                },
+                {
+                  "id": "sb-prob-3",
+                  "icon": "Thermometer",
+                  "title": "Siegeware: Building Control Held Ransom",
+                  "description": "A growing threat class where attackers compromise BMS to control physical building systems — disabling HVAC to force server room overheating, locking access control systems, or manipulating fire suppression. Office towers have been evacuated due to targeted HVAC tampering alone."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "sb-solution-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Building-Level Edge Autonomy",
+              "subtitle": "Every building runs its own independent edge node. A breach in the management portal doesn't touch the HVAC in Building 7.",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(142 71% 45%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-solution",
+              "features": [
+                {
+                  "id": "sb-sol-1",
+                  "icon": "Building2",
+                  "title": "Per-Building Edge Nodes",
+                  "description": "HVAC optimization, occupancy sensing, and energy management dashboards run on independent edge hardware at each building. If the central management portal is compromised, individual buildings continue operating autonomously with full local control."
+                },
+                {
+                  "id": "sb-sol-2",
+                  "icon": "Shield",
+                  "title": "Siegeware-Proof Isolation",
+                  "description": "Each building's edge node has its own isolated SQLite database. Attackers can't pivot from one compromised building to control HVAC, fire, or access systems in other properties. The blast radius is architecturally limited to one building."
+                },
+                {
+                  "id": "sb-sol-3",
+                  "icon": "Users",
+                  "title": "Tenant-Facing Control Panels",
+                  "description": "Build role-based tenant portals with no-code. Tenants manage their own HVAC preferences, lighting, and access — served from local edge, not a centralized cloud portal that can become a single point of failure or attack."
+                },
+                {
+                  "id": "sb-sol-4",
+                  "icon": "BarChart3",
+                  "title": "Local Energy Analytics",
+                  "description": "Run energy consumption analytics, occupancy pattern detection, and cost optimization at the building edge. Data stays local for privacy. Insights are computed in real-time with zero cloud dependency."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "sb-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "hsl(200 30% 8%)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "sb-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Don't let a ransomware attack evacuate your tenants.",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "sb-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Contact our solutions engineering team to deploy edge-native building automation that no attacker can centrally disable."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "opacity": "1",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "sb-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "sb-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "Edge-native infrastructure for resilient building automation.",
+              "columns": [
+                {
+                  "id": "sb-col-solutions",
+                  "title": "Solutions",
+                  "links": [
+                    {
+                      "id": "sb-link-hvac",
+                      "text": "HVAC Management",
+                      "href": "#"
+                    },
+                    {
+                      "id": "sb-link-access",
+                      "text": "Access Control",
+                      "href": "#"
+                    },
+                    {
+                      "id": "sb-link-energy",
+                      "text": "Energy Optimization",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "sb-col-industries",
+                  "title": "Industries",
+                  "links": [
+                    {
+                      "id": "sb-link-manufacturing",
+                      "text": "Manufacturing",
+                      "href": "/manufacturing"
+                    },
+                    {
+                      "id": "sb-link-gov",
+                      "text": "Government",
+                      "href": "/government"
+                    },
+                    {
+                      "id": "sb-link-logistics",
+                      "text": "Fleet & Logistics",
+                      "href": "/logistics"
+                    }
+                  ]
+                },
+                {
+                  "id": "sb-col-company",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "sb-link-enterprise",
+                      "text": "Enterprise Platform",
+                      "href": "/enterprise"
+                    },
+                    {
+                      "id": "sb-link-privacy",
+                      "text": "Privacy & Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "sb-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "sb-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Buildings that think for themselves.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

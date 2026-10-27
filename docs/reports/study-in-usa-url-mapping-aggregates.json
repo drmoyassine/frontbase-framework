@@ -1,0 +1,174 @@
+{
+  "generator": "scripts/migration/study-in-usa-url-classifier.mjs",
+  "method": "explicit-slug-comparison: strip the /ar path prefix, require byte-exact equality for proven; rules R1 (trailing slash) R2 (ASCII case) R3 (percent-encoding) R4 (query presence) for near-matches; structural translated-slug shape (same depth, same parent, different last segment) -> ambiguous; never positional, never fuzzy, no GUIDs",
+  "cacheDirName": "sitemap-20261022",
+  "totals": {
+    "sourceUrls": 1266,
+    "arUrls": 1266,
+    "classifiedRows": 1266
+  },
+  "perKind": {
+    "source": {
+      "custom:type=job_listing": 310,
+      "home": 1,
+      "posts": 500,
+      "posts-p2": 455
+    },
+    "ar": {
+      "custom:type=job_listing": 310,
+      "home": 1,
+      "posts": 500,
+      "posts-p2": 455
+    }
+  },
+  "countsArToEn": {
+    "proven": 1266,
+    "candidate": 0,
+    "ambiguous": 0,
+    "missing": 0,
+    "conflicting": 0
+  },
+  "countsEnToAr": {
+    "enOnly": 0
+  },
+  "integrity": {
+    "sourceNonCanonicalHost": 0,
+    "arNonCanonicalHost": 0,
+    "arWithoutArPrefix": 0,
+    "arDoublePrefix": 0,
+    "sourceUnderArPrefix": 0,
+    "sourceCrossMapDuplicates": 0,
+    "arCrossMapDuplicates": 0
+  },
+  "lastmodCorroboration": {
+    "equal": 1266,
+    "different": 0,
+    "missingOnOneSide": 0
+  },
+  "classes": {
+    "proven": {
+      "count": 1266,
+      "byKind": {
+        "custom:type=job_listing": 310,
+        "home": 1,
+        "posts": 500,
+        "posts-p2": 455
+      }
+    },
+    "candidate": {
+      "count": 0,
+      "byKind": {}
+    },
+    "ambiguous": {
+      "count": 0,
+      "byKind": {}
+    },
+    "missing": {
+      "count": 0,
+      "byKind": {}
+    },
+    "conflicting": {
+      "count": 0,
+      "byKind": {}
+    },
+    "en-only": {
+      "count": 0,
+      "byKind": {}
+    }
+  },
+  "fullArtifact": {
+    "file": "study-in-usa-url-mapping-classified.tsv",
+    "rows": 1266,
+    "bytes": 356967,
+    "sha256": "757f8581de7d60ebfc000ffcc373b8faae3b1b3ed8ce637bfeee4d17d9dc6be9",
+    "retention": "full per-URL TSV retained OUTSIDE Git in the private cache dir (raw XML and oversized derived listings are never committed)"
+  },
+  "inputs": [
+    {
+      "role": "index",
+      "url": "https://study-in-usa.com/sitemap.xml",
+      "file": "index-source.xml",
+      "sha256": "c54f51d8cf1616bc420510a94b723b319473a456b05eead28de5eb2d74ac9c51",
+      "bytes": 1095
+    },
+    {
+      "role": "child",
+      "url": "https://study-in-usa.com/sitemap-home.xml",
+      "file": "child-source-sitemap-home.xml.xml",
+      "sha256": "efb8ba51b006c7180cbf96627efb863dbe97d016f5a1a95645f8b656022e0beb",
+      "bytes": 709,
+      "urlCount": 1,
+      "kind": "home"
+    },
+    {
+      "role": "child",
+      "url": "https://study-in-usa.com/sitemap-posts.xml",
+      "file": "child-source-sitemap-posts.xml.xml",
+      "sha256": "b86b0149b0a95032ae0caf067e6ac17847323cfaa6b1f8282f95ea88d568028b",
+      "bytes": 134781,
+      "urlCount": 500,
+      "kind": "posts"
+    },
+    {
+      "role": "child",
+      "url": "https://study-in-usa.com/sitemap-posts.xml?page=2",
+      "file": "child-source-sitemap-posts.xml%3Fpage%3D2.xml",
+      "sha256": "31a9170a93c99a6f87300d39293f6839b513bdcd38e567909a8f2b65eec6e1e2",
+      "bytes": 141155,
+      "urlCount": 455,
+      "kind": "posts-p2"
+    },
+    {
+      "role": "child",
+      "url": "https://study-in-usa.com/sitemap-custom-posts.xml?type=job_listing",
+      "file": "child-source-sitemap-custom-posts.xml%3Ftype%3Djob_listing.xml",
+      "sha256": "3158d071bb7ded2933b3c922a98471293aad26200fc6501f0251cba8a3861fbf",
+      "bytes": 71743,
+      "urlCount": 310,
+      "kind": "custom:type=job_listing"
+    },
+    {
+      "role": "index",
+      "url": "https://study-in-usa.com/ar/sitemap.xml",
+      "file": "index-ar.xml",
+      "sha256": "8714412f86df90026047454e19f0b2422c6e3a39fbd826de4b3b26b0eb431422",
+      "bytes": 1110
+    },
+    {
+      "role": "child",
+      "url": "https://study-in-usa.com/ar/sitemap-home.xml",
+      "file": "child-ar-sitemap-home.xml.xml",
+      "sha256": "6e62d1f17828512d5cad3cdb8580a39535f4a585ee8d44cc20ed45b5252488a6",
+      "bytes": 715,
+      "urlCount": 1,
+      "kind": "home"
+    },
+    {
+      "role": "child",
+      "url": "https://study-in-usa.com/ar/sitemap-posts.xml",
+      "file": "child-ar-sitemap-posts.xml.xml",
+      "sha256": "82021c513ab531fbc38fcee29cacc2c0fd7292277775f19ec2066d71439e0cd6",
+      "bytes": 136299,
+      "urlCount": 500,
+      "kind": "posts"
+    },
+    {
+      "role": "child",
+      "url": "https://study-in-usa.com/ar/sitemap-posts.xml?page=2",
+      "file": "child-ar-sitemap-posts.xml%3Fpage%3D2.xml",
+      "sha256": "ce30c9006cee3c6895ccd1e6dbb4ba439d85b1b3255aa1a1a195934cb5bfbf34",
+      "bytes": 142850,
+      "urlCount": 455,
+      "kind": "posts-p2"
+    },
+    {
+      "role": "child",
+      "url": "https://study-in-usa.com/ar/sitemap-custom-posts.xml?type=job_listing",
+      "file": "child-ar-sitemap-custom-posts.xml%3Ftype%3Djob_listing.xml",
+      "sha256": "566e04c780a80d0f0162a8a5be6dd4df84cb970afc9d58b92e976b9903c955f7",
+      "bytes": 72731,
+      "urlCount": 310,
+      "kind": "custom:type=job_listing"
+    }
+  ]
+}

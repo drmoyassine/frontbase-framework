@@ -1,0 +1,460 @@
+{
+  "title": "Frontbase for Environment | Remote Edge Monitoring",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "env-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "env-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "env-menu-problem",
+                  "label": "The Wilderness",
+                  "navType": "scroll",
+                  "target": "#the-problem"
+                },
+                {
+                  "id": "env-menu-solution",
+                  "label": "Edge Resilience",
+                  "navType": "scroll",
+                  "target": "#the-solution"
+                },
+                {
+                  "id": "env-menu-enterprise",
+                  "label": "Enterprise",
+                  "navType": "link",
+                  "target": "/enterprise"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Talk to Engineering",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "env-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "80px 24px",
+              "minHeight": "520px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(180 30% 12%) 0%, hsl(170 25% 16%) 50%, hsl(180 30% 10%) 100%)"
+            },
+            "children": [
+              {
+                "id": "env-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Environmental Monitoring",
+                  "variant": "secondary",
+                  "icon": "Leaf",
+                  "iconPosition": "left",
+                  "backgroundColor": "#2dd4bf",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "env-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Remote monitoring that survives the wilderness.",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "56px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF",
+                  "maxWidth": "850px"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 32
+                    }
+                  }
+                }
+              },
+              {
+                "id": "env-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Detecting wildfires, tracking flood levels, and monitoring air quality happens deep in forests and remote regions where the nearest cell tower is 50 miles away. Streamline your climate tech with edge nodes that buffer data, process AI anomalies locally, and only use precious satellite bandwidth when disaster strikes."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "760px",
+                  "fontSize": "20px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "env-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "24px"
+                },
+                "children": [
+                  {
+                    "id": "env-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Monitor the Edge",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "env-hero-cta-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "env-problem-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "You Can't Stop What You Can't See",
+              "subtitle": "Critical environmental data is useless if it's trapped in a disconnected sensor.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "lg",
+              "iconAlignment": "left",
+              "textAlignment": "left",
+              "iconColor": "hsl(0 84% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-problem",
+              "features": [
+                {
+                  "id": "env-prob-1",
+                  "icon": "Flame",
+                  "title": "Wildfire Detection Delays",
+                  "description": "Standard optical sensors stream gigabytes of raw video to the cloud for smoke detection. Over slow satellite links, imagery gets compressed or dropped, delaying response times when every minute counts."
+                },
+                {
+                  "id": "env-prob-2",
+                  "icon": "Waves",
+                  "title": "Flood Sensor Washouts",
+                  "description": "During severe storms, cell networks are the first infrastructure to fail. River gauges reliant on constant 5G connectivity go dark precisely when municipalities need flood data the most."
+                },
+                {
+                  "id": "env-prob-3",
+                  "icon": "BatteryWarning",
+                  "title": "Power & Bandwidth Drain",
+                  "description": "Constantly pinging a central server drains battery life on solar-powered wilderness hardware. Devices die months before their scheduled maintenance, leaving massive blind spots."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "env-solution-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Edge Intelligence in the Wild",
+              "subtitle": "Process data locally. Transmit only the emergencies.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(142 71% 45%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-solution",
+              "features": [
+                {
+                  "id": "env-sol-1",
+                  "icon": "Brain",
+                  "title": "On-Device Anomaly ML",
+                  "description": "Run AI models directly on the sensor edge. Cameras detect smoke patterns locally and only transmit a 5KB coordinate alert, rather than streaming 4K video over satellite."
+                },
+                {
+                  "id": "env-sol-2",
+                  "icon": "Database",
+                  "title": "Crisis Data Buffering",
+                  "description": "When storms knock out network bridges, SQLite databases on the edge continue to aggregate river levels. When the link returns, everything syncs chronologically to the cloud."
+                },
+                {
+                  "id": "env-sol-3",
+                  "icon": "BatteryCharging",
+                  "title": "Optimized Transmissions",
+                  "description": "Edge nodes consolidate sensor readings. Instead of 10,000 pings a day, Frontbase workflows bundle data into a single, efficient burst — extending battery life by years."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "env-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "hsl(180 30% 12%)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "env-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Protect the planet from the edge.",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "env-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Contact our solutions engineering team to build resilient climate tech infrastructure."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "opacity": "1",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "env-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "env-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "Edge-native infrastructure for climate tech and environmental monitoring.",
+              "columns": [
+                {
+                  "id": "env-col-solutions",
+                  "title": "Solutions",
+                  "links": [
+                    {
+                      "id": "env-link-wildfire",
+                      "text": "Wildfire Detection",
+                      "href": "#"
+                    },
+                    {
+                      "id": "env-link-flood",
+                      "text": "Flood Monitoring",
+                      "href": "#"
+                    },
+                    {
+                      "id": "env-link-climate",
+                      "text": "Climate Data",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "env-col-industries",
+                  "title": "Industries",
+                  "links": [
+                    {
+                      "id": "env-link-agriculture",
+                      "text": "Agriculture",
+                      "href": "/agriculture"
+                    },
+                    {
+                      "id": "env-link-government",
+                      "text": "Government",
+                      "href": "/government"
+                    },
+                    {
+                      "id": "env-link-oilgas",
+                      "text": "Oil & Gas",
+                      "href": "/oil-gas"
+                    }
+                  ]
+                },
+                {
+                  "id": "env-col-company",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "env-link-enterprise",
+                      "text": "Enterprise Platform",
+                      "href": "/enterprise"
+                    },
+                    {
+                      "id": "env-link-privacy",
+                      "text": "Privacy & Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "env-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "env-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Technology for the Earth.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

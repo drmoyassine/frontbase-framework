@@ -1,0 +1,909 @@
+{
+  "title": "Frontbase Enterprise | Edge-Native No-Code IoT Platform",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "ent-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "ent-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "ent-menu-capabilities",
+                  "label": "Capabilities",
+                  "navType": "scroll",
+                  "target": "#capabilities"
+                },
+                {
+                  "id": "ent-menu-usecases",
+                  "label": "Industries",
+                  "navType": "scroll",
+                  "target": "#use-cases"
+                },
+                {
+                  "id": "ent-menu-architecture",
+                  "label": "Architecture",
+                  "navType": "scroll",
+                  "target": "#architecture"
+                },
+                {
+                  "id": "ent-menu-home",
+                  "label": "For Developers",
+                  "navType": "link",
+                  "target": "/"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Request a Demo",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "secondaryButton": {
+                "enabled": false,
+                "text": "Documentation",
+                "navType": "link",
+                "target": "/docs"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "ent-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "64px 24px",
+              "minHeight": "480px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(222 47% 8%) 0%, hsl(217 33% 14%) 50%, hsl(222 47% 8%) 100%)"
+            },
+            "children": [
+              {
+                "id": "ent-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Enterprise IoT Platform",
+                  "variant": "secondary",
+                  "icon": "Building2",
+                  "iconPosition": "left",
+                  "backgroundColor": "#80ffc3",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "ent-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Edge-Native No-Code for Enterprise IoT",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "48px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "ent-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Build resilient, low-latency IoT dashboards, automations, and digital twins — without writing code. Deploy globally. Run independently."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "680px",
+                  "fontSize": "18px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "ent-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "16px"
+                },
+                "children": [
+                  {
+                    "id": "ent-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Request a Demo",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "ent-hero-cta-primary-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  },
+                  {
+                    "id": "ent-hero-cta-secondary",
+                    "type": "Button",
+                    "props": {
+                      "text": "View Architecture",
+                      "variant": "outline",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "ent-hero-cta-secondary-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#architecture"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {
+                      "borderColor": "rgba(255,255,255,0.3)",
+                      "color": "#FFFFFF"
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "ent-logocloud",
+            "type": "LogoCloud",
+            "props": {
+              "title": "Powered by enterprise-grade infrastructure",
+              "displayMode": "static",
+              "logoSize": "md",
+              "grayscale": true,
+              "logos": [
+                {
+                  "id": "ent-logo-supabase",
+                  "type": "image",
+                  "value": "https://wp.logos-download.com/wp-content/uploads/2023/02/Supabase_Logo.png?dl",
+                  "url": "",
+                  "name": "Supabase",
+                  "scale": 0.9
+                },
+                {
+                  "id": "ent-logo-cloudflare",
+                  "type": "image",
+                  "value": "https://cf-assets.www.cloudflare.com/dzlvafdwdttg/69wNwfiY5mFmgpd9eQFW6j/d5131c08085a977aa70f19e7aada3fa9/1pixel-down__1_.svg",
+                  "url": "",
+                  "name": "Cloudflare",
+                  "scale": 1.1
+                },
+                {
+                  "id": "ent-logo-vercel",
+                  "type": "image",
+                  "value": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Vercel_logo_2025.svg",
+                  "url": "",
+                  "name": "Vercel",
+                  "scale": 0.7
+                },
+                {
+                  "id": "ent-logo-deno",
+                  "type": "image",
+                  "value": "https://uwzosvzynnpbxpnwqgkm.supabase.co/storage/v1/object/public/frontbase_assets/providers_assest/Deno.svg",
+                  "url": "",
+                  "name": "Deno",
+                  "scale": 0.9
+                },
+                {
+                  "id": "ent-logo-upstash",
+                  "type": "image",
+                  "value": "https://upstash.com/logo/upstash-white-bg.png",
+                  "url": "",
+                  "name": "Upstash",
+                  "scale": 1.1
+                },
+                {
+                  "id": "ent-logo-neon",
+                  "type": "image",
+                  "value": "https://uwzosvzynnpbxpnwqgkm.supabase.co/storage/v1/object/public/frontbase_assets/brands-logos/neon-logo-light-color.svg",
+                  "url": "",
+                  "name": "Neon",
+                  "scale": 0.9
+                },
+                {
+                  "id": "ent-logo-netlify",
+                  "type": "image",
+                  "value": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Netlify_logo.svg/1280px-Netlify_logo.svg.png",
+                  "url": "",
+                  "name": "Netlify",
+                  "scale": 1
+                },
+                {
+                  "id": "ent-logo-more",
+                  "type": "text",
+                  "value": "& More",
+                  "url": "",
+                  "name": "& More",
+                  "scale": 1.3
+                }
+              ]
+            },
+            "styles": {
+              "backgroundColor": "var(--muted)"
+            },
+            "children": []
+          },
+          {
+            "id": "ent-capabilities",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Edge-Native No-Code Enterprise IoT",
+              "subtitle": "Everything you need to build, deploy, and manage IoT applications at scale",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(var(--primary))",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "capabilities",
+              "features": [
+                {
+                  "id": "ent-cap-telemetry",
+                  "icon": "Zap",
+                  "title": "Ultra-Low Latency Telemetry",
+                  "description": "Process incoming sensor data and IoT streams directly at the network edge (sub-50ms). Mission-critical alerts and responses happen in near real-time."
+                },
+                {
+                  "id": "ent-cap-offline",
+                  "icon": "WifiOff",
+                  "title": "Offline-Capable Edge Autonomy",
+                  "description": "Edge nodes and local databases run independently of the central backend, ensuring factory floors and remote sites stay operational during network outages."
+                },
+                {
+                  "id": "ent-cap-byoe",
+                  "icon": "Plug",
+                  "title": "BYOE Enterprise Integration",
+                  "description": "Connect MQTT brokers, TimescaleDB, InfluxDB, proprietary ERP systems, and enterprise identity providers (Okta, Active Directory) without migrating data."
+                },
+                {
+                  "id": "ent-cap-secrets",
+                  "icon": "Shield",
+                  "title": "Unified Edge Secret Management",
+                  "description": "Centrally manage credentials, API keys, and database connection strings — securely injected into edge environments at runtime with zero client exposure."
+                },
+                {
+                  "id": "ent-cap-dashboards",
+                  "icon": "LayoutDashboard",
+                  "title": "Digital Twin Dashboards",
+                  "description": "Use drag-and-drop, data-bound UI builder to create SCADA-like interfaces, asset tracking portals, and digital twins without writing frontend code."
+                },
+                {
+                  "id": "ent-cap-realtime",
+                  "icon": "Radio",
+                  "title": "Live Telemetry & WebSockets",
+                  "description": "Real-time data binding for operator dashboards reflecting live field telemetry, with UI controls to send remote configuration commands to edge devices."
+                },
+                {
+                  "id": "ent-cap-rbac",
+                  "icon": "Users",
+                  "title": "Multi-Tier RBAC Portals",
+                  "description": "Build distinct, secure experiences from the same data — executive analytics dashboards alongside granular diagnostic and control panels for field engineers."
+                },
+                {
+                  "id": "ent-cap-workflows",
+                  "icon": "Network",
+                  "title": "Visual Remediation Pipelines",
+                  "description": "n8n-style workflow engine to detect anomalies (temperature spikes, pressure drops) and trigger instant edge functions — auto-shutdowns, alerts, escalations."
+                },
+                {
+                  "id": "ent-cap-ai",
+                  "icon": "Brain",
+                  "title": "Predictive Maintenance & AI",
+                  "description": "Drop LLM or ML components into visual workflows. Analyze sensor data, flag degradation patterns, auto-generate service tickets in Jira, ServiceNow, or SAP."
+                },
+                {
+                  "id": "ent-cap-legacy",
+                  "icon": "ArrowLeftRight",
+                  "title": "Legacy Protocol Translation",
+                  "description": "Use edge API routes as a secure proxy to bridge MODBUS, OPC-UA, and older on-premise systems with modern cloud infrastructure via clean REST APIs."
+                },
+                {
+                  "id": "ent-cap-deploy",
+                  "icon": "Rocket",
+                  "title": "One-Click Fleet Deployment",
+                  "description": "Click Publish and updated logic, UIs, and workflow schemas are instantly distributed to global CDN edge nodes with zero downtime. No firmware flashing required."
+                },
+                {
+                  "id": "ent-cap-audit",
+                  "icon": "FileCheck",
+                  "title": "Compliant Versioning & Audit Trails",
+                  "description": "Every visual change, automation rule, and dashboard layout is versioned. Complete audit trails of who changed what, with instant rollback to stable states."
+                }
+              ],
+              "_layerName": "Feature"
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "ent-usecases",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Built for Your Industry",
+              "subtitle": "From factory floors to forward operating bases",
+              "headerAlignment": "center",
+              "columns": 4,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(var(--primary))",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": true,
+              "anchor": "use-cases",
+              "features": [
+                {
+                  "id": "ent-uc-aviation",
+                  "icon": "Plane",
+                  "title": "Aviation",
+                  "description": "Offline-capable edge dashboards for crew scheduling and terminal ops that keep your fleet flying even when central cloud systems go down.",
+                  "link": "/aviation"
+                },
+                {
+                  "id": "ent-uc-telecom",
+                  "icon": "Radio",
+                  "title": "Telecom",
+                  "description": "Autonomous tower NOC dashboards and subscriber management that stay operational when centralized routing fails — preventing the next AT&T-scale blackout.",
+                  "link": "/telecom"
+                },
+                {
+                  "id": "ent-uc-oilgas",
+                  "icon": "Flame",
+                  "title": "Oil & Gas",
+                  "description": "True air-gapped SCADA-like monitoring UIs for offshore rigs and pipelines. Zero internet dependency. Full IT/OT blast isolation.",
+                  "link": "/oil-gas"
+                },
+                {
+                  "id": "ent-uc-government",
+                  "icon": "Landmark",
+                  "title": "Government",
+                  "description": "Ransomware-resilient municipal infrastructure. Decentralized 911 dispatch, utility billing, and citizen services that survive when City Hall goes dark.",
+                  "link": "/government"
+                },
+                {
+                  "id": "ent-uc-defense",
+                  "icon": "ShieldCheck",
+                  "title": "Defense & Security",
+                  "description": "DDIL-native C2 applications for tactical vehicles and Forward Operating Bases. Survives electronic warfare, satellite jamming, and contested environments.",
+                  "link": "/defense"
+                },
+                {
+                  "id": "ent-uc-manufacturing",
+                  "icon": "Factory",
+                  "title": "Smart Manufacturing",
+                  "description": "Real-time OEE dashboards, predictive maintenance workflows, automated quality control alerts, and SCADA-like operator panels — all built visually.",
+                  "link": "/manufacturing"
+                },
+                {
+                  "id": "ent-uc-buildings",
+                  "icon": "Building2",
+                  "title": "Smart Buildings",
+                  "description": "HVAC optimization portals, occupancy sensing dashboards, energy management interfaces, and tenant-facing control panels with role-based access.",
+                  "link": "/buildings"
+                },
+                {
+                  "id": "ent-uc-logistics",
+                  "icon": "Truck",
+                  "title": "Fleet & Logistics",
+                  "description": "GPS tracking dashboards, route optimization interfaces, cold-chain monitoring alerts, and driver performance portals with real-time telemetry.",
+                  "link": "/logistics"
+                }
+              ],
+              "_layerName": "Industries"
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "ent-architecture",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Full-stack Serverless Architecture",
+              "subtitle": "Don't rip and replace. Connect what you already use.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "md",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(var(--primary))",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": false,
+              "anchor": "architecture",
+              "features": [
+                {
+                  "id": "ent-arch-compute",
+                  "icon": "Server",
+                  "title": "Industrial Compute",
+                  "description": "Cloudflare Workers, AWS Lambda, Azure Functions, Google Cloud Functions, On-prem Docker"
+                },
+                {
+                  "id": "ent-arch-db",
+                  "icon": "Database",
+                  "title": "Industrial Databases",
+                  "description": "TimescaleDB, InfluxDB, Supabase, Neon, PostgreSQL, MySQL, SQLite, Cloudflare D1"
+                },
+                {
+                  "id": "ent-arch-auth",
+                  "icon": "Lock",
+                  "title": "Enterprise Auth",
+                  "description": "Okta, Active Directory, SAML 2.0, Auth0, Clerk, Supabase Auth, JWT Providers"
+                },
+                {
+                  "id": "ent-arch-storage",
+                  "icon": "HardDrive",
+                  "title": "Storage",
+                  "description": "S3-compatible, Cloudflare R2, Google Cloud Storage, Supabase Storage, AWS S3"
+                },
+                {
+                  "id": "ent-arch-cache",
+                  "icon": "Gauge",
+                  "title": "Cache & Message Queues",
+                  "description": "Upstash Redis, MQTT Brokers, RabbitMQ, Self-hosted Redis, QStash"
+                },
+                {
+                  "id": "ent-arch-deploy",
+                  "icon": "Globe",
+                  "title": "Edge Deploy",
+                  "description": "Cloudflare Pages, Docker, On-prem, Vercel, Netlify, Hybrid Cloud"
+                }
+              ],
+              "_layerName": "Architecture"
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "ent-mid-cta",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "var(--primary)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "ent-mid-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "See Frontbase in Action",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "36px",
+                  "fontWeight": "700",
+                  "color": "var(--primary-foreground)"
+                },
+                "children": []
+              },
+              {
+                "id": "ent-mid-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Book a 15-minute walkthrough with our solutions engineering team."
+                },
+                "styles": {
+                  "color": "var(--primary-foreground)",
+                  "opacity": "0.9",
+                  "fontSize": "18px",
+                  "maxWidth": "500px"
+                },
+                "children": []
+              },
+              {
+                "id": "ent-mid-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "8px"
+                },
+                "children": [
+                  {
+                    "id": "ent-mid-cta-btn-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Schedule a Demo",
+                      "variant": "secondary",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "ent-mid-cta-btn-primary-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  },
+                  {
+                    "id": "ent-mid-cta-btn-secondary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Read the Docs",
+                      "variant": "outline",
+                      "size": "lg"
+                    },
+                    "styles": {
+                      "borderColor": "rgba(255,255,255,0.3)",
+                      "color": "var(--primary-foreground)"
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "ent-everything",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Everything You Need",
+              "subtitle": "A complete platform for building production IoT applications",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "md",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(var(--primary))",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": false,
+              "features": [
+                {
+                  "id": "ent-ev-dbmgmt",
+                  "icon": "Database",
+                  "title": "Schema & Data Management",
+                  "description": "Visual schema designer, CRUD operations, query builder, and automatic foreign key detection across your industrial databases."
+                },
+                {
+                  "id": "ent-ev-security",
+                  "icon": "Shield",
+                  "title": "Row-Level Security",
+                  "description": "Design fine-grained access policies visually. Ensure operators only see their plant's data and executives see the full picture."
+                },
+                {
+                  "id": "ent-ev-ai",
+                  "icon": "Brain",
+                  "title": "AI & ML Ready",
+                  "description": "Python-native backend with FastAPI. Drop in your ML models, anomaly detection algorithms, and AI agents alongside your IoT workflows."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "ent-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "var(--primary)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "ent-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Ready to modernize your IoT infrastructure?",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "var(--primary-foreground)"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "ent-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Join companies building the next generation of connected applications."
+                },
+                "styles": {
+                  "color": "var(--primary-foreground)",
+                  "opacity": "0.9",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "ent-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form | Untitled Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "ent-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "The edge-native no-code platform for enterprise IoT applications.",
+              "columns": [
+                {
+                  "id": "ent-col-product",
+                  "title": "Product",
+                  "links": [
+                    {
+                      "id": "ent-link-capabilities",
+                      "text": "Capabilities",
+                      "href": "/enterprise#capabilities"
+                    },
+                    {
+                      "id": "ent-link-architecture",
+                      "text": "Architecture",
+                      "href": "/enterprise#architecture"
+                    },
+                    {
+                      "id": "ent-link-changelog",
+                      "text": "Changelog",
+                      "href": "/"
+                    }
+                  ]
+                },
+                {
+                  "id": "ent-col-solutions",
+                  "title": "Solutions",
+                  "links": [
+                    {
+                      "id": "ent-link-manufacturing",
+                      "text": "Smart Manufacturing",
+                      "href": "/enterprise#use-cases"
+                    },
+                    {
+                      "id": "ent-link-buildings",
+                      "text": "Smart Buildings",
+                      "href": "/enterprise#use-cases"
+                    },
+                    {
+                      "id": "ent-link-logistics",
+                      "text": "Fleet & Logistics",
+                      "href": "/enterprise#use-cases"
+                    }
+                  ]
+                },
+                {
+                  "id": "ent-col-resources",
+                  "title": "Resources",
+                  "links": [
+                    {
+                      "id": "ent-link-docs",
+                      "text": "Documentation",
+                      "href": "/"
+                    },
+                    {
+                      "id": "ent-link-api",
+                      "text": "API Reference",
+                      "href": "/"
+                    },
+                    {
+                      "id": "ent-link-opensource",
+                      "text": "Open Source",
+                      "href": "/"
+                    }
+                  ]
+                },
+                {
+                  "id": "ent-col-legal",
+                  "title": "Legal",
+                  "links": [
+                    {
+                      "id": "ent-link-privacy",
+                      "text": "Privacy Policy",
+                      "href": "/"
+                    },
+                    {
+                      "id": "ent-link-terms",
+                      "text": "Terms of Service",
+                      "href": "/"
+                    },
+                    {
+                      "id": "ent-link-security",
+                      "text": "Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "ent-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "ent-social-github",
+                  "icon": "github",
+                  "href": "/"
+                },
+                {
+                  "id": "ent-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                },
+                {
+                  "id": "ent-social-youtube",
+                  "icon": "youtube",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Built with ❤️ for the edge.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

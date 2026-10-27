@@ -1,0 +1,25 @@
+{
+  "name": "frontbase-oauth-relay",
+  "main": "dist/worker.mjs",
+  "compatibility_date": "2026-09-07",
+  "no_bundle": true,
+  "observability": {
+    "enabled": false
+  },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "frontbase-oauth-relay",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "vars": {
+    "FRONTBASE_PUBLIC_ORIGIN": "https://relay.example.com",
+    "FRONTBASE_RELAY_POLICY": "{\"cloudflareAccount\":\"00000000000000000000000000000000\",\"cloudflareSubdomain\":\"replace-me\",\"vercelTeam\":\"team_REPLACE\",\"connectedOrigins\":[\"https://app.example.com\"]}"
+  }
+}

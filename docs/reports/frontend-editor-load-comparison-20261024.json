@@ -1,0 +1,169 @@
+{
+  "method": "Isolated JSDOM HTTP stubs; no production traffic or data changes",
+  "before": "1c3bf9e^",
+  "deployed": "2e0e9db",
+  "repaired": "working tree",
+  "results": [
+    {
+      "version": "before",
+      "mode": "anonymous",
+      "initialRequests": 1,
+      "requestsAfter100UnrelatedMutations": 1,
+      "requestsAfterRecordChange": 1,
+      "calls": [
+        {
+          "kind": "capability",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "version": "before",
+      "mode": "owner",
+      "initialRequests": 2,
+      "requestsAfter100UnrelatedMutations": 2,
+      "requestsAfterRecordChange": 2,
+      "calls": [
+        {
+          "kind": "capability",
+          "method": "GET"
+        },
+        {
+          "kind": "inventory",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "version": "before",
+      "mode": "selection-fails",
+      "initialRequests": 2,
+      "requestsAfter100UnrelatedMutations": 2,
+      "requestsAfterRecordChange": 2,
+      "calls": [
+        {
+          "kind": "capability",
+          "method": "GET"
+        },
+        {
+          "kind": "inventory",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "version": "deployed",
+      "mode": "anonymous",
+      "initialRequests": 1,
+      "requestsAfter100UnrelatedMutations": 1,
+      "requestsAfterRecordChange": 1,
+      "calls": [
+        {
+          "kind": "capability",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "version": "deployed",
+      "mode": "owner",
+      "initialRequests": 3,
+      "requestsAfter100UnrelatedMutations": 3,
+      "requestsAfterRecordChange": 4,
+      "calls": [
+        {
+          "kind": "capability",
+          "method": "GET"
+        },
+        {
+          "kind": "inventory",
+          "method": "GET"
+        },
+        {
+          "kind": "selected",
+          "method": "GET"
+        },
+        {
+          "kind": "selected",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "version": "deployed",
+      "mode": "selection-fails",
+      "initialRequests": 3,
+      "requestsAfter100UnrelatedMutations": 3,
+      "requestsAfterRecordChange": 4,
+      "calls": [
+        {
+          "kind": "capability",
+          "method": "GET"
+        },
+        {
+          "kind": "inventory",
+          "method": "GET"
+        },
+        {
+          "kind": "selected",
+          "method": "GET"
+        },
+        {
+          "kind": "selected",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "version": "repaired",
+      "mode": "anonymous",
+      "initialRequests": 1,
+      "requestsAfter100UnrelatedMutations": 1,
+      "requestsAfterRecordChange": 1,
+      "calls": [
+        {
+          "kind": "capability",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "version": "repaired",
+      "mode": "owner",
+      "initialRequests": 2,
+      "requestsAfter100UnrelatedMutations": 2,
+      "requestsAfterRecordChange": 3,
+      "calls": [
+        {
+          "kind": "capability",
+          "method": "GET"
+        },
+        {
+          "kind": "selected",
+          "method": "GET"
+        },
+        {
+          "kind": "selected",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "version": "repaired",
+      "mode": "selection-fails",
+      "initialRequests": 2,
+      "requestsAfter100UnrelatedMutations": 2,
+      "requestsAfterRecordChange": 2,
+      "calls": [
+        {
+          "kind": "capability",
+          "method": "GET"
+        },
+        {
+          "kind": "selected",
+          "method": "GET"
+        }
+      ]
+    }
+  ]
+}

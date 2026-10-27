@@ -1,0 +1,15 @@
+{
+  "package": "@frontbase/edge-infra",
+  "subpath": "./supabase-http",
+  "outsideWorkspace": true,
+  "packedArtifact": true,
+  "offlineDependencies": true,
+  "functional": true,
+  "declarations": true,
+  "standardAndNativeEndpoints": true,
+  "registryPublish": false,
+  "limitations": [
+    "Packed edge-infra subpath extracted manually; full dependency installation and whole package consumability are not certified",
+    "Injected fake HTTP only; no owner database/provider acceptance"
+  ]
+}

@@ -1,0 +1,3867 @@
+{
+  "schemaVersion": 1,
+  "scope": "four framework acceptance gaps, not public release",
+  "source": "12358b4",
+  "engineeringGaps": {
+    "interactiveLists": "pass",
+    "strictSevenTarballs": "pass",
+    "currentSourceInstallAndUpgrade": "pass",
+    "actualD1AndTursoRecovery": "pass"
+  },
+  "overallOperationalCloseout": "accepted: bounded framework task closed",
+  "archives": [
+    {
+      "name": "@frontbase/translation",
+      "version": "0.0.0",
+      "sha256": "487c030a9d38a0010d5b98ff01fe7d4edcb34243931eeb58f155fc33c51ffc47"
+    },
+    {
+      "name": "@frontbase/edge-core",
+      "version": "0.0.0",
+      "sha256": "985fbd7802a59dde3d6edb651da1b427684acb64ef0bd188097b93b3be2dcb03"
+    },
+    {
+      "name": "@frontbase/compiler",
+      "version": "0.0.0",
+      "sha256": "3fb8d48e07c89d2c40dd46e69bde74b6cf12d878840373d24b4b30a62c4187d7"
+    },
+    {
+      "name": "@frontbase/ui-components",
+      "version": "0.0.0",
+      "sha256": "6ed177a54da9e0dcaed16e08696645993728725106e57f110394bd826e2f8b26"
+    },
+    {
+      "name": "@frontbase/edge-infra",
+      "version": "0.0.0",
+      "sha256": "6e4d0b10c8d0c9b14f8643049d1bd99bd1d38eb21f88c1f463f194fe2d9f6144"
+    },
+    {
+      "name": "@frontbase/backend",
+      "version": "0.0.0",
+      "sha256": "63406cda73094fc89f54ce3ddd87efde1e9415e0d6c75dce2f1f1b158330bae9"
+    },
+    {
+      "name": "@frontbase/builder",
+      "version": "0.1.0",
+      "sha256": "2efba350b7160de53237587b4117abe9c8bf10502cbe33a8e561bd47c5563815"
+    }
+  ],
+  "gates": {
+    "check": 0,
+    "build": 0,
+    "console": "91 files/682 tests on combined interactive candidate",
+    "recoveryMutation": "5/5",
+    "d1LocaleMutation": "2/2",
+    "listMutation": "9/9",
+    "publicationMutation": "12/12",
+    "homepageMutation": "19/19",
+    "accountRefresh": "pass",
+    "accountRefreshMutation": "4/4",
+    "savedViewMembershipMutation": "2/2",
+    "accountSecurity": [
+      "secret-cipher",
+      "compat-security",
+      "compat-database-security",
+      "compat-tenant-matrix",
+      "external-http-security"
+    ]
+  },
+  "staging": {
+    "container": "0uovc7nhk3z5wfbivye654hiu",
+    "sourceHash": "6f9ebbb5038eaf9936b4a08574e002b31f208b2f0dd4a9c7c5794ebd9f117891",
+    "image": "sha256:a792d565e41c78c4e1d58812a0b4aea80d5f75bef8c4ce30b0c97ea0622d9abb",
+    "archiveSha256": "2992c61a767e9a0ad0336f4a3b8eb0993b743ad18138ddabf3a892b95525719e",
+    "deployedAt": "2026-10-22T17:05:03Z",
+    "existingAdminReviewReload": "pass",
+    "managementUnavailableRead": {
+      "pass": true,
+      "milliseconds": 1440,
+      "stateWrites": false
+    },
+    "contentEquivalence": {
+      "status": 200,
+      "textHash": "844b1bdaee126dbba5d4e0863516893c975d0e0fdb8670d6f81d3d1ef0a04b52",
+      "linksHash": "89c30153f10b62ff346798b93816fd7832174f7d00ce739930ba21ce98fa05f6",
+      "linkCount": 37,
+      "lang": "ar",
+      "rtl": true
+    },
+    "concurrent": {
+      "source": "12358b4",
+      "started": "2026-10-22T17:06:04.260Z",
+      "batches": [
+        {
+          "batch": 0,
+          "at": "2026-10-22T17:06:10.547Z",
+          "results": [
+            {
+              "index": 0,
+              "status": 200,
+              "ms": 6272,
+              "arabic": true,
+              "bytes": 115803
+            },
+            {
+              "index": 1,
+              "status": 200,
+              "ms": 6137,
+              "arabic": true,
+              "bytes": 115803
+            },
+            {
+              "index": 2,
+              "status": 200,
+              "ms": 6141,
+              "arabic": true,
+              "bytes": 115803
+            },
+            {
+              "index": 3,
+              "status": 200,
+              "ms": 6124,
+              "arabic": true,
+              "bytes": 115803
+            }
+          ]
+        },
+        {
+          "batch": 1,
+          "at": "2026-10-22T17:06:13.462Z",
+          "results": [
+            {
+              "index": 0,
+              "status": 200,
+              "ms": 2911,
+              "arabic": true,
+              "bytes": 115803
+            },
+            {
+              "index": 1,
+              "status": 200,
+              "ms": 2879,
+              "arabic": true,
+              "bytes": 115803
+            },
+            {
+              "index": 2,
+              "status": 200,
+              "ms": 2908,
+              "arabic": true,
+              "bytes": 115803
+            },
+            {
+              "index": 3,
+              "status": 200,
+              "ms": 2911,
+              "arabic": true,
+              "bytes": 115803
+            }
+          ]
+        },
+        {
+          "batch": 2,
+          "at": "2026-10-22T17:06:16.408Z",
+          "results": [
+            {
+              "index": 0,
+              "status": 200,
+              "ms": 2945,
+              "arabic": true,
+              "bytes": 115803
+            },
+            {
+              "index": 1,
+              "status": 200,
+              "ms": 2674,
+              "arabic": true,
+              "bytes": 115803
+            },
+            {
+              "index": 2,
+              "status": 200,
+              "ms": 2683,
+              "arabic": true,
+              "bytes": 115803
+            },
+            {
+              "index": 3,
+              "status": 200,
+              "ms": 2707,
+              "arabic": true,
+              "bytes": 115803
+            }
+          ]
+        }
+      ]
+    },
+    "mixedLocaleConcurrency": {
+      "source": "12358b4",
+      "at": "2026-10-22T17:28:09.075Z",
+      "rows": [
+        {
+          "path": "/ar/",
+          "status": 200,
+          "ms": 3336,
+          "arabic": true,
+          "englishHeading": false,
+          "arabicHeading": true
+        },
+        {
+          "path": "/",
+          "status": 200,
+          "ms": 3519,
+          "arabic": false,
+          "englishHeading": true,
+          "arabicHeading": false
+        },
+        {
+          "path": "/ar/",
+          "status": 200,
+          "ms": 3291,
+          "arabic": true,
+          "englishHeading": false,
+          "arabicHeading": true
+        },
+        {
+          "path": "/",
+          "status": 200,
+          "ms": 3420,
+          "arabic": false,
+          "englishHeading": true,
+          "arabicHeading": false
+        }
+      ]
+    }
+  },
+  "recovery": {
+    "d1": {
+      "remoteReexportExact": true,
+      "report": {
+        "ok": true,
+        "checks": [
+          {
+            "id": "schema-migrated",
+            "ok": true,
+            "detail": "migrations 1..25"
+          },
+          {
+            "id": "schema-newer-than-backup",
+            "ok": true,
+            "detail": "backup head 25"
+          },
+          {
+            "id": "tenants-present",
+            "ok": true,
+            "detail": "_root"
+          },
+          {
+            "id": "_root:publication-active",
+            "ok": true,
+            "detail": "no publication"
+          },
+          {
+            "id": "asset-chunks",
+            "ok": true,
+            "detail": "0 assets intact"
+          },
+          {
+            "id": "secret-ciphertext-accounting",
+            "ok": true,
+            "detail": "1 ciphertext rows match"
+          },
+          {
+            "id": "secret-provenance",
+            "ok": true,
+            "detail": "boot secret row absent (restore rule: env-set exports need the SAME SESSION_SECRET value, boot-generated exports need NO overriding env var)"
+          }
+        ]
+      },
+      "encryptedRows": 1,
+      "statuses": [
+        {
+          "path": "/api/pages/",
+          "status": 200
+        },
+        {
+          "path": "/final-cf-acceptance-261022",
+          "status": 200
+        },
+        {
+          "path": "/final-fresh-cf-acceptance-261022",
+          "status": 404
+        }
+      ],
+      "originalSessionPreserved": true,
+      "originalSecretsUnchanged": true
+    },
+    "turso": {
+      "transport": "existing HTTP sqliteRunner",
+      "consistent": true,
+      "report": {
+        "ok": true,
+        "checks": [
+          {
+            "id": "schema-migrated",
+            "ok": true,
+            "detail": "migrations 1..25"
+          },
+          {
+            "id": "schema-newer-than-backup",
+            "ok": true,
+            "detail": "backup head 25"
+          },
+          {
+            "id": "tenants-present",
+            "ok": true,
+            "detail": "_root"
+          },
+          {
+            "id": "_root:publication-active",
+            "ok": true,
+            "detail": "no publication"
+          },
+          {
+            "id": "asset-chunks",
+            "ok": true,
+            "detail": "0 assets intact"
+          },
+          {
+            "id": "secret-ciphertext-accounting",
+            "ok": true,
+            "detail": "1 ciphertext rows match"
+          },
+          {
+            "id": "secret-provenance",
+            "ok": true,
+            "detail": "boot secret row absent (restore rule: env-set exports need the SAME SESSION_SECRET value, boot-generated exports need NO overriding env var)"
+          }
+        ]
+      },
+      "counts": {
+        "agent_skills": 0,
+        "auth_forms": 0,
+        "billing_accounts": 0,
+        "billing_events": 0,
+        "compat_page_versions": 1,
+        "compat_pages": 6,
+        "datasource_views": 0,
+        "datasources": 1,
+        "drafts": 0,
+        "edge_agent_profiles_compat": 0,
+        "edge_api_key_secrets": 0,
+        "edge_api_keys": 0,
+        "edge_resources": 0,
+        "mcp_servers": 0,
+        "password_reset_tokens": 0,
+        "plans": 0,
+        "published_pages": 0,
+        "rate_limit_counters": 0,
+        "security_audit_events": 0,
+        "security_events": 0,
+        "settings": 1,
+        "setup_state": 1,
+        "sheets_connect_tokens": 0,
+        "storage_buckets": 0,
+        "storage_files": 0,
+        "template_variables": 0,
+        "tenants": 0,
+        "themes": 0,
+        "user_session_versions": 0,
+        "users": 1,
+        "variables": 0,
+        "workflow_executions": 0,
+        "workflows": 0
+      },
+      "encryptedRows": 1,
+      "allRowsExact": true,
+      "productionBindingUnchanged": true,
+      "providerSessionSecretExported": false,
+      "emptyMigrationRetryGuard": true
+    }
+  },
+  "hostUpgrade": {
+    "source": "0db4cfb",
+    "originalSessionsPreserved": true,
+    "sourceBindingsUnchanged": true,
+    "rows": [
+      {
+        "target": "cf",
+        "path": "/api/pages/",
+        "auth": true,
+        "status": 200
+      },
+      {
+        "target": "cf",
+        "path": "/api/sync/datasources/",
+        "auth": true,
+        "status": 200
+      },
+      {
+        "target": "cf",
+        "path": "/final-cf-acceptance-261022",
+        "auth": false,
+        "status": 200
+      },
+      {
+        "target": "cf",
+        "path": "/api/pages/",
+        "auth": false,
+        "status": 401
+      },
+      {
+        "target": "vercel",
+        "path": "/api/pages/",
+        "auth": true,
+        "status": 200
+      },
+      {
+        "target": "vercel",
+        "path": "/api/sync/datasources/",
+        "auth": true,
+        "status": 200
+      },
+      {
+        "target": "vercel",
+        "path": "/final-vercel-acceptance-261022",
+        "auth": false,
+        "status": 200
+      },
+      {
+        "target": "vercel",
+        "path": "/api/pages/",
+        "auth": false,
+        "status": 401
+      }
+    ]
+  },
+  "priorObservation": {
+    "source": "4f553c0",
+    "container": "l9z9556ve2fv5qcpgfj3cbbjk",
+    "complete": true,
+    "rows": [
+      {
+        "at": "2026-10-22T12:38:25.741Z",
+        "round": 0,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 4201
+      },
+      {
+        "at": "2026-10-22T12:38:29.796Z",
+        "round": 0,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 4054
+      },
+      {
+        "at": "2026-10-22T12:38:34.793Z",
+        "round": 0,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 4997
+      },
+      {
+        "at": "2026-10-22T12:38:35.230Z",
+        "round": 0,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 437
+      },
+      {
+        "at": "2026-10-22T12:39:41.963Z",
+        "round": 1,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 6716
+      },
+      {
+        "at": "2026-10-22T12:39:46.201Z",
+        "round": 1,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 4238
+      },
+      {
+        "at": "2026-10-22T12:39:52.379Z",
+        "round": 1,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 6178
+      },
+      {
+        "at": "2026-10-22T12:39:52.796Z",
+        "round": 1,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 417
+      },
+      {
+        "at": "2026-10-22T12:40:58.558Z",
+        "round": 2,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 5750
+      },
+      {
+        "at": "2026-10-22T12:41:07.082Z",
+        "round": 2,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 8524
+      },
+      {
+        "at": "2026-10-22T12:41:16.623Z",
+        "round": 2,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 9541
+      },
+      {
+        "at": "2026-10-22T12:41:17.008Z",
+        "round": 2,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 385
+      },
+      {
+        "at": "2026-10-22T12:42:23.817Z",
+        "round": 3,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 6793
+      },
+      {
+        "at": "2026-10-22T12:42:28.556Z",
+        "round": 3,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 4739
+      },
+      {
+        "at": "2026-10-22T12:42:34.439Z",
+        "round": 3,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 5883
+      },
+      {
+        "at": "2026-10-22T12:42:34.847Z",
+        "round": 3,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 408
+      },
+      {
+        "at": "2026-10-22T12:43:42.183Z",
+        "round": 4,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 7335
+      },
+      {
+        "at": "2026-10-22T12:43:48.927Z",
+        "round": 4,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 6744
+      },
+      {
+        "at": "2026-10-22T12:43:59.389Z",
+        "round": 4,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 10462
+      },
+      {
+        "at": "2026-10-22T12:43:59.749Z",
+        "round": 4,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 360
+      },
+      {
+        "at": "2026-10-22T12:45:08.682Z",
+        "round": 5,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 8930
+      },
+      {
+        "at": "2026-10-22T12:45:14.005Z",
+        "round": 5,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 5323
+      },
+      {
+        "at": "2026-10-22T12:45:22.045Z",
+        "round": 5,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 8040
+      },
+      {
+        "at": "2026-10-22T12:45:22.494Z",
+        "round": 5,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 449
+      },
+      {
+        "at": "2026-10-22T12:46:29.656Z",
+        "round": 6,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 7159
+      },
+      {
+        "at": "2026-10-22T12:46:40.808Z",
+        "round": 6,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 11151
+      },
+      {
+        "at": "2026-10-22T12:46:50.349Z",
+        "round": 6,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 9541
+      },
+      {
+        "at": "2026-10-22T12:46:50.708Z",
+        "round": 6,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 359
+      },
+      {
+        "at": "2026-10-22T12:47:57.361Z",
+        "round": 7,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 6651
+      },
+      {
+        "at": "2026-10-22T12:48:01.329Z",
+        "round": 7,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 3968
+      },
+      {
+        "at": "2026-10-22T12:48:10.340Z",
+        "round": 7,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 9011
+      },
+      {
+        "at": "2026-10-22T12:48:10.709Z",
+        "round": 7,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 369
+      },
+      {
+        "at": "2026-10-22T12:49:17.092Z",
+        "round": 8,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 6376
+      },
+      {
+        "at": "2026-10-22T12:49:22.261Z",
+        "round": 8,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 5170
+      },
+      {
+        "at": "2026-10-22T12:49:30.072Z",
+        "round": 8,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 7810
+      },
+      {
+        "at": "2026-10-22T12:49:30.978Z",
+        "round": 8,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 906
+      },
+      {
+        "at": "2026-10-22T12:50:43.406Z",
+        "round": 9,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 12419
+      },
+      {
+        "at": "2026-10-22T12:50:48.603Z",
+        "round": 9,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 5197
+      },
+      {
+        "at": "2026-10-22T12:50:56.269Z",
+        "round": 9,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 7666
+      },
+      {
+        "at": "2026-10-22T12:50:56.611Z",
+        "round": 9,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 342
+      },
+      {
+        "at": "2026-10-22T12:52:05.292Z",
+        "round": 10,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 8668
+      },
+      {
+        "at": "2026-10-22T12:52:10.666Z",
+        "round": 10,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 5374
+      },
+      {
+        "at": "2026-10-22T12:52:18.452Z",
+        "round": 10,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 7786
+      },
+      {
+        "at": "2026-10-22T12:52:18.929Z",
+        "round": 10,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 477
+      },
+      {
+        "at": "2026-10-22T12:53:25.975Z",
+        "round": 11,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 7033
+      },
+      {
+        "at": "2026-10-22T12:53:31.182Z",
+        "round": 11,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 5207
+      },
+      {
+        "at": "2026-10-22T12:53:51.757Z",
+        "round": 11,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 20575
+      },
+      {
+        "at": "2026-10-22T12:53:52.109Z",
+        "round": 11,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 352
+      },
+      {
+        "at": "2026-10-22T12:55:24.761Z",
+        "round": 12,
+        "path": "/",
+        "status": 503,
+        "expected": 200,
+        "ms": 32649
+      },
+      {
+        "at": "2026-10-22T12:55:37.025Z",
+        "round": 12,
+        "path": "/ar/",
+        "status": 503,
+        "expected": 200,
+        "ms": 12264
+      },
+      {
+        "at": "2026-10-22T12:56:03.412Z",
+        "round": 12,
+        "path": "/explore/?type=program",
+        "status": 503,
+        "expected": 200,
+        "ms": 26387
+      },
+      {
+        "at": "2026-10-22T12:56:04.259Z",
+        "round": 12,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 847
+      },
+      {
+        "at": "2026-10-22T12:57:12.705Z",
+        "round": 13,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 8444
+      },
+      {
+        "at": "2026-10-22T12:57:19.513Z",
+        "round": 13,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 6808
+      },
+      {
+        "at": "2026-10-22T12:57:27.687Z",
+        "round": 13,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 8174
+      },
+      {
+        "at": "2026-10-22T12:57:28.047Z",
+        "round": 13,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 360
+      },
+      {
+        "at": "2026-10-22T12:58:36.089Z",
+        "round": 14,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 8026
+      },
+      {
+        "at": "2026-10-22T12:58:44.588Z",
+        "round": 14,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 8499
+      },
+      {
+        "at": "2026-10-22T12:58:54.134Z",
+        "round": 14,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 9546
+      },
+      {
+        "at": "2026-10-22T12:58:54.507Z",
+        "round": 14,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 373
+      },
+      {
+        "at": "2026-10-22T13:00:01.949Z",
+        "round": 15,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 7440
+      },
+      {
+        "at": "2026-10-22T13:00:10.495Z",
+        "round": 15,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 8546
+      },
+      {
+        "at": "2026-10-22T13:00:21.620Z",
+        "round": 15,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 11125
+      },
+      {
+        "at": "2026-10-22T13:00:21.960Z",
+        "round": 15,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 340
+      },
+      {
+        "at": "2026-10-22T13:01:28.486Z",
+        "round": 16,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 6507
+      },
+      {
+        "at": "2026-10-22T13:01:33.688Z",
+        "round": 16,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 5202
+      },
+      {
+        "at": "2026-10-22T13:01:43.300Z",
+        "round": 16,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 9612
+      },
+      {
+        "at": "2026-10-22T13:01:43.716Z",
+        "round": 16,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 416
+      },
+      {
+        "at": "2026-10-22T13:02:51.340Z",
+        "round": 17,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 7620
+      },
+      {
+        "at": "2026-10-22T13:02:56.719Z",
+        "round": 17,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 5379
+      },
+      {
+        "at": "2026-10-22T13:03:02.883Z",
+        "round": 17,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 6164
+      },
+      {
+        "at": "2026-10-22T13:03:03.272Z",
+        "round": 17,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 389
+      },
+      {
+        "at": "2026-10-22T13:04:12.114Z",
+        "round": 18,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 8840
+      },
+      {
+        "at": "2026-10-22T13:04:21.256Z",
+        "round": 18,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 9142
+      },
+      {
+        "at": "2026-10-22T13:04:29.348Z",
+        "round": 18,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 8092
+      },
+      {
+        "at": "2026-10-22T13:04:29.765Z",
+        "round": 18,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 417
+      },
+      {
+        "at": "2026-10-22T13:05:42.297Z",
+        "round": 19,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 12523
+      },
+      {
+        "at": "2026-10-22T13:05:50.142Z",
+        "round": 19,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 7844
+      },
+      {
+        "at": "2026-10-22T13:06:01.090Z",
+        "round": 19,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 10948
+      },
+      {
+        "at": "2026-10-22T13:06:02.373Z",
+        "round": 19,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 1283
+      },
+      {
+        "at": "2026-10-22T13:07:12.988Z",
+        "round": 20,
+        "path": "/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:07:23.692Z",
+        "round": 20,
+        "path": "/ar/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:07:34.424Z",
+        "round": 20,
+        "path": "/explore/?type=program",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:07:45.067Z",
+        "round": 20,
+        "path": "/api/pages/",
+        "status": "transport-error",
+        "expected": 401
+      },
+      {
+        "at": "2026-10-22T13:08:55.696Z",
+        "round": 21,
+        "path": "/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:09:06.264Z",
+        "round": 21,
+        "path": "/ar/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:09:16.872Z",
+        "round": 21,
+        "path": "/explore/?type=program",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:09:27.450Z",
+        "round": 21,
+        "path": "/api/pages/",
+        "status": "transport-error",
+        "expected": 401
+      },
+      {
+        "at": "2026-10-22T13:10:38.116Z",
+        "round": 22,
+        "path": "/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:11:13.101Z",
+        "round": 22,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 34985
+      },
+      {
+        "at": "2026-10-22T13:11:23.734Z",
+        "round": 22,
+        "path": "/explore/?type=program",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:11:34.404Z",
+        "round": 22,
+        "path": "/api/pages/",
+        "status": "transport-error",
+        "expected": 401
+      },
+      {
+        "at": "2026-10-22T13:12:45.080Z",
+        "round": 23,
+        "path": "/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:12:55.722Z",
+        "round": 23,
+        "path": "/ar/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:13:06.369Z",
+        "round": 23,
+        "path": "/explore/?type=program",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:13:17.011Z",
+        "round": 23,
+        "path": "/api/pages/",
+        "status": "transport-error",
+        "expected": 401
+      },
+      {
+        "at": "2026-10-22T13:14:27.582Z",
+        "round": 24,
+        "path": "/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:14:38.189Z",
+        "round": 24,
+        "path": "/ar/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:14:48.837Z",
+        "round": 24,
+        "path": "/explore/?type=program",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:14:59.464Z",
+        "round": 24,
+        "path": "/api/pages/",
+        "status": "transport-error",
+        "expected": 401
+      },
+      {
+        "at": "2026-10-22T13:16:10.154Z",
+        "round": 25,
+        "path": "/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:16:16.829Z",
+        "round": 25,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 6675
+      },
+      {
+        "at": "2026-10-22T13:16:22.565Z",
+        "round": 25,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 5736
+      },
+      {
+        "at": "2026-10-22T13:16:22.909Z",
+        "round": 25,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 344
+      },
+      {
+        "at": "2026-10-22T13:17:40.080Z",
+        "round": 26,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 17168
+      },
+      {
+        "at": "2026-10-22T13:17:50.238Z",
+        "round": 26,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 10158
+      },
+      {
+        "at": "2026-10-22T13:18:03.879Z",
+        "round": 26,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 13641
+      },
+      {
+        "at": "2026-10-22T13:18:04.639Z",
+        "round": 26,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 760
+      },
+      {
+        "at": "2026-10-22T13:19:15.300Z",
+        "round": 27,
+        "path": "/",
+        "status": "transport-error",
+        "expected": 200
+      },
+      {
+        "at": "2026-10-22T13:19:34.494Z",
+        "round": 27,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 19194
+      },
+      {
+        "at": "2026-10-22T13:19:52.906Z",
+        "round": 27,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 18412
+      },
+      {
+        "at": "2026-10-22T13:19:53.914Z",
+        "round": 27,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 1008
+      },
+      {
+        "at": "2026-10-22T13:21:10.432Z",
+        "round": 28,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 16512
+      },
+      {
+        "at": "2026-10-22T13:21:20.138Z",
+        "round": 28,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 9706
+      },
+      {
+        "at": "2026-10-22T13:21:26.351Z",
+        "round": 28,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 6213
+      },
+      {
+        "at": "2026-10-22T13:21:26.745Z",
+        "round": 28,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 394
+      },
+      {
+        "at": "2026-10-22T13:22:29.914Z",
+        "round": 29,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 3162
+      },
+      {
+        "at": "2026-10-22T13:22:32.548Z",
+        "round": 29,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 2634
+      },
+      {
+        "at": "2026-10-22T13:22:38.188Z",
+        "round": 29,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 5640
+      },
+      {
+        "at": "2026-10-22T13:22:38.516Z",
+        "round": 29,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 328
+      },
+      {
+        "at": "2026-10-22T13:23:43.535Z",
+        "round": 30,
+        "path": "/",
+        "status": 200,
+        "expected": 200,
+        "ms": 5006
+      },
+      {
+        "at": "2026-10-22T13:23:47.261Z",
+        "round": 30,
+        "path": "/ar/",
+        "status": 200,
+        "expected": 200,
+        "ms": 3726
+      },
+      {
+        "at": "2026-10-22T13:23:52.651Z",
+        "round": 30,
+        "path": "/explore/?type=program",
+        "status": 200,
+        "expected": 200,
+        "ms": 5390
+      },
+      {
+        "at": "2026-10-22T13:23:53.011Z",
+        "round": 30,
+        "path": "/api/pages/",
+        "status": 401,
+        "expected": 401,
+        "ms": 360
+      }
+    ]
+  },
+  "localArtifact": {
+    "byteIdenticalRepeat": true,
+    "sha256": "057611F92C1F69D259169DFEEDB35305F75C2935965DAA63690CB48C54C6A958"
+  },
+  "finalAvailabilityObservation": {
+    "source": "0db4cfb",
+    "container": "w2oly5wvk4irzsmgz63yh8dqg",
+    "startedAt": "2026-10-22T13:46:34.711Z",
+    "complete": true,
+    "minimumDurationMs": 1800000,
+    "prefixSha256": "3d59be9b568fd72176781e1872b46c0ea0d486d13ab79de00888d7683fae486c",
+    "collector": "elapsed-time window; all prefix samples retained",
+    "finishedAt": "2026-10-22T14:16:46.752Z",
+    "rows": [
+      {
+        "at": "2026-10-22T13:46:34.711Z",
+        "round": 0,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 7124
+      },
+      {
+        "at": "2026-10-22T13:46:41.846Z",
+        "round": 0,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 5100
+      },
+      {
+        "at": "2026-10-22T13:46:46.949Z",
+        "round": 0,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 8598
+      },
+      {
+        "at": "2026-10-22T13:46:55.549Z",
+        "round": 0,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 426
+      },
+      {
+        "at": "2026-10-22T13:47:55.998Z",
+        "round": 1,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4472
+      },
+      {
+        "at": "2026-10-22T13:48:00.473Z",
+        "round": 1,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4795
+      },
+      {
+        "at": "2026-10-22T13:48:05.270Z",
+        "round": 1,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 5644
+      },
+      {
+        "at": "2026-10-22T13:48:10.916Z",
+        "round": 1,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 369
+      },
+      {
+        "at": "2026-10-22T13:49:11.294Z",
+        "round": 2,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4797
+      },
+      {
+        "at": "2026-10-22T13:49:16.092Z",
+        "round": 2,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 3329
+      },
+      {
+        "at": "2026-10-22T13:49:19.422Z",
+        "round": 2,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 6299
+      },
+      {
+        "at": "2026-10-22T13:49:25.722Z",
+        "round": 2,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 489
+      },
+      {
+        "at": "2026-10-22T13:50:26.225Z",
+        "round": 3,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4971
+      },
+      {
+        "at": "2026-10-22T13:50:31.199Z",
+        "round": 3,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4565
+      },
+      {
+        "at": "2026-10-22T13:50:35.766Z",
+        "round": 3,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 10797
+      },
+      {
+        "at": "2026-10-22T13:50:46.565Z",
+        "round": 3,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 388
+      },
+      {
+        "at": "2026-10-22T13:51:46.959Z",
+        "round": 4,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 6267
+      },
+      {
+        "at": "2026-10-22T13:51:53.229Z",
+        "round": 4,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4401
+      },
+      {
+        "at": "2026-10-22T13:51:57.631Z",
+        "round": 4,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 7358
+      },
+      {
+        "at": "2026-10-22T13:52:04.990Z",
+        "round": 4,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 505
+      },
+      {
+        "at": "2026-10-22T13:53:05.498Z",
+        "round": 5,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 3322
+      },
+      {
+        "at": "2026-10-22T13:53:08.822Z",
+        "round": 5,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2538
+      },
+      {
+        "at": "2026-10-22T13:53:11.362Z",
+        "round": 5,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 4093
+      },
+      {
+        "at": "2026-10-22T13:53:15.457Z",
+        "round": 5,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 559
+      },
+      {
+        "at": "2026-10-22T13:54:16.021Z",
+        "round": 6,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 3832
+      },
+      {
+        "at": "2026-10-22T13:54:19.855Z",
+        "round": 6,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4824
+      },
+      {
+        "at": "2026-10-22T13:54:24.681Z",
+        "round": 6,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 6089
+      },
+      {
+        "at": "2026-10-22T13:54:30.773Z",
+        "round": 6,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 393
+      },
+      {
+        "at": "2026-10-22T13:55:31.169Z",
+        "round": 7,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 6300
+      },
+      {
+        "at": "2026-10-22T13:55:37.471Z",
+        "round": 7,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 5544
+      },
+      {
+        "at": "2026-10-22T13:55:43.018Z",
+        "round": 7,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 5526
+      },
+      {
+        "at": "2026-10-22T13:55:48.546Z",
+        "round": 7,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 545
+      },
+      {
+        "at": "2026-10-22T13:56:49.099Z",
+        "round": 8,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 5323
+      },
+      {
+        "at": "2026-10-22T13:56:54.424Z",
+        "round": 8,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4403
+      },
+      {
+        "at": "2026-10-22T13:56:58.830Z",
+        "round": 8,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 5758
+      },
+      {
+        "at": "2026-10-22T13:57:04.591Z",
+        "round": 8,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 931
+      },
+      {
+        "at": "2026-10-22T13:58:05.529Z",
+        "round": 9,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 5862
+      },
+      {
+        "at": "2026-10-22T13:58:11.393Z",
+        "round": 9,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4021
+      },
+      {
+        "at": "2026-10-22T13:58:15.417Z",
+        "round": 9,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 6627
+      },
+      {
+        "at": "2026-10-22T13:58:22.047Z",
+        "round": 9,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 509
+      },
+      {
+        "at": "2026-10-22T13:59:22.559Z",
+        "round": 10,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 7890
+      },
+      {
+        "at": "2026-10-22T13:59:30.452Z",
+        "round": 10,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 7779
+      },
+      {
+        "at": "2026-10-22T13:59:38.234Z",
+        "round": 10,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 8189
+      },
+      {
+        "at": "2026-10-22T13:59:46.426Z",
+        "round": 10,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 713
+      },
+      {
+        "at": "2026-10-22T14:00:47.152Z",
+        "round": 11,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 7702
+      },
+      {
+        "at": "2026-10-22T14:00:54.855Z",
+        "round": 11,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 18712
+      },
+      {
+        "at": "2026-10-22T14:01:13.568Z",
+        "round": 11,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 8286
+      },
+      {
+        "at": "2026-10-22T14:01:21.856Z",
+        "round": 11,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 671
+      },
+      {
+        "at": "2026-10-22T14:02:22.529Z",
+        "round": 12,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 6903
+      },
+      {
+        "at": "2026-10-22T14:02:29.434Z",
+        "round": 12,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4833
+      },
+      {
+        "at": "2026-10-22T14:02:34.269Z",
+        "round": 12,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 6306
+      },
+      {
+        "at": "2026-10-22T14:02:40.577Z",
+        "round": 12,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 543
+      },
+      {
+        "at": "2026-10-22T14:03:41.125Z",
+        "round": 13,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 7477
+      },
+      {
+        "at": "2026-10-22T14:03:48.604Z",
+        "round": 13,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4076
+      },
+      {
+        "at": "2026-10-22T14:03:52.682Z",
+        "round": 13,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 7713
+      },
+      {
+        "at": "2026-10-22T14:04:00.397Z",
+        "round": 13,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 444
+      },
+      {
+        "at": "2026-10-22T14:05:00.847Z",
+        "round": 14,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 6398
+      },
+      {
+        "at": "2026-10-22T14:05:07.248Z",
+        "round": 14,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 6162
+      },
+      {
+        "at": "2026-10-22T14:05:13.413Z",
+        "round": 14,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 4625
+      },
+      {
+        "at": "2026-10-22T14:05:18.041Z",
+        "round": 14,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 1052
+      },
+      {
+        "at": "2026-10-22T14:06:33.685Z",
+        "round": 15,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 6656
+      },
+      {
+        "at": "2026-10-22T14:06:40.352Z",
+        "round": 15,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4276
+      },
+      {
+        "at": "2026-10-22T14:06:44.631Z",
+        "round": 15,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 6005
+      },
+      {
+        "at": "2026-10-22T14:06:50.638Z",
+        "round": 15,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 502
+      },
+      {
+        "at": "2026-10-22T14:07:51.151Z",
+        "round": 16,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4638
+      },
+      {
+        "at": "2026-10-22T14:07:55.790Z",
+        "round": 16,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 3947
+      },
+      {
+        "at": "2026-10-22T14:07:59.739Z",
+        "round": 16,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 6897
+      },
+      {
+        "at": "2026-10-22T14:08:06.637Z",
+        "round": 16,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 366
+      },
+      {
+        "at": "2026-10-22T14:09:07.018Z",
+        "round": 17,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 6369
+      },
+      {
+        "at": "2026-10-22T14:09:13.390Z",
+        "round": 17,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 3601
+      },
+      {
+        "at": "2026-10-22T14:09:16.992Z",
+        "round": 17,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 8408
+      },
+      {
+        "at": "2026-10-22T14:09:25.402Z",
+        "round": 17,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 364
+      },
+      {
+        "at": "2026-10-22T14:10:25.781Z",
+        "round": 18,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 17854
+      },
+      {
+        "at": "2026-10-22T14:10:43.636Z",
+        "round": 18,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 503,
+        "ms": 21091,
+        "failureBodyFile": "acceptance-stable-failure-18-73.private.txt",
+        "headers": {
+          "content-type": "text/plain; charset=UTF-8",
+          "server": null,
+          "x-rendered-by": null,
+          "retry-after": null,
+          "content-language": null
+        }
+      },
+      {
+        "at": "2026-10-22T14:11:04.731Z",
+        "round": 18,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 21014
+      },
+      {
+        "at": "2026-10-22T14:11:25.747Z",
+        "round": 18,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 316
+      },
+      {
+        "at": "2026-10-22T14:12:26.086Z",
+        "round": 19,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 5778
+      },
+      {
+        "at": "2026-10-22T14:12:31.867Z",
+        "round": 19,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 3862
+      },
+      {
+        "at": "2026-10-22T14:12:35.731Z",
+        "round": 19,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 10312
+      },
+      {
+        "at": "2026-10-22T14:12:46.046Z",
+        "round": 19,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 573
+      },
+      {
+        "at": "2026-10-22T14:13:46.623Z",
+        "round": 20,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 5515
+      },
+      {
+        "at": "2026-10-22T14:13:52.140Z",
+        "round": 20,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 6044
+      },
+      {
+        "at": "2026-10-22T14:13:58.187Z",
+        "round": 20,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 6946
+      },
+      {
+        "at": "2026-10-22T14:14:05.136Z",
+        "round": 20,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 473
+      },
+      {
+        "at": "2026-10-22T14:15:05.617Z",
+        "round": 21,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 6586
+      },
+      {
+        "at": "2026-10-22T14:15:12.206Z",
+        "round": 21,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4841
+      },
+      {
+        "at": "2026-10-22T14:15:17.049Z",
+        "round": 21,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 8349
+      },
+      {
+        "at": "2026-10-22T14:15:25.401Z",
+        "round": 21,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 375
+      },
+      {
+        "at": "2026-10-22T14:16:25.788Z",
+        "round": 22,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 5737
+      },
+      {
+        "at": "2026-10-22T14:16:31.526Z",
+        "round": 22,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 8079
+      },
+      {
+        "at": "2026-10-22T14:16:39.607Z",
+        "round": 22,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 6633
+      },
+      {
+        "at": "2026-10-22T14:16:46.242Z",
+        "round": 22,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 509
+      }
+    ]
+  },
+  "localDiagnosticReproduction": {
+    "restored": {
+      "language": "ar",
+      "status": 200
+    },
+    "kind": "local-synthetic-live-data-reproduction",
+    "source": "083d553",
+    "healthyRequests": [
+      {
+        "attempt": 1,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 2,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 3,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 4,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 5,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 6,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 7,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 8,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 9,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 10,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 11,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 12,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 13,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 14,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 15,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 16,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 17,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 18,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 19,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 20,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 21,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 22,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 23,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 24,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 25,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 26,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 27,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 28,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 29,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 30,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 31,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 32,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 33,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 34,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 35,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 36,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 37,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 38,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 39,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 40,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 41,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 42,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 43,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 44,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 45,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 46,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 47,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 48,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 49,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      },
+      {
+        "attempt": 50,
+        "language": "ar",
+        "status": 200,
+        "rtl": true
+      }
+    ],
+    "fault": {
+      "status": 503,
+      "underlyingCode": "live_list_unavailable",
+      "body": [
+        76,
+        97,
+        110,
+        103,
+        117,
+        97,
+        103,
+        101,
+        32,
+        116,
+        101,
+        109,
+        112,
+        111,
+        114,
+        97,
+        114,
+        105,
+        108,
+        121,
+        32,
+        117,
+        110,
+        97,
+        118,
+        97,
+        105,
+        108,
+        97,
+        98,
+        108,
+        101
+      ]
+    },
+    "stagingRootCause": "not-established"
+  },
+  "artifactCommit": "8ac4b86",
+  "packageProof": {
+    "directory": "frontbase-r1-consumer-4jnqGD",
+    "registryPublication": false,
+    "allCommandsPassed": true,
+    "strictNodeNextAndBundler": true
+  },
+  "finalHostUpgrade": {
+    "source": "8ac4b86",
+    "originalSessionsPreserved": true,
+    "sourceBindingsUnchanged": true,
+    "rows": [
+      {
+        "target": "cf",
+        "path": "/api/pages/",
+        "auth": true,
+        "status": 200
+      },
+      {
+        "target": "cf",
+        "path": "/api/sync/datasources/",
+        "auth": true,
+        "status": 200
+      },
+      {
+        "target": "cf",
+        "path": "/final-cf-acceptance-261022",
+        "auth": false,
+        "status": 200
+      },
+      {
+        "target": "cf",
+        "path": "/api/pages/",
+        "auth": false,
+        "status": 401
+      },
+      {
+        "target": "vercel",
+        "path": "/api/pages/",
+        "auth": true,
+        "status": 200
+      },
+      {
+        "target": "vercel",
+        "path": "/api/sync/datasources/",
+        "auth": true,
+        "status": 200
+      },
+      {
+        "target": "vercel",
+        "path": "/final-vercel-acceptance-261022",
+        "auth": false,
+        "status": 200
+      },
+      {
+        "target": "vercel",
+        "path": "/api/pages/",
+        "auth": false,
+        "status": 401
+      }
+    ]
+  },
+  "finalHostDeployments": {
+    "cloudflare": {
+      "source": "8ac4b860bd90cb271d229bfff75d2b85762c2877",
+      "context": {
+        "appName": "frontbase-final-cf-261022",
+        "accountId": "680ebc4bf03302798e6c0d870c08ed8d",
+        "environment": "preview",
+        "artifactHash": "d370e32a2eb42c18ec07bf50083f822120924bed01e3748506172b8463abb6dc"
+      },
+      "result": {
+        "ok": true,
+        "url": "https://frontbase-final-cf-261022.studygram-inc.workers.dev",
+        "reconciled": true
+      },
+      "kind": "managed-profile-upgrade"
+    },
+    "vercel": {
+      "source": "8ac4b860bd90cb271d229bfff75d2b85762c2877",
+      "context": {
+        "scope": "team_vifgJpaYqcuBJmIQuhAEn2m7",
+        "project": "frontbase-final-vercel-261022",
+        "environment": "production",
+        "intent": "redeploy"
+      },
+      "url": "https://frontbase-final-vercel-261022-pokybdx1b.vercel.app",
+      "manifest": {
+        "version": 1,
+        "target": "vercel",
+        "environment": "production",
+        "profileVersion": 1,
+        "bindings": {
+          "state-db": {
+            "adapterId": "turso-marketplace",
+            "mode": "reuse",
+            "resourceRef": "store_o3SSOFriPoErrgZq",
+            "config": {},
+            "secretRefs": {}
+          },
+          "cache": {
+            "adapterId": "upstash-http",
+            "mode": "disabled",
+            "config": {},
+            "secretRefs": {}
+          },
+          "storage": {
+            "adapterId": "s3-http",
+            "mode": "disabled",
+            "config": {},
+            "secretRefs": {}
+          },
+          "vector": {
+            "adapterId": "cloudflare-vectorize-http",
+            "mode": "disabled",
+            "config": {},
+            "secretRefs": {}
+          },
+          "queue": {
+            "adapterId": "qstash-http",
+            "mode": "disabled",
+            "config": {},
+            "secretRefs": {}
+          },
+          "email-send": {
+            "adapterId": "cloudflare-email",
+            "mode": "disabled",
+            "config": {},
+            "secretRefs": {}
+          }
+        }
+      },
+      "kind": "managed-profile-upgrade"
+    }
+  },
+  "actualStagingDiagnosis": {
+    "queryCost": "Legacy saved-view tuple predicates caused PostgreSQL timeout57014; typed tuple relations and lighter schema inspection preserve exact selection.",
+    "credentialFailure": "Management API timeout led to a disabled saved legacy key and SQL HTTP401. Successful equivalent discovery now persists in the existing encrypted account with compare-and-set.",
+    "earlierIncompleteFixes": [
+      "ea251b5 diagnostic observer failed",
+      "e288271 in-flight coalescing observer failed",
+      "14d1dbc query optimization concurrent probe failed"
+    ],
+    "policy": "No stale record cache, relaxed publication fence, privilege expansion or retry of writes."
+  },
+  "finalObservation": {
+    "source": "12358b4",
+    "container": "0uovc7nhk3z5wfbivye654hiu",
+    "startedAt": "2026-10-22T17:06:35.676Z",
+    "complete": true,
+    "rows": [
+      {
+        "at": "2026-10-22T17:06:35.779Z",
+        "round": 0,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2451
+      },
+      {
+        "at": "2026-10-22T17:06:38.240Z",
+        "round": 0,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1731
+      },
+      {
+        "at": "2026-10-22T17:06:39.973Z",
+        "round": 0,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 1966
+      },
+      {
+        "at": "2026-10-22T17:06:41.941Z",
+        "round": 0,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 408
+      },
+      {
+        "at": "2026-10-22T17:07:27.357Z",
+        "round": 1,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1802
+      },
+      {
+        "at": "2026-10-22T17:07:29.161Z",
+        "round": 1,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1495
+      },
+      {
+        "at": "2026-10-22T17:07:30.658Z",
+        "round": 1,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2059
+      },
+      {
+        "at": "2026-10-22T17:07:32.719Z",
+        "round": 1,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 710
+      },
+      {
+        "at": "2026-10-22T17:08:16.083Z",
+        "round": 2,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2174
+      },
+      {
+        "at": "2026-10-22T17:08:18.260Z",
+        "round": 2,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1655
+      },
+      {
+        "at": "2026-10-22T17:08:19.917Z",
+        "round": 2,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2074
+      },
+      {
+        "at": "2026-10-22T17:08:21.994Z",
+        "round": 2,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 437
+      },
+      {
+        "at": "2026-10-22T17:09:07.457Z",
+        "round": 3,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2215
+      },
+      {
+        "at": "2026-10-22T17:09:09.675Z",
+        "round": 3,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1641
+      },
+      {
+        "at": "2026-10-22T17:09:11.318Z",
+        "round": 3,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2238
+      },
+      {
+        "at": "2026-10-22T17:09:13.558Z",
+        "round": 3,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 502
+      },
+      {
+        "at": "2026-10-22T17:09:59.174Z",
+        "round": 4,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2284
+      },
+      {
+        "at": "2026-10-22T17:10:01.460Z",
+        "round": 4,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4343
+      },
+      {
+        "at": "2026-10-22T17:10:05.804Z",
+        "round": 4,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2417
+      },
+      {
+        "at": "2026-10-22T17:10:08.223Z",
+        "round": 4,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 385
+      },
+      {
+        "at": "2026-10-22T17:10:53.614Z",
+        "round": 5,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2419
+      },
+      {
+        "at": "2026-10-22T17:10:56.035Z",
+        "round": 5,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1656
+      },
+      {
+        "at": "2026-10-22T17:10:57.694Z",
+        "round": 5,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2251
+      },
+      {
+        "at": "2026-10-22T17:10:59.947Z",
+        "round": 5,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 388
+      },
+      {
+        "at": "2026-10-22T17:11:45.342Z",
+        "round": 6,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2164
+      },
+      {
+        "at": "2026-10-22T17:11:47.508Z",
+        "round": 6,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1539
+      },
+      {
+        "at": "2026-10-22T17:11:49.048Z",
+        "round": 6,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2073
+      },
+      {
+        "at": "2026-10-22T17:11:51.122Z",
+        "round": 6,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 409
+      },
+      {
+        "at": "2026-10-22T17:12:36.540Z",
+        "round": 7,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1726
+      },
+      {
+        "at": "2026-10-22T17:12:38.271Z",
+        "round": 7,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1439
+      },
+      {
+        "at": "2026-10-22T17:12:39.712Z",
+        "round": 7,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2093
+      },
+      {
+        "at": "2026-10-22T17:12:41.808Z",
+        "round": 7,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 427
+      },
+      {
+        "at": "2026-10-22T17:13:27.291Z",
+        "round": 8,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1682
+      },
+      {
+        "at": "2026-10-22T17:13:28.975Z",
+        "round": 8,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1316
+      },
+      {
+        "at": "2026-10-22T17:13:30.292Z",
+        "round": 8,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2004
+      },
+      {
+        "at": "2026-10-22T17:13:32.298Z",
+        "round": 8,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 393
+      },
+      {
+        "at": "2026-10-22T17:14:17.731Z",
+        "round": 9,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2058
+      },
+      {
+        "at": "2026-10-22T17:14:19.791Z",
+        "round": 9,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1466
+      },
+      {
+        "at": "2026-10-22T17:14:21.259Z",
+        "round": 9,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2113
+      },
+      {
+        "at": "2026-10-22T17:14:23.373Z",
+        "round": 9,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 623
+      },
+      {
+        "at": "2026-10-22T17:15:09.005Z",
+        "round": 10,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2994
+      },
+      {
+        "at": "2026-10-22T17:15:12.004Z",
+        "round": 10,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1938
+      },
+      {
+        "at": "2026-10-22T17:15:13.943Z",
+        "round": 10,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2388
+      },
+      {
+        "at": "2026-10-22T17:15:16.332Z",
+        "round": 10,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 395
+      },
+      {
+        "at": "2026-10-22T17:16:01.812Z",
+        "round": 11,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 4391
+      },
+      {
+        "at": "2026-10-22T17:16:06.205Z",
+        "round": 11,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1992
+      },
+      {
+        "at": "2026-10-22T17:16:08.199Z",
+        "round": 11,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2500
+      },
+      {
+        "at": "2026-10-22T17:16:10.701Z",
+        "round": 11,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 380
+      },
+      {
+        "at": "2026-10-22T17:16:56.084Z",
+        "round": 12,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1966
+      },
+      {
+        "at": "2026-10-22T17:16:58.051Z",
+        "round": 12,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1340
+      },
+      {
+        "at": "2026-10-22T17:16:59.392Z",
+        "round": 12,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 3007
+      },
+      {
+        "at": "2026-10-22T17:17:02.401Z",
+        "round": 12,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 416
+      },
+      {
+        "at": "2026-10-22T17:17:47.831Z",
+        "round": 13,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2025
+      },
+      {
+        "at": "2026-10-22T17:17:49.857Z",
+        "round": 13,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1533
+      },
+      {
+        "at": "2026-10-22T17:17:51.391Z",
+        "round": 13,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2090
+      },
+      {
+        "at": "2026-10-22T17:17:53.481Z",
+        "round": 13,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 411
+      },
+      {
+        "at": "2026-10-22T17:18:38.906Z",
+        "round": 14,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2186
+      },
+      {
+        "at": "2026-10-22T17:18:41.094Z",
+        "round": 14,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2153
+      },
+      {
+        "at": "2026-10-22T17:18:43.250Z",
+        "round": 14,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2124
+      },
+      {
+        "at": "2026-10-22T17:18:45.375Z",
+        "round": 14,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 406
+      },
+      {
+        "at": "2026-10-22T17:19:30.794Z",
+        "round": 15,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1772
+      },
+      {
+        "at": "2026-10-22T17:19:32.571Z",
+        "round": 15,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1431
+      },
+      {
+        "at": "2026-10-22T17:19:34.003Z",
+        "round": 15,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2285
+      },
+      {
+        "at": "2026-10-22T17:19:36.292Z",
+        "round": 15,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 419
+      },
+      {
+        "at": "2026-10-22T17:20:21.723Z",
+        "round": 16,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1692
+      },
+      {
+        "at": "2026-10-22T17:20:23.417Z",
+        "round": 16,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1484
+      },
+      {
+        "at": "2026-10-22T17:20:24.902Z",
+        "round": 16,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2238
+      },
+      {
+        "at": "2026-10-22T17:20:27.142Z",
+        "round": 16,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 400
+      },
+      {
+        "at": "2026-10-22T17:21:12.558Z",
+        "round": 17,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2139
+      },
+      {
+        "at": "2026-10-22T17:21:14.699Z",
+        "round": 17,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1677
+      },
+      {
+        "at": "2026-10-22T17:21:16.377Z",
+        "round": 17,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2269
+      },
+      {
+        "at": "2026-10-22T17:21:18.649Z",
+        "round": 17,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 388
+      },
+      {
+        "at": "2026-10-22T17:22:04.043Z",
+        "round": 18,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2077
+      },
+      {
+        "at": "2026-10-22T17:22:06.121Z",
+        "round": 18,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1328
+      },
+      {
+        "at": "2026-10-22T17:22:07.451Z",
+        "round": 18,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2273
+      },
+      {
+        "at": "2026-10-22T17:22:09.725Z",
+        "round": 18,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 418
+      },
+      {
+        "at": "2026-10-22T17:22:55.153Z",
+        "round": 19,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2500
+      },
+      {
+        "at": "2026-10-22T17:22:57.654Z",
+        "round": 19,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1513
+      },
+      {
+        "at": "2026-10-22T17:22:59.168Z",
+        "round": 19,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2284
+      },
+      {
+        "at": "2026-10-22T17:23:01.453Z",
+        "round": 19,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 694
+      },
+      {
+        "at": "2026-10-22T17:23:47.159Z",
+        "round": 20,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1661
+      },
+      {
+        "at": "2026-10-22T17:23:48.822Z",
+        "round": 20,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1318
+      },
+      {
+        "at": "2026-10-22T17:23:50.141Z",
+        "round": 20,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 1974
+      },
+      {
+        "at": "2026-10-22T17:23:52.116Z",
+        "round": 20,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 374
+      },
+      {
+        "at": "2026-10-22T17:24:37.498Z",
+        "round": 21,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2068
+      },
+      {
+        "at": "2026-10-22T17:24:39.567Z",
+        "round": 21,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1484
+      },
+      {
+        "at": "2026-10-22T17:24:41.052Z",
+        "round": 21,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2296
+      },
+      {
+        "at": "2026-10-22T17:24:43.349Z",
+        "round": 21,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 442
+      },
+      {
+        "at": "2026-10-22T17:25:28.804Z",
+        "round": 22,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2452
+      },
+      {
+        "at": "2026-10-22T17:25:31.258Z",
+        "round": 22,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2350
+      },
+      {
+        "at": "2026-10-22T17:25:33.610Z",
+        "round": 22,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2249
+      },
+      {
+        "at": "2026-10-22T17:25:35.861Z",
+        "round": 22,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 508
+      },
+      {
+        "at": "2026-10-22T17:26:21.375Z",
+        "round": 23,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2216
+      },
+      {
+        "at": "2026-10-22T17:26:23.593Z",
+        "round": 23,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1597
+      },
+      {
+        "at": "2026-10-22T17:26:25.191Z",
+        "round": 23,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 1879
+      },
+      {
+        "at": "2026-10-22T17:26:27.071Z",
+        "round": 23,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 375
+      },
+      {
+        "at": "2026-10-22T17:27:12.462Z",
+        "round": 24,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2130
+      },
+      {
+        "at": "2026-10-22T17:27:14.593Z",
+        "round": 24,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1668
+      },
+      {
+        "at": "2026-10-22T17:27:16.262Z",
+        "round": 24,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 3600
+      },
+      {
+        "at": "2026-10-22T17:27:19.863Z",
+        "round": 24,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 470
+      },
+      {
+        "at": "2026-10-22T17:28:05.336Z",
+        "round": 25,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 3110
+      },
+      {
+        "at": "2026-10-22T17:28:08.448Z",
+        "round": 25,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1512
+      },
+      {
+        "at": "2026-10-22T17:28:09.961Z",
+        "round": 25,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 3006
+      },
+      {
+        "at": "2026-10-22T17:28:12.969Z",
+        "round": 25,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 474
+      },
+      {
+        "at": "2026-10-22T17:28:58.450Z",
+        "round": 26,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2083
+      },
+      {
+        "at": "2026-10-22T17:29:00.533Z",
+        "round": 26,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2313
+      },
+      {
+        "at": "2026-10-22T17:29:02.847Z",
+        "round": 26,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2110
+      },
+      {
+        "at": "2026-10-22T17:29:04.961Z",
+        "round": 26,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 880
+      },
+      {
+        "at": "2026-10-22T17:29:50.860Z",
+        "round": 27,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2075
+      },
+      {
+        "at": "2026-10-22T17:29:52.936Z",
+        "round": 27,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1943
+      },
+      {
+        "at": "2026-10-22T17:29:54.880Z",
+        "round": 27,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 1932
+      },
+      {
+        "at": "2026-10-22T17:29:56.813Z",
+        "round": 27,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 790
+      },
+      {
+        "at": "2026-10-22T17:30:42.615Z",
+        "round": 28,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 9055
+      },
+      {
+        "at": "2026-10-22T17:30:51.671Z",
+        "round": 28,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 6759
+      },
+      {
+        "at": "2026-10-22T17:30:58.433Z",
+        "round": 28,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 8418
+      },
+      {
+        "at": "2026-10-22T17:31:06.853Z",
+        "round": 28,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 395
+      },
+      {
+        "at": "2026-10-22T17:31:52.259Z",
+        "round": 29,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2548
+      },
+      {
+        "at": "2026-10-22T17:31:54.809Z",
+        "round": 29,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2121
+      },
+      {
+        "at": "2026-10-22T17:31:56.932Z",
+        "round": 29,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2771
+      },
+      {
+        "at": "2026-10-22T17:31:59.705Z",
+        "round": 29,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 356
+      },
+      {
+        "at": "2026-10-22T17:32:45.063Z",
+        "round": 30,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2211
+      },
+      {
+        "at": "2026-10-22T17:32:47.275Z",
+        "round": 30,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1827
+      },
+      {
+        "at": "2026-10-22T17:32:49.103Z",
+        "round": 30,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2360
+      },
+      {
+        "at": "2026-10-22T17:32:51.466Z",
+        "round": 30,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 400
+      },
+      {
+        "at": "2026-10-22T17:33:36.877Z",
+        "round": 31,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2213
+      },
+      {
+        "at": "2026-10-22T17:33:39.092Z",
+        "round": 31,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1586
+      },
+      {
+        "at": "2026-10-22T17:33:40.680Z",
+        "round": 31,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2566
+      },
+      {
+        "at": "2026-10-22T17:33:43.248Z",
+        "round": 31,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 402
+      },
+      {
+        "at": "2026-10-22T17:34:28.664Z",
+        "round": 32,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2209
+      },
+      {
+        "at": "2026-10-22T17:34:30.875Z",
+        "round": 32,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1503
+      },
+      {
+        "at": "2026-10-22T17:34:32.379Z",
+        "round": 32,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2428
+      },
+      {
+        "at": "2026-10-22T17:34:34.809Z",
+        "round": 32,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 487
+      },
+      {
+        "at": "2026-10-22T17:35:20.306Z",
+        "round": 33,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2030
+      },
+      {
+        "at": "2026-10-22T17:35:22.337Z",
+        "round": 33,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1572
+      },
+      {
+        "at": "2026-10-22T17:35:23.912Z",
+        "round": 33,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2374
+      },
+      {
+        "at": "2026-10-22T17:35:26.287Z",
+        "round": 33,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 387
+      },
+      {
+        "at": "2026-10-22T17:36:11.683Z",
+        "round": 34,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2536
+      },
+      {
+        "at": "2026-10-22T17:36:14.222Z",
+        "round": 34,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1658
+      },
+      {
+        "at": "2026-10-22T17:36:15.883Z",
+        "round": 34,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2029
+      },
+      {
+        "at": "2026-10-22T17:36:17.914Z",
+        "round": 34,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 372
+      },
+      {
+        "at": "2026-10-22T17:37:03.295Z",
+        "round": 35,
+        "path": "/ar/",
+        "expected": 200,
+        "status": 200,
+        "ms": 2205
+      },
+      {
+        "at": "2026-10-22T17:37:05.502Z",
+        "round": 35,
+        "path": "/",
+        "expected": 200,
+        "status": 200,
+        "ms": 1928
+      },
+      {
+        "at": "2026-10-22T17:37:07.432Z",
+        "round": 35,
+        "path": "/explore/?type=program",
+        "expected": 200,
+        "status": 200,
+        "ms": 2164
+      },
+      {
+        "at": "2026-10-22T17:37:09.598Z",
+        "round": 35,
+        "path": "/api/pages/",
+        "expected": 401,
+        "status": 401,
+        "ms": 464
+      }
+    ]
+  },
+  "finalObservationSummary": {
+    "requests": 144,
+    "unexpectedStatuses": 0,
+    "started": "2026-10-22T17:06:35.676Z",
+    "finished": "2026-10-22T17:37:10.062Z",
+    "elapsedMinutes": 30.5731
+  },
+  "latencyByPath": {
+    "/ar/": {
+      "count": 36,
+      "minMs": 1661,
+      "p95Ms": 4391,
+      "maxMs": 9055
+    },
+    "/": {
+      "count": 36,
+      "minMs": 1316,
+      "p95Ms": 4343,
+      "maxMs": 6759
+    },
+    "/explore/?type=program": {
+      "count": 36,
+      "minMs": 1879,
+      "p95Ms": 3600,
+      "maxMs": 8418
+    },
+    "/api/pages/": {
+      "count": 36,
+      "minMs": 356,
+      "p95Ms": 790,
+      "maxMs": 880
+    }
+  },
+  "generatedArtifact": {
+    "commit": "1791f19",
+    "sha256": "35b3712b1cd617191a3838b59b111db30159f2b78d68ece20a0f81afdcb8e7c2",
+    "differenceFrom8ac4b86": "Only redundant use-strict directives; normalized runtime bytes identical."
+  }
+}

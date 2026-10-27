@@ -1,0 +1,20 @@
+import React from 'react';
+import {it,expect,vi} from 'vitest';
+import {render,screen,fireEvent} from '@testing-library/react';
+const state=vi.hoisted(()=>({selectedComponentId:'repeater',currentPageId:'page',pages:[{id:'page',layoutData:{content:[{id:'repeater',type:'Repeater',props:{binding:{dataSourceId:'source',tableName:'catalog'}}}]}}],updateComponent:vi.fn(),removeComponent:vi.fn(),project:{}}));
+vi.mock('@/stores/builder',()=>({useBuilderStore:(select:any)=>select(state)}));
+vi.mock('@/stores/data-binding-simple',()=>({useDataBindingStore:()=>({setComponentBinding:vi.fn(),initialize:()=>{}})}));
+vi.mock('@/lib/builder/registryDescriptor',()=>({useRegistryDescriptor:()=>null,mapComponentPropsToFields:()=>[]}));
+vi.mock('./properties/basic',()=>({RepeaterProperties:({activeTab}:any)=><div>{activeTab==='options'?'Repeater filter options reached':'Repeater general reached'}</div>,ButtonProperties:()=>null,SelectProperties:()=>null,ChartProperties:()=>null,GridProperties:()=>null,KPICardProperties:()=>null}));
+vi.mock('./properties/landing',()=>({NavbarProperties:()=>null,FooterProperties:()=>null,PricingProperties:()=>null}));
+vi.mock('@/components/builder/data-table/DataTablePropertiesPanel',()=>({DataTablePropertiesPanel:()=>null}));
+vi.mock('./form/FormPropertiesPanel',()=>({FormPropertiesPanel:()=>null}));
+vi.mock('@/components/actions',()=>({ActionConfigurator:()=>null}));
+vi.mock('./VariableInput',()=>({VariableInput:()=>null}));
+vi.mock('./VisibilityConditionEditor',()=>({VisibilityConditionEditor:()=>null}));
+import {PropertiesPanel} from './PropertiesPanel';
+it('routes a bound Repeater Options tab to its actual bespoke panel instead of suppressing it',()=>{
+ render(<PropertiesPanel/>);expect(screen.getByText('Repeater general reached')).toBeTruthy();
+ const tab=screen.getByRole('tab',{name:'Options',exact:true});fireEvent.mouseDown(tab,{button:0,ctrlKey:false});fireEvent.click(tab);
+ expect(screen.getByText('Repeater filter options reached')).toBeTruthy();
+});

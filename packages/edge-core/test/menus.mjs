@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {createMenuDefinition,publicMenuAudience,menuAudienceMatches,resolveMenuRegions,menuDocumentSchema} from '../dist/menus.js';
+const restricted={authentication:'authenticated',contactTypes:['student'],permissionLevels:['editor']};
+assert.equal(menuAudienceMatches(restricted,null),false);
+assert.equal(menuAudienceMatches(restricted,{authenticated:true,contactType:'student',permissionLevel:'reader'}),false);
+assert.equal(menuAudienceMatches(restricted,{authenticated:true,contactType:'student',permissionLevel:'editor'}),true);
+assert.equal(menuAudienceMatches({...restricted,authentication:'malformed'},null),false);
+const header=createMenuDefinition('header','header');
+header.items=[{id:'public',label:'Home',href:'/',audience:publicMenuAudience(),children:[]},{id:'private',label:'SECRET_LABEL',href:'/SECRET_TARGET/',audience:restricted,children:[{id:'child',label:'SECRET_CHILD',href:'/private/',audience:publicMenuAudience(),children:[]}]}];
+const document={schemaVersion:1,revision:1,menus:[header]};
+const anonymous=resolveMenuRegions(document,'page','/',null);assert.equal(anonymous.header.items.length,1);assert.ok(!JSON.stringify(anonymous).includes('SECRET'));
+const member=resolveMenuRegions(document,'page','/',{authenticated:true,contactType:'student',permissionLevel:'editor'});assert.equal(member.header.items.length,2);
+header.placement.excludePaths=['/'];assert.equal(resolveMenuRegions(document,'page','/',null).header,undefined);header.placement.excludePaths=[];
+const other={...header,id:'other'};assert.throws(()=>resolveMenuRegions({...document,menus:[header,other]},'page','/',null),/conflict/);other.priority=1;assert.equal(resolveMenuRegions({...document,menus:[header,other]},'page','/',null).header.id,'other');
+assert.equal(menuDocumentSchema.safeParse({...document,menus:[{...header,items:[{...header.items[0],href:'javascript:alert(1)'}]}]}).success,false);
+assert.equal(menuDocumentSchema.safeParse({...document,menus:[header,header]}).success,false);
+console.log('menus: audience conjunction, unknown denial, parent restriction, no-leak projection, exclusions, slot conflict and unsafe-link rejection PASS');

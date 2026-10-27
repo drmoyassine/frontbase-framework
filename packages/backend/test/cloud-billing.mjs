@@ -1,0 +1,145 @@
+import assert from 'node:assert/strict';
+import { sqliteRunner, createResolvePrincipal } from '@frontbase/edge-infra';
+import { createCompatApp } from '../dist/compat/app.js';
+import { assertStripeKeyMode, billingCatalog } from '../dist/compat/routes/billing.js';
+import { migrateUp } from '../dist/db/migrations.js';
+import { TenantStore } from '../dist/db/tenants.js';
+import { UserStore } from '../dist/db/users.js';
+
+const runner = sqliteRunner(':memory:');
+await migrateUp(runner);
+await new TenantStore(runner).createTenant('acme', 'Acme', new Date().toISOString());
+await new TenantStore(runner).updateTenant('acme', { plan: 'free', status: 'active' });
+await new UserStore(runner, 'acme').createUser({ id: 'u1', email: 'owner@acme.test', passwordHash: 'x', role: 'owner', tenantSlug: 'acme', now: new Date().toISOString() });
+
+const calls = [];
+const stripeFetch = async (url, init) => {
+    calls.push({ url: String(url), body: Object.fromEntries(init.body.entries()), auth: init.headers.Authorization });
+    if (String(url).endsWith('/customers')) return Response.json({ id: 'cus_acme' });
+    if (String(url).endsWith('/checkout/sessions')) return Response.json({ id: 'cs_1', url: 'https://checkout.stripe.test/cs_1' });
+    if (String(url).endsWith('/billing_portal/sessions')) return Response.json({ id: 'bps_1', url: 'https://billing.stripe.test/bps_1' });
+    throw new Error('unexpected_stripe_call');
+};
+const webhookSecret = 'whsec_test_secret';
+const app = await createCompatApp({
+    makeRunner: () => runner,
+    resolvePrincipal: async () => ({ user: { id: 'u1', email: 'owner@acme.test', role: 'owner' }, tenant: 'acme' }),
+    sessionSecret: 'billing-test-session-secret-0123456789',
+    userStoreFor: (tenant) => new UserStore(runner, tenant),
+    cloudMode: true,
+    billing: { secretKey: 'sk_live_test_shape', webhookSecret, baseDomain: 'frontbase.test', fetch: stripeFetch },
+});
+let ip = 1;
+const request = (path, body) => app.fetch(new Request(`https://app.frontbase.test${path}`, {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), 'cf-connecting-ip': `10.1.0.${ip++}` },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+}));
+
+const plans = await request('/api/plans/public');
+assert.equal(plans.status, 200);
+const planBody = await plans.json();
+assert.deepEqual(planBody.detailed.map((plan) => plan.slug), ['free', 'basic', 'pro']);
+assert.equal(planBody.detailed[1].gateway_metadata.stripe_price_id, 'price_1TrSYzPclg9BuO7fJ0s6qjdJ');
+
+const checkout = await request('/api/billing/checkout', { plan_slug: 'basic' });
+assert.equal(checkout.status, 200);
+assert.equal((await checkout.json()).url, 'https://checkout.stripe.test/cs_1');
+assert.equal(calls[0].body['metadata[tenant_slug]'], 'acme');
+assert.equal(calls[1].body['line_items[0][price]'], 'price_1TrSYzPclg9BuO7fJ0s6qjdJ');
+assert.equal(calls[1].body['subscription_data[metadata][plan_slug]'], 'basic');
+assert.equal(calls[0].auth, 'Bearer sk_live_test_shape');
+
+const portal = await request('/api/billing/portal', {});
+assert.equal(portal.status, 200);
+assert.equal((await portal.json()).url, 'https://billing.stripe.test/bps_1');
+
+async function signedEvent(event, timestamp = Math.floor(Date.now() / 1000), target = app) {
+    const payload = JSON.stringify(event);
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(webhookSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const signature = [...new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${payload}`)))].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    return target.fetch(new Request('https://app.frontbase.test/api/billing/webhooks/stripe', {
+        method: 'POST', headers: { 'stripe-signature': `t=${timestamp},v1=${signature}` }, body: payload,
+    }));
+}
+
+const completedEvent = { id: 'evt_1', type: 'checkout.session.completed', data: { object: { customer: 'cus_acme', subscription: 'sub_1', status: 'complete', metadata: { tenant_slug: 'acme', plan_slug: 'basic' } } } };
+assert.equal((await signedEvent(completedEvent)).status, 200);
+assert.deepEqual(await new TenantStore(runner).getTenant('acme'), { slug: 'acme', name: 'Acme', createdAt: (await new TenantStore(runner).getTenant('acme')).createdAt, plan: 'basic', status: 'active' });
+assert.equal((await (await signedEvent(completedEvent)).json()).duplicate, true);
+assert.equal((await signedEvent({ id: 'evt_2', type: 'customer.subscription.deleted', data: { object: { id: 'sub_1', customer: 'cus_acme', metadata: { tenant_slug: 'acme' } } } })).status, 200);
+assert.equal((await new TenantStore(runner).getTenant('acme')).plan, 'free');
+assert.equal((await request('/api/billing/checkout', { plan_slug: 'basic', add_ons: [{ addon_type: 'managed_cache', quantity: 1 }] })).status, 400);
+assert.equal((await signedEvent({ id: 'evt_3', type: 'invoice.payment_failed', data: { object: { customer: 'cus_acme', subscription: 'sub_2', metadata: { tenant_slug: 'acme' } } } })).status, 200);
+assert.equal((await new TenantStore(runner).getTenant('acme')).status, 'past_due');
+assert.equal((await signedEvent({ id: 'evt_4', type: 'invoice.payment_succeeded', data: { object: { customer: 'cus_acme', subscription: 'sub_2', metadata: { tenant_slug: 'acme' } } } })).status, 200);
+assert.equal((await new TenantStore(runner).getTenant('acme')).status, 'active');
+const itemPeriodEnd = 1790000000;
+assert.equal((await signedEvent({ id: 'evt_item_period_end', type: 'customer.subscription.updated', data: { object: {
+    id: 'sub_2', customer: 'cus_acme', status: 'active', metadata: { tenant_slug: 'acme', plan_slug: 'basic' },
+    items: { data: [{ price: { id: 'price_1TrSYzPclg9BuO7fJ0s6qjdJ' }, current_period_end: itemPeriodEnd }] },
+} } })).status, 200);
+const periodRows = await runner.query("select current_period_end from billing_accounts where subscription_id = 'sub_2'");
+assert.equal(periodRows[0].current_period_end, new Date(itemPeriodEnd * 1000).toISOString());
+
+const invalid = await app.fetch(new Request('https://app.frontbase.test/api/billing/webhooks/stripe', { method: 'POST', headers: { 'stripe-signature': 't=1,v1=bad' }, body: '{}' }));
+assert.equal(invalid.status, 400);
+
+// Anonymous callers (no session): the public pricing catalog must answer, the
+// rest of the billing surface must stay behind default-deny. The app above
+// stubs resolvePrincipal to always return the owner, so this second instance
+// wires the REAL verifier to prove the /api/plans/public exemption and the
+// default-deny of every neighboring billing path.
+const anonApp = await createCompatApp({
+    makeRunner: () => runner,
+    resolvePrincipal: createResolvePrincipal({ jwtSecret: 'billing-test-session-secret-0123456789', jwtCookie: 'frontbase_session' }),
+    sessionSecret: 'billing-test-session-secret-0123456789',
+    userStoreFor: (tenant) => new UserStore(runner, tenant),
+    cloudMode: true,
+    billing: { secretKey: 'sk_test_anon', priceIds: { basic: 'price_test_basic', pro: 'price_test_pro' }, webhookSecret, baseDomain: 'frontbase.test', fetch: stripeFetch },
+});
+const anonPlans = await anonApp.fetch(new Request('https://app.frontbase.test/api/plans/public'));
+assert.equal(anonPlans.status, 200);
+assert.equal((await anonPlans.json()).plans.length, 3);
+const anonCheckout = await anonApp.fetch(new Request('https://app.frontbase.test/api/billing/checkout', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan_slug: 'basic' }),
+}));
+assert.equal(anonCheckout.status, 401);
+const anonPortal = await anonApp.fetch(new Request('https://app.frontbase.test/api/billing/portal', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+}));
+assert.equal(anonPortal.status, 401);
+
+// Live-key guard: live keys need the explicit acknowledgment; test keys and
+// acknowledged live keys boot.
+assert.doesNotThrow(() => assertStripeKeyMode('sk_test_abc', false));
+assert.doesNotThrow(() => assertStripeKeyMode('sk_live_abc', true));
+assert.throws(() => assertStripeKeyMode('sk_live_abc', false), /FRONTBASE_STRIPE_LIVE_MODE/);
+const testConfig = { secretKey: 'sk_test_fixture', webhookSecret, baseDomain: 'frontbase.test', priceIds: { basic: 'price_test_basic', pro: 'price_test_pro' } };
+assert.equal(billingCatalog(testConfig)[1].stripePriceId, 'price_test_basic');
+assert.equal(billingCatalog({ ...testConfig, secretKey: 'sk_live_fixture', priceIds: undefined })[1].stripePriceId, 'price_1TrSYzPclg9BuO7fJ0s6qjdJ');
+assert.throws(() => billingCatalog({ ...testConfig, priceIds: undefined }), /stripe_test_prices_required/);
+assert.throws(() => billingCatalog({ ...testConfig, priceIds: { basic: 'price_only' } }), /stripe_test_prices_required/);
+assert.throws(() => billingCatalog({ ...testConfig, priceIds: { basic: 'price_1TrSYzPclg9BuO7fJ0s6qjdJ', pro: 'price_test_pro' } }), /must_not_use_live/);
+assert.throws(() => billingCatalog({ ...testConfig, priceIds: { basic: 'price_same', pro: 'price_same' } }), /must_be_distinct/);
+assert.throws(() => billingCatalog({ ...testConfig, priceIds: { basic: 'bad', pro: 'price_test_pro' } }), /invalid_stripe_price/);
+const testPrices = await (await anonApp.fetch(new Request('https://app.frontbase.test/api/plans/public'))).json();
+assert.equal(testPrices.detailed[1].gateway_metadata.stripe_price_id, 'price_test_basic');
+const testApp = await createCompatApp({
+    makeRunner: () => runner,
+    resolvePrincipal: async () => ({ user: { id: 'u1', email: 'owner@acme.test', role: 'owner' }, tenant: 'acme' }),
+    sessionSecret: 'billing-test-session-secret-0123456789',
+    userStoreFor: (tenant) => new UserStore(runner, tenant), cloudMode: true,
+    billing: { ...testConfig, fetch: stripeFetch },
+});
+const testCheckout = await testApp.fetch(new Request('https://app.frontbase.test/api/billing/checkout', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan_slug: 'pro' }),
+}));
+assert.equal(testCheckout.status, 200);
+assert.equal(calls.at(-1).body['line_items[0][price]'], 'price_test_pro');
+const priceOnlyEvent = { id: 'evt_test_price_only', type: 'customer.subscription.updated', data: { object: {
+    id: 'sub_1', customer: 'cus_acme', status: 'active', items: { data: [{ price: { id: 'price_test_pro' } }] },
+} } };
+assert.equal((await signedEvent(priceOnlyEvent, undefined, testApp)).status, 200);
+assert.equal((await new TenantStore(runner).getTenant('acme')).plan, 'pro');
+console.log('cloud billing: PASS');

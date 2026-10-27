@@ -1,0 +1,891 @@
+2026-10-27 continuation: owner-approved Unlisted Vercel setting is saved; external authorization still returns provider 404 and is unverified. Relay project-level native ownership CAS, explicit zero-state entries and encrypted activation import pass local functional/fault qualification (14 relay mutations). Native button snapshot/fresh live acceptance remain OPEN. See [current evidence](../plans/provider-oauth-relay-20261027.md).
+
+2026-10-27 approved private relay update: the isolated relay and both private provider registrations are now deployed. Real Cloudflare consent, encrypted installed-account handoff, post-upgrade persistence and account-read test pass. Vercel receiver/registration are live; its single-project consent popup return remains unverified. Native ownership issuance/button wiring remain OPEN. [Current evidence and ordered remainder](../plans/provider-oauth-relay-20261027.md) supersedes earlier no-relay/unregistered-client statements; no release or fresh native OAuth acceptance is claimed.
+
+2026-10-27 final bounded OAuth receipt: direct connection source b9f762a + stale-stage repair88d8cb8 are qualified. Final current-console upgrades on isolated CF/Vercel preserve browser sessions/public pages/closed setup; final fresh Node22 Linux Docker setup/publish/restart passes. [Exact evidence and remaining native gaps](../plans/provider-oauth-20261027.md). Overall native-button OAuth request remains INCOMPLETE pending provider registration/consent and an approved arbitrary-origin handoff; no shared relay, new native snapshot or release completion is claimed.
+
+2026-10-27 direct OAuth qualification: shared setup and Connected Accounts now support explicitly configured per-origin CF PKCE/Vercel Integration clients with encrypted persistence. Fresh Docker acceptance passes; CF/Vercel activation regression fixtures pass. Native button OAuth replacement, live client consent and arbitrary-origin callback handoff remain open. The proposed additional credential relay was rejected by automatic approval review and is not implemented. See ../guides/provider-oauth.md. Developer Preview release gates are unchanged.
+
+2026-10-26 hosted cloud runtime activation ACCEPTED on isolated CF/Vercel installations: actual provisioning/redeployment, active receipt, user-created administrator, page publication and session persistence pass. This supersedes earlier cloud executor checkpoints. Native button replacement, full site-template installer and public release gates remain separate. See ../plans/hosted-bootstrap-20261026.md.
+
+2026-10-26 hosted bootstrap: durable SQL journal is locally verified; cloud coordinator identity and hosted activation remain IN PROGRESS. SQLite/D1-adapter fixtures are not live CF/Vercel acceptance. See ../plans/hosted-bootstrap-20261026.md.
+
+2026-10-26 hosted bootstrap update: Docker host integration verified on actual Node and Linux container; Cloudflare/Vercel hosted coordination/execution remains IN PROGRESS. Existing configured startup and native paths retained. See ../plans/hosted-bootstrap-20261026.md.
+
+2026-10-26 hosted bootstrap is IN PROGRESS: shared contract, protected zero-state startup, host configuration executors and isolated acceptance precede native-button replacement. Existing wizard live acceptance remains valid; site-template installer remains separate. See ../plans/hosted-bootstrap-20261026.md.
+
+2026-10-26 onboarding implementation: local CF resource selection, shared HTTP adapter execution and managed native-D1 operator reset are locally verified. Native source points at an explicit preview snapshot. Fresh live installation and external-provider acceptance remain open; no staging change or release claim. [Evidence](../plans/local-deployment-onboarding-20261026.md).
+
+# Frontbase Framework Evolution: Milestones (Chimera)
+
+2026-10-26 reusable template URL/SEO task COMPLETE: runtime `6b8b96e`/site generation 35 reconcile 110 retained routes into the program/institution templates, add progressive URLs/defaults/rules and localized @ SEO, and preserve settings/source catalog/paths/aliases. EN/AR desktop/mobile and targeted check/build/mutation acceptance pass. [Receipt](../plans/reusable-template-urls-seo-20261026.md). Include in candidate qualification; broader public-release gates remain open.
+
+2026-10-26 navigation/General translations COMPLETE: runtime e25e27b adds reusable responsive arrow controls and organizes translation settings under General with existing configuration preserved. Native builder and EN/AR desktop/mobile acceptance pass; check/build pass. [Receipt](../plans/navigation-general-translations-20261026.md). Include in candidate qualification; no public-release gate is closed by this UI task.
+
+
+2026-10-26 release-plan reconciliation COMPLETE (documentation only): accepted staging runtime e7c0ae3/receipt895694c closes General/Data simplification. [Current execution plan](../plans/frontbase-public-release-finalization-20261024.md#current-checkpoint--2026-10-26) orders candidate freeze/type triage, cumulative qualification, public-source install/upgrade/recovery, supported-provider/reset receipts, docs/distribution mechanics and final Developer Preview publication. The retained full-console log is inventoried as160 diagnostics across51 files (71 test,89 non-test), not160 independent defects. No runtime, registry or provider requalification occurred in this refresh. Existing generated cms.mjs is preserved; CF-22 stays parked. First executable deliverable is candidate manifest plus diagnostic triage; new product features are not required.
+
+
+2026-10-26 General/Data simplification COMPLETE: runtime e7c0ae3 is pushed/deployed. General uses one site name and staged branding; Connections/Saved Views have distinct operations; Destination authoring is retired with legacy rendering preserved; header contact buttons belong to Menus/Actions. Configuration revision4 remains unchanged after project-name normalization. 33 focused tests, check/build, configuration mutation/conformance and live EN/AR verification pass. [Receipt](../plans/settings-consolidation-20261025.md#follow-up-staging-acceptance). Six release gates remain unchanged.
+
+
+2026-10-26 settings consolidation COMPLETE: runtime035be80 retires the Template tab, moving shared data mappings to Datasources and routes/contacts/appearance/publication to the builder. Existing configuration revision4 and site generation32 remain unchanged. Workspace check/build,12 focused tests and native English/Arabic acceptance pass. [Receipt](../plans/settings-consolidation-20261025.md). The six release gates are unchanged.
+
+2026-10-25 gallery/detail refinement COMPLETE: runtime `bb27b27` and site generation32 publish the reusable Gallery, editable header facts/CTA, institution sidebar hierarchy and program horizontal navigation. EN/AR desktop/mobile and retained Actions/record-edit/filter checks pass;1,294 routes are preserved. [Final receipt and source-data limitations](../plans/detail-gallery-layout-20261025.md#final-acceptance-2026-10-25). This is another candidate inclusion item, not closure of the six public-release gates.
+
+2026-10-25 post-detail release reconciliation: accepted runtime50f0580/receipt951fd32 closes the detail-page task. The [current plan](../plans/frontbase-public-release-finalization-20261024.md#post-detail-checkpoint-what-is-actually-open) identifies candidate manifest and console diagnostic triage as the next executable work, then cumulative qualification, exact-public-source installation/recovery, scoped provider/reset evidence and versioned distribution. The retained standalone console log has175 diagnostic lines; this is dated triage evidence, not a fresh test result or175 runtime defects. Corrected stale support-policy save-routing wording. No runtime change, live inventory refresh or new release scope.
+
+2026-10-25 detail-page delivery COMPLETE: runtime50f0580 and site generation30 publish ordinary-element institution/program templates, route-bound records and Properties → Actions navigation. Native English/Arabic desktop/mobile, source/translated/UI save restoration, anonymous access and forged-filter checks pass. Workspace/engine/conformance evidence and dated mutation boundaries are recorded in the [final receipt](../plans/detail-pages-20261025.md). Dataset translation completeness is separate; the six public-release gates remain open.
+
+2026-10-25 overall plan refresh: the source-availability hold is closed by recovery receipt8adbe91/runtime c7a4dc3. The [current release plan](../plans/frontbase-public-release-finalization-20261024.md) orders candidate freeze, cumulative qualification, public installation/upgrade, advertised-provider/reset evidence, clean-room docs/distribution, then exact-version Developer Preview publication. Console type-error triage and stale README status reconciliation are explicit work items. Site data completeness, long-term shared-source capacity and CF-22 parity do not expand release scope. No fresh runtime qualification or release action occurred in this documentation update.
+
+2026-10-24 source-timeout investigation: controlled comparison identified and repaired one duplicate initial owner editor inventory; c7a4dc3 is committed, pushed and byte-verified on staging; no anonymous inventory increase or retry storm was reproduced. Local workspace and editing/locale suites pass. Dashboard confirmed legacy Nano memory/swap pressure and zero disk I/O balance. Reviewed same-price Micro resize/restart restored source reads; English/Arabic public and edit/cancel checks pass. [Evidence and next check](../plans/supabase-timeout-comparison-20261024.md). This closes the bounded source-availability acceptance gap; sustained shared-workload capacity and public release remain separate.
+
+2026-10-24 frontend save-provenance refinement: source records now target their connected datasource, translated record edits use the existing translation lifecycle, and UI copy uses active state in the selected language. The overlay card starter retains ordinary editable children and separate intake badges. Targeted WordPress cover recovery is verified. Local workspace/engine/routing tests and9 frontend +4 source-write +19 translation faults pass; native save-routing/layout acceptance passed, including exact source restoration and isolated Arabic record/UI saves. Source2e0e9db was superseded by deployed request-reduction fix c7a4dc3. The final live recheck passed after the same-price Micro recovery; source and translated values remain intact. [Current task receipt](../plans/program-card-save-routing-20261024.md). No change to Developer Preview scope or other public-release gates.
+
+2026-10-24 card delivery acceptance: reusable visually editable starters and institution cards are deployed at58a19aa. Reviewed site generation22 preserves1,282 routes/counts; actual English/Arabic RTL, flags, pagination, Programs preservation and375px canvas pass. The existing HTTP RPC layer is retained. Arabic interface publication uses explicit record-source fallback; datasource translation completeness and the six public-release gates stay separate. [Receipt](../plans/record-card-starters-20261024.md).
+
+2026-10-24 post-wrap reconciliation: canvas drop feedback, live canonical text synchronization, nested Layers/layout controls and owner-approved Wrap in Row/Column are merged and deployed at fc6ae02 (receipt bbdddca). The [current plan](../plans/frontbase-public-release-finalization-20261024.md) retains six release gates: frozen candidate, cumulative qualification, public-source install/upgrade, advertised provider/recovery evidence, clean-room documentation/distribution, and versioned Developer Preview publication. Full-console type debt requires triage; incremental preview rendering is a documented UX improvement. No new scope, GA claim or release authorization.
+
+2026-10-24 [overall release reconciliation](../plans/frontbase-public-release-finalization-20261024.md): latest visual binding and @ mapping are accepted on staging. Remaining order: integrate/freeze candidate; cumulative qualification; actual public-source installation/upgrade; advertised provider/reset receipts; clean-room docs/distribution mechanics; exact-version Developer Preview publication. Previously repaired implementation defects stay closed. No new runtime test, deployment or release is claimed by this documentation update.
+
+2026-10-23 [visual data binding](../plans/visual-data-binding-20261023.md): owner-authorized shared Bind drilldown and composable Repeater/Card records are implemented across read-only data elements. Field/relationship discovery, bounded selected-field HTTP reads and reviewed public admission preserve existing adapters and source grants. COMPLETE on source300ada6/artifact9bd64e3: workspace check/build and47 focused authoring tests pass; retained serial engine/security evidence and fresh HTTP field/admission/schema tests pass. Final staging image31c5046b verifies ordinary nested Text insertion, @ record fields, real institution types and related-city mappings. All temporary edits are discarded; public English/Arabic content/navigation and authorization checks pass. See the linked plan/receipt for exact support boundaries.
+
+2026-10-23 recovery closeout: the staging PostgREST hold is resolved. Provider logs show a successful cache load at06:30UTC and zero further cache-load/57014 errors through12:17:30UTC. Current source27fab67 passes native English/Arabic two-field saves, anonymous projection, language isolation, per-field/global cancellation, responsive-menu staging/cancellation and exact original content plus37links per language restoration. The original admin session and deployed image are retained. Recovery preceded this session; no database restart, schema/grant/key/timeout change, app patch or redeploy was needed. The bounded repair/acceptance task is complete; previously deferred provider/inbox credentials, public-default-source and registry distribution remain separate release gates. Datasource translation completeness is excluded.
+
+Owner-approved security intake update, 2026-10-23: GitHub private vulnerability reporting for `drmoyassine/frontbase-framework` is enabled; the authenticated repository API verifies `enabled: true`. The prior activation-approval delta is resolved. No synthetic report was submitted and no response SLA is claimed. The reporting activation is complete; subsequent recovery closeout above supersedes the staging hold.
+
+## 2026-10-23 remaining concrete repairs — candidate qualification
+
+Latest:27fab67 is deployed and accepted on staging and both native fixtures. Current English/Arabic native save/cancel/re-edit/restoration, anonymous delivery, responsive menu copies and localized-link checks pass; exact original visible text and37links per language are restored. The [upstream PostgREST hold](../plans/staging-postgrest-cache-20261023.md) is closed after observed provider recovery. Full final-source Node22, package and security/fault receipts remain valid. Bounded repair acceptance is complete; credential/public-distribution gates remain separate. Earlier checkpoints below are retained history.
+
+The frontend editor and first named repairs are live at e1a7b74 with native English/Arabic save/cancel/re-edit/restore evidence. Subsequent local source adds shared responsive-menu edits, real workflow authoring/history/versions, isolated behavior measurement, Node/Vercel DNS-pinned HTTP and self-host reset wiring. Full workspace check/build and focused controls pass; all334 diagnostics are order-invariant across four fresh-context runs. Broad regressions exposed obsolete unsafe-transfer and empty-workflow fixtures, which are corrected while retaining the175-operation tenant matrix. Candidate b7cb5d9/artifact e9f3506 now passes the full Node22 check/build/test, strict seven-package consumers and named fault/order gates. The adjacent legacy-engine handlers now refuse remote effects truthfully. Candidate staging/CF/Vercel deployment and native preservation checks remain pending; see the repair-finalization receipt. Public-default-source/registry distribution and actual external-provider/reset-mail receipts remain separate gates; no GA claim.
+
+## 2026-10-22 frontend editing and first named repairs — verification in progress
+
+The owner adds text-only frontend editing before the concrete-gap sequence. Its staged multi-edit/cancel/save flow, locale-native revisions and shared source-copy projection are implemented; focused security/fault and locale tests pass. G1/G4 safely refuse unsupported engine transfer/provisioning, G2 adopts isolated guarded Neon HTTP/full-result semantics, and bounded G6 storage transport repairs are implemented. Workspace check/build pass (701 KB worker gzip). Cumulative/package/staging acceptance remains in progress. G3/G5 and the later public-install/distribution gates remain open under the [current plan](../plans/frontbase-public-release-finalization-20261022.md); the edition remains Developer Preview preparation.
+
+## Current gap triage and CF-22 disposition — 2026-10-22
+
+CF-22 is retired as an active planning umbrella by owner agreement; older paused references below are history. Preserve useful regression coverage and follow the [named current gaps](../plans/frontbase-current-product-gaps-20261022.md). Source review adds engine-transfer sealing, truthful in-app provisioning and visual workflow/mail wiring to the existing Neon and measurement work. These findings need isolated reproduction/repair or explicit safe unsupported states; current CF/Vercel managed deployment and scoped recovery acceptance remain closed. The [overall release plan](../plans/frontbase-public-release-finalization-20261022.md) retains the Developer Preview gates.
+
+## Current Developer Preview release plan — 2026-10-22
+
+The [overall plan](../plans/frontbase-public-release-finalization-20261022.md) supersedes historical next-task ordering. Closed: the four-gap acceptance stream, strict local seven-package consumers and repaired staging availability. Open in order: R2 behavior/security and production Neon repair; final candidate and cumulative clean matrix; public/default-source CF/Vercel and clean-room adopter certification; complete operations/support docs; versioned registry/publishing rehearsal; exact-version Developer Preview release. No GA date, Deno parity or CF-22 restart is implied.
+
+## 2026-10-22 four-gap framework acceptance follow-up
+
+[Bounded acceptance evidence](../plans/frontbase-acceptance-closeout-20261022.md) records interactive List Component localization, adopted strict seven-tarball declarations, real current-source CF/Vercel installs and actual remote D1/Turso restores. Runtime12358b4/artifact8ac4b86 additionally fix the captured staging query/credential failures. The final clean observation and existing CF/Vercel upgrades close this bounded task; broader R2/public-release gates remain open. Exact failures, sources, package hashes and recovery boundaries are preserved in the receipt. Developer Preview preparation remains the recommendation; no GA, registry publication, main merge, production cutover, Deno parity or CF-22 resumption.
+
+
+## 2026-10-22 deployment closeout — native upgrades verified; clean buttons in progress
+
+[Six-task evidence](../plans/frontbase-deployment-closeout-20261021.md) records source5d9ca6f, actual automatic Vercel Git acceptance, original-session native CF/Vercel upgrades, identical CF page/session backup digests, native CF code rollback/restoration and real KV/R2 retest. Exact owner-approved obsolete fixture deletion is complete after private backup/local restore. Clean CF native create/save/publish and signed-in reload now pass. The approved Vercel branch retry imports/builds successfully with the existing free database; application acceptance exposed a concurrent HTTP migration race and latched boot error. [The bounded repair](../plans/frontbase-vercel-coldstart-repair-20261022.md) passes full build/check, local/real HTTP transaction and independent fault gates; the repaired disposable Vercel app now passes original-session canvas/edit/save/publish, anonymous delivery and reload. Actual managed Turso vector activation/disable also preserves original session/pages/state. Final-source fresh native acceptance remains distinct from repaired-host acceptance. [Support matrix](../guides/deployment-support-matrix.md) distinguishes executor restrictions, missing external-provider credentials and pending shared integration/remote database restore. Full build/check/deployment gates pass. No public release, CF-22 activation, translation/staging change or paid-plan upgrade.
+
+## 2026-10-21 live optional resources and rollback — native runtime/publication verified; default buttons open
+
+[Provider/failure receipt](../plans/frontbase-deployment-provider-failure-20261021.md): CF native build is now READY after exact selected-resource config repair, but real HTTP exposed an outer SESSION_SECRET guard blocking the existing self-host persisted fallback. The self-host-only correction passes actual-entry SQLite/D1-adapter session/default-deny tests, two independent faults, full build/check and deployment gates; the isolated private-copy native rebuild is pending live acceptance. Vercel native Turso provisioning succeeded and the owner started deployment. The old empty Git shell is reversibly renamed and retained. Default main buttons, fresh placeholder rewriting, complete native app acceptance and external optional providers remain open. No secret rotation, resource deletion, paid upgrade, release or CF-22 activation.
+
+
+Native live follow-up: corrected CF Git source79cecf5 is READY and active with exact selected D1/KV; homepage/console200, private API401 and seeded setup lock pass. Owner-signed-in Vercel browser create→drag/edit→save→publish succeeds; /native-vercel-acceptance-261021 returns200 with the expected heading. The explicitly approved recovery remains separate from the automatic Git candidate blocked on commit-email/GitHub-account matching. Default main buttons, fresh placeholder rewriting, new-project post-redeploy persistence and external optional providers remain open; CF owner-signed-in create/edit/save/publish now also passes: /native-cf-acceptance-261021 returns anonymous200 with the expected heading, private pages remain401, and a full builder reload retains session/content/Published status. No existing site, protection, key rotation or paid resource changes. [Current receipt](../plans/frontbase-deployment-provider-failure-20261021.md).
+
+## 2026-10-21 Vercel operation reconciliation — bounded preview recovery verified
+
+[Operation-bound recovery](../plans/frontbase-deployment-vercel-reconciliation-20261021.md) adds nonsecret operation/normalized-plan metadata and explicit known-URL resume through existing CLI/journal/target guards. Resume performs remote reads only; exact matching completion updates local bookkeeping. Legacy unmarked attempts, ambiguous uploads, unknown in-flight outcomes, wider drift/CAS and automatic rollback remain excluded. Full build/check, retained deployment/security/artifact gates and thirteen independent recovery faults pass. Actual approved-preview recovery refuses an unrelated operation, verifies the exact marked READY candidate and preserves the original session, byte-identical pages and public content without another upload. The live list response represents preview as explicit null; this is normalized while missing targets and production mismatches remain refused. State/session keys, provider resources, staging/translation and CF-22 are unchanged. No release or general host-parity claim.
+
+
+## 2026-10-21 selected-bucket HTTP storage — deterministic and preview preservation verified
+
+Under the accepted editable-profile requirement, [S3 storage delivery](../plans/frontbase-deployment-s3-storage-20261021.md) reuses SigV4 HTTP and the native factory/discovery seam. One pre-existing physical bucket backs private project/environment/tenant namespaces and the logical files bucket. Host JSON carries selected bucket/keys; explicit none suppresses legacy storage credentials. Physical bucket management, existing-object import and permanent public assets remain excluded; no provider resource or key is provisioned. Bounded listing pagination, eleven new faults, full build/check and retained deployment/storage/security/conformance/no-leak gates pass after the documented native-process retry. External S3 credentials are absent, so real provider acceptance is explicitly skipped. The final existing disposable preview now preserves its original session, exact page listing, published content and state resource with storage disabled. Eighteen UI cases pass; unsupported emptying is disabled while native R2 retains its supported action. No host parity/release claim, staging/translation change or CF-22 activation.
+
+
+## 2026-10-21 controlled Vercel optional bindings — local gates and preview preservation verified
+
+Under the accepted editable-profile requirement, [cache/vector/queue change delivery](../plans/frontbase-deployment-optional-bindings-20261021.md) reuses reviewed local redeployment and explicit none environment values. Legacy fallback credentials are suppressed when the host binding is disabled; tenant registry precedence remains. State migration and unsupported roles stay refused. Prepared/failed attempts must retry the same recorded plan before another change; no environment rollback or remote CAS is implied. Full build/check, six new faults and retained deployment/security/conformance/no-leak gates pass. Existing disposable preview redeploy now preserves the original session, byte-identical pages, published content and state resource; real external-provider activation and full CF/Vercel profile/button/release acceptance remain open. No new architectural package, resource provisioning, staging/translation work or CF-22 activation.
+
+## 2026-10-21 R0 deployment-branch refresh — complete; release gates open
+
+[Current R0 report](PUBLIC-RELEASE-R0-2026-10-21.md) reviews isolated deployment source `7d2c73d`, retains Developer Preview preparation and incorporates bounded CF lifecycle/Vercel fresh-state CLI evidence without closing public-release gates. Ordered release work: immutable integration baseline, distributable backend/seven-package acceptance, behavior/security transport, cumulative clean verification, independent self-host/operations, release docs/mechanics, then owner-authorized distribution. Controlled optional-binding changes remain the next deployment slice. Documentation/read-only review only; no code, provider, deployment, distribution or CF-22 activation. Historical dated entries remain evidence for their original checkpoints.
+
+## 2026-10-20 configurable deployment stream — bounded CF lifecycle; P4 review partial
+
+[Owner-approved plan](../plans/frontbase-deployment-profiles-20261020.md): Cloudflare-first/Vercel-second editable binding defaults and secure pre-deployment configuration; Deno deferred. P0 inventories current adapters/button failures from an isolated checkout; P1 proves shared contracts/bootstrap; P2/P3 repair and accept real CF/Vercel deployments; P4 unifies Bindings UI; P5 records fresh button/CLI/install/upgrade evidence. User overrides persist; native resource selection and external credential entry share capability validation. The [P0/P1 checkpoint](../plans/frontbase-deployment-profiles-p0-p1-20261020.md) verifies data-only profile contracts, corrected Vercel local artifact/lifecycle gates and a disposable CF D1 setup→publication→redeploy journey. The [local bootstrap review](../plans/frontbase-deployment-bootstrap-20261020.md) now runs without an application database and passes browser, transport, expiry and credential-isolation tests. The [bounded CF first-install handoff](../plans/frontbase-deployment-handoff-20261020.md) now passes real new Worker/D1 deployment, administrator setup and page publication. [Native KV creation and real app cache use](../plans/frontbase-deployment-native-kv-20261020.md) now pass on a separate disposable Worker/D1/KV with tenant isolation, override precedence and short logical TTLs. [Optional private native R2](../plans/frontbase-deployment-native-r2-20261020.md) now passes real scoped multipart/signed GET/PUT, listing and denial checks on a new disposable host. [Managed identity, exact-binding redeploy and bounded post-upload recovery](../plans/frontbase-deployment-managed-lifecycle-20261020.md) now pass on a new disposable CF target with original session/data/object/cache preservation. Unknown creates, arbitrary enrollment, migration and broader recovery remain open. [Shared pre-/post-deploy Bindings review and native storage affordances](../plans/frontbase-deployment-shared-bindings-20261020.md) now pass on the owned disposable CF target. Post-deploy editing is explicitly proposal-only, with no hot apply; controlled binding changes, complete proposal handoff, other native bindings and exact button acceptance remain open; [Vercel live profile acceptance](../plans/frontbase-deployment-vercel-live-20261020.md) now verifies an actual $0 Turso-backed preview and explicitly approved disposable production deployment through the existing HTTP runner. Proposal import/resource selection and bounded local journals are implemented; [Fresh-source/new-state Vercel CLI verification](../plans/frontbase-deployment-vercel-fresh-20261020.md) now passes first-admin setup, journal recovery and ordinary session/data-preserving managed redeploy. Exact native buttons are unverified under the owner's CLI-only choice; first-project preview is refused, while optional-binding changes and broader provider acceptance remain open. This is bounded evidence, not host parity or complete profile acceptance. Use disposable projects and separate ownership from the dispatched Study in USA translation stream. Existing release gates and paused CF-22 remain.
+
+## 2026-10-20 post-Homepage work order — session correction delivered
+
+[Active plan](../plans/frontbase-ai-native-translation-implementation-20261016.md) reconciles the delivered Arabic Homepage/dropdown/locale navigation with unfinished translation capability. The [session correction](../plans/frontbase-admin-session-recovery-20261020.md) is deployed healthy with server-cookie validation, coordinated no-replay reauthentication and draft-retention gates. Dashboard loading and retained Arabic navigation are verified. Next: stable selected-page/live-record identities; resumable AI generation and partial-save recovery; history/review/general locale publication and source-change policy; exact localized queries; remaining surfaces and writable-adapter certification; multilingual sitemap/slug migration and operating/package evidence. Non-Homepage bodies remain source-language fallback. The old unsent job is cancelled and uncertain usage retained without blocking publication. No new provider call or public-release gate closure; CF-22 stays paused.
+
+## 2026-10-19 bounded Homepage language publication — delivered
+
+[Receipt](../plans/frontbase-homepage-arabic-publication-20261019.md): actual 85/85 Arabic Homepage fields published through native complete-coverage review, immutable preview and CAS activation. Same renderer, external HTTP revisions, RTL, header language links, source preservation and SEO metadata are verified on staging (`021b100`/`7c2a69f`). No new provider call. Prior generated drafts are retained; obsolete unsent work is cancelled while one uncertain request remains truthfully recorded in reconciliation review. This supersedes earlier “hold unchanged / locale publication next” descriptions for this bounded Homepage slice. Broader page/version/history and live localized query coverage, migration and release gates remain open. The current executable order is maintained in the active plan; stable live-record identity and broader history/publication remain open. CF-22 stays paused.
+
+
+## 2026-10-19 M3a saved-page translation preview — bounded staging verified
+
+[Receipt](../plans/frontbase-translation-visual-preview-20261019.md): builder entry, source/target language picker, same-renderer saved Default plain page preview, Arabic RTL and translation-only manual CAS editing. Two existing Arabic drafts render in Homepage; missing/outdated fields use marked source fallback. Source `dc1c46c`/`2794b75` deployed healthy with unchanged service settings/eight public hashes. Workspace check/build, 4 final preview UI cases, 17 retained batch UI cases, backend manual/freshness/isolation tests, 5 preview faults and 25 retained batch faults pass. Expanded builder checks retain 17 baseline diagnostics. Actual owner drafts were not changed; manual-save proof is fixture-based. M3b history/coverage is next, then explicit locale publication; held pilot/release/CF-22 status unchanged.
+
+## 2026-10-19 translation plan refresh — documentation complete; M3a next
+
+[Active ordered plan](../plans/frontbase-ai-native-translation-implementation-20261016.md): native page-text locale preview/editing first, then explicit translation release/switcher, shared live List Component localization, exact localized querying and multisite migration/operations. Reuse existing identity/revision/HTTP, builder renderer and publication seams. M3a starts with the two saved Arabic Homepage fields and requires no AI dispatch. The pilot hold is unchanged; implementation has not started under this documentation-only refresh. No release-scope change.
+
+## 2026-10-19 translation storage accepted; Arabic pilot on owner-requested hold
+
+[Receipt](../plans/frontbase-translation-first-pilot-20261019.md): Transo/native PostgREST/translations storage and existing additive accounting protocol verified. Exact opt-in host wiring and uncertain-usage continuation guard deployed (`d19c8cc`, `bfbd241`); public/configuration preservation checks pass. Actual pilot saved two settled Arabic drafts, retained one failed/uncertain attempt and left one field unsent. Owner chose preserving the hold, with no further model calls or reconciliation. Workspace check/build, 17 UI cases, host smoke/3 faults, 25 batch faults and 12 backend suites pass. Native visual preview/refinement/publication remains next and must not resume the held batch automatically. Release scope and paused CF-22 unchanged.
+
+## 2026-10-19 per-request datasource schemas — staging verified
+
+[Receipt](../plans/frontbase-datasource-schema-selection-20261019.md): same-connection Inspector/binding schema selection, saved-view pins and schema-scoped caches/layouts/sessions reuse guarded HTTP metadata/reads. Workspace check/build,16 backend suites,26 UI cases and11 negative faults pass. Source3d4eaa4/313036c deployed healthy; actual Supabase/public discovery and Transo/translations tables/protocol row verified, unexposed public refused without switching, unsupported row actions hidden. Connection defaults, service settings and eight public response hashes retained. No external schema/grant/credential/record/publication changes. Existing null-schema views retain prior defaults until saved; broader write/translation/release boundaries remain open. Shared work preserved; CF-22 unchanged.
+
+## 2026-10-19 native PostgREST Inspector reads — staging verified
+
+[Receipt](../plans/frontbase-native-postgrest-inspector-20261019.md): closes the connectivity-only gap with actual native table/schema/record discovery and shared HTTP filter/sort/pagination/search/saved-view reads. Workspace check/build,11 suites,4 restored faults and response conformance pass. Sourceeb622a0 deployed healthy; actual Transo lists six tables and protocol displays two columns/one record. No keys, settings, records, SQL or publication changes; service/public responses preserved. Native write/aggregate/join capabilities remain separate. Unrelated work and local generated bundle retained; release/CF-22 unchanged.
+
+## 2026-10-19 shared Supabase/native PostgREST configuration — staging verified
+
+[Receipt](../plans/frontbase-native-postgrest-datasource-20261019.md): explicit endpoint/schema settings, safe edit persistence and guarded read-only metadata tests; workspace check/build,12 UI cases,4 restored faults,10 suites and response conformance pass. Source21a3166/generated97c5958 deployed; actual Transo/native/translations and existing Studygram DB/Supabase/public checks pass. Only Transo format/schema were saved; no keys, SQL, AI or publication changes. Shared state preserved. Whole-app functional coverage, SQL Inspector portability and translation protocol acceptance remain separate open work; release/CF-22 unchanged.
+
+## 2026-10-19 datasource test feedback — staging verified
+
+[Receipt](../plans/frontbase-datasource-test-feedback-20261019.md): shared success/failure/request-error toasts and client timeout, eleven focused UI cases and workspace check/build pass. Source0679cfc deployed healthy with configuration and eight public response hashes preserved. Actual Studygram DB succeeds; Transo's failure is now visible, while standalone PostgREST test compatibility remains the next scoped task. No saved settings, SQL, credential or publication changes; release and CF-22 status unchanged.
+
+## 2026-10-18 translation model/language search — bounded local/staging verification
+
+[Receipt](../plans/frontbase-translation-searchable-pickers-20261018.md): model name/ID/free search, native-name/code language search and bounded target multiselect, owned metadata-only catalog on the existing encrypted account/HTTP seam. Full build/check,35 UI cases,13 functional suites,19 restored faults, strict conformance and pure-HTTP route graph pass. Source5692e30/generateda0f3c7d/receipt2087c93 pushed and immutable2087c93 deployed to USA staging; healthy replacement, exact configuration/public hashes and drafts retained. Actual OpenRouter metadata/search and multiselect verified; savedmodelopenrouter/free/sourceen/targetar preserved. No credentials, settings save or generation; execution remains disabled. First explicitly reviewed provider batch/storage acceptance remains next; public-release/CF-22 status unchanged.
+
+## 2026-10-18 OpenRouter translation — bounded local/staging verification complete
+
+[Receipt](../plans/frontbase-translation-openrouter-20261018.md): OpenRouter Connected Accounts registration, fixed guarded key check, shared HTTP protocol, owned translation selection and free-price/routing controls implemented. Workspace build/check,30 native translation UI cases,14 functional suites,15 restored provider faults, strict conformance, external packed adapter and pure-HTTP graph pass. Source37eadda/generatedf666361/receipt8f81272 pushed; immutable8f81272 deployed to USA staging with healthy replacement, preserved configuration/public hashes/drafts and native OpenRouter form verified. Execution remains disabled by default; no actual model call, settings save or content publication. User connection/model/storage choice and approved provider batch remain next. Shared worktree state and public-release gates preserved.
+
+## 2026-10-18 native translation review — bounded staging delivery
+
+[Receipt](../plans/frontbase-translation-review-staging-20261018.md): immutablef495591 archive deployed to existing USA staging; server frozen install/workspace build/docker/client gates pass, healthy replacement, configuration/volume preserved. Public200 hashes match, anonymous translation401 remains, fresh authenticated UI shows new source kinds/three owned saved views and server executionAvailable:false. Generation21/pending drafts and absent AI/storage selection preserved. New HTTP membership/protocol and real-provider acceptance await selected configuration/explicit allowance; no paid call, owner SQL, content publication or production action. Full multilingual visual publication and public-release gates remain open.
+
+
+## 2026-10-18 translation saved-view inputs — bounded verification
+
+[Receipt](../plans/frontbase-translation-saved-view-inputs-20261018.md): owned paginated view selection and existing Data Inspector link, shared saved-filter AST → bounded HTTP predicates, visible key/text projection, candidate uniqueness, membership/definition/destination fences and shared underlying resource identity. Typed determinate invalidation preserves known settlement; transport failures remain uncertain. Workspace build/check,29 UI cases,104 faults, functional/security/tenant/legacy conformance and HTTP-only graph pass. Execution stays disabled; no owner SQL, paid call or deployment. Next: staging review and actual read-only membership/protocol acceptance before approved real-provider execution; native visual locale publication follows. Full T3/T4/M3 and broader source-adapter/release gates remain open.
+
+## 2026-10-18 selected menu/live inputs — bounded verification
+
+[Receipt](../plans/frontbase-translation-menu-live-inputs-20261018.md): the same native review/job/allowance flow now accepts authored menu text and explicit single-table live text fields over existing guarded HTTP credentials/client, with same/separate translation storage. Selected projection, key uniqueness, source/connection freshness and private-field exclusion are enforced. Full workspace build/check,27 UI cases,90 faults, API/security/tenant/legacy conformance and isolated engine/HTTP subpath/edge graph pass. Gate remains disabled; no SQL upgrade, paid call or deployment. Saved-view-aware discovery, other source schemas/adapters, real-provider and native visual/publication acceptance remain open; full T3/T4/M3 are not closed.
+
+
+## 2026-10-18 native page-text review/progress UI — bounded verification
+
+[Receipt](../plans/frontbase-translation-review-ui-20261018.md): Settings page/field selection, sealed review/explicit consent, saved-batch recovery, status/continuation/cancel/reconcile; bounded tenant-owned discovery/history and shared host schemas. Workspace build/check now includes the form;25 UI cases,81 fault checks, API/security/tenant/legacy conformance, external standalone engine and HTTP-only graph pass. Actual-component desktop browser fixture verifies synthetic Arabic draft. Gate remains disabled by default; no staging/owner SQL/paid call. Next: menus and selected live fields, separately approved provider acceptance, then native locale visual refinement/publication. Full T3/T4 and M3 remain open.
+
+## 2026-10-18 reviewed translation page-text batches — bounded verification
+
+[Receipt](../plans/frontbase-translation-reviewed-batches-20261018.md): authenticated sealed review/explicit approval, stable source/job preparation, one-job administrator continuation, persisted status and existing bounded cancellation/reconciliation. Atomic allocation checkpoints and final source/configuration/draft fences cover cancellation races. Workspace build/check,13 new/29 retained host/36 engine faults, security/tenant/legacy conformance, external engine package/types and HTTP-only route graph pass. Execution defaults disabled; no owner SQL, paid call or staging deployment. Next: native review/progress UI, menu/live-field extraction and separately approved provider acceptance; full T3/T4 remain open.
+
+## 2026-10-18 translation allowance reconciliation — bounded verification
+
+[Receipt](../plans/frontbase-translation-allowance-reconciliation-20261018.md): durable freeze/cursor, job cancellation fence, proven undispatched release, explicit unknown-request consumption without ledger rewrite, original-destination recovery and historical/CAS-protected new allocation. Full workspace,8 new/13 retained host faults,36 engine faults, security/tenant/conformance and package/HTTP graph pass. Internal only; no owner SQL/provider/deployment action or complete T2/T3 claim. Next is authenticated reviewed batches and durable delivery.
+
+## 2026-10-18 translation host request allowance — bounded verification
+
+[Receipt](../plans/frontbase-translation-host-allowance-20261017.md): immutable project checkpoint, reviewed exact intents, trusted-scope runner and configuration/destination checks compose existing accounting/HTTP/AI paths. Request/concurrency/message-byte/output request caps; no monetary guarantee. Workspace,6 new/15 retained host faults, engine/security/tenant/conformance and external/HTTP graph gates pass. No deployed/paid AI; reconciliation/reallocation and authenticated batch lifecycle remain next. Historical broader-host-pending statements below are superseded only within these bounds.
+
+## 2026-10-17 T2 HTTP accounting — bounded parity verified
+
+[HTTP accounting receipt](../plans/frontbase-translation-accounting-http-20261017.md): additive accounting capability, shared HTTP adapter/owned host resolution and transactional SQL pass local PostgreSQL17.11/PostgREST14.18 reservation/dispatch races, rollback, role isolation and SQL fault gates. Workspace, external package/types and retained security gates pass. No owner installation/deployment or AI spend; mandatory host pricing/config/storage policy and reviewed batches remain required. Historical foundation-only statements below are superseded for this slice; deployed application remains T1/1073252.
+
+## 2026-10-17 T2 accounting foundation — locally verified, not enabled
+
+[Receipt](../plans/frontbase-translation-accounting-foundation-20261017.md): provider-neutral accounting/runner port and atomic SQLite allowance/attempt adapter pass workspace build/check,8 faults, retained suites and external tarball acceptance. Reuses existing job transaction/lease/source authority; no provider call or owner schema change. HTTP accounting parity, actual PostgreSQL acceptance, pricing/retarget host policy and reviewed batches remain required. Deployed application staysT1/1073252.
+
+## 2026-10-17 T1 AI configuration — staging verified
+
+Source40b925c/generated1073252 committed/pushed and deployed as healthy image1b080ef0…; [receipt](../plans/frontbase-translation-ai-t1-20261017.md). Fresh AI settings controls, five public200 routes, anonymous settings401, generation21 and pending drafts verified. No saved selection or real model call. T2 accounting foundation continues locally; HTTP parity/full acceptance remain open.
+
+## 2026-10-17 translation T1 — locally verified, undeployed
+
+[T1 receipt](../plans/frontbase-translation-ai-t1-20261017.md): shared injected HTTP invocation for configured workflow/translation, owned existing AI accounts and reference-only generation settings implemented. Build/check,13 UI cases,8 faults, backend/security/tenant/conformance and bounded external package/host proofs pass. No real provider call, SQL migration, staging selection or deployment. T2 accounting is required before generation; T3/T4 and visual publication remain open. Unrelated staged state preserved.
+
+## 2026-10-17 translation storage selection — staging verified
+
+[Receipt](../plans/frontbase-translation-storage-20261017.md): Settings → Translations, manual HTTPS datasource credentials, owned/CAS settings, stable cross-host project identities and canonical HTTP resolution implemented. Final workspace check/build,10 UI tests,7 new faults,22 retained engine faults and backend security/tenant/conformance pass. Four real read-only owner-instance requests pass with isolated local test settings; no remote writes or AI calls. Destination write permissions, additional adapters and AI/visual workflow remain open. Source709f1f3 is pushed and deployed as healthy image4395983d…; public routes200, anonymous storage401 and authenticated controls verified. Generation21 and pending drafts remain. No storage connection is selected on behalf of the administrator. Unrelated staged index changes are preserved.
+
+## 2026-10-17 source checkpoints pushed and staging deployed — verified
+
+Normal source push through a708c3d succeeds; isolated USA staging runs imageec4ba663… with healthy container and original persistent volume. Public health/Homepage/Explore/Blog200, email no-credential401 and generation21/pending drafts verified. [Receipt and operational limits](../plans/frontbase-staging-checkpoint-deployment-20261017.md). No npm/production release, new translation UI, closed release gate or CF-22 activation.
+
+## 2026-10-17 owner-requested separate source checkpoints — complete
+
+Translation/HTTP source and evidence477930c, workflow/email98d57ae, generated CMS2e96e5c and separate recovery artifacts7208998 are committed; the accompanying documentation checkpoint reconciles current plans and release evidence. Fresh workspace check/build, translation22 faults, selected infra/core/backend security/tenant/conformance and12 workflow editor tests pass. These are source checkpoints, not complete behavior/external-package/clean-room acceptance. No push, deployment or CF-22 activation. See [audit details](PUBLIC-RELEASE-AUDIT.md).
+
+## 2026-10-17 R0 refresh — complete, release gates open
+
+[2026-10-17 R0 refresh](PUBLIC-RELEASE-R0-2026-10-17.md) retains Developer Preview, reconciles the accepted seventh translation candidate and orders source baseline, external type remedy, behavior/transport integrity, clean matrix, self-host operations and release documentation. No new product decision, release or CF-22 activation. [HTTP translation delivery](../plans/frontbase-translation-http-20261017.md) supersedes earlier direct-PG/pending-HTTP statements with retained bounded acceptance; datasource UI/AI/visual publication remain open. Documentation-only refresh, uncommitted.
+
+## 2026-10-17 translation database runner reuse — local bridge verified
+
+Async PostgreSQL revision/job persistence consumes Frontbase's existing transactional `DbRunner` through the new server-only edge-infra subpath. No second connection client or reverse engine dependency. [Receipt and explicit limits](../plans/frontbase-translation-runner-integration-20261017.md): workspace check/build, full infra suite, external translation tarball/type checks, core compatibility and23 faults pass. Async-port behavior is tested with a SQLite SQL/transaction harness; real PostgreSQL syntax/RLS/grants/cross-connection locks, saved-datasource UI integration and configured AI/budget/scheduler gates remain open. Uncommitted/unpublished/undeployed; CF-22 unchanged.
+
+## 2026-10-17 translation input history and durable jobs — local-provider slice verified
+
+`@frontbase/translation` now retains immutable selected source/context input, advances source versions on context edits and executes bounded provider jobs through required host authorization. SQLite schema1→2 backfill and separately versioned durable jobs provide scoped discovery, lease epochs, retries/cancellation and atomic revision/head/job completion. [Exact receipt/limits](../plans/frontbase-translation-jobs-20261017.md). Node24 SQLite restart, competing/replaced workers, stale source/context/manual writes, timeouts/opaque errors and rollback pass; eighteen faults, external tarball jobs/types, compatibility/conditions and workspace check/build pass. Edge history/lifecycle parity uses a test double; no durable Worker SQL, real AI service or PostgreSQL claim. Budget/attempt accounting, configured transports, host scheduler, extraction/memory and native visual/publication gates remain open. Uncommitted/unpublished/undeployed; no new dependencies or provider/production/CF-22 action.
+
+## 2026-10-16 translation revision lifecycle — bounded M1/SQLite slice verified
+
+Standalone engine now provides source/head CAS, monotonic source versions, immutable target history/idempotent retries and manual-head protection. Injected SQLite reference adapter verifies actual file persistence/reopen, two-connection conflicts, transactional rollback and same/separate source/destination databases. [Evidence and limitations](../plans/frontbase-translation-revisions-20261016.md). Twelve total fault checks, core compatibility/conditions, workspace check/build and offline external tarball types/lifecycle pass. Local workerd lifecycle parity uses a test double; no persistent Worker SQL or other-provider claim. Full source/context history, job/AI ports, leases, PostgreSQL and native editor/publication remain pending; M0/M1 not closed. Uncommitted/unpublished/undeployed, no new dependencies or provider/production action; CF-22 unchanged.
+
+## 2026-10-16 standalone translation package — M0 foundation extracted and independently consumed
+
+Owner adds `@frontbase/translation` as the seventh framework library candidate, an explicit exception to the earlier six-package-only boundary. Existing localization primitives now have one implementation there, with core compatibility exports. [Exact evidence and next work](../plans/frontbase-translation-package-20261016.md): offline external tarball functional/type checks, Node/local-workerd identity/rich-text parity, workspace check/build, compatibility and6/6 faults pass. Runtime dependency is existing Zod; no reverse dependency on Frontbase consumers or formatter/AI/DB SDK adoption. Full engine storage/jobs/AI/UI/publication remains pending; package is uncommitted and unpublished. The broader framework release consumer list includes it but that full gate was not rerun. No provider/production/CF-22 change.
+
+## 2026-10-16 localization M0 continuation — host fixtures pass; no-library option explicit
+
+Four pinned library paths and a limited native Intl reference pass matching Node/local-workerd fixtures, eight concurrent requests per host and escaped interpolation through the existing native Text renderer. [Receipt and reproduction](../plans/frontbase-localization-m0-foundation-20261016.md#no-library-option-and-actual-local-host-continuation). Owner confirms none of the shortlist is valid; no runtime is selected. Workspace check/build, localization functional tests and6/6 faults pass. Actual-browser, minimum-Node, full native rich-text/editor and store/job/context contracts remain M0 gates. Isolated scripts/docs only in this continuation; uncommitted, no provider/deployment/publication/release-scope change.
+
+## 2026-10-16 localization M0 — first local implementation slice verified
+
+[Receipt](../plans/frontbase-localization-m0-foundation-20261016.md): versioned core language/storage/resource/revision contracts, isolated stable identity/fingerprints, protected bounded rich-text patches and mandatory literal-preserving per-site/locale sitemap comparison are implemented behind a new core entry. Functional tests,6/6 in-memory faults, retained conditions, workspace check/build and pinned isolated runtime probes pass. No runtime library selected; full M0, storage adapters, jobs, editor, localized serving and M1–M7 remain open. Plan includes optional read-only GSC and explicit translated-slug review. Not deployed/committed; source data, publication, parked tasks, six-package/release scope and CF-22 unchanged. Unrelated staged/unstaged changes preserved.
+
+## 2026-10-16 AI-native translation architecture — planned, not implemented
+
+[Detailed architecture](../plans/frontbase-ai-native-translation-architecture-20261016.md) and [M0–M7 implementation plan](../plans/frontbase-ai-native-translation-implementation-20261016.md) define same-or-separate translation storage, stable units/contextual memory, protected manual edits, durable AI jobs, native visual authoring, localized releases/routes/RTL and exact localized list-query acceptance. Storage adapter support and runtime selection require measured gates; neither universal provider support nor a library choice is claimed. Translation-edge concepts are adapted without requiring its external HTML proxy. Parked pilot work stays parked. Documentation-only, uncommitted; no runtime/deployment/publication or public-release scope change. Next step: owner review of proposed defaults/contracts, then M0 if implementation is authorized.
+
+## 2026-10-16 r2 compatibility deployment — verified
+
+The final JSON-valued saved-filter correction is deployed as image `432654bc…`, successful at 10:05:49 Kuwait time. Refreshed action logs establish completion after stale Uploading UI. Clean-image gates and fresh admin/anonymous checks pass; generation21/exact capture,16/185/957 counts, Homepage pending edits and `/test` Draft preserved. [Exact receipt](../plans/frontbase-editable-saved-views-20261016.md#r2-deployment-closure--2026-10-16). Current plan item1 is complete; catalog criteria is next. Source `b369784` already pushed; documentation uncommitted. No dataset expansion, migration replay, production/release change or CF-22 activation.
+
+## 2026-10-16 saved-view checkpoint and current plan — reconciled
+
+Source `b369784` is pushed. Main Saved Views/migration delivery is staging-verified; final r2 JSON-filter compatibility upload remains pending, not deployed. The [current plan](../plans/frontbase-current-work-plan-20261016.md) replaces obsolete live-migration backlog entries with ordered delivery, catalog-coverage decision, reuse, configured-user, lead-flow and launch acceptance work. No automatic dataset expansion, new runtime verification, production/release-scope change or CF-22 activation. Documentation-only changes remain uncommitted; unrelated work preserved.
+
+## 2026-10-16 editable saved views — staging verified
+
+Saved views are discoverable Data assets with search, source/table and Published/Draft/version usage; datasource cards and builder Edit view open the same inspector. All pilot selection criteria are now visible editable saved filters, with no SQL-embedded membership/country/revision restrictions. Actual native/public checks preserve16/185/957 selection and generation21, private-field/access protection and pending designs. Workspace/build,7 UI tests, API/conversion/recovery and4+4 fault gates plus clean-image retained checks pass. [Delivery receipt and existing auth typing limits](../plans/frontbase-editable-saved-views-20261016.md). Canonical data, production, release scope and CF-22 unchanged; unrelated workflow/email work excluded.
+
+## 2026-10-16 pilot live views — generation21 active
+
+Homepage, Explore and Blog listing reads now use native filtered live views through the ordinary binding contract, preserving approved route membership and pending designs. Real PostgreSQL16/185/957 populations, invoker/role restrictions, public API projection/filter/paging and attack denials pass; fresh builder selectors/options verified. [Exact delivery receipt](../plans/frontbase-pilot-live-views-20261015.md). Source `65c360e` pushed; final teaser/cache corrections deployed in image `62205b17…` with workspace check/build and clean-image gates passing. Existing content/detail captures remain compatible; no generic snapshots, production cutover, release-scope or CF-22 change. Earlier task1-pending statements below are historical.
+
+## 2026-10-15 live List Component consistency — staging verified
+
+Live table/view selection, shared query/filter semantics and actual browsing controls across Repeater, DataTable and Grid are committed/pushed (`8be7c4b`, `0d99995`) and deployed to isolated staging. Correction closes the saved-page-size/query-cap mismatch. Workspace check/build, 20 focused UI tests, API integration, 3/3 mutations and retained clean-image security/publication gates pass. [Deployment identity, actual/synthetic browser evidence and ordered backlog](../plans/frontbase-live-list-deployment-review-20261015.md). Generation20 and owner drafts preserved. Existing pilot catalog-to-live conversion and real configured-user acceptance remain open; generic snapshots excluded. Unrelated workflow/email work remains uncommitted. Release scope/CF-22 unchanged; older pending-deployment receipts superseded.
+
+## 2026-10-15 source checkpoint and next work — plan updated
+
+Verified delivery is committed/pushed as `8230f94`, with audit receipt `3ad32fa`; earlier uncommitted statements below are historical. The [updated work plan](../plans/frontbase-block-versions-20261015.md#updated-work-plan--2026-10-15) separates completed Pages/Menus/appearance/conditions/versions/Repeater/settings work from remaining datasource snapshots, List Component consistency, real configured-user acceptance, generic discovery/lead reuse and pilot launch readiness. Documentation-only reconciliation; no new shipped capability, production action or public-release scope change. This plan update remains uncommitted.
+
+## 2026-10-15 Block Versions / configurable Repeater — staging verified
+
+Owner-agreed direct Default inheritance, same-type alternatives and first-match conditions are deployed with standard Repeater source/table/saved-view controls, editable Card/@ mappings, browsing/filter controls and guarded settings/Explore conversion. Workspace check/build, 25 focused tests, core/SQLite/capacity gates, 6 restored mutations and clean-image gates pass. Actual saved drafts migrated; generation20 conversion active; public/canvas titles/images, source switching/history, paging/search and responsive widths verified. [Receipt and limits](../plans/frontbase-block-versions-20261015.md). Pending owner edits preserved; generic provider snapshot creation and configured-provider acceptance remain unclaimed. Uncommitted; no production/public-release scope change.
+
+## 2026-10-14 unified conditions — staging verified
+
+[Receipt](../plans/frontbase-unified-conditions-20261014.md): shared core conditions/value resolution and shared authoring for filters/visibility, typed JSON/@ operands, Menus comparator reuse and verified minimal App Users context delivered. Workspace check/build, 15 console tests, real SQLite/protocol/isolation checks, 2/2 new and 6/6 existing mutations and retained clean-image gates pass. Actual synthetic public/canvas image/card/records/history checks and deployed Image Options verification pass. Live configured-provider acceptance remains unclaimed. Generation19 and owner drafts unchanged; no Git checkpoint, production cutover or release acceptance.
+
+## 2026-10-14 single-binding conditional filters — staging verified
+
+[Receipt](../plans/frontbase-single-binding-filters-20261014.md): existing URL/local variables condition hidden predicates on ordinary single-bound lists; shared runtime, reactive history/canvas behavior and bounded SQL read repairs delivered. Workspace check/build, eight console tests, real SQLite/protocol/isolation gates, 2/2 mutations and retained clean-image gates pass. Synthetic public/canvas button checks pass; deployed runtime and unchanged generation19 confirmed. Multiple binding selection, saved-view/snapshot services and specialized Explore conversion remain separate. No owner draft save/publication activation, production cutover or release acceptance.
+
+## 2026-10-14 Explore Repeater parity — staging verified
+
+[Receipt](../plans/frontbase-repeater-parity-20261014.md): pinned captured canvas data and native browsing controls, Repeater query/control configuration and collection-selection preview delivered. Actual Institutions/Programs title ordering matches public delivery; 12 UI tests, workspace check/build, native/query/chunk/capacity gates and 6/6 preview mutations pass. Arbitrary-field facets/multi-field sorts remain outside current captured-index capability. No owner draft save, publication activation, production cutover or release acceptance.
+
+## 2026-10-14 public appearance — deployed and verified
+
+[Receipt](../plans/frontbase-public-appearance-20261014.md): native Light/Dark/System, System default, persisted public preference, OS tracking and semantic template surfaces delivered. Real staging colors and reload persistence pass, including interactive opaque design preview. Workspace/focused/CSP/retained clean-image checks pass. No menu publication, auth configuration, production cutover or release acceptance added.
+
+## 2026-10-14 sticky navigation and publication-read repair — deployed
+
+[Receipt](../plans/frontbase-sticky-menu-publication-repair-20261014.md): real scroll verifies sticky header, bulk approval reads retain exact snapshot validation, two source mutations and clean-image gates pass. User draft revision6 remains untouched; prepared preview and Publish readiness verified. Database-read reduction proven; no exact live Publish timing claim or production action.
+
+## 2026-10-14 Pages/Menus UX refinement — deployed
+
+[Receipt](../plans/frontbase-pages-menus-simplification-20261014.md): redundant folder sidebar removed, toolbar/breadcrumb navigation retained, guarded saved-draft Preview → Publish/Discard implemented and native shared backgrounds corrected. Actual staging UI/private preview passes; live generation15 and user draft revision2 remain unchanged. Twelve UI tests and three new mutation proofs pass alongside workspace and clean-image gates. No real visitor-audience, production cutover or public release acceptance added.
+
+## 2026-10-14 app-level Menus — public staging delivery verified
+
+Shared Header/Footer/Sidebar management, existing component editors, owner/CAS drafts, immutable publication, builder references and verified Supabase audience integration are implemented. Public Header/Footer delivery is verified on actual staging across nine page roles, with exact-node pilot conversion, desktop/mobile navigation, rollback/restoration and restart persistence. Active capture 3a81d285… generation15 preserves catalog counts, URLs, folders and Apply content. Real signed-in visitor acceptance remains pending App Users' existing Auth Provider/contact configuration; no provider, contacts or RLS were changed for proof. [Final delivery and limits](../plans/frontbase-app-menus-delivery-20261014.md). Source remains uncommitted; production, installer and framework release gates remain open.
+
+## 2026-10-13 Pages/Settings pilot delivery
+
+[Deployed receipt](../plans/wordpress-pilot-pages-settings-delivery-20261013.md): unified inventory/cards-list/folders and General/Template reorganization verified on staging, two unused review drafts recoverably archived, active capture unchanged.25 distinct console tests, built backend/refusal checks,4 mutation detections and workspace check/build pass. Source/docs uncommitted; native drag gesture acceptance unclaimed, accessible moves proven. No R1–R4, installer, CF-22 or production-cutover completion is inferred.
+
+> **2026-10-12 homepage technical delivery:** [Receipt](../plans/wordpress-pilot-homepage-delivery-20261012.md) records existing-admin template controls, reusable Repeater composition/hero/search and reviewed491deec1… generation12 on actual Node/Docker staging. Counts/original non-home metadata/routes and1282 sitemap remain; responsive/admin/conditional rollback proof passes. Owner visual review is next; production and framework public-release gates remain open.
+
+> **2026-10-12 owner presentation feedback supersedes launch readiness:** the new landing homepage awaits owner visual acceptance. Its composition and technical staging proofs are delivered; owner review still precedes cutover. Same-site relative navigation is implemented in the shared publication/builder projection, preserving external links and SEO canonicals. No production traffic or release-scope change.
+
+> **2026-10-12 USA deployed staging acceptance:** [Receipt](../plans/wordpress-pilot-staging-deployment-20261012.md) records the existing one-engine Node/Docker app, reviewed8277f0f9… generation7, full original-route base traversal and bounded final-derivative proofs, browsing/contacts/responsiveness, owner/schema access, conditional rollback/refusal, actual VPS restore and container restart. Original saved CMS remains inactive. [Packaging classification](../plans/wordpress-pilot-packaging-review.md) complete for launch scope; production general installer unclaimed. Next [owner-approved cutover](../plans/wordpress-pilot-cutover-packet-20261012.md) plus Cloudflare access; no production DNS change or framework public-release gate closure. Older inactive-capture statements below are dated receipts.
+
+> **2026-10-12 USA steps 1–2 frozen:** [Receipt](../plans/wordpress-pilot-frozen-candidate-20261012.md): d5f4e2ee… retains all original content paths, 185 available programs/16 institutions and 110 explicit availability-check pages through the existing shared page template. All 957 articles retained, 45 href repairs in 14 articles, 18 used-image checks and 337 relevant renders/full directory enumeration/14 redirects pass. Held offering facts remain unknown and are not advertised as current or declared closed. Original canonical listings and saved layouts intact; no live pointer or release claim. Next intended-host staging/recovery and core/template ownership review.
+
+> Final exact-version SEO receipt: all 1,280 canonical/indexing projections and the 1,282-URL sitemap pass with every original content path retained and all 14 aliases excluded. Local backup integrity passes; production host acceptance/restoration remains pending.
+
+> **2026-10-11 category routes and precise offering evidence:** [Receipt](../plans/wordpress-pilot-offering-category-20261011.md): all five source-category URLs now redirect to their canonical captured directory;14 aliases pass. Inactive02609e02… preserves identical957-article/catalog content, templates/approvals and1282-URL sitemap. Exact official degree/Pullman evidence supports128 of248 WSU records;120 and ELS New York/Tampa remain unresolved. No canonical/availability approval mutation, activation or release claim.
+
+> **2026-10-11 all published articles captured:** [Delivery receipt](../plans/wordpress-pilot-all-articles-20261011.md): 957 articles approved/captured (954 prior WordPress review acceptances plus three earlier source reviews). Inactive dc8e7088… passes all 1,280 content renders/canonicals, 1,282 sitemap URLs, nine redirects and 80 blog pages exposing every article. Saved pages/datasource unchanged, pointer null. Article refresh follows launch; offering/category/dependency and intended-host/cutover gates remain. No new source feature, activation or release claim.
+
+> **2026-10-11 owner-confirmed policies:** [Receipt](../plans/wordpress-pilot-content-redirects-20261011.md) preserves substantive policy clauses/URLs/historical dates, refreshes three pages and captures all ten ordinary pages. Combined e42a4529… passes15 editorial/static SSR routes/nine aliases/blog and policy cross-links with null pointer. Bounded absolute same-site preview navigation repair verified; policy-practice question resolved. Remaining editorial/offering/staging gates remain; no cutover/release claim.
+
+> **2026-10-11 combined content capture:** [Final incremental receipt](../plans/wordpress-pilot-content-redirects-20261011.md) verifies311 catalog records/three reviewed articles/seven reviewed ordinary pages/two static pages/nine aliases in one inactive capture. All editorial/static SSR and alias/blog link checks pass. Policy practice confirmation and remaining editorial/offering review are open; no full migration or public-release claim. Apply form unchanged.
+
+> **2026-10-11 factual content and redirects:** [Receipt](../plans/wordpress-pilot-content-redirects-20261011.md) adds two genuinely fact-checked approved articles and seven verified aliases to an inactive private capture.24 draft link repairs, source/security/mutation/workspace checks and exact saved-state restart proof pass. Full editorial/ordinary-page/current-offering and final staging/cutover acceptance remain open. No public-release gate closes; Apply stays inert and optional covers deferred.
+
+> **2026-10-11 static-route continuation:** [Receipt](../plans/wordpress-pilot-static-staging-20261011.md) adds the saved generic editorial template and private Jobs contact draft, aligns Apply's original URL while preserving its inert form, and verifies two private static renders. Actual publication pointer remains null; articles/Home/policies are not captured. Fresh semantic-link queue now identifies62 unresolved same-origin hrefs. No complete migration or release gate closes.
+
+> **2026-10-11 USA catalog checkpoint:** [Receipt](../plans/wordpress-pilot-catalog-staging-20261011.md) verifies311 original catalog detail paths and private18-institution/293-program pagination, with a null publication pointer. Guarded logo/pathway/article/source-link changes and exact read-backs pass. Current-offering evidence is now an owner requirement for every available listing; full editorial/static/redirect treatment, intended-host proof and cutover review remain open. No release/migration gate closes. Saved Apply is unchanged; optional covers remain deferred.
+
+> **2026-10-11 full publishing integration complete:** step 1 connects chunked registered queries, exact approved articles/pages, saved ordinary pages, existing preparation/review/activation admin and one public renderer. Final 10,049-program HTTP proof, compiled self-host/cloud host smoke, build/check, 35 admin tests, 95 fault checks, strict conformance and tenant175/175 PASS. Saved local pages/datasource/settings preserved through runtime refresh. [Delivery and residual behavior-ledger failure](../plans/wordpress-pilot-full-publishing.md). Actual USA route/content/staging acceptance, final template packaging and public-release gates remain open; no owner site is activated and CF-22 remains paused.
+
+> **2026-10-11 publication storage:** bounded chunks and manifest/global index admission are internal prerequisites. Six manifest security faults are detected with restored GREEN, following three chunk gates. Existing public v1 serving remains unchanged; no M1–M9, public release, full migration or cutover gate closes. See [delivery](../plans/wordpress-pilot-publication-manifest.md).
+
+> **2026-10-10 simpler application:** owner-approved redesign preserves Apply URL; existing Form gets no-code draft fields and inert same-engine preview, saved locally through admin. [Delivery](../plans/wordpress-pilot-application-draft.md). Build/check, editor/security/mutation gates pass; no submission, delivery, public routing, full migration or release gate closes.
+
+> **2026-10-10 editorial recovery:** inserted and fully verified 954 article/10 page drafts with evidence; existing edited draft unchanged. Updated audit missing destinations falls 966→2; unresolved paths/status/attachments, publication/media/full-catalog/host gates remain. Existing blog builder shows recovered records; no source/schema change or activation. See [current finite sequence](../plans/wordpress-pilot-execution-plan.md).
+
+> **2026-10-10 local visitor browsing:** tabs/search/pagination added through existing admin and SSR, normal saved directory preserved apart from its new marker. Browser checks and final workspace/security checks pass; a later five-institution/36-program slice also verifies real three-page browsing. Thirteen SVG-logo gaps remain explicit. Next remaining original-URL/media review; no M1–M9 or release/cutover gate is closed. See [checkpoint](../plans/wordpress-pilot-execution-plan.md).
+
+> **2026-10-10 connected USA staging checkpoint:** restored original saved CMS; connected exact-path institution/program/article reads and existing private directory/institution/program rendering pass. No public activation or full-catalog claim. Saved page/config/datasource preservation verified against backup; runtime migration adds last_write_operation. Next browser/article review and original-URL coverage under the narrowed [delivery plan](../plans/wordpress-pilot-execution-plan.md).
+
+> **2026-10-10 owner priority:** deliver the saved USA staging journey through existing admin before broader framework completion. M1–M9 gates remain open as documented; supporting investigations enter the immediate path only when they demonstrably block it. See [current plan](../plans/wordpress-pilot-execution-plan.md) and [accepted sequencing](DECISIONS.md). No security, release or cutover waiver.
+
+> **2026-10-10 configured source URL collector:** [Delivery](../plans/wordpress-pilot-catalog-route-inventory.md) covers explicit orphan/path evidence with returned scope/identity and total-size refusal, compiled SQLite acceptance and eight in-memory faults. Workspace check/build, existing preview/page-audit/security, tenant 175/175 and no-leak pass. Internal only; live integration, stable/larger catalog and fresh migration evidence remain open. Next authenticated owner-resolved integration and intended host inventory; state/writer gates remain. No M2/release clearance; CF-22 paused.
+
+> **2026-10-10 preparation URL serialization guard:** [Delivery](../plans/wordpress-pilot-preparation-url-serialization.md) reproduces acceptance of unservable raw Unicode paths, then refuses new candidate persistence without renaming source URLs. Institution/program/article/directory/blog and encoded positive tests pass; publication mutation 27/27 and workspace/security/tenant/conformance/SEO/host/no-leak gates pass. Old-artifact compatibility is retained, not retroactive validation. Next host-wide and unpublished inventory; state/writer gates remain open. No M2/release clearance; CF-22 paused.
+
+> **2026-10-10 preflight reserved-route repair:** [Delivery](../plans/wordpress-pilot-route-policy-reconciliation.md) reproduces unsafe host-prefix admission and refuses it before provider access. Preflight mutation 8/8, route observations 8/8 and workspace/security/tenant/conformance/SEO/host/no-leak gates pass. Remaining serialization/capture grammar and host-wide inventory are explicit gates. No M2/release clearance; CF-22 paused.
+
+> **2026-10-10 active-capture URL audit:** [Delivery](../plans/wordpress-pilot-active-capture-route-audit.md) includes captured institution/program/article paths with validated owner/hash, capture identity and observed-drift refusal. UI 6/6, collector controls 3/3 plus endpoint drift 1/1, workspace and focused security/tenant/no-leak gates pass. Uncaptured catalog and preview remain unverified; next route-policy reconciliation. No M2 or release clearance; CF-22 paused.
+
+> **2026-10-10 page admin audit and host proof:** [Delivery](../plans/wordpress-pilot-page-route-audit-admin.md) adds authenticated read-only stored-page inspection to the existing Pages admin. Utility 11 groups/five controls, endpoint/four controls, UI 5/5 and isolated built-host dispatch pass; workspace check/build and existing security/tenant/conformance/no-leak pass. Catalog/blog paths and browser preview are not verified. Next: trusted server-side catalog projection and policy reconciliation; runtime admission/recovery and all writers remain gates. No M2/release clearance; CF-22 paused.
+
+> **2026-10-10 read-only namespace audit:** [Internal backend inspector](../plans/wordpress-pilot-route-namespace-audit.md) adds bounded owner-only route checks, tombstones/home/cross-store conflicts and no-write/no-admission outcomes. Eleven functional groups/five independent controls and expanded 7/7 route observations pass. Host dispatch/inventory and authenticated admin integration are next; matching reads do not supply a transaction. Runtime state admission, storage/journal recovery and coordinated writers remain open; no M2/release clearance or CF-22 change.
+
+> **2026-10-10 state interface and URL evidence:** [Test-only capability proposal/route diagnostic](../plans/wordpress-pilot-state-interface-and-routes.md) passes standalone strict shape checks with seven negative constraints and 6/6 observations. Existing exact URL resolution and differing collision/reserved policies are recorded; no production route/state capability changes. Next: shared exact-path/conflict classification and read-only namespace audit, then host/policy integration; runtime admission, billing/migration, storage recovery and all writers remain prerequisites. M2 and R1–R4 remain open; CF-22 paused.
+
+> **2026-10-10 failure containment proof:** [Node/file test proposal](../plans/wordpress-pilot-state-failure-containment.md) passes ten groups/two fence controls and candidate controls 7/7: persistent reservation, refusal before client/callback after crash/failure, no restart/expiry replay, independent resources and repaired falsy rejection handling. Production writers and adapter architecture remain unchanged. Next: typed coordination capability and route-identity tests; storage durability/security, all writers and journal-based recovery remain gates. No M2/release clearance or CF-22 change.
+
+> **2026-10-10 alternate rollback assessment:** [Test-only evidence](../plans/wordpress-pilot-owned-file-candidate.md) passes eight new observations, baseline 13/13, source controls 6/6 and existing lifecycle 10/10. A separate constant SDK rollback path recovers tested single failure/stall; best-effort cleanup preserves uncertain COMMIT/no replay. Double failure/missing alternate still retains locks. Next: deterministic native release or explicit containment/recovery assessment; no production capability, milestone/release clearance or CF-22 change.
+
+> **2026-10-10 lifecycle blocker:** [Test-only candidate](../plans/wordpress-pilot-owned-file-candidate.md) passes 13 groups/five independent source controls and ten lifecycle observations. The latter include two confirmed cleanup defects: failed/stalled ROLLBACK leaves a native lock despite close; owned child termination permits reuse. Six minimal observations reproduce the lock in SDK/native prepared execution without our wrapper, while native direct exec releases it. Cancellation/deadline and crash boundaries now have bounded evidence, but production adoption remains blocked on native recovery, SQL trust, typed capability and billing. Workspace check/build, page-change 15 groups and no-leak pass. No milestone/release gate closes; next is supported parameterized cleanup remedy assessment.
+
+> **2026-10-10 corrected Wave 1 and callback prototype:** [Primary receipt](../plans/wordpress-pilot-wave1-primary-review.md) accepts all three corrected evidence packets after independent revision-2 behavior/seven-mode control reruns; coverage remains 11/~334 and historical data stays dated. [Owned-file candidate](../plans/wordpress-pilot-owned-file-candidate.md) passes 13 isolated groups/three independent controls, including uncertain actual-COMMIT outcomes. Test-only; production lifecycle/trust-boundary/process/billing and typed capability remain open. No R1/R2/M1/M2 clearance, dependency adoption or CF-22 change.
+
+> **2026-10-10 file-state evidence:** [Native diagnostic](../plans/wordpress-pilot-file-state-evidence.md) reproduces nine groups, including unsafe naive retry and successful failed-BEGIN client disposal before retry. File commit/rollback and process boundaries observed; no production capability/installer adoption. Workspace build/check and focused state/preflight/no-leak regressions pass. Next: owned-client lifecycle/uncertain SDK commit/existing-consumer acceptance and route identity; release scope and CF-22 unchanged.
+
+> **2026-10-10 namespace and P1-C review:** [Primary offline reproduction](../plans/wordpress-pilot-wave1-primary-review.md) passes nine bounded type/runtime acceptance checks using historical immutable archives; the report must distinguish tag resolution from proven source-to-artifact correspondence. No dependency adoption or R1 clearance. [Namespace contract](../plans/wordpress-pilot-namespace-contract.md) defines proposed transaction-first file-state acceptance, all-writer claims and uncertainty/recovery rules. Next: isolated state capability and route-identity fixtures; no shipped installer, live action or CF-22 change.
+
+> **2026-10-10 primary continuation:** [Neon typed archive](PUBLIC-RELEASE-R2-NEON-PACKAGE-EVIDENCE.md) passes strict external ESM/CJS and runtime feasibility, with no dependency adoption pending owner maintenance choice. [D1 REST parsing repair](PUBLIC-RELEASE-R2-D1-COUNT-DELIVERY.md) passes 15/15 and mutation 2/2, plus final workspace and proportional regressions. [P1-B primary receipt](../plans/wordpress-pilot-wave1-primary-review.md) reproduces the 11-operation candidate and four degradation controls, but requires tighter expected-refusal predicates before integration; full behavior/installer/release acceptance remains open. No live action or CF-22 change.
+
+> **2026-10-10 Neon evidence and first parallel review:** [Offline investigation](PUBLIC-RELEASE-R2-NEON-TRANSPORT-PROPOSAL.md) observes eight installed-driver boundary groups and a nine-group isolated runtime transport candidate; no production dependency/API/guard adoption. Workspace build/check and SDK 15/15 pass. [P1-A primary review](../plans/wordpress-pilot-wave1-primary-review.md) independently passes 39/39 audit tests and records reporting corrections, with the dated private inputs hash-verified. Neon typed/distributable acceptance, fresh migration evidence and R1/R2 remain open; no live action or CF-22 resumption.
+
+> **2026-10-10 SDK HTTP delivery:** [Bounded local implementation](PUBLIC-RELEASE-R2-SDK-HTTP-DELIVERY.md) threads per-instance guarded HTTP through Turso vectors, Supabase/libsql/D1 datasource paths and 27 compat caller sites. SDK 15/15, mutation 6/6 with independent restorations, final workspace build/check, 18 selected regression gates, tenant 175/175, strict conformance and local host smoke pass. Native local paths remain separate; no per-request Neon global mutation. Neon, behavior/types, installer and full release acceptance remain open. Uncommitted after `d3cd122`; no live action or CF-22 resumption.
+
+> **2026-10-09 end-to-end planning refresh:** [Current pilot execution plan](../plans/wordpress-pilot-execution-plan.md) defines M0–M9 through safe installation, fresh reconciliation, real staging, complete catalog publishing, inquiries, reuse, operations and authorized cutover. [Roadmap](../plans/wordpress-pilot-roadmap.md) separates pilot acceptance from R1–R4 Developer Preview release gates. Documentation only; no new shipped capability, live action or release-scope change.
+
+> **2026-10-09 Request transport primitive:** [Local delivery](PUBLIC-RELEASE-R2-REQUEST-TRANSPORT-DELIVERY.md) passes13/13 functional and5/5 mutation with independent restored baselines/hash, final workspace build/check, security/database-security, tenant175/175, strict responses257/0/0/77, client no-leak and host smoke. This preserves SDK Request semantics but does not yet connect SDK factories/wrappers. CF517.4KiB/Vercel517.9KiB/Deno518.8KiB gzip are local artifacts, not live-host parity. Next: per-client transport wiring/denial acceptance; behavior/type/installer/release gates remain open and ledger unchanged. Work uncommitted after `d3cd122`; CF-22 paused.
+
+> **2026-10-09 primary parallel verification:** [Auth-form selection repair](PUBLIC-RELEASE-R2-AUTH-PRIMARY-REPAIR.md) passes functional7/7, mutation3/3, workspace build/check, security/database security, tenant175/175, strict responses257/0/0/77 and host smoke. Post-repair behavior remains RED with unchanged ledger and36/25 order evidence/classification deltas. [Declaration-only candidate](PUBLIC-RELEASE-R1-UPSTREAM-TYPE-REPAIR-PROPOSAL.md) passes external strict checks with actual mysql2 but has no adopted distributable identity. [Offline transport denial evidence](PUBLIC-RELEASE-R2-TRANSPORT-AUDIT.md) confirms two missing guarded SDK seams, zero network sent. [Namespace counterexamples](../plans/wordpress-pilot-namespace-writer-inventory.md) keep installer acceptance open. Current work uncommitted after `d3cd122`; no live state/deployment or CF-22 resumption.
+
+> **Latest verification (2026-10-08):** [R2 response conformance](PUBLIC-RELEASE-R2-CONFORMANCE-DIAGNOSIS.md) passes257 conforming/zero violating/zero unreachable/77 verified refusals; fixture mutation4/4 and workspace build/check pass. Behavior acceptance remains open with unchanged ledger. [Infrastructure binding repair](PUBLIC-RELEASE-R1-BINDING-TYPES.md) passes strict Node/actual Cloudflare typing and fresh external runtime/starter proof; backend Drizzle declarations still fail. Full package consumption is not certified. These results supersede earlier nine-unreachable snapshots without completing R1/R2 or reactivating CF-22.
+
+> **2026-10-08 public edition scope:** Owner accepted Frontbase Framework Developer Preview preparation, retaining six Apache-2.0 libraries and separate application artifacts. R0 evidence/backlog is complete; [bounded R1 tarball/pure-starter proof](PUBLIC-RELEASE-R1-CONSUMER-PROOF.md) passes23 public imports and standalone starter install/build/test/check. Full R1 remains open, including type/lifecycle/registry and clean-room CMS acceptance. This is not a release or completion of R1–R4, template installation, migration or host parity. [Scope/evidence](PUBLIC-RELEASE-R0-2026-10-08.md), [strategy](PUBLIC-RELEASE-STRATEGY.md) and [audit](PUBLIC-RELEASE-AUDIT.md) govern acceptance; CF-22 remains paused.
+
+> **2026-09-07 paid Cloud implementation:** A-26's framework migration is implemented: Supabase PostgreSQL application state through Hyperdrive, Supabase Cloud Auth, and tenant-bound Stripe checkout/portal/webhooks. Live Supabase DB/auth smokes and local security gates pass. The isolated 2026-09-21 deployment completed the two-customer paid sandbox journey, including Supabase data connection, Builder edit/save/publish, public TLS rendering, payment failure/recovery/renewal, reset delivery and portal cancellation at period end. Cloud operations tooling, public health evidence, rollback/roll-forward, checksummed backup and isolated PostgreSQL restore now pass; spam-safe delivery, alert ownership, support routing and live production sign-off remain open in [CLOUD-LAUNCH.md](../CLOUD-LAUNCH.md) and [CLOUD-OPERATIONS.md](../CLOUD-OPERATIONS.md). Public-framework release gates and paused CF-22 remain separate.
+
+**Version**: 3.6
+**Status**: Phases 0, 1, 2 ✅ COMPLETE — Phase 3 (Agent Experience) partly complete: M3.1 complete, M3.2 pending · CF-22 (console visual parity) 🛑 PAUSED 2026-08-06 (accepted residue, reactive-only — see docs/cf-22-admin-visual-parity-gap.md)
+**Last Updated**: 2026-09-27 (Cloud backup/restore reconciled; CL-7 and spam-safe deliverability remain open)
+
+> **Public-release strategy update (2026-08-13):** Frontbase is preparing for public release as a self-hostable, AI/agent-oriented, edge-native app-builder and framework. The phased engineering roadmap remains valid evidence, but release scope and gates are now centralized in [`PUBLIC-RELEASE-STRATEGY.md`](./PUBLIC-RELEASE-STRATEGY.md). The immediate release action is the R0 scope/truth audit; no target date or downstream course deadline overrides security, external-consumer, self-host, and operability gates.
+
+> **Phase status at a glance:** Phase 0 🟢 · Phase 1 🟢 · Phase 2 🟢 (M2.3 builder is *foundation-complete* — full canvas is a carried-forward item) · Phase 3 🟡 partial · Phase 4 🔵.
+> Carried-forward / deferred items from every phase are consolidated in **[§ Carried-forward items](#carried-forward-items-live-backlog)** so nothing is lost between phases.
+>
+> **Parallel track — CF-18 admin-console parity (not the "Phase 3: Agent Experience" milestone below):** a separate effort (3a→3b→3c + two follow-up sprints, 2026-07-12/13) took the admin console from MVP (3.5/11 nav areas) to full **functional-area** parity (11/11 areas backed by real endpoints + working UI, WYSIWYG + React Flow, real execution/storage/provisioning). **Single source of truth: [`docs/phase-3-consolidated-delivery.md`](./phase-3-consolidated-delivery.md)** — the deviations ledger is fully closed; only **F8b Stripe** remains deferred. **⚠️ Correction (2026-07-14): "full parity" measured feature-area coverage, NOT visual/UX depth.** The first real-world deploy showed the console is far thinner than the product's (~2.2k lines / 6 UI primitives vs ~11.5k lines / 52 shadcn primitives / 110-file builder studio). That gap is now tracked as **CF-22** — gap analysis + plan: [`docs/cf-22-admin-visual-parity-gap.md`](./cf-22-admin-visual-parity-gap.md). This track's "Phase 3" numbering is independent of the milestone Phase 3 in this file.
+
+---
+
+## Overview
+
+Milestone tracking for the Chimera (Universal eSSR) implementation. Each milestone includes acceptance criteria, dependencies, and status. Estimates assume **solo-developer capacity**; engineering time totals ~21–27 weeks with GA targeted **Q1–Q2 2027**.
+
+Guiding principles (all milestones serve these):
+1. Complete CMS deployment in a single edge worker.
+2. The Chimera eSSR model — one engine, three environments.
+3. Six npm packages.
+
+---
+
+## Phase 0: Chimera Validation Spike
+
+**Duration**: 1–2 Weeks
+**Target**: July 2026
+**Status**: 🟢 **COMPLETE (2026-07-07)** — decision gate closed: **PROCEED** ([PHASE0-DECISION-MEMO.md](./PHASE0-DECISION-MEMO.md))
+
+### Milestone 0.1: Engine-in-Service-Worker Proof-of-Concept
+
+**Target**: Days 1–4
+**Status**: 🟢 **COMPLETE (2026-07-06)** — results in [spike/README.md](./spike/README.md)
+
+**Objectives**:
+- Bundle a minimal Hono app + the existing string renderers into a service worker.
+- Intercept a navigation and render one real published page locally.
+- Fetch page data through a stub `/api/data/:queryId` proxy (no raw SQL from the SW).
+- Measure SW bundle size, install time, and render time.
+
+**Acceptance Criteria**:
+- [x] SW intercepts navigation and returns engine-rendered HTML. *(verified in Chromium)*
+- [x] Data flows exclusively through the proxy stub (no secrets in the browser). *(registered query → 200; unknown query → 404)*
+- [x] SW bundle < 150 KB min+gzip *(measured: **52.6 KB**)*; local render < 5 ms p50 *(measured: **~1.1–1.5 ms**)*.
+- [ ] Behavior documented for Safari/iOS and SW-disabled browsers (fallback to edge path). *(deferred to CHM-2; fallback path exercised implicitly — pre-SW loads render from edge)*
+
+**Key Phase 1 findings**: `renderPage` env-var reads must move behind engine config; storage import is the only impurity (favicon-only); renderer path otherwise SW-clean. See spike README §Findings.
+
+**Dependencies**: None
+
+---
+
+### Milestone 0.2: Render Parity + Schema Extraction PoC
+
+**Target**: Days 4–8
+**Status**: 🟢 **COMPLETE (2026-07-06)** — results in [spike/README.md](./spike/README.md)
+
+**Objectives**:
+- Render the same published page on the edge path and in the SW; diff the HTML.
+- Build a minimal AST extractor pulling a Zod `Schema` export from one component (Hero.tsx) and generating a manifest + TypeScript types.
+- Validate the `propertySchemas.ts` → Zod generation bridge on real schemas.
+
+**Acceptance Criteria**:
+- [x] Byte-identical HTML between edge render and SW render for the test page. *(both `/` and `/products`, same-env-label test in `verify.mjs`)*
+- [x] Schema extracted from Hero.tsx; valid manifest + types generated. *(14/14 assertions in `extract-verify.mjs`)*
+- [x] `generateZodFromPropertySchema()` works against the existing registry. *(✅ CLOSED as superseded — CF-2: the TS-API extractor reads Zod directly and is the shipped path; the legacy `propertySchemas.ts` bridge is intentionally not built. No runtime depends on it.)*
+- [x] Unit tests pass for extraction. *(Zod round-trip: manifest-derived schema agrees with original on 5 accept/reject cases)*
+
+**Key Phase 1 findings**: TS compiler API is the right extractor tool (~190 lines, build-time only); zod v3 vs v4 AST shape differs (pin the version); round-trip testing is the extractor safety net. See spike README §Extraction findings.
+
+**Dependencies**: Milestone 0.1
+
+---
+
+### Milestone 0.3: Single-Worker Deploy + Agent Validation + Decision Gate
+
+**Target**: Days 8–12
+**Status**: 🟢 **COMPLETE (2026-07-07)** — live deploy + SW-handover click-test PASSED; agent component-generation test PASSED at 3× planned scope (**9/9 components of the real homepage, 100% first attempt, 31/31 real payloads**); decision memo finalized (**PROCEED**). Results in [spike-cf/README.md](./spike-cf/README.md) + [PHASE0-DECISION-MEMO.md](./PHASE0-DECISION-MEMO.md).
+
+**Objectives**:
+- Deploy ONE worker serving: engine eSSR catch-all, `/sw.js`, a stub `/api/console/health` route, and static assets. Measure against platform script limits.
+- Have Claude/Cursor generate 3+ components against the schema contract; validate with a prototype `frontbase check --json`.
+- Write the decision memo.
+
+**Acceptance Criteria**:
+- [x] Single worker artifact serves all route classes (engine + console + data proxy + inlined SW). *(7/7 routing smoke)*
+- [x] Worker script size measured and within budget (< 400 KB target, 1 MiB hard limit). *(measured: **104.6 KB** gzip)*
+- [x] Live `wrangler deploy` to `*.workers.dev` + browser SW-handover verification. *(deployed to `frontbase-chimera-spike.studygram-inc.workers.dev`; **click-test PASSED** — nav to `/products` renders with `rendered-by=service-worker`, served by the SW, no edge round-trip)*
+- [x] Decision memo: **Proceed / Adjust / Abort** → [PROCEED](./PHASE0-DECISION-MEMO.md) — finalized 2026-07-07.
+- [x] Agent-generated components pass prototype validation; success rate documented. *(9/9 components — every prop-bearing type of the real homepage `homee.frontbase.json` — 100% first attempt; validated against 31 real production payloads + extraction round-trip. See memo §Agent test.)*
+
+**Key Phase 1 findings**: engine is runtime-portable with zero changes across Node/SW/Worker (the Chimera's one-engine promise verified on all three hosts); `platform: 'browser'` is the correct esbuild target for Workers; no `nodejs_compat` flag needed; **navigation must be anchor-based** (production `Button`'s `data-navigate-to` needs a client behaviors script the Chimera doesn't ship — use `<a href>` so the SW intercepts). Full list in the decision memo §Phase 1 inputs.
+
+**Dependencies**: Milestones 0.1, 0.2
+
+---
+
+## Phase 1: Engine & Compiler
+
+**Duration**: 8–10 Weeks
+**Target**: Q3 2026 (August – October)
+**Status**: 🟢 **COMPLETE (2026-07-09)** — M1.1–M1.5 all green. `@frontbase/edge-core` extracted; `@frontbase/compiler` (extraction, A-16 query registrar, manifest assembly, Vite plugin, CLI, SW emitter, simulate) delivered. All gates green; delivery report `docs/delivery/phase1-delivery-report.md`.
+
+**Objective**: Extract `@frontbase/edge-core` (the Chimera engine) and build the `@frontbase/compiler` MVP with CLI. No new persistence, no builder work.
+
+### Milestone 1.1: Engine Extraction (`@frontbase/edge-core`)
+
+**Target**: Weeks 1–4
+**Status**: 🟢 **COMPLETE (2026-07-09)** — all acceptance criteria met. Renderer port · unified engine router · behaviors runtime · workflow engine (standalone in-memory, 4 provider seams; AI/MCP → edge-infra M2.1; edge-only subpath) · `examples/cf-worker` proving the package on all three hosts. `@frontbase/edge-core` builds standalone (zero db/backend/builder deps). **All gates green: parity 14/14 · engine 10/10 · behaviors 10/10 · workflow 12/12 · cf-worker smoke 6/6 · size 57.2 KB engine + 1.4 KB behaviors + 3.2 KB workflow (tree-shaken out of SW bundle).** One manual step remains for a live URL: `wrangler deploy` from `examples/cf-worker` (mechanism identical to the Phase 0 spike, which passed). **→ M1.2 (compiler) next.**
+
+**Objectives**:
+- ✅ Create the package; consolidate `lite.ts`/`full.ts` into the unified priority router.
+- ✅ Port the SSR string renderers into engine components behind the eSSR renderer interface.
+- ✅ Introduce the `DataProvider` DI contract; implement the built-in `proxyProvider`; remove hard-wired database/backend calls from the engine.
+- ✅ Extract the workflow engine with in-memory queue/checkpoint defaults behind provider interfaces.
+- ✅ Formalize the client behaviors runtime from the existing `interactive.ts` patterns.
+- ☐ Dev-only file-system routing. *(deferred to M1.3/M1.4 tooling — it's a compiler/CLI dev-server concern, not an engine-runtime one)*
+
+**Acceptance Criteria**:
+- [x] `@frontbase/edge-core` builds standalone with zero database/backend/builder dependencies.
+- [x] Existing published pages render **byte-identically** through the new engine (edge path) — regression suite in CI.
+- [x] Workflows execute standalone (in-memory mode). *(12/12 acceptance tests; 4 provider seams; edge-only subpath)*
+- [x] Bundle < 70 KB min+gzip (CI-gated). *(57.2 KB engine; workflow tree-shaken out)*
+- [x] Engine boots inside a service worker using SW primitives from Milestone 0.1. *(`examples/cf-worker` builds the package into a deployable CF Worker + inlined SW bundle; 6/6 routing smoke incl. /sw.js handover + real homepage. Package proven on all three hosts: Node, CF Worker, browser SW. Live `wrangler deploy` + browser handover click-test is the one manual step — the mechanism is identical to the Phase 0 spike which passed.)*
+
+**Dependencies**: Phase 0 decision gate
+
+---
+
+> **📋 Detailed junior-agent sprint plan for M1.2–M1.5**: [`docs/plans/phase1-compiler-cli-sprint.md`](./plans/phase1-compiler-cli-sprint.md) — step-by-step deliverables, file maps, per-step gates, sequencing, and guardrails.
+
+### Milestone 1.2: Compiler Core (`@frontbase/compiler`)
+
+**Target**: Weeks 4–6
+**Status**: 🟢 **COMPLETE (2026-07-09)** — see [`docs/plans/phase1-compiler-cli-sprint.md`](./plans/phase1-compiler-cli-sprint.md).
+
+**Objectives**:
+- ✅ Full Zod schema extraction (string, number, boolean, enum, object, array; optional/default values; nesting; **plus** .nullable, format hints .email/.url/.uuid, ≥2-deep nesting, structured diagnostics for unsupported constructs).
+- ✅ Manifest generation; TypeScript type generation (`generateTypes`).
+- ✅ **Query Registrar** (A-16): `defineQueries()` → edge/browser projections (`toEdgeQueries`/`toBrowserQueries`); execute stripped from the browser.
+- ✅ Deterministic SiteManifest assembly (content-hash version, sorted keys) — feeds `createEngine`, renders 200 OK, A-16 Zod rejection proven end-to-end.
+- ✅ Vite plugin with HMR (`frontbasePlugin`).
+
+**Acceptance Criteria**:
+- [x] All Zod schema types supported; nested schemas handled. *(round-trip vs real zod on every kind)*
+- [x] Manifests generated for a representative component set.
+- [x] Registered-query artifacts emitted and consumed by the engine's Edge Data Proxy. *(manifest test: proxy accepts valid params, 400 on bad)*
+- [x] HMR works; **91% line / 100% function coverage** (> 80% gate); determinism: rebuild byte-identical.
+
+**Gates**: `pnpm --filter @frontbase/compiler test` → extractor + queries + manifest + vite all PASS; clean strict build; frozen edge-core gates still green.
+
+**Dependencies**: Milestone 1.1 ✅
+
+---
+
+### Milestone 1.3: CLI & Diagnostics
+
+**Target**: Weeks 6–8
+**Status**: 🟢 **COMPLETE (2026-07-09)** — `init`/`check`/`lint` (+ `simulate`/`emit-sw` from M1.4), all with `--json` agent output. Gate: `test/cli.mjs` 20/20.
+
+**Acceptance Criteria**:
+- [x] `npx @frontbase/compiler init my-app --pure` produces a working project (buildable; `--with-infra`/`--full` scaffold Phase-2 wiring placeholders).
+- [x] `check` validates schemas + TypeScript (MISSING_SCHEMA/UNSUPPORTED_ZOD/TS####); `lint` runs 3 custom rules (FB001 no-browser-globals, FB002 anchor-nav, FB003 describe-every-prop). ESLint wrapping is a documented thin layer on top.
+- [x] All commands support `--json`; errors carry precise file/line/quick-fix (AgentFormatter → spec `AgentOutput`).
+
+**Dependencies**: Milestones 1.1, 1.2 ✅
+
+---
+
+### Milestone 1.4: SW Bundle Emitter + `simulate`
+
+**Target**: Weeks 8–9
+**Status**: 🟢 **COMPLETE (2026-07-09)** — gates `test/sw-emit.mjs` + `test/simulate.mjs`.
+
+**Acceptance Criteria**:
+- [x] `sw.js` versioned by content hash; registration handles `skipWaiting()` (via `attachServiceWorker`). Determinism + content-sensitivity proven.
+- [x] `simulate` renders pages identically across `direct`/`proxy`/`draft` (byte-identical bodies; provider is the only variable).
+- [x] SW total payload < 150 KB min+gzip — **measured 54.7 KB**.
+
+**Dependencies**: Milestones 1.1, 1.2 ✅
+
+---
+
+### Milestone 1.5: Integration & Testing
+
+**Target**: Weeks 9–10
+**Status**: 🟢 **COMPLETE (2026-07-09)** — Phase 1 sign-off. Full report: [`docs/delivery/phase1-delivery-report.md`](./delivery/phase1-delivery-report.md).
+
+**Acceptance Criteria**:
+- [x] E2E green on edge path and SW path — byte-parity both (records data included), `test/e2e-parity.mjs`.
+- [x] Agent success rate documented — deterministic cohort 5/5 (100%), live cold-agent cohort **8/8 (100%)**, target ≥ 90% met (trajectory to 95% on track).
+- [x] Perf: edge first-load p50 **0.06 ms**, SW nav p50 **0.05 ms** (budgets < 5 ms); extractor p50 0.073 ms.
+- [x] Authoring (`docs/guides/authoring-components.md`) + CLI (`docs/guides/cli.md`) guides written.
+- [x] **Phase 1 sign-off.**
+
+**Dependencies**: Milestones 1.1–1.4 ✅
+
+---
+
+## Phase 2: Infra, Console & Builder (The Single-Worker CMS)
+
+**Duration**: 6–8 Weeks
+**Target**: Q4 2026 (October – December)
+**Status**: 🟢 **COMPLETE (2026-07-10)** — M2.1–M2.5 all green. `@frontbase/edge-infra` (DataProviders/auth/vault/cache/queue/AI executors), `@frontbase/backend` (console API, default-deny auth, Drizzle, publish), `@frontbase/builder` (React shell + parity), and single-worker `frontbase deploy` delivered. All GOLDEN RULES hold; delivery report `docs/delivery/phase2-delivery-report.md`.
+
+### Milestone 2.1: Edge Infrastructure (`@frontbase/edge-infra`)
+
+**Target**: Weeks 1–2
+**Status**: 🟢 COMPLETE (2026-07-10) — DataProviders (SQLite ref + D1/Turso/Postgres), resolvePrincipal auth, Web-Crypto vault, cache, durable queue, AI/MCP executors. 7 gates green incl. parameterized cross-tenant isolation (A-17).
+
+**Objectives**:
+- Direct `DataProvider` implementations: D1, Turso/LibSQL, Postgres (Hyperdrive), SQLite.
+- **Edge Data Proxy** production implementation: auth, Zod param validation, tenant scoping, registered-query execution.
+- Cache (KV/Redis), queues (CF Queues/QStash/BullMQ), vault (AES-GCM + rotation), edge auth gates, sync adapters, blob storage.
+
+**Acceptance Criteria**:
+- [x] Engine renders with direct providers on the edge and proxy provider in the SW against the same data.
+- [x] Proxy rejects unregistered queries (404) and invalid params (400) — security tests (`edge-core/scope`, `edge-infra/proxy-auth`).
+- [x] Durable workflow providers pass the workflow contract (`edge-infra/workflow-durable`).
+- [x] Vault decrypt/rotate runs on the edge (Web Crypto AES-GCM; `edge-infra/vault`).
+- [x] **Cross-tenant isolation** parameterized by provider (A-17); SQLite authoritative (`edge-infra/isolation`).
+- [x] **No-leak**: edge-infra is server-only, never browser-importable (`edge-infra/no-leak`).
+
+**Post-audit note (2026-07-10):** the Phase 2 security review found the eSSR **page path** bypassed scope/tenant (SEC-P2-1) — fixed in `edge-core` and regression-covered in `scope.mjs`. See `docs/delivery/phase2-delivery-report.md` §5.1.
+
+**Dependencies**: Phase 1
+
+---
+
+### Milestone 2.2: Console API (`@frontbase/backend`)
+
+**Target**: Weeks 2–4
+**Status**: 🟢 COMPLETE (2026-07-10) — createConsole default-deny router, Drizzle single-source, tenant-scoped CRUD, publish pipeline (execute-stripped browser projection). 4 gates green.
+
+**Objectives**:
+- Hono console sub-router: pages/drafts CRUD, publish pipeline, projects/tenants, tokens, users.
+- Drizzle schemas + migrations (single persistence source of truth).
+- Publish pipeline: layout validation → manifest version → `sw.js` version bump → cache invalidation.
+- Mounted at `/api/console` in the same worker. **Zero Python in the deploy** (Decision A-13).
+
+**Acceptance Criteria**:
+- [x] Builder (test client) saves drafts and publishes via the console API E2E (`backend/console`, `backend/publish`).
+- [x] Publish propagates: content-hash manifest version bump + execute-stripped browser projection + cache purge (`backend/publish`).
+- [~] Drizzle read/write validated on D1, Turso, and Postgres. *(🟢 CODE-READY — SQLite authoritative + contract-verified; the identical suite runs on each cloud DB when creds are set (`edge-infra/test/runners.mjs`, `backend/test/postgres-datasource.mjs`). Blocker is credentials, not code — CF-10)*
+- [x] Auth middleware guards all console endpoints — **default-DENY** on the whole router (`backend/authz`).
+
+**Post-audit note (2026-07-10):** the `authz` isolation test originally used two separate in-memory DBs (proving nothing); fixed to share one DB and mutation-verified (SEC-P2-2). See delivery report §5.1.
+
+**Dependencies**: Milestone 2.1
+
+---
+
+### Milestone 2.3: Builder Package (`@frontbase/builder`)
+
+**Target**: Weeks 3–6
+**Status**: 🟡 FOUNDATION COMPLETE (2026-07-10) — React shell + localDraftProvider + canvas↔preview byte-parity + manifest-driven panels + no-leak. Full drag/drop + React Flow editor = documented follow-up. 4 gates green.
+
+**Objectives**:
+- Extract the React builder shell (canvas chrome, layers, properties panels) from the existing codebase.
+- Local SQLite WASM draft DB + `localDraftProvider`.
+- Canvas ↔ SW preview bridge: iframe `/preview` rendered by the local engine.
+- Visual workflow editor (React Flow) and sync mapping dashboard.
+- Properties inspectors generated from compiler manifests.
+- Layout version flags for legacy-layout compatibility.
+
+**Acceptance Criteria**:
+- [x] Builder preview renders through the production engine — preview HTML == published HTML (`builder/parity`).
+- [x] Drag/drop → draft DB → preview refresh loop < 100 ms. *(CF-8 DONE 2026-07-10 — canvas model + React view, loop **p50 0.18 ms / p95 1.05 ms**; React Flow workflow editor shipped in CF-18 Phase 3c)*
+- [x] Existing JSON layouts load via version-flagged migration. *(CF-9 DONE 2026-07-10 — `compiler migrateLayout`; migrated legacy renders byte-identical to the golden corpus)*
+- [x] Builder is installable as an add-on to a `--pure` project (localDraftProvider + manifest panels; no-leak gate green).
+
+**Note:** M2.3 is **COMPLETE** — the parity guarantee, draft provider, manifest-driven panels, the full drag/drop canvas (CF-8), the React Flow workflow editor (CF-18 Phase 3c), and legacy-layout migration (CF-9) all ship and are gated.
+
+**Dependencies**: Milestones 2.1, 2.2, Phase 1
+
+---
+
+### Milestone 2.4: Single-Worker Packaging & `frontbase deploy`
+
+**Target**: Weeks 5–7
+**Status**: 🟢 COMPLETE (2026-07-10) — composeWorker + frontbase deploy (wrangler/deployctl, --dry-run). /sw.js composition-boundary gate green; worker 54.9 KB < 400 KB.
+
+**Objectives**:
+- Compose engine + console + proxy + builder assets into one worker build (Workers Static Assets for SPA/builder files).
+- `frontbase deploy` wrapping wrangler (primary) and deployctl (secondary).
+- Size budget enforcement in CI.
+
+**Acceptance Criteria**:
+- [x] `init --full && deploy --dry-run` composes a working CMS worker artifact + in-process routing smoke (`compiler/deploy`).
+- [x] Worker script < 400 KB min+gzip — **measured 54.9 KB**; served `/sw.js` has no server code (composition-boundary gate).
+- [~] Same project deploys to Vercel Edge / Deno Deploy. *(🟡 RETRACTED 2026-08-28 (A-24): the old "deployctl path wired, blocker is credentials" claim described a branch that deployed the SCAFFOLD artifact with no provisioning or secrets — that branch is deleted; `frontbase deploy` is Cloudflare-only by design. The supported path is `pnpm run deploy:vercel|deploy:deno` (A-24) with live verification pending in the dispatch-only fresh-deploy workflows.)*
+- [~] **Live** `wrangler deploy` to a public URL. *(🟢 CODE-READY — dry-run + single-artifact proven (cf-full smoke 10/10, 390.6 KB gzip). To finish: `cd examples/cf-full && wrangler deploy` with a CF account + real D1 `database_id`. Blocker is a CF account, not code. CF-12)*
+
+**Dependencies**: Milestones 2.1–2.3
+
+---
+
+### Milestone 2.5: Documentation & Testing
+
+**Target**: Weeks 7–8
+**Status**: 🟢 **COMPLETE (2026-07-10)** — guides + security sweep + Phase 2 delivery report; Phase 2 sign-off. Post-delivery security audit (2026-07-10) folded in (SEC-P2-1/-2 fixed).
+
+**Acceptance Criteria**:
+- [x] Component/infra/console/deploy guides written (`docs/guides/`).
+- [x] Agent prompt templates for common tasks. *(✅ DONE 2026-07-10 — CF-14: `docs/guides/agent-authoring.md` ships component/page/query/workflow templates.)*
+- [x] Benchmarks meet targets (publish p50 0.27 ms; worker 54.9 KB); **security sweep** RULES 1–4 green across all packages; Phase 2 sign-off.
+
+**Dependencies**: Milestones 2.1–2.4
+
+---
+
+## Phase 3: Agent Experience
+
+**Duration**: 3–4 Weeks
+**Target**: Q1 2027 (January – February)
+**Status**: 🟡 Partly complete — M3.1 diagnostic/agent tooling is complete; M3.2 beta program is not started.
+
+> **📋 Detailed implementer sprint plan for M3.0–M3.2**: [`docs/plans/phase3-agent-experience-sprint.md`](./plans/phase3-agent-experience-sprint.md) — includes an **M3.0 carried-forward hardening milestone** (clears the audit-lesson RULE 8, the builder full-canvas port, cloud-DB live gates, and the live deploy) before the agent-experience work proper.
+
+### Milestone 3.0: Carried-Forward Hardening & Gate Integrity
+
+**Target**: Week 1 (front-loaded)
+**Status**: 🟡 **MOSTLY COMPLETE (2026-07-10)** — all buildable items done; two credential-gated items (3.0.4 cloud-DB live, 3.0.6 live deploy) are user-side. 36 suites green across 5 packages; 12 mutation proofs RED-on-break.
+
+**Objective**: clear the backlog that accumulated across Phases 0–2 and codify the audit lesson so Phase 3 builds on solid ground (see [§ Carried-forward items](#carried-forward-items-live-backlog)).
+
+**Acceptance Criteria**:
+- [x] **RULE 8 (mutation-tested gates)** codified + applied: `scripts/mutation-lib.mjs` + per-package `test/mutation.mjs` + `pnpm -r test:mutation`; **18 security gates proven to go RED when their guarantee is broken** (12 at M3.0, +6 auth/DB gates added 2026-07-11 for the identity sprint; the harness caught 2 hollow gates on its first run — backend user-guard, compiler serialization boundary). *(CF-15)*
+- [x] Builder full canvas: drag/drop → draft → preview loop **p50 0.18 ms / p95 1.05 ms** (< 100 ms); pure model + React view; canvas-parity (preview == published) + no-leak green. *(CF-8; React Flow workflow editor deferred to M3.1/follow-up)*
+- [x] Legacy-layout version-flagged migration: `migrateLayout` (v1 builder export/bare tree → current); migrated legacy renders **byte-identically** to the golden corpus. *(CF-9)*
+- [x] Drizzle migration runner (versioned, reversible) replaces auto-create-on-boot; apply→rollback→re-apply converges; fresh DB == upgraded DB. *(CF-11)*
+- [x] Rate limiting: per-principal token bucket, opaque 429, keyed by resolved principal; ships with its mutation proof. *(CF-16)* + Safari/SW-disabled fallback test. *(CF-1)*
+- [~] Cloud-DB live gates run green where credentials are provided (D1/Turso/Postgres) — identical parameterized isolation suite (A-17). *(🟢 CODE-READY — gates ship + self-skip without creds; set env vars → `pnpm -r test` turns them green. Blocker is credentials, not code — CF-10)*
+- [~] Live `wrangler deploy` to a public `*.workers.dev` URL + browser SW-handover verification. *(🟢 CODE-READY — dry-run + artifact proven; run `wrangler deploy` from `examples/cf-full` with a CF account. Blocker is a CF account, not code — CF-12/13)*
+
+**Dependencies**: Phase 2
+
+---
+
+### Milestone 3.1: Diagnostic Refinement
+
+**Target**: Weeks 1–2
+**Status**: 🟢 **COMPLETE (2026-07-10)** — quick-fixes (machine-applicable `TextEdit` on Issues), `check --parity` (mutation-proven), agent templates, raised-difficulty success rate (18/18 = 100%), ESLint adapter + dev FS routing. Report `docs/delivery/m3.1-delivery-report.md`.
+
+**Objectives**: quick-fix recommendations, contextual errors, enhanced JSON, tri-environment `simulate` checks in `check` pipeline, agent prompt templates (carried from M2.5).
+
+**Acceptance Criteria**:
+- [x] Quick-fixes for the diagnostic classes (MISSING_SCHEMA/FB003/UNSUPPORTED_ZOD machine-applicable; FB001/FB002/TS descriptive).
+- [x] `check --parity` verifies edge/proxy/draft render parity (reuses `simulate`; **RULE 8 mutation-proven**).
+- [x] Agent success rate **> 95%** at raised difficulty — **18/18 (100%)** (deterministic 10 harder shapes + live 8).
+- [x] Agent prompt templates (component/page/query/workflow) + ESLint flat-config adapter + dev FS routing.
+
+**Dependencies**: Milestone 3.0
+
+---
+
+### Milestone 3.2: Beta Program
+
+**Target**: Weeks 3–4
+**Status**: 🔵 Not Started
+
+**Objectives**: launch beta, recruit 20+ testers (framework-only and full-CMS cohorts), feedback loop, iteration backlog.
+
+**Acceptance Criteria**:
+- [ ] 20+ beta testers active; weekly feedback reviews; backlog created; Phase 3 sign-off.
+
+**Dependencies**: Milestone 3.1
+
+---
+
+## Carried-forward items (live backlog)
+
+Consolidated deferred work from every phase, so nothing is lost between milestones. Each lands in **M3.0** (hardening) unless noted. Source milestone in brackets.
+
+| # | Item | From | Lands in | Notes |
+|---|---|---|---|---|
+| CF-1 | Safari/iOS + SW-disabled fallback documented/tested | M0.1 (CHM-2) | M3.0 | ✅ DONE 2026-07-10 — `edge-core/test/fallback.mjs` (edge renders full page, no SW APIs) |
+| CF-2 | `generateZodFromPropertySchema()` legacy bridge | M0.2 | — | ✅ **CLOSED (won't-build) 2026-07-13** — **superseded** by the TS-API extractor (M1.2), which reads Zod directly and is the shipped path. The legacy `propertySchemas.ts` bridge is intentionally not built; no runtime depends on it |
+| CF-3 | Dev-only file-system routing | M1.1 | M3.1 | ✅ **DONE** (2026-07-10, M3.1.5) — `compiler/src/cli/devRouter.ts` (dev pages come from the FS; production builds use the baked manifest); gated by `compiler/test/m3.1.5.mjs` |
+| CF-4 | ESLint programmatic wrapping for `lint` | M1.3 | M3.1 | ✅ **DONE** (2026-07-10, M3.1) — `compiler/src/cli/eslintPlugin.ts` ships a flat-config plugin (`eslint-plugin-frontbase`) exposing the 3 custom rules; `eslint` is an OPTIONAL peer dep (rules also run standalone via `lint`) |
+| CF-5 | `simulate --serve` optional `@hono/node-server` dep documented | M1.4 | M3.0 | ✅ **DONE 2026-07-13** — `serve()` lazy-imports `@hono/node-server` and now throws a clear "install @hono/node-server" hint if it's absent (was a raw `ERR_MODULE_NOT_FOUND`); documented in `docs/guides/cli.md` §`simulate` (optional-dep callout). Compiler builds + all 16 suites green without the dep installed |
+| CF-6 | Self-contained deployable full-CMS example (no published packages) + `init` version ranges | M1.3 | M4.1 (scaffold) | ✅ **Example DONE 2026-07-11** — `examples/cf-full` pre-bundles engine+console+D1-runner into ONE `dist/worker.mjs` (**142 KB gzip**, login-gated, smoke-proven end-to-end); `no_bundle=true`, no `npm install` on deploy. The `workspace:*`→version-range concern now only affects the *scaffold* path (M4.1), not this artifact |
+| CF-6a | **Sever node from the publish path** so the console bundles for a Worker | M-DB.0 | 2026-07-11 | ✅ DONE — publish pipeline imported the `@frontbase/compiler` barrel (node:fs/zlib/crypto via vite/CLI/SW-emit) and `buildSiteManifest` used `node:crypto`. Added an edge-safe **sync sha256** (digests byte-identical to node → parity preserved) + narrow **`@frontbase/compiler/manifest`** subpath. CMS bundle now has **zero `node:` builtins, zero `require`** |
+| CF-7 | Browser query projection → JSON-Schema (if SW needs client-side param validation) | M1.2 | future | ✅ **CLOSED (by-design) 2026-07-13** — `toBrowserQueries()` ships the execute-stripped projection with a `hasParams` marker (`compiler/queries/registrar.ts`); **param validation is edge-side by design** (RULE 2 — the browser never validates its own params). Full client-side JSON-Schema is only needed if a future feature validates in the SW; not required today |
+| CF-8 | **Builder full canvas** (drag/drop < 100 ms) + React Flow workflow editor | M2.3 | M3.0 | ✅ DONE 2026-07-10 — canvas model + view, loop p50 0.18ms; React Flow workflow editor still a follow-up |
+| CF-9 | Legacy JSON layout version-flagged migration | M2.3 | M3.0 | ✅ DONE 2026-07-10 — `compiler migrateLayout`; migrated legacy renders byte-identical to corpus |
+| CF-10 | Cloud-DB **live** gates (D1/Turso/Postgres) | M2.1/2.2 | M-DB.0 | 🟢 **CODE-READY — user-action only.** SQLite authoritative (A-17); the identical parameterized suite runs on cloud DBs when creds are set. Live gates ship + self-skip without creds: `edge-infra/test/runners.mjs` (D1/Turso), `backend/test/postgres-datasource.mjs` (`POSTGRES_URL`), `supabase-provisioning.mjs` (`SUPABASE_*`). **To turn green:** set the env vars and run `pnpm -r test`. **Blocker is credentials, not code.** |
+| CF-11 | Drizzle **migration runner** (versioned/reversible) | M2.2 | M3.0 | ✅ DONE 2026-07-10 — `backend/db/migrations.ts`; apply/rollback/re-apply converges. **Refactored onto `DbRunner` in M-DB.0** (migrations run on any adapter); migrations v1–v3 (schema, users, tenants) |
+| CF-12 | **Live `wrangler deploy`** to public URL + SW-handover check | M1.1/M2.4 | M3.0 | 🟢 **CODE-READY — user-action only.** Dry-run + single-artifact proven (cf-full smoke 10/10, 390.6 KB gzip < 1 MB). **To turn green:** `cd examples/cf-full && wrangler deploy` (needs a CF account + a real D1 `database_id` in `wrangler.toml`), then click-test the SW handover. **Blocker is a CF account, not code.** |
+| CF-13 | Live **Deno Deploy** via deployctl | M2.4 | M3.0 | ⚫ **RETRACTED 2026-08-28 (A-24).** The "wired deployctl adapter" deployed the scaffold artifact with no provisioning/secrets — the branch is deleted and `frontbase deploy` is Cloudflare-only by design. Superseded by the A-24 deploy matrix: `pnpm run deploy:deno` (build + gates + deployctl over `deno-dist/`), live proof pending in the dispatch-only `deno-fresh-deploy.yml`. |
+| CF-DM | **Deploy matrix** — one Hono app on CF, Docker, Vercel Edge, Deno Deploy; pluggable state DB | Phase 3 (A-24) | M3.0 | 🟡 **CODE COMPLETE 2026-08-28, live runs pending.** State-db resolver (`describeStateDb`/`resolveStateDb`: D1 binding / D1-over-REST / Turso / file / :memory:, fail-loud on half-configs); per-host entries + self-contained edge bundles; `deploy:vercel`/`deploy:deno` scripts + `verify-host-artifact` gate; `smoke:host` + `test:state-db` + `test:vercel-config` green on every PR. **To turn green:** dispatch `vercel-fresh-deploy.yml` + `deno-fresh-deploy.yml` with credentials. |
+| CF-14 | Agent prompt templates | M2.5 | M3.1 | ✅ DONE 2026-07-10 — `docs/guides/agent-authoring.md` (component/page/query/workflow templates) |
+| CF-15 | **RULE 8 — mutation harness** (every security gate proven RED-on-break) | Phase 2 audit | M3.0 | ✅ DONE 2026-07-10; **extended 2026-07-12**: 12 → **20 proofs** (auth/DB gates, CF-19 deploy-seed no-argv-leak, +1 admin-console no-leak gate). `pnpm -r test:mutation` |
+| CF-16 | Rate limiting / abuse protection on the proxy | Phase 2 audit | M3.0 | ✅ DONE 2026-07-10 — `edge-infra/proxy/ratelimit.ts` (per-principal bucket, opaque 429, mutation-proven) |
+| CF-17 | Per-row / finer-grained authorization policy layer | Phase 2 audit | future | scope is coarse (public/tenant/user) by design today |
+| CF-18 | **Admin console React UI** — shell + login + dashboard + pages + tenants | M-ID.3 / M3.DB | M-ID.3-UI | ✅ **DONE — FUNCTIONAL-AREA PARITY 2026-07-13** *(previously overstated as "FULL PARITY"; visual/UX-depth parity re-opened as CF-22)* — Phases 1+2+3 (a/b/c) + two follow-up sprints. **All 11 nav areas functional, no "coming soon" left** (Data Studio + Plans shipped in 3b). WYSIWYG canvas + React Flow workflow editor (3c); real execution/storage/provisioning/encrypted-secrets (3a); Supabase schema provisioning + durable async workflow execution (follow-up sprint 2). **Every deviation (D1-D6) + follow-up (F1-F8, F3b-durable, BUG-1) CLOSED with tests; 0 open engineering items** — only F8b Stripe deferred. Single source of truth: `docs/phase-3-consolidated-delivery.md`. Verification: 57+ suites green, mutation 8/8 RED-on-break, cf-full smoke 10/10 (390.6 KB gzip), SPA no-leak |
+| CF-19 | **Deploy-seed gate** (`compiler/test/deploy-seed.mjs`) | M-ID.1.7 | 2026-07-11 | ✅ DONE — `frontbase deploy --admin-email/--admin-password/--setup-token/--session-secret` → `wrangler secret put SESSION_SECRET/ADMIN_EMAIL/ADMIN_PASSWORD/ADMIN_ROLE/SETUP_TOKEN` over **stdin, never argv**; auto-generates SESSION_SECRET (32 random bytes b64); email-without-password fails fast; result reports secret **names only**. Gate + **mutation proof** (value-on-argv → RED) |
+| CF-20 | **Supabase adapter** → `DbRunner` behind the M-DB.0 seam | M-DB.0 / M3.DB | 2026-07-12 | ✅ DONE — `supabaseRunner()` factory in `edge-infra/providers/runners.ts` (PostgREST HTTP adapter, raw SQL via RPC `execute_query`/`execute_sql` functions). Docs: `docs/guides/supabase-setup.md`. Edge-parity audit (`docs/cf-21-edge-parity-audit.md`) completed. Parameterized isolation suite (A-17) runs on SQLite (authoritative) + Supabase (if creds). No-leak gated. **Next:** integrate into datasources UI (CF-18 Phase 2+) |
+| CF-21 | **Port-parity audit + admin-console feature-parity scan** | ongoing | 2026-07-12 | ✅ DONE — Two parallel audits completed: (1) **Admin parity** (`docs/cf-21-admin-parity-audit.md`) — product console vs framework backend (~3.5/11 areas have framework backend). (2) **Edge parity** (`docs/cf-21-edge-parity-audit.md`) — product edge services vs framework edge-infra (DbRunner seam solid, Supabase/Neon adapters exist, porting matrix). Both inform CF-18 Phase 2+ sequencing |
+| CF-22 | **Admin console 100% visual + functional parity (community edition)** — contract-first, artifact-reuse: framework backend becomes a drop-in for the product's community-edition FastAPI contract; worker serves the product's **built** console bundle | CF-18 / CF-21 | — | 🛑 **PAUSED 2026-08-06** (owner decision — automated framework↔product parity work stopped; remaining gap is ACCEPTED last-mile residue, reactive-only. See [`docs/cf-22-admin-visual-parity-gap.md`](./cf-22-admin-visual-parity-gap.md)). Pre-pause state: 🟡 IN PROGRESS — NOT COMPLETE (do not represent as delivered). The contract pipeline + 285-op route/shape coverage exist and the console is locally integrated (cf-full smoke 21/21, worker 233.8 KB gz), but **behavior, security, cross-repo pin sync, and real-deploy/owner acceptance are open.** Known blockers: 🔴 plaintext API-key storage/reveal; 🔴 no-op password reset; P1 gate proves *registration* not handler conformance; console (`bf1ac54`)/contract (`afe9e03`) pins mismatch; no Playwright/real-CF/owner sign-off. A field incident (two dashboards) was found + remediated. **Single source of truth (status + audit + recovery plan Gates 0–4): [`docs/cf-22-admin-visual-parity-gap.md`](./cf-22-admin-visual-parity-gap.md)** — all prior CF-22 delivery/audit/incident docs folded in and removed. *(2026-08-29 addendum: with A-22/A-23 the source and contract are framework-owned — the pin-mismatch blocker is retired; see the cf-22 doc's dated addendum.)* |
+| CF-23 | **Cloud multi-tenant FREE TIER on app.frontbase.dev** (A-25, Phase 4 of framework-only) — self-serve signup → build in console → publish → live at `<slug>.frontbase.dev`, one shared community worker | A-25 | 2026-08-29 | ✅ DONE — one artifact env-gated (`FRONTBASE_DEPLOYMENT_MODE=cloud` ⇒ tenancy; unset ⇒ byte-identical self-host). Host-tenant resolution + registered-slug 404s (product gap fixed); `scopePrincipalToHost` closes the cross-tenant private-page hole; signup provisions tenant+owner+`free` plan+homepage (Resend reset, stdin-secret only); `/api/admin/tenants*` (master_admin per handler) + `/admin` cloud console (second vite build, tenant-host `/admin` 404'd as anti-phishing); `_global` plan catalog seeded at cloud boot + count/flag gates (402/403); CF-16 D1-backed rate limiting on signup/login/forgot (product gap fixed); `deploy.mjs --mode cloud --base-domain` with `wrangler deploy --var` (never wrangler.toml) + CF-API Custom Domains attach (`cloud-domains.ts`). Gates: 6 backend suites, `smoke:cloud`, 7 mutation proofs, console-pin cloud harness (29), compiler seam tests. Limits (honest): counts not metering; no email verification/captcha; 11 `admin_agents_*` ops are stubs (console widgets degrade gracefully); per-tenant engines/custom domains/Stripe = Phase 5 |
+
+*(Note: CF-15 appeared twice in an earlier revision; consolidated into the single row above. The console-DB + identity sprint (**A-19** Console DB Unification / CF D1 default; **A-18** Identity & Provisioning) delivered M-DB.0 + M-ID.1–M-ID.3 and is covered by `docs/delivery/console-db-identity-delivery-report.md` — including a post-delivery security review that found & fixed 5 defects, 2 critical.)*
+
+---
+
+## Phase 4: GA Launch
+
+**Duration**: 2–3 Weeks
+**Target**: Q1–Q2 2027 (March – April)
+**Status**: 🔵 Not Started
+
+### Milestone 4.1: Launch Preparation
+
+**Objectives**: finalize docs, marketing materials, support infrastructure, critical-bug burn-down, launch checklist.
+
+**Acceptance Criteria**:
+- [ ] Docs complete & reviewed; marketing ready; support in place; critical bugs resolved.
+
+**Dependencies**: Phase 3
+
+### Milestone 4.2: Public Launch
+
+**Objectives**: public announcement, community onboarding, metrics monitoring, post-launch review.
+
+**Acceptance Criteria**:
+- [ ] Announcement out; docs public; community channels active; metrics tracked; post-launch review scheduled.
+
+**Dependencies**: Milestone 4.1
+
+---
+
+## Milestone Status Legend
+
+| Icon | Status |
+|------|--------|
+| 🔵 | Not Started |
+| 🟡 | In Progress |
+| 🟢 | Complete |
+| 🔴 | Blocked |
+| ⚫ | Cancelled |
+
+---
+
+## Summary
+
+| Phase | Duration | Target | Milestones | Status | Focus |
+|-------|----------|--------|------------|--------|-------|
+| Phase 0 | 1–2 wks | Jul 2026 | 3 | 🟢 | Chimera validation spike & decision gate |
+| Phase 1 | 8–10 wks | Aug–Oct 2026 | 5 | 🟢 | Engine (`edge-core`) + Compiler + CLI |
+| Phase 2 | 6–8 wks | Oct–Dec 2026 | 5 | 🟢 | Infra + Console + Builder → single-worker CMS |
+| Phase 3 | 3–4 wks | Jan–Feb 2027 | 3 | 🔵 | Hardening (M3.0) + agent experience + beta |
+| Phase 4 | 2–3 wks | Mar–Apr 2027 | 2 | 🔵 | GA launch |
+
+**Engineering time**: ~21–27 weeks. **Calendar**: July 2026 → GA Q1–Q2 2027.
+
+### Package Deliverables by Phase
+
+| Phase | Deliverables |
+|-------|--------------|
+| Phase 0 | Spike PoCs + decision memo |
+| Phase 1 | `@frontbase/edge-core`, `@frontbase/compiler`, `@frontbase/ui-components` (consolidated from existing widget packages) |
+| Phase 2 | `@frontbase/edge-infra`, `@frontbase/backend`, `@frontbase/builder`, single-worker deploy |
+| Phase 3 | Agent tooling & prompt templates |
+| Phase 4 | GA |
+
+### Installation Examples
+
+```bash
+# After Phase 1
+npx @frontbase/compiler init my-app --pure        # engine + compiler + components
+
+# After Phase 2
+npx @frontbase/compiler init my-app --full        # complete CMS → one worker
+npx @frontbase/compiler init my-app --with-infra  # + durable providers, proxy, vault
+npx @frontbase/compiler deploy                    # ship it
+```
+
+---
+
+## Document Metadata
+
+**Version**: 3.5
+**Status**: Active — Phases 0–2 complete, Phase 3 partly complete; Cloud/public-release gates separate
+**Owner**: Architecture Team
+**Next Review**: After Phase 3 M3.0 (hardening) completion
+**Related Documents**:
+- [CHIMERA-ARCHITECTURE.md](../ARCHITECTURE.md)
+- [PACKAGE-STRUCTURE.md](../PACKAGE-STRUCTURE.md)
+- [OPENQUESTIONS.md](./OPENQUESTIONS.md)
+- [DECISIONS.md](./DECISIONS.md)
+- Sprint plans: [Phase 1](./plans/phase1-compiler-cli-sprint.md) · [Phase 2](./plans/phase2-cms-sprint.md) · [Phase 3](./plans/phase3-agent-experience-sprint.md)
+- Delivery reports: [Phase 1](./delivery/phase1-delivery-report.md) · [Phase 2](./delivery/phase2-delivery-report.md)
+- **CF-18 admin-console parity (separate track):** [Phase 3 consolidated](./phase-3-consolidated-delivery.md) (3a/[3b](./phase-3b-delivery.md)/[3c](./phase-3c-delivery.md) detail; deviations ledger + BUG-1)
+- **CF-22 admin-console visual parity (in progress, not complete):** [single source of truth — status + recovery plan](./cf-22-admin-visual-parity-gap.md)
+
+
+## 2026-10-22 integrated staging candidate verified
+
+Source8bf6248 combines both streams plus bounded finalization repairs; deployed to existing USA staging with backup integrity, original session, English/Arabic Homepage and actual dropdown/navigation verified. Full build/check/workspace functional,91 console files/678 tests and47 critical faults pass; Linux image56e25595 and deployed-dist18-publication synthetic scale test pass. [Exact receipt and sign-off limits](../plans/frontbase-integrated-finalization-20261022.md#integrated-candidate-staging-receipt--2026-10-22). This closes the staging deployment operation, not whole multilingual or public-release acceptance. Interactive live lists/coverage, strict external declarations, behavior isolation, final-source fresh CF/Vercel installs and remote recovery remain ordered residuals. CF-22 paused; Deno deferred; no production or npm action.

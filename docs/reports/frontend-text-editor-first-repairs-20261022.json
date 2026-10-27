@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "scope": "frontend-text-editor-and-first-gap-repairs",
+  "sourceCommits": [
+    "fea202e",
+    "b5ace99",
+    "d279e51",
+    "268ad3c"
+  ],
+  "workspaceCheck": "PASS",
+  "workspaceBuild": "PASS",
+  "consoleStaged": true,
+  "workerGzipKB": 701.0,
+  "vercelArtifactGzipKB": 705.1,
+  "clientNoLeak": "PASS",
+  "targetedRegressions": [
+    "frontend-edit",
+    "frontend-edit-locales",
+    "translation-homepage",
+    "translation-homepage-records",
+    "translation-homepage-explore",
+    "translation-homepage-versions",
+    "translation-page-publication",
+    "site-publication",
+    "site-publication-manifest",
+    "menus-publication",
+    "compat-security",
+    "compat-database-security",
+    "compat-tenant-matrix",
+    "sdk-http",
+    "external-request",
+    "storage-upload",
+    "providers-s3",
+    "storage-http-transport",
+    "neon-http-runner",
+    "engine-transfer-refusal",
+    "page-changes"
+  ],
+  "regressionExit": 0,
+  "frontendFaultsDetected": 9,
+  "httpEngineFaultsDetected": 8,
+  "mutationSourcesRestored": true,
+  "archives": [
+    {
+      "name": "@frontbase/translation",
+      "version": "0.0.0",
+      "sha256": "487c030a9d38a0010d5b98ff01fe7d4edcb34243931eeb58f155fc33c51ffc47"
+    },
+    {
+      "name": "@frontbase/edge-core",
+      "version": "0.0.0",
+      "sha256": "985fbd7802a59dde3d6edb651da1b427684acb64ef0bd188097b93b3be2dcb03"
+    },
+    {
+      "name": "@frontbase/compiler",
+      "version": "0.0.0",
+      "sha256": "3fb8d48e07c89d2c40dd46e69bde74b6cf12d878840373d24b4b30a62c4187d7"
+    },
+    {
+      "name": "@frontbase/ui-components",
+      "version": "0.0.0",
+      "sha256": "6ed177a54da9e0dcaed16e08696645993728725106e57f110394bd826e2f8b26"
+    },
+    {
+      "name": "@frontbase/edge-infra",
+      "version": "0.0.0",
+      "sha256": "08689a0ad9d33fb08e7e6e1d168863709cd4b7416d070c32d0aae2ba6e126661"
+    },
+    {
+      "name": "@frontbase/backend",
+      "version": "0.0.0",
+      "sha256": "d03748d75f88906853694a1ca61c5aa6df1abc706e42780c3db41407cf90877c"
+    },
+    {
+      "name": "@frontbase/builder",
+      "version": "0.1.0",
+      "sha256": "2efba350b7160de53237587b4117abe9c8bf10502cbe33a8e561bd47c5563815"
+    }
+  ],
+  "strictProfiles": {
+    "NodeNext": {
+      "status": "PASS",
+      "skipLibCheck": false
+    },
+    "Bundler": {
+      "status": "PASS",
+      "skipLibCheck": false
+    }
+  },
+  "externalConsumerSuccess": true,
+  "registryProof": false,
+  "staging": {
+    "status": "PASS bounded frontend edit/save/restore acceptance",
+    "source": "e1a7b741b043060aa45f3f9df1d320c6a3ad032e",
+    "archiveSha256": "ebad4402a2b7bcaddc083e1d6d5456fd58df69f4dcd1a16a649217878d1fb76f",
+    "imageSha256": "002c224f237fa1537578909eb2eadad1d38b51707c7faefc3c898403be3652cd",
+    "buildCompleted": "2026-10-22T20:31:47Z",
+    "nativeArabic": [
+      "two staged fields",
+      "individual revert",
+      "Escape",
+      "global cancel",
+      "explicit batch save",
+      "reload",
+      "restore originals"
+    ],
+    "nativeEnglish": [
+      "two staged fields",
+      "re-edit staged field",
+      "explicit batch save",
+      "reload",
+      "restore originals",
+      "close editor resumes links"
+    ],
+    "anonymous": {
+      "englishStatus": 200,
+      "arabicStatus": 200,
+      "englishTextHash": "8f593bfcc9a93ed284073d3295c2e505ff010e02f826494332bf7aa88b63d3ce",
+      "arabicTextHash": "a5974bb1eb189eb4d78b8b924e760a3b31fef24cc520c98be15ecfbaa83383ca",
+      "linksPerPage": 37,
+      "capabilityEnabled": false,
+      "inventoryStatus": 401,
+      "siteVersion": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4"
+    },
+    "AIRequests": 0,
+    "sourceRecordsChanged": 0,
+    "responsiveMenuRefinement": "subsequent local source test; not in this image"
+  },
+  "remaining": [
+    "G3 workflow lifecycle",
+    "G5 isolated behavior measurement",
+    "G6 host egress/live optional-provider qualification",
+    "G7-G10 cumulative reset/public-install/distribution gates"
+  ],
+  "liveNeon": "not run - no provider credential",
+  "productionCutover": false,
+  "npmPublication": false
+}

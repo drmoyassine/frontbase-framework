@@ -1,0 +1,154 @@
+{
+  "date": "2026-10-18",
+  "sourceBase": "276b554",
+  "gates": [
+    {
+      "gate": "translation-allowance-lifecycle-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-allowance-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-storage-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "build",
+      "exitCode": 0
+    },
+    {
+      "gate": "check",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-allowance",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-allowance-lifecycle",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-generation",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-storage",
+      "exitCode": 0
+    },
+    {
+      "gate": "sdk-http",
+      "exitCode": 0
+    },
+    {
+      "gate": "external-request",
+      "exitCode": 0
+    },
+    {
+      "gate": "compat-security",
+      "exitCode": 0
+    },
+    {
+      "gate": "compat-tenant-matrix",
+      "exitCode": 0
+    },
+    {
+      "gate": "conformance",
+      "exitCode": 0
+    },
+    {
+      "gate": "shared-ai",
+      "exitCode": 0
+    },
+    {
+      "gate": "shared-http",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-localization",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-revisions",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-jobs",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-postgrest",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-accounting",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-accounting-http",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-localization-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-revisions-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-jobs-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-postgrest-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-accounting-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-accounting-http-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "external-package",
+      "exitCode": 0
+    },
+    {
+      "gate": "host-import-graph",
+      "exitCode": 0
+    }
+  ],
+  "faults": {
+    "newLifecycle": 8,
+    "retainedHostPolicy": 6,
+    "retainedStorage": 7,
+    "retainedEngine": 36
+  },
+  "order": "All mutating source/artifact fault suites restored exact original hashes before final full workspace build/check and subsequent functional/package/import checks. Engine faults are in-memory only.",
+  "boundedContinuation": {
+    "maxJobStepsPerCall": 4,
+    "persistedCursor": true,
+    "fixtureRPCBoundPerCall": 24,
+    "staleContinuationCannotReopenClosedReceipt": true
+  },
+  "sourceSha256": {
+    "packages/backend/src/compat/translation-allowance.ts": "4276e980ad929cd03eee411e615ea1a6ec0d01778ecdad0255fcf494da832c27",
+    "packages/backend/src/compat/translation-storage.ts": "b4fd4cbede5b6e11b18ced5cfed083b4e76fb9b82d3c9ec2218697bd0a1946cd"
+  },
+  "paidProviderCalls": 0,
+  "ownerDatabaseChanged": false,
+  "sqlChanged": false,
+  "deployed": false,
+  "limitations": [
+    "Internal host composition only; authenticated batch endpoints/UI and durable delivery remain pending.",
+    "Request-unit allowance, not monetary guarantee or global provider-account concurrency limit.",
+    "Explicit acknowledgment retains original unknown ledger entries; an external call can still be in flight.",
+    "Host tests use injected canonical HTTP/RPC over SQLite reference; no new real owner/PostgreSQL/TLS/edge or power-loss acceptance.",
+    "External package acceptance covers translation only; broader backend external-type and release gates remain open."
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "name": "@frontbase/translation",
+  "version": "0.0.0",
+  "description": "Frontbase edge-native AI translation engine foundations: isolated identities, validated content and adapter-neutral contracts. AI/storage orchestration is under development.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts.d.ts",
+      "import": "./dist/contracts.js"
+    },
+    "./identity": {
+      "types": "./dist/identity.d.ts",
+      "import": "./dist/identity.js"
+    },
+    "./rich-text": {
+      "types": "./dist/rich-text.d.ts",
+      "import": "./dist/rich-text.js"
+    },
+    "./sitemap-comparison": {
+      "types": "./dist/sitemap-comparison.d.ts",
+      "import": "./dist/sitemap-comparison.js"
+    },
+    "./revisions": {
+      "types": "./dist/revisions.d.ts",
+      "import": "./dist/revisions.js"
+    },
+    "./adapters/sqlite": {
+      "types": "./dist/adapters/sqlite.d.ts",
+      "import": "./dist/adapters/sqlite.js"
+    },
+    "./jobs": {
+      "types": "./dist/jobs.d.ts",
+      "import": "./dist/jobs.js"
+    },
+    "./adapters/sqlite-jobs": {
+      "types": "./dist/adapters/sqlite-jobs.d.ts",
+      "import": "./dist/adapters/sqlite-jobs.js"
+    },
+    "./adapters/postgrest": {
+      "types": "./dist/adapters/postgrest.d.ts",
+      "import": "./dist/adapters/postgrest.js"
+    },
+    "./adapters/sqlite-accounting": {
+      "types": "./dist/adapters/sqlite-accounting.d.ts",
+      "import": "./dist/adapters/sqlite-accounting.js"
+    },
+    "./adapters/postgrest-accounting": {
+      "types": "./dist/adapters/postgrest-accounting.d.ts",
+      "import": "./dist/adapters/postgrest-accounting.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "sql"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node test/localization.mjs && node test/revisions.mjs && node test/jobs.mjs && node test/postgrest.mjs && node test/accounting.mjs && node test/accounting-http.mjs",
+    "test:mutation": "node test/localization-mutation.mjs && node test/revisions-mutation.mjs && node test/jobs-mutation.mjs && node test/postgrest-mutation.mjs && node test/accounting-mutation.mjs && node test/accounting-http-mutation.mjs",
+    "test:revisions": "node test/revisions.mjs",
+    "test:jobs": "node test/jobs.mjs",
+    "test:postgrest": "node test/postgrest.mjs",
+    "test:accounting": "node test/accounting.mjs",
+    "test:accounting-mutation": "node test/accounting-mutation.mjs",
+    "test:accounting-http": "node test/accounting-http.mjs",
+    "test:accounting-http-mutation": "node test/accounting-http-mutation.mjs"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  }
+}

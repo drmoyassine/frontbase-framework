@@ -1,0 +1,51 @@
+{
+  "checkedAt": "2026-10-22T22:05:00.019Z",
+  "npmAuthenticatedUser": "drmoyassine",
+  "frontbaseOrgListing": {},
+  "namespaceOwnershipVerified": false,
+  "registryPublication": false,
+  "packages": [
+    {
+      "name": "@frontbase/translation",
+      "status": 404,
+      "latest": null,
+      "visibility": "not visible; absence/ownership not proven"
+    },
+    {
+      "name": "@frontbase/edge-core",
+      "status": 404,
+      "latest": null,
+      "visibility": "not visible; absence/ownership not proven"
+    },
+    {
+      "name": "@frontbase/compiler",
+      "status": 404,
+      "latest": null,
+      "visibility": "not visible; absence/ownership not proven"
+    },
+    {
+      "name": "@frontbase/ui-components",
+      "status": 404,
+      "latest": null,
+      "visibility": "not visible; absence/ownership not proven"
+    },
+    {
+      "name": "@frontbase/edge-infra",
+      "status": 404,
+      "latest": null,
+      "visibility": "not visible; absence/ownership not proven"
+    },
+    {
+      "name": "@frontbase/backend",
+      "status": 404,
+      "latest": null,
+      "visibility": "not visible; absence/ownership not proven"
+    },
+    {
+      "name": "@frontbase/builder",
+      "status": 404,
+      "latest": null,
+      "visibility": "not visible; absence/ownership not proven"
+    }
+  ]
+}

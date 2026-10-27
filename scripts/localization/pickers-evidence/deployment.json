@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-18",
+  "source": "2087c9353cbfd2eb4c703275f473dc93f7ddda1f",
+  "sourceCommit": "5692e30",
+  "generatedCommit": "a0f3c7d",
+  "target": {
+    "panel": "https://newpanel.studygram.me",
+    "project": "studygram",
+    "service": "usa-frontbase-staging"
+  },
+  "archive": {
+    "bytes": 6659517,
+    "entries": 2297,
+    "excluded": 12,
+    "sha256": "5cb9e41a4d4793b11d3121d3ac09a758473c6b57573f5e4a32d1cf79025959b9"
+  },
+  "action": {
+    "id": "cmve9iv6n003h07qq2xs46u7f",
+    "status": "done",
+    "createdAt": "2026-10-18 20:13:05",
+    "updatedAt": "2026-10-18 20:14:31"
+  },
+  "container": {
+    "id": "c0d0bd97e3d650e370891de99ef6de4bfc7f736adc12bc8c131193664d75d9c4",
+    "image": "sha256:dcb93b5547e7049f1fa73aff894bc65256e95326f36fb243c750bc4a65246d53",
+    "healthy": true
+  },
+  "configurationPreserved": {
+    "env": true,
+    "mounts": true,
+    "build": true,
+    "deploy": true,
+    "ports": true
+  },
+  "verification": {
+    "publicResponseHashesMatch": 8,
+    "anonymousTranslationStatus": 401,
+    "generation21": true,
+    "homepagePending": true,
+    "testDraft": true,
+    "realOpenRouterMetadata": true,
+    "modelSearch": true,
+    "languageSearch": true,
+    "targetMultipleSelection": true,
+    "savedModel": "openrouter/free",
+    "savedSourceLocale": "en",
+    "savedTargets": [
+      "ar"
+    ],
+    "temporaryVerificationEditsDiscarded": true,
+    "settingsSaved": false,
+    "credentialsChanged": false,
+    "modelRequest": false,
+    "executionAvailable": false,
+    "contentPublished": false
+  },
+  "limits": [
+    "No actual OpenAI catalog credential acceptance; local fixture only",
+    "No translation generation or provider quality acceptance",
+    "No full image security-suite or rollback rerun"
+  ]
+}

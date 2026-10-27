@@ -1,0 +1,135 @@
+name: contracts
+
+# CF-22 P1 — the product-compat surface is a committed, generated artifact.
+# Since consolidation phase 2 (A-23) the contract is framework-owned: the
+# community spec (334 ops) is the contract and gate denominator, the full spec
+# (389 ops) is the console client-generation input, and the product pins/sync/
+# drift machinery is retired. These gates fail the build when a generated
+# artifact goes stale, the generated console client desyncs from the compat
+# copy, or an implemented op diverges from the committed contract.
+#
+# - spec-staleness: framework.openapi.json must match a fresh emission.
+# - client-gen:     packages/console/src/client must regenerate byte-identical
+#                   from the vendored full spec (the toolchain is pinned exact).
+# - client-sync:    the console client's zod.gen.ts ≡ the compat copy embedded
+#                   in the worker (one generator, one spec — byte-for-byte).
+# - test:           the full backend suite incl. compat-variables (proof tag)
+#                   and compat-conformance --gate.
+#
+# Since consolidation phase 1 the console is framework source: the artifact is
+# built and staged in-repo (`pnpm console:build`), validated structurally
+# (`pnpm console:check`), and the browser acceptance gate runs on every push.
+# (Pre-consolidation the acceptance gate keyed on hashFiles of gitignored
+# console bundles, which is always empty on a fresh checkout — the browser
+# gate silently never ran in CI. That coverage hole is closed here.)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm -r build
+      # Build + stage the console artifact from in-repo source (also verifies
+      # the staged tree structurally — shell ↔ bundle agreement, builder-sw.js).
+      - name: Console artifact (build + stage)
+        run: pnpm console:build
+      - name: Console artifact gate
+        run: pnpm console:check
+      # The deployable Worker, exercised in-process against a memory runner.
+      - name: cf-full smoke (deployable worker)
+        run: pnpm --filter @frontbase/example-cf-full smoke
+      # Cloud serving plane (A-25): stage the cloud console (second vite build,
+      # base /admin/) then drive the same worker with explicit Host headers —
+      # tenant isolation, registered-slug gate, /admin confinement, app-host
+      # console. Fails closed if the cloud stage is missing.
+      - name: Cloud smoke (tenancy serving plane)
+        run: pnpm console:build -- --cloud && pnpm --filter @frontbase/example-cf-full smoke:cloud
+      # Deploy matrix (A-24), credential-free on every PR: the Vercel/Deno edge
+      # entries driven over a real engine through d1RunnerFromRest with a stubbed
+      # fetch (in-memory SQLite behind it), the disk-ASSETS shim contract, the
+      # bundle artifact gates, and the state-db resolver contract (precedence,
+      # fail-loud half-configs, no-leak). Live deploys stay in the dispatch-only
+      # *-fresh-deploy workflows — never here.
+      - name: Per-host smoke (vercel/deno entries + artifact gates)
+        run: pnpm --filter @frontbase/example-cf-full smoke:host
+      - name: Deployment profile and local bootstrap security
+        run: pnpm test:deployment-gates && pnpm test:deployment-setup
+      - name: State-db resolver contract
+        run: pnpm --filter @frontbase/example-cf-full test:state-db
+      - name: vercel.json routing contract
+        run: pnpm --filter @frontbase/example-cf-full test:vercel-config
+      - name: Console artifact guarantees
+        run: node examples/cf-full/test/console-pin.mjs
+      - name: Cloud operations tooling gate
+        run: node scripts/cloud-ops.test.mjs
+      # Gate 4: the console in a real browser against the real Worker on workerd.
+      # This catches what in-process gates structurally cannot — the console calls
+      # paths the contract does not declare verbatim, and only a browser sees that.
+      # Unconditional since the console moved in-repo: the artifact is always
+      # staged by the step above.
+      # wrangler is a global tool (the e2e webServer shells out to `wrangler dev`);
+      # the browser must be the one the workspace's own @playwright/test expects —
+      # `npx playwright` would fetch latest and mismatch the browser revision.
+      - name: Console acceptance (browser)
+        env:
+          # The committed wrangler.toml carries the cloud Hyperdrive binding,
+          # and `wrangler dev` refuses to boot a Hyperdrive binding without a
+          # local Postgres emulation string. This acceptance is SELF-HOST (no
+          # FRONTBASE_DEPLOYMENT_MODE var), and the state-db resolver ignores
+          # the binding outside cloud mode — so a placeholder satisfies
+          # wrangler's startup check and is never dialed.
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: "postgres://placeholder:placeholder@127.0.0.1:5432/placeholder"
+        run: |
+          npm install -g wrangler@4.125.0
+          pnpm --filter @frontbase/example-cf-full exec playwright install --with-deps chromium
+          pnpm --filter @frontbase/example-cf-full e2e
+      - name: Cloud customer journey (local providers)
+        run: pnpm --filter @frontbase/example-cf-full e2e:cloud
+      - name: Billing mode and sandbox catalog gate
+        run: node packages/backend/test/cloud-billing.mjs
+      - name: Upload acceptance failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failures
+          path: |
+            examples/cf-full/e2e/report
+            examples/cf-full/e2e/test-results
+          if-no-files-found: ignore
+      - name: Spec staleness gate
+        run: pnpm --filter @frontbase/backend run contracts:check
+      # The console client is generated from packages/backend/contracts/
+      # openapi.full.json with a pinned-exact toolchain — regeneration must be a
+      # no-op. A diff here means the committed client no longer matches the spec
+      # (or the generator config changed): re-run `pnpm --filter
+      # @frontbase/console client:generate` and commit; never hand-edit
+      # generated files.
+      - name: Client generation staleness gate
+        run: |
+          pnpm --filter @frontbase/console client:generate
+          git diff --exit-code -- packages/console/src/client
+      # The worker embeds a compat copy of the generated Zod schemas; both files
+      # come from the same generator and the same spec, so they must stay
+      # byte-equal — a divergence means one side was regenerated alone.
+      - name: Client ↔ compat zod sync gate
+        run: node scripts/check-client-sync.mjs
+      # Includes compat-conformance --gate: every documented 2xx response is
+      # validated against the committed Zod. This fails when a HANDLER diverges
+      # from the contract.
+      - name: Backend suite (incl. compat-variables, conformance)
+        run: pnpm --filter @frontbase/backend test
+      - name: Mutation gates
+        run: pnpm -r test:mutation

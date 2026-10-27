@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import {resolveMenuAudience} from '../dist/compat/menu-audience.js';
+import {supabaseMenuAudiencePorts} from '../dist/compat/menu-audience-supabase.js';
+const id='12345678-1234-4234-8234-123456789abc';
+const cfg={enabled:true,authDataSourceId:'auth-account',contactsDbId:'contact-account',contactsTable:'contacts',columnMapping:{authUserIdColumn:'auth_id',contactTypeColumn:'type',permissionLevelColumn:'level'},contactTypes:{student:'Student'},permissionLevels:{reader:'Reader'}};
+const auth={provider:'supabase',config:{api_url:'https://auth.example.com',anon_key:'sb_publishable_AUTH',service_role_key:'sb_secret_AUTH'}};
+const contact={provider:'supabase',config:{api_url:'https://contacts.example.com',anon_key:'sb_publishable_CONTACT',service_role_key:'sb_secret_CONTACT'}};
+let calls=[],rows=[{type:'student',level:'reader'}],identity={id,user_metadata:{contactType:'admin'},app_metadata:{permissionLevel:'admin'}},denied=false;
+const accounts=async(owner,key)=>owner==='owner'?key==='auth-account'?auth:key==='contact-account'?contact:null:null;
+const fetcher=async(input,init)=>{
+    const url=new URL(String(input));calls.push({url,headers:new Headers(init.headers)});
+    if(url.origin==='https://auth.example.com'&&url.pathname==='/auth/v1/user')return Response.json(identity,{status:denied?401:200});
+    if(url.origin==='https://contacts.example.com'&&url.pathname==='/rest/v1/contacts')return Response.json(rows);
+    throw Error('unexpected egress');
+};
+const ports=supabaseMenuAudiencePorts(accounts,fetcher);
+const run=(config=cfg,owner='owner',token='visitor-session')=>resolveMenuAudience(owner,config,token,ports);
+assert.deepEqual(await run(),{authenticated:true,contactType:'student',permissionLevel:'reader'});
+assert.deepEqual(await resolveMenuAudience('owner',cfg,'visitor-session',ports,true),{authenticated:true,userId:id,contactType:'student',permissionLevel:'reader'});calls=calls.slice(-2);
+assert.equal(calls.length,2);assert.equal(calls[0].headers.get('authorization'),'Bearer visitor-session');assert.equal(calls[0].headers.get('apikey'),'sb_publishable_AUTH');
+assert.equal(calls[1].headers.get('authorization'),null);assert.equal(calls[1].headers.get('apikey'),'sb_secret_CONTACT');
+assert.equal(calls[1].url.searchParams.get('select'),'type,level');assert.equal(calls[1].url.searchParams.get('auth_id'),`eq.${id}`);assert.equal(calls[1].url.searchParams.get('limit'),'2');
+rows=[];assert.deepEqual(await run(),{authenticated:true});rows=[{type:'student',level:'reader'},{type:'student',level:'reader'}];assert.deepEqual(await run(),{authenticated:true});
+rows=[{type:'admin',level:'admin'}];assert.deepEqual(await run(),{authenticated:true});
+rows=[{type:1,level:2}];assert.deepEqual(await run({...cfg,contactTypes:{1:'Student'},permissionLevels:{2:'Reader'}}),{authenticated:true,contactType:'1',permissionLevel:'2'});
+rows=[{type:{id:1},level:[2]}];assert.deepEqual(await run({...cfg,contactTypes:{1:'Student'},permissionLevels:{2:'Reader'}}),{authenticated:true});
+denied=true;calls=[];assert.deepEqual(await run(),{authenticated:false});assert.equal(calls.length,1);denied=false;
+identity={id,is_anonymous:true};calls=[];assert.deepEqual(await run(),{authenticated:false});assert.equal(calls.length,1);identity={id};
+for(const [config,owner,token]of [[{...cfg,enabled:false},'owner','token'],[cfg,'foreign','token'],[cfg,'owner',null],[cfg,'owner','bad\nTOKEN'],[{...cfg,contactsTable:'contacts?select=*'},'owner','token'],[{...cfg,columnMapping:{...cfg.columnMapping,authUserIdColumn:'id&or='}},'owner','token']]){calls=[];assert.deepEqual(await run(config,owner,token),{authenticated:false});assert.equal(calls.length,0);}
+const privatePorts=supabaseMenuAudiencePorts(async()=>({...auth,config:{...auth.config,api_url:'https://127.0.0.1'}}),()=>{throw Error('MUST_NOT_FETCH');});
+assert.deepEqual(await resolveMenuAudience('owner',cfg,'token',privatePorts),{authenticated:false});
+const redirectPorts=supabaseMenuAudiencePorts(accounts,async()=>new Response(null,{status:302,headers:{location:'https://127.0.0.1'}}));assert.deepEqual(await resolveMenuAudience('owner',cfg,'token',redirectPorts),{authenticated:false});
+const unsupported=supabaseMenuAudiencePorts(async()=>({provider:'clerk',config:{}}),()=>{throw Error('MUST_NOT_FETCH');});assert.deepEqual(await resolveMenuAudience('owner',cfg,'token',unsupported),{authenticated:false});
+const legacyPorts=supabaseMenuAudiencePorts(async(owner,key)=>key==='contact-account'?{...contact,config:{...contact.config,service_role_key:'legacy.jwt.token'}}:auth,fetcher);rows=[{type:'student',level:'reader'}];calls=[];assert.deepEqual(await resolveMenuAudience('owner',cfg,'token',legacyPorts),{authenticated:true,contactType:'student',permissionLevel:'reader'});assert.equal(calls[1].headers.get('authorization'),'Bearer legacy.jwt.token');
+console.log('menu audience: verified provider ID, owner binding, exact minimal contact projection, duplicate/missing/unknown denial, anonymous/provider errors, SSRF/redirect refusal and legacy/new keys PASS');

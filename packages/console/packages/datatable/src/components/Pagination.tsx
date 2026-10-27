@@ -1,0 +1,92 @@
+import {listMessage} from '@frontbase/types';
+import React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '../lib/utils';
+
+interface PaginationProps {
+    labels?:Record<string,string>;
+    currentPage: number;
+    pageSize: number;
+    totalCount?: number;
+    loadedCount?:number;
+    showCount?:boolean;
+    loading?: boolean;
+    onPageChange: (page: number) => void;
+    className?: string;
+}
+
+/**
+ * Pagination controls for DataTable
+ */
+export function Pagination({
+    labels,
+    currentPage,
+    pageSize,
+    totalCount,
+    loadedCount=0,
+    showCount=true,
+    loading = false,
+    onPageChange,
+    className,
+}: PaginationProps) {
+    const message=(key:Parameters<typeof listMessage>[1],values:Record<string,string|number>={})=>listMessage({_localeLabels:labels},key,values);
+    const totalPages = totalCount===undefined?undefined:Math.ceil(totalCount / pageSize);
+    const start = totalCount === 0 || totalCount===undefined&&!loadedCount ? 0 : currentPage * pageSize + 1;
+    const end = totalCount===undefined?currentPage*pageSize+loadedCount:Math.min((currentPage + 1) * pageSize, totalCount);
+
+    return (
+        <div
+            className={cn(
+                'flex flex-col md:flex-row items-start md:items-center justify-between gap-2 py-4',
+                className
+            )}
+        >
+            <div className="text-sm text-muted-foreground" hidden={!showCount}>
+                {totalCount === undefined ? <span>{message('countOnPage',{count:loadedCount})}</span> : totalCount > 0 ? (
+                    <>
+                        {/* Mobile: Short format */}
+                        <span className="md:hidden">{message('range',{from:start,to:end,count:totalCount})}</span>
+                        {/* Desktop: Full format */}
+                        <span className="hidden md:inline">
+                            {message('showing',{from:start,to:end,count:totalCount,page:currentPage+1,pages:totalPages||1})}
+                        </span>
+                    </>
+                ) : (
+                    <span>{message('noResults')}</span>
+                )}
+            </div>
+
+            <div className="flex items-center gap-2">
+                <button
+                    onClick={() => onPageChange(Math.max(0, currentPage - 1))}
+                    disabled={currentPage === 0 || loading}
+                    className={cn(
+                        'p-2 rounded-md border hover:bg-muted',
+                        'disabled:opacity-50 disabled:cursor-not-allowed',
+                        'flex items-center gap-1'
+                    )}
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden md:inline">{message('previous')}</span>
+                </button>
+
+                <span className="text-sm px-2">
+                    {message(totalPages===undefined?'page':'pageOf',{page:currentPage+1,pages:Math.max(1,totalPages??1)})}
+                </span>
+
+                <button
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={(totalPages===undefined?loadedCount<pageSize:currentPage >= totalPages - 1) || loading}
+                    className={cn(
+                        'p-2 rounded-md border hover:bg-muted',
+                        'disabled:opacity-50 disabled:cursor-not-allowed',
+                        'flex items-center gap-1'
+                    )}
+                >
+                    <span className="hidden md:inline">{message('next')}</span>
+                    <ChevronRight className="h-4 w-4" />
+                </button>
+            </div>
+        </div>
+    );
+}

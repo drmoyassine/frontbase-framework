@@ -1,0 +1,512 @@
+{
+  "title": "Frontbase for Defense & Security | DDIL-Native Edge Architecture",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "df-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "df-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "df-menu-threat",
+                  "label": "The Threat",
+                  "navType": "scroll",
+                  "target": "#the-problem"
+                },
+                {
+                  "id": "df-menu-solution",
+                  "label": "Tactical Edge",
+                  "navType": "scroll",
+                  "target": "#the-solution"
+                },
+                {
+                  "id": "df-menu-enterprise",
+                  "label": "Enterprise",
+                  "navType": "link",
+                  "target": "/enterprise"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Talk to Engineering",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "df-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "80px 24px",
+              "minHeight": "520px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(160 20% 6%) 0%, hsl(180 15% 10%) 50%, hsl(200 20% 6%) 100%)"
+            },
+            "children": [
+              {
+                "id": "df-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Defense & Security",
+                  "variant": "secondary",
+                  "icon": "ShieldCheck",
+                  "iconPosition": "left",
+                  "backgroundColor": "#4ade80",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "df-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Command and control that survives the contested edge.",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "56px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF",
+                  "maxWidth": "800px"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 32
+                    }
+                  }
+                }
+              },
+              {
+                "id": "df-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Modern adversaries jam satellites, attack cloud backhauls, and exploit centralized C2 architectures. The DoD is moving to 'disconnected-first' design. Frontbase was built for this: deploy autonomous, air-gapped mission apps directly to tactical vehicles and Forward Operating Bases."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "760px",
+                  "fontSize": "20px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "df-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "24px"
+                },
+                "children": [
+                  {
+                    "id": "df-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Deploy to the Tactical Edge",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "df-hero-cta-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "df-problem-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The DDIL Problem: Centralized C2 in Contested Environments",
+              "subtitle": "Denied, Degraded, Intermittent, and Limited connectivity. When the adversary controls the spectrum, cloud-dependent C2 goes blind.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "lg",
+              "iconAlignment": "left",
+              "textAlignment": "left",
+              "iconColor": "hsl(0 84% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-problem",
+              "features": [
+                {
+                  "id": "df-prob-1",
+                  "icon": "WifiOff",
+                  "title": "Electronic Warfare Jamming",
+                  "description": "Contested battlefields are DDIL by design. Adversaries actively jam SATCOM, exploit EW to sever links between forward units and CONUS cloud providers. When forward C2 depends on cloud backhaul, an EW attack doesn't just disrupt comms — it blinds entire command chains."
+                },
+                {
+                  "id": "df-prob-2",
+                  "icon": "Timer",
+                  "title": "High-Latency Sensor-to-Shooter Loop",
+                  "description": "Drone ISR and sensor data traverses thousands of miles of satellite routing to reach centralized cloud analysis. This introduces minutes of lag in time-critical targeting decisions. In peer-to-peer combat, minutes mean lives. Edge AI inferencing eliminates this deadly delay."
+                },
+                {
+                  "id": "df-prob-3",
+                  "icon": "AlertOctagon",
+                  "title": "Supply Chain Update Risk",
+                  "description": "CrowdStrike-style forced updates on centralized systems represent an existential risk in military contexts. A single bad update pushed to forward-deployed C2 systems could disable an entire theater's command capability. Immutable, intentional deployments eliminate this vector."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "df-context-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Aligned with CJADC2 Priorities",
+              "subtitle": "The Department of Defense is already moving toward exactly the architecture Frontbase provides.",
+              "headerAlignment": "center",
+              "columns": 4,
+              "iconSize": "md",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(220 80% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": true,
+              "features": [
+                {
+                  "id": "df-ctx-1",
+                  "icon": "WifiOff",
+                  "title": "Disconnected-First",
+                  "description": "Systems engineered to operate autonomously at the tactical edge for extended periods — syncing only when connectivity is restored."
+                },
+                {
+                  "id": "df-ctx-2",
+                  "icon": "ShieldCheck",
+                  "title": "Zero Trust at the Edge",
+                  "description": "Identity-first, segmented, continuously validated security protocols built directly into deployed edge nodes."
+                },
+                {
+                  "id": "df-ctx-3",
+                  "icon": "Blocks",
+                  "title": "Modular Open Systems",
+                  "description": "MOSA: field-swappable computing modules using open standards. Rapid upgrades without full system overhaul."
+                },
+                {
+                  "id": "df-ctx-4",
+                  "icon": "Server",
+                  "title": "Tactical Cloudlets",
+                  "description": "Micro data centers deployed to vehicles, ships, and FOBs. Full computing capability in ruggedized, portable form factors."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "df-solution-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "DDIL-Native by Design",
+              "subtitle": "Frontbase's edge architecture wasn't adapted for disconnected operations — it was built for them.",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(142 71% 45%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-solution",
+              "features": [
+                {
+                  "id": "df-sol-1",
+                  "icon": "WifiOff",
+                  "title": "True DDIL-Native Architecture",
+                  "description": "Frontbase edge nodes are self-sufficient by design. Local SQLite databases and Redis queues operate indefinitely without network connectivity. If SATCOM is jammed, command capabilities remain fully operational."
+                },
+                {
+                  "id": "df-sol-2",
+                  "icon": "RefreshCw",
+                  "title": "Asynchronous Intelligence Sync",
+                  "description": "Data syncs only when SATCOM windows open. Edge Redis buffers intelligence, logistics, and sensor data with zero loss during communications blackout. Conflict resolution handles concurrent updates across disconnected nodes."
+                },
+                {
+                  "id": "df-sol-3",
+                  "icon": "Undo2",
+                  "title": "Immutable Mission Packages",
+                  "description": "No CrowdStrike-style forced updates. Mission apps are pre-compiled, digitally signed bundles pushed intentionally during maintenance windows. One-click rollback to last known-good version eliminates supply chain update risk."
+                },
+                {
+                  "id": "df-sol-4",
+                  "icon": "Lock",
+                  "title": "Zero Attack Surface",
+                  "description": "Published Frontbase apps are static, server-side rendered bundles. No exploitable runtime API, no credentials in page HTML, no dynamic server-side code to compromise. The attack surface is essentially zero."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "df-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "hsl(160 20% 6%)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "df-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Mission-ready infrastructure for the contested edge.",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "df-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Contact our solutions engineering team to deploy edge-native C2 applications that survive DDIL environments."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "opacity": "1",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "df-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form | Untitled Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "df-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "Edge-native infrastructure for mission-critical defense operations.",
+              "columns": [
+                {
+                  "id": "df-col-solutions",
+                  "title": "Capabilities",
+                  "links": [
+                    {
+                      "id": "df-link-c2",
+                      "text": "Tactical C2",
+                      "href": "#"
+                    },
+                    {
+                      "id": "df-link-isr",
+                      "text": "ISR Processing",
+                      "href": "#"
+                    },
+                    {
+                      "id": "df-link-logistics",
+                      "text": "Field Logistics",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "df-col-industries",
+                  "title": "Industries",
+                  "links": [
+                    {
+                      "id": "df-link-aviation",
+                      "text": "Aviation",
+                      "href": "/aviation"
+                    },
+                    {
+                      "id": "df-link-gov",
+                      "text": "Government",
+                      "href": "/government"
+                    },
+                    {
+                      "id": "df-link-oilgas",
+                      "text": "Oil & Gas",
+                      "href": "/oil-gas"
+                    }
+                  ]
+                },
+                {
+                  "id": "df-col-company",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "df-link-enterprise",
+                      "text": "Enterprise Platform",
+                      "href": "/enterprise"
+                    },
+                    {
+                      "id": "df-link-privacy",
+                      "text": "Privacy & Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "df-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "df-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Mission-ready at the tactical edge.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

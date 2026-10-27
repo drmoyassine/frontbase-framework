@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {observedOutcome as classify} from './behavior-outcomes.mjs';
+const base={positiveControl:null,httpOk:true,httpStatus:200,unsupported:false,negativeEnvelope:false,sessionEffect:false,principalProjection:false,counterfactual:null,hasStateObservation:false,providerAttempts:0};
+assert.equal(classify({...base,hasStateObservation:true}),'inconclusive','irrelevant SQL cannot establish intended success');
+assert.equal(classify({...base,httpOk:false,httpStatus:404,hasStateObservation:true}),'refusal-observed');
+assert.equal(classify({...base,negativeEnvelope:true,providerAttempts:1,hasStateObservation:true}),'negative-envelope','failed provider envelope cannot become success through an audit write');
+assert.equal(classify({...base,positiveControl:false,hasStateObservation:true}),'failed-positive-control','canned/default output fails the seeded target assertion');
+assert.equal(classify({...base,positiveControl:true,counterfactual:{status:500,supportIntact:false,positiveControl:false}}),'positive-control','supporting-row failure is inconclusive as a read counterfactual');
+assert.equal(classify({...base,positiveControl:true,counterfactual:{status:200,supportIntact:true,positiveControl:false}}),'verified-read');
+assert.equal(classify({...base,httpOk:false,httpStatus:501,unsupported:true,hasStateObservation:true}),'unsupported');
+console.log('behavior outcome controls: no SQL laundering, no negative-envelope success and targeted successful counterfactual required PASS');

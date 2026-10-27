@@ -1,0 +1,467 @@
+{
+  "title": "Frontbase for Aviation | Offline-Capable Edge Architecture",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "av-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "av-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "av-menu-problem",
+                  "label": "The $2B Problem",
+                  "navType": "scroll",
+                  "target": "#the-problem"
+                },
+                {
+                  "id": "av-menu-solution",
+                  "label": "Edge Resilience",
+                  "navType": "scroll",
+                  "target": "#the-solution"
+                },
+                {
+                  "id": "av-menu-home",
+                  "label": "Enterprise",
+                  "navType": "link",
+                  "target": "/enterprise"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Talk to Engineering",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "av-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "80px 24px",
+              "minHeight": "520px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(200 47% 8%) 0%, hsl(210 33% 14%) 50%, hsl(222 47% 8%) 100%)"
+            },
+            "children": [
+              {
+                "id": "av-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Aviation & Aerospace",
+                  "variant": "secondary",
+                  "icon": "Plane",
+                  "iconPosition": "left",
+                  "backgroundColor": "#60a5fa",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "av-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "When the cloud goes down, the edge keeps flying.",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "56px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF",
+                  "maxWidth": "800px"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 32
+                    }
+                  }
+                }
+              },
+              {
+                "id": "av-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Every major airline IT meltdown shares the same root cause: a single, centralized system failing. Stop the cascading failures. Run isolated, self-sufficient crew tracking, baggage, and check-in dashboards directly at the airport edge."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "760px",
+                  "fontSize": "20px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "av-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "24px"
+                },
+                "children": [
+                  {
+                    "id": "av-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Prevent IT Meltdowns",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "av-hero-cta-primary-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "av-problem-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The $2B Problem: Centralized Architecture",
+              "subtitle": "Single points of failure consistently ground operations. Same pattern, different year.",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "left",
+              "textAlignment": "left",
+              "iconColor": "hsl(0 84% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-problem",
+              "features": [
+                {
+                  "id": "av-prob-1",
+                  "icon": "AlertOctagon",
+                  "title": "CrowdStrike & Delta (Jul 2024)",
+                  "description": "A faulty global update bricked centralized Windows servers. Crew tracking software died. 7,000 flights cancelled, 1.3M passengers affected, ~$500M in losses due to zero system independence."
+                },
+                {
+                  "id": "av-prob-2",
+                  "icon": "CloudLightning",
+                  "title": "Southwest IT Meltdown (Dec 2022)",
+                  "description": "Winter storm overwhelmed a centralized, legacy crew scheduling system ('SkySolver'). The network collapsed because they couldn't physically track pilots. Result: 16,700 cancellations and a $1.1B loss."
+                },
+                {
+                  "id": "av-prob-3",
+                  "icon": "DatabaseZap",
+                  "title": "FAA NOTAM Failure (Jan 2023)",
+                  "description": "Contractor accidentally deleted a file from the central database. The backup was coupled to the primary and corrupted too. Result: The first nationwide ground stop ordered in the US since 9/11."
+                },
+                {
+                  "id": "av-prob-4",
+                  "icon": "PowerOff",
+                  "title": "British Airways DC (May 2017)",
+                  "description": "A power surge at a single data center near Heathrow paralyzed check-in, boarding, and baggage ops simultaneously. Result: 726 flights cancelled, 75,000 passengers stranded due to inadequate edge failover."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "av-solution-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The Edge-Native Antidote",
+              "subtitle": "Decentralize risk. Frontbase gives every airport, terminal, and operation center its own autonomous system.",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(142 71% 45%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-solution",
+              "features": [
+                {
+                  "id": "av-sol-1",
+                  "icon": "WifiOff",
+                  "title": "Offline-Capable Autonomy",
+                  "description": "Crew scheduling and baggage dashboards run on independent edge nodes with local SQLite databases. If the cloud UI goes down, the local airport terminal stays fully operational."
+                },
+                {
+                  "id": "av-sol-2",
+                  "icon": "Undo2",
+                  "title": "Immutable Publish Model",
+                  "description": "No forced hot-patches. No kernel driver updates. Code and UIs are pre-compiled and pushed statically. If an update fails, a one-click rollback instantly switches network traffic to the last working version."
+                },
+                {
+                  "id": "av-sol-3",
+                  "icon": "Database",
+                  "title": "Decoupled Data Architecture",
+                  "description": "Your database shouldn't be a single point of failure. Frontbase isolates databases per edge node. A corrupted file in Atlanta's database will never impact operations in London."
+                },
+                {
+                  "id": "av-sol-4",
+                  "icon": "ListOrdered",
+                  "title": "Crisis Queue Buffering",
+                  "description": "During network degradation, passenger check-ins and crew assignments don't fail—they buffer. Edge Redis queues absorb the shock and sync data sequentially once connectivity is restored."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "av-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "hsl(222 47% 8%)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "av-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Don't let an IT update ground your fleet.",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "av-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Contact our solutions engineering team to see how edge architecture prevents the next catastrophe."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "opacity": "1",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "av-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form | Untitled Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "av-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "Edge-native infrastructure for mission-critical aviation operations.",
+              "columns": [
+                {
+                  "id": "av-col-product",
+                  "title": "Solutions",
+                  "links": [
+                    {
+                      "id": "av-link-crew",
+                      "text": "Crew Scheduling",
+                      "href": "#"
+                    },
+                    {
+                      "id": "av-link-ops",
+                      "text": "Terminal Operations",
+                      "href": "#"
+                    },
+                    {
+                      "id": "av-link-baggage",
+                      "text": "Baggage Tracking",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "av-col-resources",
+                  "title": "Resources",
+                  "links": [
+                    {
+                      "id": "av-link-docs",
+                      "text": "Documentation",
+                      "href": "/"
+                    },
+                    {
+                      "id": "av-link-casestudies",
+                      "text": "Case Studies",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "av-col-legal",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "av-link-enterprise",
+                      "text": "Enterprise Platform",
+                      "href": "/enterprise"
+                    },
+                    {
+                      "id": "av-link-privacy",
+                      "text": "Privacy & Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "av-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "av-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Safe flights powered by the edge.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

@@ -1,0 +1,84 @@
+/**
+ * Ambient shims for credential-gated / optional server-only SDKs. edge-infra is
+ * server-only (RULE 1); these modules are imported dynamically only when their
+ * feature is selected. Declaring them here lets the package type-check without
+ * forcing every consumer to install every cloud/AI SDK. Runtime import resolves
+ * the real module when the dep is present.
+ */
+
+declare module '@neondatabase/serverless' {
+    export class Pool {
+        constructor(cfg: { connectionString: string });
+        query(sql: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
+        end(): Promise<void>;
+    }
+}
+
+declare module 'ai' {
+    export interface GenerateTextResult { text: string; usage: { promptTokens: number; completionTokens: number }; }
+    export function generateText(opts: { model: unknown; prompt: string }): Promise<GenerateTextResult>;
+}
+
+declare module '@modelcontextprotocol/sdk/client/index.js' {
+    export class Client {
+        constructor(info: { name: string; version: string }, opts: { capabilities: Record<string, unknown> });
+        connect(transport: unknown): Promise<void>;
+        callTool(req: { name: string; arguments: Record<string, unknown> }): Promise<{ result: unknown }>;
+        close(): Promise<void>;
+    }
+}
+declare module '@modelcontextprotocol/sdk/client/sse.js' {
+    export class SSEClientTransport {
+        constructor(url: URL);
+    }
+}
+
+declare module '@ai-sdk/openai' { export const openai: (model: string) => unknown; }
+declare module '@ai-sdk/anthropic' { export const anthropic: (model: string) => unknown; }
+declare module '@ai-sdk/google' { export const google: (model: string) => unknown; }
+
+// @upstash/qstash is a REAL dependency since Phase 3 (Receiver verification
+// runs everywhere) — its own types apply; no shim. 'bullmq' below joins the
+// ioredis class: Node-only TCP, dynamic-imported, absent on Cloudflare.
+
+// bullmq — optional dependency (Node-only TCP Redis queue; the worker bundle
+// stubs it and the resolver downgrades with a warning).
+declare module 'bullmq' {
+    export interface JobsOptions {
+        attempts?: number;
+        removeOnComplete?: boolean | number;
+    }
+    export class Queue {
+        constructor(name: string, opts?: { connection: { url: string } });
+        add(name: string, data: unknown, opts?: JobsOptions): Promise<{ id?: string }>;
+        close(): Promise<void>;
+    }
+    export class Worker {
+        constructor(
+            name: string,
+            processor: (job: { data: unknown }) => Promise<void>,
+            opts?: { connection: { url: string } },
+        );
+        close(): Promise<void>;
+    }
+}
+
+// ioredis — optional dependency (Node-only TCP Redis; absent on Cloudflare,
+// where the dynamic import throws and the resolver downgrades to memory).
+declare module 'ioredis' {
+    export interface RedisOptions {
+        connectTimeout?: number;
+        maxRetriesPerRequest?: number | null;
+    }
+    export class Redis {
+        constructor(url: string, opts?: RedisOptions);
+        get(key: string): Promise<string | null>;
+        set(key: string, value: string, mode?: 'EX', seconds?: number): Promise<unknown>;
+        del(...keys: string[]): Promise<number>;
+        keys(pattern: string): Promise<string[]>;
+        incr(key: string): Promise<number>;
+        expire(key: string, seconds: number): Promise<number>;
+        quit(): Promise<void>;
+    }
+    export default Redis;
+}

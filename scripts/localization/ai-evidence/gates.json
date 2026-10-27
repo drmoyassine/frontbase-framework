@@ -1,0 +1,86 @@
+{
+  "scope": "T1 configured AI with deterministic transport only",
+  "baseline": "6156212 plus uncommitted scoped work",
+  "runtime": "Node 24.19.0 Windows",
+  "checks": [
+    {
+      "gate": "ai-http",
+      "exitCode": 0
+    },
+    {
+      "gate": "workflow",
+      "exitCode": 0
+    },
+    {
+      "gate": "storage",
+      "exitCode": 0
+    },
+    {
+      "gate": "external",
+      "exitCode": 0
+    },
+    {
+      "gate": "sdk",
+      "exitCode": 0
+    },
+    {
+      "gate": "security",
+      "exitCode": 0
+    },
+    {
+      "gate": "tenant",
+      "exitCode": 0
+    },
+    {
+      "gate": "conformance",
+      "exitCode": 0
+    },
+    {
+      "gate": "jobs",
+      "exitCode": 0
+    },
+    {
+      "gate": "revisions",
+      "exitCode": 0
+    },
+    {
+      "gate": "postgrest",
+      "exitCode": 0
+    },
+    {
+      "gate": "workspace-build",
+      "exitCode": 0
+    },
+    {
+      "gate": "workspace-check",
+      "exitCode": 0
+    },
+    {
+      "gate": "generation-backend",
+      "exitCode": 0
+    },
+    {
+      "gate": "UI",
+      "exitCode": 0,
+      "tests": 13
+    },
+    {
+      "gate": "AI-mutation",
+      "exitCode": 0,
+      "faults": 8,
+      "sourceAndArtifactRestored": true
+    },
+    {
+      "gate": "external-translation-engine",
+      "exitCode": 0
+    },
+    {
+      "gate": "packed-ai-subpath",
+      "exitCode": 0,
+      "fullDependencyInstallationCertified": false
+    }
+  ],
+  "realProviderCalls": 0,
+  "databaseWritesToOwnerDestination": 0,
+  "deployed": false
+}

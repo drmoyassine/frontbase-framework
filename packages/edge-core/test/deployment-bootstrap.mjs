@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import {defaultDeploymentManifest} from '../dist/deployment.js';
+const {reviewBootstrap,applyBootstrap,reconcileBootstrap}=await import(process.env.FRONTBASE_BOOTSTRAP_TEST_MODULE??'../dist/deployment-bootstrap.js');
+const context={installationId:'11111111-2222-4333-8444-555555555555',target:'docker',destination:'fixture/container'};
+const manifest=defaultDeploymentManifest('docker');manifest.bindings['state-db']={adapterId:'libsql-http',mode:'connect',config:{url:'https://db.example'},secretRefs:{token:'state/token'}};
+const credentials={'state/token':'private-test-credential'};
+function fixture(){let value=null,calls=0,proof=null;const journal={read:async()=>structuredClone(value),compareAndSwap:async(c,revision,next)=>{if((value?.revision??null)!==revision)return false;value=structuredClone(next);return true;}};
+ const executor={preflight:async()=>{},apply:async r=>{calls++;proof={operationId:r.operationId,fingerprint:r.fingerprint,healthy:true,bootstrapDisabled:true};},inspect:async()=>proof};
+ return {journal,executor,get value(){return value},set value(v){value=v},get calls(){return calls},set proof(v){proof=v}};}
+let f=fixture();let review=await reviewBootstrap(context,manifest,f.journal,f.executor);
+assert.equal(f.calls,0);assert.equal(review.phase,'reviewed');
+await assert.rejects(applyBootstrap(context,'wrong',credentials,f.journal,f.executor));
+await assert.rejects(applyBootstrap(context,review.operationId,{},f.journal,f.executor));
+await assert.rejects(applyBootstrap(context,review.operationId,{...credentials,extra:'secret'},f.journal,f.executor));assert.equal(f.calls,0);
+const results=await Promise.allSettled([applyBootstrap(context,review.operationId,credentials,f.journal,f.executor),applyBootstrap(context,review.operationId,credentials,f.journal,f.executor)]);
+assert.equal(f.calls,1);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(f.value.phase,'active');
+assert.ok(!JSON.stringify(f.value).includes(credentials['state/token']));
+await assert.rejects(reviewBootstrap(context,manifest,f.journal,f.executor));
+await assert.rejects(applyBootstrap(context,review.operationId,credentials,f.journal,f.executor));
+f=fixture();review=await reviewBootstrap(context,manifest,f.journal,f.executor);const second=await reviewBootstrap(context,manifest,f.journal,f.executor);
+await assert.rejects(applyBootstrap(context,review.operationId,credentials,f.journal,f.executor));assert.notEqual(review.operationId,second.operationId);
+f.executor.apply=async()=>{throw Error('provider secret value')};const uncertain=await applyBootstrap(context,second.operationId,credentials,f.journal,f.executor);assert.equal(uncertain.phase,'uncertain');assert.ok(!JSON.stringify(uncertain).includes('provider secret'));
+await assert.rejects(applyBootstrap(context,second.operationId,credentials,f.journal,f.executor));await assert.rejects(reviewBootstrap(context,manifest,f.journal,f.executor));
+for(const patch of [{operationId:'wrong'},{fingerprint:'wrong'},{healthy:false},{bootstrapDisabled:false}]){f.proof={operationId:second.operationId,fingerprint:second.fingerprint,healthy:true,bootstrapDisabled:true,...patch};assert.equal((await reconcileBootstrap(context,f.journal,f.executor)).phase,'uncertain');}
+f.proof={operationId:second.operationId,fingerprint:second.fingerprint,healthy:true,bootstrapDisabled:true};assert.equal((await reconcileBootstrap(context,f.journal,f.executor)).phase,'active');
+f=fixture();review=await reviewBootstrap(context,manifest,f.journal,f.executor);f.value.manifest.bindings['state-db'].config.url='https://changed.example';await assert.rejects(applyBootstrap(context,review.operationId,credentials,f.journal,f.executor));assert.equal(f.calls,0);
+f=fixture();review=await reviewBootstrap(context,manifest,f.journal,f.executor);await assert.rejects(applyBootstrap({...context,destination:'another/container'},review.operationId,credentials,f.journal,f.executor));
+f=fixture();review=await reviewBootstrap(context,manifest,f.journal,f.executor);
+const other={...context,destination:'another/container'};
+const canonical=v=>v&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,x])=>JSON.stringify(k)+':'+canonical(x)).join(',')+'}'):JSON.stringify(v);
+f.value.fingerprint=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical({context:other,manifest:f.value.manifest})))),n=>n.toString(16).padStart(2,'0')).join('');
+await assert.rejects(applyBootstrap(other,review.operationId,credentials,f.journal,f.executor));
+f=fixture();f.executor.preflight=async()=>{throw Error('not empty')};await assert.rejects(reviewBootstrap(context,manifest,f.journal,f.executor));assert.equal(f.value,null);
+f=fixture();review=await reviewBootstrap(context,manifest,f.journal,f.executor);f.executor.inspect=async()=>{throw Error('timeout')};assert.equal((await applyBootstrap(context,review.operationId,credentials,f.journal,f.executor)).phase,'uncertain');
+console.log('PASS bootstrap transactions: review fencing, concurrent CAS, credential projection, uncertainty, read-only reconciliation, health/disable proof, tamper/target/preflight refusal');

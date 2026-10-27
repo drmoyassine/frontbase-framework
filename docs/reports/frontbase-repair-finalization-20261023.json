@@ -1,0 +1,321 @@
+{
+  "schemaVersion": 1,
+  "purpose": "engineering-repair-candidate",
+  "runtimeSource": "14ce8f8d620edffd129b2dfb7b3540b66a78c483",
+  "artifactCommit": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+  "runtime": {
+    "node": "22.23.4",
+    "officialWindowsBinarySha256": "dccc52de28d8df2ee22d2062424f8c563070d95d8ad70c54c4bf01d590dec14f"
+  },
+  "workspace": {
+    "check": "PASS",
+    "build": "PASS",
+    "wholeTestSuite": "PASS",
+    "wholeTestSuiteSource": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+    "consoleBoundary": "Console build/check pass; whole functional run excludes the existing console unit-suite target; only descriptive text changed there."
+  },
+  "faults": {
+    "backendSecurity": {
+      "count": 24,
+      "status": "PASS",
+      "boundary": "before adjacent legacy-engine refusal extension"
+    },
+    "workflowAuthoring": {
+      "count": 6,
+      "status": "PASS"
+    },
+    "nodeDnsTransport": {
+      "count": 5,
+      "status": "PASS"
+    },
+    "httpDispatchResetAndEngineRefusal": {
+      "count": 9,
+      "status": "PASS",
+      "restoredArtifacts": true
+    },
+    "behaviorMeasurement": {
+      "count": 6,
+      "status": "PASS",
+      "evidence": "frontbase-behavior-faults-eMUn5w"
+    },
+    "nativeBootstrap": {
+      "count": 2,
+      "status": "PASS",
+      "originalArtifactRetained": true
+    },
+    "frontendEditing": {
+      "count": 9,
+      "status": "PASS",
+      "sourcesRestored": true,
+      "evidence": "plain-page-editor-mutations.log"
+    }
+  },
+  "behavior": {
+    "source": "b7cb5d94a6e8502fc5b6a7ddd8a520a0fdcbb1c2",
+    "qualification": "Four-order source receipt retained. The subsequent plain-page identity and descriptive UI-text fixes have fresh full-suite, tenant, editor fault and native host acceptance; no fresh four-order run is claimed for those fixes.",
+    "total": 334,
+    "orders": [
+      "forward",
+      "reverse",
+      "seed:261022",
+      "seed:33417"
+    ],
+    "orderInvariant": true,
+    "freshContextPerOperation": true,
+    "legacyLedgerUnchanged": true,
+    "legacyLedgerSha256": "6f5cc3f7640a3408a2e0f4de6b20558e172a03042d7ee7340f3ae33db1f744bc",
+    "diagnosticCounts": {
+      "inconclusive": 229,
+      "negative-envelope": 8,
+      "principal-projection": 1,
+      "refusal-observed": 50,
+      "session-effect-observed": 2,
+      "static-response": 6,
+      "unsupported": 31,
+      "verified-read": 7
+    },
+    "contract": {
+      "conforms": 252,
+      "explicitUnsupported": 31,
+      "historicalObservedRefusals": 51,
+      "violations": 0,
+      "unreachable": 0,
+      "noSchema": 0
+    },
+    "notAFeatureCompletenessPercentage": true
+  },
+  "packages": {
+    "success": true,
+    "registryProof": false,
+    "archives": [
+      {
+        "name": "@frontbase/translation",
+        "version": "0.0.0",
+        "sha256": "487c030a9d38a0010d5b98ff01fe7d4edcb34243931eeb58f155fc33c51ffc47"
+      },
+      {
+        "name": "@frontbase/edge-core",
+        "version": "0.0.0",
+        "sha256": "ce3d76eed051967a16e2fc75d587bea2ef0e51410b5bc79fca05038ff8ad3ac1"
+      },
+      {
+        "name": "@frontbase/compiler",
+        "version": "0.0.0",
+        "sha256": "3fb8d48e07c89d2c40dd46e69bde74b6cf12d878840373d24b4b30a62c4187d7"
+      },
+      {
+        "name": "@frontbase/ui-components",
+        "version": "0.0.0",
+        "sha256": "6ed177a54da9e0dcaed16e08696645993728725106e57f110394bd826e2f8b26"
+      },
+      {
+        "name": "@frontbase/edge-infra",
+        "version": "0.0.0",
+        "sha256": "8a5f100b1d294842c5809d00d8c10b2bcdb2adaf9840afde0bc153549e8053d2"
+      },
+      {
+        "name": "@frontbase/backend",
+        "version": "0.0.0",
+        "sha256": "b4c48075670c10e7c060790b5db1fd48f165dd16784280c4d19dc0befcb4c7e3"
+      },
+      {
+        "name": "@frontbase/builder",
+        "version": "0.1.0",
+        "sha256": "2efba350b7160de53237587b4117abe9c8bf10502cbe33a8e561bd47c5563815"
+      }
+    ],
+    "strictProfiles": {
+      "NodeNext": {
+        "status": "PASS",
+        "skipLibCheck": false
+      },
+      "Bundler": {
+        "status": "PASS",
+        "skipLibCheck": false
+      }
+    },
+    "starter": "install/build/test/check and compiled routes PASS",
+    "evidence": "frontbase-r1-consumer-BakyEw",
+    "strictNodeNextAndBundler": true,
+    "independentStarter": true
+  },
+  "freshNode": {
+    "status": "PASS",
+    "evidence": "frontbase-fresh-node-q6RToF",
+    "journey": [
+      "fresh state",
+      "seed/login",
+      "create",
+      "publish",
+      "public/private",
+      "restart",
+      "original session retained"
+    ],
+    "notACleanRoomOrPublicDefaultSourceProof": true,
+    "ordinaryPageEditorialSaveAndRestore": true,
+    "staleEditorTokenDenied": true
+  },
+  "artifacts": [
+    {
+      "path": "examples/cf-full/dist/worker.mjs",
+      "sha256": "eaf757f22c173cec2c88c66b5aa33b61903bc4827ddc40a95583d081cb4a1570",
+      "bytes": 2793184,
+      "gzipBytes": 723728
+    },
+    {
+      "path": "examples/cf-full/dist/vercel.mjs",
+      "sha256": "68960c0c5b7b69f1b72683f9050d8b42026ca3f09c21d3543868834a49cde874",
+      "bytes": 3599032,
+      "gzipBytes": 978529
+    },
+    {
+      "path": "examples/cf-full/api/cms.mjs",
+      "sha256": "68960c0c5b7b69f1b72683f9050d8b42026ca3f09c21d3543868834a49cde874",
+      "bytes": 3599032,
+      "gzipBytes": 978529
+    },
+    {
+      "path": "examples/cf-full/dist/node.mjs",
+      "sha256": "eec5632d478c6a2a7f6d5bb36908e56bddeb1560bd722b20b3680f2990d0146a",
+      "bytes": 269076,
+      "gzipBytes": 73346
+    }
+  ],
+  "staging": {
+    "status": "PASS",
+    "before": {
+      "englishTextHash": "8f593bfcc9a93ed284073d3295c2e505ff010e02f826494332bf7aa88b63d3ce",
+      "arabicTextHash": "a5974bb1eb189eb4d78b8b924e760a3b31fef24cc520c98be15ecfbaa83383ca",
+      "linksPerLanguage": 37
+    },
+    "source": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+    "image": "sha256:1331fea46b48d5313ba1ba58d11de20d2ec30ed732190409197c280ac88a0c74",
+    "archiveSha256": "4113b194d4fc009425eed6d40f7c68365ee46cba76eb759874f1a37c13121d19",
+    "deployedAt": "2026-10-22T23:44:13Z",
+    "publicRoutes": {
+      "/": 200,
+      "/ar/": 200
+    },
+    "exposedSchemasExist": true,
+    "manualAuthenticatorSchemaOverride": false,
+    "standardSchemaReloadAttempted": true,
+    "schemaGrantsOrDataChanged": false,
+    "platformIncident": "https://status.supabase.com/incidents/01M5J8ZQ04EZXAYF10Q75MGC1T",
+    "incidentCausality": "correlated, not established",
+    "nativeWorkflow": {
+      "status": "PASS",
+      "manualOnly": true,
+      "persistedCompletedExecution": true,
+      "labeledVersionPersisted": true,
+      "published": false,
+      "providerDispatches": 0,
+      "source": "610a1af; workflow runtime unchanged by subsequent plain-page/wording fixes",
+      "postUpgradeReloadSource": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+      "postUpgradeVersionRetained": true,
+      "currentSnapshotWordingVerified": true
+    },
+    "previousStatus": "DEPLOYED_ACCEPTANCE_BLOCKED",
+    "recovery": {
+      "observedAt": "2026-10-23T12:09:45Z",
+      "providerCacheLoadedAt": "2026-10-23T06:30:00.106Z",
+      "cacheQueryMilliseconds": 40.9,
+      "cacheErrorsSinceRecovery": 0,
+      "providerLogsWindowEnd": "2026-10-23T12:17:30Z",
+      "databaseRestarted": false,
+      "databasePostmasterStartedAt": "2026-08-11T10:04:47.373332Z",
+      "configurationChangedByThisSession": false,
+      "causality": "Upstream recovered before this session; exact recovery cause not established. No app patch, redeployment or safety-limit relaxation was required."
+    },
+    "finalPublicProof": [
+      {
+        "path": "/",
+        "status": 200,
+        "lang": "en",
+        "dir": "ltr",
+        "textHash": "8f593bfcc9a93ed284073d3295c2e505ff010e02f826494332bf7aa88b63d3ce",
+        "siteVersion": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4",
+        "translationVersion": null,
+        "copyVersion": "0174dc2f040f71a2a5baafccbc38eb3c0cedafb293163bccea3e64b212b39893",
+        "links": 37
+      },
+      {
+        "path": "/ar/",
+        "status": 200,
+        "lang": "ar",
+        "dir": "rtl",
+        "textHash": "a5974bb1eb189eb4d78b8b924e760a3b31fef24cc520c98be15ecfbaa83383ca",
+        "siteVersion": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4",
+        "translationVersion": "9c04c6583e277cdcf7cedb47aeb756046ab5174244afda05833bf3644e2ab86e",
+        "copyVersion": "0174dc2f040f71a2a5baafccbc38eb3c0cedafb293163bccea3e64b212b39893",
+        "links": 37
+      }
+    ],
+    "nativeFrontendEditing": {
+      "status": "PASS",
+      "locales": [
+        "en",
+        "ar"
+      ],
+      "twoFieldBatchSaveEachLocale": true,
+      "anonymousPublicProjection": true,
+      "otherLanguageUnchanged": true,
+      "stagedChangesNotPersisted": true,
+      "perFieldCancelReedit": true,
+      "arabicPerFieldRevert": true,
+      "arabicGlobalCancel": true,
+      "responsiveMenuBothCopiesStageAndCancel": true,
+      "languageDropdownNavigation": true,
+      "arabicInternalLinksPrefixed": true,
+      "originalTextHashesAndAll37LinksRestored": true,
+      "anonymousCapabilityFalse": true,
+      "anonymousInventory401": true,
+      "existingAdminSessionRetained": true,
+      "testEditsRemaining": false
+    },
+    "deploymentIdentityRechecked": "EasyPanel latest deployment still image1331fea46b48, success2026-10-22T23:44:13Z; no redeploy during recovery acceptance.",
+    "historicalCauseBoundary": "Exact account-merge and datasource-runner SELECT 1 receives PostgREST schema-cache initialization failure under both native and guarded fetch. Provider service logs show repeated SQLSTATE 57014 during schema-cache load."
+  },
+  "existingCfAndVercelUpgrades": {
+    "cf": {
+      "status": "PASS",
+      "source": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+      "origin": "https://frontbase-final-cf-261022.studygram-inc.workers.dev",
+      "originalSessionPreserved": true,
+      "publishedMarkerRetained": true,
+      "actualHostHealth": true,
+      "truthfulRemoteRefusal": true,
+      "multiFieldSave": true,
+      "publicProjection": true,
+      "staleTokenRefused": true,
+      "exactOriginalTextRestored": true,
+      "anonymousInventoryRefused": true
+    },
+    "vercel": {
+      "status": "PASS",
+      "source": "27fab67c00339f0d55dbfe6d131d154dfc5f931c",
+      "origin": "https://frontbase-final-vercel-261022.vercel.app",
+      "originalSessionPreserved": true,
+      "publishedMarkerRetained": true,
+      "actualHostHealth": true,
+      "truthfulRemoteRefusal": true,
+      "multiFieldSave": true,
+      "publicProjection": true,
+      "staleTokenRefused": true,
+      "exactOriginalTextRestored": true,
+      "anonymousInventoryRefused": true
+    }
+  },
+  "deltas": {
+    "privateVulnerabilityReporting": "enabled after explicit owner approval on 2026-10-23; authenticated GitHub private-vulnerability-reporting API verified enabled=true; no synthetic report submitted",
+    "namespaceOwnership": "not established; no registry publication",
+    "realNeonAndOptionalProviders": "credential-specific acceptance not inferred",
+    "resetInboxReceipt": "requires configured provider and authorized owned test mailbox; no real message sent",
+    "nativeWindowsNode24": "conformance report followed by 0xC0000005; failed run retained and not credited",
+    "publicDefaultSourceAndDistribution": "separate release gates; no main merge, public package publication or production WP cutover",
+    "stagingDataApi": "RESOLVED: upstream cache loaded06:30UTC; current native frontend and anonymous English/Arabic acceptance pass with exact original copy and37links restored. Provider recovery mechanism not established; no shared configuration or safety deadline changed.",
+    "providerIgnoreRules": "Vercel CLI protective .vercel/.env* ignore entries retained after automatic approval review rejected their removal."
+  },
+  "publicReleaseAccepted": false,
+  "previousRuntimeSource": "b7cb5d94a6e8502fc5b6a7ddd8a520a0fdcbb1c2",
+  "boundedEngineeringRepairTask": "COMPLETE_WITH_PREVIOUSLY_DEFERRED_CREDENTIAL_AND_PUBLIC_RELEASE_DELTAS"
+}

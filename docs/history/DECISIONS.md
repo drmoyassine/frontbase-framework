@@ -1,0 +1,1538 @@
+2026-10-27 native build metadata: under the approved hosted setup, provider build metadata identifies the installation and the consenting provider grant independently proves ownership. Vercel build OIDC identity hints are not authorization and are never retained as credentials; active runtime settings override initial setup metadata. Cloudflare native Git deployment preserves verified existing bindings and refuses unknown/in-progress state. An isolated native preview snapshot may select the approved relay without silently replacing normal self-host defaults or defining a required public control plane.
+
+2026-10-27 isolated Vercel distribution amendment: owner explicitly approved changing only “Frontbase isolated setup relay” from Private to Unlisted to exercise the documented external authorization flow. Direct-link visitors may request installation; search/browse listing remains disabled. Existing scopes and the relay's exact test-recipient/account policy remain unchanged. This supersedes the private-visibility restriction below for this one registration; it does not approve unrestricted handoffs or a public production control plane.
+
+2026-10-27 native ownership implementation under the approved hosted setup: the existing isolated relay uses a create-only durable account/project/production claim, independent of alias, deployment and installation ID. Only the winning ticket redemption can invoke native owner establishment. Claims retain nonsecret identity/proof metadata after encrypted credentials expire, with explicit operator inspection/reset required for uncertain recovery. Do not rely on D1 name uniqueness or replay an uncertain provider mutation. Native button delivery still requires fresh acceptance.
+
+2026-10-27 isolated registration permissions: owner separately approved the private Cloudflare client and actual account consent, and the private Vercel Integration with Team/Project Read, Deployment and integration-owned Project Environment Variables Read/Write plus its registration agreement; contact/support noreply@frontbase.dev. Final Vercel installation approval is for frontbase-hosted-vercel-261026 only. These approvals do not authorize global environment/billing scopes or bypassing callback/ownership checks.
+
+2026-10-27 owner approval supersedes the prior relay rejection for one isolated destination only: https://frontbase-oauth-connect-261027.studygram-inc.workers.dev. Registered client secrets stay server-side; provider grants use encrypted expiring single-use handoffs. Direct self-hosted clients remain available. This is not approval to publish a general hosted control plane, change existing sites or claim public native OAuth acceptance before evidence.
+
+2026-10-27 OAuth delivery boundary: the approved direct self-hosted client path is implemented; a new shared credential relay is not accepted architecture. Automatic approval review rejected it as an additional credential-receiving service without specific destination approval. Retain per-origin registration, default-deny owner setup and existing native buttons while that decision and live authorization remain unresolved. No first-visitor ownership shortcut or CLI-token injection is permitted.
+
+2026-10-27 owner-approved shared OAuth direction: resource selection exposes Connect only for required providers; deployment management may independently require the host provider. Authorized connections persist server-side in the installed app’s existing encrypted Connected Accounts vault. Reuse the same protocol on Cloudflare/Vercel/Docker; adapters retain host capability limits. Native resource bindings must continue independently of a management connection. OAuth client registration, exact callback authorization and target ownership must be verified before native replacement; identity sign-in alone is insufficient for deployment access. Fully self-hosted client configuration remains supported; no required hosted control plane is introduced.
+
+2026-10-26 implementation of the owner-approved hosted setup: CF uses a fixed installation-named D1 coordinator independent of editable app bindings; Vercel uses create-only project/environment revision records with verified duplicate-key rejection. Healthy installed runtimes reconcile receipts without replaying provider writes. Temporary provisioning access can be removed after active completion. Administrator setup uses the secure link only, per owner direction; no manual-token form. See ../plans/hosted-bootstrap-20261026.md.
+
+2026-10-26 engineering finding under the approved hosted-bootstrap scope: a coordinator must have a fixed deployment identity independent of editable application bindings; using any newly selected database as a global lock permits two separate setup sessions to acquire separate locks. The SQL journal now enforces ownership within one coordinator. Provider-level anchoring remains unimplemented; no new provisioning policy or hosted control plane is accepted by this observation.
+
+2026-10-26 implementation detail under approved hosted-bootstrap direction: Docker activation uses the existing engine and a private mounted-volume runtime configuration; existing configured installations never fall back to setup on database failure. SQLite is its default; HTTP adapter alternatives reuse the shared manifest and environment lowering. CF/Vercel coordination is still unresolved implementation work, not assumed platform CAS support.
+
+2026-10-26 owner-approved successor: extend the shared setup experience to a resource-free hosted bootstrap on Cloudflare/Vercel and Docker. Retain local wizard and existing native paths until replacement acceptance. Explicit owner capability and host persistence are required; no anonymous takeover, automatic state migration or Docker socket. See ../plans/hosted-bootstrap-20261026.md.
+
+2026-10-26 owner-approved deployment entry decision: reuse the existing local browser Bindings wizard for full provider/resource configuration and secure administrator setup; retain native buttons for default profiles. No new hosted launcher/control plane. Existing resources require dedicated empty-state admission. See [implementation and limits](../plans/local-deployment-onboarding-20261026.md).
+
+# Frontbase Framework: Decisions Log
+
+## 2026-10-26 Reusable record templates, retained routes and SEO ownership
+
+Owner requires programs, institutions and articles to keep their respective reusable templates, including retained availability notices. Existing approved notice content and original URLs remain recoverable in their immutable catalog; explicit source-identity associations on the target template select the real connected record and parent, never visitor input. Associations are captured and collision/orphan checked through the existing review/prepare/publish lifecycle. Directory selection and detail-route publication are independent; retained records do not imply current availability. Detail saved views stay limited to published record identities; raw-table anonymous access is not widened.
+
+Template layout root owns optional versioned defaults, ordered first-match Conditions and stable record overrides, with explicit language patches. SEO resolves existing scalar/fallback record bindings on the server against the same authored detail row, and canonical/hreflang stay with existing routing. Effective notice/action settings are ordinary page variables for normal elements, Conditions, Block Versions and Actions; no alternate notice renderer or per-record layout copies. The URLs drawer uses progressive disclosure: searchable paginated records, focused Overview/SEO/Exceptions, separate rule authoring and existing builder design/content editors. Settings writes preserve all layout properties and compare existing hash plus full layout; activation remains separate. Existing settings without this optional root property retain their behavior. Engine block admission and SSR share a whitelisted route/settings context before conditions run. Locale SEO keeps semantic record data separate from formatted metadata; matching localized record fields are projected before policy evaluation. Large scoped list memberships reuse existing parameterized saved-view compilation with explicit request bounds.
+
+
+## 2026-10-26 Navigation overflow and translation settings ownership
+
+Owner approves scroll/wrap controls on existing Row/Column elements, with automatic bounded arrows and optional native scrollbar visibility. Existing overflowing section-link navigation is progressively enhanced, including mobile institution sidebars; arbitrary overflowing layouts are not reclassified. Native touch scrolling remains available and RTL follows reading direction.
+
+General owns Languages & translations. Language/AI, storage, review/publication links and advanced jobs are disclosed on demand; visited panels retain local drafts when collapsed. Existing revision-guarded APIs, adapters, explicit generation/publication actions and saved settings remain unchanged. Legacy Translations URLs redirect to the General subsection. This changes presentation, not release scope.
+
+## 2026-10-26 One site identity and datasource operation ownership
+
+Owner supersedes the previous contact-settings placement: header contact email/WhatsApp are ordinary Menu items with Actions. General has one Site settings form and one name for public identity and project metadata, with branding staged until explicit Save. Existing revision-guarded configuration and project APIs remain separate; a partial save is reported and requires reload, never represented as atomic success. No new storage adapter is introduced.
+
+Data Studio keeps Connections for connection/test/inspection/relationship work and Saved Views for reusable filter inspection/editing/deletion. Connection cards link to filtered Saved Views rather than duplicating view operations. Used views cannot be deleted through this UI. Shared collection mappings/scope and optional legacy maintenance sit under Advanced publication setup. Existing URLs remain compatible.
+
+Destination is retired from authoring and publication readiness. Its optional legacy value and old binding decoding are retained solely to avoid breaking existing serialized pages/publications; no automatic content deletion or republishing occurs. New default hero copy has no Destination requirement. Builder shared setup exposes index routes; header actions belong to Menus. Existing published contact links remain readable while authors can replace them through normal element/Menu Actions.
+
+
+## 2026-10-25 Consolidate template configuration ownership
+
+Owner retires the Template settings tab. Datasources owns shared collection mappings, relationships and publication scope; the builder owns shared routes/contact values and homepage appearance, plus existing prepare/review/publish controls. Both edit the same revision-guarded configuration document: moving UI does not migrate or delete saved configuration, change adapters or activate a publication. Legacy tab URLs redirect to the mapping entry point, with a Pages link for builder controls. Legacy data/layout conversion tools are opt-in maintenance disclosures in their respective surfaces. Homepage publication from the existing published base uses the retained API and refuses unsaved builder edits.
+
+## 2026-10-25 Gallery and differentiated detail presentation
+
+Owner specifies converged cover/gallery behavior, native video support and editable header actions/facts. Gallery is a reusable shared-renderer UI element with ordinary media bindings and existing storage selection/upload, not an institution-only renderer. One item renders as a cover; multiple items render as configurable tiles. Native video controls and allowlisted YouTube/Vimeo embeds avoid arbitrary embed HTML. Institution templates use desktop sidebar categories and subsections, collapsing on mobile; programs retain horizontal section navigation and expose tuition/duration with Apply in the header. Consultation/Apply remain normal Properties → Actions configuration using existing destinations. On phones they remain in the header instead of a fixed overlay, avoiding overlap with the footer badge. Optional rankings require mapped source data; no ranking is synthesized. Explicit starter upgrades retain existing record bindings and text IDs where possible and use the existing save/review/prepare/publish lifecycle.
+
+## 2026-10-25 editable detail templates and route-bound record context
+
+Owner authorizes institution/program detail templates composed from existing elements and data bindings. Current-record selection uses existing hidden filters with `page.recordId`/`page.parentId` resolved from the active immutable publication index. Neither visitor query parameters nor the authoring sample path choose the served identity. Public continuation re-applies mandatory filters; canvas substitutes a transient captured sample only. Existing datasource/view/tenant guards and frontend source/translation write routing remain authoritative. Text, sections, optional facts, related program lists, map embeds and inquiry actions remain ordinary configurable children. Navigation uses Properties → Actions quick actions (or the existing automation executor); explicit migration promotes legacy record hrefs without replacing existing click workflows. Detail paths join the existing per-path review/prepare/publish lifecycle, retaining its per-unit live-data policy. This is staging product work, not a public-release or production-cutover decision. Single-record detail content uses the existing bound Card hydration and ordinary editable children; related records remain Repeaters. This preserves typed composed-field editing and shared record provenance. The explicit wrapper upgrade retains component/translation IDs, and bound Cards participate in the existing display inventory and path-scoped locale channel without exposing unauthored row fields.
+
+
+## 2026-10-24 provenance-based frontend text saves
+
+Owner explicitly requires source-record edits to update their connected records, translated record edits to update the configured translations datasource, and translated/static UI copy to update active state in its selected language. Reuse owned datasource resolution, native PostgREST transport, relationship discovery, manual translation revisions and immutable locale activation; do not invent per-card text overrides for business records. Stage edits locally until the page save. Use typed raw inputs for composed record values, keyed original-value CAS writes and private progress receipts across independent stores; do not claim cross-database atomicity. Existing editorial revision/archive and publication approval remain authoritative. Generic card highlights and split-value badges are ordinary editable components, not a fixed program renderer.
+
+## 2026-10-24 shared field fallback and editable program cards
+
+Owner approves a clean program cover with metadata below and related institution image fallback for empty values and image load errors. Use the current-item `record` scope, preserve legacy bracket references, and generate readable dot references for ordinary fields/relationships. Resolve safe own flat or nested keys consistently without executable expressions. Bounded `||` chains use first nonempty semantics (preserving zero/false), while existing Liquid syntax remains supported through its engine. Source/fallback field choices are normal Image properties and ordinary authored card children; reuse relationship discovery and RPC projection, with no datasource rewrites. Source-record translation completeness remains outside this card-layout change.
+
+## 2026-10-24 preserve RPC capabilities and prepare saved-template derivatives
+
+Owner directs reuse/consolidation of the existing HTTP RPC family for Supabase and standalone PostgREST. Endpoint, authentication, selected schema and explicit capability support determine compatibility. Keep specialized UI RPCs, validation, filters, pagination and relationship projection; native table reads remain an explicit compatibility path. The canonical setup is `packages/backend/src/compat/supabase-setup-sql.ts`. Its thin `execute_query` wrapper is not the entire optimized UI RPC family, and no deployed performance claim is inferred.
+
+Staging diagnosis confirms the RPC reads successfully; full catalog preparation refuses four program URLs belonging to another site's origin. Preserve that URL admission guard. Updating an existing saved template must not reselect the whole mutable datasource or alter published membership. Reuse `SitePublicationManifestStore.prepareLayouts` to replace one saved, same-role template against its expected state hash and a reviewed base with matching configuration. Retain exact content chunks/index, approvals, redirects, other templates and static pages. This produces an unreviewed private candidate; existing explicit review, activation CAS and locale freshness checks still apply. [Delivery evidence](../plans/record-card-starters-20261024.md).
+## 2026-10-23 shared visual data binding and selected relationship reads
+
+Owner requests one Table/Saved View drilldown and composable items across data elements. Reuse existing datasource adapters, ordinary builder child trees, record expressions and Block Version inheritance. A saved view owns its table/schema/filters; show its physical source as read-only detail. Related record values follow inspected foreign keys and exact authored field paths, with bounded batched reads and selected-field output. Existing generated projection lineage may be read from the same owner's admitted active publication; do not widen SQL projections or grants to expose all fields. Public protected reads require exact reviewed field admission. Keep write Forms on explicit table targets; refuse bare PostgREST aggregate operations lacking adapter support. [Implementation and verification](../plans/visual-data-binding-20261023.md); [operator guide](../guides/visual-data-binding.md). This implements owner-authorized authoring behavior without changing the accepted release edition or datasource authorization model.
+
+## 2026-10-22 native deployment evidence and cleanup boundary
+
+Within the owner-approved six-task stream, use an immutable named nonrelease source ref for fresh native tests; preserve independent provider-clone history and exact selected resource identities on upgrade. A native source repair is never clean-button acceptance. Explicit owner approval covers only the named obsolete fixture cleanup after verified private backup and separately named free-tier clean tests. Direct provider code rollback remains distinct from managed-journal adoption and data restoration. The approved branch retry uses codex-native-deploy-261022 after the tag clone stalls, retaining the empty copy and reusing its free database. HTTP libSQL migrations use existing write transactions; local file/memory behavior and PostgreSQL/D1 paths remain unchanged. Transient Vercel initialization errors must not permanently latch a failed host. Source81308ed/artifact f273a81 and the [actual repaired-host acceptance](../plans/frontbase-vercel-coldstart-repair-20261022.md) retain the distinction between successful native import and fresh final-source runtime certification. This records bounded execution of existing deployment intent, not a new release scope or package decision. [Evidence and current limits](../plans/frontbase-deployment-closeout-20261021.md).
+
+## 2026-10-21 live optional resources and rollback — native runtime/publication verified; default buttons open
+
+[Provider/failure receipt](../plans/frontbase-deployment-provider-failure-20261021.md): CF native build is now READY after exact selected-resource config repair, but real HTTP exposed an outer SESSION_SECRET guard blocking the existing self-host persisted fallback. The self-host-only correction passes actual-entry SQLite/D1-adapter session/default-deny tests, two independent faults, full build/check and deployment gates; the isolated private-copy native rebuild is pending live acceptance. Vercel native Turso provisioning succeeded and the owner started deployment. The old empty Git shell is reversibly renamed and retained. Default main buttons, fresh placeholder rewriting, complete native app acceptance and external optional providers remain open. No secret rotation, resource deletion, paid upgrade, release or CF-22 activation.
+
+
+Native live follow-up: corrected CF Git source79cecf5 is READY and active with exact selected D1/KV; homepage/console200, private API401 and seeded setup lock pass. Owner-signed-in Vercel browser create→drag/edit→save→publish succeeds; /native-vercel-acceptance-261021 returns200 with the expected heading. The explicitly approved recovery remains separate from the automatic Git candidate blocked on commit-email/GitHub-account matching. Default main buttons, fresh placeholder rewriting, new-project post-redeploy persistence and external optional providers remain open; CF owner-signed-in create/edit/save/publish now also passes: /native-cf-acceptance-261021 returns anonymous200 with the expected heading, private pages remain401, and a full builder reload retains session/content/Published status. No existing site, protection, key rotation or paid resource changes. [Current receipt](../plans/frontbase-deployment-provider-failure-20261021.md).
+
+## 2026-10-21 Vercel operation reconciliation — bounded preview recovery verified
+
+[Operation-bound recovery](../plans/frontbase-deployment-vercel-reconciliation-20261021.md) adds nonsecret operation/normalized-plan metadata and explicit known-URL resume through existing CLI/journal/target guards. Resume performs remote reads only; exact matching completion updates local bookkeeping. Legacy unmarked attempts, ambiguous uploads, unknown in-flight outcomes, wider drift/CAS and automatic rollback remain excluded. Full build/check, retained deployment/security/artifact gates and thirteen independent recovery faults pass. Actual approved-preview recovery refuses an unrelated operation, verifies the exact marked READY candidate and preserves the original session, byte-identical pages and public content without another upload. The live list response represents preview as explicit null; this is normalized while missing targets and production mismatches remain refused. State/session keys, provider resources, staging/translation and CF-22 are unchanged. No release or general host-parity claim.
+
+
+## 2026-10-21 selected-bucket HTTP storage — deterministic and preview preservation verified
+
+Under the accepted editable-profile requirement, [S3 storage delivery](../plans/frontbase-deployment-s3-storage-20261021.md) reuses SigV4 HTTP and the native factory/discovery seam. One pre-existing physical bucket backs private project/environment/tenant namespaces and the logical files bucket. Host JSON carries selected bucket/keys; explicit none suppresses legacy storage credentials. Physical bucket management, existing-object import and permanent public assets remain excluded; no provider resource or key is provisioned. Bounded listing pagination, eleven new faults, full build/check and retained deployment/storage/security/conformance/no-leak gates pass after the documented native-process retry. External S3 credentials are absent, so real provider acceptance is explicitly skipped. The final existing disposable preview now preserves its original session, exact page listing, published content and state resource with storage disabled. Eighteen UI cases pass; unsupported emptying is disabled while native R2 retains its supported action. No host parity/release claim, staging/translation change or CF-22 activation.
+
+
+## 2026-10-21 controlled Vercel optional bindings — local gates and preview preservation verified
+
+Under the accepted editable-profile requirement, [cache/vector/queue change delivery](../plans/frontbase-deployment-optional-bindings-20261021.md) reuses reviewed local redeployment and explicit none environment values. Legacy fallback credentials are suppressed when the host binding is disabled; tenant registry precedence remains. State migration and unsupported roles stay refused. Prepared/failed attempts must retry the same recorded plan before another change; no environment rollback or remote CAS is implied. Full build/check, six new faults and retained deployment/security/conformance/no-leak gates pass. Existing disposable preview redeploy now preserves the original session, byte-identical pages, published content and state resource; real external-provider activation and full CF/Vercel profile/button/release acceptance remain open. No new architectural package, resource provisioning, staging/translation work or CF-22 activation.
+
+
+## 2026-10-20 Vercel first-project target and recovery boundary
+
+Actual fresh-host evidence invalidates treating a requested preview flag as provider truth: CLI 64.7 can assign the first project deployment to production. Refuse an empty-history preview before environment writes, and require actual READY target/project/team verification before success/setup-link issuance. Production initialization requires explicit authorization; no production database connection is inferred. Expose existing setup-only renewal through managed redeploy while retaining the journal and session key. Use documented source archive upload with explicit local-credential/generated-output exclusions, tested against ignore semantics and independent faults. Unknown network/upload outcomes still require reconciliation, not replay or stale-lock auto-removal. Native browser-button acceptance remains unverified under the owner's CLI-only instruction. This narrows supported execution; it does not change the framework package boundary, release scope or paused CF-22. [Fresh CLI evidence](../plans/frontbase-deployment-vercel-fresh-20261020.md) now verifies empty-state first-admin setup and actual managed-command session/page preservation after recovery.
+
+
+## 2026-10-20 Vercel Marketplace profile execution boundary
+
+Within the owner-approved editable profiles and isolated free deployment scope, reuse the existing HTTP libSQL runner and deploy script. A connected Turso integration is a verified resource reference, not a second database driver or a downloaded credential bundle. Preserve explicit state selection and session secrets, enforce exact team/project/environment membership, and keep unsupported binding changes behind a pre-write refusal. Local nonsecret journals are operation records, not cross-machine locks, remote CAS, backups or proof that runtime reconfiguration succeeded. Native button and fresh journal installation acceptance remain separate from live lower-level executor acceptance. [Evidence](../plans/frontbase-deployment-vercel-live-20261020.md). No package or release-scope change; CF-22 stays paused.
+
+
+## 2026-10-20 shared Bindings editor and review-only host metadata
+
+Under the accepted editable-profile requirement, share a browser-only DOM editor from the existing private console source between bootstrap and the running system-engine dialog, reusing narrow core contracts and the authenticated API client. Managed CF uploads may include a strictly projected nonsecret manifest, verified against actual native identities. Expose it only to the self-host deployment operator; cloud/other-tenant callers are refused. Running review classifies proposals and exports data without credential values, persistence, provider authority or an applied-success claim. Keep actual changes in separately reviewed executor/migration work; do not adopt the older stored-engine no-op reconfigure path. Extend native private storage affordances through explicit whitelisted capability metadata, preserving server refusals and permanent-asset limitations. No new package, hosted control plane, rollout claim or CF-22 activation. [Evidence](../plans/frontbase-deployment-shared-bindings-20261020.md).
+
+## 2026-10-20 managed Cloudflare identity implementation boundary
+
+Under the accepted state/secret-preserving editable deployment requirement, retain strict nonsecret local receipts, per-user machine-local account/Worker locks and pre-mutation uncertainty checkpoints. Reuse compiler/native adapters; identify resources by D1/KV IDs and R2 creation identity, mark owned Workers and operation-tagged versions, verify before/after uploads and preserve remote variables/secrets. Recovery confirms completed known uploads only; unknown create outcomes and unmarked/older resources are never automatically adopted. Fixed-origin bounded metadata reads use the supported Wrangler credential bridge in memory, not credential-file extraction or a hosted control plane. No remote CAS, automatic migration/secret rotation or cross-machine lock claim. [Evidence](../plans/frontbase-deployment-managed-lifecycle-20261020.md). This records implementation within the owner-approved lifecycle scope, not a new package, rollout promise or CF-22 activation.
+
+
+## 2026-10-20 native R2 implementation boundary
+
+Under the accepted native Cloudflare binding/profile requirement, [native private R2](../plans/frontbase-deployment-native-r2-20261020.md) reuses StorageProvider and the existing resolver through a host-only per-tenant factory. One private physical bucket contains isolated logical files namespaces; physical management stays at deploy time. App-origin/method/tenant/object/expiry-bound HMAC grants provide bounded HTTP GET/PUT without inventing S3 credentials or enabling a public bucket. The signing domain is separate from session JWTs; existing session-key rotation invalidates access grants. Existing connected providers retain their explicit resolution. Grants are expiring bearer URLs, not permanent public assets; private native transfer/management limitations and remaining UI/reuse/button gates must remain visible. No new package, hosted control plane, release claim or CF-22 activation.
+
+
+## 2026-10-20 local deployment bootstrap implementation boundary
+
+Under the accepted editable-profile/no-hosted-control-plane requirement, the first [bootstrap implementation](../plans/frontbase-deployment-bootstrap-20261020.md) is an ephemeral Node loopback tool, outside application runtime. It imports the existing typed deployment contract and adapter descriptors directly; authenticated database-backed reconfigure discovery is not a bootstrap dependency. One-time fragment claim, private HttpOnly session, strict host/origin checks and bounded JSON gate review. Credential values stay in memory and are available only through a trusted local-process one-shot handoff, never a read API or persisted browser storage. The default mode validates only; an explicitly enabled [bounded new Worker/new D1 execution](../plans/frontbase-deployment-handoff-20261020.md) now calls the existing compiler through a private current-review/one-attempt handoff. Account/name, new-resource and build-snapshot guards precede writes; failures preserve resources and require review. No publicly reachable provisioner or second application state store is introduced. Native deployment buttons, generic provisioning/reuse/redeploy and post-deploy form reuse remain implementation gates; no new package, host parity or release acceptance is inferred.
+
+## 2026-10-20 editable deployment profiles; Cloudflare and Vercel priority
+
+Owner accepts [target profiles](../plans/frontbase-deployment-profiles-20261020.md) as recommended prefilled bindings, not provider restrictions. Prioritize Cloudflare, then Vercel; defer Deno. Before deployment, reuse Bindings configuration with compatible implemented-adapter dropdowns, resource selection and secure credential entry. Required bindings validate before deployment; optional features can be disabled. Preserve explicit user choices across profile updates/redeploys; changing state storage requires controlled migration. Bootstrap must not require an existing application database or mandatory hosted Frontbase control plane. Reuse existing adapters/resolvers/credential paths and the one engine; account/resource eligibility and readiness are distinct from a rendered resource card. No fresh deployment acceptance, automatic paid activation, translation-stream change, package addition or CF-22 resumption is implied. Exact provisioning/bootstrap mechanics are implementation gates, not settled working claims.
+
+## 2026-10-19 locale-preserving public navigation
+
+Under the owner's dropdown/internal-URL correction, reuse one pure internal-route helper for SSR navigation projection and hydrated public anchors/GET forms. Native dropdown choices remain crawlable links and preserve equivalent source path/query. Prefix only trusted public route destinations; preserve APIs/assets/downloads, external destinations and explicit language-return links. Existing reviewed source routing and redirect integrity gates resolve `/ar/...`; approved shared-shell translations apply without claiming untranslated body copy is Arabic. Source fallback keeps its source canonical and gains no translated head alternates. This extends navigation continuity without changing source records, published translation revisions or the broader translation/release acceptance boundary. [Evidence](../plans/frontbase-homepage-arabic-publication-20261019.md).
+
+## 2026-10-19 bounded complete Homepage locale publication
+
+Under the owner's explicit autonomous Homepage/switcher request, use the existing reviewed active site plus HTTP translation revisions to inventory the rendered anonymous display surface. Reuse original plain-page identities and generated drafts; author remaining text as manual revisions. A prepared immutable derived catalog captures exact revision references/text and current source/configuration/site fingerprints. CAS activation checks external revisions and all captured fences; it never changes source data or silently publishes incomplete fallback. This catalog is a publication artifact, not a frozen-record data mode: list source rows still resolve live per request and changed source requires re-review. Native Navbar publishes only fresh activated locale links; URL is authoritative and explicit clicks save preferences. The bounded Homepage contract refuses interactive localized lists and alternative block versions until their complete identities/query behavior are implemented. The same/separate translation datasource choice, pure HTTP runtime and six-package governance remain; the separately accepted translation candidate is not thereby npm released. Uncertain free-provider attempts retain accounting history; replacing unsent work through manual translation does not establish zero usage. [Evidence](../plans/frontbase-homepage-arabic-publication-20261019.md).
+
+## 2026-10-19 operator opt-in for reviewed translation execution
+
+The owner authorizes the first bounded Arabic/free-OpenRouter pilot using Transo and the existing translations protocol. Expose the existing backend execution gate through the shared CMS host option and exact `FRONTBASE_TRANSLATION_EXECUTION_ENABLED=1` on each host entrypoint; absent/other values remain disabled. This enables administrator-approved, source-pinned, request-accounted draft batches only, with no automatic dispatch, new queue, paid fallback or native locale-publication claim. Install the existing additive accounting protocol administratively in translations; keep application access pure HTTPS and public unexposed. [Pilot evidence](../plans/frontbase-translation-first-pilot-20261019.md). Release scope and paused CF-22 are unchanged.
+
+## 2026-10-19 owner approves per-request schema selection
+
+Keep a connection default, but allow owned Inspector requests to select any API-exposed/permitted Supabase/PostgREST schema. Persist `source_schema` on saved views and `sourceSchema` on authored list bindings; isolate schema/table metadata, row caches, layouts and sessions. Reuse the existing guarded HTTP adapter and published-view authorization. Do not grant/expose schemas or silently fall back. Legacy null-schema views retain their prior default semantics until saved; unsupported writes refuse rather than target another schema. [Implementation and evidence](../plans/frontbase-datasource-schema-selection-20261019.md). No package/release scope or CF-22 change.
+
+## 2026-10-19 owner approves shared Supabase/native PostgREST configuration
+
+Extend the existing Supabase datasource/HTTP client with explicit endpoint format and exposed schema selection; retain standard Supabase/public defaults. Native PostgREST uses its supplied REST root and existing guarded HTTP transport, with no separate package/driver or generic SQL RPC installation. Connectivity is a bounded read-only metadata/schema probe, distinct from SQL-based Inspector and application-specific protocol capabilities. Round-trip only non-secret settings; blank flat credential edits preserve encrypted saved values. [Implementation and evidence](../plans/frontbase-native-postgrest-datasource-20261019.md). This does not change package/release scope, translation execution authorization or paused CF-22.
+
+## 2026-10-18 owner adds OpenRouter translation support
+
+OpenRouter is an additional owned provider connection for the existing translation host, not a second engine or queue. Reuse the canonical injected HTTP AI transport with a bounded protocol option, fixed guarded origin, encrypted account reference and existing review/allowance lifecycle. Free model IDs additionally request zero pricing; required parameters, no provider fallbacks and denied provider data collection fail closed if unavailable. Keep the model explicitly selected and execution disabled by default. [Implementation and evidence](../plans/frontbase-translation-openrouter-20261018.md). Real-provider acceptance, deployment and release gates remain separate; no new package or CF-22 change.
+
+## 2026-10-18 saved-view translation integration boundary
+
+Under the accepted live-view/HTTP/selected-content requirements, [saved-view inputs](../plans/frontbase-translation-saved-view-inputs-20261018.md) reuse SyncStore ownership and the existing Data Inspector filter AST. The HTTP predicate adapter refuses unsupported semantics rather than dropping rules. Both projection reads and view-definition checkpoints participate in existing review/job fences; underlying row identity is shared with direct selection. Only typed determinate source changes convert to a false permit; transport failures keep conservative unknown accounting. No second saved-view format, queue, SQL-execution RPC, package or native source transport. Real-provider/native-publication acceptance, broader adapters and release gates remain separate; CF-22 stays paused.
+
+## 2026-10-18 selected menu/live-input implementation boundary
+
+Under the accepted owned-content/HTTP-only requirements, [menu/live inputs](../plans/frontbase-translation-menu-live-inputs-20261018.md) extend the existing sealed review and job/accounting lifecycle. The initial live selector is an explicit public-schema table/key/text column, not a saved-view binding. It reuses the canonical Supabase/PostgREST client through a narrow export and existing owned credential resolver. Source projection, uniqueness and current connection/text checks are mandatory; record identity stays out of provider prompts. Same/separate translation storage remains optional. Saved-view selection, other source schemas/adapters and real-provider/native-publication acceptance remain explicit gates. No new queue, persistence protocol, package, native runtime transport, release direction or CF-22 activation.
+
+## 2026-10-18 native batch UI integration boundary
+
+Under the accepted selected-content/explicit-approval requirements, [native Settings review](../plans/frontbase-translation-review-ui-20261018.md) uses server discovery and the existing execution extractor, sealed reviews and persisted jobs. Shared host/UI schemas live in the narrow `@frontbase/edge-core/localization/batches` subpath; the standalone engine remains independent. No browser cache/queue or client-side eligibility authority. Explicit bounded continuation is still the initial delivery mode; default-disabled host execution, real-provider approval and protocol-upgrade boundaries remain unchanged. No new provider/package/release direction or CF-22 activation.
+
+## 2026-10-18 reviewed batch implementation boundary
+
+Under existing selected-content/explicit-allowance requirements, [bounded batch orchestration](../plans/frontbase-translation-reviewed-batches-20261018.md) composes the existing job/accounting lifecycle rather than a second queue. Initial extraction is native Default page plain text only; exact server review and explicit approval precede registration/dispatch. Start/Continue require a trusted host gate that defaults false. Delivery is bounded administrator continuation, not unattended scheduling. Atomic host checkpoint predicates and final source/configuration checks fence cancellation races; remote storage is not transactionally atomic with host settings. No real-provider authorization, protocol change, package/release-scope change or CF-22 activation.
+
+## 2026-10-18 reconciliation implementation boundary
+
+Under the accepted explicit-allowance/HTTP requirements, [bounded reconciliation](../plans/frontbase-translation-allowance-reconciliation-20261018.md) freezes first and fences jobs before proving release. Unknown dispatches remain held unless explicitly counted as consumed requests; the original ledger is retained and physical completion is not implied. A persisted four-step cursor supports serverless continuation. Closed receipts/history and exact-value CAS gate fresh allocation; stale continuations cannot reopen closure. This is per-allocation request accounting, not a monetary/global-provider guarantee or authorization for real AI. No new protocol, transport, dependency, release direction or CF-22 scope.
+
+## 2026-10-18 host allowance implementation boundary
+
+Under the accepted explicit-allowance and HTTP-only requirements, the [host request policy](../plans/frontbase-translation-host-allowance-20261017.md) first enforces physical request/concurrency/input-message-byte and provider output request bounds. It does not invent a tokenizer or monetary price guarantee. One immutable host checkpoint precedes remote allocation; changes deny further dispatch and cannot reset capacity. Settlement stays on the original ledger. There is no automatic close/reset; explicit cancellation/reconciliation precedes future reallocation. This is bounded implementation evidence, not a new provider, release direction or paid-generation authorization.
+
+## 2026-10-17 additive HTTP accounting implementation boundary
+
+Under the accepted HTTP-only and durable allowance requirements, [HTTP accounting receipt](../plans/frontbase-translation-accounting-http-20261017.md) preserves job protocol1 and negotiates accounting separately. Accounting and jobs share the same project transaction lock; dispatch and attempt state commit atomically. Unknown capabilities fail closed. SQL installation remains an explicit administrative operation, never runtime setup or a generic SQL endpoint. Real local transactional evidence does not certify the owner destination or complete mandatory host monetary policy. No package-count, release-direction or CF-22 change.
+
+## 2026-10-17 accounting implementation boundary
+
+Under the accepted durable allowance requirement, the [T2 reference foundation](../plans/frontbase-translation-accounting-foundation-20261017.md) shares job transaction/lease authority; dispatch records physical attempts, while unknown outcomes retain reservations and prohibit silent refund/retry. Generic integer units do not imply a dollar budget without host pricing/bounds. Compatibility use of the standalone runner without accounting does not authorize a Frontbase generation endpoint; a future exposed handler must require accepted accounting and reviewed batch policy. HTTP parity and actual PostgreSQL evidence remain open. No database transport, package-count or release-direction change.
+
+## 2026-10-17 implementation boundary for reused AI invocation
+
+Under the accepted HTTP-only/owned-account/standalone-engine requirements, [T1](../plans/frontbase-translation-ai-t1-20261017.md) adds a server-only injected invoker shared by configured workflows and translation; it does not add a provider SDK dependency or credentials store. Initial protocol acceptance is one existing OpenAI connection type; other provider adapters remain capability-gated. Existing SDK workflow defaults are preserved, not re-certified. Saving reference-only AI settings is not generation or spend authorization; no generation endpoint until durable accounting. This is an implementation boundary, not a new vendor-exclusivity, runtime-selection, release or package-count decision.
+
+## 2026-10-17 implementation boundary for optional translation storage
+
+Under the accepted same-or-separate datasource requirement, selection references an existing owned datasource rather than storing another credential copy. The current host persists a server-generated project UUID in tenant settings, retaining it through clear/retarget operations. Separate installations sharing a destination must not collide through a common default tenant/project name. Do not accept project identity or tenant from a settings request. Current protocol remains fixed to translations and Supabase/PostgREST HTTP; other kinds require equivalent acceptance. Read-only connection checks do not certify write permissions or install schemas. [Implementation and bounded evidence](../plans/frontbase-translation-storage-20261017.md). No additional package or release/CF-22 scope change.
+
+## 2026-10-17 owner requires pure HTTP translation persistence and a lean database service
+
+The accepted translation runtime transport is HTTP through the existing Frontbase Supabase/PostgREST adapter. No direct PostgreSQL connection, TCP/socket API or Hyperdrive requirement for edge consumers. Atomic mutations belong in narrow database RPCs, one HTTP request per transaction; no arbitrary SQL runtime endpoint. This supersedes the direct PostgreSQL translation bridge choice recorded below. Owner additionally directs a separate PostgreSQL/PostgREST service and destruction of the full Supabase deployment. All translation objects use translations; public remains reserved. [Deployment evidence](../plans/frontbase-postgrest-owner-deployment-20261017.md) and [bounded HTTP implementation evidence](../plans/frontbase-translation-http-20261017.md). Existing framework providers outside this translation scope are not removed or certified by this decision. No framework release/CF-22 change.
+
+## 2026-10-17 owner requires translation to reuse existing database runners
+
+Historical direct-PostgreSQL bridge mechanics below are superseded by the accepted pure-HTTP decision above. The reuse requirement remains; the [current bridge](../plans/frontbase-translation-http-20261017.md) reuses canonical Supabase/PostgREST client/credential/fetch setup.
+
+The standalone translation engine must reuse Frontbase's configured transport/connection adapters through host-side dependency injection. Translation owns its domain persistence, not a second database client, credentials system or Frontbase-runner implementation. The edge-infra bridge consumes canonical `DbRunner`; the engine has no reverse Frontbase dependency. Initial async integration requires transactional PostgreSQL; other providers remain unsupported until equivalent guarantees are demonstrated. [Implementation and bounded evidence](../plans/frontbase-translation-runner-integration-20261017.md). No automatic datasource provisioning, provider certification or release-scope/CF-22 change.
+
+## 2026-10-16 owner requires standalone edge-native AI translation package
+
+The translation engine is an independently consumable Apache-2.0 npm framework package, `@frontbase/translation`, usable without Frontbase's builder/backend/renderer or a required hosted control plane. This explicitly supersedes the six-package retention rule for this addition: it is the seventh framework library candidate, with its own release gates, not a claim of seven published libraries. Keep generic identities, validation, translation lifecycle, memory/job/release policies and provider-neutral ports in this package. Host adapters supply durable storage, AI transport, scheduling and trusted scope; Frontbase owns its extraction/UI/auth integration and consumes the same engine. No engine dependency on its host consumers, no duplicated renderer and no mandatory microservice. Existing core localization imports become compatibility forwards to one implementation. Same/separate translation datasource remains optional and supported by the same contract. The full AI engine is a development target; the extracted M0 primitives alone are not that delivered feature. [Package plan](../plans/frontbase-translation-package-20261016.md). Implementation progress: the [bounded revision/SQLite slice](../plans/frontbase-translation-revisions-20261016.md) now implements the accepted manual-preservation and same/separate-destination requirements with logical source-version/head checks. The [2026-10-17 input-history/job continuation](../plans/frontbase-translation-jobs-20261017.md) adds local-provider recovery/fencing evidence without configuring a live AI service. This is reference implementation evidence, not a new universal-provider or full-engine release decision. No runtime formatter selected, npm publication, provider provisioning, production change or CF-22 activation is authorized by this decision.
+
+## 2026-10-16 owner keeps no-library localization outcome open
+
+None of the shortlisted localization libraries is a valid outcome. Evaluate native Intl and any required message handling against the same functional, security and maintenance requirements; do not mistake host fixture behavior for a library capability or automatically authorize a bespoke message engine. No runtime/format is selected. The AI-native experience, native visual authoring and same-or-separate translation datasource remain the product contract, independent of library choice. [M0 evidence and limits](../plans/frontbase-localization-m0-foundation-20261016.md#no-library-option-and-actual-local-host-continuation) records passing local Node/workerd Text fixtures; actual-browser and remaining contracts are still open. No release-scope or CF-22 change.
+
+## 2026-10-16 owner starts native translation and requires per-locale slug comparison
+
+Owner authorizes implementation beginning with M0 and adds sitemap-first preservation of published URL literals. Every site/language needs a comparison step: other WordPress sites have translated slugs, so USA prefix-only observations are never an estate-wide assumption. Optional read-only Search Console observations supplement inventories/prioritization; they are not a complete indexed-URL list or translation export. No positional/LLM-guessed slug pairing or unreviewed route activation. [Architecture](../plans/frontbase-ai-native-translation-architecture-20261016.md#14-sitemap-first-url-preservation-and-optional-search-console), [initial foundation](../plans/frontbase-localization-m0-foundation-20261016.md). Runtime choice, unsupported provider capabilities and publishing defaults remain explicit gates; no production cutover, bulk migration or CF-22 activation. Prior planning-only statements below describe the earlier authorization state.
+
+## 2026-10-16 owner requires native AI translation and optional separate storage
+
+Frontbase multilingual direction is native, visually refined AI translation for authored pages and selected live data fields. Translation storage may use the same content datasource or another supported writable datasource; a separate service/database is optional. The owner plans shared self-hosted Supabase for multiple sites, but the product contract remains provider-neutral. Previously remaining pilot follow-ups are parked. [Architecture](../plans/frontbase-ai-native-translation-architecture-20261016.md) and [milestone plan](../plans/frontbase-ai-native-translation-implementation-20261016.md) distinguish these owner requirements from proposed shared-table/schema mappings, memory rules, publication/query algorithms, UI defaults and runtime selection. No i18next/MF2/FormatJS choice or standalone proxy/service mandate is accepted. No implementation, schema provisioning, translation spend, migration/cutover, release-scope change or CF-22 activation follows from this planning decision.
+
+## 2026-10-16 owner moves listing selection into editable saved views
+
+Saved views are first-class Data assets, discoverable through a Saved Views tab, datasource entries, exact builder links and active/draft/version usage. Administrator-editable saved filters own listing membership, country, path/parent and article-revision selection; these must not remain embedded in SQL views. This supersedes the selection-storage choice in the 2026-10-15 pilot decision below. Database projections may retain field shaping and independent private-field/access protections, with no hidden listing predicates. Preserve current pilot membership during conversion; expanding it is a separate administrator filter edit. Use bounded structured predicates and parameterized queries, retaining owner isolation and public binding authorization. [Implementation and evidence](../plans/frontbase-editable-saved-views-20261016.md). No generic snapshots, production cutover, six-package/release-scope change or CF-22 activation.
+
+## 2026-10-15 owner authorizes pilot listings on filtered live views
+
+Task1 authorizes replacing the existing pilot's listing reads with ordinary live datasource/saved-view bindings, one per effective Block Version. Use native SELECT views over the existing canonical datasource, with explicit public columns and the reviewed route membership, country, parent and article revision guards. Store no new record copy and add no generic snapshot feature. Native views are invoker-security and server-role-readable; existing source-table grants and credentials are unchanged. Normal Data saved views and builder selectors expose the bindings. Published layout/content route/SEO/menu artifacts remain versioned; detail-page capture replacement and automatic admission of new records are not implied. Draft binding changes preserve owner design edits and publish only the converted reviewed layouts through exact-plan/draft-state/active-pointer checks. Migration DDL is PostgreSQL-specific; SQLite view query tests do not establish universal migration portability. [Execution evidence](../plans/frontbase-pilot-live-views-20261015.md). Six-package ownership, framework release scope and paused CF-22 remain unchanged.
+
+## 2026-10-15 owner limits List Components to live data
+
+Generic frozen datasource snapshots are out of scope. Repeater, DataTable and Grid share live datasource/table/saved-view authoring and query semantics, with existing server-owned view filters and access checks preserved. Keep one binding per effective Block Version. Retain existing pilot publication captures for compatibility rather than silently changing its published dataset; this does not authorize new snapshot tooling or automatic conversion to raw public tables. Controls must reflect source capability, including an explicit legacy direct-RPC search/sort limitation. [Delivery and verified staging acceptance](../plans/frontbase-live-list-deployment-review-20261015.md). Prior snapshot backlog suggestions are superseded; six-package ownership, release scope and paused CF-22 remain unchanged.
+
+## 2026-10-15 owner selects Block Versions with direct Default inheritance
+
+All UI elements support same-type conditional alternatives inheriting directly and only from Default, with explicit overrides and Reset to Default. First matching alternative in priority order wins; otherwise Default. Reuse shared conditions/@ operands. This supersedes a Repeater-specific multiple-binding selector: Explore uses one ordinary Repeater with Institutions Default and a conditional Programs alternative, each with one binding. Full standard source/view selection, visually editable Card/mappings, filters and browsing controls, plus conversion of the existing specialized captured binding, are completion requirements. Field/group override granularity and runtime/tree migration details are specified in the [implementation plan](../plans/frontbase-block-versions-20261015.md). Source/local and clean-image gates pass; scoped staging migration and runtime acceptance are verified at generation20. Generic snapshot creation and configured-provider acceptance remain unclaimed. Six-package ownership, public-release scope and paused CF-22 are unchanged.
+
+## 2026-10-14 owner unifies conditions and typed values
+
+Use the pure edge-core conditions entry as the single comparator/value resolver for visibility, hidden-filter activation and existing Menus audience checks. Share the visual condition/value editors across generic visibility and filters; keep Menus' validated audience-specific authoring contract. New structured rules serialize under `@conditions:v1:` in the existing visibility string field; read legacy conditions without executable expressions. Invalid/unsupported conditions fail closed and remain visible in the editor until replaced. JSON-compatible literals and @ references retain type, with database operator semantics still bounded by provider capability. Reuse server-verified App Users identity/contact mapping for minimal user ID/Contact Type/Permission Level context, never console identity or client claims. Client visibility remains presentation, not data authorization. [Plan/evidence](../plans/frontbase-unified-conditions-20261014.md). Six-package ownership, rollout scope and paused CF-22 remain unchanged.
+
+## 2026-10-14 single-binding conditional hidden filters
+
+Owner limits the next List Component step to one bound table/view. Reuse existing arbitrary URL/local variables and Set Variable actions; individual hidden predicates optionally depend on a variable comparison, with active predicates combined by AND. Missing variables require an explicit missing-value condition. Share resolution across builder and published list execution, preserve SSR-resolved server context, and keep browser state reactive through existing variable subscriptions/history. These client-configurable filters never grant access. A bounded schema-validated SQL adapter fulfills existing single-table list-RPC bodies; joins and multiple binding selection remain deferred. Saved views/snapshot management and conversion of the specialized captured Explore page are separate work. [Implementation evidence](../plans/frontbase-single-binding-filters-20261014.md). No change to six-package ownership, release scope or paused CF-22.
+
+## 2026-10-14 owner requires Repeater WYSIWYG controls
+
+Visitor browsing controls belong to the Repeater's builder configuration and must use the same native renderer/query semantics as public delivery. Authoring an already published directory defaults to its immutable captured catalog, pins that version across requests and refuses stale replies; connected-data preview remains available for projects with no active capture. Selection may change canvas visitor collection without altering public defaults. Query capability determines which filter/order fields can be offered: current captured title/identity/parent metadata does not justify arbitrary-field or multi-field selectors. Preserve the captured result-size ceiling and tenant/editorial boundaries. This refines existing one-engine authoring, not product release scope or approval of canonical changes.
+
+## 2026-10-14 public visitor appearance
+
+Owner requests public Header Light/Dark/System with System default and saved visitor choice. The shared public runtime owns this browser preference, scoped by site origin under `frontbase:public-theme`, separate from console appearance. Honor legacy explicit `fb-theme` choices; follow OS changes only in System mode. Template semantic surfaces respond to the resolved theme while branded hero/header colors remain configured. Native Header/Sidebar controls reuse this runtime. The opaque menu design iframe permits only the nonce-authorized framework controller, with no same-origin access, external scripts, connections or form submission; its preference is temporary. Full-site previews/public pages persist visitor preferences. No extra package, provider, server preference store or publication change is required.
+
+## 2026-10-14 owner simplifies Pages and menu publication
+
+Remove the redundant Pages folder sidebar; retain unified folder/page/template cards and rows, breadcrumbs, toolbar New folder and optional migration-document filter. Routine Menus follows Save Draft → Preview → Publish or Discard. A private preview binds the saved draft revision, exact menu-only derivative and full current publication pointer. Publish explicitly approves that exact menu change, preserves the reviewed base's content/media/URL evidence and records the bounded approval provenance before existing CAS activation. Do not fabricate a fresh whole-catalog editorial review. Changes after preview require a fresh preview. Discard guardedly restores the published menu definitions to the draft, without activating a capture. Explicit legacy-node replacement remains under Advanced migration tools. Header/footer maximum width constrains inner content; region backgrounds span the page. This is owner-requested UX refinement, not a new renderer, release scope or production cutover.
+
+## 2026-10-13 owner accepts app-level Menus and existing user definitions
+
+Visitor Header/Footer/Sidebar authoring belongs in a core Menus area between Pages and Data; template addons supply initial designs/content. Reuse existing Navbar/Footer components and the builder system. Shared regions support page/template placement, exclusions and region/item visibility. Audience selectors reuse Contact Types and Permission Levels from App Users → Users Configuration, including its selected connected Auth Provider and contacts-table mapping. Separate group membership is deferred. Console-admin identity, browser contact claims and generic client visibility expressions do not authorize app-user audiences. Existing destination/data authorization remains independent of hidden navigation. Preserve legacy Navbar/Footer layouts until an explicitly reviewed conversion; remove their ordinary insertion options only after a compatible managed-region path is verified. This is owner-authorized implementation direction, not a shipped Menus or public-release claim. [Plan and delivery boundary](../plans/frontbase-app-menus-plan-20261013.md).
+
+## 2026-10-13 owner clarifies Pages versus URL states
+
+The user-facing workspace distinguishes Folders, Pages and Reusable Templates. A listing page such as Explore is one Page; institution/program query states do not create separate authoring documents. Its URLs action may expose supported parameter variants. Reusable templates combine design and connected-content actions on one card. Parameter-driven browsing behavior belongs in the builder element controls; unsupported parameters or runtime behavior must not be presented as configurable. This supersedes the earlier collection/index-view card interpretation without changing public routes or internal compatibility contracts.
+
+
+## 2026-10-13 owner accepts unified Pages organization and settings ownership
+
+Pages becomes a unified authoring workspace for ordinary pages, reusable detail layouts and collection/index views, with actual published addresses and publication-derived status. Cards/list preference is per browser/owner; nested folder membership/order is owner-scoped persisted authoring metadata. Folder moves, names and sorting must not mutate public URLs, navigation menus, canonical content, configuration revisions or publication pointers. URL-parent/permalink changes remain a separate later explicit workflow with route/conflict/redirect review. Reusable folder/view/status mechanics belong to core; education layouts, collections and suggested organization belong to the template/site.
+
+General owns one public site identity editor (name/canonical origin/locale) plus clearly internal project details and existing branding assets. Global Template settings owns destination, data/mappings, browsing, index routes, contacts and appearance/homepage. Preserve current configured site identity authority and exact revision/capture/approval compatibility: existing shared configuration remains the authoritative wire/store during this bounded reorganization; no implicit migration or duplicate editable public identity. Unconfigured deployments may explicitly save validated core setup defaults. Origin/editorial-source coupling and captured branding integration are existing limits, not solved by moving controls. Unsupported filter/sort/gallery/pathway controls must not imply runtime support. Unused migration review drafts may be moved to recoverable Trash after publication-reference checks; active proof-named layouts are renamed, never discarded as tests. This is owner-authorized pilot/core UX work, not release-gate clearance or resumed CF-22.
+
+2026-10-12 browser delivery integration: use the pure core `browser/template` subpath from the existing served hydration package to initialize native menu/slideshow controls even without React widgets. Retain its equivalent call in the existing behaviors runtime; per-node readiness keeps both idempotent. Use existing root StylesData `values` for validated public theme tokens. This adds no package, renderer, hosted dependency, canonical authority or release-scope change. Existing dependency versions are unchanged; the lockfile adds only a workspace link.
+
+2026-10-12 homepage implementation: public presentation settings belong to the versioned saved homepage layout root (`directoryLanding`), saved through existing guarded page changes and captured with that page. Shared site configuration still owns data, routes and contacts. Presentation changes do not advance the editorial approval configuration revision. A homepage-only preparation may derive from an owner-scoped, individually reviewed capture only when its exact shared configuration still matches; verify its chunks/approvals, replace only `/`, retain every other record/route/template, and require a new whole-version review before staging activation. This implements the authorized homepage requirement without a second settings store, canonical mutation or inherited whole-version approval. Production cutover and owner visual acceptance remain separate.
+
+2026-10-12 owner resolves homepage scope: hero imagery/slider must be configurable through template/builder settings. Featured institutions are explicitly a separate later feature, not a homepage launch requirement; no featured curation picker/order workflow or priority names are needed now. Retain neutral navy/charcoal presets and Booking.com search/discovery direction. Slider modes need accessible controls, reduced-motion/static fallback and stationary usable search. The updated homepage plan supersedes its earlier pending hero/featured choices; production/visual approval remains separate.
+
+2026-10-12 owner homepage direction: use Booking.com as a directory/search design reference, with neutral white and navy/charcoal public-template presets and additional appearance controls within existing Frontbase admin template settings. This is an education-template presentation requirement, not ownership of Booking assets, a new admin/renderer/package, or a public-release scope change. Exact token/configuration/selection implementation remains proposed in the detailed homepage plan; hero imagery and initial featured selections remain pending preferences. Homepage visual acceptance precedes production cutover.
+
+2026-10-12 owner navigation requirement: internal site navigation must be relative so a configured site works on staging and its production host. Project absolute links matching the configured canonical origin to root-relative paths after data/layout projection, preserving query strings and fragments. Preserve absolute external destinations, media and canonical/Open Graph/sitemap SEO metadata. Saved source/approval snapshots remain unchanged; builder preview and both publication formats share this projection. Do not infer an internal origin from an untrusted request host or silently collapse other external domains. Homepage visual approval is separate from technical URL/recovery acceptance.
+
+## 2026-10-11 owner accepts prior WordPress article publication review
+
+Owner confirms the previously published WordPress articles were already reviewed and directs publishing them on the migrated site, with refresh after launch. This supersedes the earlier requirement to freshly fact-check every recovered article before migration approval. Preserve original article identities, URLs and publication dates; verify published-source provenance, migration fidelity, safe rendering and route/media integrity. Record approvals as owner-accepted prior WordPress review, never as new fact-checking or current-offering verification. Existing corrected articles remain corrected. Article-specific factual refresh is post-launch work; technical migration checks and the separate current institution/program offering rule remain. This authorizes migration inclusion through existing approval/capture contracts, not production cutover or a security bypass.
+
+## 2026-10-11 owner confirms unchanged policy practices
+
+Owner confirms the recovered privacy, cookie and terms pages still describe Studygram's unchanged practices and asks to refresh them. Preserve substantive clauses, original public URLs and historical effective/update dates; add an accurate current review date and clearer presentation through existing editorial revision/approval contracts. This authorizes the policy refresh, not new tracking, application submission, legal-compliance certification or production activation. The earlier pending practice question is resolved.
+
+## 2026-10-11 owner requires factual correction before article approval
+
+Correct and fact-check recovered articles against primary sources before approving them, rather than blanket-preserving inaccurate text as approved archives. Preserve original identities/public URLs; record meaningful revision and approval evidence through existing editorial contracts. Supported historical dates remain historical, not current-offering claims. Optional-cover deferral and unchanged Apply scope persist. [First bounded delivery](../plans/wordpress-pilot-content-redirects-20261011.md) covers two articles only.
+
+## 2026-10-11 owner requires current offering evidence
+
+The owner conditions restoring Eckerd's American Explorer pathway on ELS still offering it, and applies the same rule to every institution/program. Confirm current availability through official evidence before treating a listing as available for public launch. A missing page is not proof of closure. Preserve historical canonical identities and WordPress URLs, keep unresolved records explicit, and distinguish private candidate capture from approved availability. This is the pilot's content-selection rule, not a new database status model or a security/release waiver. [Evidence and current queues](../plans/wordpress-pilot-catalog-staging-20261011.md).
+
+## 2026-10-11 internal bounded publication generation
+
+Owner authorized full-catalog publishing beyond the small v1 preview. Implement its internal storage prerequisite within the existing backend/settings and renderer boundaries: strict public-record chunks plus a versioned hash-bound configuration/template/global identity-route-parent index. Reuse existing core template validation; preserve v1 reads and existing public review/activation contracts until explicit integration passes. Chunk/manifest validity is not editorial approval. Generic pages remain an explicit unsupported integration item. This records the implementation direction, not an accepted public wire contract, a new host/state adapter, migration completion or release clearance. [Chunk delivery](../plans/wordpress-pilot-publication-chunks.md) and [manifest admission](../plans/wordpress-pilot-publication-manifest.md).
+
+## 2026-10-10 owner defers application upgrade until after go-live
+
+Leave the existing simplified Apply draft unchanged. Functional form/context/document/delivery upgrades are deferred until after go-live. Launch uses configured email/WhatsApp contact options; do not imply the disabled preview collects applications. Preserve the original Apply URL with honest contact treatment during launch review. This changes pilot sequencing, not security, URL preservation or cutover approval requirements.
+
+## 2026-10-10 owner-approved simpler USA application
+
+Preserve `/apply-2/`, but replace the old multi-step WordPress application with a simpler configurable experience. Initial contact, selected institution/program and preferred intake are sufficient; document collection and further application steps may follow later. Old Fluent Forms fields are reference evidence, not a parity requirement. Use existing admin and reusable engine components; fields, consent and delivery remain configuration. Existing submission, delivery and cutover acceptance gates still apply.
+
+## 2026-10-10 USA staging delivery before broader framework completion
+
+Owner approved narrowing the immediate delivery after observing expanding tasks and slow visible progress. Prioritize the existing saved USA site's connected institution/program/editorial journey through the existing admin, original URLs, media/navigation/contact CTAs and a truthful migration-gap report. Use current configuration/query/publishing contracts and repair demonstrated selected-path blockers. Broader installer/upgrade automation, adapter/package compatibility, advanced recovery and second-country reuse remain the overall backlog, rather than prerequisites automatically imposed on every local staging checkpoint. This changes execution order, not six-package architecture, security requirements, production/cutover acceptance, accepted Developer Preview scope or paused CF-22. See the current [pilot plan](../plans/wordpress-pilot-execution-plan.md).
+
+
+## 2026-10-09 bounded Request-preserving guarded HTTP
+
+[Transport inventory](PUBLIC-RELEASE-R2-TRANSPORT-AUDIT.md) shows SDKs use Request objects with embedded method/headers/body; converting those to a URL discards the operation. Extend the existing backend guarded HTTP function with a Request-only one-shot branch and unchanged legacy string/URL semantics. Validate URL before consuming Request input, merge RequestInit through platform Request semantics, force manual redirects, compose caller cancellation with the existing10-second deadline without adding a minimum Node version, and explicitly refuse Request redirect-follow/replay. Existing legacy POST/header redirect policy is separate review; do not silently replay stream bodies or widen SDK/native transport capabilities. Functional/mutation/security/host verification is required; this primitive alone does not close SDK injection gaps or establish DNS/host egress guarantees.
+
+[Verified local delivery](PUBLIC-RELEASE-R2-REQUEST-TRANSPORT-DELIVERY.md): functional13/13, mutation5/5 with independently restored GREEN/source hash, workspace/security/tenant/conformance/client-no-leak/host gates pass. Revalidate the copied native Request URL as well to reject an adversarial server-side URL override. SDK wiring and legacy redirect policy remain separate acceptance; no dependency, live provider or release-scope adoption follows.
+
+## 2026-10-09 auth-form primary selection consistency
+
+Real-handler counterfactuals show set-primary writes the is_primary column while primary lookup reads stale config flags, and unrelated updates can revive those flags. Reuse the persisted-column-first rule already used by serialization for selection and metadata-only updates, with config fallback only for absent/null columns. Retain active filtering, owner scoping, existing wire envelopes and explicit supplied-config edit semantics. This is a bounded consistency repair, not a new form product or a claim of atomic concurrent primary switching. [Diagnostic](PUBLIC-RELEASE-R2-BEHAVIOR-ISOLATION.md) records the original failure; [primary verification](PUBLIC-RELEASE-R2-AUTH-PRIMARY-REPAIR.md) completes the bounded repair with functional7/7, mutation3/3 and affected security/workspace/host gates. Overall behavior acceptance stays RED with the ledger unchanged. No behavior-ledger waiver or Drizzle dependency change follows from this decision.
+
+## 2026-10-08 bounded infrastructure binding type repair
+
+The external package diagnostic demonstrated public D1/KV signatures depending on source-only ambient globals. Use exported structural adapter input interfaces within edge-infra for the operations those existing adapters consume; retain runtime behavior and engine contracts. Node import checking and actual official Cloudflare D1/KV type assignment are required evidence, without consumer shims or a library-check waiver. [Local delivery](PUBLIC-RELEASE-R1-BINDING-TYPES.md) records the result and remaining backend Drizzle failures. This is a bounded packaging repair under the accepted R1 investigation, not a new architecture/package, full host guarantee or public release.
+
+## 2026-10-08 first public edition scope accepted
+
+After the completed R0 audit and explicit scope question, the owner directed “go ahead.” Adopt **Frontbase Framework Developer Preview** as the first public-edition scope: the existing six Apache-2.0 library packages, developer/agent audience, adopter-owned self-hosting and one engine, with Cloudflare the leading deployment path and other hosts described only at demonstrated support levels. Console/hydrate/setup builds remain application artifacts rather than additional libraries; setup administration must be marked private. The [R0 findings](PUBLIC-RELEASE-R0-2026-10-08.md) define the evidence-linked backlog and limitations. This accepts preparation scope, not version numbers, package publication, deployment, GA, parity, full template installation or waived release gates. CF-22 remains paused. R1 now proceeds with external tarball/CLI consumption proof before registry/release operations.
+
+## 2026-10-08 bounded artifact checks under existing installer direction
+
+Owner-directed continuation adds an internal administrator-only education artifact syntax check through the existing app. It reuses shared configuration/query/binding schemas and a conservative subset of editable primitives; strict bounds and component/prop/style exclusions prevent it from becoming an arbitrary code/SQL importer. Acceptance creates no operation or install/publication authority. [Delivery evidence](../plans/wordpress-pilot-artifact-check-delivery.md) and [execution investigation](../plans/wordpress-pilot-install-execution-design.md) separate this implemented subset from proposed namespace/transaction orchestration. The latter exposes a real duplicate-slug race and native libsql memory/file differences; no new transaction guarantee or namespace migration is accepted from those probes. This preserves six packages, one engine and existing administration. Public artifact stability, final core/template packaging and R0 edition acceptance remain owner decisions; no release-scope change or actual install/deployment.
+
+## 2026-10-08 guarded draft-change foundation under owner direction
+
+The owner directed implementation after checkpoint `bd9ea54` and resumed the interrupted run. Installer/upgrade callers need full-page conditional writes rather than layout-hash/timestamp checks or unconditioned legacy PUT. An additive administrator-only path uses the trusted owner, a strict bounded operation request, exact full-row SQL predicates and a nullable marker written atomically with the draft. The existing state database persists before/after recovery and intent before mutation, and archives terminal receipts before replacing an owner operation slot. Read-only status never executes work. Equal bytes without the marker are not ownership; ambiguous applying intent never expires or replays. Existing saves/response envelopes, six packages and one-engine publication remain intact. This is the bounded implementation in [draft-change delivery](../plans/wordpress-pilot-draft-change-delivery.md), not adoption of a complete multi-page installer, global editing lock, automatic cancellation/rollback, new package or hosted-adapter guarantee. No real pilot migration/restart, layout/publication/deployment or release-scope change is authorized by synthetic proof.
+
+## 2026-10-08 bounded D/E review under existing direction
+
+Owner requested D/E continuation. The imported D fixture now refuses false delivery claims, stale program-parent relationships and unsafe adapter outcomes, with bounded in-memory expiry/status tests. Its fixture HTML, name/email dedupe and in-memory state are not adopted production architecture. The [production inquiry contract](../plans/wordpress-pilot-inquiry-production-contract.md) is an ordered proposal for existing-engine inputs, owner-scoped durable lead/outbox/idempotency and connected guarded delivery; final packaging remains owner-reviewed. E's renewed real-server synthetic drill distinguishes a generated key inside sensitive SQLite snapshots from an environment-supplied key held separately. Verification requires manifest/key-custody agreement, and external-key decryption is tested separately. The [operator runbook](../plans/wordpress-pilot-operations-runbook.md) retains absent-target/offline-control limitations and deferred off-server backups. No new package, public operations CLI, production form route, key rotation, schedule, activation/deployment or release-scope decision follows from local proof.
+
+## 2026-10-08 bounded B integration and production prerequisites
+
+Owner-directed continuation integrates B's private synthetic artifact/reuse proof and corrects exclusion, fresh-install and customization-loss counterexamples. Internal validation bypass refuses; existing configuration is not overwritten by a fresh install; owner deletions and customized removed subtrees are preserved in upgrade proposals. Exact digest/owner receipts and real destination capabilities are required for the read-only recovery planner; uncertain outcomes never authorize replay or adoption of identical content. The [production installer contract](../plans/wordpress-pilot-installer-recovery-contract.md) is a proposal/backlog: no public registry/import format, durable journal, transaction protocol or conditional upgrade executor is adopted by this proof. Existing unconditioned page writes remain a production prerequisite to repair, not a safe upgrade implementation. The six-package/admin/one-engine design and final owner packaging review remain unchanged; no real install, data/publication/deployment or release scope change.
+
+## 2026-10-08 bounded E restore safety correction
+
+Under the owner's direction to proceed after T3, E's synthetic offline rehearsal now requires an absent destination, explicit confirmation and a plain existing parent. Strict bounded manifest/path/artifact/standalone-SQLite preflight precedes staging; only a fully verified sibling copy is renamed into place. Existing destinations are preserved. Symlink/junction/hardlink aliases are refused, and unsafe or failed staging cleanup requires operator attention. The offline operator must prevent concurrent source/parent edits; portable Node rename is not claimed as an atomic no-replace or crash-durable production primitive. [Restore delivery](../plans/wordpress-pilot-restore-safety-delivery.md) governs proof and limitations. This repairs a confirmed local counterexample without adopting a public operations CLI, changing secret custody/backup cadence, touching real data or altering framework/release scope.
+
+## 2026-10-08 T3 controls under existing publication direction
+
+The owner directed continuation after the verified pilot checkpoint. Guarded activation is exposed only through the existing authenticated admin/API owner context, using the target's own review and the existing pointer compare-and-set. An explicit expected pointer is required, with null for first publication; matching same-target submissions are no-ops and stale retries remain conflicts. Active-state integrity/review failures are unavailable, never interpreted as inactive. No client-supplied owner, actor, raw capture or forged review is accepted.
+
+The existing Page Settings panel separates preparation, review and publishing. It requires a fresh server-state check and deliberate confirmation, and reads state after ambiguous or successful responses without automatically replaying the mutation or attributing a live observation to an actor. Rollback selects an earlier reviewed capture through the same contract. [T3 delivery](../plans/wordpress-pilot-t3-delivery.md) records local synthetic proof and limitations. This implements the accepted one-engine publication plan; it does not authorize actual pilot content review/activation, deployment, a new control plane or release scope.
+
+## 2026-10-08 bounded pilot request and accessibility correction
+
+Under the owner's existing direction to finish Step 2, invalid visitor parameters receive an explicit terminal 400 only after trusted-owner artifact integrity and review checks. The runtime uses a typed request error, not an error-message match; corrupt/unreviewed state remains 503, uncaptured paths 404, inactive-only legacy continuation unchanged. Search/page bounds retain the registered snapshot query limits. This resolves the open client-error choice in the [public host contract](../plans/wordpress-pilot-public-host-contract.md), without new publication authorization or release scope.
+
+New directory CTAs use optional `recordBindings.ariaLabel: 'title'`, restricted to Links with originalPath binding. Projection retains the visible CTA wording and adds literal record title to its accessible name; the same Link renderer escapes the optional attribute. Existing unlabelled Links retain their output and saved layouts are not rewritten. The existing builder exposes an opt-out. This is an additive accessibility correction within the accepted engine/projection contract, not an independent renderer or template installer. Verification is recorded in the audit; no real approval, activation, data write or deployment follows.
+
+## 2026-10-07 bounded pilot integration under existing owner direction
+
+Primary source review retains the first swarm's previously approved bounded designs: captured robots/Open Graph and `/sitemap.xml` derive solely from one trusted owner's immutable reviewed capture, with no-store and generation identity; no current drafts/request origin supply metadata. Optional `siteBindings.hideWhenEmpty` is confined to supported bound Link hrefs. Optional publishedAt date formatting uses strict ISO input, captured/saved locale and UTC Gregorian/Latin output; missing/invalid dates collapse, existing literal bindings remain unchanged. The combined runtime passes captured locale while retaining captured SEO. These are additive existing-engine/admin capabilities, not acceptance of a new package, template installer, activation endpoint or broader release scope. Combined verification is recorded in the pilot audit; no actual content approval, activation or deployment follows.
+
+The bounded A/C follow-up under the same owner direction keeps presentation in editable authoring nodes and the existing projection: new shared headers use `routes.directory`; list H1 preserves owner/detail headings; optional `recordBindings.altFallback: 'title'` is restricted to Image/coverAlt, remains literal and leaves omitted-option empty-alt behavior unchanged. Administrative fallback choice is exposed in the existing builder. Saved layouts and canonical data are not rewritten. Offline attachment placement cannot imply an owner-approved exclusion. These are corrections within the accepted one-engine/query design, not a new architecture or release decision; [primary evidence](../plans/wordpress-pilot-ac-primary-reconciliation.md) records verification and remaining gates.
+
+**Version**: 1.0
+**Status**: Active
+**Last Updated**: 2026-06-29
+
+---
+
+## Overview
+
+This document tracks all architectural and product decisions made during the Frontbase Framework Evolution.
+
+---
+
+## Decision A-1: Modular Architecture Split
+
+**Date**: 2026-06-29
+**Status**: ✅ APPROVED - Proceed with modular split
+**Priority**: 🔴 CRITICAL
+**Question**: Should Frontbase proceed with the modular architecture split?
+
+### Decision
+
+**Yes, proceed with modular split**
+
+### Rationale
+
+- **Competitive Positioning**: Enables pure framework to compete directly with Next.js, Remix, and Astro
+- **Bundle Size Reduction**: Framework-only users get ~50KB vs ~300KB (83% reduction)
+- **Flexible Installation**: Users choose what they need with feature flags
+- **Clear Product Boundaries**: Core framework vs. builder layer vs. optional features
+- **Market Segmentation**: Can target both developers (framework) and no-code teams (builder)
+
+### Implementation Approach
+
+```
+Phase 1 (6-8 weeks): Extract @frontbase/core
+- Remove database dependencies from core
+- Remove backend service dependencies from core
+- Implement file-system routing for pure framework
+- Target: <50KB bundle size
+
+Phase 2 (4-6 weeks): Extract @frontbase/builder
+- Create optional builder package
+- Database adapter for layout storage
+- Builder integration layer
+
+Phase 2+: Optional feature packages
+- @frontbase/auth (authentication adapters)
+- @frontbase/workflows (workflow engine)
+- @frontbase/database (database adapters)
+```
+
+### Package Structure
+
+```
+@frontbase/core           # Pure framework (~50KB) - REQUIRED
+@frontbase/cli            # CLI tools (shared)
+@frontbase/components     # Component library (shared)
+@frontbase/builder        # Visual builder (~200KB) - OPTIONAL
+@frontbase/auth           # Authentication adapters - OPTIONAL
+@frontbase/workflows      # Workflow engine - OPTIONAL
+@frontbase/database       # Database adapters - OPTIONAL
+```
+
+### Success Criteria
+
+- [ ] Core framework bundle size <50KB
+- [ ] Core framework works without database dependencies
+- [ ] Core framework works without builder dependencies
+- [ ] Builder can be added to existing projects
+- [ ] Installation patterns work: --pure, --with-builder, --full
+- [ ] Performance benchmarks meet or exceed current implementation
+
+### Risks & Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| Extraction complexity | Phase 0 spike to validate feasibility |
+| Breaking existing customers | Feature flags + compatibility layer |
+| Increased maintenance | Clear package boundaries + peer dependencies |
+| Customer confusion | Clear documentation + installation examples |
+
+### Related Decisions
+
+- Enables A-2: Core Framework Scope
+- Enables P-1: Modular Architecture Positioning
+- Enables P-2: Primary Target Audience
+
+---
+
+## Decision A-2: Core Framework Scope
+
+**Date**: 2026-06-29
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+**Question**: What features should be included in @frontbase/core?
+
+### Decision
+
+**Core includes: React, TypeScript, SSR, Zod, routing, state management, CLI, edge runtime**
+**Core excludes: Components, database, backend services**
+
+### Rationale
+
+- **Edge Runtime Required**: Core framework must include Hono edge runtime for SSR and API routes
+- **Components Separate**: Component library should be separate package - users can build their own or install
+- **Zero External Dependencies**: Core has NO database, backend, or builder dependencies
+- **Framework-First**: Core is pure framework - competitive with Next.js/Remix
+
+### Package Structure Clarification
+
+```
+@frontbase/core           # Framework ONLY (~50KB)
+  ├── React 18+
+  ├── TypeScript 5+
+  ├── Streaming SSR
+  ├── Zod schema system
+  ├── File-system routing (dev) + build-time routing (prod)
+  ├── State management (Zustand integration)
+  ├── CLI tools (check, lint, simulate)
+  └── Edge runtime (Hono-based)
+
+@frontbase/components     # Component library (optional)
+  ├── Basic components (Button, Text, Heading, Card, etc.)
+  ├── Form components (Input, Textarea, Select, etc.)
+  ├── Layout components (Container, Row, Column)
+  ├── Data components (DataTable, Chart, KPICard)
+  └── Landing components (Hero, Features, Pricing, etc.)
+
+@frontbase/builder        # Visual builder (optional)
+  └── Can include @frontbase/components or require separate install
+```
+
+### Installation Patterns
+
+```bash
+# Pure framework (no components, no builder)
+npm create frontbase@latest my-app --pure
+
+# Framework + components (no builder)
+npm create frontbase@latest my-app --with-components
+
+# Framework + builder (includes components)
+npm create frontbase@latest my-app --with-builder
+
+# Full stack (everything)
+npm create frontbase@latest my-app --full
+
+# Add components later
+npm install @frontbase/components
+
+# Add builder later
+npm install @frontbase/builder
+```
+
+### Success Criteria
+
+- [ ] Core bundle size <50KB (without components)
+- [ ] Core includes Hono edge runtime
+- [ ] Core works without any database dependencies
+- [ ] Core works without any builder dependencies
+- [ ] @frontbase/components is separate optional package
+- [ ] Users can build pure framework apps without components
+- [ ] Builder can optionally bundle components
+
+### Key Insights
+
+- **Freeform Building**: Framework users can build without pre-made components
+- **Component Flexibility**: Users can use @frontbase/components, build their own, or use other libraries
+- **Builder Integration**: Builder and components are separate concerns that can be used together or independently
+
+### Related Decisions
+
+- Follows A-1: Modular Architecture Split
+- Informs P-1: Modular Architecture Positioning
+- Informs P-2: Primary Target Audience
+
+---
+
+## Decision P-1: Modular Architecture Positioning
+
+**Date**: 2026-06-29
+**Status**: ✅ APPROVED (Partial - Tagline TBD)
+**Priority**: 🔴 CRITICAL
+**Question**: How should we position Frontbase with the modular architecture split?
+
+### Decision
+
+**Positioning: Equal positioning for developers and no-code teams**
+**Tagline: TBD - Needs to incorporate: edge, SSR, SPA, agent-first, human-first, visual DnD**
+
+### Rationale
+
+- **Equal Positioning**: Market equally to both developers (framework users) and no-code teams (builder users)
+- **No Priority**: Neither framework nor builder is "primary" - both are first-class citizens
+- **Flexible Messaging**: Different messaging for different audiences without prioritization
+
+### Target Audiences by Package
+
+```
+@frontbase/core          → Developers (60%), AI Agents (40%)
+@frontbase/components     → Developers (80%), AI Agents (20%)
+@frontbase/builder        → Marketing teams (70%), Developers (30%)
+@frontbase/auth           → All users
+@frontbase/workflows      → Backend users, automation engineers
+@frontbase/database       → Data-heavy applications
+```
+
+### Messaging Framework
+
+**For Developers (Core Framework)**:
+- "Fullstack framework with streaming SSR and edge runtime"
+- "Agent-first with Zod schemas and deterministic tooling"
+- "File-system routing like Next.js, but better for AI agents"
+
+**For No-Code Teams (Builder)**:
+- "Visual builder with code-level access"
+- "Build visually, edit code, deploy anywhere"
+- "Marketing pages in minutes, complex apps in hours"
+
+**For Hybrid Teams**:
+- "Start visually, refine with code"
+- "Visual builder for speed, code for control"
+
+### Tagline Requirements
+
+**Must Include**:
+- Edge (edge runtime, global deployment)
+- SSR (streaming server-side rendering)
+- SPA (single-page application capabilities)
+- Agent-first (optimized for AI coding assistants)
+- Human-first (great developer experience)
+- Visual DnD (drag-and-drop builder)
+
+**Proposed Taglines** (pending further discussion):
+- "The fullstack framework for humans and agents"
+- "Visual builder, framework power"
+- "Code meets visual"
+- "Edge-native fullstack framework"
+
+### Success Criteria
+
+- [ ] Clear messaging for developer audience
+- [ ] Clear messaging for no-code audience
+- [ ] Website shows both paths equally
+- [ ] Documentation serves both audiences
+- [ ] Installation examples for both paths
+- [ ] Final tagline incorporates all required elements
+
+### Related Decisions
+
+- Follows A-1: Modular Architecture Split
+- Follows A-2: Core Framework Scope
+- Informs P-2: Primary Target Audience
+- Informs pricing and packaging decisions
+
+### Open Items
+
+- [ ] Final tagline/messaging decision
+- [ ] Website structure for dual positioning
+- [ ] Documentation organization for dual audiences
+
+---
+
+## Decision P-2: Primary Target Audience (Updated for Modular)
+
+**Date**: 2026-06-30
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+**Question**: With modular architecture, who is the primary user for each package?
+
+### Decision
+
+**User Mix**: 50/50 balanced - equal priority for human developers and AI agents
+
+**@frontbase/core Target Audience**:
+- Startup/Enterprise devs
+- Agent-heavy developers
+- Indie developers
+- Agency developers
+
+**@frontbase/builder Target Audience**:
+- Developer/designer hybrids
+- Builder platform migrants (Webflow, Framer, etc.)
+- No-code builders
+- Marketing teams
+
+**@frontbase/components Target Audience**:
+- All @frontbase users
+- Component library users
+
+**Optional Packages Target**:
+- @frontbase/auth: All users needing authentication
+- @frontbase/workflows: Backend users, automation engineers
+- @frontbase/database: Data-heavy applications
+
+### Rationale
+
+**50/50 Balanced Approach**:
+- Equal priority for human developers and AI agents
+- Neither humans nor agents are "primary" - both are first-class citizens
+- Agent-first is a differentiator but not at expense of DX
+- This balance influences: CLI design, documentation, error messages, feature prioritization
+
+**Developer Segments**:
+- **Startup/Enterprise devs**: Need production-ready frameworks with good DX
+- **Agent-heavy devs**: Using Claude, Cursor, Gemini daily - need deterministic tools
+- **Indie devs**: Solo developers needing fast iteration
+- **Agency devs**: Building client projects - need reliability and speed
+
+**Builder Segments**:
+- **Developer/designer hybrids**: Can code and design - want both visual and code
+- **Platform migrants**: Coming from Webflow, Framer - need familiar workflows
+- **No-code builders**: Marketing teams - need visual tools
+- **Marketing teams**: Need landing pages, content sites quickly
+
+### Target Audience Breakdown by Package
+
+```
+@frontbase/core
+├── 50% Human developers
+│   ├── 40% Startup/Enterprise devs
+│   ├── 30% Indie developers
+│   └── 30% Agency developers
+└── 50% AI agents (Claude, Cursor, Gemini)
+
+@frontbase/builder
+├── 70% Visual users
+│   ├── 40% Marketing teams
+│   ├── 35% No-code builders
+│   └── 25% Platform migrants
+└── 30% Developer/designer hybrids
+
+@frontbase/components
+└── All users (100% coverage)
+```
+
+### Implications
+
+**For Core Framework**:
+- CLI must work equally well for humans and agents
+- Documentation must serve both audiences
+- Error messages: clear for humans, actionable for agents
+- Feature flags: simple for humans, deterministic for agents
+- Zod schemas: clear contracts for agents, good DX for humans
+
+**For Builder**:
+- Visual-first UX but code export/import
+- Familiar patterns for platform migrants
+- Collaboration features for teams
+- Preview modes for marketing users
+
+**Success Criteria**:
+- [ ] CLI works equally well for humans and agents
+- [ ] Agent success rate >90% on core framework
+- [ ] Human developer satisfaction >4.5/5
+- [ ] Builder serves marketing teams effectively
+- [ ] Platform migration guides available
+- [ ] Documentation serves all target segments
+
+### Related Decisions
+- Follows A-1: Modular Architecture Split
+- Follows A-2: Core Framework Scope
+- Follows P-1: Modular Architecture Positioning
+- Informs pricing and packaging strategy
+
+---
+
+## Decision A-3: Consolidated Monorepo Structure & Package Naming
+
+**Date**: 2026-07-05
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+**Question**: How should we structure and name the framework packages to minimize maintenance overhead?
+
+### Decision
+
+1. Rename `@frontbase/core` to **`@frontbase/edge-core`**.
+2. Rename `@frontbase/infra` / `@frontbase/database` and consolidate all backend edge infrastructure utilities (caches, state databases, vaults, queues, and storages) into **`@frontbase/edge-infra`**.
+3. Consolidate dynamic query components (datatable, form, charts, info lists, kpi cards, grids) into **`@frontbase/data-components`**.
+4. Integrate basic routing (`@frontbase/router`) and Liquid rendering (`@frontbase/liquid`) directly into the **`@frontbase/edge-core`** bundle.
+5. Simplify the monorepo package count from 35 down to **11 core packages**.
+
+### Rationale
+
+- **Low Maintenance Overhead**: Consolidating 35 packages to 11 reduces directory footprint, removes circular configuration loops, and accelerates CI/CD pipelines.
+- **Edge Identity**: The `-edge` prefixes highlight the native serverless/edge compatibility of our runtime design.
+- **Unified Infrastructure Layer**: Treating storage, caching, state-dbs, secrets, and task queues as a single dependency unit (`@frontbase/edge-infra`) simplifies installation flags while keeping core framework builds clean.
+
+### Simplified Monorepo Layout (11 Packages)
+
+- `@frontbase/edge-core`: Core edge framework logic (Hono runtime, dev file-system routing, state integration, liquid engines).
+- `@frontbase/compiler`: Vite plugin, AST parsing, and Zod schema extractor.
+- `@frontbase/components`: ~70 default visual widgets.
+- `@frontbase/data-components`: Dynamic, query-bound widgets (Table, Charts, InfoLists, Forms).
+- `@frontbase/builder`: (Optional) Drag-and-drop page editor canvas.
+- `@frontbase/workflows`: (Optional) Edge workflow automation engines.
+- `@frontbase/auth`: (Optional) Adapters for Supabase, Clerk, and SuperTokens.
+- `@frontbase/data-sync`: (Optional) Real-time sync engine.
+- `@frontbase/edge-infra`: (Optional) Persistence engines (state-dbs, caches, vaults, queues, storage).
+- `@frontbase/backend`: FastAPI web service wrapper and admin panel API endpoints.
+- `@frontbase/cli`: CLI utility script.
+
+---
+
+## Decision A-4: UI Component Consolidation
+
+**Date**: 2026-07-05
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+**Question**: Should static components and dynamic data components be unified under a single package?
+
+### Decision
+
+1. Combine `@frontbase/components` and `@frontbase/data-components` into a single **`@frontbase/ui-components`** package.
+2. Group both the ~70 basic visual design layout elements and the dynamic, query-bound database widgets (DataTable, Forms, Charts) within this package.
+3. Reduce the monorepo package footprint from 11 down to **10 core packages**.
+
+### Rationale
+
+- **Unified Rendering Context**: Both basic layout containers and query-bound widgets represent visual components that must be registered in `componentRegistry.tsx` and evaluated by Hono SSR and client-side Suspense/hydration pathways.
+- **Dependency Reduction**: Merging them removes circular peer dependencies between the design system templates and data components, facilitating an easier and faster release/versioning cycle.
+
+---
+
+## Decision A-5: Edge Auth Middleware Relocation
+
+**Date**: 2026-07-05
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+**Question**: Should edge-side authentication/JWT validation middleware reside in @frontbase/auth or @frontbase/edge-infra?
+
+### Decision
+
+1. Relocate the Hono edge runtime JWT validation and verification middleware from `@frontbase/auth` to **`@frontbase/edge-infra`**.
+2. Keep `@frontbase/auth` focused purely on client-side React UI components, forms, and client auth provider hooks (Supabase/Clerk client wrappers).
+
+### Rationale
+
+- **Headless Infrastructure Alignment**: Edge-side JWT verification, session payload decoding, and token parsing represent server-side gateway infrastructure filters. Centralizing them inside `@frontbase/edge-infra` groups them with other edge persistence and request-filtering systems (caching, vaults, database schemas).
+- **Lightweight Presentation Layer**: This keeps `@frontbase/auth` strictly visual and client-oriented, preventing frontend components from pulling in server-only edge libraries or config bindings.
+
+---
+
+## Decision A-6: Elimination of @frontbase/auth
+
+**Date**: 2026-07-05
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+**Question**: Should @frontbase/auth be eliminated and its components split between edge-infra and ui-components?
+
+### Decision
+
+1. Eliminate the `@frontbase/auth` package entirely.
+2. Relocate Hono Edge runtime authentication verification (JWT validation middleware) to **`@frontbase/edge-infra`**.
+3. Relocate React UI auth form components, client session hooks (`useSession()`, `useUser()`), and client SDK wrappers into **`@frontbase/ui-components`**.
+4. Reduce the monorepo package footprint from 10 down to **9 core packages**.
+
+### Rationale
+
+- **Clean Runtime Separation**: This isolates the presentation layer (Client UI/hooks in `@frontbase/ui-components`) from the gateway filter layer (Hono middlewares in `@frontbase/edge-infra`). 
+- **Developer Convenience**: Removing `@frontbase/auth` eliminates a redundant monorepo package, simplifying installation flags and compilation structures.
+
+---
+
+## Decision A-7: Elimination of @frontbase/workflows
+
+**Date**: 2026-07-05
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+**Question**: Should @frontbase/workflows be eliminated and split between edge-core and builder?
+
+### Decision
+
+1. Eliminate the `@frontbase/workflows` package entirely.
+2. Relocate the **Workflow Execution Engine** (durable queue execution, checkpoint filters, rate-limiting, and triggers) to **`@frontbase/edge-core`** to make it a first-class programmatic runtime feature.
+3. Relocate the **Visual Workflow Editor Canvas** (React Flow layouts, diagrams catalog, and properties nodes) to **`@frontbase/builder`** to centralize all visual editor tooling.
+4. Reduce the monorepo package footprint from 9 down to **8 core packages**.
+
+### Rationale
+
+- **First-Class Programmatic Workflows**: Incorporating the engine into `@frontbase/edge-core` allows code-first developers to build robust, edge-native programmatic workflows (analogous to Inngest or Temporal) without needing the drag-and-drop builder console.
+- **Visual Builder Integration**: Since the visual workflow layout builder is a visual tool that saves configuration drafts, it aligns perfectly within the `@frontbase/builder` package alongside the visual page builder.
+
+---
+
+## Decision A-8: Elimination of @frontbase/data-sync
+
+**Date**: 2026-07-05
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+**Question**: Should @frontbase/data-sync be eliminated and its features split between edge-infra and builder?
+
+### Decision
+
+1. Eliminate the `@frontbase/data-sync` package entirely.
+2. Relocate the **Data Sync Engine & Adapters** (MySQL/PostgreSQL sync scripts, WordPress post importers, Google Sheets rows connectors, and sync cron execution logic) to **`@frontbase/edge-infra`**.
+3. Relocate the **Sync Configuration & Dashboard UI** (visual columns-mapping canvas, conflict settings pages, execution tables) to **`@frontbase/builder`**.
+4. Reduce the monorepo package footprint from 8 down to **7 core packages**.
+
+### Rationale
+
+- **Batteries-Included Edge Infrastructure**: Consolidating sync adapters under `@frontbase/edge-infra` pairs database connectivity and third-party data extraction loops with standard persistence structures (caching, SQL schemas, vaults, storage), providing a single powerhouse infrastructure package.
+- **Visual Console Integration**: The sync mapping schema board is an administrative, developer-facing visual configuration tool that saves drafts, making it a natural addition to `@frontbase/builder` along with page and workflow visual builders.
+
+---
+
+## Decision A-9: Elimination of @frontbase/cli
+
+**Date**: 2026-07-05
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+**Question**: Should @frontbase/cli be eliminated and its binaries compiled inside @frontbase/edge-core?
+
+### Decision
+
+1. Eliminate the `@frontbase/cli` package entirely.
+2. Relocate the CLI command binaries (`frontbase init/check/lint/simulate`) directly into **`@frontbase/edge-core`** under a `bin/` directory.
+3. Declare binary execution path mappings inside the `@frontbase/edge-core` configuration file (`package.json`) to register it as the standard package executable:
+   ```json
+   "bin": {
+     "frontbase": "./bin/frontbase.js"
+   }
+   ```
+4. Reduce the monorepo package footprint from 7 down to **6 core packages**.
+
+### Rationale
+
+- **Simplified Installation & Execution**: Developers installing `@frontbase/edge-core` get immediate access to commands (`npx frontbase init` or `npx frontbase check`) without needing to manage separate version updates or packages.
+- **Zero Runtime Weight**: CLI tooling modules (prompt packages, simulators, chalk) reside in execution-only bin files that are completely ignored by Vite when building streaming edge SSR bundles, keeping the edge runtime footprint under target limits.
+
+---
+
+## Decision A-10: Consolidation of CLI into @frontbase/compiler
+
+**Date**: 2026-07-05
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+**Question**: Should the CLI binaries be relocated to @frontbase/compiler to ensure edge-core remains a pure runtime package?
+
+### Decision
+
+1. Relocate the CLI command binaries (`frontbase init/check/lint/simulate`) from `@frontbase/edge-core` into **`@frontbase/compiler`** under the `bin/` directory.
+2. Register the binary path mapping executable inside `@frontbase/compiler`'s `package.json`:
+   ```json
+   "bin": {
+     "frontbase": "./bin/frontbase.js"
+   }
+   ```
+3. Keep `@frontbase/edge-core` as a **100% pure production edge runtime** (only containing Hono routing, Liquid filters, SSR engines, and workflows runner) with zero dev-only binary packages or CLI prompt dependencies.
+
+### Rationale
+
+- **Pure Edge Core Bundle**: Keeping CLI scripts inside the compiler completely separates build-time development tools (AST parsing, Vite hooks, linters, scaffolders) from production edge servers, preventing any dev dependency leaks into production dependencies.
+- **Natural Scaffolding Alignment**: `@frontbase/compiler` is installed as a `devDependency` and runs at dev-time. Executing project bootstrap prompts via `npx @frontbase/compiler init` matches standard scaffolding conventions (e.g. `npx create-vite`) while keeping execution tools inside the dev-time compilation package.
+
+---
+
+## Decision A-11: Dual-Backend Architectures (FastAPI & Hono)
+
+**Date**: 2026-07-05
+**Status**: ⚫ SUPERSEDED by A-13 (2026-07-06) — the framework ships the Hono edge console only; FastAPI remains legacy-product scope outside the framework packages
+**Priority**: 🟡 HIGH
+**Question**: Should the admin dashboard console backend support both FastAPI (legacy containerized VM) and Hono (edge-native serverless) runtimes?
+
+### Decision
+
+1. Specify that `@frontbase/backend` supports **two backend implementation options**:
+   - **FastAPI Backend (`@frontbase/backend/fastapi`)**: The existing Python/FastAPI codebase, designed for traditional containerized (Docker) VM hosting and enterprise database setups.
+   - **Hono Edge Backend (`@frontbase/backend/hono`)**: An edge-native TypeScript/Hono implementation, built directly on top of `@frontbase/edge-core` and `@frontbase/edge-infra`, designed for pure serverless (Cloudflare Workers, Deno) hosting with zero-infrastructure base cost.
+2. Ensure both backend choices consume the same Drizzle-managed database schemas from `@frontbase/edge-infra` to prevent database schema drift.
+
+### Rationale
+
+- **Edge-Native SaaS Flexibility**: Providing a Hono edge backend allows developers to host their entire Frontbase CMS console directly on edge networks (like Cloudflare) for free, matching the modern serverless lifecycle.
+- **Backward Compatibility Moat**: Retaining the FastAPI implementation provides an easy, low-risk upgrade path for self-hosted enterprise clients running existing VM/Docker orchestration stacks.
+
+---
+
+## Decision A-12: Adoption of the Chimera (Universal eSSR) Architecture
+
+**Date**: 2026-07-06
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+**Question**: Which rendering architecture should the framework adopt — React 18 streaming SSR, dual server/client code generation, or the Chimera (Universal eSSR)?
+
+### Decision
+
+**Adopt the Chimera (Universal eSSR)** as the canonical rendering architecture. See [CHIMERA-ARCHITECTURE.md](../ARCHITECTURE.md).
+
+1. One Hono-based engine (`@frontbase/edge-core`) renders every page in three environments: cloud edge worker (first load/SEO), browser service worker (subsequent navigations, private pages, offline), and builder canvas (design-time preview).
+2. Page components are **isomorphic Hono/JSX functions** rendered to HTML strings. Published pages ship **no React**; interactivity comes from a ~10 KB declarative client-behaviors runtime.
+3. Environment differences are isolated behind a dependency-injected **DataProvider** (direct with edge secrets / proxy via registered queries / local SQLite-WASM draft).
+4. The service worker never receives credentials or raw SQL: the **Edge Data Proxy** executes only compiler-registered queries (queryId + Zod params + tenant scope).
+5. React survives in exactly one place: the builder's own UI shell in `@frontbase/builder`.
+
+### Rationale
+
+- **Resolves the dual-renderer debt**: today every component exists twice (React in the builder SPA + hand-written string renderers on the edge). React streaming SSR would have added a *third* renderer; the Chimera collapses to **one**.
+- **The existing code favors it**: the ~1,600 lines of SSR string renderers in `services/edge/src/ssr/components/` are architecturally closer to engine components than to React SSR — they become the seed, not waste.
+- **Exact WYSIWYG**: the builder previews with the production engine — fidelity is structural, not aspirational.
+- **Zero hydration drift**: no server/client component split, no hydration mismatch class of bugs, no dual bundles.
+- **Zero-latency navigation + offline** as built-in differentiators no mainstream framework offers.
+- **Fallback-by-design**: browsers without service workers always render from the edge, so the SW layer carries no adoption risk.
+
+### Supersedes / Resolves
+
+- Supersedes the "React 18 Streaming SSR" pillar of proposal v2.x and Milestone 2.5 (streaming SSR setup).
+- Resolves former open questions: SSR strategy, dual-bundle build output, client-only component strategy (see OPENQUESTIONS §Resolved).
+
+### Success Criteria
+
+- [ ] Byte-identical HTML for the same layout across edge, SW, and builder preview (CI parity suite).
+- [ ] Engine bundle < 70 KB min+gzip; SW payload < 150 KB.
+- [ ] Published pages ship 0 KB of React.
+- [ ] Edge Data Proxy rejects all non-registered queries (security test suite).
+
+### Risks & Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| Engine-in-SW impractical (size/lifecycle/Safari) | Phase 0 spike validates first; Adjust path = ship edge-only eSSR, defer SW layer |
+| SW staleness after publish | Versioned sw.js + skipWaiting + manifest revalidation (CHM-1) |
+| Proxy abuse | Registered queries only; Zod param validation; tenant scoping (CHM-4) |
+
+---
+
+## Decision A-13: Single-Edge-Worker Deployment (Supersedes A-11)
+
+**Date**: 2026-07-06
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+**Question**: How does the complete CMS deploy?
+
+### Decision
+
+**The entire CMS — builder frontend, console API, eSSR engine, Edge Data Proxy, and workflows — deploys as ONE edge worker** (Cloudflare Workers primary, Deno Deploy secondary).
+
+1. `@frontbase/backend` is a **TypeScript/Hono console sub-router mounted at `/api/console` inside the same worker** as the engine. There is no separate backend deployment and no Python in the framework deploy.
+2. The FastAPI backend is **removed from framework scope**: it is not an npm package and not part of `--full` scaffolds. It remains the legacy self-hosted product's runtime and the data-migration source.
+3. Builder SPA assets are served as static assets from the worker (excluded from script-size limits).
+4. Persistence uses edge-native bindings via `@frontbase/edge-infra`: D1/Turso/Postgres-Hyperdrive, KV, R2, Queues.
+
+### Rationale
+
+- **Zero-infrastructure self-hosting**: `npx @frontbase/compiler deploy` gives anyone a complete visual CMS on a free edge plan — the strongest adoption lever the framework has.
+- **Ends the dual-backend maintenance tax**: A-11 required maintaining 60+ console routes twice (Python + TypeScript) against shared schemas, with permanent drift risk between Alembic/SQLAlchemy and Drizzle. One implementation, one migration system (Drizzle).
+- **Operational simplicity**: one deploy artifact, one URL, one log stream, one rollback lever.
+
+### Supersedes
+
+- **A-11 (Dual-Backend Architectures)** — marked superseded above.
+
+### Success Criteria
+
+- [ ] `init --full && deploy` produces a working CMS at a single URL on a free Cloudflare plan.
+- [ ] Worker script < 400 KB min+gzip (hard limit 1 MB gzip on CF free).
+- [ ] Console API feature-complete for CMS-critical routes (pages, drafts, publish, tenants, tokens, users) at Phase 2 exit; long-tail admin routes migrate post-GA.
+
+---
+
+## Decision A-14: Six-Package Structure Reaffirmed Under the Chimera
+
+**Date**: 2026-07-06
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+**Question**: Does the 6-package consolidation hold under the Chimera architecture, and what are the packages' roles?
+
+### Decision
+
+The **six-package structure is fixed** (guiding principle #3); Chimera adoption redefines roles rather than adding packages:
+
+```
+@frontbase/edge-core      # The Chimera Engine — router, eSSR renderer, DataProvider DI, workflows, behaviors, SW primitives
+@frontbase/compiler       # Vite plugin, schema extraction, query registrar, SW bundle emitter, CLI (init/check/lint/simulate/deploy)
+@frontbase/ui-components  # THE single set of isomorphic page components + behaviors + auth primitives (no React)
+@frontbase/builder        # React shell + local SQLite-WASM draft DB + canvas↔SW preview bridge + visual editors
+@frontbase/edge-infra     # Direct data providers, Edge Data Proxy, caches, queues, vault, auth gates, sync, storage
+@frontbase/backend        # Console API Hono sub-router (in-worker) + Drizzle schemas & migrations
+```
+
+New capabilities extend existing packages; adding a seventh package requires a new decision record.
+
+### Rationale
+
+- Preserves the consolidation benefits of A-3…A-10 (low maintenance overhead, simple peer trees, fast CI).
+- Gives every Chimera concern an unambiguous home (see CHIMERA-ARCHITECTURE §5 package mapping).
+- A fixed surface is itself agent-friendly: agents can memorize the full package topology.
+
+---
+
+## Decision A-15: Framework Repository & Licensing (settles PRD-2)
+
+**Date**: 2026-07-07
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+**Question**: Where does the framework code live, and under what license?
+
+### Decision
+
+1. **Fresh dedicated repository: `frontbase-framework`** — a monorepo with `packages/{edge-core,compiler,ui-components,edge-infra}` under one shared toolchain. The current product repo stays intact and untouched through Phase 1; it becomes the framework's **first consumer** after M1.1 proves byte-parity (extraction = move, not fork).
+2. **Apache-2.0** for all four framework packages. Chosen over MIT for the explicit patent grant and enterprise-legal friendliness (a commercial layer sits on top); AGPL rejected — network copyleft suppresses adoption of an embeddable framework, and freeride protection comes from the commercial builder layer instead.
+3. Repo starts **private**; flips public once Phase 1 is presentable (M1.1/M1.2 landed; at latest the Phase 3 beta).
+4. `builder` and `backend` package placement + licensing remain **open** (PRD-1 residual, decide before Phase 2; builder still leaning BSL/proprietary per the PRD-1 tiering).
+5. **Cross-repo parity strategy**: the M1.1 byte-identical regression suite lives in the framework repo and tests against a **golden corpus** — HTML snapshots generated once from the product repo's production renderer (including the real homepage) and committed as fixtures. No cross-repo code imports; the repos stay decoupled.
+6. The framework docs (`docs/frontbase-framework/`, gitignored in the product repo) migrate to the new repo and become version-controlled.
+
+### Rationale
+
+- Keeps the shipping product de-risked during extraction — no toolchain or dependency churn in the product repo until the framework is proven.
+- One roof for the four OSS packages preserves the A-3/A-14 consolidation benefits (shared CI, single version line, simple peer trees).
+- Apache-2.0 matches the adoption goal: developers and agents embedding `edge-core` must never face an AGPL-dependency ban; the moat is the builder, the engine is the funnel.
+
+---
+
+## Decision A-16: Registered-Query Authoring Model (settles CHM-4)
+
+**Date**: 2026-07-07
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL (was blocking M1.2)
+**Question**: How are the named queries served by the Edge Data Proxy authored, typed, and registered?
+
+### Decision
+
+**One registry contract, two authoring paths; code-first is the M1.2 MVP.**
+
+The registry contract (owned by `@frontbase/edge-core`, executed by `@frontbase/edge-infra`):
+
+```ts
+interface RegisteredQuery<P = unknown> {
+    queryId: string;                 // namespaced, e.g. 'products.list'
+    params: z.ZodType<P>;            // validated by the proxy before execution
+    scope: 'public' | 'tenant' | 'user';
+    ttlSeconds?: number;
+    execute: (params: P, ctx: QueryContext) => Promise<Record<string, unknown>[]>;
+}
+```
+
+- **Code-first (M1.2 MVP)**: projects export `defineQueries({...})`; the compiler extracts `{queryId, params, scope, ttl}` into the site manifest at build time. `execute` never leaves the server side.
+- **Builder-first (Phase 2, M2.2)**: the builder's query UI emits the *same* manifest artifact at publish time — no second registry.
+- The SW/browser only ever sees `{queryId, param schema}`; the proxy rejects unregistered IDs and invalid params (proven in M0.3: `evil.dropTables` → 404).
+
+### Rationale
+
+- The spike already validated this shape (baked registered queries + proxy rejection).
+- One contract prevents the code/builder split from becoming two security surfaces.
+- Zod params reuse the M1.2 extractor machinery — same round-trip safety net as component schemas.
+
+---
+
+## Decision A-17: DB Provider Verification Surface & Tenant-Isolation Layer
+
+**Date**: 2026-07-10
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL (defines "done" for M2.1)
+**Question**: CI has no live cloud DB credentials. How do we verify D1/Turso/Postgres/SQLite providers, and where does the tenant-isolation guarantee live so a credential-gated provider is still trustworthy?
+
+### Decision
+
+**1. SQLite (`LocalSqliteProvider`) is the CI-verified reference provider.** Every commit runs real
+queries, real cross-tenant isolation tests, no-leak, and opaque-error gates against it. All RULE 1–4
+security gates are fully CI-verifiable without credentials.
+
+**2. D1 / Turso / Postgres are implemented behind the shared `DataProvider` interface and verified
+against the *contract*.** Their live-DB gates are **credential-gated**: green against the interface on
+every commit; exercised against real endpoints only where a test DB / connection string is provided
+(local or a later CI matrix). Mirrors the product repo's own test approach.
+
+**3. Tenant isolation lives in the provider-agnostic query layer, NOT in provider-specific mechanisms.**
+The `execute` SQL MUST carry an application-level `WHERE tenant = ctx.tenant` (from `resolvePrincipal`
+only). Provider-native isolation (Postgres/Supabase RLS, D1 bindings) is **defense-in-depth only**, never
+the primary control. This is what makes the SQLite isolation test *authoritative for every provider*: the
+guarantee under test is the same code path on all of them.
+
+**4. Isolation + contract tests are written ONCE against the `DataProvider` interface, parameterized by
+provider.** Enabling a cloud provider (creds present) runs the *identical* gates — never a
+re-implementation. A credential-gated provider is therefore a deferred *run*, not a coverage gap.
+
+### Rationale
+
+- Unblocks M2.1 without cloud credentials while keeping the security gates genuinely authoritative.
+- Prevents a silent coverage hole: if isolation were delegated to RLS, the SQLite test would prove
+  nothing about the RLS-backed providers — exactly where CI can't see.
+- One parameterized test suite = flip a provider live with zero new test code.
+
+### Impact on M2.1 acceptance
+
+"Done" for M2.1 = SQLite passes the full gate set (queries, cross-tenant isolation, no-leak, opaque
+errors) AND D1/Turso/Postgres pass the shared contract test AND every provider's `execute` uses an
+app-level tenant predicate (RLS/bindings additive only). Credential-gated live runs are documented, not
+required for green. Updates the M2.1 plan gates accordingly.
+
+---
+
+## Decision A-18: Identity & Provisioning Layer (M-ID.1)
+
+**Date**: 2026-07-11  **Status**: ✅ APPROVED
+PBKDF2-SHA256 password hashing (D1, 600k iters, Web Crypto); HS256 fb_session JWT (D2, 7-day, HttpOnly); single-site _default tenant (D3); owner/master_admin/tenant_admin roles in JWT claims (D4/D9); idempotent boot seeding from ADMIN_EMAIL/ADMIN_PASSWORD (D5); wrangler secret put deploy flags (D6); login/logout/me routes (D7); hash never returned (D8); edge-core frozen (D9); tenant provisioning returns temp password once (D10).
+
+---
+
+## Decision A-19: Console DB Unification & CF D1 Default (M-DB.0)
+
+**Date**: 2026-07-11
+**Status**: ✅ APPROVED
+**Question**: How does the admin console DB connect across adapters, and how is it provisioned on Cloudflare?
+
+### Decision
+
+1. **`ConsoleStore` consumes a `DbRunner`** (B1), not a libsql URL. A thin `sqliteRunner(url)` preserves `:memory:`/`file:`/`libsql://` for tests + Docker; `d1RunnerFromBinding(env.DB)` is the CF default. One seam, all four adapters.
+2. **CF default DB = D1** (B2). `frontbase deploy` (CF) provisions a D1 database via `wrangler d1 create`, writes the `[[d1_databases]] binding="DB"` block (idempotent — B6), and the console + public data share ONE binding.
+3. **Docker default = SQLite file** (`file:./data/frontbase.db`) via `sqliteRunner` — no external service.
+4. **Migrations run via `DbRunner.exec`** (B5) — portable SQL, identical on all four.
+5. **Lazy env-bound worker** (B10/BLOCKER-1): the scaffold `worker.ts` is `export default { fetch(req, env, ctx) }` with a cached `getEngine(env)` — D1 bindings only exist in per-request `env`, so the engine/console build is deferred to first request. `createConsole` takes `{ makeRunner, sessionSecret?, resolvePrincipal? }` (BLOCKER-2); `dbUrl` stays as a convenience.
+6. **edge-infra is the adapter home** (B9): `buildDataProvider`/`DbRunner`/runners.ts are the single driver source. Credentials never leak (B8).
+
+### Rationale
+
+Unblocks the identity sprint (which seeds users into the console DB) and makes a fresh CF deploy actually have a console DB. The four blockers (env-init vs D1 binding, dbUrl hardwire, deploy-only-deploy, first-boot migration in getEngine) are each fixed by the lazy env-bound pattern.
+
+---
+
+## Decision A-20: Public Release Positioning and Gated Rollout
+
+**Date**: 2026-08-13
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+
+### Context
+
+The framework has completed substantial engine, compiler, infrastructure, backend, builder, and console work, while package consumability, external clean-room installation, self-host evidence, documentation, security residue, and release operations still need one coherent public-release contract. Frontbase may also be taught by downstream education products, but their timelines must not become Frontbase product governance.
+
+### Decision
+
+Prepare Frontbase for public release as a **self-hostable, AI/agent-oriented, edge-native app-builder and framework**. Use [`PUBLIC-RELEASE-STRATEGY.md`](./PUBLIC-RELEASE-STRATEGY.md) as the canonical rollout contract:
+
+1. Audit and freeze a truthful first public edition and release label.
+2. Prove external package consumption and clean-environment project creation outside the monorepo.
+3. Prove adopter-controlled self-hosting for every deployment path claimed publicly.
+4. Keep security, recoverability, documentation, versioning, and release automation as non-waivable gates.
+5. Treat CF-22 as paused accepted residue unless explicitly reactivated; scope the public edition honestly around it.
+6. Accept downstream consumer evidence only as input to generalized Frontbase requirements. NoCodeHero may teach a released Frontbase version but does not set Frontbase's roadmap, release label, or acceptance criteria.
+
+### Rationale
+
+This positioning expresses the architecture's actual differentiators while preventing “open repository,” “Cloudflare deploy,” or “course deadline” from being mistaken for a complete public product. A gated release train makes installation, ownership, security, and operations part of the self-hosting promise and lets Frontbase choose a smaller honest initial edition instead of overstating parity or portability.
+
+### Consequences
+
+- The immediate release action is the R0 scope/truth audit, not an uncontrolled feature sprint.
+- Existing Phase 3/4 dates are planning evidence, not automatic launch commitments.
+- Public claims must distinguish Cloudflare-first integration from other verified self-host paths.
+- Package publication and clean-room consumption become explicit blockers.
+- Downstream education can co-evolve with Frontbase through versioned capabilities and generalized evidence without importing business strategy into this repository.
+
+---
+
+## Decision A-21: Backendless Node/Docker Self-Host Adapter
+
+**Date**: 2026-08-22
+**Status**: ✅ APPROVED
+**Priority**: 🟡 HIGH
+
+### Context
+
+The deployable CMS (`examples/cf-full`) ran only on Cloudflare Workers (D1 + Static Assets bindings). A-20 §3 requires adopter-controlled self-hosting for every deployment path claimed publicly, and self-hosting without a Cloudflare account needs a portable host.
+
+### Decision
+
+Support a **single backendless container** (and bare-metal Node) via `examples/cf-full/src/node.ts`: the SAME exported `createCmsEngine` with exactly three host swaps — `sqliteRunner` over a `file:` URL (sqlite-dialect parity with D1; generic PG/MySQL as the *app* DB remains the A-15-adjacent unclosable constraint), a disk-backed ASSETS shim over `console-dist/` (same binding contract, ETag/304), and a caught fire-and-forget dispatcher. `migrateUp` self-applies at boot; `ADMIN_*` seeds are idempotent. Docker gate = deploy-level console verification + hydrate-vendor presence (patch-hydrate silently skips without the vendor). Secrets are runtime env only; `.env` is gitignored; `.dockerignore` excludes `.dev.vars`/`.env`/`*.secret`.
+
+A FastAPI A/B parity stack (product stack beside this container for differential testing) is a recorded future goal — the framework's Hono app implements its own full API, so the stacks are peers, never a frontend/backend pair. A two-service all-TS split was considered and rejected for now (artificial for a single-app architecture).
+
+### Consequences
+
+- Self-host claims in release materials can reference a verified Docker path, not just Cloudflare.
+- `assetResponse` now treats asset-store 304s as hits (fixes conditional-GET 404s on both hosts).
+- Image builds require `pnpm run fetch:console` staging first (posture B preserved); the gate fails fast otherwise.
+- Runtime image carries a prod `node_modules` (libsql native addon cannot be bundled); per-arch builds only.
+
+---
+
+## Decision A-22: Console Source Consolidation (Phase 1 of framework-only)
+
+**Date**: 2026-08-28
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+
+### Context
+
+The console SPA was built from the product repo by `scripts/fetch-console.mjs` and vendored at a pinned product SHA (`console-dist/CONSOLE_PIN`), while the product's Docker cloned this framework for `@frontbase/edge-core` — a bidirectional pin dance. The framework-only direction (2026-08-28) retires the product repo entirely, starting with the console.
+
+### Decision
+
+Move the console source into this workspace as `packages/console` (`@frontbase/console`, private; the 8 product sub-packages nest as alias-resolved source dirs). Zero behavior change: `builder-sw.js` is **byte-identical** to the product build, the SPA module graph is equivalent, and the CSS chunk hash matches. `CONSOLE_PIN` and `fetch:console` are retired; the validator slims to a staged-filesystem check (`validateStagedConsole`) plus the surviving contract-hash guard. `fetch:hydrate` replaces the product fetch for the hydration vendor only (Phase 2 will consolidate that source too). All 100 console devDependencies are pinned to exact product-resolved versions, with `pnpm.overrides` holding the 7 bundled runtime libs + rollup at product versions. The console's vitest is excluded from the root `pnpm test` filter (vitest 4 needs vite ^6; the build pins vite 5.4.21 for byte parity — revisit in Phase 2), and its `check` script scopes to `src/sw` + `src/client` (full-src tsc was never a product gate). CI browser acceptance becomes unconditional: the old `hashFiles(console-dist/assets/*.js)` gate was always false, so e2e never ran remotely — a coverage hole now closed.
+
+### Consequences
+
+- Fresh clones self-heal: the console builds from source; nothing product-built is committed.
+- The product's shipped bundle accidentally bundled a **second React (19.2.3)** from a stray `packages/datatable/node_modules` install that its committed lockfile does not reproduce; the framework build resolves datatable to the shared React 18.3.1 — matching datatable's own `^18 || ^19` peer range. This is the only module-graph difference and it is deliberate (the stray install is excluded from the copy).
+- The residual SPA size delta vs the last product build (−50 kB) is esbuild minified-identifier allocation noise seeded by that React difference — the programs are structurally identical.
+- `examples/cf-full/e2e/playwright.config.ts` gained quoting on its `--var` values: playwright shells the command, and the space-containing default passphrase was being split, seeding `ADMIN_PASSWORD=correct` (found via the newly-run e2e; latent since CF-22).
+
+---
+
+## Decision A-23: Contract Inversion & Hydrate Source Consolidation (Phase 2 of framework-only)
+
+**Date**: 2026-08-28
+**Status**: ✅ APPROVED
+**Priority**: 🔴 CRITICAL
+
+### Context
+
+A-22 left two live product inputs. The vendored community contract was pinned by `contracts/PRODUCT_COMMIT` + `CONTRACT_SHA256`, refreshed by `scripts/sync-contract.mjs` from a product checkout, and guarded by a drift gate (`scripts/contract-diff.mjs`) that compared the framework against the frozen product doc forever. The hydration bundle (`examples/cf-full/public/react/hydrate.vendor.js`) was `git show`-ed out of the product repo at that same pinned commit and byte-patched by `scripts/patch-hydrate.mjs` — six exact-once patches keyed on MINIFIED product identifiers to restore the builder-canvas data fallbacks. With the framework-only direction locked (2026-08-28), both product flows had to die: the framework becomes the single source of truth.
+
+### Decision
+
+1. **Contract inversion** — the framework owns its contract. `packages/backend/contracts/openapi.community.json` (334 ops / 349 schemas / 36 tags) stays the contract and gate denominator, content unchanged this phase, but in-place edits are now legitimate: `contracts:emit --check` staleness is the only guard (the behavior-ledger gate catches a dropped declaration — ledger entries ≠ measured ops). `openapi.full.json` (389 ops / 415 schemas) is vendored alongside as the console client-generation input until Phase 4 implements the 55 cloud-only ops. Deleted: `PRODUCT_COMMIT`, `CONTRACT_SHA256`, `sync-contract.mjs`, the drift gate (root script + backend test + CI step + its mutation proof), `differential.expected.json` (orphan), and the live-product tooling (`compat-live-conformance.mjs`, `differential-parity.mjs`, the byte-duplicate `compat-legacy-conformance.mjs`; `conformance:legacy` renames to `conformance`). The behavior ledger and the CF22_A3 `PRODUCT_VERIFIED_REFUSAL` reader are untouched — they consume committed historical artifacts (provenance, not a live dependency).
+2. **Client generation in-repo** — `packages/console` gains `openapi-ts.config.ts` (`@hey-api/openapi-ts` 0.99.0 exact; input = the vendored full spec) + `client:generate`. The committed `src/client` regenerates byte-identically (verified at execution; the only deltas vs the product-committed output were two inert one-liners in `client.gen.ts`/`types.gen.ts` — the baked `baseURL`, overridden at runtime by `src/lib/api-client.ts`). CI gains two gates: regeneration staleness (`client:generate` → `git diff --exit-code`) and byte-equality of the console client's `zod.gen.ts` with the worker-embedded compat copy (`scripts/check-client-sync.mjs` — one generator, one spec).
+3. **Hydrate source consolidation** — new `packages/hydrate` (`@frontbase/hydrate`, private; vite 7.3.1 + @vitejs/plugin-react 5.1.2 + react 19.2.3, all exact) builds `dist/hydrate.js` + `entry-*.css` from the ported product sources (`services/edge/src/client`: entry.tsx, globals.css, the UnifiedDataTable edge wrapper + 5 thin re-export wrappers, `repeater/*`), aliasing the 8 console sub-packages — verifiably the same sources the vendor was built from (the vendor's embedded `.tsx` paths name them). The six byte-patches become source-level: the five canvas fallbacks share one `isBuilderCanvas()` gate in `@frontbase/types` (a function called at bail time — the per-query re-evaluation is semantics, never hoist it to a module const), and the ui-event-trigger init is deferred to a macrotask in `entry.tsx`. The cf-full build stages `packages/hydrate/dist` → `console-dist/react/` (the only served location); the vendor's silent-skip paths are gone (a missing dist fails the build loudly). Smoke hydrate checks are unconditional: served ≡ built, the `chimera-rendered-by` gate literal present, CSS immutable — plus six source-anchor assertions (one per translated patch). Deleted: `fetch-hydrate.mjs`, `patch-hydrate.mjs`, `public/react/`, the `requireHydrateVendor`/`contractOnly` modes in the validator (replaced by `requireHydrate` on the staged tree — the deploy gate now judges the post-build tree it actually ships). Zero product references remain in build, test, deploy, CI, or Docker.
+4. **Product archive** — the product repo (`drmoyassine/frontbase-dbsync`) becomes reference-only; no framework code path may reach it. Its GitHub archival is the user's action at phase end.
+
+### Consequences
+
+- The last vendored hydrate bundle was a **development-mode build** (292 jsxDEV annotations, 289 embedded `.tsx` source paths, dev React with full warning strings). The framework build is production React 19.2.3 — ~25% smaller (~770 KB vs ~1,027 KB minified) with a 1:1 content census (recharts/liquidjs/react-query/component registry markers equal). Behavior-equivalent for the hydration path; the regression net is the e2e builder-canvas flow in a real browser against workerd.
+- The console SPA bundles changed bytes (the shared component sources gained the gate), but SPA behavior is unchanged: its components mount with default `mode='builder'` (gates 1–3 unreachable) and its `index.html` has no `chimera-rendered-by` meta (gates 4–5 reduce to the prior condition) — only `edge-core/src/shell.ts` stamps that meta, on published/canvas documents.
+- Legitimate contract evolution now requires re-running `contracts:emit`; the staleness gate catches an edit that skips re-emission. The 334-op community denominator and all conformance-gate logic are unchanged.
+- The console's vitest/vite-6 exclusion from the root test filter (A-22) was left as-is in this phase; it is build-parity hygiene, not a product dependency.
+
+## Decision A-24: Four-Host Deploy Matrix & Pluggable State DB (Phase 3 of framework-only)
+
+- **Date**: 2026-08-28
+- **Status**: ✅ Approved
+- **Related**: A-13 (single-edge-worker deployment), A-19 (console DB unification & CF D1 default), A-21 (Node/Docker self-host adapter), A-23 (Phase 2)
+
+### Context
+
+A-21's host-surface analysis showed `examples/cf-full` couples three capabilities directly to Cloudflare — the D1 binding (the engine's `runner`), the ASSETS binding, and `ctx.waitUntil` — while everything else already travels (system services resolve over HTTPS; `createCmsEngine` takes the host surface as constructor data). The locked go-live direction requires the same one-Hono-app CMS on Docker, Cloudflare, Vercel, and Deno Deploy, with the state database pluggable from adapters that already exist ("for CF deployment a D1 is the default choice, but the user should be able to deploy with whatever we do have adapters for"). Honest constraint: migrations are SQLite-dialect (DDL + `sqlite_master` introspection), so the app-DB menu is exactly the SQLite-family runners; Postgres-family stays the documented unclosable gap (A-17 lineage).
+
+### Decision
+
+1. **Four hosts, one example** — Cloudflare Workers (existing), Node/Docker (existing), **Vercel Edge** (new `src/vercel.ts`: `hono/vercel handle`, no `assets` — `vercel.json` owns the static matrix, the function owns every route needing state or a redirect, `config = { runtime: 'edge' }`), and **Deno Deploy** (new `src/deno.ts`: `Deno.serve` after engine init, the disk-ASSETS shim shared with node via new `src/assets-disk.ts`). All entries live in `examples/cf-full`; no new example dir.
+2. **State-db resolver** — new `src/state-db.ts` with `describeStateDb` (pure decision table) + `resolveStateDb` (describe + construct; the libsql native client opens `file:` connections eagerly, so tests assert on the pure layer). Precedence, first match wins: `APP_DB_URL` (libsql/`:memory:`/`file:`, with `file:` refused on the no-filesystem hosts) → the complete `APP_DB_D1_ACCOUNT_ID`+`APP_DB_D1_DATABASE_ID`+`CLOUDFLARE_API_TOKEN` trio → `d1RunnerFromRest` (D1 itself is a choice on ANY host) → CF's `d1Binding` → node's `file:/data/app.db` Docker default. Any PARTIAL configuration throws at boot naming the exact missing variable(s) — never a silent fallback. A half-configured DB must fail at boot, not at first write. `displayUrl`/`label` (system cards) never carry a credential. This split also fixes the pre-existing `node.ts` authToken drop (`sqliteRunner(APP_DB_URL)` → the token now travels).
+3. **Self-contained edge bundles** — `build.mjs` factors `emitEdgeArtifact` and adds an `edgeAlias` esbuild plugin for the NEW emits only: `@libsql/client` → its `lib-esm/web.js` (fetch-transport client; resolved through the importing package's own symlink realpath — version-agnostic, no `.pnpm` store walking). **`@upstash/qstash` is deliberately NOT re-pinned**: the `./cloudflare` subpath exports only `serve`, not `Receiver`; the `Receiver` used for signature verification lives in the main entry (bundled either way), and the dead computed `import(\`node:${m}\`)` template sits in the SHARED chunk both entries import — no alias could remove it, it has never executed on fetch-only hosts, and the worker bundle always shipped it. Proof obligations shift to the bundle gates (web-libsql marker present, native platform binaries absent, qstash endpoint literal present).
+4. **Vercel routing is config-pinned** — `vercel.json` (phase-object rewrites): `beforeFiles` sends the `/frontbase-admin` shell to `/api/cms` (the function must own the `needsSetup` 302), `afterFiles` translates engine-emitted `/static/react/*` + `/static/icon.png` onto the CDN tree (a real file wins without a function invocation), `fallback` catch-alls to `/api/cms`; header rules pin hydrate (no-cache), hashed console assets (immutable) and the broad shell rule — ordered AFTER the assets rule so merge order cannot flatten the immutable cache. `api/cms.mjs` is a byte copy of `dist/vercel.mjs` (Vercel discovers `api/*` at the project root regardless of `outputDirectory`).
+5. **Deploy tooling is per-host; the CLI stays Cloudflare-only** — `frontbase deploy` provisions Cloudflare (D1 + wrangler secrets + setup link) BY DESIGN; `--target vercel|deno` now REFUSES with `{ok:false, details:{hint}}` pointing at `pnpm run deploy:vercel|deploy:deno`, replacing the old silently-deploys-scaffold branch (deployctl deploying the scaffold artifact with no provisioning and no secrets). The new root scripts mirror `deploy.mjs`: build → `validateStagedConsole` → new shared gate `scripts/verify-host-artifact.mjs` (bundle + config + staged files, judged post-build so stale bytes can't be blessed) → secrets from env or stdin JSON, NEVER argv → host CLI. The scripts validate the state db through the deployed `describeStateDb` contract itself and refuse `:memory:`/`file:` on the edge hosts.
+6. **Gates** — `src/smoke-host.ts` (per-host CLI): artifact gates, the disk-shim contract over the real staged console-dist, and a route matrix driving BOTH new entries over a real engine whose D1-REST calls are answered by stubbed fetch backed by in-memory SQLite — the same code path a real D1-over-REST deployment uses, credential-free. `test/state-db.mjs` (22 checks: precedence, fail-loud, host honesty, no-leak). `test/vercel-config.mjs` (the vercel.json contract). CI runs all three on every PR; live deploys stay in dispatch-only `vercel-fresh-deploy.yml` / `deno-fresh-deploy.yml` (scratch-named projects, fail-fast secrets, `always()` teardown, cloned from the CF-22 pattern).
+7. **Pre-existing gap fixed in passing** — `/static/icon.png` was a live 404 on every host (the engine rewrites the favicon link to a root path nothing staged). The build stages `console-dist/icon.png`; smoke asserts served ≡ staged bytes on CF and Deno, the CDN header rule covers Vercel, and the Docker gate curls it.
+
+### Consequences (limits stated as limits)
+
+- **The app-DB menu is SQLite-dialect** (D1 binding / D1-over-REST / `file:` / `:memory:` / Turso-`libsql://` HRANA). Postgres/MySQL as the app DB remains the unclosable gap; `supabaseRunner` is a *datasource* runner, not an app-DB option. The resolver exposes exactly what exists — credential-gated ≠ coverage gap (A-17 pattern).
+- **Deno Deploy**: no writable filesystem (state must be remote) and no BullMQ (TCP) — warn-and-skip. **Vercel Edge**: no filesystem at all; the static matrix lives in `vercel.json`, and two platform behaviors (header merge order, rewrite phase precedence) are pinned by the config gate and confirmed live by the dispatch workflow.
+- **D1-over-REST is one round trip per statement, no transactions** — documented, not batched away.
+- **Docker behavior is unchanged except two honest fixes**: `APP_DB_AUTH_TOKEN` now reaches the libsql client, and the system cards name the RESOLVED backend (a Turso-backed self-host no longer claims `file:` SQLite). `APP_DB_URL=file:/data/app.db` (the Dockerfile default) resolves identically.
+- **CF-13 is retracted as written**: the old "deployctl path wired, blocker is credentials only" claim described the scaffold-deploying branch this decision deletes. Deno Deploy live support arrives with the deno-fresh-deploy workflow + `deploy:deno` script, not the compiler CLI.
+- The edge bundles each grew by the shared-chunk content (≈482 KB min+gzip vs 481.6 KB for worker.mjs) — far under the 4 MB Vercel Edge ceiling, gated at build time.
+- **Addendum 2026-08-30 — `--target vercel|deno` now dispatches to the per-host scripts** (owner direction: "all follow the same type of pipeline and flags"). The CLI maps its own flag surface onto `scripts/deploy-{vercel,deno}.mjs` — `--app-name` → the script's `--project`, `--dry-run` → build + gates only, secret-valued flags serialized into the stdin JSON `--secrets-json` (never argv) — and propagates the script's exit code. CF-only options fail loud under a non-CF target. The §5 refusal rationale stands for everything it guarded: the scripts stay repo-root artifacts (they build and gate `examples/cf-full`), so dispatch works only inside a checkout — outside it the CLI refuses with the script path, preserving this decision's honesty (no unprovisioned artifact ever deploys from the CLI). Provisioning itself remains script-owned.
+
+---
+
+## Decision A-25: Cloud Multi-Tenant Free Tier on app.frontbase.dev (Phase 4 of framework-only)
+
+- **Date**: 2026-08-29
+- **Status**: ✅ Approved
+- **Related**: A-13 (single-edge-worker deployment), A-17 (tenant-isolation layer), A-22/A-23/A-24 (Phases 1–3), A-18 (identity & provisioning)
+
+### Context
+
+Phases 1–3 made the framework the single source of truth. Phase 4 ships the locked go-live: **public self-serve signup → build in the console → publish → live at `<slug>.frontbase.dev`** — on ONE shared community worker in the operator's Cloudflare account. The reference model is the product's cloud mode (read-only audit): a shared-rows SaaS where signup provisions DB rows only (tenant + owner + plan + default page, no infra), the serving worker resolves the tenant from the **Host header prefix alone**, the platform admin is a master-admin-only API, and a global plan catalog with `tenants.plan` as a soft FK gates features. Scope is **free tier only** (user decision): the product's free plan has `edge_engines: 0`, so per-tenant engines, custom domains, and Stripe are structurally Phase-5 machinery. The framework collapses the product's two-worker+VPS split into its single worker (A-13 — there is no separate control plane to split).
+
+Two deliberate security fixes go beyond product fidelity: (1) **unregistered slugs are 404'd, not served** (the product served unknown-tenant pages); (2) **signup/login/forgot get the CF-16 rate limiter** (the product had none). Negative tenant lookups are never cached; positives hold 15 s in-isolate.
+
+### Decision
+
+1. **One artifact, env-gated** — `FRONTBASE_DEPLOYMENT_MODE=cloud` + `FRONTBASE_BASE_DOMAIN` activate tenancy; unset means byte-identical self-host (existing smoke green, unmodified). The two values ride `wrangler deploy --var` (non-secret, argv-safe) and are **never written to wrangler.toml** — a committed mode var would flip every self-host reusing the file into cloud boot.
+2. **Serving plane** — `tenancy/host.ts` (pure host parsing: `tenant|app|reserved|apex|foreign`; reserved set = operational labels ∪ product signup slugs ∪ internal namespaces; 3–50-char slug) + `tenancy/serving.ts` (tenant-scoped page resolution, tenant-host state, `scopePrincipalToHost`). `resolvePrincipal` is wrapped so a session belonging to another tenant's member is anonymous on this host — closing a real cross-tenant hole in private-page gating (login is a cross-tenant email scan). Enrichment resolves from the host tenant only (the self-host `[_root, _default]` fallback is the leak, not the caches). edge-core hooks (`resolvePublishedPage`, `enrichLayout`, `resolveFaviconUrl`) take an optional `req` — fewer-args call sites stay valid.
+3. **Signup & email** — signup validates the slug (reserved + format), 409s collisions, provisions tenant `plan='free' status='active'` + owner + `ensureHomepage` in one transaction with compensating delete; `/api/auth/me` populates `tenant_id`/`tenant_slug`. Resend carries password-reset links (`RESEND_API_KEY` secret, env/stdin only); failures stay non-enumerating. **Honest limits**: no email verification, no captcha — rate limiting is the only abuse control this phase.
+4. **Platform admin** — `/api/admin/tenants*` (master_admin per handler, not the any-admin prefix guard) + the `/admin` cloud console (a second vite build, `--mode cloud`, base `/admin/`, staged to `console-dist/admin`). `/admin` on a TENANT host is a 404 by design: a login form on someone else's domain is a phishing surface. The app-host PlansManager edits the **`_global` catalog** (`adminPlansTenant` dep re-namespaces the `/api/admin/plans*` router) — without it the operator would edit rows nothing reads, since `tenants.plan` enforcement resolves `_global`. Per-tenant plan rows still win precedence; the default (no dep) router is untouched.
+5. **Plan catalog & gates** — `seedPlanCatalog` idempotently seeds `free` into the existing `plans` table under `_global` **at cloud boot, not migration** (a migration-seeded catalog would change self-host, where "no plan ⇒ unlimited" is the tested contract). Enforcement fires only when limits resolve: counts → 402 `limit_exceeded` (pages, deploys_monthly — calendar-month Published-row approximation, team_members, edge_engines), flags → 403 (private_pages, api_access). `-1` unlimited, null inert, master_admin bypass preserved. **Counts are not metering** — no ledger, no cron; shared D1 capacity is the operator's concern.
+6. **Rate limiting** — the existing `rateLimitGuard` gains a D1-backed CacheProvider (fixed-window `rate_limit_counters` table) and a synthetic `rl-anon` principal keyed on `CF-Connecting-IP` (left-most XFF fallback, documented spoofable → best effort). Cloud only; opaque 429.
+7. **Deploy** — `deploy.mjs --mode cloud --base-domain` stays the single entry: stages BOTH console trees, gates on both (`requireCloud`), pushes `SESSION_SECRET`/`ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_ROLE`/`RESEND_API_KEY` stdin-only, and attaches `app.<zone>` + `*.<zone>` as Workers Custom Domains via the CF API (`cloud-domains.ts`, idempotent upsert, token header-only, per-hostname failure rows; missing creds → loud skip + dashboard path, API refusal → fail with remediation).
+
+### Gates
+
+Six backend suites (`tenant-host`, `cloud-serving`, `cloud-signup`, `admin-tenants`, `cloud-plan-gates`, `cloud-rate-limit`) + `smoke:cloud` (composed worker over Host headers, /admin served through the real Static-Assets path) + seven RULE 8 mutation proofs + the `console-pin` cloud-stage harness (29 fixtures) + compiler `cloud-domains`/`deploy-cloud` seams. Console unit + check gates stay green; self-host smoke untouched.
+
+### Consequences (limits stated as limits)
+
+- **The 11 `admin_agents_*` ops are framework stubs** — the cloud console's agent-analytics/credit/addons widgets degrade to error states. Phase-5 machinery (agent credits/metering are out of scope by plan §5).
+- **Phase-5 boundary**: per-tenant engines, managed/BYO custom domains, per-tenant workers, Stripe, `remove_branding` server-side flip, email verification, captcha, metering beyond counts, admin impersonation, apex marketing site, hard tenant delete/data export, per-plan rate-limit quotas, per-tenant D1/regions.
+- **Wildcards**: first visit to an unseen slug may hit a cert-provisioning window (platform behavior, documented); Custom Domains attach for `*.<zone>` depends on the zone's plan (dashboard fallback documented).
+- **Self-host invariance is load-bearing**: every cloud code path is behind `cloudMode`/env gates, and the unmodified self-host smoke + plan-limits contract prove it each run.
+
+---
+
+## Decision History
+
+| Date | Decision | Status |
+|------|----------|--------|
+| 2026-06-29 | A-1: Modular Architecture Split | ✅ Approved |
+| 2026-07-05 | A-3: Consolidated Monorepo Structure & Package Naming | ✅ Approved |
+| 2026-07-05 | A-4: UI Component Consolidation | ✅ Approved |
+| 2026-07-05 | A-5: Edge Auth Middleware Relocation | ✅ Approved |
+| 2026-07-05 | A-6: Elimination of @frontbase/auth | ✅ Approved |
+| 2026-07-05 | A-7: Elimination of @frontbase/workflows | ✅ Approved |
+| 2026-07-05 | A-8: Elimination of @frontbase/data-sync | ✅ Approved |
+| 2026-07-05 | A-9: Elimination of @frontbase/cli | ✅ Approved |
+| 2026-07-05 | A-10: Consolidation of CLI into @frontbase/compiler | ✅ Approved |
+| 2026-07-05 | A-11: Dual-Backend Architectures (FastAPI & Hono) | ⚫ Superseded by A-13 |
+| 2026-07-06 | A-12: Adoption of the Chimera (Universal eSSR) Architecture | ✅ Approved |
+| 2026-07-06 | A-13: Single-Edge-Worker Deployment | ✅ Approved |
+| 2026-07-06 | A-14: Six-Package Structure Reaffirmed Under the Chimera | ✅ Approved |
+| 2026-07-07 | A-15: Framework Repository & Licensing (fresh private repo, Apache-2.0) | ✅ Approved |
+| 2026-07-07 | A-16: Registered-Query Authoring Model (one contract, code-first MVP) | ✅ Approved |
+| 2026-07-10 | A-17: DB Provider Verification Surface & Tenant-Isolation Layer | ✅ Approved |
+| 2026-07-11 | A-18: Identity & Provisioning Layer | ✅ Approved |
+| 2026-07-11 | A-19: Console DB Unification & CF D1 Default | ✅ Approved |
+| 2026-08-13 | A-20: Public Release Positioning and Gated Rollout | ✅ Approved |
+| 2026-08-22 | A-21: Backendless Node/Docker Self-Host Adapter | ✅ Approved |
+| 2026-08-28 | A-22: Console Source Consolidation (Phase 1 of framework-only) | ✅ Approved |
+| 2026-08-28 | A-23: Contract Inversion & Hydrate Source Consolidation (Phase 2 of framework-only) | ✅ Approved |
+| 2026-08-28 | A-24: Four-Host Deploy Matrix & Pluggable State DB (Phase 3 of framework-only) | ✅ Approved |
+| 2026-08-29 | A-25: Cloud Multi-Tenant Free Tier on app.frontbase.dev (Phase 4 of framework-only) | ✅ Approved |
+| 2026-09-06 | A-26: Paid Cloud launch from the framework with Supabase | ✅ Approved |
+| 2026-09-11 | A-27: Cloud hardening — public pricing route, session iss/aud pinning, Stripe live-key guard | ✅ Approved |
+
+---
+
+## Document Metadata
+
+**Version**: 2.4
+**Status**: Active — Chimera architecture adopted; public-release rollout governed by A-20
+**Owner**: Architecture Team
+**Next Review**: As new decisions are made
+
+**Related Documents**:
+- [OPENQUESTIONS.md](./OPENQUESTIONS.md) - All open questions
+- [ARCHITECTURE-SPLIT.md](./ARCHITECTURE-SPLIT.md) - Modular architecture details
+- [MILESTONES.md](./MILESTONES.md) - Implementation roadmap
+
+## Decision A-26: Paid Cloud launch from the framework with Supabase
+
+- **Date:** 2026-09-06
+- **Status:** Approved; framework implementation complete on 2026-09-07, deployment acceptance incomplete.
+- **Owner requirements:** launch from frontbase-framework (explicitly chosen over returning to FastAPI); paid subscriptions at launch; reuse the existing Stripe account and plan catalog; Supabase Cloud for the application database and tenant authentication; no existing customer data to migrate.
+- **Scope:** finish the Cloud storage, identity and billing migrations needed for that customer journey. Preserve the six reusable package boundaries and the one-engine model. The original product is implementation evidence, not a runtime dependency. CF-22 remains paused except concrete launch regressions.
+- **Supersedes:** A-25's free-tier-only launch scope and its deferral of billing. A-24's SQLite-family restriction remains current implementation truth, but is no longer the target for Cloud application state. The existing self-host defaults remain supported.
+- **Release gate:** real Supabase signup/login/reset and cross-tenant isolation; persistent application state and publish; Stripe test-mode checkout, verified webhook, repeat/out-of-order delivery, renewal, failed payment, cancellation and portal; deployed host routing and restore/rollback proof. Existing free-tier tests cannot satisfy these gates.
+- **Catalog:** the existing Free/Basic/Pro limits and live Stripe Basic/Pro price references are preserved. The separate Edge Compute Engine price has no supported entitlement in this migration and is excluded from the initial paid beta. Do not invent pricing or sell absent capabilities.
+- **Recommended label (not yet accepted/released):** Frontbase Cloud paid beta after the gates pass. Independent npm/public-framework publication remains governed by A-20/R0-R4 and is not a prerequisite for operating the hosted product from this checkout.
+- **Work record:** [Cloud launch readiness](../CLOUD-LAUNCH.md). PostgreSQL/Hyperdrive state, Supabase Auth and Stripe lifecycle code plus live Supabase smoke evidence are recorded there. No production Worker or live charge has been performed.
+
+## Decision A-27: Cloud hardening — public pricing route, session iss/aud pinning, Stripe live-key guard
+
+- **Date:** 2026-09-11
+- **Status:** Approved (owner direction during the 2026-09-11 code review of the CL backlog).
+- **Scope:** three code-level controls arising from that review; no rollout-scope change.
+  1. `/api/plans/public` is exempted from the compat default-deny guard (`backend/src/compat/app.ts`) — the route serves plan slugs, display names and prices only, and exists for the anonymous signup/pricing surface that default-deny was shadowing into a 401. Every neighboring billing path stays default-deny.
+  2. `issueSession` stamps `iss: frontbase` / `aud: frontbase-session` (`edge-infra/src/proxy/session.ts`); the backend default principal verifier pins both claims (fail closed). Pre-pinning cookies invalidate once (pre-launch; acceptable). Verifiers that leave `jwtIssuer`/`jwtAudience` unset remain permissive, preserving self-host verification of third-party tokens on the same seam.
+  3. `assertStripeKeyMode` (`backend/src/compat/routes/billing.ts`): a live Stripe secret key refuses to boot billing unless `FRONTBASE_STRIPE_LIVE_MODE=1` is present — enforced at worker boot (`examples/cf-full/src/worker.ts`) and mirrored in the deploy preflight (`scripts/deploy.mjs`); the compiler forwards the acknowledgment as a `--var`. The catalog's live price IDs are thereby protected by code, not only by documentation.
+- **Evidence:** edge-infra session gate extended (strict/legacy/foreign-iss-aud cases) and `cloud-billing` extended (anonymous 200 on `/api/plans/public`, anonymous 401 on checkout/portal, guard unit cases) — all green; `pnpm -r check`, `pnpm -r build`, and the backend mutation harness (23/23 RED-on-break) green on 2026-09-11.
+- **Work record:** [Cloud launch readiness](../CLOUD-LAUNCH.md), §2026-09-11.
+
+## 2026-09-18 A-26 acceptance clarification: Stripe test staging
+
+The owner selected a Stripe test-mode staging environment for the remaining payment proof. The initial paid products, amounts, limits and live price defaults are unchanged. Billing accepts deployment-specific Basic/Pro price mappings; a test key requires both mappings and may not fall back to the known live catalog. Checkout and webhook price resolution use the same per-deployment catalog. On 2026-09-19 an isolated test deployment using the same existing Supabase schema passed two hosted browser customers, paid sandbox Checkout, activation webhook, Supabase data connection, real Builder edit/save/publish, public tenant TLS/browser rendering, portal creation and reverse/duplicate real-event replay. On 2026-09-20/21 it also passed hosted payment-failure/recovery/renewal handling, reset delivery and confirmed Stripe portal cancellation at period end; the Worker now records Stripe's subscription-item period end. Supabase datasource creation uses Management API bootstrap for connected accounts. Cloud reset email reached Gmail through Resend-backed Supabase SMTP but was classified as Spam, so spam-safe transactional deliverability and CL-7 operations remain launch gates. See [CLOUD-LAUNCH.md](../CLOUD-LAUNCH.md).
+
+## 2026-10-05 A-13 pilot clarification: one self-host deployment per site/application
+
+Owner clarified the WordPress pilot's primary deployment model: each self-host deployment is a separate site/application and binds to its own engine/worker. USA and a second destination reuse the framework/template through separate deployments, each with its own configuration, domain bindings, publication state and administration. Multiple destination sites inside one self-host installation are not a pilot requirement. Shared external Studygram content can be consumed through separately configured approved scopes; it does not merge deployment state.
+
+This clarification applies the existing single-worker model to the consumer pilot. It does not add a package, change the renderer/query contracts, accept a configuration storage schema, change public/paid Cloud release scope or claim dedicated Cloud worker provisioning exists. Cloud tenant isolation remains compatibility coverage under its existing topology. The pilot must now evaluate one versioned project/application configuration shared across page roles, rather than introduce a multi-site registry. Source-site identifiers remain useful for migration provenance. Exact persistence, consistent publication activation and compatibility/rollback are P0 design work.
+
+## 2026-10-05 pilot data-authority clarification
+
+Owner confirmed the Studygram pilot harmonizes existing public.institutions/programs/cities/countries. Supabase content is authoritative; WordPress supplies original public URL identity and evidence for gaps. Every original WP public record/URL needs a canonical destination; additional Supabase records are intentional expansion. No parallel institution/program collections are required. Internal provider assignments stay in backend/admin data and are not public WP fields. Media binaries use administrator-connected Frontbase storage; additional blog/editorial tables remain consumer schema work. This supersedes the earlier broad dedicated-listing-collection proposal without adding a framework package/service or accepting new configuration-publication persistence. See [harmonization evidence](../plans/wordpress-pilot-harmonization.md).
+
+Owner subsequently confirmed the 12 missing ELS campus institutions use ILSC Language Schools and requested ELS-scoped names such as University of Cincinnati - ELS Center. These consumer assignments/names preserve original WP URL identity and do not rename unrelated whole-university records. ELS umbrella identity remains a separate confirmation; no framework storage/publication architecture is accepted by this data correction.
+
+## 2026-10-06 A-13 authoring clarification: shared configuration draft
+
+Selected for implementation under the owner's instruction to proceed with the [P2a contract](../plans/wordpress-pilot-p2a-contract.md): one project-owned shared authoring draft, stored in the existing tenant-scoped settings table under site_configuration:v1 and accessed through a dedicated validated project subresource. Use a strict schema and expected-revision conditional writes, not the unrestricted legacy project merge. Existing /frontbase-admin settings reuse Directory controls; no new admin, table, service, package or multi-site registry. The first boundary persists the existing Directory configuration with a schema version and revision; page-role references, migration and preview resolution follow separately. Secrets remain connected-account/datasource references. No automatic conversion of page-root copies.
+
+This selection accepts authoring ownership/persistence only. Immutable publication artifacts, activation/cache/refresh policy and other proposed contract keys remain unimplemented proposals. Directory publication stays refused; draft persistence does not establish shared-page runtime or live publication. Adapter concurrency proof must be reported per actual adapter, not inferred from a portable SQL statement.
+
+2026-10-06 continuation under the owner's next-step instruction: select a strict page-root siteConfiguration reference containing version and role only; project owner is implicit in authenticated page/config access. Linking explicitly removes an identical legacy directoryConfiguration copy; mismatches require manual reconciliation and never choose a winner automatically. Custom layout nodes remain intact. Shared-settings bindings are a bounded, transient authoring-preview projection through the existing renderer, not live queries or publication authority. Linked page publication remains refused pending complete site publication. No new admin, engine, package or multi-site identity.
+
+The current compatibility server reads mutable published layouts. Consequently, this boundary requires an already-live page to be explicitly unpublished before linked saves/restores, enforces that refusal in conditional store writes, and makes legacy publish conditional on the layout it validated remaining unchanged. This prevents page linking from silently activating managed content through the legacy path; immutable site activation and complete publication rollback remain separate pending work. See [local evidence](../plans/wordpress-pilot-p2a-contract.md#page-linking-and-shared-preview-delivery--2026-10-06).
+
+2026-10-06 P2b continuation under A-13/A-16: shared mappings generate registered read-only authoring queries, with an authenticated project preview subresource and controls inside existing Page Settings. Owner context, destination/parent/city scope, bounded parameters/projections and expected revision are server enforced. Original detail identity comes from the mapped stored WP URL, including parent-path aliases; duplicates are refused. This accepts the authoring query boundary only. Template collection rendering, editorial/public approval and immutable publication remain open; no preview is promoted automatically to a public query or publication.
+
+2026-10-06 P2b canvas continuation under A-13/A-16: opt-in existing Repeater/detail Container nodes retain strict registered query IDs and bounded authoring preview parameters, with allowlisted record-property references on editable children. Fetch through the authenticated project preview API and transiently project rows into existing plain components for the same SW/network renderer; saved layouts retain references, not row snapshots. Original paths and safe media/literal text are projected; nested queries and legacy datasource bindings in the same node are refused. Preview parameters are authoring samples, not accepted public route bindings or approval. Public queries, sanitized rich editorial content and coherent publication remain pending.
+
+2026-10-06 consumer editorial initial-import selection under the owner's continuation: Studygram public.editorial_documents holds article/informational-page semantic conversion drafts, canonical source/path identity, destination, text, original dates/byline and taxonomy. Recovery fingerprints, review flags, source media and SEO evidence remain in frontbase_migration.editorial_import_evidence. Both tables enable RLS and deny PUBLIC/anon/authenticated privileges; service_role receives direct SELECT only on canonical drafts and no private evidence grants. Initial import runs under the existing administrator database session; it does not grant application access to the protected recovery schema. Initial rows are draft revision 1; no approval transition, browser write, public view or new definer RPC is introduced. The bounded offline import serializes a source identity, compares canonical content/private evidence on retries and refuses conflicts rather than updating content. Semantic blocks are conversion data for existing editable primitives, not executable HTML. Existing privileged SQL runner functions retain their separate server-only authority; direct table grants are not a sandbox for those functions. This is consumer schema/import storage, not framework application state, a multi-site registry, an accepted generic editorial writer or immutable public activation. Revision editing, authenticated admin integration and approved publication remain separate work.
+
+2026-10-06 article authoring continuation: optional article mappings gain content-role/source-origin guards and byline/original-date fields, defaulting empty for prior drafts. Registered article list/detail queries reuse authenticated owner/datasource/revision seams, fixed destination/source origin and article type; guard fields/private evidence are excluded from results. Detail body accepts bounded strict semantic runs only. An explicit body Container binding projects these runs transiently to existing Text/Heading/Link primitives through the one engine, demotes body H1, escapes literals and refuses executable/unsafe/unknown content. Existing Page Settings and Properties own templates/placement; saved layouts store references only. This selects authoring preview, not canonical revision editing, public rich-text behavior, approval or activation. Publication remains blocked; list/quote/format/media fidelity still needs review.
+2026-10-06 P2b canonical editorial draft editing under the owner's continuation: reuse existing admin Page Settings, saved owner-scoped datasource resolution and DbRunner, with a strict canonical Postgres editorial v1 adapter. Table is configured; canonical column names form the write contract rather than permitting arbitrary browser field/table selection. Server-fixed article/source/destination/draft predicates and expected configuration/document revisions bound writes. Protect original source/path/destination/dates/taxonomy identity. A single atomic update increments revision and a SECURITY INVOKER consumer trigger archives the prior row in a protected recovery table; write requires the archive trigger enabled. No new access grants or privileged RPC. Review request is draft workflow metadata, not approval/publication. Existing layout/content ownership, one engine and public activation refusal remain unchanged. Configuration revision is checked at admission in the control DB; this is not an atomic transaction across control/content databases, and a configuration change cannot redirect an already-admitted scoped write. Recovery snapshots do not yet have a browser restore UI or actor-attribution guarantee. SQLite/noncanonical datasource editing is explicitly unsupported by this adapter.
+
+2026-10-06 P2b article cover continuation: media binaries remain in administrator-connected storage. Reuse FilePickerDialog and the existing FileBrowser/provider APIs; canonical editorial v1 stores nullable cover_url and bounded cover_alt only. Cover editing follows the same explicit draft save, expected revision and private archive contract. Require permanent HTTPS raster URLs without credentials, query or fragment; signed URLs and SVG are unsupported for article covers. No upload, new storage grant/exposure or credential copy is implied by choosing an existing image. Saved collection mappings bind cover/coverAlt and existing Image components render through the one engine. Older mapping drafts default the optional coverAlt field empty; write requests must explicitly include both cover fields to prevent old clients silently erasing a newly selected cover. This is authoring, not complete media rights/fidelity review or public approval.
+
+2026-10-06 P2b approval implementation selection under owner-authorized continuation: retain consumer canonical rows as drafts; a separate private approval record in existing tenant-scoped control settings captures a bounded public-field snapshot, content fingerprint, authenticated reviewer and exact configuration/document revisions. Conditional insert requires the captured configuration still current and forbids overwriting an approval. The source read captures the revision being approved; concurrent later content edits do not change that snapshot, and there is no distributed transaction or guarantee that it remains the latest draft. Approval is not public activation. Site preparation must consume approved snapshots explicitly rather than latest drafts. No new package, admin, renderer, public grant or consumer migration is required. Core/template/consumer ownership is provisional until the owner's required final packaging review.
+
+2026-10-07 P2c bounded capture selection under owner continuation: immutable server-side site artifacts in existing owner-scoped settings capture exact configuration revision, role-linked templates and strict public-field records. First slice is bounded to 48 records per collection and 1 MiB; it is not a full-catalog storage claim. SHA-256 over the compiler's stable serializer identifies the entire capture; reads verify integrity. Separate active pointer uses conditional generation/hash comparison for both activation and rollback, with no cross-owner fallback. This selects a private storage primitive, not an approval bypass or browser artifact-write endpoint. Preparation must separately resolve owned saved templates and explicitly reviewed canonical/approval snapshots; runtime and admin activation remain closed until their gates pass. Existing compiler/one-engine renderer and six packages remain authoritative; final core/template packaging review remains required.
+
+2026-10-07 P2c recovery/review continuation: administrators may reopen an owned immutable capture by exact hash, using its captured routes rather than current settings. Whole-version review is separate immutable private metadata keyed by owner/hash, with explicit content/media/layout/URL/CTA confirmations, bounded reasons and authenticated server reviewer/time. The captured artifact is integrity-checked; duplicate review cannot overwrite prior evidence. This accepts a private manual-review seam only. It does not claim automated factual verification, reviewed readiness of the actual pilot, revocation, public activation or a complete rollback UI. Public activation must separately require whole-version review; the existing internal pointer primitive is not exposed. Current package placement remains provisional until the final core/template/consumer review.
+
+2026-10-07 owner content/presentation choice: missing content will be enriched separately; blog covers are optional and automatically collapse when empty. Article list/detail template defaults opt into the existing hideWhenEmpty image binding. Populated safe covers render without changing the template. This is a reusable template default using a core binding capability, not permission to invent media, approve content, change original URL identity or publish. Final packaging review remains open.
+
+2026-10-07 P2c enforcement continuation under the accepted review requirement: internal reviewed activation/rollback requires the exact target hash's own immutable review. Review cannot be inherited from the current active version. The public-reader seam exposes explicit inactive/missing/unavailable/resolved results; once an active version exists, missing or corrupt/unreviewed states must not fall through to mutable legacy or baked pages. Host wiring, per-request version/cache/SW behavior and SEO acceptance remain pending; no actual site is activated by these internal primitives.
+2026-10-07 P2c host continuation under the owner's proceed instruction and accepted fail-closed review boundary: consume reviewed site responses at the CMS host's final public-page dispatch, after existing admin/API/static handlers and before legacy engine fallback. Registered Cloud host owner remains authoritative; the current self-host pilot uses its verified existing _root settings owner, with no owner scan or visitor-selected override. Request-scoped engine document metadata and explicit favicon context bind captured output without changing module-global host configuration. Retain no-store and the existing network-only full-CMS SW endpoint; old controlled-browser transition must be proven before exposing activation. No new site registry/package/renderer, real activation or broader deployment-parity claim.
+2026-10-10 R2 implementation continuation under the existing guarded outbound/owner boundary: optional per-instance ServiceFetch hooks connect the selected libsql, PostgREST and D1 HTTP SDK paths to backend policy, preserving Request semantics. HTTP injection must not be presented as governing native SQLite/Postgres or WebSockets; unsupported remote libsql schemes/TLS downgrade refuse on guarded paths while existing local operator paths remain separate. Do not mutate Neon process-global fetch configuration per owner/request or silently fall back after injected denial. This records the bounded implemented boundary, not a new host/provider support promise or adopted dependency policy. [SDK delivery](PUBLIC-RELEASE-R2-SDK-HTTP-DELIVERY.md) supplies evidence and open limits; six packages, one engine, approved publishing and paused CF-22 remain unchanged.
+
+2026-10-11 owner-requested step-1 publishing completion: extend the existing owner-scoped immutable publication contract with a chunk manifest/index, selected saved ordinary pages and approved semantic editorial pages. Preserve the six library packages, one renderer, original-path identity, exact approval snapshots and reviewed generation/hash activation/rollback; old v1 captures remain supported. The existing admin captures all mapped catalog rows in its saved destination scope and latest approved editorial snapshots only when explicitly selected. Unmapped expansion rows are counted; invalid routes, orphans, unsupported media and missing templates refuse capture. Existing public ordinary layouts may be copied immutably without rewriting their saved state; shared role templates retain unpublished admission. The existing compiler query registrar receives a lean runtime subpath, avoiding Node-only tools in edge bundles. This implements the accepted publishing path, not permission to approve owner content, activate/deploy, waive actual migration/staging gates or claim a public release. [Full integration delivery](../plans/wordpress-pilot-full-publishing.md) records verification and limits; Apply upgrades/optional covers remain owner-deferred.
+
+2026-10-20 translation publication generalization under the accepted homepage release contract: immutable per-locale releases are parameterized by published page path ('/' keeps the original settings-key namespace so stored releases and pointers stay valid; other paths hash a page-surface namespace), and each prepare records an explicit per-unit policy — 'block' refuses preparation while any unit is missing/outdated, 'source-fallback' omits such units and renders fresh source for them. Under 'source-fallback' for outdated units, serving joins released text onto the live capture per unit: a unit whose recorded source text no longer matches falls back to fresh source instead of invalidating the locale, while unrelated approved text keeps serving — a changed record must never 503 a whole published language. Gates are policy-conditional: per-unit releases verify project/configuration and per-unit revision integrity, but survive site re-publication and source drift (only strict releases keep the whole siteHash+sourceHash pin, preserving the accepted homepage behavior), and a release whose page no longer resolves is skipped so the source route 404s naturally. Locale deactivation is a guarded delete of the active pointer with an exact expected-value compare, so concurrent publish/rollback turns deactivation into a visible conflict; rollback is re-publishing an older immutable release by hash with CAS expected generation. Prepared previews remain administrator-only and drafts are never anonymously visible; an incomplete or conflicting preparation cannot replace the active release. This accepts the engine/serving/route contract and its behavioral+mutation evidence only; console publication UI, menu surfaces and any SEO claim for not-genuinely-translated pages remain separate pending work.
+
+2026-10-22 publication registry replaces the aggregate locale-pointer cap (owner directive): no aggregate quota exists anywhere in the publication plane — the former 16-pointer ceiling counted page–language publications rather than languages, refused preparation through a count-then-insert race (per-pointer CAS cannot protect an aggregate) and made one corrupt release able to 503 every unrelated page. Serving resolves the requested (locale,path) by exact key (homepage namespace or one-way page-surface hash), with per-path bounded lookups sized by the LANGUAGES publishing that page; administrative listings paginate (limit clamped 1–200) with per-row corrupt isolation that flags the row and retains pointer hash/generation for forensics without failing siblings; per-pointer CAS remains the only activation arbitration, so concurrent same-pointer publishes resolve to exactly one winner. Strict fence semantics for a stale or corrupt REQUESTED release are retained (page-local 503, no false fallback); corrupt rows are excluded from switcher/hreflang/sitemap sets. The edge-core switcher keeps its 16-link DISPLAY bound, which never imposes a publication limit. Documented tightening: a locale URL prefix is recognized only where a publication claims it — exact path, homepage pointer, or the pinned homepage shell-fallback — so `/xx/<unpublished-page>/` 404s instead of serving source content under an unclaimed prefix. This accepts the engine/serving/listing contract and its scale/concurrency/isolation + mutation evidence; production cutover and package publication remain separate approval gates.
+
+
+2026-10-22 owner-authorized framework acceptance continuation: datasource-specific untranslated records/content coverage are excluded; reusable interactive List Component locale transport and controls remain included. Extend the existing reviewed-page X-Frontbase-List boundary to admitted live bindings, use the same tenant/credential/saved-view HTTP resolver, always enforce authored mandatory filters, join fresh released record text before localized search/sort/paging, and retain source fallback and bounded scan refusal. Browser requests carry page/component/version/query only, never datasource credentials. Reuse one reviewed list-message catalogue across Repeaters, Tables and Grids. No alternate engine, general raw-table gateway or weakening of source ownership is accepted.
+
+2026-10-22 distributable declaration remedy under the same authorization: pin drizzle-orm0.36.4 and maintain an explicit16-file declaration-only patch (real getSQL signatures, private method-exclusion keys, role optional fields); all upstream runtime bytes remain unchanged and hash-pinned. Workspace installs use pnpm's patch mechanism; public backend artifacts bundle that corrected dependency through an isolated temporary pack stage, retaining its Apache license and notice, so consumer installs need no root patch configuration. mysql2 is declared to satisfy upstream cross-dialect type references; it is never imported by Frontbase runtime paths and does not add a TCP adapter. The release packer verifies runtime hashes and strict external NodeNext/Bundler model constraints; raw backend packing is refused. This records the chosen bounded remedy, not npm publication or a blanket fix for separately installed upstream Drizzle versions. Preserve isolated workspace linking and per-application React18/React19 type ownership.
+
+2026-10-22 real final-source Cloudflare acceptance exposed D1's LIKE-pattern byte bound: hashed per-page locale prefixes exceed it and caused ordinary untranslated pages to return503 before legacy serving. Resolve published locale pointers with a tenant-scoped, indexed exact key-prefix range (colon-terminated ASCII prefix through the next semicolon boundary), preserving corruption fences and per-path ownership without a global registry scan. Keep a D1-bound regression and ownership mutation canaries. This is a compatibility repair discovered on the disposable native-resource fixture, not a change to publication policy or an excuse to claim untested provider parity.
+
+2026-10-22 remote recovery acceptance: the real Turso HTTP export failed at COMMIT because standalone SQL transaction commands do not retain a request-spanning connection. Backup and restore must prefer the existing DbRunner.transaction callback, passing its pinned runner through every inventory/read/load operation. File SQLite keeps its existing SQL fallback; D1 keeps platform export/import and its transactional-restore refusal. Do not change the HTTP transport, extract opaque platform session secrets, repoint a live state binding or relax fresh-target/integrity fences. Remote restored ciphertext can be verified byte-for-byte without exporting the key; application-session recovery requires the original platform key to remain in place.
+
+2026-10-22 staging live-read pressure repair: four simultaneous Arabic homepage requests reproduced two503s; in-container readonly phase tracing identified Supabase SQLSTATE57014 on column/count queries and the existing10s HTTP deadline. Coalesce only in-flight identical anonymous published live-list reads within one engine instance, keyed by owner, origin and the entire admitted request payload. Bypass all Cookie/Authorization requests, bound retained promises to64, evict success and failure immediately and clone results per consumer. This is no-TTL live execution, not a snapshot or stale fallback; existing view/tenant/filter/source/locale fences and HTTP deadlines remain unchanged. Host construction must retain the resolver across requests. Acceptance requires repeating the actual failing concurrency scenario after deployment.
+
+2026-10-22 continued real-data diagnosis: in-flight sharing passes12 concurrent Arabic requests but its next observation still fails at round5. Existing saved views contain67/744/3832 AST nodes, including correlated id/path/parent-or-revision tuples. PostgREST routing was tested read-only and rejected by its existing filter-size fence; that experiment is not adopted and limits remain intact. Optimize only homogeneous large OR-of-AND equality groups into PostgreSQL jsonb_populate_recordset membership using the admitted table row type and one parameter. Preserve correlated tuple identity, scalar/null semantics, exact schema whitelist, and fallback for unsupported types/shapes. Restrict the fast path to proven text/UUID/boolean/bounded integer inputs; no arbitrary SQL embedding or changes to saved selection. Single-table reads omit unused foreign-key introspection; Inspector keeps it. PostgreSQL primary-key lookup uses indexed pg_catalog relations while visible columns still come from information_schema. Live exact-result and availability verification remain required.
+
+## 2026-10-22 persist equivalent account-key discovery
+
+Actual staging read-only traces prove Supabase Management API timeouts followed by a401 from the saved disabled legacy key. Successful lazy discovery now persists only equivalent current server/public keys into the existing tenant-scoped encrypted connected-account record. Compare-and-set against the original ciphertext preserves concurrent owner changes/deletion; re-read returns the winning account state. Datasource project/key overrides cannot update the shared account. A different selected project cannot inherit another project’s discovered key. No global credential cache, new key, privilege expansion, retry of writes or source-record caching is introduced. Failed discovery preserves saved credentials. Restart/offline-management, tenant/project, encryption, owner-race/deletion tests and fault tests qualify this operational correction.
+
+## 2026-10-22 CF-22 retirement as a planning umbrella — owner accepted
+
+The owner agrees to retire CF-22 as an active umbrella after review of its original parity scope and the already accepted A-22/A-23 consolidation. Its old product-equivalence, external bundle pinning and cross-repository drift objectives are historical/superseded. This replaces the earlier paused/resumable umbrella posture for current planning. Preserve historical evidence and useful contract, behavior, negative-input, tenant, auth and deployment regressions; do not claim100% parity was achieved or remove failing security tests. Concrete remaining defects/capabilities are tracked in the [current gaps](../plans/frontbase-current-product-gaps-20261022.md) and [release plan](../plans/frontbase-public-release-finalization-20261022.md). Developer Preview scope, one engine, accepted package set and truth/security/recovery gates remain unchanged. Test/workflow filenames may retain CF22 during later reviewed tooling cleanup.
+
+## 2026-10-22 frontend text editing and isolated Neon HTTP transport
+
+The owner requests privileged text-only editing directly on public pages before the concrete release-gap repairs. Implementation uses the existing display-field inventory and source-page/Block Version/menu/record identities. Per-field Done only stages in browser memory; the explicit page Save Changes is the review/publication action. Existing locale publications write manual revisions to the configured translation datasource and replace the visible release only through the existing immutable-release CAS, retaining all untouched published revision IDs rather than promoting other draft heads. Source-language copy and surfaces without their own locale release use recoverable editorial copy revisions in the control store, fingerprinted against their displayed base text; they do not mutate external business records, URLs, bindings or actions. Builder/public/list projections share the resolver. A stale or ambiguous write retains browser edits and reports uncertainty. This is the bounded text-editing feature, not a new renderer or broad external-record write permission.
+
+For G2, adopt the already exercised two-location client-scoped Fetch extension of pinned MIT @neondatabase/serverless 1.1.0 inside edge-infra's build output. The build verifies upstream and extended ESM hashes and stages original license/notice/declarations with the distributable. Installed dependencies remain unchanged; there is no new workspace/public package and no application-global Neon transport swap. Backend datasource construction injects the existing guarded native-Request transport. Use upstream .query/fullResults serialization/parsing and validate affected-row metadata. Updating the SDK requires explicit provenance, protocol, isolation, packaging and host verification; live Neon credentials remain a separate acceptance boundary.
+
+## 2026-10-23 visual authoring and conservative behavior qualification
+
+Under the owner's concrete-gap authorization, visual workflow authoring reuses the existing graph executor and tenant persistence. Supported interactive nodes run with recorded results; version snapshots, rollback and local activation use actual captured content and version CAS. Guarded per-run HTTP is bounded and isolated. Interrupted synchronous authoring tests are marked failed, not replayed as a different/edited production graph. Remote targets, unsupported node capabilities and cancellation explicitly refuse. The transactional-mail endpoint reuses the existing fixed Resend HTTP adapter and an explicitly selected owned encrypted account; provider acceptance is not a delivery receipt. This is a bounded Developer Preview surface, not a second executor or a claim that all palette nodes are certified.
+
+Adopt a separately versioned conservative behavior diagnostic alongside the unchanged historical ledger. Each contracted operation gets fresh owned adapter/app/database/provider/reset state and explicit helper context. Targeted successful counterfactuals and seeded positive controls can establish read effects; incidental SQL, provider attempts, a negative envelope or a failed supporting query cannot. The old universal functional-parity criterion is retired consistently with the owner's CF-22 disposition; preserve historical evidence and all concrete security/contract regressions. Inconclusive observations are neither missing-feature counts nor functional-success claims. Blind ledger rewriting is refused. Candidate acceptance must cite named intended-effect suites, not the generic old aggregate count.
+
+The isolated probe must use edge-infra's owned SQLite runner and client lifetime. Its new close handle avoids importing a second native client version solely to close per-operation databases. A Windows shutdown access violation occurred with the mixed0.14/0.17 probe; that failure remains recorded until the corrected lifecycle passes repeated fault/order qualification. No production database version is upgraded by this test-lifecycle correction.
+
+## 2026-10-23 host-scoped HTTP egress and self-host reset wiring
+
+The supported Node/Docker and Vercel hosts inject a Node-only HTTP transport through the existing engine/adapter seam. The isolated `edge-infra/node-http` subpath uses pinned Undici8.12.3 and DNS validation/pinning at connection lookup, with no global dispatcher/fetch mutation. Cloudflare retains its platform transport and framework guards; the Node module is excluded from its entry. Node build/host prerequisites become22.19+; Vercel uses Node22 Functions. Its self-contained bundle retains Node builtin imports, a createRequire bridge and the original Undici MIT license. This is a host adapter refinement within the accepted package architecture, not a new service or package. Direct, queue, inbound-email and recovery workflow paths share guarded executor options.
+
+Optional self-host reset mail reuses Resend and the existing hashed/single-use/expiring token flow. The operator supplies the canonical HTTPS origin and sender at runtime; links use the actual self-host console path. No inbound Host/forwarded header chooses a reset destination. Missing mail/origin configuration does not invent successful delivery; opaque responses remain non-enumerating. A synthetic provider acceptance and token-lifecycle test does not certify real inbox receipt.
+
+The adjacent legacy-engine audit finds additional local metadata writes falsely labeled as remote redeployment, key rotation, manifest/log synchronization and verified domains. Replace28 such lifecycle/inspection handlers with one owned, read-only unsupported capability response; preserve actual system-host health and local registration/source drafts. Provider deletion requests refuse before local metadata deletion. The reviewed CF/Vercel deployment executors remain separate and supported. Thirty refusal cases and independent no-write/no-success faults qualify this boundary, rather than treating record updates as provider effects.
+
+Native test evidence is runtime-specific. A later Node24.19 Windows conformance process again exits with native access violation after printing its report; that is a failed run and disproves a blanket claim that the earlier client-lifetime correction solved every shutdown failure. Explicit fixture closure and the checksum-verified Node22.23.4 gate/four-order runs provide bounded current acceptance. Retain the Node24 failure and its unverified native-runtime boundary; do not suppress nonzero exits or infer all Node/OS combinations from the supported Node22/Linux/provider receipts.

@@ -1,0 +1,64 @@
+{
+  "title": "Chimera Spike — Home",
+  "records": [],
+  "layout": {
+    "root": {},
+    "content": [
+      {
+        "id": "hero-heading",
+        "type": "Heading",
+        "props": {
+          "content": "Universal eSSR Spike",
+          "level": "h1"
+        }
+      },
+      {
+        "id": "hero-text",
+        "type": "Text",
+        "props": {
+          "content": "This page was rendered by the SAME engine on {{ app.environment }}. Click the link below — after the service worker installs, the navigation is intercepted and rendered locally."
+        }
+      },
+      {
+        "id": "env-badge",
+        "type": "Badge",
+        "props": {
+          "content": "env: {{ app.environment }}",
+          "variant": "default"
+        }
+      },
+      {
+        "id": "nav-link",
+        "type": "Link",
+        "props": {
+          "text": "Go to Products →",
+          "href": "/products",
+          "color": "#4338ca",
+          "underline": true
+        }
+      },
+      {
+        "id": "homee-link",
+        "type": "Link",
+        "props": {
+          "text": "View the real Frontbase homepage →",
+          "href": "/homee",
+          "color": "#4338ca",
+          "underline": true
+        }
+      },
+      {
+        "id": "div-1",
+        "type": "Divider",
+        "props": {}
+      },
+      {
+        "id": "footer-text",
+        "type": "Text",
+        "props": {
+          "content": "Page: {{ page.title }} — manifest {{ app.manifestVersion }}"
+        }
+      }
+    ]
+  }
+}

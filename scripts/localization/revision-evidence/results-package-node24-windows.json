@@ -1,0 +1,49 @@
+{
+  "package": "@frontbase/translation",
+  "version": "0.0.0",
+  "node": "v24.19.0",
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "packedBytes": 26502,
+  "unpackedBytes": 143122,
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist/adapters/sqlite.d.ts",
+    "dist/adapters/sqlite.js",
+    "dist/adapters/sqlite.js.map",
+    "dist/contracts.d.ts",
+    "dist/contracts.js",
+    "dist/contracts.js.map",
+    "dist/identity.d.ts",
+    "dist/identity.js",
+    "dist/identity.js.map",
+    "dist/index.d.ts",
+    "dist/index.js",
+    "dist/index.js.map",
+    "dist/revisions.d.ts",
+    "dist/revisions.js",
+    "dist/revisions.js.map",
+    "dist/rich-text.d.ts",
+    "dist/rich-text.js",
+    "dist/rich-text.js.map",
+    "dist/sitemap-comparison.d.ts",
+    "dist/sitemap-comparison.js",
+    "dist/sitemap-comparison.js.map",
+    "package.json"
+  ],
+  "sha256": "e3a740927e15054db6b7beb59cdae421d3561d7c91bd3821dc595c1a9ac8cb7f",
+  "outsideWorkspace": true,
+  "offlineInstall": true,
+  "lifecycleScriptsDisabled": true,
+  "publicExportsFunctional": true,
+  "externalTypeDeclarations": true,
+  "externalSqliteLifecycle": true,
+  "limitations": [
+    "Unpublished foundations and SQLite lifecycle only; no AI generation or PostgreSQL/provider acceptance",
+    "Uses a locally packed copy of the existing Zod dependency, not npm registry availability proof",
+    "No browser/deployed-host or minimum-Node acceptance from this consumer test",
+    "Consumer uses the installed compiler as a test tool, not an application dependency"
+  ]
+}

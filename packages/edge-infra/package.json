@@ -1,0 +1,66 @@
+{
+  "name": "@frontbase/edge-infra",
+  "version": "0.0.0",
+  "description": "Frontbase edge infrastructure â€” concrete DataProviders, Edge Data Proxy auth, cache, queue, vault (Web Crypto), AI/MCP executors. SERVER-ONLY (never browser-imported).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./node-http": {
+      "types": "./dist/node-http.d.ts",
+      "import": "./dist/node-http.js"
+    },
+    "./supabase-http": {
+      "types": "./dist/providers/supabase-http.d.ts",
+      "import": "./dist/providers/supabase-http.js"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./translation": {
+      "types": "./dist/translation.d.ts",
+      "import": "./dist/translation.js"
+    },
+    "./ai": {
+      "types": "./dist/ai-http.d.ts",
+      "import": "./dist/ai-http.js"
+    },
+    "./bootstrap-journal": {
+      "types": "./dist/bootstrap-journal.d.ts",
+      "import": "./dist/bootstrap-journal.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/stage-neon-client.mjs",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node scripts/stage-neon-client.mjs && node test/password.mjs && node test/session.mjs && node test/runners.mjs && node test/d1-rest-count.mjs && node test/postgres-state.mjs && node test/supabase-rpc-parse.mjs && node test/providers.mjs && node test/storage-sigv4.mjs && node test/storage-r2.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/cache-remote.mjs && node test/qstash.mjs && node test/vector.mjs && node test/workflow-durable.mjs && node test/ratelimit.mjs && node test/no-leak.mjs && node test/translation.mjs && node test/ai-http.mjs && node test/node-http.mjs",
+    "test:d1-rest-count": "node test/d1-rest-count.mjs",
+    "test:mutation": "node test/mutation.mjs && node test/d1-rest-count-mutation.mjs",
+    "test:translation": "node test/translation.mjs",
+    "test:node-http": "node test/node-http.mjs && node test/node-http-mutation.mjs",
+    "test:bootstrap-journal": "node test/bootstrap-journal.mjs && node test/bootstrap-journal-mutation.mjs"
+  },
+  "peerDependencies": {
+    "@frontbase/edge-core": "workspace:*"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1085.0",
+    "@aws-sdk/s3-request-presigner": "^3.1085.0",
+    "@frontbase/translation": "workspace:*",
+    "@libsql/client": "^0.17.4",
+    "@neondatabase/serverless": "1.1.0",
+    "@supabase/postgrest-js": "^2.110.2",
+    "@upstash/qstash": "^2.11.3",
+    "pg": "^8.23.0",
+    "undici": "8.12.3"
+  },
+  "optionalDependencies": {
+    "ioredis": "^5.6.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
+}

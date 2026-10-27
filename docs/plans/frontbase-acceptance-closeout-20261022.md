@@ -1,0 +1,71 @@
+# Four-gap framework acceptance — 2026-10-22
+
+## Final causal correction and acceptance — source `12358b4`
+
+The four engineering gaps and bounded operational acceptance are **CLOSED**. Final corrected-source observation completed 144 requests over 30.6 minutes with zero unexpected statuses. This section supersedes earlier intermediate-source details below without deleting their failed samples. Datasource-specific untranslated records remain out of scope; public-release readiness is separate.
+
+Actual staging traces identified two failures: large correlated saved-view predicates could time out in PostgreSQL; separately, page reads repeatedly fetched current Supabase keys from its Management API, and a timeout fell back to a rejected stored legacy key, producing 401 and the localized-page 503. The deployed correction compiles eligible equality tuples into a typed PostgreSQL relation, avoids unnecessary schema FK work, coalesces only simultaneous identical anonymous reads, and persists successfully discovered equivalent keys in the existing encrypted connected-account record. Tenant/project identity and compare-and-set protect owner changes and deletion. No stale records or failed credentials are cached.
+
+Staging image a792d565e41c78c4e1d58812a0b4aea80d5f75bef8c4ce30b0c97ea0622d9abb was built from runtime `12358b4` / artifact `8ac4b86` at 17:05:03 UTC. Active container `0uovc7nhk3z5wfbivye654hiu` matches the reviewed credential source hash. Twelve concurrent Arabic requests pass. Four simultaneous English/Arabic requests also pass with the correct independent language content. A new read-only diagnostic process with Management API calls refused resolves the actual Arabic homepage in 1,440 ms. Before/after visible-text and 37-link hashes match exactly. Native dropdown, RTL, /ar/ links and the existing admin session pass.
+
+Both existing CF and Vercel fixtures are upgraded from `8ac4b86` and preserve original sessions, datasource access, public markers and anonymous 401. CF upload completed before its receipt check failed; read-back proved the same installation/operation/secrets and the new version, then normal resume reconciled the receipt without another deployment. Vercel deployed pokybdx1b. No new resources, state migration, key rotation or destructive reset occurred in this follow-up.
+
+Final workspace check/build, account refresh tests and 4 fault tests, five security suites, saved-view 2 faults and retained localization/recovery gates pass. Final seven-package consumer proof frontbase-r1-consumer-4jnqGD passes strict NodeNext/Bundler plus independent scaffold install/build/test/check. Its archive hashes and sanitized host/source receipts are in the [JSON report](../reports/frontbase-acceptance-20261022.json). No registry publication is claimed.
+
+
+This is the owner's bounded continuation of [integrated finalization](frontbase-integrated-finalization-20261022.md). It covers interactive List Component localization, strict distributable types, current-source CF/Vercel installation, and actual remote state recovery. Datasource-specific missing/untranslated records are excluded. It does not certify all public-release behavior, publish packages, merge main, cut over production, resume CF-22 or certify Deno.
+
+## Earlier candidate checkpoints and engineering decisions
+
+The isolated branch is `codex/integrated-finalization-20261022`. Commits cbc9832/25de514 adopt distributable declarations and retained interactive controls; ffd6108 repairs a real D1 locale-prefix failure; 28d21da repairs real Turso HTTP state recovery. Artifact/source checkpoint 0db4cfb follows qualified workspace check/build and fault restoration. Other implementers' worktrees and existing staging drafts are preserved.
+
+| Gap | Evidence-backed engineering disposition |
+|---|---|
+| Interactive Repeaters/Tables/Grids | ACCEPT reusable engine/transport/UI support. Existing reviewed-page list endpoint resolves owned live bindings through the existing HTTP adapter and saved-view path; authored filters, visibility/version/tenant/secret fences and bounded localized scanning remain. Shared translated control messages survive SSR/hydration. Native staging Explore now admits 76 review units, including controls, instead of refusing interactive lists. Its 12 existing drafts and unpublished content are not manufactured into a complete Arabic page. |
+| Strict distributable types | ACCEPT local seven-tarball graph. Backend bundles the pinned declaration-only Drizzle0.36.4 correction with LICENSE/NOTICE and hash-identical upstream runtime. Strict NodeNext and Bundler, skipLibCheck=false, all public exports, positive/negative model types, runtime imports and independent scaffold install/build/test/check pass. This is not registry publication evidence. |
+| Current-source installations | ACCEPT bounded actual installs from 4f553c0, plus recovery-candidate upgrade verification recorded below. CF uses native D1; Vercel uses the existing HTTP Turso Marketplace adapter in its disposable production project. Fresh setup, admin/login, encrypted configuration, create/publish/public response, setup lockout and session reload pass on both. This does not substitute for testing default-main deploy buttons or arbitrary provider adoption. |
+| Remote state recovery | ACCEPT actual D1 platform import/re-export and actual Turso HTTP fresh-target restore. Every restored table row matches the source backup, application integrity passes and encrypted rows are nonzero. Original CF secrets/session/publication survive restoration; Vercel's production binding remains untouched. No opaque Vercel SESSION_SECRET was exported, and no restored-target Vercel session/cipher decryption is claimed. |
+
+The intermediate checkpoints below preceded the final causal correction and clean observation above. Their failures are retained as history; no GA claim is made.
+
+## Verification and failure evidence
+
+- Full workspace check/build pass, including the HTTP recovery fix. Prior full functional suites and 91 console files/682 tests pass on the combined interactive-list candidate. The recovery-only increment adds focused transactional tests rather than claiming another full-console execution.
+- Publication integration mutation12/12, homepage19/19, interactive live-list9/9, D1 locale-prefix2/2 and recovery5/5 pass, with source/artifacts restored. These are named changed-surface faults, not every repository mutation.
+- Final local seven-package proof: private evidence directory `frontbase-r1-consumer-3PU5CF`, strict NodeNext/Bundler and independent scaffold pass. Earlier attempts include a real upstream declaration failure, a provider/network install timeout, and a sandbox cache miss; only the final completed proof counts.
+- The real D1 failure was an oversized LIKE pattern on a hashed per-page locale prefix. Tenant-scoped indexed prefix ranges preserve exact ownership and corrupt-release fences. The corrected CF page returns200.
+- The real Turso failure was COMMIT without a retained transaction across separate HTTP requests. Export/load now use the existing DbRunner.transaction callback. File SQLite retains its SQL fallback; D1 retains platform import/export and refuses transactional restore. Mid-load faults roll back earlier pages/publication rows. Migration schema may remain empty after failure; retry never bypasses the fresh-target fence.
+
+## Real provider and recovery receipts
+
+CF original fixture: `frontbase-final-cf-261022`, D1 `a1da50b2-9502-4499-9b3e-08fb18966070`. Verified SQL backup SHA256 `0570f14f9f9203b4ff0654ab6fe82fbe03a4ff22d580f30035a3452e8abf6a5c`. Under exact owner approval the database was reset; temporary `frontbase-final-fresh-cf-261022` used that same empty D1 with cache disabled, not an additional database or arbitrary managed adoption. Its full fresh runtime flow passed. Platform import restored the original backup; a new remote export matched every source row and the framework integrity walk. The original signed session, original public marker and disappearance of the temporary page were checked. Original Worker/KV/secrets stayed intact.
+
+Vercel fixture: `frontbase-final-vercel-261022`; $0 Turso `fb-final-vercel-261022` is production-only, separate $0 `fb-restore-vercel-261022` is the restore target, connected only to development under RESTORE_ variables. Stable public URL returned anonymous200. Source export is consistent with one ciphertext row. First restore attempt encountered a socket failure; read-back proved only25 migration records and the uninitialized setup seed remained. A guarded retry saved that seed state, refused any other application rows, reset only the empty test schema, then restored through the normal fresh-target API. All rows/ciphertext match and integrity passes. Production source/binding is unchanged.
+
+First-project Vercel preview remains a verified refusal; its supported initial managed path here is the explicitly approved disposable production environment. Native-button branch/tag quirks, selected resource limits, optional HTTP providers lacking credentials and state-migration restrictions remain in the [support matrix](../guides/deployment-support-matrix.md).
+
+## Staging, availability and limits
+
+Existing USA staging source4f553c0 was verified in container `l9z9556ve2fv5qcpgfj3cbbjk`, with the exact deployed locale-reader hash matching Git. Homepage English/Arabic, Explore and private API default-deny pass; existing admin session and generation21 survive. Original Arabic release64d819235554ebee745d924f35776dd2bb94d6099229f050ed68f3c303a00493 remains active with dropdown and /ar/ navigation. Native Explore review admits live controls; no user source draft was saved or published during inspection.
+
+The longer observation is not a clean pass: three public503 responses occurred around12:55UTC, followed later by transport failures across independent staging/Turso/package calls. These must not be silently attributed to the application or the network. Browser process inspection shows the same container and a process start preceding the incident; a deployment restart does not explain it. Current public probes recovered to200. Automatic command permission review also timed out repeatedly before execution, separate from HTTP responses. The retained sample and final follow-up are recorded independently.
+
+Private backups, env files, cookies, setup capabilities and raw source rows remain outside Git. Only sanitized receipts and source/test/documentation are committed. Retain the named acceptance fixtures until specifically approved cleanup; old name-based approvals never cover recreated resources.
+
+## Next release work outside this task
+
+The first edition remains **Frontbase Framework Developer Preview preparation**, not GA. Ordered public-release backlog: reconcile the integration branch into the intended release baseline; finish the R2 isolated behavior/security/transport ledger and cumulative release matrix; certify default-main/adopter deployment boundaries and unsupported optional providers; complete versioning, registry ownership, release/support/security documentation and publication/rollback rehearsal; obtain exact production/registry authorization when those concrete actions are ready. CF-22 stays paused and Deno deferred. Datasource translation coverage remains a separate content stream.
+
+## Earlier host upgrade receipt
+
+Source/artifact0db4cfb is deployed to the original CF fixture and Vercel production fixture. Both preserve their original signed session, readable encrypted configuration, published public marker and anonymous401. A transient CF preflight refusal preserved the succeeded journal and exact remote identity; a single controlled retry succeeds. No state-binding migration, key rotation or new resource was used.
+
+Existing staging was updated through native EasyPanel Upload with archive SHA256 c3eb242fd661f6e9fdacf0707dacb1b0c49d3a16d573c60314f059d41b092613. Active container w2oly5wvk4irzsmgz63yh8dqg has backup-restore.ts SHA256 5ba48ec882bdcefc43bc2865a6fda2c79c0bea87585cf1dd6ec7c36567be6c85, matching the exact0db4cfb Git blob. The old terminal connection initially pointed at the replaced container; disconnect/reconnect resolves it, without an application restart. Native Arabic reload/dropdown and locale-prefixed navigation pass. The new availability sample starts only after this source check; the earlier interrupted deployment-transition sample is retained separately.
+
+Local artifact repeat: a full workspace build followed by a second host build produces byte-identical CMS SHA256 057611f92c1f69d259169dfeedb35305f75c2935965daa63690cb48c54c6a958. The generated snapshot is checkpointed separately from runtime source0db4cfb; platform builds remain independently identified. No additional implementation change is introduced by that snapshot. Existing staging administrator review reload succeeds against the new backend with the same12/76 Explore units and generation2 Arabic homepage release.
+
+## Local diagnosis and final availability failure
+
+The final source0db4cfb observation completes with92 requests and one unexpected Arabic503 at14:10:43.636UTC, after21091ms. Its exact public body is Language temporarily unavailable. The following request recovers; this window fails acceptance and is retained in the JSON receipt. Thirty additional read-only traces using the actual SQLite adapter pass, so they do not establish the underlying cause.
+
+At the owner's direction, the qualified Node candidate is running on loopback port8798 with an isolated local state database. A second loopback-only diagnostic on8799 uses the existing live-list/Arabic review-publication fixture, synthetic source records and the same compiled resolver/serving code. Fifty healthy Arabic requests pass with200; injecting a provider503 reproduces the identical public503 and reveals internal live_list_unavailable; clearing the fault restores200. This establishes a reproducible failure path, not proof that staging suffered that specific provider failure. No staging credentials or source records were copied. The diagnostic fixture does not certify the actual Study in USA dataset or repair staging. At that checkpoint, operational sign-off remained pending causal diagnosis.

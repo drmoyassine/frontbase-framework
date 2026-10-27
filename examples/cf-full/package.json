@@ -1,0 +1,43 @@
+{
+    "name": "@frontbase/example-cf-full",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "node build.mjs",
+        "e2e": "node build.mjs && playwright test -c e2e/playwright.config.ts",
+        "e2e:cloud": "node build.mjs && playwright test -c e2e/cloud.config.ts",
+        "e2e:quality": "node build.mjs && playwright test -c e2e/pilot-quality/quality.config.ts",
+        "e2e:report": "playwright show-report e2e/report",
+        "smoke": "node build.mjs && node dist/smoke.mjs",
+        "smoke:cloud": "node build.mjs && node dist/smoke-cloud.mjs",
+        "test:publication-browser-mutation": "node build.mjs && node test/publication-browser-mutation.mjs",
+        "test:publication-browser": "node build.mjs && node .publication-e2e/browser.mjs",
+        "smoke:host": "node build.mjs && node dist/smoke-host.mjs",
+        "start:node": "node dist/node.mjs",
+        "test": "node test/console-pin.mjs",
+        "test:state-db": "node build.mjs && node test/state-db.mjs",
+        "test:session-secret": "node build.mjs && node test/session-secret.mjs",
+        "test:vercel-config": "node build.mjs && node test/vercel-config.mjs",
+        "test:node-fresh": "node test/fresh-node.mjs"
+    },
+    "dependencies": {
+        "@frontbase/admin-console": "workspace:*",
+        "@frontbase/backend": "workspace:*",
+        "@frontbase/builder": "workspace:*",
+        "@frontbase/console": "workspace:*",
+        "@frontbase/edge-core": "workspace:*",
+        "@frontbase/edge-infra": "workspace:*",
+        "@frontbase/hydrate": "workspace:*",
+        "@hono/node-server": "^1.14.0",
+        "@libsql/client": "^0.17.4",
+        "@vercel/functions": "3.10.1",
+        "hono": "^4.12.28"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.62.0"
+    },
+    "engines": {
+        "node": "22.x"
+    }
+}

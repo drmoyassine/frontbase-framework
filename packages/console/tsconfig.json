@@ -1,0 +1,70 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@frontbase/types": [
+        "./packages/types/src/index.ts"
+      ],
+      "@frontbase/datatable": [
+        "./packages/datatable/src/index.ts"
+      ],
+      "@frontbase/datatable/*": [
+        "./packages/datatable/src/*"
+      ],
+      "@frontbase/infolist": [
+        "./packages/infolist/src/index.ts"
+      ],
+      "@frontbase/infolist/*": [
+        "./packages/infolist/src/*"
+      ],
+      "@frontbase/form": [
+        "./packages/form/src/index.ts"
+      ],
+      "@frontbase/form/*": [
+        "./packages/form/src/*"
+      ],
+      "@frontbase/chart": [
+        "./packages/chart/src/index.ts"
+      ],
+      "@frontbase/chart/*": [
+        "./packages/chart/src/*"
+      ],
+      "@frontbase/kpicard": [
+        "./packages/kpicard/src/index.ts"
+      ],
+      "@frontbase/kpicard/*": [
+        "./packages/kpicard/src/*"
+      ],
+      "@frontbase/grid": [
+        "./packages/grid/src/index.ts"
+      ],
+      "@frontbase/grid/*": [
+        "./packages/grid/src/*"
+      ],
+      "@frontbase/liquid-core": [
+        "./packages/liquid-core/src/index.ts"
+      ],
+      "@frontbase/liquid-core/*": [
+        "./packages/liquid-core/src/*"
+      ]
+    },
+    "noImplicitAny": true,
+    "noUnusedParameters": false,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "noUnusedLocals": false,
+    "strictNullChecks": false
+  }
+}

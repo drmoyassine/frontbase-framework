@@ -1,0 +1,10 @@
+import React from 'react';
+import {render,screen,fireEvent} from '@testing-library/react';
+import {expect,it,vi} from 'vitest';
+import {GalleryProperties} from './GalleryProperties';
+vi.mock('../../VariableInput',()=>({VariableInput:({value,onChange}:any)=><textarea aria-label="Bound media" value={value} onChange={e=>onChange(e.target.value)}/>}));
+vi.mock('@/components/shared/AssetUploader',()=>({AssetUploader:({onChange}:any)=><button onClick={()=>onChange('/uploaded.mp4')}>Pick upload</button>}));
+vi.mock('../../SchemaDrivenProperties',()=>({SchemaDrivenProperties:()=>null}));
+it('appends selected media to existing URL lines and uses normal prop updates',()=>{const update=vi.fn();render(<GalleryProperties props={{media:'/one.jpg\n/two.jpg'}} updateProp={update}/>);fireEvent.click(screen.getByText('Pick upload'));expect(JSON.parse(update.mock.calls[0][1]).map((x:any)=>x.src)).toEqual(['/one.jpg','/two.jpg','/uploaded.mp4']);});
+it('preserves a video poster while editing its description',()=>{const update=vi.fn();render(<GalleryProperties props={{media:JSON.stringify([{src:'/tour.mp4',poster:'/poster.jpg',type:'video'}])}} updateProp={update}/>);fireEvent.change(screen.getByLabelText('Media 1 description'),{target:{value:'Campus tour'}});expect(JSON.parse(update.mock.calls[0][1])[0]).toMatchObject({src:'/tour.mp4',poster:'/poster.jpg',alt:'Campus tour'});});
+it('keeps bound media as a binding instead of enabling manual replacement controls',()=>{render(<GalleryProperties props={{media:'{{ record.gallery }}'}} updateProp={vi.fn()}/>);expect(screen.queryByText('Pick upload')).toBeNull();expect(screen.queryByText('Add media')).toBeNull();expect(screen.getByLabelText('Bound media')).toHaveValue('{{ record.gallery }}');});

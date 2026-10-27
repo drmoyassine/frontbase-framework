@@ -1,0 +1,6 @@
+{
+  "mappings": [
+    {"table": "wp_program_ids", "canonical_field": "admissions_requirements",
+     "source_metadata_key": "_synthetic_admissions", "transform": "plain_text"}
+  ]
+}

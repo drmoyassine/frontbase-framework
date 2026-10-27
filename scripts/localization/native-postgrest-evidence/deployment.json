@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-19",
+  "source": "97c59587f3331c21375e70f1c200c6e42a99ec7e",
+  "archive": {
+    "bytes": 6622368,
+    "entries": 2013,
+    "sha256": "e52e0e035f9076d2dadc274c40e5d05c2d0b772c22c7cf56e3dbf6cc419b9653",
+    "excluded": [
+      "docs/plans/frontbase-datasource-test-feedback-20261019.md",
+      "examples/cf-full/api/cms-DESKTOP-3M67GL2-2.mjs",
+      "examples/cf-full/api/cms-DESKTOP-3M67GL2-3.mjs",
+      "examples/cf-full/api/cms-DESKTOP-3M67GL2.mjs",
+      "packages/backend/package-DESKTOP-3M67GL2.json",
+      "packages/console/src/components/builder/ComponentPalette-DESKTOP-3M67GL2.tsx",
+      "pnpm-lock-DESKTOP-3M67GL2.yaml",
+      "scripts/localization/pickers-evidence/deployment.json",
+      "scripts/migration/private-staging.sql",
+      "scripts/wordpress-audit/__pycache__/audit-migration.cpython-311.pyc",
+      "scripts/wordpress-audit/__pycache__/links.cpython-311.pyc",
+      "scripts/wordpress-audit/__pycache__/media.cpython-311.pyc",
+      "scripts/wordpress-audit/__pycache__/test_audit.cpython-311.pyc"
+    ]
+  },
+  "action": "cmveuvcbh004k07qqgvhwbgkz",
+  "completedUTC": "2026-10-19 06:11:47",
+  "completedKuwait": "2026-10-19 09:11:47",
+  "healthyContainer": "6ecca2e73c700b4c06ce915d1916e27f935932445dfeb254367cb81afddebab0",
+  "image": "sha256:b35f3745d82b9e5b28da2071e0a4c9af13a511bb2f6a0cc8f5e2b8e585c9740b",
+  "serviceConfigurationPreserved": true,
+  "publicBeforeAfterMatch": true,
+  "public": [
+    {
+      "route": "/health",
+      "bytes": 68,
+      "status": 200,
+      "sha256": "d80a78dd836343a40f7b2cf2aea4cefa1cc664ecd9021040c6b51d74dc491f66"
+    },
+    {
+      "route": "/",
+      "bytes": 103590,
+      "status": 200,
+      "sha256": "323560cd6de828ea76af37a8cc925a24ece8d8c234d6925f61c0ca4d9fd5a6a2"
+    },
+    {
+      "route": "/explore/?type=institution",
+      "bytes": 110605,
+      "status": 200,
+      "sha256": "e89bbd864df6377cd84249d01ccbeea7ba1d3cf05643af0503536f2a0f790b57"
+    },
+    {
+      "route": "/explore/?type=program",
+      "bytes": 148931,
+      "status": 200,
+      "sha256": "f71791e39387a689984893ba8e5f1fce87fb7a10da08250cc6db7e153850f33a"
+    },
+    {
+      "route": "/blog/",
+      "bytes": 72420,
+      "status": 200,
+      "sha256": "2b1db21592abe3be5bbbbf58f2a770aa1b26b965225086edb97d1a709988a30a"
+    },
+    {
+      "route": "/api/project/translation-generation/",
+      "bytes": 36,
+      "status": 401,
+      "sha256": "9a15b0a3fe33ddcd5af28fef761c068e8d2c5a3d736275728f3fbeef79f0cbc9"
+    },
+    {
+      "route": "/api/project/translation-storage/",
+      "bytes": 36,
+      "status": 401,
+      "sha256": "9a15b0a3fe33ddcd5af28fef761c068e8d2c5a3d736275728f3fbeef79f0cbc9"
+    },
+    {
+      "route": "/api/project/translation-batches/",
+      "bytes": 36,
+      "status": 401,
+      "sha256": "9a15b0a3fe33ddcd5af28fef761c068e8d2c5a3d736275728f3fbeef79f0cbc9"
+    }
+  ],
+  "actualAcceptance": {
+    "Transo": {
+      "format": "postgrest",
+      "schema": "translations",
+      "savedAndReloaded": true,
+      "testPassed": true
+    },
+    "Studygram DB": {
+      "format": "supabase",
+      "schema": "public",
+      "testPassed": true,
+      "configurationUnchanged": true
+    }
+  },
+  "credentialsEnteredOrRotated": false,
+  "sqlOrPublicationOrGeneration": false,
+  "unrelatedIndex": {
+    "entries": 1852,
+    "sha256": "b9576ed2c4564fdb07b81d0f731d6af495129575f0c73310b46a8f6288383452"
+  }
+}

@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {sqliteRunner} from '@frontbase/edge-infra';
+import {migrateUp} from '../dist/db/migrations.js';
+import {MenusStore} from '../dist/compat/menus-store.js';
+import {MenusSnapshotStore} from '../dist/compat/menus-snapshot.js';
+import {createMenuDefinition,publicMenuAudience,resolveMenuRegions} from '@frontbase/edge-core/menus';
+import {composeMenuRegions} from '@frontbase/edge-core/menu-components';
+const db=sqliteRunner(':memory:');await migrateUp(db);const now='2026-10-13T15:00:00Z',store=new MenusSnapshotStore(db,'owner'),draft=new MenusStore(db,'owner');
+const menu=createMenuDefinition('shared-header','header');menu.items=[{id:'private-item',label:'PRIVATE_LABEL',href:'/private-target/',audience:{authentication:'authenticated',contactTypes:['student'],permissionLevels:['reader']},children:[]}];
+const first=await draft.save([menu],0,now),hash=await store.prepare(first,now);assert.equal(await store.prepare(first,now),hash);assert.equal(await new MenusSnapshotStore(db,'foreign').get(hash),null);
+await draft.save([{...menu,name:'Edited',design:{...menu.design,brand:'NEW_DRAFT_BRAND'}}],1,now);assert.deepEqual(await store.get(hash),first);
+const original={root:{},content:[{id:'page-content',type:'Text',props:{text:'Body'}}]},anonymous=composeMenuRegions(original,resolveMenuRegions(first,'page','/',null),null);
+assert.ok(!JSON.stringify(anonymous).includes('PRIVATE_LABEL'));assert.ok(!JSON.stringify(anonymous).includes('private-target'));assert.ok(!JSON.stringify(anonymous).includes('NEW_DRAFT_BRAND'));
+const user={authenticated:true,contactType:'student',permissionLevel:'reader'},allowed=composeMenuRegions(original,resolveMenuRegions(first,'page','/',user),user);assert.ok(JSON.stringify(allowed).includes('PRIVATE_LABEL'));assert.ok(!JSON.stringify(allowed).includes('contactTypes'));assert.equal(original.content.length,1);
+await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',[JSON.stringify({...first,revision:99}),'owner',`app_menus:publication:v1:${hash}`]);await assert.rejects(store.get(hash),/menus_snapshot_unavailable/);await assert.rejects(store.prepare(first,now),/menus_snapshot_unavailable/);await assert.rejects(store.get('bad'),/menus_reference_invalid/);
+console.log('menu snapshots: immutable draft separation, deduplication, owner isolation, digest corruption refusal, anonymous no-leak and native authorized projection PASS');

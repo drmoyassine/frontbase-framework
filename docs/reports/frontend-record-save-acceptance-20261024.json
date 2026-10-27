@@ -1,0 +1,54 @@
+{
+  "runtime_source": "2e0e9db",
+  "branch": "codex/integrated-finalization-20261022",
+  "source_archive_sha256": "309333239C33A317D4D4E4ADDBFF130246D809B3784A719EF83983700402269F",
+  "public_editor_sha256": "1c368c884f678d639fe9b16a4e0b1849d075cc296fae3314c9cabb7dea61610f",
+  "site_generation": 25,
+  "arabic_explore_generation": 4,
+  "arabic_homepage_generation_unchanged": 7,
+  "native_passes": [
+    "source staging writes nothing",
+    "individual/global cancel",
+    "two source columns saved and independently read back",
+    "exact source restoration",
+    "Arabic intake manual revision persists and source is unchanged",
+    "translated UI active-state save restores visible label without changing external head",
+    "English and RTL Arabic cards",
+    "375px builder layout"
+  ],
+  "local_passes": [
+    "pnpm -r check",
+    "pnpm -r build",
+    "full edge-core tests",
+    "18 card/fallback cases",
+    "frontend source/HTTP/array/related/CAS/refresh tests",
+    "frontend11 groups and English/Arabic/French lifecycle integration",
+    "editorial and editorial approval",
+    "9 frontend faults",
+    "4 source-write faults",
+    "19 translation faults, rerun after display admission refinement"
+  ],
+  "last_healthy_anonymous_smoke": [
+    "health200",
+    "English/Arabic homepages200",
+    "four Explore variants200",
+    "private inventory401",
+    "capability disabled",
+    "English/Arabic keyed intakes are independent"
+  ],
+  "current_status": "final_live_recheck_blocked",
+  "blocker": {
+    "source": "shared Studygram Supabase datasource",
+    "observed": [
+      "source-backed homepage503",
+      "private selected inventory409",
+      "CMS state health200",
+      "Supabase57014 statement timeouts",
+      "independent application REST reads also500",
+      "provider advisor Query read timeout"
+    ],
+    "blocking_transaction_identified": false,
+    "source_recovery_mutations_performed": false
+  },
+  "next": "Recover source query health, then rerun final anonymous and selected inventory/editor smoke checks; preserve confirmed saves and pointers."
+}
