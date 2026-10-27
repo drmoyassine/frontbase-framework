@@ -71,6 +71,6 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
         if(deps.resolveCredentials){const reviewed=await deps.journal.read(deps.context);if(!reviewed||reviewed.operationId!==input.reviewId||reviewed.phase!=='reviewed')throw Error('invalid');credentials=await deps.resolveCredentials(reviewed.manifest,credentials);}
         const result=await applyBootstrap(deps.context,input.reviewId,credentials,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId,...((result.phase==='active'||deps.pendingSetup)&&deps.nextSetup?{nextSetup:deps.nextSetup()}: {})});});
     app.post(base+'/reconcile',async c=>{const input=await body(c.req.raw);exact(input,[]);const result=await reconcileBootstrap(deps.context,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId,...(deps.nextSetup?{nextSetup:deps.nextSetup()}: {})});});
-    app.onError((error,c)=>{console.warn('bootstrap_operation_refused', error.message.includes('Illegal invocation')?'invalid_receiver':['TypeError','RangeError','DOMException'].includes(error.name)?error.name:'Error');return c.json({error:'bootstrap_operation_refused'},409);});
+    app.onError((error,c)=>{console.warn('bootstrap_operation_refused', error.message.includes('Illegal invocation')?'invalid_receiver':['TypeError','RangeError','DOMException'].includes(error.name)?error.name:'Error');return c.json({error:error.message==='setup_database_already_exists'?'setup_database_already_exists':'bootstrap_operation_refused'},409);});
     return app;
 }

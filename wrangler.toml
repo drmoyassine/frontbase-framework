@@ -17,6 +17,3 @@ binding = "ASSETS"
 run_worker_first = true
 [observability]
 enabled = false
-[vars]
-FRONTBASE_BOOTSTRAP = "native"
-FRONTBASE_NATIVE_RELAY_URL = "https://oauth.frontbase.dev"

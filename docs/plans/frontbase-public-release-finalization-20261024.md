@@ -1,5 +1,20 @@
 # Frontbase Developer Preview: current release plan
 
+## Current checkpoint — 2026-10-27
+
+Cloudflare and Vercel fresh native deployments using the production OAuth relay reached administrator creation and public page publication on the owner's accounts. README buttons were changed in commit `257bfa4` on `codex/integrated-finalization-20261022`; they are not on the repository default branch. The tested source is the named branch `frontbase-hosted-production-test-20261027` at `c94bddfd1294b5627eebc63893db56910aa54444` at verification time, not an immutable tag. Cloudflare's first import needed one retry; Vercel needed a separately provisioned Turso database and setup-session recovery. See [production OAuth evidence](provider-oauth-production-readiness-20261027.md).
+
+The ordered work before a **Frontbase Framework Developer Preview** release is:
+
+1. **Integrate and freeze the release candidate.** Reconcile the integrated branch, deploy-button snapshot and intended default branch without discarding concurrent work. Record exact source, artifact and package hashes. Resolve or classify supported-path console diagnostics and generated artifact drift; do not assume the dated inventory is still current.
+2. **Finish hosted OAuth security and recovery.** Implement and verify receiver-key rotation and ownership-verified recovery, including lost keys, rollback and concurrent claims. Qualify abuse limits, token-safe monitoring, retention, incident handling, provider permissions and the optional self-hosted alternative. Test independently controlled CF accounts and Vercel teams, including cross-account and wrong-recipient refusals; local doubles and one owner account are not sufficient multi-tenant evidence.
+3. **Qualify the exact combined candidate.** Run required workspace check/build and affected functional, security, mutation and conformance gates; verify seven package candidates in strict external consumers. Retain dated evidence for unchanged surfaces and investigate any supported-path failure.
+4. **Prove public-source installation, upgrade and recovery.** Verify actual default-branch README paths and source immutability or a documented controlled-ref policy. On CF, Vercel Node and advertised Node/Docker paths, prove clean setup, publication, upgrade with data/session preservation and backup/restore. The new owner-account setup evidence does not itself prove upgrades, restores, independent accounts or real Docker OAuth.
+5. **Close advertised provider and distribution evidence.** Verify actual reset-mail delivery and lifecycle in an owned inbox; qualify advertised integrations or explicitly label unverified combinations experimental. Complete a clean-room documentation run, npm authority, versions, archives, provenance, publish dry-run and partial-publication recovery.
+6. **Release the preview.** Merge the reviewed candidate and documentation into the intended public default branch, publish the qualified versions/tag/notes, and verify a fresh registry installation. State support ownership and known limitations; no GA claim.
+
+CF-22 remains paused; Deno parity, exhaustive optional-provider certification, datasource translation completeness and Study-in-USA production cutover are outside this release path. Documentation reconciliation only: no new tests or live checks were run for this plan update. Existing unrelated `cms.mjs`, `.agents/` and `skills-lock.json` changes remain preserved.
+
 ## Release closeout order — after template/SEO acceptance
 
 Documentation reconciliation at `cfd3bd4`; accepted staging runtime remains `6b8b96e`. The reusable-template/URLs/SEO feature is closed, including the three defects found during its acceptance. Do not carry those repaired defects forward as open blockers. No new runtime tests or provider checks were performed for this plan refresh.
