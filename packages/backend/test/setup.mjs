@@ -30,6 +30,7 @@ const post = (app, path, body, cookie) => req(app, path, { method: 'POST', heade
     check('fresh: setupEnabled = true when SETUP_TOKEN configured', status.setupEnabled === true);
     check('fresh: setupTokenRequired = true when SETUP_TOKEN configured', status.setupTokenRequired === true);
     check('fresh: setupExpired = false', status.setupExpired === false);
+    check('fresh: no claim authorization without cookie', status.setupAuthorized === false);
 
     // Secure-link UX: exchange the fragment capability once for a short-lived,
     // HttpOnly, setup-path-scoped cookie. The admin form never needs to render
@@ -39,6 +40,12 @@ const post = (app, path, body, cookie) => req(app, path, { method: 'POST', heade
     check('setup claim exchange → 200', claim.status === 200);
     check('claim cookie is HttpOnly + SameSite=Strict', /HttpOnly/i.test(claim.headers.get('set-cookie') ?? '') && /SameSite=Strict/i.test(claim.headers.get('set-cookie') ?? ''));
     check('claim cookie is scoped to setup API', /Path=\/api\/console\/setup/i.test(claim.headers.get('set-cookie') ?? ''));
+
+    const resumed = await req(app, '/setup/status', {headers:{cookie:claimCookie}});
+    check('valid cookie restores refresh authorization', (await resumed.json()).setupAuthorized === true);
+    check('claim status never caches', resumed.headers.get('cache-control') === 'no-store');
+    const tampered = await req(app, '/setup/status', {headers:{cookie:claimCookie+'tampered'}});
+    check('tampered cookie cannot restore authorization', (await tampered.json()).setupAuthorized === false);
 
     // CRIT-3: /setup/db pre-init requires the token when configured
     check('/setup/db without token → 403', (await post(app, '/setup/db', { driver: 'sqlite', url: ':memory:' })).status === 403);
@@ -52,6 +59,7 @@ const post = (app, path, body, cookie) => req(app, path, { method: 'POST', heade
     check('successful setup clears the claim cookie', /Max-Age=0/i.test(escalate.headers.get('set-cookie') ?? ''));
 
     // now initialized
+    check('initialized app never reports setup authorization', (await (await req(app, '/setup/status', {headers:{cookie:claimCookie}})).json()).setupAuthorized === false);
     check('after setup: needsSetup = false', (await (await req(app, '/setup/status')).json()).needsSetup === false);
     check('CRIT-3: /setup/db LOCKED post-init → 410', (await post(app, '/setup/db', { driver: 'sqlite', url: ':memory:', setupToken: TOKEN })).status === 410);
     check('re-POST /setup → 410 already_initialized', (await post(app, '/setup', { email: 'x@y.com', password: 'pw', setupToken: TOKEN })).status === 410);

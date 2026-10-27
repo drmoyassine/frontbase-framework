@@ -39,3 +39,13 @@ Live repaired activation, generated source publication, private clone and browse
 Final checks: workspace check/build PASS; final cf-full rebuild PASS; native setup suite and published-source verification PASS. Earlier hosted and OAuth mutation suites and shared form tests remain PASS. Unrelated pre-existing generated cms.mjs, finalization-plan changes, .agents and skills-lock files remain unstaged.
 
 Remaining product deltas: Vectorize provisioning/broader OAuth scopes are not implemented by this repair; the existing-index adapter requires appropriate credentials. Long-idle hosted setup session recovery still needs a normal product flow. The operator recovery used here is not represented as such a feature.
+
+## 2026-10-28 Kuwait time: administrator authorization expiry
+
+Owner reported `http_403`. Live status at investigation: needsSetup=true, setupEnabled=false, setupExpired=true. Runtime administrator expiry was copied from the original provider-connection window; that window had elapsed during repairs. Error normalization presented a generic 403.
+
+Repair `bfb35c5` gives each activation a fresh bounded one-hour administrator window, independent of the earlier owner/bootstrap deadline. The setup form checks status before submitting, presents actionable authorization/expiry errors and retains entered email/password/confirmation. Tests verify an almost-expired bootstrap still yields the full administrator window, and expired/refused submission never clears inputs or creates an account.
+
+Live frontbase-usa setup expiry renewed for one hour without changing its token, account or resources. Previously approved temporary one-use recovery renewed the HttpOnly claim in a separate background tab, preserving the original entered form. Route removed immediately; final request returns 404/no cookie and local consumed capability file deleted.
+
+Workspace check/build, hosted functional + five mutation tests, setup form, claim handoff, no-leak and mutation tests PASS. Final Worker `3dfdaaba-b775-4f2b-a106-e236007b9edf`; health 200, setupEnabled=true, setupExpired=false, updated setup SPA verified. Native snapshot `ec46a354d981ae3c16d2454c6c989791e2205b51` published and source verifier PASS. Administrator password submission remains the owner's pending handoff; no signed-in verification claim.
