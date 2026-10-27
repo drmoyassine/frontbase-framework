@@ -11,6 +11,6 @@ assert.equal(await (await f.fetch('/privacy')).text(),'privacy fixture '.repeat(
 const target={origin:'https://unknown.example',host:'cloudflare',purpose:'connect'};
 assert.equal((await f.fetch('/connect?provider=cloudflare&challenge='+'x'.repeat(43)+'&target='+encodeURIComponent(JSON.stringify(target)))).status,409,'unregistered recipient cannot start public OAuth');
 f.db.close();
-f=await fixture({FRONTBASE_RELAY_MODE:'public-native',FRONTBASE_RELAY_PRIVACY:'privacy fixture '.repeat(8),FRONTBASE_RELAY_TERMS:'terms fixture '.repeat(8),FRONTBASE_VERCEL_OAUTH_CLIENT_SECRET:''});assert.equal((await f.fetch('/health')).status,503,'public mode refuses incomplete provider configuration');f.db.close();
+f=await fixture({FRONTBASE_RELAY_MODE:'public-native',FRONTBASE_RELAY_PRIVACY:'privacy fixture '.repeat(8),FRONTBASE_RELAY_TERMS:'terms fixture '.repeat(8),FRONTBASE_VERCEL_OAUTH_CLIENT_SECRET:''});assert.equal((await f.fetch('/health')).status,503,'public mode refuses incomplete provider configuration');assert.equal(await (await f.fetch('/privacy')).text(),'privacy fixture '.repeat(8),'approved notices remain available before OAuth activation');assert.equal(await (await f.fetch('/terms')).text(),'terms fixture '.repeat(8));f.db.close();
 f=await fixture({FRONTBASE_RELAY_MODE:'invalid'});assert.equal((await f.fetch('/health')).status,503,'invalid policy mode refuses startup');f.db.close();
 console.log('PASS public Worker requires notices, refuses unregistered receivers and fails closed for invalid mode');
